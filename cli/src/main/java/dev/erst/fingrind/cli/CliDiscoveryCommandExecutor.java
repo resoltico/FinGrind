@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.time.Clock;
@@ -51,12 +52,16 @@ final class CliDiscoveryCommandExecutor {
   }
 
   int writeRequestTemplate() {
-    responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
+    return writeRequestTemplate(null);
+  }
+
+  int writeRequestTemplate(@Nullable OperationId commandTopic) {
+    responseWriter.writeRawTemplate(requestTemplateFor(commandTopic));
     return 0;
   }
 
   int writePlanTemplate() {
-    responseWriter.writePlanTemplate(MachineContract.planTemplate());
+    responseWriter.writeRawTemplate(MachineContract.planTemplate());
     return 0;
   }
 
@@ -78,6 +83,7 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.description(),
         usage,
         helpDescriptor.bookModel(),
+        helpDescriptor.accountingBaseline(),
         requestShapes,
         requestTemplate,
         declareAccountTemplate,
@@ -87,11 +93,31 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.exitCodes(),
         helpDescriptor.preflight(),
         helpDescriptor.currencyModel(),
+        helpDescriptor.extensionSurface(),
         helpDescriptor.environment());
   }
 
   private EnvironmentDescriptor environmentDescriptor() {
     return CliRuntimeContractDescriptors.environmentDescriptor(
         SqliteRuntime.probe(), FinGrindCli.runtimeDistribution());
+  }
+
+  static Object requestTemplateFor(@Nullable OperationId commandTopic) {
+    if (commandTopic == null
+        || commandTopic == OperationId.POST_ENTRY
+        || commandTopic == OperationId.PREFLIGHT_ENTRY) {
+      return MachineContract.requestTemplate();
+    }
+    if (commandTopic == OperationId.DECLARE_ACCOUNT) {
+      return MachineContract.declareAccountTemplate();
+    }
+    throw new IllegalArgumentException(
+        "Request templates are available only for "
+            + String.join(
+                ", ",
+                ProtocolCatalog.operationName(OperationId.POST_ENTRY),
+                ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
+                ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))
+            + ".");
   }
 }

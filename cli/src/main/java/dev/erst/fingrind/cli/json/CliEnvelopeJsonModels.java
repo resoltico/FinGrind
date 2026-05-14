@@ -8,16 +8,25 @@ import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Envelope-level JSON records emitted by the CLI transport layer. */
 public interface CliEnvelopeJsonModels {
 
+  record SuccessArtifact(String format, String path) {
+    public SuccessArtifact {
+      format = requireText(format, "format");
+      path = requireText(path, "path");
+    }
+  }
+
   record SuccessEnvelope<T extends ProtocolSuccessPayload>(
-      ProtocolSuccessStatus status, T payload) {
+      ProtocolSuccessStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
     public SuccessEnvelope {
       status = requireValue(status, "status");
       payload = requireValue(payload, "payload");
+      artifacts = artifacts == null ? null : java.util.List.copyOf(artifacts);
     }
   }
 

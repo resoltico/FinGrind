@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: CONTRACT_EXECUTOR_READ
 updated: "2026-05-14"
 route:
@@ -349,12 +349,14 @@ These types own the book-wide trial-balance report surface.
 ```java
 public record TrialBalanceQuery(Optional<LocalDate> effectiveDateTo)
 public record TrialBalanceRow(DeclaredAccount account, CurrencyBalance balance)
-public record TrialBalanceReport(Optional<LocalDate> effectiveDateTo, List<TrialBalanceRow> rows)
+public record TrialBalanceReport(...)
 public sealed interface TrialBalanceResult
 ```
 
 - Purpose: request, carry, and result-wrap one as-of trial balance for the selected book
 - Result variants: `Reported`, `Rejected`
+- Report semantics: the report carries `BookIdentity`, `PostingCoverage`, and one
+  fiscal-year-anchored comparative row set in addition to the current rows
 
 ## `AccountLedgerQuery`, `AccountLedgerEntry`, `AccountLedgerReport`, And `AccountLedgerResult`
 
@@ -374,6 +376,8 @@ public sealed interface AccountLedgerResult
 - Purpose: request and carry one running ledger with opening balances, activity rows, and closing
   balances
 - Result variants: `Reported`, `Rejected`
+- Report semantics: the report carries the selected book identity alongside the declared account,
+  bounded ledger range, opening balances, movement rows, and closing balances
 
 ## `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult`
 
@@ -389,6 +393,8 @@ public sealed interface PeriodSummaryResult
 
 - Purpose: request and carry bounded posting counts, currency totals, and flattened account activity
 - Result variants: `Reported`, `Rejected`
+- Report semantics: the report carries the selected book identity alongside the bounded counts,
+  currency totals, and flattened account activity rows
 
 ## `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult`
 
@@ -406,6 +412,8 @@ public sealed interface FinancialPositionResult
 - Result variants: `Reported`, `Rejected`
 - Row semantics: rows may be synthetic where FinGrind derives current earnings into equity for the
   as-of view
+- Comparative semantics: the report also carries fiscal-year-anchored comparative sections for the
+  comparison as-of date
 
 ## `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult`
 
@@ -422,6 +430,8 @@ public sealed interface IncomeStatementResult
 - Purpose: request and carry one bounded income statement grouped by nominal account type
 - Result variants: `Reported`, `Rejected`
 - Totals: the report includes per-section totals plus book-wide `netIncomeTotals`
+- Comparative semantics: the report also carries fiscal-year-anchored comparative sections and
+  `comparativeNetIncomeTotals`
 
 ## `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult`
 
@@ -437,6 +447,7 @@ public sealed interface ChangesInEquityResult
 - Purpose: request and carry opening, movement, and closing equity balances for one bounded period
 - Result variants: `Reported`, `Rejected`
 - Row semantics: rows may be synthetic where current earnings are projected as one equity movement
+- Comparative semantics: the report also carries one comparative prior-period rows/totals set
 
 ## `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView`
 

@@ -38,7 +38,10 @@ final class SqlitePostingReader {
       AccountBalanceCriteria query,
       RegisteredAccount account) {
     return new AccountBalanceView(
-        account, query.effectiveDateRange(), loadCurrencyBalances(activeDatabase, query));
+        account,
+        query.effectiveDateRange(),
+        query.postingCoverage(),
+        loadCurrencyBalances(activeDatabase, query));
   }
 
   PostingHistoryPage loadPostingPage(
@@ -198,6 +201,10 @@ final class SqlitePostingReader {
     int bindIndex = 1;
     statement.bindText(bindIndex, query.accountCode().value());
     bindIndex++;
+    if (query.postingCoverage().isNonClosingOnly()) {
+      statement.bindText(bindIndex, dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE.wireValue());
+      bindIndex++;
+    }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       statement.bindText(
           bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());

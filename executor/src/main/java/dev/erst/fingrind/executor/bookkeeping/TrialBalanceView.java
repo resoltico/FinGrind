@@ -14,13 +14,14 @@ public record TrialBalanceView(
     Optional<LocalDate> effectiveDateTo,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
-    List<TrialBalanceRowView> rows) {
+    List<TrialBalanceRowView> rows,
+    List<TrialBalanceRowView> comparativeRows) {
   public TrialBalanceView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
-    Objects.requireNonNull(rows, "rows");
-    rows = List.copyOf(rows);
+    rows = List.copyOf(Objects.requireNonNull(rows, "rows"));
+    comparativeRows = List.copyOf(Objects.requireNonNull(comparativeRows, "comparativeRows"));
   }
 }

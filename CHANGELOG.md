@@ -5,12 +5,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-05-14
+
 ### Fixed
 
+- Tightened the Docker/repository hygiene boundary again: container assembly now builds only from
+  the staged Docker context emitted by `:cli:stageDockerBuildContext` instead of reopening the
+  repository root, that staged context now includes the Dockerfile plus a full `source-root/`
+  snapshot of every checked assembly input, the context manifest now verifies those staged files
+  as well as their source fingerprint, and the Docker smoke gate plus developer docs now treat
+  repository-root `docker build .` as intentionally unsupported.
+- Tightened repository hygiene again at the Git storage boundary: the repo-hygiene verifier now
+  proves the checkout is a real readable Git repository and fails fast on corrupt or unreadable
+  object stores, its shell regression now covers a deliberately corrupt loose object, and the
+  release protocol plus publication reference now distinguish the normal worktree path from the
+  mandatory clean-clone fallback when shared repository metadata is damaged.
+- Tightened repository hygiene at the checkout boundary: Stage 1 quality gates now verify the
+  repository-root allowlist before any build runs, `./gradlew` now externalizes ordinary project
+  build trees outside the checkout by default instead of leaving that behavior only to fragile
+  mounted filesystems, and the new repo-hygiene cleanup tooling can prune empty root clutter,
+  Finder droppings, generated caches, optional scratch state, and ignored tool/editor state
+  without touching tracked source; the verifier's local-state report now also classifies each root
+  and points at the exact cleanup flag that removes it.
+- Tightened the remaining operator-facing read/export and PDF seams: close-sensitive account
+  reads now accept an explicit `--posting-coverage` filter, account-ledger and period-summary CSV
+  exports now preserve their full multi-section report meaning through `recordKind` rows, posting
+  inspection surfaces now publish reversal state consistently, `execute-plan` now uses one stable
+  `ok` envelope whose `payload.status` carries rejected and assertion-failed outcomes, and
+  multi-page PDFs now render `n / nn` page labels while vertically centering both gray-band
+  headers and body rows and suppressing zero-only opening-balance sections in dense ledgers.
+- Tightened bounded account-ledger reporting again so selected date ranges now publish explicit
+  zero opening and closing balances instead of omitting those buckets, while the bundle-acceptance
+  verifier and CLI CSV regression coverage now prove the quoted-field row width that the public
+  export contract requires.
+- Tightened the remaining read/report and plan-transport seams so `account-balance` now returns
+  the same report identity and PDF artifact metadata that sibling report commands already expose,
+  posting inspection and ledger-style views now declare `postingKind` and posting-coverage
+  semantics explicitly, `execute-plan` now defaults to bounded summary output while public docs
+  and examples show `--result-detail full` wherever they rely on the full execution journal, and
+  the human/PDF report layout now suppresses empty statement sections while vertically centering
+  gray header titles and drawing matching top and bottom header rules.
 - Repaired the operator-side public container verifier to use the current mounted-book contract:
   it now opens books with explicit identity fields and seeds postings with the required
   `postingKind`, while the paired shell regression and release-publication docs now track mounted
   lifecycle and posting-grammar changes as well as human `trial-balance` layout changes.
+- Tightened the bookkeeping standards boundary and reporting-policy surface so `help` and
+  `capabilities` now publish one machine-readable accounting baseline plus the sanctioned
+  bookkeeping policy-pack extension seams, comparative statement data is now derived and carried
+  through fiscal-year-anchored report payloads instead of date metadata alone, opening balances
+  now reject deterministically after the first committed posting, and the
+  request/response docs now match the live statement, PDF-export, and opening-balance contract.
+- Hardened the public bookkeeping-kernel boundary again: `capabilities` and `help` now publish
+  explicit small-entity and organizational-position facts, the extension surface now distinguishes
+  the one live comparative-policy seam from adjacent future contexts such as tax, FX, subledgers,
+  and consolidation, the accounting baseline now also states the current reporting boundary, flat
+  chart model, operational-domain boundary, and non-first-class tax posture explicitly, and
+  opening-balance admission is now a one-time pre-posting opening-statement window rather than a
+  looser “before ordinary activity” rule.
+- Tightened the packaged CLI discovery and report UX surface so command-scoped JSON help now emits
+  one narrow command-local contract instead of dumping the full machine catalog, `help
+  execute-plan` and `print-plan-template` now publish the same canonical ledger-plan template,
+  `print-request-template` can emit the declare-account scaffold directly, JSON report success
+  envelopes now publish PDF artifacts explicitly, account-ledger and period-summary now carry
+  book identity, human/CSV/PDF reports now expose the comparative data and presentation labels
+  already present in the model, and the checked-in public docs/examples now match that live
+  transport exactly.
+- Realigned the bundle and release-smoke acceptance workflow to the current account-ledger CSV
+  contract, so the shared verifier now expects the public identity-prefixed ledger header and rows
+  that the shipped CLI actually emits instead of the retired pre-identity CSV layout.
+- Realigned the source-checkout launcher shell regression to the current discovery contract, so the
+  raw developer JAR now proves the generic front-door `help` surface and the direct-Java launcher
+  syntax where it actually belongs in command-scoped help instead of asserting the retired
+  runtime-specific quick-start block.
 
 ## [0.36.0] - 2026-05-14
 
@@ -1700,7 +1766,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.37.0
 [0.36.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.36.0
 [0.35.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.35.0
 [0.34.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.34.0

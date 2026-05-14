@@ -138,6 +138,10 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Functional currency", details.functionalCurrency()));
         rows.add(List.of("Attempted currency", details.attemptedCurrency()));
       }
+      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details -> {
+        rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
+        rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
+      }
       case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));

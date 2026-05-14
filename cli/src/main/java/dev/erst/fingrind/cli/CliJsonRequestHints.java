@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 
 /** Request-recovery hints for CLI JSON input failures. */
 final class CliJsonRequestHints {
@@ -16,8 +17,14 @@ final class CliJsonRequestHints {
 
   static String declareAccountRequestHint() {
     return "Run '"
+        + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+        + " "
+        + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+        + "' for the canonical "
+        + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+        + " scaffold, or run '"
         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + "' for the accepted account-declaration request fields and enums.";
+        + "' for the accepted account-declaration fields and enums.";
   }
 
   static String ledgerPlanRequestHint() {

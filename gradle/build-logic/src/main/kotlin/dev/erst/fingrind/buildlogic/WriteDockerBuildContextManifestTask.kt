@@ -48,6 +48,12 @@ abstract class WriteDockerBuildContextManifestTask : DefaultTask() {
                 repositoryRoot.relativize(sourceFile).toString().replace('\\', '/')
             }
         val sourceFingerprintSha3 = sourceFingerprint(relativeSourceFiles, normalizedSourceFiles)
+        val stagedFiles =
+            buildList {
+                    addAll(fileNames.get())
+                    addAll(relativeSourceFiles.map { "source-root/$it" })
+                }
+                .distinct()
         val manifestLines =
             buildList {
                 add("{")
@@ -62,8 +68,8 @@ abstract class WriteDockerBuildContextManifestTask : DefaultTask() {
                 }
                 add("  ],")
                 add("""  "files": [""")
-                fileNames.get().forEachIndexed { index, fileName ->
-                    val suffix = if (index == fileNames.get().lastIndex) "" else ","
+                stagedFiles.forEachIndexed { index, fileName ->
+                    val suffix = if (index == stagedFiles.lastIndex) "" else ","
                     add("""    "${escapeJson(fileName)}"$suffix""")
                 }
                 add("  ]")

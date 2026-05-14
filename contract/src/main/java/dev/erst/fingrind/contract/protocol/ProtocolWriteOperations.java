@@ -16,20 +16,22 @@ final class ProtocolWriteOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.REQUEST_FILE + " <path|->"),
+                ProtocolOptions.REQUEST_FILE + " <path|->",
+                ProtocolOptions.optionalResultDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            "Execute one ordered AI-agent ledger plan inside a single atomic book transaction.",
+            "Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > plan.json"
                         .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s plan.json"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s plan.json %s full"
                         .formatted(
                             OperationId.EXECUTE_PLAN.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.REQUEST_FILE)),
+                            ProtocolOptions.REQUEST_FILE,
+                            ProtocolOptions.RESULT_DETAIL)),
                 ProtocolExampleStep.note(
                     "Replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value in plan.json before execution."))),
         ProtocolOperationDefinitions.operation(

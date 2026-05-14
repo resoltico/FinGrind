@@ -307,18 +307,28 @@ def assert_operator_queries_and_reports(
     )
     require_match(
         account_ledger_csv_output,
-        r"^accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts$",
+        r"^recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts$",
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
     require_match(
         account_ledger_csv_output,
-        r"^1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,[^,]+,2026-04-07,[^,]+,EUR,10\.00,0\.00,10\.00,DEBIT,2000$",
+        r"^opening-balance,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0\.00,0\.00,0\.00,ZERO,,,,,,,,,,,$",
+        f"{config.label} account-ledger CSV output did not render the opening-balance row",
+    )
+    require_match(
+        account_ledger_csv_output,
+        r"^ledger-entry,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,[^,]+,STANDARD,direct,,2026-04-07,[^,]+,10\.00,0\.00,10\.00,DEBIT,2000$",
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
         account_ledger_csv_output,
-        r"^1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,[^,]+,2026-04-08,[^,]+,EUR,0\.00,4\.00,6\.00,DEBIT,2000$",
+        r"^ledger-entry,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,[^,]+,STANDARD,direct,,2026-04-08,[^,]+,0\.00,4\.00,6\.00,DEBIT,2000$",
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
+    )
+    require_match(
+        account_ledger_csv_output,
+        r"^closing-balance,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10\.00,4\.00,6\.00,DEBIT,,,,,,,,,,,$",
+        f"{config.label} account-ledger CSV output did not render the closing-balance row",
     )
     require_match(
         period_summary_human_output,

@@ -15,7 +15,8 @@ public record FinancialPositionReport(
     Optional<LocalDate> effectiveDateTo,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
-    List<FinancialPositionSection> sections) {
+    List<FinancialPositionSection> sections,
+    List<FinancialPositionSection> comparativeSections) {
   /** Validates one financial-position report. */
   public FinancialPositionReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -23,5 +24,7 @@ public record FinancialPositionReport(
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = ContractDescriptorValidation.copyList(sections, "sections");
+    comparativeSections =
+        ContractDescriptorValidation.copyList(comparativeSections, "comparativeSections");
   }
 }

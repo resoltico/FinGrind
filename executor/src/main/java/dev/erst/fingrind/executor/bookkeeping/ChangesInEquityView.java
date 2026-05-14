@@ -18,7 +18,11 @@ public record ChangesInEquityView(
     List<ChangesInEquityRowView> rows,
     List<CurrencyBalance> openingTotals,
     List<CurrencyBalance> movementTotals,
-    List<CurrencyBalance> closingTotals) {
+    List<CurrencyBalance> closingTotals,
+    List<ChangesInEquityRowView> comparativeRows,
+    List<CurrencyBalance> comparativeOpeningTotals,
+    List<CurrencyBalance> comparativeMovementTotals,
+    List<CurrencyBalance> comparativeClosingTotals) {
   public ChangesInEquityView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
@@ -32,5 +36,12 @@ public record ChangesInEquityView(
     openingTotals = List.copyOf(Objects.requireNonNull(openingTotals, "openingTotals"));
     movementTotals = List.copyOf(Objects.requireNonNull(movementTotals, "movementTotals"));
     closingTotals = List.copyOf(Objects.requireNonNull(closingTotals, "closingTotals"));
+    comparativeRows = List.copyOf(Objects.requireNonNull(comparativeRows, "comparativeRows"));
+    comparativeOpeningTotals =
+        List.copyOf(Objects.requireNonNull(comparativeOpeningTotals, "comparativeOpeningTotals"));
+    comparativeMovementTotals =
+        List.copyOf(Objects.requireNonNull(comparativeMovementTotals, "comparativeMovementTotals"));
+    comparativeClosingTotals =
+        List.copyOf(Objects.requireNonNull(comparativeClosingTotals, "comparativeClosingTotals"));
   }
 }

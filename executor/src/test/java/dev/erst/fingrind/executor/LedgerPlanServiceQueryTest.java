@@ -58,7 +58,7 @@ class LedgerPlanServiceQueryTest {
                                   Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(new AccountCode("1000"), null, null)))));
+                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))));
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
 
@@ -228,7 +228,7 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(new AccountCode("9999"), null, null)))));
+                              AccountBalanceQuery.unbounded(new AccountCode("9999"))))));
 
       assertEquals(LedgerPlanStatus.REJECTED, balanceResult.status());
       assertEquals(

@@ -112,18 +112,47 @@ val mirrorRepositoryDockerBuildContext =
         repositoryDockerBuildContextDirectory.asFile.toPath().normalize()
 val dockerBuildContextManifestOutputFile =
     layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
-val dockerBuildContextSourceProjects =
-    listOf(project(":cli"), project(":contract"), project(":core"), project(":executor"), project(":report-pdf"), project(":sqlite"))
+val dockerBuildContextSourceIncludePatterns =
+    listOf(
+        "Dockerfile",
+        "LICENSE",
+        "LICENSE-APACHE-2.0",
+        "LICENSE-SIL-OFL-1.1",
+        "LICENSE-SQLITE3MULTIPLECIPHERS",
+        "NOTICE",
+        "PATENTS.md",
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "gradle.properties",
+        "gradle/libs.versions.toml",
+        "gradle/build-logic/src/main/**",
+        "cli/build.gradle.kts",
+        "cli/src/main/**",
+        "cli/src/docker/**",
+        "contract/build.gradle.kts",
+        "contract/src/main/**",
+        "core/build.gradle.kts",
+        "core/src/main/**",
+        "executor/build.gradle.kts",
+        "executor/src/main/**",
+        "report-pdf/build.gradle.kts",
+        "report-pdf/src/main/**",
+        "scripts/render-managed-sqlite-compiler-flags.py",
+        "scripts/verify-docker-build-context.py",
+        "sqlite/build.gradle.kts",
+        "sqlite/src/main/**",
+        "third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c",
+    )
 val dockerBuildContextSourceInputs =
     objects.fileCollection().from(
-        rootProject.layout.projectDirectory.file("build.gradle.kts"),
-        rootProject.layout.projectDirectory.file("settings.gradle.kts"),
-        rootProject.layout.projectDirectory.file("gradle.properties"),
-        rootProject.layout.projectDirectory.file("gradle/libs.versions.toml"),
+        rootProject.fileTree(repositoryRootDirectory.toFile()) {
+            dockerBuildContextSourceIncludePatterns.forEach(::include)
+        },
+    )
+val cliContractBuildLogicInputs =
+    objects.fileCollection().from(
+        rootProject.layout.projectDirectory.file("gradle/build-logic/build.gradle.kts"),
         rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main"),
-        dockerBuildContextSourceProjects.map { it.layout.projectDirectory.file("build.gradle.kts") },
-        dockerBuildContextSourceProjects.map { it.layout.projectDirectory.dir("src/main") },
-        layout.projectDirectory.dir("src/docker"),
     )
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
@@ -134,6 +163,7 @@ val bundleManifestOutputFile =
 val distributionDirectory = layout.buildDirectory.dir("distributions")
 val dockerBuildContextFiles =
     listOf(
+        "Dockerfile",
         "docker-build-context-manifest.json",
         "docker-entrypoint.sh",
         "fingrind.jar",
@@ -321,6 +351,7 @@ val stageDockerBuildContext =
         from(writeDockerBuildContextManifest) {
             rename { "docker-build-context-manifest.json" }
         }
+        from(rootProject.layout.projectDirectory.file("Dockerfile"))
         from(shadowJarArchiveFile) {
             rename { "fingrind.jar" }
         }
@@ -340,6 +371,10 @@ val stageDockerBuildContext =
         }
         from(dockerManagedSqliteContractSource) {
             rename { "managed-sqlite-contract.json" }
+        }
+        from(rootProject.layout.projectDirectory) {
+            dockerBuildContextSourceIncludePatterns.forEach(::include)
+            into("source-root")
         }
     }
 
@@ -536,7 +571,7 @@ tasks.named<Test>("test") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.layout.projectDirectory.dir("scripts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.dir(rootProject.layout.projectDirectory.dir("gradle/build-logic"))
+    inputs.files(cliContractBuildLogicInputs)
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 

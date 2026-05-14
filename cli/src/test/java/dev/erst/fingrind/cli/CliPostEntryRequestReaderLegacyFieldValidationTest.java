@@ -237,4 +237,139 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
 
     assertEquals("Field is no longer accepted: sourceChannel", exception.getMessage());
   }
+
+  @Test
+  void readPostEntryCommand_rejectsWrappedPostingPayloadWithoutTopLevelFields() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "posting": {
+                    "postingKind": "STANDARD",
+                    "effectiveDate": "2026-04-07",
+                    "lines": %s,
+                    "provenance": {
+                      "actorId": "actor-1",
+                      "actorType": "AGENT",
+                      "commandId": "command-1",
+                      "idempotencyKey": "idem-1",
+                      "causationId": "cause-1"
+                    }
+                  }
+                }
+                """
+                    .formatted(standardBalancedLinesJson())
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Posting request fields must be top-level for direct request files; remove the posting wrapper.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_prefersUnexpectedFieldWhenTopLevelFieldsAndPostingWrapperAreMixed() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "postingKind": "STANDARD",
+                  "effectiveDate": "2026-04-07",
+                  "lines": %s,
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  },
+                  "posting": {
+                    "postingKind": "STANDARD",
+                    "effectiveDate": "2026-04-07",
+                    "lines": %s,
+                    "provenance": {
+                      "actorId": "actor-1",
+                      "actorType": "AGENT",
+                      "commandId": "command-1",
+                      "idempotencyKey": "idem-1",
+                      "causationId": "cause-1"
+                    }
+                  }
+                }
+                """
+                    .formatted(standardBalancedLinesJson(), standardBalancedLinesJson())
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: posting", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_reportsUnexpectedPostingWrapperWhenWrapperIsScalar() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "posting": "legacy-wrapper"
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: posting", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_reportsUnexpectedPostingWrapperWhenWrapperIsNull() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "posting": null
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: posting", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_reportsUnexpectedPostingWrapperWhenNestedShapeIsInvalid() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "posting": {
+                    "postingKind": "STANDARD",
+                    "effectiveDate": "2026-04-07",
+                    "ignored": true
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: posting", exception.getMessage());
+  }
 }

@@ -24,6 +24,7 @@ class PostingRejectionTest {
             "posting-kind-reserved",
             "book-functional-currency-mismatch",
             "closed-period-violation",
+            "opening-balance-window-closed",
             "opening-balance-touches-nominal-account",
             "retained-earnings-account-reserved",
             "reversal-target-not-found",
@@ -44,6 +45,9 @@ class PostingRejectionTest {
                 new PostingRejection.ClosedPeriodViolation(
                     java.time.LocalDate.parse("2026-04-30"),
                     java.time.LocalDate.parse("2026-05-01"))),
+            PostingRejection.wireCode(
+                new PostingRejection.OpeningBalanceWindowClosed(
+                    PostingKind.STANDARD, java.time.LocalDate.parse("2026-05-02"))),
             PostingRejection.wireCode(
                 new PostingRejection.OpeningBalanceTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE)),
@@ -77,6 +81,7 @@ class PostingRejectionTest {
             "posting-kind-reserved",
             "book-functional-currency-mismatch",
             "closed-period-violation",
+            "opening-balance-window-closed",
             "opening-balance-touches-nominal-account",
             "retained-earnings-account-reserved",
             "reversal-target-not-found",

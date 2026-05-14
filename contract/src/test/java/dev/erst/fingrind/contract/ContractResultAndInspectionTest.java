@@ -25,6 +25,7 @@ import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,9 +43,11 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     PostingPage postingPage = new PostingPage(List.of(postingFact), 50, Optional.empty());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
+            bookIdentity(),
             declaredAccount,
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
@@ -92,9 +95,11 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             bookIdentity());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
+            bookIdentity(),
             declaredAccount("1000"),
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     LedgerAssertion.AccountActive active =
         new LedgerAssertion.AccountActive(new AccountCode("1000"));

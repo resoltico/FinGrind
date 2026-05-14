@@ -75,6 +75,8 @@ final class CliBookPayloadMapper {
   static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
     return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         postingFact.provenance().requestProvenance().actorId().value(),
@@ -120,6 +122,8 @@ final class CliBookPayloadMapper {
   static CliBookQueryJsonModels.AccountBalancePayload accountBalancePayload(
       AccountBalanceSnapshot snapshot) {
     return new CliBookQueryJsonModels.AccountBalancePayload(
+        CliReportPayloadMapper.reportContextPayload(
+            snapshot.bookIdentity(), snapshot.postingCoverage()),
         snapshot.account().accountCode().value(),
         snapshot.account().accountName().value(),
         snapshot.account().accountType().wireValue(),

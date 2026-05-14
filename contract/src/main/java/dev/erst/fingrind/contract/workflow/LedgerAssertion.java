@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -106,7 +107,8 @@ public sealed interface LedgerAssertion
 
     /** Converts this assertion to the query required to evaluate it. */
     public AccountBalanceQuery query() {
-      return new AccountBalanceQuery(accountCode, effectiveDateRange);
+      return new AccountBalanceQuery(
+          accountCode, effectiveDateRange, PostingCoverage.ALL_POSTING_KINDS);
     }
   }
 }

@@ -230,6 +230,8 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             planBookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
+            "--result-detail",
+            "full",
             "--request-file",
             planRequestFile.toString());
     assertEquals("ok", planResult.path("status").stringValue());
@@ -240,6 +242,8 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             queryPlanBookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
+            "--result-detail",
+            "full",
             "--request-file",
             queryPlanRequestFile.toString());
     assertEquals("ok", queryPlanResult.path("status").stringValue());

@@ -152,4 +152,58 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
 
     assertEquals("Request JSON document must be an object.", exception.getMessage());
   }
+
+  @Test
+  void readDeclareAccountCommand_rejectsWrappedDeclareAccountPayload() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "declareAccount": {
+                    "accountCode": "1000",
+                    "accountName": "Cash",
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals(
+        "Declare-account request fields must be top-level for direct request files; remove the declareAccount wrapper.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_prefersUnexpectedFieldWhenWrapperAndTopLevelFieldsAreMixed() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "1000",
+                  "accountName": "Cash",
+                  "accountType": "ASSET",
+                  "accountRole": "ORDINARY",
+                  "declareAccount": {
+                    "accountCode": "1000",
+                    "accountName": "Cash",
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: declareAccount", exception.getMessage());
+  }
 }

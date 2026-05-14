@@ -78,6 +78,12 @@ final class CliRejectionPayloadMapper {
           "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
       case PostingRejection.ClosedPeriodViolation _ ->
           "Use an effective date after the closed-through horizon, or close the next contiguous reporting period before posting into later dates.";
+      case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
+          "Opening balances are only accepted before the first committed posting in the book. The window closed with "
+              + rejectionWindowClosed.firstBlockingPostingKind().wireValue()
+              + " on "
+              + rejectionWindowClosed.firstBlockingEffectiveDate()
+              + "; create a new book if the opening statement was not seeded completely.";
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           "Opening-balance postings may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
       case PostingRejection.RetainedEarningsAccountReserved _ ->
@@ -189,6 +195,10 @@ final class CliRejectionPayloadMapper {
           new CliRejectionJsonModels.ClosedPeriodViolationDetails(
               violation.closedThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
+      case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
+          new CliRejectionJsonModels.OpeningBalanceWindowClosedDetails(
+              rejectionWindowClosed.firstBlockingPostingKind().wireValue(),
+              rejectionWindowClosed.firstBlockingEffectiveDate().toString());
       case PostingRejection.OpeningBalanceTouchesNominalAccount rejectionOpeningBalance ->
           new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails(
               rejectionOpeningBalance.accountCode().value(),

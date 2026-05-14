@@ -125,11 +125,33 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_returnsPrintRequestTemplateForSupportedTopics() {
+    PrintRequestTemplate postEntry =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "post-entry"}));
+    PrintRequestTemplate declareAccount =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "declare-account"}));
+    PrintRequestTemplate preflight =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "preflight-entry"}));
+
+    assertEquals(OperationId.POST_ENTRY, postEntry.commandTopic());
+    assertEquals(OperationId.DECLARE_ACCOUNT, declareAccount.commandTopic());
+    assertEquals(OperationId.PREFLIGHT_ENTRY, preflight.commandTopic());
+  }
+
+  @Test
   void parse_rejectsAdditionalArgumentsForSingleTokenCommands() {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
-            () -> CliArguments.parse(new String[] {"print-request-template", "--unexpected"}));
+            () ->
+                CliArguments.parse(
+                    new String[] {"print-request-template", "post-entry", "--unexpected"}));
 
     assertEquals("invalid-request", exception.failure().code());
     assertEquals("--unexpected", exception.failure().argument());
@@ -137,9 +159,38 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
         exception
             .failure()
             .message()
-            .contains("emits fixed raw JSON and does not accept --unexpected"));
+            .contains("accepts at most one optional request-bearing command topic"));
     assertEquals(
         CliInvocationText.helpSyntaxHint(OperationId.PRINT_REQUEST_TEMPLATE), exception.hint());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedRequestTemplateTopicAndListsSupportedTopics() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-request-template", "list-accounts"}));
+
+    assertEquals("invalid-request", exception.failure().code());
+    assertEquals("list-accounts", exception.failure().argument());
+    assertTrue(exception.failure().message().contains("Unsupported request-template topic"));
+    assertTrue(exception.failure().message().contains("post-entry"));
+    assertTrue(exception.failure().message().contains("preflight-entry"));
+    assertTrue(exception.failure().message().contains("declare-account"));
+  }
+
+  @Test
+  void parse_rejectsAdditionalArgumentForPrintPlanTemplate() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-plan-template", "--output"}));
+
+    assertEquals("invalid-request", exception.failure().code());
+    assertEquals("--output", exception.failure().argument());
+    assertTrue(exception.failure().message().contains("emits fixed raw JSON"));
+    assertEquals(
+        CliInvocationText.helpSyntaxHint(OperationId.PRINT_PLAN_TEMPLATE), exception.hint());
   }
 
   @Test

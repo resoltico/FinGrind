@@ -165,7 +165,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
     assertCommandOutputContains(
         new String[] {
           "account-balance",
@@ -189,7 +189,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -217,7 +217,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode");
+        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount,postingLineCount,accountsTouched");
   }
 
   @Test
@@ -357,7 +357,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",

@@ -19,15 +19,15 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Facade that routes deterministic CLI response rendering to narrower discovery, mutation, and
@@ -71,11 +71,15 @@ final class CliResponseWriter {
   }
 
   void writeRequestTemplate(ContractTemplates.PostingRequestTemplateDescriptor requestTemplate) {
-    discoveryWriter.writeRequestTemplate(requestTemplate);
+    discoveryWriter.writeRawTemplate(requestTemplate);
   }
 
   void writePlanTemplate(ContractTemplates.LedgerPlanTemplateDescriptor planTemplate) {
-    discoveryWriter.writePlanTemplate(planTemplate);
+    discoveryWriter.writeRawTemplate(planTemplate);
+  }
+
+  void writeRawTemplate(Object template) {
+    discoveryWriter.writeRawTemplate(template);
   }
 
   void writeFailure(CliFailure failure) {
@@ -188,39 +192,70 @@ final class CliResponseWriter {
     queryWriter.writeAccountBalanceResult(result, outputMode);
   }
 
+  void writeAccountBalanceResult(
+      AccountBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeAccountBalanceResult(result, outputMode, exportedArtifactPath);
+  }
+
   void writeTrialBalanceResult(TrialBalanceResult result, OutputMode outputMode) {
     queryWriter.writeTrialBalanceResult(result, outputMode);
+  }
+
+  void writeTrialBalanceResult(
+      TrialBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeTrialBalanceResult(result, outputMode, exportedArtifactPath);
   }
 
   void writeAccountLedgerResult(AccountLedgerResult result, OutputMode outputMode) {
     queryWriter.writeAccountLedgerResult(result, outputMode);
   }
 
+  void writeAccountLedgerResult(
+      AccountLedgerResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeAccountLedgerResult(result, outputMode, exportedArtifactPath);
+  }
+
   void writePeriodSummaryResult(PeriodSummaryResult result, OutputMode outputMode) {
     queryWriter.writePeriodSummaryResult(result, outputMode);
+  }
+
+  void writePeriodSummaryResult(
+      PeriodSummaryResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writePeriodSummaryResult(result, outputMode, exportedArtifactPath);
   }
 
   void writeFinancialPositionResult(FinancialPositionResult result, OutputMode outputMode) {
     queryWriter.writeFinancialPositionResult(result, outputMode);
   }
 
+  void writeFinancialPositionResult(
+      FinancialPositionResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeFinancialPositionResult(result, outputMode, exportedArtifactPath);
+  }
+
   void writeIncomeStatementResult(IncomeStatementResult result, OutputMode outputMode) {
     queryWriter.writeIncomeStatementResult(result, outputMode);
+  }
+
+  void writeIncomeStatementResult(
+      IncomeStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeIncomeStatementResult(result, outputMode, exportedArtifactPath);
   }
 
   void writeChangesInEquityResult(ChangesInEquityResult result, OutputMode outputMode) {
     queryWriter.writeChangesInEquityResult(result, outputMode);
   }
 
-  void writeLedgerPlanResult(LedgerPlanResult result) {
-    queryWriter.writeLedgerPlanResult(result);
+  void writeChangesInEquityResult(
+      ChangesInEquityResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    queryWriter.writeChangesInEquityResult(result, outputMode, exportedArtifactPath);
+  }
+
+  void writeLedgerPlanResult(LedgerPlanResult result, PlanResultDetail resultDetail) {
+    queryWriter.writeLedgerPlanResult(result, resultDetail);
   }
 
   void writeJson(Object value) {
     outputChannel.writeJson(value);
-  }
-
-  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
-    return CliQueryResponseWriter.planRejectionStatus(status);
   }
 }

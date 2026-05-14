@@ -103,12 +103,11 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   planFile.toString()
                 });
     assertEquals(3, exitCode);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("\"status\":\"plan-assertion-failed\""));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"assertion-failed\""));
+            .contains("\"failureCode\":\"assertion-failed\""));
   }
 
   @Test

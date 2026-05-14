@@ -61,7 +61,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+                      AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -79,7 +79,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
+                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -126,7 +126,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+                      AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       assertTrue(
           NullTestSupport.messageOf(balanceFailure).contains("Failed to query SQLite book."));
       IllegalStateException trialBalanceFailure =
@@ -140,7 +140,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
+                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       assertTrue(
           NullTestSupport.messageOf(accountLedgerFailure).contains("Failed to query SQLite book."));
       IllegalStateException periodSummaryFailure =
@@ -167,8 +167,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               () ->
                   ((BookStore) postingFactStore)
                       .accountLedger(
-                          new AccountLedgerCriteria(new AccountCode("1000"), null, null),
-                          cashAccount));
+                          AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       assertTrue(
           NullTestSupport.messageOf(readAccountLedgerFailure)
               .contains("Failed to query SQLite book."));

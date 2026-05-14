@@ -71,6 +71,7 @@ public final class MachineContract {
             ? ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList()
             : List.of(selectedOperation.usage()),
         MachineContractDomainDescriptors.bookModel(),
+        MachineContractDomainDescriptors.accountingBaseline(),
         scopedRequestShapes,
         postingRequestTemplateFor(selectedOperation),
         declareAccountTemplateFor(selectedOperation),
@@ -86,6 +87,7 @@ public final class MachineContract {
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
+        MachineContractDomainDescriptors.extensionSurface(),
         environment);
   }
 
@@ -109,6 +111,8 @@ public final class MachineContract {
         MachineContractDomainDescriptors.reversals(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
+        MachineContractDomainDescriptors.accountingBaseline(),
+        MachineContractDomainDescriptors.extensionSurface(),
         environment,
         timestamp.toString());
   }

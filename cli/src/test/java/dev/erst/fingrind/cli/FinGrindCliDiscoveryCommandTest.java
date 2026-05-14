@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
@@ -53,23 +52,15 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("open-book"));
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
+    assertTrue(help.contains("Commands"));
+    assertTrue(help.contains("Getting Started"));
     assertTrue(
         help.contains(
-            CliInvocationText.commandExample(OperationId.GENERATE_BOOK_KEY_FILE)
-                + " --book-key-file "
-                + currentExamplePath("secrets", "acme.book-key")));
-    assertTrue(help.contains("Create " + currentExamplePath("declare-account-cash.json")));
-    assertTrue(help.contains("\"accountCode\": \"1000\""));
-    assertTrue(help.contains("--request-file " + currentExamplePath("declare-account-cash.json")));
-    assertTrue(help.contains("Create " + currentExamplePath("declare-account-revenue.json")));
-    assertTrue(help.contains("\"accountCode\": \"2000\""));
-    assertTrue(
-        help.contains("--request-file " + currentExamplePath("declare-account-revenue.json")));
-    assertFalse(help.contains("--request-file ./cash.json"));
-    assertFalse(help.contains("--request-file ./revenue.json"));
-    assertTrue(help.contains("Guidance"));
-    assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
-    assertTrue(help.contains("Use a fresh provenance.idempotencyKey"));
+            "Run 'fingrind help <command>' for command-specific usage, request grammar, and examples."));
+    assertTrue(help.contains("Run 'fingrind capabilities --output json'"));
+    assertFalse(help.contains("Guidance"));
+    assertFalse(help.contains("declare-account-cash.json"));
+    assertFalse(help.contains("provenance.idempotencyKey"));
   }
 
   @Test
@@ -155,24 +146,21 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertRuntimeSpecificHelpSurface(
         FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION,
         CliInvocationText.launcherCommandFor(
-            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, System.getProperty("os.name", "")),
-        "Source Checkout Launcher");
+            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, System.getProperty("os.name", "")));
   }
 
   @Test
   void run_rewritesDirectJavaHelpToTheDeveloperJarSurface() {
     assertRuntimeSpecificHelpSurface(
         FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
-        ProtocolCatalog.directJavaLauncherCommand(isWindowsHost()),
-        "Developer Raw JAR");
+        ProtocolCatalog.directJavaLauncherCommand(isWindowsHost()));
   }
 
   @Test
   void run_rewritesContainerHelpToTheDockerSurface() {
     assertRuntimeSpecificHelpSurface(
         FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
-        "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>",
-        "Container Image");
+        "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>");
   }
 
   @Test
@@ -218,17 +206,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     return false;
   }
 
-  private static String currentExamplePath(String... pathSegments) {
-    String joined = String.join(isWindowsHost() ? "\\" : "/", pathSegments);
-    return isWindowsHost() ? ".\\" + joined : "./" + joined;
-  }
-
   private static boolean isWindowsHost() {
     return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
   }
 
   private void assertRuntimeSpecificHelpSurface(
-      String runtimeDistribution, String expectedLauncher, String expectedQuickStartTitle) {
+      String runtimeDistribution, String expectedLauncher) {
     String priorDistribution =
         System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
     try {
@@ -260,8 +243,11 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       assertEquals(1, failureExitCode);
       String help = helpOutputStream.toString(StandardCharsets.UTF_8);
       String commandHelp = commandHelpOutputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(help.contains(expectedQuickStartTitle), help);
-      assertTrue(help.contains(expectedLauncher), help);
+      assertTrue(help.contains("Getting Started"), help);
+      assertFalse(help.contains(expectedLauncher), help);
+      assertFalse(help.contains("Source Checkout Launcher"), help);
+      assertFalse(help.contains("Developer Raw JAR"), help);
+      assertFalse(help.contains("Container Image"), help);
       assertTrue(commandHelp.contains(expectedLauncher + " open-book"), commandHelp);
       assertFalse(commandHelp.contains("fingrind open-book"), commandHelp);
       String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);

@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import java.time.LocalDate;
@@ -58,7 +59,9 @@ public sealed interface BookWorkflowAssertion
     /** Returns the bookkeeping balance query implied by this assertion. */
     public AccountBalanceCriteria query() {
       return new AccountBalanceCriteria(
-          accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo));
+          accountCode,
+          EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo),
+          PostingCoverage.ALL_POSTING_KINDS);
     }
   }
 }

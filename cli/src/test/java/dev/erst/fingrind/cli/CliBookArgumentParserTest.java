@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -53,5 +54,40 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
 
     assertEquals(Path.of("book.sqlite"), parsedArguments.bookAccess().bookFilePath());
     assertEquals(List.of("--verbose"), parsedArguments.commandArguments());
+  }
+
+  @Test
+  void parseRequestBoundArguments_acceptsRequestFileAndRejectsCommandStyleArguments() {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundArguments(
+            List.of(
+                "post-entry",
+                "--book-file",
+                "book.sqlite",
+                "--book-key-file",
+                "book.key",
+                "--request-file",
+                "request.json"));
+
+    assertEquals(Path.of("book.sqlite"), parsedArguments.bookAccess().bookFilePath());
+    assertEquals(Path.of("request.json"), parsedArguments.optionalRequestFile().orElseThrow());
+    assertEquals(List.of(), parsedArguments.commandArguments());
+
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliBookArgumentParser.parseRequestBoundArguments(
+                    List.of(
+                        "post-entry",
+                        "--book-file",
+                        "book.sqlite",
+                        "--book-key-file",
+                        "book.key",
+                        "--output",
+                        "json")));
+
+    assertEquals("--output", exception.argument());
+    assertEquals("Unsupported argument: --output", exception.getMessage());
   }
 }

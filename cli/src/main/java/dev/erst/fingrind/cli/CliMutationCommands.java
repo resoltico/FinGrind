@@ -1,23 +1,25 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.Objects;
 
 /** Mutation CLI commands that validate or commit request-backed changes. */
-record ExecutePlan(BookAccess bookAccess, Path requestFile)
+record ExecutePlan(BookAccess bookAccess, Path requestFile, PlanResultDetail resultDetail)
     implements CliCommand.JsonFailureCommand {
   ExecutePlan {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(requestFile, "requestFile");
+    Objects.requireNonNull(resultDetail, "resultDetail");
   }
 
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .mutation()
-        .runExecutePlanCommand(bookAccess, requestFile);
+        .runExecutePlanCommand(bookAccess, requestFile, resultDetail);
   }
 }
 

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
@@ -206,48 +208,13 @@ public final class LedgerPlanOutcomeMapper {
 
   private static BookWorkflowFailure postingFailure(BookkeepingPostingRejection rejection) {
     Objects.requireNonNull(rejection, "rejection");
-    if (rejection instanceof BookkeepingPostingRejection.BookNotInitialized) {
-      return new BookWorkflowFailure(
-          "posting-book-not-initialized", missingBookMessage(), List.of());
-    }
-    if (rejection instanceof BookkeepingPostingRejection.AccountStateViolations violations) {
-      return new BookWorkflowFailure(
-          "account-state-violations",
-          "Posting references undeclared or inactive accounts."
-              + " Fix every issue in details.violations before retrying."
-              + " Reported issues: "
-              + violations.violations().size(),
-          accountStateFacts(violations));
-    }
-    if (rejection instanceof BookkeepingPostingRejection.DuplicateIdempotencyKey) {
-      return new BookWorkflowFailure(
-          "duplicate-idempotency-key",
-          "A posting with the same idempotency key already exists in this book.",
-          List.of());
-    }
-    if (rejection
-        instanceof BookkeepingPostingRejection.ReversalTargetNotFound reversalTargetNotFound) {
-      return new BookWorkflowFailure(
-          "reversal-target-not-found",
-          "No committed posting exists for reversal target '%s'."
-              .formatted(reversalTargetNotFound.priorPostingId().value()),
-          priorPostingFacts(reversalTargetNotFound.priorPostingId()));
-    }
-    if (rejection
-        instanceof BookkeepingPostingRejection.ReversalAlreadyExists reversalAlreadyExists) {
-      return new BookWorkflowFailure(
-          "reversal-already-exists",
-          "Posting '%s' already has a full reversal."
-              .formatted(reversalAlreadyExists.priorPostingId().value()),
-          priorPostingFacts(reversalAlreadyExists.priorPostingId()));
-    }
-    BookkeepingPostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget =
-        (BookkeepingPostingRejection.ReversalDoesNotNegateTarget) rejection;
+    PostingRejection publishedRejection =
+        dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator.toPublished(
+            rejection);
     return new BookWorkflowFailure(
-        "reversal-does-not-negate-target",
-        "Reversal candidate does not negate posting '%s'."
-            .formatted(reversalDoesNotNegateTarget.priorPostingId().value()),
-        priorPostingFacts(reversalDoesNotNegateTarget.priorPostingId()));
+        PostingRejection.wireCode(publishedRejection),
+        RejectionNarrative.message(publishedRejection),
+        postingRejectionFacts(publishedRejection));
   }
 
   private static String missingBookMessage() {
@@ -268,12 +235,61 @@ public final class LedgerPlanOutcomeMapper {
             accountCode.value(), existingAccountType.wireValue(), requestedAccountType.wireValue());
   }
 
+  private static List<BookWorkflowFact> priorPostingFacts(PostingId priorPostingId) {
+    return List.of(BookWorkflowFact.text("priorPostingId", priorPostingId.value()));
+  }
+
+  private static List<BookWorkflowFact> postingRejectionFacts(PostingRejection rejection) {
+    return switch (Objects.requireNonNull(rejection, "rejection")) {
+      case PostingRejection.BookNotInitialized _ -> List.of();
+      case PostingRejection.AccountStateViolations violations -> accountStateFacts(violations);
+      case PostingRejection.DuplicateIdempotencyKey _ -> List.of();
+      case PostingRejection.PostingKindReserved postingKindReserved ->
+          List.of(
+              BookWorkflowFact.text("postingKind", postingKindReserved.postingKind().wireValue()));
+      case PostingRejection.BookFunctionalCurrencyMismatch mismatch ->
+          List.of(
+              BookWorkflowFact.text("functionalCurrency", mismatch.functionalCurrency().code()),
+              BookWorkflowFact.text("attemptedCurrency", mismatch.attemptedCurrency().code()));
+      case PostingRejection.ClosedPeriodViolation closedPeriodViolation ->
+          List.of(
+              BookWorkflowFact.text(
+                  "closedThroughEffectiveDate",
+                  closedPeriodViolation.closedThroughEffectiveDate().toString()),
+              BookWorkflowFact.text(
+                  "attemptedEffectiveDate",
+                  closedPeriodViolation.attemptedEffectiveDate().toString()));
+      case PostingRejection.OpeningBalanceWindowClosed openingBalanceWindowClosed ->
+          List.of(
+              BookWorkflowFact.text(
+                  "firstBlockingPostingKind",
+                  openingBalanceWindowClosed.firstBlockingPostingKind().wireValue()),
+              BookWorkflowFact.text(
+                  "firstBlockingEffectiveDate",
+                  openingBalanceWindowClosed.firstBlockingEffectiveDate().toString()));
+      case PostingRejection.OpeningBalanceTouchesNominalAccount openingBalanceNominal ->
+          List.of(
+              BookWorkflowFact.text("accountCode", openingBalanceNominal.accountCode().value()),
+              BookWorkflowFact.text(
+                  "accountType", openingBalanceNominal.accountType().wireValue()));
+      case PostingRejection.RetainedEarningsAccountReserved retainedEarningsReserved ->
+          List.of(
+              BookWorkflowFact.text("accountCode", retainedEarningsReserved.accountCode().value()));
+      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
+          priorPostingFacts(reversalTargetNotFound.priorPostingId());
+      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
+          priorPostingFacts(reversalAlreadyExists.priorPostingId());
+      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
+          priorPostingFacts(reversalDoesNotNegateTarget.priorPostingId());
+    };
+  }
+
   private static List<BookWorkflowFact> accountStateFacts(
-      BookkeepingPostingRejection.AccountStateViolations violations) {
+      PostingRejection.AccountStateViolations violations) {
     List<BookWorkflowFact> facts = new ArrayList<>();
     facts.add(BookWorkflowFact.count("violationCount", violations.violations().size()));
-    for (BookkeepingPostingRejection.AccountStateViolation violation : violations.violations()) {
-      if (violation instanceof BookkeepingPostingRejection.UnknownAccount unknownAccount) {
+    for (PostingRejection.AccountStateViolation violation : violations.violations()) {
+      if (violation instanceof PostingRejection.UnknownAccount unknownAccount) {
         facts.add(
             BookWorkflowFact.group(
                 "violation",
@@ -282,8 +298,8 @@ public final class LedgerPlanOutcomeMapper {
                     BookWorkflowFact.text("accountCode", unknownAccount.accountCode().value()))));
         continue;
       }
-      BookkeepingPostingRejection.InactiveAccount inactiveAccount =
-          (BookkeepingPostingRejection.InactiveAccount) violation;
+      PostingRejection.InactiveAccount inactiveAccount =
+          (PostingRejection.InactiveAccount) violation;
       facts.add(
           BookWorkflowFact.group(
               "violation",
@@ -292,10 +308,6 @@ public final class LedgerPlanOutcomeMapper {
                   BookWorkflowFact.text("accountCode", inactiveAccount.accountCode().value()))));
     }
     return List.copyOf(facts);
-  }
-
-  private static List<BookWorkflowFact> priorPostingFacts(PostingId priorPostingId) {
-    return List.of(BookWorkflowFact.text("priorPostingId", priorPostingId.value()));
   }
 
   private static String unexpectedExecutionFailureMessage(

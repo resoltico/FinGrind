@@ -24,9 +24,12 @@ final class SqlitePeriodSummaryReader {
     Set<String> postingIds = SqliteReportRowValues.insertionOrderedSet();
     int postingLineCount = 0;
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.loadPeriodSummaryLines())) {
+        activeDatabase.prepare(SqlitePostingSql.loadPeriodSummaryLines(query))) {
       statement.bindText(1, query.effectiveDateFrom().toString());
       statement.bindText(2, query.effectiveDateTo().toString());
+      if (query.postingCoverage().isNonClosingOnly()) {
+        statement.bindText(3, dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE.wireValue());
+      }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         postingIds.add(
             SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
@@ -60,6 +63,7 @@ final class SqlitePeriodSummaryReader {
     return new PeriodSummaryView(
         query.effectiveDateFrom(),
         query.effectiveDateTo(),
+        query.postingCoverage(),
         postingIds.size(),
         postingLineCount,
         accountActivity.size(),

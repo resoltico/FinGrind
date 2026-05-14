@@ -63,6 +63,46 @@ class MachineContractTest {
         capabilities.preflight().commitGuarantee());
     assertEquals("single-functional-currency-per-book", capabilities.currencyModel().scope());
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .reportingPosition()
+            .contains("Built-in reporting stops at financial position"));
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .chartModelPosition()
+            .contains("chart of accounts is flat"));
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .smallEntityPosition()
+            .contains("does not yet claim IFRS for SMEs parity"));
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .operationalPosition()
+            .contains("Operational contexts such as invoicing"));
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .taxPosition()
+            .contains("Tax is not a first-class domain"));
+    assertTrue(
+        capabilities
+            .accountingBaseline()
+            .organizationalPosition()
+            .contains("does not yet claim multi-entity organizational accounting"));
+    assertEquals(
+        List.of("statement-comparative-policy"),
+        capabilities.extensionSurface().implementedSeams());
+    assertTrue(
+        capabilities.extensionSurface().futureContexts().contains("tax-determination-and-filing"));
+    assertTrue(
+        capabilities
+            .extensionSurface()
+            .futureContexts()
+            .contains("group-reporting-and-consolidation"));
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());

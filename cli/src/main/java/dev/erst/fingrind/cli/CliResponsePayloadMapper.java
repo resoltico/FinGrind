@@ -21,14 +21,15 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.nio.file.Path;
+import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Facade that routes CLI payload mapping to concern-specific JSON mappers. */
 final class CliResponsePayloadMapper {
@@ -36,7 +37,19 @@ final class CliResponsePayloadMapper {
 
   static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> successEnvelope(
       ProtocolSuccessPayload payload) {
-    return new CliEnvelopeJsonModels.SuccessEnvelope(ProtocolSuccessStatus.OK, payload);
+    return successEnvelope(payload, null);
+  }
+
+  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> successEnvelope(
+      ProtocolSuccessPayload payload, @Nullable Path exportedArtifactPath) {
+    List<CliEnvelopeJsonModels.SuccessArtifact> artifacts =
+        exportedArtifactPath == null
+            ? null
+            : List.of(
+                new CliEnvelopeJsonModels.SuccessArtifact(
+                    "pdf", exportedArtifactPath.toAbsolutePath().normalize().toString()));
+    return new CliEnvelopeJsonModels.SuccessEnvelope<>(
+        ProtocolSuccessStatus.OK, payload, artifacts);
   }
 
   static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
@@ -135,16 +148,8 @@ final class CliResponsePayloadMapper {
     return CliReportPayloadMapper.changesInEquityPayload(report);
   }
 
-  static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
-    return CliPlanPayloadMapper.ledgerPlanPayload(result);
-  }
-
-  static CliEnvelopeJsonModels.RejectedEnvelope rejectedPlanEnvelope(
-      LedgerPlanResult result, ProtocolRejectionStatus status) {
-    return CliPlanPayloadMapper.rejectedPlanEnvelope(result, status);
-  }
-
-  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
-    return CliPlanPayloadMapper.planRejectionStatus(status);
+  static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(
+      LedgerPlanResult result, PlanResultDetail resultDetail) {
+    return CliPlanPayloadMapper.ledgerPlanPayload(result, resultDetail);
   }
 }

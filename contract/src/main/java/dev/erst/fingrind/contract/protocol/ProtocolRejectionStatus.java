@@ -7,11 +7,7 @@ import java.util.Objects;
 /** Canonical deterministic rejection-status tokens emitted by FinGrind JSON envelopes. */
 public enum ProtocolRejectionStatus implements WireValue {
   /** Deterministic domain rejection status. */
-  REJECTED("rejected"),
-  /** Ledger-plan deterministic rejection status. */
-  PLAN_REJECTED("plan-rejected"),
-  /** Ledger-plan assertion failure status. */
-  PLAN_ASSERTION_FAILED("plan-assertion-failed");
+  REJECTED("rejected");
 
   private final String wireValue;
 

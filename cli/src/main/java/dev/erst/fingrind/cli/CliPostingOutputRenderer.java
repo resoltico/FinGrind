@@ -12,6 +12,12 @@ final class CliPostingOutputRenderer {
   static String renderPostingHuman(PostingFact postingFact) {
     List<List<String>> header = new ArrayList<>();
     header.add(List.of("Posting id", postingFact.postingId().value()));
+    header.add(
+        List.of(
+            "Posting kind", CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())));
+    header.add(
+        List.of(
+            "Reversal state", postingFact.reversalReference().isPresent() ? "Reversal" : "Direct"));
     header.add(List.of("Effective date", postingFact.journalEntry().effectiveDate().toString()));
     header.add(List.of("Recorded at", postingFact.provenance().recordedAt().toString()));
     header.add(List.of("Actor id", postingFact.provenance().requestProvenance().actorId().value()));
@@ -89,13 +95,16 @@ final class CliPostingOutputRenderer {
                 "Effective date",
                 "Recorded at",
                 "Posting id",
+                "Posting kind",
+                "Reversal state",
                 "Currency",
                 "Debit total",
                 "Credit total",
                 "Accounts",
                 "Reversal target"),
             page.postings().stream().map(CliQueryOutputFormatter::postingRegisterHumanRow).toList(),
-            4);
+            5,
+            6);
     return CliTextFormat.renderTitledBlock(
         "Postings", summary + System.lineSeparator() + System.lineSeparator() + table);
   }
@@ -106,6 +115,8 @@ final class CliPostingOutputRenderer {
             "effectiveDate",
             "recordedAt",
             "postingId",
+            "postingKind",
+            "reversalState",
             "currencyCode",
             "debitTotal",
             "creditTotal",
@@ -118,6 +129,7 @@ final class CliPostingOutputRenderer {
     return switch (wireValue) {
       case "DEBIT" -> "Debit";
       case "CREDIT" -> "Credit";
+      case "HUMAN" -> "Human";
       case "AGENT" -> "Agent";
       case "SYSTEM" -> "System";
       case "CLI" -> "CLI";

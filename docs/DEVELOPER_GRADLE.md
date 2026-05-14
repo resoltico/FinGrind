@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-05-14"
 route:
@@ -45,10 +45,10 @@ Full verification now depends on the wrapper-managed filesystem layout:
 - `gradlew` injects one per-checkout `--project-cache-dir` outside the repository
 - `gradlew` also injects `-Dfingrind.gradle.build-logic-dir=...` and
   `-Dfingrind.gradle.jacoco-root=...` so included-build output and JaCoCo execution data stay off
-  fragile checkout filesystems
-- when the checkout itself lives on a fragile mounted filesystem such as `smbfs`, `gradlew` also
-  injects `-Dfingrind.gradle.project-build-root=...` so the root build, subprojects, and nested
-  Jazzer include-build no longer try to delete or rewrite in-repo `build/` trees there
+  the checkout
+- `gradlew` also injects `-Dfingrind.gradle.project-build-root=...` by default so the root build,
+  subprojects, and nested Jazzer include-build no longer treat the checkout itself as the ordinary
+  build-cache destination
 - the bundle and Docker smoke scripts now resolve those conditional build directories through the
   same wrapper helper instead of hardcoding `cli/build/...`
 - the default cache root is `~/Library/Caches/FinGrind/gradle-project-cache/<repo-hash>` on
@@ -58,8 +58,8 @@ Full verification now depends on the wrapper-managed filesystem layout:
 - on Windows the wrapper prefers an explicit `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, then
   `RUNNER_TEMP`, then `TEMP`, then `LOCALAPPDATA`, so GitHub-hosted runners keep wrapper-owned
   cache state on the working drive instead of drifting onto a cross-drive temp root
-- mounted external volumes can still host the checkout because the lock-sensitive Gradle state no
-  longer needs to live there
+- mounted external volumes can still host the checkout because wrapper-owned and build-owned
+  transient state no longer needs to live there
 - the wrapper honors `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, `FINGRIND_GRADLE_PROJECT_CACHE_DIR`,
   `FINGRIND_GRADLE_BUILD_LOGIC_DIR`, `FINGRIND_GRADLE_JACOCO_ROOT`, and
   `FINGRIND_GRADLE_PROJECT_BUILD_ROOT` for explicit override cases, but the wrapper defaults are
@@ -203,17 +203,19 @@ That contract now has a few explicit rules:
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
   private Java runtime image, managed native library, launcher, and checksum, then prints the
   exact archive/checksum paths it produced under the active CLI build directory
-- `:cli:stageDockerBuildContext` is the Docker assembly entrypoint; it stages one
-  `cli/build/docker-context/` directory containing `fingrind.jar`, `runtime-modules.txt`,
-  `docker-entrypoint.sh`, `managed-sqlite-contract.json`, and
-  `docker-build-context-manifest.json`
-- that staged manifest now also fingerprints the current CLI, contract, core, executor,
-  report-PDF, SQLite, and Gradle build inputs; Docker build verifies that fingerprint against the
-  current repository copy so stale staged contexts fail loudly instead of silently shipping old
-  launcher or jar bytes
-- when Gradle uses a relocated build root, the same staging task also mirrors the fresh Docker
-  context back into `cli/build/docker-context/` so repository-root `docker build` consumes the
-  same current payload
+- `:cli:stageDockerBuildContext` is the Docker assembly entrypoint; it stages one canonical Docker
+  build context under the active CLI build root and mirrors it into `cli/build/docker-context/`
+  for checkout-local inspection/manual use
+- that staged context contains `Dockerfile`, `fingrind.jar`, `runtime-modules.txt`,
+  `docker-entrypoint.sh`, `managed-sqlite-contract.json`, `docker-build-context-manifest.json`,
+  and a `source-root/` snapshot of every checked source/build input the container assembly depends
+  on
+- that staged manifest also fingerprints the current CLI, contract, core, executor, report-PDF,
+  SQLite, Gradle build logic, Dockerfile, helper scripts, vendored SQLite source, and legal files;
+  Docker build verifies that fingerprint against the current repository copy so stale staged
+  contexts fail loudly instead of silently shipping old launcher, contract, or jar bytes
+- repository-root `docker build .` is intentionally unsupported; Docker assembly consumes the
+  staged context directory, not the whole checkout
 - `:cli:shadowJar` remains an internal assembly input for `:cli:stageDockerBuildContext` and
   advanced contributor debugging; it does not build a native library on its own
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under

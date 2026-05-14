@@ -21,8 +21,21 @@ final class FinancialPositionPdfRenderer {
                 List.of(
                     "Effective date to",
                     PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null))))));
-    for (var section : report.sections()) {
-      String sectionTitle = PdfValueFormatter.displayAccountTypeSection(section.accountType());
+    renderSections(pageWriter, report.sections(), "");
+    renderSections(pageWriter, report.comparativeSections(), "Comparative ");
+  }
+
+  private static void renderSections(
+      PdfPageWriter pageWriter,
+      List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> sections,
+      String titlePrefix)
+      throws IOException {
+    for (var section : sections) {
+      if (section.rows().isEmpty() && section.totals().isEmpty()) {
+        continue;
+      }
+      String sectionTitle =
+          titlePrefix + PdfValueFormatter.displayAccountTypeSection(section.accountType());
       pageWriter.writeTable(
           sectionTitle,
           List.of(
@@ -49,10 +62,14 @@ final class FinancialPositionPdfRenderer {
                           PdfValueFormatter.displayMoney(row.balance().netAmount()),
                           PdfValueFormatter.displayBalanceSide(row.balance().balanceSide())))
               .toList());
-      pageWriter.writeTable(
-          sectionTitle + " Totals",
-          balanceSummaryColumns(),
-          section.totals().stream().map(FinancialPositionPdfRenderer::balanceSummaryRow).toList());
+      if (!section.totals().isEmpty()) {
+        pageWriter.writeTable(
+            sectionTitle + " Totals",
+            balanceSummaryColumns(),
+            section.totals().stream()
+                .map(FinancialPositionPdfRenderer::balanceSummaryRow)
+                .toList());
+      }
     }
   }
 

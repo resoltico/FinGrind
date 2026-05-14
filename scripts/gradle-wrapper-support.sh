@@ -1,5 +1,5 @@
 #!/bin/sh
-# Shared wrapper helpers for keeping Gradle project state off fragile checkout filesystems.
+# Shared wrapper helpers for keeping wrapper-owned Gradle project state out of the checkout by default.
 
 fg_gradle_has_project_cache_arg() {
     for fg_gradle_arg do
@@ -134,56 +134,8 @@ fg_gradle_user_home_dir() {
     printf '%s/%s/gradle-user-home\n' "${fg_gradle_cache_root}" "${fg_gradle_repo_key}"
 }
 
-fg_gradle_filesystem_type() {
-    fg_gradle_repo_root=${1:-}
-    if [ -n "${FINGRIND_GRADLE_FILESYSTEM_TYPE:-}" ]; then
-        printf '%s\n' "${FINGRIND_GRADLE_FILESYSTEM_TYPE}"
-        return
-    fi
-    fg_gradle_mount_point=$(df "${fg_gradle_repo_root}" 2>/dev/null | awk 'END { print $NF }')
-    if [ -n "${fg_gradle_mount_point}" ]; then
-        fg_gradle_mount_type=$(
-            mount 2>/dev/null |
-                awk -v mount_point="${fg_gradle_mount_point}" '
-                    index($0, " on " mount_point " (") {
-                        line = $0
-                        sub(/^.* \(/, "", line)
-                        sub(/,.*/, "", line)
-                        print line
-                        found = 1
-                        exit
-                    }
-                    END {
-                        if (!found) {
-                            print ""
-                        }
-                    }
-                '
-        )
-        if [ -n "${fg_gradle_mount_type}" ]; then
-            printf '%s\n' "${fg_gradle_mount_type}"
-            return
-        fi
-    fi
-    printf '%s\n' 'unknown'
-}
-
-fg_gradle_should_externalize_project_builds_for_filesystem_type() {
-    case "${1:-unknown}" in
-        afpfs|cifs|davfs|fuse.sshfs|glusterfs|nfs|nfs4|smbfs|sshfs|webdav)
-            return 0
-            ;;
-    esac
-    return 1
-}
-
 fg_gradle_should_externalize_project_builds() {
-    fg_gradle_repo_root=${1:-}
-    if [ -n "${FINGRIND_GRADLE_PROJECT_BUILD_ROOT:-}" ]; then
-        return 0
-    fi
-    fg_gradle_filesystem_type_value=$(fg_gradle_filesystem_type "${fg_gradle_repo_root}")
-    fg_gradle_should_externalize_project_builds_for_filesystem_type "${fg_gradle_filesystem_type_value}"
+    return 0
 }
 
 fg_gradle_project_build_dir() {

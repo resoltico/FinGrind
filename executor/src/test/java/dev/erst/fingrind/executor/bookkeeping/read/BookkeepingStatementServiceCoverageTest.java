@@ -11,10 +11,12 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -32,6 +34,8 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionSectionView;
+import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
+import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
@@ -189,6 +193,26 @@ class BookkeepingStatementServiceCoverageTest {
   }
 
   @Test
+  void financialPosition_withoutAsOfDate_omitsComparativeSections() {
+    RegisteredAccount cash = account("1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
+    RegisteredAccount capital =
+        account("3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
+    CoverageBookStore store =
+        new CoverageBookStore(
+            initializedInspection(),
+            Map.of(
+                queryKey(EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS),
+                List.of(totals(cash, "EUR", 1000L, 0L), totals(capital, "EUR", 0L, 1000L))));
+
+    FinancialPositionView view =
+        new BookkeepingStatementService(store)
+            .financialPosition(new FinancialPositionCriteria(Optional.empty()));
+
+    assertEquals(EffectiveDateRange.of(null, null), view.comparativeEffectiveDateRange());
+    assertTrue(view.comparativeSections().isEmpty());
+  }
+
+  @Test
   void privateAssertions_reportMissingSectionsAndTreatZeroBalancesAsSignedZero() {
     IllegalStateException missingSectionFailure =
         assertThrows(
@@ -208,6 +232,41 @@ class BookkeepingStatementServiceCoverageTest {
         0L,
         BookkeepingStatementService.signedMinorUnits(
             BalanceMath.currencyBalance(CurrencyUnit.of("EUR"), 0L, 0L)));
+  }
+
+  @Test
+  void comparativeWindows_followFiscalYearAnchorInsteadOfBlindCalendarSubtraction() {
+    BookIdentity fiscalYearShiftedIdentity =
+        new BookIdentity(
+            new BookEntityName("Shifted Year Shop"),
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("02-29"));
+    CoverageBookStore store =
+        new CoverageBookStore(
+            new BookLifecycleInspection.Initialized(
+                1001, 2, 2, FIXED_INSTANT, fiscalYearShiftedIdentity),
+            Map.of());
+    BookkeepingStatementService service = new BookkeepingStatementService(store);
+
+    FinancialPositionCriteria financialPositionCriteria =
+        new FinancialPositionCriteria(Optional.of(LocalDate.parse("2025-02-28")));
+    IncomeStatementCriteria incomeStatementCriteria =
+        new IncomeStatementCriteria(LocalDate.parse("2025-02-28"), LocalDate.parse("2025-03-01"));
+
+    assertEquals(
+        EffectiveDateRange.of(null, LocalDate.parse("2024-02-29")),
+        service.financialPosition(financialPositionCriteria).comparativeEffectiveDateRange());
+    assertEquals(
+        EffectiveDateRange.of(LocalDate.parse("2024-02-29"), LocalDate.parse("2024-03-01")),
+        service.incomeStatement(incomeStatementCriteria).comparativeEffectiveDateRange());
+    assertEquals(
+        EffectiveDateRange.of(LocalDate.parse("2024-02-29"), LocalDate.parse("2024-03-01")),
+        service
+            .changesInEquity(
+                new ChangesInEquityCriteria(
+                    incomeStatementCriteria.effectiveDateFrom(),
+                    incomeStatementCriteria.effectiveDateTo()))
+            .comparativeEffectiveDateRange());
   }
 
   private static RegisteredAccount account(

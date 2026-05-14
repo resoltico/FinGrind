@@ -344,6 +344,58 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
+  void rejectionFor_rejectsOpeningBalanceAfterAnyCommittedPostingExists() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount asset =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount capital =
+        registeredAccount(
+            new AccountCode("3000"),
+            new AccountName("Owner Capital"),
+            AccountType.EQUITY,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(asset.accountCode(), asset);
+    book.accounts.put(capital.accountCode(), capital);
+    CommittedPosting openingPosting = existingPosting("posting-1", "idem-1");
+    CommittedPosting ordinaryPosting = existingPosting("posting-2", "idem-2");
+    book.postings =
+        List.of(
+            new CommittedPosting(
+                openingPosting.postingId(),
+                openingPosting.journalEntry(),
+                openingPosting.postingLineage(),
+                PostingKind.OPENING_BALANCE,
+                openingPosting.provenance()),
+            ordinaryPosting);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.OPENING_BALANCE,
+                "idem-opening-late",
+                SourceChannel.CLI,
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+                PostingKind.OPENING_BALANCE, LocalDate.parse("2026-04-07"))),
+        rejection);
+  }
+
+  @Test
   void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodClosePosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
@@ -526,6 +578,7 @@ class PostingAcceptancePolicyTest {
     private boolean initialized;
     private Optional<CommittedPosting> existingPosting = Optional.empty();
     private Optional<LocalDate> closedThrough = Optional.empty();
+    private List<CommittedPosting> postings = List.of();
     private int findAccountsCalls;
     private List<AccountCode> requestedAccounts = List.of();
 
@@ -579,7 +632,7 @@ class PostingAcceptancePolicyTest {
     @Override
     public List<CommittedPosting> postings(
         dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
-      return List.of();
+      return postings;
     }
 
     @Override

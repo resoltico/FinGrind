@@ -2,7 +2,9 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -10,6 +12,7 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for low-level CLI argument helper branches. */
@@ -89,5 +92,32 @@ class CliArgumentValueParserTest {
                 CliArgumentValueParser.requirePostingCoverage(
                     null, List.of("unknown-coverage").listIterator()));
     assertEquals(ProtocolOptions.POSTING_COVERAGE, invalidException.argument());
+  }
+
+  @Test
+  void requirePlanResultDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
+    assertEquals(
+        PlanResultDetail.FULL,
+        CliArgumentValueParser.requirePlanResultDetail(
+            null, List.of(PlanResultDetail.FULL.wireValue()).listIterator()));
+
+    CliArgumentsException duplicateException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArgumentValueParser.requirePlanResultDetail(
+                    PlanResultDetail.SUMMARY, List.<String>of().listIterator()));
+    assertEquals(ProtocolOptions.RESULT_DETAIL, duplicateException.argument());
+
+    CliArgumentsException invalidException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArgumentValueParser.requirePlanResultDetail(
+                    null, List.of("verbose").listIterator()));
+    assertEquals(ProtocolOptions.RESULT_DETAIL, invalidException.argument());
+    assertTrue(
+        Objects.requireNonNull(invalidException.getMessage())
+            .contains("Accepted values: summary, full."));
   }
 }

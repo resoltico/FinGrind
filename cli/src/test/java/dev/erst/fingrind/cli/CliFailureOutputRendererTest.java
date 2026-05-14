@@ -6,6 +6,7 @@ import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -92,6 +93,12 @@ class CliFailureOutputRendererTest {
         "Attempted currency",
         "USD");
     assertRenderedRejection(
+        new CliRejectionJsonModels.OpeningBalanceWindowClosedDetails("STANDARD", "2026-04-07"),
+        "First blocking posting kind",
+        "STANDARD",
+        "First blocking effective date",
+        "2026-04-07");
+    assertRenderedRejection(
         new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails("4000", "REVENUE"),
         "Account code",
         "4000",
@@ -150,6 +157,16 @@ class CliFailureOutputRendererTest {
     return new CliPlanJsonModels.LedgerPlanPayload(
         "plan-1",
         LedgerPlanStatus.REJECTED,
+        PlanResultDetail.FULL,
+        new CliPlanJsonModels.LedgerPlanSummaryPayload(
+            "2026-05-13T10:15:30Z",
+            "2026-05-13T10:15:31Z",
+            1,
+            0,
+            1,
+            "step-1",
+            "rejected-code",
+            "Rejected message."),
         new CliPlanJsonModels.LedgerExecutionJournalPayload(
             "2026-05-13T10:15:30Z",
             "2026-05-13T10:15:31Z",

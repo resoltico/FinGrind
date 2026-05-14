@@ -291,10 +291,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=report_stderr,
         account_ledger_csv_output=(
-            "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,"
-            "currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
-            "1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,bridge-sale,2026-04-07,2026-04-07T10:00:00Z,EUR,10.00,0.00,10.00,DEBIT,2000\n"
-            "1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,bridge-adjustment,2026-04-08,2026-04-08T10:00:00Z,EUR,0.00,4.00,6.00,DEBIT,2000\n"
+            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
+            "opening-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
+            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-sale,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
+            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-adjustment,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
+            "closing-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
         ),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )
@@ -364,10 +365,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=docker_report_stderr,
         account_ledger_csv_output=(
-            "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,"
-            "currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
-            "1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,bridge-sale,2026-04-07,2026-04-07T10:00:00Z,EUR,10.00,0.00,10.00,DEBIT,2000\n"
-            "1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,bridge-adjustment,2026-04-08,2026-04-08T10:00:00Z,EUR,0.00,4.00,6.00,DEBIT,2000\n"
+            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
+            "opening-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
+            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-sale,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
+            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-adjustment,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
+            "closing-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
         ),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )

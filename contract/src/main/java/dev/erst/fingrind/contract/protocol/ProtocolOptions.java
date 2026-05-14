@@ -67,6 +67,9 @@ public final class ProtocolOptions {
   /** Option selecting the presentation format for commands that advertise output modes. */
   public static final String OUTPUT = "--output";
 
+  /** Option selecting whether execute-plan returns one summary or the full execution journal. */
+  public static final String RESULT_DETAIL = "--result-detail";
+
   /** Option selecting one PDF export destination for supported report commands. */
   public static final String PDF_OUT = "--pdf-out";
 
@@ -122,5 +125,26 @@ public final class ProtocolOptions {
   /** Returns the rendered optional PDF-export syntax for supported report commands. */
   public static String optionalPdfOutSyntax() {
     return "[" + PDF_OUT + " <path>]";
+  }
+
+  /** Returns the rendered optional posting-coverage syntax for close-sensitive read models. */
+  public static String optionalPostingCoverageSyntax() {
+    return "["
+        + POSTING_COVERAGE
+        + " <"
+        + String.join(
+            "|",
+            dev.erst.fingrind.core.WireValue.wireValues(
+                dev.erst.fingrind.core.PostingCoverage.class))
+        + ">]";
+  }
+
+  /** Returns the rendered optional execute-plan result-detail syntax. */
+  public static String optionalResultDetailSyntax() {
+    return "["
+        + RESULT_DETAIL
+        + " <"
+        + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(PlanResultDetail.class))
+        + ">]";
   }
 }

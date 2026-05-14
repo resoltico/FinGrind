@@ -9,6 +9,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedC
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.localReadService;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,6 +27,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
@@ -150,8 +152,13 @@ class BookReadServiceAccountQueryTest {
     assertEquals(
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
-                CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE))),
-        service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
+                bookIdentity(),
+                CASH_ACCOUNT,
+                Optional.empty(),
+                Optional.empty(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of(EUR_DEBIT_BALANCE))),
+        service.accountBalance(AccountBalanceQuery.unbounded(CASH_ACCOUNT.accountCode())));
     assertEquals(0, bookSession.findAccountCalls());
   }
 
@@ -198,14 +205,14 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(uninitializedBook);
       assertEquals(
           new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
+          service.accountBalance(AccountBalanceQuery.unbounded(CASH_ACCOUNT.accountCode())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
       assertEquals(
           new AccountBalanceResult.Rejected(
               new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode())),
-          service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
+          service.accountBalance(AccountBalanceQuery.unbounded(CASH_ACCOUNT.accountCode())));
     }
   }
 

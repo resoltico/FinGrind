@@ -22,6 +22,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -102,6 +103,7 @@ class LedgerPlanFactMapperTest {
         new AccountBalanceView(
             account,
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)));
 
     List<BookWorkflowFact> facts = LedgerPlanFactMapper.balanceFacts(snapshot);

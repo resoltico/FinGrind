@@ -119,6 +119,11 @@ class RejectionNarrativeTest {
             .contains("closed-through horizon"));
     assertTrue(
         RejectionNarrative.message(
+                new PostingRejection.OpeningBalanceWindowClosed(
+                    dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-05-02")))
+            .contains("first blocking posting"));
+    assertTrue(
+        RejectionNarrative.message(
                 new PostingRejection.OpeningBalanceTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE))
             .contains("4000"));

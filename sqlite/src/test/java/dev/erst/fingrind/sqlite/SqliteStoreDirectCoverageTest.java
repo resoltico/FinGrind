@@ -14,11 +14,13 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
@@ -27,8 +29,11 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -281,6 +286,92 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void readModels_excludePeriodClosePostingsWhenNonClosingCoverageIsRequested() {
+    Path bookPath = tempDirectory.resolve("non-closing-read-coverage.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      assertEquals(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
+                  new AccountCode("3200"),
+                  new AccountName("Retained Earnings"),
+                  AccountType.EQUITY,
+                  AccountRole.RETAINED_EARNINGS,
+                  true,
+                  FIXED_INSTANT)),
+          postingFactStore.declareAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              AccountRole.RETAINED_EARNINGS,
+              FIXED_INSTANT));
+
+      CommittedPosting operatingPosting =
+          postingFact(
+              "posting-1",
+              "idem-1",
+              LocalDate.parse("2026-04-07"),
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
+      CommittedPosting periodClosePosting =
+          new CommittedPosting(
+              new PostingId("period-close-1"),
+              new JournalEntry(
+                  LocalDate.parse("2026-04-07"),
+                  List.of(
+                      line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
+                      line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+              PostingKind.PERIOD_CLOSE,
+              periodCloseProvenance("EUR"));
+      commitPosting(postingFactStore, operatingPosting);
+      commitPosting(postingFactStore, periodClosePosting);
+
+      RegisteredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+
+      var accountBalance =
+          postingFactStore
+              .accountBalance(
+                  AccountBalanceCriteria.unbounded(
+                      new AccountCode("2000"), PostingCoverage.NON_CLOSING_POSTINGS))
+              .orElseThrow();
+      assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, accountBalance.postingCoverage());
+      assertEquals(
+          List.of(
+              CurrencyBalance.ofTotals(Money.parse("EUR", "0.00"), Money.parse("EUR", "10.00"))),
+          accountBalance.balances());
+
+      var accountLedger =
+          postingFactStore.accountLedger(
+              new AccountLedgerCriteria(
+                  new AccountCode("2000"),
+                  LocalDate.parse("2026-04-07"),
+                  LocalDate.parse("2026-04-07"),
+                  PostingCoverage.NON_CLOSING_POSTINGS),
+              revenueAccount);
+      assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, accountLedger.postingCoverage());
+      assertEquals(1, accountLedger.entries().size());
+      assertEquals(
+          new PostingId("posting-1"), accountLedger.entries().getFirst().posting().postingId());
+
+      var periodSummary =
+          postingFactStore.periodSummary(
+              new PeriodSummaryCriteria(
+                  LocalDate.parse("2026-04-07"),
+                  LocalDate.parse("2026-04-07"),
+                  PostingCoverage.NON_CLOSING_POSTINGS));
+      assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, periodSummary.postingCoverage());
+      assertEquals(1, periodSummary.postingCount());
+      assertEquals(2, periodSummary.postingLineCount());
+      assertEquals(2, periodSummary.accountsTouched());
+    }
+  }
+
+  @Test
   void postingReader_accountBalanceOrdersCurrencyBucketsByCurrencyCode() {
     Path bookPath = tempDirectory.resolve("posting-reader-account-balance-order.sqlite");
     initializeBookOnDisk(bookPath);
@@ -303,7 +394,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new SqlitePostingReader()
                       .accountBalance(
                           database,
-                          new AccountBalanceCriteria(new AccountCode("1000"), null, null),
+                          AccountBalanceCriteria.unbounded(new AccountCode("1000")),
                           cashAccount)
                       .balances()
                       .stream()

@@ -30,6 +30,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyBalance;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 /** Translates public read/report DTOs at the bookkeeping boundary. */
@@ -57,7 +62,8 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Translates one public account-balance query into the local bookkeeping read model. */
   public static AccountBalanceCriteria fromPublished(AccountBalanceQuery query) {
     Objects.requireNonNull(query, "query");
-    return new AccountBalanceCriteria(query.accountCode(), query.effectiveDateRange());
+    return new AccountBalanceCriteria(
+        query.accountCode(), query.effectiveDateRange(), query.postingCoverage());
   }
 
   /** Translates one public trial-balance query into the local bookkeeping read model. */
@@ -69,13 +75,15 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Translates one public account-ledger query into the local bookkeeping read model. */
   public static AccountLedgerCriteria fromPublished(AccountLedgerQuery query) {
     Objects.requireNonNull(query, "query");
-    return new AccountLedgerCriteria(query.accountCode(), query.effectiveDateRange());
+    return new AccountLedgerCriteria(
+        query.accountCode(), query.effectiveDateRange(), query.postingCoverage());
   }
 
   /** Translates one public period-summary query into the local bookkeeping read model. */
   public static PeriodSummaryCriteria fromPublished(PeriodSummaryQuery query) {
     Objects.requireNonNull(query, "query");
-    return new PeriodSummaryCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
+    return new PeriodSummaryCriteria(
+        query.effectiveDateFrom(), query.effectiveDateTo(), query.postingCoverage());
   }
 
   /** Translates one public financial-position query into the local bookkeeping read model. */
@@ -115,12 +123,16 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   }
 
   /** Projects one local account-balance view back into the public published language. */
-  public static AccountBalanceSnapshot toPublished(AccountBalanceView view) {
+  public static AccountBalanceSnapshot toPublished(
+      BookIdentity bookIdentity, AccountBalanceView view) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(view, "view");
     return new AccountBalanceSnapshot(
+        bookIdentity,
         BookkeepingPublishedLanguageTranslator.toPublished(view.account()),
         view.effectiveDateRange().effectiveDateFrom(),
         view.effectiveDateRange().effectiveDateTo(),
+        view.postingCoverage(),
         view.balances());
   }
 
@@ -132,28 +144,37 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         view.effectiveDateTo(),
         view.comparativeEffectiveDateRange(),
         view.postingCoverage(),
-        view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList());
+        view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList(),
+        view.comparativeRows().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList());
   }
 
   /** Projects one local account-ledger view back into the public published language. */
-  public static AccountLedgerReport toPublished(AccountLedgerView view) {
+  public static AccountLedgerReport toPublished(BookIdentity bookIdentity, AccountLedgerView view) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(view, "view");
     return new AccountLedgerReport(
+        bookIdentity,
         BookkeepingPublishedLanguageTranslator.toPublished(view.account()),
         view.effectiveDateRange(),
-        view.openingBalances(),
+        view.postingCoverage(),
+        normalizedOpeningLedgerBalances(bookIdentity, view),
         view.entries().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList(),
-        view.closingBalances());
+        normalizedClosingLedgerBalances(bookIdentity, view));
   }
 
   /** Projects one local period-summary view back into the public published language. */
-  public static PeriodSummaryReport toPublished(PeriodSummaryView view) {
+  public static PeriodSummaryReport toPublished(BookIdentity bookIdentity, PeriodSummaryView view) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(view, "view");
     return new PeriodSummaryReport(
+        bookIdentity,
         view.effectiveDateFrom(),
         view.effectiveDateTo(),
+        view.postingCoverage(),
         view.postingCount(),
         view.postingLineCount(),
         view.accountsTouched(),
@@ -175,6 +196,9 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         view.postingCoverage(),
         view.sections().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.comparativeSections().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList());
   }
 
@@ -190,7 +214,11 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         view.sections().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList(),
-        view.netIncomeTotals());
+        view.netIncomeTotals(),
+        view.comparativeSections().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.comparativeNetIncomeTotals());
   }
 
   /** Projects one local statement of changes in equity back into the public language. */
@@ -205,7 +233,13 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList(),
         view.openingTotals(),
         view.movementTotals(),
-        view.closingTotals());
+        view.closingTotals(),
+        view.comparativeRows().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.comparativeOpeningTotals(),
+        view.comparativeMovementTotals(),
+        view.comparativeClosingTotals());
   }
 
   /** Projects one local bookkeeping query rejection into the public contract. */
@@ -235,6 +269,33 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   private static PostingPageCursor toPublished(PostingHistoryCursor cursor) {
     Objects.requireNonNull(cursor, "cursor");
     return new PostingPageCursor(cursor.effectiveDate(), cursor.recordedAt(), cursor.postingId());
+  }
+
+  private static List<CurrencyBalance> normalizedOpeningLedgerBalances(
+      BookIdentity bookIdentity, AccountLedgerView view) {
+    if (!view.openingBalances().isEmpty()) {
+      return view.openingBalances();
+    }
+    LocalDate lowerBound = view.effectiveDateRange().effectiveDateFrom().orElse(null);
+    if (lowerBound == null || lowerBound.equals(LocalDate.MIN)) {
+      return List.of();
+    }
+    return List.of(zeroLedgerBalance(bookIdentity));
+  }
+
+  private static List<CurrencyBalance> normalizedClosingLedgerBalances(
+      BookIdentity bookIdentity, AccountLedgerView view) {
+    if (!view.closingBalances().isEmpty()) {
+      return view.closingBalances();
+    }
+    if (view.effectiveDateRange().effectiveDateTo().isEmpty()) {
+      return List.of();
+    }
+    return List.of(zeroLedgerBalance(bookIdentity));
+  }
+
+  private static CurrencyBalance zeroLedgerBalance(BookIdentity bookIdentity) {
+    return BalanceMath.currencyBalance(bookIdentity.functionalCurrency(), 0L, 0L);
   }
 
   private static TrialBalanceRow toPublished(TrialBalanceRowView row) {

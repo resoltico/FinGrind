@@ -37,7 +37,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+                      AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
           exception.getMessage());
@@ -51,7 +51,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+                      AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
           exception.getMessage());
@@ -115,23 +115,27 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.empty(),
           postingFactStore.accountBalance(
-              new AccountBalanceCriteria(new AccountCode("9999"), null, null)));
+              AccountBalanceCriteria.unbounded(new AccountCode("9999"))));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
+                  bookIdentity(),
                   publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.empty(),
+                  dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
                   List.of(balance("EUR", "17.00", "19.00", "2.00", BalanceSide.CREDIT)))),
           postingFactStore
-              .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null))
+              .accountBalance(AccountBalanceCriteria.unbounded(new AccountCode("1000")))
               .map(SqliteStoreTestIntrospectionSupport::published));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
+                  bookIdentity(),
                   publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.of(LocalDate.parse("2026-04-08")),
+                  dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
                   List.of(balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)))),
           postingFactStore
               .accountBalance(
@@ -141,9 +145,11 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
+                  bookIdentity(),
                   publishedAccount(cashAccount),
                   Optional.of(LocalDate.parse("2026-04-10")),
                   Optional.of(LocalDate.parse("2026-04-11")),
+                  dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
                   List.of(balance("EUR", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
           postingFactStore
               .accountBalance(
@@ -199,7 +205,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
           new TrialBalanceReport(
               bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-08")),
-              EffectiveDateRange.of(null, LocalDate.parse("2025-04-08")),
+              EffectiveDateRange.of(null, null),
               allPostingKinds(),
               List.of(
                   new TrialBalanceRow(
@@ -207,14 +213,17 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                       balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)),
                   new TrialBalanceRow(
                       publishedAccount(revenueAccount),
-                      balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT)))),
+                      balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT))),
+              List.of()),
           published(
               postingFactStore.trialBalance(
                   trialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));
       assertEquals(
           new PeriodSummaryReport(
+              bookIdentity(),
               LocalDate.parse("2026-04-07"),
               LocalDate.parse("2026-04-08"),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               2,
               4,
               2,

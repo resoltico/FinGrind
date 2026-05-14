@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -41,6 +42,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -59,7 +61,7 @@ import org.junit.jupiter.api.Test;
 class BookQueryModelTest {
   @Test
   void accountBalanceQuery_acceptsNullableBoundsAndRejectsDescendingDateRange() {
-    AccountBalanceQuery query = new AccountBalanceQuery(new AccountCode("1000"), null, null);
+    AccountBalanceQuery query = AccountBalanceQuery.unbounded(new AccountCode("1000"));
     AccountBalanceQuery lowerBoundedQuery =
         new AccountBalanceQuery(new AccountCode("1000"), LocalDate.parse("2026-04-08"), null);
     AccountBalanceQuery orderedRangeQuery =
@@ -79,7 +81,51 @@ class BookQueryModelTest {
                 LocalDate.parse("2026-04-08")));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), nullOf()));
+        () ->
+            new AccountBalanceQuery(
+                new AccountCode("1000"), nullOf(), PostingCoverage.ALL_POSTING_KINDS));
+  }
+
+  @Test
+  void accountBalanceAndLedgerQueries_preservePostingCoverageAcrossFactories() {
+    AccountBalanceQuery explicitBalanceQuery =
+        AccountBalanceQuery.unbounded(
+            new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS);
+    AccountBalanceQuery explicitBalanceRangeQuery =
+        new AccountBalanceQuery(
+            new AccountCode("1000"),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            PostingCoverage.NON_CLOSING_POSTINGS);
+    AccountLedgerQuery defaultLedgerQuery = AccountLedgerQuery.unbounded(new AccountCode("1000"));
+    AccountLedgerQuery explicitLedgerQuery =
+        AccountLedgerQuery.unbounded(new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS);
+    AccountLedgerQuery explicitLedgerRangeQuery =
+        new AccountLedgerQuery(
+            new AccountCode("1000"),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            PostingCoverage.NON_CLOSING_POSTINGS);
+
+    assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, explicitBalanceQuery.postingCoverage());
+    assertTrue(explicitBalanceQuery.effectiveDateFrom().isEmpty());
+    assertTrue(explicitBalanceQuery.effectiveDateTo().isEmpty());
+    assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, explicitBalanceRangeQuery.postingCoverage());
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-01")), explicitBalanceRangeQuery.effectiveDateFrom());
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-30")), explicitBalanceRangeQuery.effectiveDateTo());
+    assertEquals(PostingCoverage.ALL_POSTING_KINDS, defaultLedgerQuery.postingCoverage());
+    assertTrue(defaultLedgerQuery.effectiveDateFrom().isEmpty());
+    assertTrue(defaultLedgerQuery.effectiveDateTo().isEmpty());
+    assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, explicitLedgerQuery.postingCoverage());
+    assertTrue(explicitLedgerQuery.effectiveDateFrom().isEmpty());
+    assertTrue(explicitLedgerQuery.effectiveDateTo().isEmpty());
+    assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, explicitLedgerRangeQuery.postingCoverage());
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-01")), explicitLedgerRangeQuery.effectiveDateFrom());
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-30")), explicitLedgerRangeQuery.effectiveDateTo());
   }
 
   @Test
@@ -267,7 +313,12 @@ class BookQueryModelTest {
         new ArrayList<>(List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
-            declaredAccount("1000"), Optional.empty(), Optional.empty(), balances);
+            ContractFixtures.bookIdentity(),
+            declaredAccount("1000"),
+            Optional.empty(),
+            Optional.empty(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            balances);
     balances.clear();
     assertTrue(snapshot.effectiveDateFrom().isEmpty());
     assertTrue(snapshot.effectiveDateTo().isEmpty());
@@ -276,12 +327,22 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new AccountBalanceSnapshot(
-                declaredAccount("1000"), nullOf(), Optional.empty(), List.of()));
+                ContractFixtures.bookIdentity(),
+                declaredAccount("1000"),
+                nullOf(),
+                Optional.empty(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountBalanceSnapshot(
-                declaredAccount("1000"), Optional.empty(), nullOf(), List.of()));
+                ContractFixtures.bookIdentity(),
+                declaredAccount("1000"),
+                Optional.empty(),
+                nullOf(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of()));
   }
 
   @Test

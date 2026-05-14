@@ -230,6 +230,12 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new BookkeepingPostingRejection.ClosedPeriodViolation(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))));
     assertEquals(
+        new PostingRejection.OpeningBalanceWindowClosed(
+            dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-04-07")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+                dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-04-07"))));
+    assertEquals(
         new PostingRejection.PostingKindReserved(dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.PostingKindReserved(

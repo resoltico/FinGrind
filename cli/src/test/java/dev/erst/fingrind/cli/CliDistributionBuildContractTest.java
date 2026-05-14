@@ -23,33 +23,40 @@ class CliDistributionBuildContractTest {
   void dockerBuild_reusesTheStagedRuntimeModuleList() throws IOException {
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
 
-    assertTrue(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
-    assertTrue(dockerfile.contains("COPY gradle.properties /build/source-root/gradle.properties"));
-    assertTrue(
-        dockerfile.contains("COPY build.gradle.kts settings.gradle.kts /build/source-root/"));
-    assertTrue(dockerfile.contains("COPY gradle/ /build/source-root/gradle/"));
-    assertTrue(dockerfile.contains("COPY cli/ /build/source-root/cli/"));
-    assertTrue(dockerfile.contains("COPY contract/ /build/source-root/contract/"));
-    assertTrue(dockerfile.contains("COPY core/ /build/source-root/core/"));
-    assertTrue(dockerfile.contains("COPY executor/ /build/source-root/executor/"));
-    assertTrue(dockerfile.contains("COPY report-pdf/ /build/source-root/report-pdf/"));
-    assertTrue(dockerfile.contains("COPY sqlite/ /build/source-root/sqlite/"));
+    assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
-            "python3 scripts/verify-docker-build-context.py --context-dir /build/docker-context --source-root /build/source-root"));
+            "COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar managed-sqlite-contract.json runtime-modules.txt /build/"));
     assertTrue(
         dockerfile.contains(
-            "python3 scripts/render-managed-sqlite-compiler-flags.py /build/docker-context/managed-sqlite-contract.json"));
+            "COPY source-root/scripts/render-managed-sqlite-compiler-flags.py scripts/render-managed-sqlite-compiler-flags.py"));
     assertTrue(
         dockerfile.contains(
-            "COPY --from=builder /build/docker-context/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
+            "COPY source-root/scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY source-root/third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c sqlite3mc_amalgamation.c"));
+    assertTrue(
+        dockerfile.contains(
+            "python3 scripts/verify-docker-build-context.py --context-dir /build --source-root /build/source-root"));
+    assertTrue(
+        dockerfile.contains(
+            "python3 scripts/render-managed-sqlite-compiler-flags.py /build/managed-sqlite-contract.json"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/fingrind.jar /opt/fingrind/app/fingrind.jar"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
     assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/libsqlite3.so.0.sha256"));
-    assertFalse(
-        dockerfile.contains("COPY cli/build/docker/runtime-modules.txt runtime-modules.txt"));
-    assertFalse(dockerfile.contains("COPY cli/build/docker/managed-sqlite-contract.json \\"));
+    assertFalse(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
+    assertFalse(dockerfile.contains("COPY gradle.properties /build/source-root/gradle.properties"));
     assertFalse(dockerfile.contains("RUN jdeps "));
   }
 
@@ -57,26 +64,12 @@ class CliDistributionBuildContractTest {
   void dockerBuildContext_isExposedToDockerThroughDockerignore() throws IOException {
     String dockerignore = Files.readString(repositoryRoot().resolve(".dockerignore"));
 
+    assertTrue(dockerignore.contains("`./gradlew :cli:stageDockerBuildContext`"));
     assertTrue(
-        dockerignore.contains(
-            "# Refresh the staged assembly inputs with: ./gradlew :cli:stageDockerBuildContext"));
-    assertTrue(dockerignore.contains("!build.gradle.kts"));
-    assertTrue(dockerignore.contains("!settings.gradle.kts"));
-    assertTrue(dockerignore.contains("!gradle/build-logic/**"));
-    assertTrue(dockerignore.contains("!cli/build/docker-context/"));
-    assertTrue(dockerignore.contains("!cli/build/docker-context/**"));
-    assertTrue(dockerignore.contains("!cli/src/main/**"));
-    assertTrue(dockerignore.contains("!cli/src/docker/**"));
-    assertTrue(dockerignore.contains("!contract/src/main/**"));
-    assertTrue(dockerignore.contains("!core/src/main/**"));
-    assertTrue(dockerignore.contains("!executor/src/main/**"));
-    assertTrue(dockerignore.contains("!report-pdf/src/main/**"));
-    assertTrue(dockerignore.contains("!sqlite/src/main/**"));
-    assertTrue(
-        dockerignore.contains(
-            "!third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c"));
-    assertFalse(dockerignore.contains("!cli/build/docker/"));
-    assertFalse(dockerignore.contains("!cli/build/docker/jdeps/"));
+        dockerignore.contains("Repository-root `docker build .` is intentionally unsupported"));
+    assertTrue(dockerignore.contains("**"));
+    assertFalse(dockerignore.contains("!cli/build/docker-context/"));
+    assertFalse(dockerignore.contains("!gradle/build-logic/**"));
   }
 
   @Test
@@ -88,13 +81,16 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("stageDockerBuildContext"));
     assertTrue(buildScript.contains("docker-context"));
     assertTrue(buildScript.contains("docker-build-context-manifest.json"));
+    assertTrue(buildScript.contains("dockerBuildContextSourceIncludePatterns"));
     assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
-    assertTrue(buildScript.contains("dockerBuildContextSourceProjects"));
     assertTrue(buildScript.contains("dockerBuildContextSourceInputs"));
     assertTrue(buildScript.contains("repositoryDockerBuildContextDirectory"));
     assertTrue(buildScript.contains("managedSqliteLibrarySha256Path"));
     assertTrue(buildScript.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
     assertTrue(buildScript.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
+    assertTrue(
+        buildScript.contains("from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));
+    assertTrue(buildScript.contains("into(\"source-root\")"));
     assertTrue(buildScript.contains("tasks.register<Sync>(\"syncRepositoryDockerBuildContext\")"));
     assertTrue(buildScript.contains("finalizedBy(syncRepositoryDockerBuildContext)"));
     assertTrue(buildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
@@ -104,6 +100,15 @@ class CliDistributionBuildContractTest {
     assertTrue(
         buildScript.contains(
             "DistributionContractReader.hostBundleTarget(repositoryRootDirectory)"));
+    assertTrue(
+        buildScript.contains(
+            "rootProject.layout.projectDirectory.file(\"gradle/build-logic/build.gradle.kts\")"));
+    assertTrue(
+        buildScript.contains(
+            "rootProject.layout.projectDirectory.dir(\"gradle/build-logic/src/main\")"));
+    assertFalse(
+        buildScript.contains(
+            "inputs.dir(rootProject.layout.projectDirectory.dir(\"gradle/build-logic\"))"));
     assertFalse(buildScript.contains("stageDockerRuntimeInputs"));
     assertFalse(buildScript.contains("docker/jdeps"));
     assertFalse(buildScript.contains("archiveExtensionForOperatingSystemId"));
@@ -355,6 +360,9 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerSmokeScript.contains("verify-docker-build-context.py"));
     assertTrue(dockerSmokeScript.contains("--source-root \"${repo_root}\""));
     assertTrue(dockerSmokeScript.contains(":cli:stageDockerBuildContext"));
+    assertTrue(
+        dockerSmokeScript.contains(
+            "docker_with_repo_config buildx build --load -t \"${image_tag}\" \"${cli_docker_context_dir}\""));
     assertFalse(
         dockerSmokeScript.contains(
             "staging relocated Docker build context into repository context"));
@@ -364,6 +372,7 @@ class CliDistributionBuildContractTest {
     assertFalse(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
     assertFalse(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
     assertFalse(dockerSmokeScript.contains(":cli:shadowJar"));
+    assertFalse(dockerSmokeScript.contains("\"${repo_root}\" >/dev/null"));
     assertTrue(releaseSmokeSupport.contains("release-smoke-common.sh"));
     assertTrue(releaseSmokeSupport.contains("release-smoke-workflow-support.sh"));
     assertFalse(releaseSmokeSupport.contains("release-smoke-fixtures.sh"));

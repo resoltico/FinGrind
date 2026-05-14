@@ -14,12 +14,15 @@ public record FinancialPositionView(
     Optional<LocalDate> effectiveDateTo,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
-    List<FinancialPositionSectionView> sections) {
+    List<FinancialPositionSectionView> sections,
+    List<FinancialPositionSectionView> comparativeSections) {
   public FinancialPositionView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = List.copyOf(Objects.requireNonNull(sections, "sections"));
+    comparativeSections =
+        List.copyOf(Objects.requireNonNull(comparativeSections, "comparativeSections"));
   }
 }

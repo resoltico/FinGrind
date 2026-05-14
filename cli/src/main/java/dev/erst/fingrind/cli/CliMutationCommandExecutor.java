@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import java.nio.file.Path;
@@ -22,12 +23,13 @@ final class CliMutationCommandExecutor {
     this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
   }
 
-  int runExecutePlanCommand(BookAccess bookAccess, Path requestFile) {
+  int runExecutePlanCommand(
+      BookAccess bookAccess, Path requestFile, PlanResultDetail resultDetail) {
     LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.executePlan(bookAccess, plan),
         OutputMode.JSON,
-        responseWriter::writeLedgerPlanResult,
+        result -> responseWriter.writeLedgerPlanResult(result, resultDetail),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }

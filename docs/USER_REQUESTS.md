@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: HUMAN_REQUESTS
 updated: "2026-05-14"
 route:
@@ -55,7 +55,9 @@ replace-before-submit placeholders. Replace every placeholder before committing.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help post-entry`, `help declare-account`, and `help execute-plan` inline one canonical template
-plus the accepted fields and enum vocabularies for their `--request-file` payloads.
+plus the accepted fields and enum vocabularies for their `--request-file` payloads. When you need
+the raw scaffold bytes directly, `print-request-template` now accepts the request-bearing topic
+`declare-account` in addition to the posting-surface defaults.
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
@@ -85,6 +87,8 @@ Current posting-request rules:
 - `reversal.priorPostingId` must already exist in the selected book
 - a reversal requires an exact line-by-line negation of the target posting and only one reversal is allowed per target
 - `OPENING_BALANCE` postings may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
+- `OPENING_BALANCE` postings are accepted only before the first committed posting exists in the
+  selected book, so all opening balances must be seeded as one opening-statement phase
 - legacy `correction` and `reversal.kind` fields are rejected
 - unknown fields are rejected at every object level
 - duplicate JSON object keys are rejected
@@ -157,11 +161,11 @@ Current ledger-plan rules:
 - unknown fields are rejected at every object level
 - `print-plan-template` emits the canonical `execute-plan` scaffold shape, but the emitted
   placeholder values must be replaced before the request is accepted
-- execution semantics are not request knobs: plans are atomic, halt on first failed step, and
-  return a complete journal whose ordinary business steps keep their canonical `kind`, whose
-  assertion entries optionally add `detailKind`, and whose unexpected begin,
-  initialization-check, commit, or rollback failures end the journal with `kind:
-  "plan-boundary"` plus `boundaryPhase`
+- execution semantics are not request knobs: plans are atomic, halt on first failed step, return
+  one bounded summary by default, and return one complete journal when `--result-detail full`
+  is selected; ordinary business steps keep their canonical `kind`, assertion entries optionally
+  add `detailKind`, and unexpected begin, initialization-check, commit, or rollback failures end
+  the journal with `kind: "plan-boundary"` plus `boundaryPhase`
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
@@ -191,13 +195,11 @@ repair data.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary` | `status`, `payload` |
-| raw request document | `print-request-template`, `print-plan-template` | canonical posting-request or AI-agent ledger-plan scaffold JSON |
+| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
+| raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
 | `ok` | successful `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
-| `ok` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, and `payload.journal` |
-| `plan-rejected` | deterministic `execute-plan` step rejection | `status`, `code`, `message`, `details.plan` |
-| `plan-assertion-failed` | failed `execute-plan` assertion | `status`, `code`, `message`, `details.plan` |
+| `ok` | any `execute-plan` outcome | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
 | `rejected` | deterministic single-command business rejection | `status`, `code`, `message`, optional `idempotencyKey`, optional `details` |
 | `error` | malformed input or runtime failure | `status`, `code`, `message`, optional `hint`, optional `argument` |
 
@@ -218,8 +220,11 @@ Dynamic fields:
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
 - `committed.payload.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
+- `ok.payload.resultDetail` echoes whether the caller requested `summary` or `full`
+- `ok.payload.summary.startedAt`, `finishedAt`, step counts, and optional failure details are
+  stamped from the FinGrind execution clock
 - `ok.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
-  FinGrind execution clock
+  FinGrind execution clock when `--result-detail full` is selected
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
   facts nest their child observations under `facts`
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
@@ -228,11 +233,20 @@ Dynamic fields:
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
   `balance` buckets
-- `execute-plan` accepts at most 100 steps, so returned plan journals are complete but bounded
+- `execute-plan` accepts at most 100 steps, so returned plan summaries and optional full journals
+  are complete but bounded
 
 Successful `preflight-entry` output is advisory. It confirms that the current request passed validation against
 the current book state, but it is not a durable commit guarantee: `post-entry` still performs its
 authoritative transactional checks before committing.
+
+Discovery output also has two intentionally different JSON scopes:
+- `help --output json` returns a concise overview payload with command summaries, getting-started
+  hints, and exit codes
+- `help <command> --output json` returns one narrow command-local payload with usage, options,
+  examples, operator notes, and request-file guidance when that command accepts `--request-file`
+- `capabilities --output json` remains the full deep machine contract for doctrine, runtime, and
+  cross-command facts
 
 ## Capabilities Discovery Shape
 
@@ -262,6 +276,21 @@ rendered:
   carries the advisory-versus-guaranteed commit relationship
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
+- `accountingBaseline.reportingPosition` states explicitly that the current kernel stops at
+  financial position, income statement, and changes in equity
+- `accountingBaseline.chartModelPosition` states explicitly that the chart of accounts is flat and
+  has no first-class hierarchy or report taxonomy
+- `accountingBaseline.smallEntityPosition` states explicitly that the current kernel does not yet
+  claim IFRS for SMEs parity
+- `accountingBaseline.operationalPosition` states explicitly that invoicing, receivables,
+  payables, inventory, payroll, and settlement live above the ledger in future adjacent contexts
+- `accountingBaseline.taxPosition` states explicitly that tax is not a first-class domain in the
+  current kernel and that tax determination/rate/filer policy is not modeled yet
+- `accountingBaseline.organizationalPosition` states explicitly that the current kernel does not
+  yet claim multi-entity organizational accounting
+- `extensionSurface.implementedSeams` lists only the live extension seams currently owned in code
+- `extensionSurface.futureContexts` lists adjacent future domains such as tax, FX, subledgers,
+  and consolidation instead of misrepresenting them as already-pluggable seams
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
@@ -323,6 +352,10 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.postings[]`, where each posting has the same shape as `get-posting`
 
 `account-balance` success returns:
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
 - declared-account identity fields: `accountCode`, `accountName`, `accountType`,
   `accountRole`, derived `normalBalance`, `active`, `declaredAt`
 - optional query filters: `effectiveDateFrom`, `effectiveDateTo`
@@ -335,21 +368,38 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 
 `trial-balance` success returns:
 - optional `payload.effectiveDateTo`
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
+- optional `payload.context.comparativeReferenceEffectiveDateFrom`
+- optional `payload.context.comparativeReferenceEffectiveDateTo`
 - `payload.rows[]`, where each row includes `accountCode`, `accountName`, `accountType`,
   `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed `debitTotal`,
   `creditTotal`, `netAmount`, and `balanceSide`
+- `payload.comparativeRows[]`, using the same row shape for the fiscal-year-anchored comparison
+  date when one comparative as-of date exists
 
 `account-ledger` success returns:
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
 - declared-account identity fields: `accountCode`, `accountName`, `accountType`,
   `accountRole`, derived `normalBalance`, `active`, `declaredAt`
 - optional date filters: `effectiveDateFrom`, `effectiveDateTo`
 - `openingBalances[]` and `closingBalances[]`, where each bucket includes typed `debitTotal`,
   `creditTotal`, `netAmount`, and `balanceSide`
-- `entries[]`, where each row includes `postingId`, `effectiveDate`, `recordedAt`, typed
-  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`, and
+- `entries[]`, where each row includes `postingId`, `postingKind`, `effectiveDate`,
+  `recordedAt`, typed `debitAmount`, `creditAmount`, `runningBalance`,
+  `runningBalanceSide`, and
   `counterpartAccounts[]`
 
 `period-summary` success returns:
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
 - `payload.effectiveDateFrom`
 - `payload.effectiveDateTo`
 - `payload.postingCount`
@@ -361,21 +411,74 @@ path directly. The current public line reports `true` for `missing` and `blank-s
   `accountType`, `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed
   `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 
+`financial-position` success returns:
+- optional `payload.effectiveDateTo`
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
+- optional `payload.context.comparativeReferenceEffectiveDateFrom`
+- optional `payload.context.comparativeReferenceEffectiveDateTo`
+- `payload.sections[]`, where each section includes `accountType`, `rows[]`, and `totals[]`
+- `payload.comparativeSections[]`, using the same section shape for the fiscal-year-anchored
+  comparison date when one comparative as-of date exists
+
+`income-statement` success returns:
+- `payload.effectiveDateFrom`
+- `payload.effectiveDateTo`
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
+- optional `payload.context.comparativeReferenceEffectiveDateFrom`
+- optional `payload.context.comparativeReferenceEffectiveDateTo`
+- `payload.sections[]`
+- `payload.netIncomeTotals[]`
+- `payload.comparativeSections[]`
+- `payload.comparativeNetIncomeTotals[]`
+
+`changes-in-equity` success returns:
+- `payload.effectiveDateFrom`
+- `payload.effectiveDateTo`
+- `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.functionalCurrency`
+- `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.postingCoverage`
+- optional `payload.context.comparativeReferenceEffectiveDateFrom`
+- optional `payload.context.comparativeReferenceEffectiveDateTo`
+- `payload.rows[]`
+- `payload.openingTotals[]`
+- `payload.movementTotals[]`
+- `payload.closingTotals[]`
+- `payload.comparativeRows[]`
+- `payload.comparativeOpeningTotals[]`
+- `payload.comparativeMovementTotals[]`
+- `payload.comparativeClosingTotals[]`
+
 Commands that advertise `--output` default successful stdout to human text on an interactive
 terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
 read/report commands can also render operator-facing `--output human`, and the tabular
 read/report commands support `--output csv` for spreadsheet import. Invalid invocation failures
 default to human repair guidance unless callers select one recognized machine output mode
 explicitly, such as `--output json`.
-`account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
-one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
-model; it does not change the JSON payload contract. Successful exports emit a diagnostics info
-message with the normalized artifact path. If the report result succeeds but the PDF artifact later
-fails, stdout still carries the same report payload while diagnostics emit a repair warning for the
-`--pdf-out` path. Deterministic failures for commands that accept `--output human` are rendered in
-the same human-facing format instead of falling back to JSON envelopes. Deterministic non-business
-contract failures render with the `Rejected` heading in human mode so operator refusals do not
-masquerade as generic runtime crashes.
+`account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+`income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
+`--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
+JSON report payload itself, but successful JSON success envelopes now also publish one
+`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful exports
+also emit a diagnostics info message with the same normalized artifact path. If the report result
+succeeds but the PDF artifact later fails, stdout still carries the same report payload while
+diagnostics emit a repair warning for the `--pdf-out` path.
+Deterministic failures for commands that accept `--output human` are rendered in the same
+human-facing format instead of falling back to JSON envelopes. Deterministic non-business contract
+failures render with the `Rejected` heading in human mode so operator refusals do not masquerade
+as generic runtime crashes.
+
+Statement-report context also includes one comparative reference window derived from the selected
+book's fiscal-year anchor. Trial balance now carries `comparativeRows[]`; financial position now
+carries `comparativeSections[]`; income statement now carries `comparativeSections[]` and
+`comparativeNetIncomeTotals[]`; changes in equity now carries `comparativeRows[]`,
+`comparativeOpeningTotals[]`, `comparativeMovementTotals[]`, and `comparativeClosingTotals[]`.
 
 Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)
@@ -418,6 +521,8 @@ Checked-in template and ledger-plan examples:
 | `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared or inactive accounts | `violations[]`, where each item includes `code` and `accountCode` |
 | `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `accountCode` |
 | `duplicate-idempotency-key` | the selected book already contains the same `idempotencyKey` | none |
+| `opening-balance-window-closed` | `OPENING_BALANCE` was submitted after the book already contains its first committed posting | `firstBlockingPostingKind`, `firstBlockingEffectiveDate` |
+| `opening-balance-touches-nominal-account` | `OPENING_BALANCE` touched a revenue or expense account | `accountCode`, `accountType` |
 | `reversal-target-not-found` | `reversal.priorPostingId` does not exist in the selected book | `priorPostingId` |
 | `reversal-already-exists` | the target posting already has a full reversal | `priorPostingId` |
 | `reversal-does-not-negate-target` | a reversal request does not negate the target posting exactly | `priorPostingId` |

@@ -9,8 +9,12 @@ import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -53,6 +57,54 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new CliErrorJsonModels.InvalidRequestDetails(List.of()));
+  }
+
+  @Test
+  void ledgerPlanPayloads_rejectInvalidResultDetailAndSummaryInvariants() {
+    CliPlanJsonModels.LedgerPlanSummaryPayload summary =
+        new CliPlanJsonModels.LedgerPlanSummaryPayload(
+            "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, null, null);
+    CliPlanJsonModels.LedgerExecutionJournalPayload journal =
+        new CliPlanJsonModels.LedgerExecutionJournalPayload(
+            "2026-05-14T10:00:00Z",
+            "2026-05-14T10:00:01Z",
+            List.of(
+                new CliPlanJsonModels.LedgerJournalEntryPayload(
+                    "step-1",
+                    LedgerJournalKind.OPEN_BOOK,
+                    null,
+                    null,
+                    LedgerStepStatus.SUCCEEDED,
+                    "2026-05-14T10:00:00Z",
+                    "2026-05-14T10:00:01Z",
+                    List.of(new CliPlanJsonModels.TextLedgerFactPayload("text", "detail", "value")),
+                    null)));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanPayload(
+                "plan-1", LedgerPlanStatus.SUCCEEDED, PlanResultDetail.FULL, summary, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanPayload(
+                "plan-1", LedgerPlanStatus.SUCCEEDED, PlanResultDetail.SUMMARY, summary, journal));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 0, 0, 0, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, -1, 0, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, -1, null, null, null));
   }
 
   @Test

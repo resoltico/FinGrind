@@ -44,6 +44,11 @@ public interface PostingValidationStore {
   /** Returns the committed postings that fall inside the selected effective-date range. */
   List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange);
 
+  /** Returns the earliest committed posting in this book, if one exists already. */
+  default Optional<CommittedPosting> firstCommittedPosting() {
+    return postings(EffectiveDateRange.of(null, null)).stream().findFirst();
+  }
+
   /** Returns the earliest committed effective date when one posting already exists. */
   Optional<LocalDate> earliestPostingEffectiveDate();
 

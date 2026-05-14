@@ -12,6 +12,12 @@ final class CliAccountBalanceOutputRenderer {
     String header =
         CliTextFormat.renderKeyValueBlock(
             List.of(
+                List.of("Entity", snapshot.bookIdentity().entityName().value()),
+                List.of("Functional currency", snapshot.bookIdentity().functionalCurrency().code()),
+                List.of("Fiscal year start", snapshot.bookIdentity().fiscalYearStart().wireValue()),
+                List.of(
+                    "Posting coverage",
+                    CliQueryOutputFormatter.displayPostingCoverage(snapshot.postingCoverage())),
                 List.of("Account", snapshot.account().accountCode().value()),
                 List.of("Name", snapshot.account().accountName().value()),
                 List.of(
@@ -47,13 +53,19 @@ final class CliAccountBalanceOutputRenderer {
   static String renderCsv(AccountBalanceSnapshot snapshot) {
     return CliTextFormat.renderCsv(
         List.of(
+            "entityName",
+            "functionalCurrency",
+            "fiscalYearStart",
+            "postingCoverage",
             "accountCode",
             "accountName",
             "accountType",
             "accountRole",
             "normalBalance",
             "effectiveDateFrom",
+            "effectiveDateFromMeaning",
             "effectiveDateTo",
+            "effectiveDateToMeaning",
             "currencyCode",
             "debitTotal",
             "creditTotal",
@@ -63,13 +75,21 @@ final class CliAccountBalanceOutputRenderer {
             .map(
                 balance ->
                     List.of(
+                        snapshot.bookIdentity().entityName().value(),
+                        snapshot.bookIdentity().functionalCurrency().code(),
+                        snapshot.bookIdentity().fiscalYearStart().wireValue(),
+                        snapshot.postingCoverage().wireValue(),
                         snapshot.account().accountCode().value(),
                         snapshot.account().accountName().value(),
                         snapshot.account().accountType().wireValue(),
                         snapshot.account().accountRole().wireValue(),
                         snapshot.account().normalBalance().wireValue(),
                         snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
+                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
+                            snapshot.effectiveDateFrom().orElse(null)),
                         snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
+                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
+                            snapshot.effectiveDateTo().orElse(null)),
                         balance.netAmount().currencyUnit().code(),
                         CliQueryOutputFormatter.displayMoney(balance.debitTotal()),
                         CliQueryOutputFormatter.displayMoney(balance.creditTotal()),

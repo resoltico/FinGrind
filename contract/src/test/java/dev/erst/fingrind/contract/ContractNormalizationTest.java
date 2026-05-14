@@ -24,6 +24,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -49,8 +50,10 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new AccountLedgerReport(
+                        ContractFixtures.bookIdentity(),
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
+                        PostingCoverage.ALL_POSTING_KINDS,
                         nullOf(),
                         List.of(),
                         List.of()))
@@ -61,8 +64,10 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new AccountLedgerReport(
+                        ContractFixtures.bookIdentity(),
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
+                        PostingCoverage.ALL_POSTING_KINDS,
                         List.of(),
                         nullOf(),
                         List.of()))
@@ -73,8 +78,10 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new AccountLedgerReport(
+                        ContractFixtures.bookIdentity(),
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
+                        PostingCoverage.ALL_POSTING_KINDS,
                         List.of(),
                         List.of(),
                         nullOf()))
@@ -85,8 +92,10 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new PeriodSummaryReport(
+                        ContractFixtures.bookIdentity(),
                         LocalDate.parse("2026-04-01"),
                         LocalDate.parse("2026-04-30"),
+                        PostingCoverage.ALL_POSTING_KINDS,
                         1,
                         2,
                         1,
@@ -99,8 +108,10 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new PeriodSummaryReport(
+                        ContractFixtures.bookIdentity(),
                         LocalDate.parse("2026-04-01"),
                         LocalDate.parse("2026-04-30"),
+                        PostingCoverage.ALL_POSTING_KINDS,
                         1,
                         2,
                         1,
@@ -113,7 +124,12 @@ class ContractNormalizationTest {
                 NullPointerException.class,
                 () ->
                     new AccountBalanceSnapshot(
-                        CASH_ACCOUNT, Optional.empty(), Optional.empty(), nullOf()))
+                        ContractFixtures.bookIdentity(),
+                        CASH_ACCOUNT,
+                        Optional.empty(),
+                        Optional.empty(),
+                        PostingCoverage.ALL_POSTING_KINDS,
+                        nullOf()))
             .getMessage());
     assertEquals(
         "accounts must not be null.",

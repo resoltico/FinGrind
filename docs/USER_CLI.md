@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: USER_CLI
 updated: "2026-05-14"
 route:
@@ -33,13 +33,16 @@ Every book-bound command also requires exactly one passphrase source:
 `help`, `version`, and `capabilities` default to human-readable discovery output on an interactive
 terminal and to JSON when stdout is redirected or captured; they also accept `--output json` or
 `--output human` explicitly.
-`help <command>` and `<command> --help` both return command-scoped usage, options, executable
-examples, operator notes, and exit-code guidance for one selected command. Request-file commands
-such as `declare-account`, `post-entry`, `preflight-entry`, and `execute-plan` also inline the
-accepted request shape, one canonical template, and the relevant enum vocabulary so an operator or
-agent can form a valid payload from the CLI alone.
+Bare `help` is intentionally one short front-door overview. `capabilities` is the deep machine
+contract. `help <command>` and `<command> --help` both return command-scoped usage, options,
+executable examples, operator notes, and exit-code guidance for one selected command.
+Request-file commands such as `declare-account`, `post-entry`, `preflight-entry`, and
+`execute-plan` also inline the accepted request shape, one canonical template, and the relevant
+enum vocabulary so an operator or agent can form a valid payload from the CLI alone.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
-or piped into another process.
+or piped into another process. With no topic it emits the canonical posting scaffold; with
+`declare-account` it emits the canonical account-declaration scaffold; `post-entry` and
+`preflight-entry` are accepted posting-scaffold topics.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
 account declarations, one posting step, and one balance assertion.
 Both scaffold commands emit `actorType: "AGENT"` plus
@@ -88,12 +91,14 @@ commands also accept `--output csv`. Invalid invocation failures default to huma
 unless one recognized machine output mode is selected explicitly, such as `--output json`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
-`--pdf-out <path>`. Successful exports keep the main stdout result unchanged and emit the
-normalized artifact path on the diagnostics stream. If the report itself succeeds but the PDF
-write later fails, FinGrind still returns the primary report on stdout and emits a repair warning
-on the diagnostics stream instead of changing the command exit to `runtime-failure`. Commands that
-do not advertise `--output` still publish one fixed stdout contract, either one raw JSON document
-or one fixed JSON envelope.
+`--pdf-out <path>`. Successful exports keep the main stdout result unchanged. When the primary
+stdout result is JSON, the success envelope also carries one `artifacts[]` entry with
+`format: "pdf"` plus the normalized written `path`; human and CSV modes report the same path on
+the diagnostics stream. If the report itself succeeds but the PDF write later fails, FinGrind
+still returns the primary report on stdout and emits a repair warning on the diagnostics stream
+instead of changing the command exit to `runtime-failure`. Commands that do not advertise
+`--output` still publish one fixed stdout contract, either one raw JSON document or one fixed JSON
+envelope.
 
 ## Commands
 
@@ -108,7 +113,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[&lt;command&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
-    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td>none</td><td>Print the canonical minimal posting request scaffold JSON document.</td></tr>
+    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|declare-account]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
@@ -119,14 +124,14 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
     <tr><td><code>list-postings</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--account-code &lt;account-code&gt;]</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.</td></tr>
-    <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute grouped per-currency balances for one declared account.</td></tr>
+    <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute grouped per-currency balances for one declared account.</td></tr>
     <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the current durable posting horizon when no date filter is supplied.</td></tr>
-    <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
-    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded office-work period summary with posting totals, currency totals, and per-account activity.</td></tr>
+    <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
+    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
     <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the current durable posting horizon when no date filter is supplied.</td></tr>
     <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
     <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
-    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction.</td></tr>
+    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
     <tr><td><code>preflight-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Validate one posting request without committing it.</td></tr>
     <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Commit one posting request into the selected SQLite book.</td></tr>
   </tbody>
@@ -271,8 +276,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 |:----------|:--------|:---------------|
 | `0` | successful command | `ok`, including request templates, query/report payloads, preflight payloads, committed posting payloads, and succeeded plan payloads |
 | `1` | invalid invocation or malformed request | human repair text by default, or `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar when a recognized machine output mode is selected explicitly |
-| `2` | deterministic refusal after the command was understood | human `Rejected`, `error`, `rejected`, or `plan-rejected` depending on the command family and selected output mode |
-| `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
+| `2` | deterministic refusal after the command was understood | human `Rejected`, `error`, `rejected`, or `ok` with `payload.status: "rejected"` for `execute-plan` |
+| `3` | valid `execute-plan` request whose assertion step failed | `ok` with `payload.status: "assertion-failed"` |
 | `4` | runtime or environment failure | `error` with code `managed-runtime-failure`, `storage-runtime-failure`, or `runtime-failure` |
 
 ## Common Failures
@@ -301,7 +306,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | invalid key-file contents, file permissions, parent-directory permissions, or unreadable key-file path | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, parent directory, or contents do not satisfy the protected-book contract.` |
 | unreadable, oversized, malformed, empty, or control-character passphrase payload on stdin or another selected passphrase route | `2` | `invalid-book-passphrase-source` | `Failed to read the FinGrind book passphrase from standard input.`, `The FinGrind book passphrase source exceeded the 4096-byte UTF-8 limit: ...`, or UTF-8/single-line passphrase validation text |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
-| requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout and diagnostics report the normalized written PDF path |
+| requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout; JSON success envelopes also publish `artifacts[].format` plus normalized `artifacts[].path`, and diagnostics report the same PDF path for human/CSV flows |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `4` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
@@ -378,25 +383,28 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque
   `nextCursor` that can be passed back through `--cursor`.
 - `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`,
-  `account-ledger`, and `period-summary` accept `--output human`; all tabular read/report
-  commands except `inspect-book` and `get-posting` also accept `--output csv`.
-- `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can also write one
-  PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout
-  output mode. If the primary report succeeds, diagnostics emit a human info block with code
-  `pdf-exported` and the normalized written path. If the PDF artifact fails, stdout still carries
-  the report result and diagnostics emit a human warning with code `pdf-export-warning`.
+  `account-ledger`, `period-summary`, `financial-position`, `income-statement`, and
+  `changes-in-equity` accept `--output human`; all tabular read/report commands except
+  `inspect-book` and `get-posting` also accept `--output csv`.
+- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+  `income-statement`, and `changes-in-equity` can also write one PDF artifact through
+  `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the
+  primary report succeeds, JSON success envelopes publish the normalized artifact under
+  `artifacts[]`, while human/CSV flows emit a human info block with code `pdf-exported` and the
+  same path on diagnostics. If the PDF artifact fails, stdout still carries the report result and
+  diagnostics emit a human warning with code `pdf-export-warning`.
 - JSON money fields are typed exact-money objects with `currencyCode` and `minorUnits`,
   while `--output human` and `--output csv` render accounting-grade currency scale for operators
   and spreadsheet import.
 - `print-plan-template` emits the accepted `execute-plan` request shape, including the generic
   nested `assertion` object for assertion steps.
 - `execute-plan` reuses the same posting and query rules as the single-command surface, but runs
-  the whole plan inside one atomic transaction and returns the resulting journal in
-  `payload.journal` with top-level `status: "ok"` on success, or in `details.plan.journal` with
-  `status: "plan-rejected"` / `status: "plan-assertion-failed"` on deterministic plan failure.
-  Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped
-  `facts`; successful `list-accounts` and `list-postings` steps keep both pagination facts and
-  structured row groups instead of collapsing to counts alone.
+  the whole plan inside one atomic transaction and returns a bounded `payload.summary` by default.
+  `--result-detail full` additionally includes `payload.journal` on success or
+  `details.plan.journal` on deterministic plan failure. Journal facts are typed objects with
+  `kind`, `name`, and either `value` or nested grouped `facts`; successful `list-accounts` and
+  `list-postings` steps keep both pagination facts and structured row groups instead of collapsing
+  to counts alone.
 - `capabilities` reports runtime-contract details under nested environment descriptors:
   `environment.distribution.publicCliDistribution`,
   `environment.distribution.sourceCheckoutJava`,

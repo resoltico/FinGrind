@@ -111,7 +111,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListPostingsResult.Listed(
                     new PostingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
   }
 
   @Test
@@ -123,18 +123,26 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     PostingFact postingFact = reversalPostingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
-            cashAccount, Optional.empty(), Optional.empty(), List.of(eurDebitBalance));
+            bookIdentity(),
+            cashAccount,
+            Optional.empty(),
+            Optional.empty(),
+            allPostingKinds(),
+            List.of(eurDebitBalance));
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
             bookIdentity(),
             Optional.empty(),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
-            List.of(new TrialBalanceRow(cashAccount, eurDebitBalance)));
+            List.of(new TrialBalanceRow(cashAccount, eurDebitBalance)),
+            List.of());
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
+            bookIdentity(),
             cashAccount,
             EffectiveDateRange.unbounded(),
+            allPostingKinds(),
             List.of(eurDebitBalance),
             List.of(
                 new AccountLedgerEntry(
@@ -142,8 +150,10 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             List.of(eurDebitBalance));
     PeriodSummaryReport periodSummaryReport =
         new PeriodSummaryReport(
+            bookIdentity(),
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            allPostingKinds(),
             1,
             2,
             1,
@@ -166,7 +176,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -184,7 +194,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
@@ -202,7 +212,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts");
+        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
@@ -220,7 +230,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "effectiveDateFrom,effectiveDateTo,postingCount");
+        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount");
   }
 
   @Test

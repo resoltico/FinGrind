@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.jspecify.annotations.Nullable;
@@ -22,7 +23,6 @@ final class PdfPageWriter implements AutoCloseable {
 
   private @Nullable PDPageContentStream contentStream;
   private float cursorY;
-  private int pageNumber;
 
   PdfPageWriter(
       PDDocument document,
@@ -93,18 +93,15 @@ final class PdfPageWriter implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    if (contentStream != null) {
-      contentStream.close();
-      contentStream = null;
-    }
+    closeActiveContentStream();
+    appendPageLabels();
   }
 
   private void startNewPage() throws IOException {
-    close();
+    closeActiveContentStream();
     PDPage page = new PDPage(currentPageSize);
     document.addPage(page);
     contentStream = new PDPageContentStream(document, page);
-    pageNumber++;
     cursorY = currentPageSize.getHeight() - PdfReportTheme.PAGE_MARGIN;
     drawMasthead();
   }
@@ -122,14 +119,6 @@ final class PdfPageWriter implements AutoCloseable {
         fonts.regular(),
         PdfReportTheme.HEADER_META_SIZE,
         PdfReportTheme.PAGE_MARGIN,
-        cursorY);
-    drawText(
-        "Page " + pageNumber,
-        fonts.regular(),
-        PdfReportTheme.HEADER_META_SIZE,
-        currentPageSize.getWidth()
-            - PdfReportTheme.PAGE_MARGIN
-            - stringWidth("Page " + pageNumber, fonts.regular(), PdfReportTheme.HEADER_META_SIZE),
         cursorY);
     cursorY -= PdfReportTheme.LINE_HEIGHT;
     drawText(
@@ -186,6 +175,7 @@ final class PdfPageWriter implements AutoCloseable {
           .setNonStrokingColor(normalizedHeaderGray, normalizedHeaderGray, normalizedHeaderGray);
       activeContentStream().addRect(x, rowTop - rowHeight, contentWidth(), rowHeight);
       activeContentStream().fill();
+      strokeHorizontalRule(rowTop, 0);
     }
     for (int index = 0; index < row.size(); index++) {
       List<String> lines =
@@ -199,6 +189,7 @@ final class PdfPageWriter implements AutoCloseable {
           header ? fonts.bold() : fonts.regular(),
           x,
           rowTop,
+          rowHeight,
           columnWidths[index],
           columns.get(index).alignment());
       x += columnWidths[index];
@@ -212,10 +203,15 @@ final class PdfPageWriter implements AutoCloseable {
       PDFont font,
       float cellX,
       float rowTop,
+      float rowHeight,
       float cellWidth,
       PdfTableColumn.CellAlignment alignment)
       throws IOException {
-    float y = rowTop - PdfReportTheme.CELL_PADDING;
+    float textBlockHeight = lines.size() * PdfReportTheme.LINE_HEIGHT;
+    float baselineInset =
+        (rowHeight - textBlockHeight) / 2f
+            + (PdfReportTheme.LINE_HEIGHT - PdfReportTheme.SMALL_FONT_SIZE) / 2f;
+    float y = rowTop - baselineInset;
     for (String line : lines) {
       float x;
       if (alignment == PdfTableColumn.CellAlignment.LEFT) {
@@ -271,14 +267,19 @@ final class PdfPageWriter implements AutoCloseable {
 
   private void drawText(String text, PDFont font, float fontSize, float x, float y)
       throws IOException {
+    drawText(activeContentStream(), text, font, fontSize, x, y);
+  }
+
+  private void drawText(
+      PDPageContentStream target, String text, PDFont font, float fontSize, float x, float y)
+      throws IOException {
     float normalizedTextGray = PdfReportTheme.normalizedGray(PdfReportTheme.TEXT_RGB);
-    activeContentStream()
-        .setNonStrokingColor(normalizedTextGray, normalizedTextGray, normalizedTextGray);
-    activeContentStream().beginText();
-    activeContentStream().setFont(font, fontSize);
-    activeContentStream().newLineAtOffset(x, y);
-    activeContentStream().showText(text);
-    activeContentStream().endText();
+    target.setNonStrokingColor(normalizedTextGray, normalizedTextGray, normalizedTextGray);
+    target.beginText();
+    target.setFont(font, fontSize);
+    target.newLineAtOffset(x, y);
+    target.showText(text);
+    target.endText();
   }
 
   private void strokeHorizontalRule(float y, int gray) throws IOException {
@@ -305,6 +306,36 @@ final class PdfPageWriter implements AutoCloseable {
 
   private float stringWidth(String text, PDFont font, float fontSize) throws IOException {
     return PdfTextWrapper.stringWidth(text, font, fontSize);
+  }
+
+  private void closeActiveContentStream() throws IOException {
+    if (contentStream != null) {
+      contentStream.close();
+      contentStream = null;
+    }
+  }
+
+  private void appendPageLabels() throws IOException {
+    int totalPages = document.getNumberOfPages();
+    float labelY =
+        currentPageSize.getHeight() - PdfReportTheme.PAGE_MARGIN - PdfReportTheme.LINE_HEIGHT - 2f;
+    for (int index = 0; index < totalPages; index++) {
+      appendPageLabel(index, totalPages, labelY);
+    }
+  }
+
+  private void appendPageLabel(int pageIndex, int totalPages, float labelY) throws IOException {
+    String label = (pageIndex + 1) + " / " + totalPages;
+    float labelX =
+        currentPageSize.getWidth()
+            - PdfReportTheme.PAGE_MARGIN
+            - stringWidth(label, fonts.regular(), PdfReportTheme.HEADER_META_SIZE);
+    try (PDPageContentStream labelStream =
+        new PDPageContentStream(
+            document, document.getPage(pageIndex), AppendMode.APPEND, true, true)) {
+      drawText(
+          labelStream, label, fonts.regular(), PdfReportTheme.HEADER_META_SIZE, labelX, labelY);
+    }
   }
 
   private PDPageContentStream activeContentStream() {

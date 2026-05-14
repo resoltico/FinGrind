@@ -39,6 +39,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
@@ -62,6 +63,7 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -123,12 +125,62 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
   void localReadQueries_liftSharedKernelDateRangesAndValidatePagingContracts() {
     assertEquals(
         new AccountBalanceCriteria(
-            CASH_ACCOUNT.accountCode(), EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE)),
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        AccountBalanceCriteria.unbounded(
+            CASH_ACCOUNT.accountCode(), PostingCoverage.NON_CLOSING_POSTINGS));
+    assertEquals(
+        new AccountBalanceCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS),
+        AccountBalanceCriteria.unbounded(CASH_ACCOUNT.accountCode()));
+    assertEquals(
+        new AccountBalanceCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.ALL_POSTING_KINDS),
         new AccountBalanceCriteria(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE));
     assertEquals(
+        new AccountBalanceCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        new AccountBalanceCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            PostingCoverage.NON_CLOSING_POSTINGS));
+    assertEquals(
         new AccountLedgerCriteria(
-            CASH_ACCOUNT.accountCode(), EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE)),
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        AccountLedgerCriteria.unbounded(
+            CASH_ACCOUNT.accountCode(), PostingCoverage.NON_CLOSING_POSTINGS));
+    assertEquals(
+        new AccountLedgerCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS),
+        AccountLedgerCriteria.unbounded(CASH_ACCOUNT.accountCode()));
+    assertEquals(
+        new AccountLedgerCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.ALL_POSTING_KINDS),
         new AccountLedgerCriteria(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE));
+    assertEquals(
+        new AccountLedgerCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        new AccountLedgerCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            PostingCoverage.NON_CLOSING_POSTINGS));
     assertEquals(
         new PostingHistoryQuery(
             Optional.of(CASH_ACCOUNT.accountCode()),
@@ -169,6 +221,91 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
   }
 
   @Test
+  void
+      accountLedgerPublication_synthesizesExplicitZeroOpeningAndClosingBalancesForBoundedEmptyView() {
+    AccountLedgerView emptyBoundedLedger =
+        new AccountLedgerView(
+            REGISTERED_CASH_ACCOUNT,
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(),
+            List.of(),
+            List.of());
+
+    assertEquals(
+        List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), emptyBoundedLedger)
+            .openingBalances());
+    assertEquals(
+        List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), emptyBoundedLedger)
+            .closingBalances());
+  }
+
+  @Test
+  void accountLedgerPublication_preservesUnboundedOpeningAbsenceForMinimumLowerBound() {
+    AccountLedgerView minimumBoundLedger =
+        new AccountLedgerView(
+            REGISTERED_CASH_ACCOUNT,
+            EffectiveDateRange.of(LocalDate.MIN, null),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(),
+            List.of(),
+            List.of());
+
+    assertEquals(
+        List.of(),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), minimumBoundLedger)
+            .openingBalances());
+    assertEquals(
+        List.of(),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), minimumBoundLedger)
+            .closingBalances());
+  }
+
+  @Test
+  void accountLedgerPublication_preservesUnboundedOpeningAbsenceForOpenLowerBound() {
+    AccountLedgerView unboundedLedger =
+        new AccountLedgerView(
+            REGISTERED_CASH_ACCOUNT,
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(),
+            List.of(),
+            List.of());
+
+    assertEquals(
+        List.of(),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), unboundedLedger)
+            .openingBalances());
+    assertEquals(
+        List.of(),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), unboundedLedger)
+            .closingBalances());
+  }
+
+  @Test
+  void accountLedgerPublication_preservesExplicitOpeningAndClosingBalances() {
+    AccountLedgerView populatedLedger =
+        new AccountLedgerView(
+            REGISTERED_CASH_ACCOUNT,
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(currencyBalance("3.00", "0.00", "3.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(currencyBalance("13.00", "0.00", "13.00", BalanceSide.DEBIT)));
+
+    assertEquals(
+        List.of(currencyBalance("3.00", "0.00", "3.00", BalanceSide.DEBIT)),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), populatedLedger)
+            .openingBalances());
+    assertEquals(
+        List.of(currencyBalance("13.00", "0.00", "13.00", BalanceSide.DEBIT)),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), populatedLedger)
+            .closingBalances());
+  }
+
+  @Test
   void localPeriodSummaryAndPostingCursorModels_validateAndCopyTheirState() {
     var postingFact = postingFact("posting-1", "idem-1");
     List<PeriodCurrencySummaryView> currencySummaries =
@@ -178,7 +315,14 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             List.of(new PeriodAccountActivityView(REGISTERED_CASH_ACCOUNT, EUR_DEBIT_BALANCE)));
     PeriodSummaryView view =
         new PeriodSummaryView(
-            EFFECTIVE_DATE, EFFECTIVE_DATE, 1, 2, 1, currencySummaries, accountActivity);
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            PostingCoverage.ALL_POSTING_KINDS,
+            1,
+            2,
+            1,
+            currencySummaries,
+            accountActivity);
 
     currencySummaries.clear();
     accountActivity.clear();
@@ -194,6 +338,7 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             new PeriodSummaryView(
                 EFFECTIVE_DATE.plusDays(1),
                 EFFECTIVE_DATE,
+                PostingCoverage.ALL_POSTING_KINDS,
                 1,
                 2,
                 1,
@@ -206,6 +351,7 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             new PeriodSummaryView(
                 EFFECTIVE_DATE,
                 EFFECTIVE_DATE,
+                PostingCoverage.ALL_POSTING_KINDS,
                 -1,
                 2,
                 1,
@@ -218,6 +364,7 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             new PeriodSummaryView(
                 EFFECTIVE_DATE,
                 EFFECTIVE_DATE,
+                PostingCoverage.ALL_POSTING_KINDS,
                 1,
                 -1,
                 1,
@@ -230,6 +377,7 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             new PeriodSummaryView(
                 EFFECTIVE_DATE,
                 EFFECTIVE_DATE,
+                PostingCoverage.ALL_POSTING_KINDS,
                 1,
                 2,
                 -1,
@@ -265,6 +413,18 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
+                    List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))),
+            List.of(
+                new FinancialPositionSectionView(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRowView(
+                            "1000",
+                            "Cash",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
     IncomeStatementView incomeStatementView =
         new IncomeStatementView(
@@ -285,6 +445,19 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             false,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(
+                new IncomeStatementSectionView(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRowView(
+                            "4000",
+                            "Revenue",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+                    List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
     ChangesInEquityView changesInEquityView =
         new ChangesInEquityView(
@@ -293,6 +466,19 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             EFFECTIVE_DATE,
             EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new ChangesInEquityRowView(
+                    "current-earnings",
+                    "Current Earnings",
+                    Optional.empty(),
+                    Optional.empty(),
+                    true,
+                    currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+            List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(
                 new ChangesInEquityRowView(
                     "current-earnings",
@@ -333,6 +519,18 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
+                    List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))),
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(financialPositionView));
     assertEquals(
@@ -354,6 +552,19 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             false,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Revenue",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+                    List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(incomeStatementView));
     assertEquals(
@@ -363,6 +574,19 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             EFFECTIVE_DATE,
             EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new ChangesInEquityRow(
+                    "current-earnings",
+                    "Current Earnings",
+                    Optional.empty(),
+                    Optional.empty(),
+                    true,
+                    currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+            List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(
                 new ChangesInEquityRow(
                     "current-earnings",

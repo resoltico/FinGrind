@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
@@ -47,9 +46,9 @@ final class SqliteTrialBalanceReader {
     return new TrialBalanceView(
         bookIdentity,
         query.effectiveDateTo(),
-        EffectiveDateRange.of(
-            null, query.effectiveDateTo().map(date -> date.minusYears(1)).orElse(null)),
+        dev.erst.fingrind.core.EffectiveDateRange.of(null, null),
         query.postingCoverage(),
-        rows);
+        rows,
+        List.of());
   }
 }

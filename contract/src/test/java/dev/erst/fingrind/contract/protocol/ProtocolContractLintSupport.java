@@ -482,6 +482,7 @@ class ProtocolContractLintSupport {
     ids.addAll(PublicCliBundleTarget.wireValues());
     ids.addAll(PlanTransactionMode.wireValues());
     ids.addAll(PlanFailurePolicy.wireValues());
+    ids.addAll(PlanResultDetail.wireValues());
     return Set.copyOf(ids);
   }
 }

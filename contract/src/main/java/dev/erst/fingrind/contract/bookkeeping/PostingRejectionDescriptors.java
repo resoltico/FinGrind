@@ -39,6 +39,8 @@ final class PostingRejectionDescriptors {
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.ClosedPeriodViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.OpeningBalanceWindowClosed _ ->
+          Descriptor.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           Descriptor.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
       case PostingRejection.RetainedEarningsAccountReserved _ ->
@@ -66,6 +68,7 @@ final class PostingRejectionDescriptors {
     POSTING_KIND_RESERVED,
     BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
     CLOSED_PERIOD_VIOLATION,
+    OPENING_BALANCE_WINDOW_CLOSED,
     OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
     RETAINED_EARNINGS_ACCOUNT_RESERVED,
     REVERSAL_TARGET_NOT_FOUND,
@@ -80,6 +83,7 @@ final class PostingRejectionDescriptors {
         case POSTING_KIND_RESERVED -> "posting-kind-reserved";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH -> "book-functional-currency-mismatch";
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
+        case OPENING_BALANCE_WINDOW_CLOSED -> "opening-balance-window-closed";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT -> "opening-balance-touches-nominal-account";
         case RETAINED_EARNINGS_ACCOUNT_RESERVED -> "retained-earnings-account-reserved";
         case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
@@ -104,6 +108,8 @@ final class PostingRejectionDescriptors {
             "Posting refused because the journal-entry currency does not match the selected book functional currency.";
         case CLOSED_PERIOD_VIOLATION ->
             "Posting refused because its effective date falls inside one closed reporting period.";
+        case OPENING_BALANCE_WINDOW_CLOSED ->
+            "Posting refused because opening-balance entries are allowed only before the first committed posting in the selected book.";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
             "Posting refused because opening-balance entries may seed only asset, liability, or equity accounts.";
         case RETAINED_EARNINGS_ACCOUNT_RESERVED ->
@@ -144,6 +150,14 @@ final class PostingRejectionDescriptors {
                     "Inclusive effective date through which postings are already closed."),
                 detailField(
                     "attemptedEffectiveDate", "Rejected effective date from the posting request."));
+        case OPENING_BALANCE_WINDOW_CLOSED ->
+            List.of(
+                detailField(
+                    "firstBlockingPostingKind",
+                    "Previously committed posting kind that closed the one-time opening-balance admission window."),
+                detailField(
+                    "firstBlockingEffectiveDate",
+                    "Effective date of the first previously committed non-opening posting."));
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
             List.of(
                 detailField(
@@ -183,6 +197,7 @@ final class PostingRejectionDescriptors {
             POSTING_KIND_RESERVED,
             BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
+            OPENING_BALANCE_WINDOW_CLOSED,
             OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
             RETAINED_EARNINGS_ACCOUNT_RESERVED,
             REVERSAL_TARGET_NOT_FOUND,
@@ -205,6 +220,7 @@ final class PostingRejectionDescriptors {
               POSTING_KIND_RESERVED,
               BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
               CLOSED_PERIOD_VIOLATION,
+              OPENING_BALANCE_WINDOW_CLOSED,
               OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
               RETAINED_EARNINGS_ACCOUNT_RESERVED,
               REVERSAL_TARGET_NOT_FOUND,

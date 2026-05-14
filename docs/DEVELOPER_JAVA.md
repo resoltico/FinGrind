@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_JAVA
 updated: "2026-05-14"
 route:
@@ -21,9 +21,9 @@ path for contributors who explicitly want local-shell Java.
 
 Supported workstation shape:
 - the repository preferably lives on the Mac's local filesystem for best performance
-- mounted, removable, or network-backed checkouts are still supported when `./gradlew` can place
-  its project cache, included-build output, JaCoCo execution data, and any fragile mounted
-  project `build/` trees in a normal local cache location outside the checkout
+- mounted, removable, or network-backed checkouts are still supported because `./gradlew` places
+  its project cache, included-build output, JaCoCo execution data, and ordinary project
+  `build/` trees in a normal local cache location outside the checkout by default
 
 ## Overview
 
@@ -34,7 +34,7 @@ The supported setup is intentionally simple:
 - the machine provides Java 26
 - the machine also provides `python3` plus `python3 -m pip` for the repo-owned Python helper tools
 - the repository checkout can live on local or mounted storage, while the wrapper-owned transient
-  Gradle state lives outside the checkout
+  Gradle state and ordinary build trees live outside the checkout
 - the repository provides Gradle through `./gradlew`
 - no global `gradle` install is required for FinGrind
 - no Homebrew-managed JDK is part of the supported FinGrind setup

@@ -30,6 +30,7 @@ public final class ProtocolLedgerPlanFields {
         Query.ACCOUNT_CODE,
         Query.EFFECTIVE_DATE_FROM,
         Query.EFFECTIVE_DATE_TO,
+        Query.POSTING_COVERAGE,
         Query.LIMIT,
         Query.CURSOR);
   }
@@ -97,6 +98,9 @@ public final class ProtocolLedgerPlanFields {
 
     /** Inclusive effective-date upper bound. */
     public static final String EFFECTIVE_DATE_TO = ProtocolSharedRequestFields.EFFECTIVE_DATE_TO;
+
+    /** Posting-coverage selector for close-sensitive queries. */
+    public static final String POSTING_COVERAGE = "postingCoverage";
 
     /** Page-size field. */
     public static final String LIMIT = "limit";

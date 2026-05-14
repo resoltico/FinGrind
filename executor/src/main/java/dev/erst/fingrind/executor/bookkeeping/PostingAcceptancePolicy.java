@@ -47,6 +47,11 @@ public final class PostingAcceptancePolicy {
     if (closedPeriodRejection.isPresent()) {
       return closedPeriodRejection;
     }
+    Optional<BookkeepingPostingRejection> openingBalanceWindowRejection =
+        openingBalanceWindowRejection(postingRequest, book);
+    if (openingBalanceWindowRejection.isPresent()) {
+      return openingBalanceWindowRejection;
+    }
     Optional<BookkeepingPostingRejection> accountRejection = accountRejection(postingRequest, book);
     if (accountRejection.isPresent()) {
       return accountRejection;
@@ -99,6 +104,19 @@ public final class PostingAcceptancePolicy {
             closedThrough ->
                 new BookkeepingPostingRejection.ClosedPeriodViolation(
                     closedThrough, effectiveDate));
+  }
+
+  private static Optional<BookkeepingPostingRejection> openingBalanceWindowRejection(
+      PostingRequestModel postingRequest, PostingValidationStore book) {
+    if (!postingRequest.postingKind().isOpeningBalance()) {
+      return Optional.empty();
+    }
+    return book.firstCommittedPosting()
+        .map(
+            firstBlockingPosting ->
+                new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+                    firstBlockingPosting.postingKind(),
+                    firstBlockingPosting.journalEntry().effectiveDate()));
   }
 
   private static Optional<BookkeepingPostingRejection> accountRejection(

@@ -1,9 +1,14 @@
 Trial Balance
 =============
 
-Effective date to : 2026-04-08
+Entity                : Acme Studio
+Functional currency   : EUR
+Fiscal year start     : 01-01
+Posting coverage      : All posting kinds
+Comparative reference : (unbounded lower filter) to 2025-04-08
+Effective date to     : 2026-04-08
 
-Account | Name    | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | DEBIT          | true   | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
-2000    | Revenue | CREDIT         | true   | EUR      |        0.00 |        10.00 |      10.00 | CREDIT
+Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | Asset        | Ordinary     | Debit          | Yes    |      EUR |       10.00 |         0.00 | 10.00      | Debit
+2000    | Revenue | Revenue      | Ordinary     | Credit         | Yes    |      EUR |        0.00 |        10.00 | 10.00      | Credit

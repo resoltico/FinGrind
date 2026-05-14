@@ -22,6 +22,8 @@ import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementSectionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.BookStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -55,48 +57,109 @@ final class BookkeepingStatementService {
           .thenComparing(row -> row.closingBalance().netAmount().currencyUnit().code());
 
   private final BookStore bookStore;
+  private final BookkeepingPolicyPack policyPack;
 
   BookkeepingStatementService(BookStore bookStore) {
+    this(bookStore, CoreBookkeepingPolicyPack.current());
+  }
+
+  BookkeepingStatementService(BookStore bookStore, BookkeepingPolicyPack policyPack) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+    this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
   }
 
   FinancialPositionView financialPosition(FinancialPositionCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria");
+    BookIdentity bookIdentity = bookIdentity();
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
-    List<AccountCurrencyTotals> accountTotals =
-        bookStore.accountTotals(
-            EffectiveDateRange.of(null, criteria.effectiveDateTo().orElse(null)), postingCoverage);
-    FinancialPositionRows rowsByType = new FinancialPositionRows();
-    for (AccountCurrencyTotals accountTotal : accountTotals) {
-      if (!isFinancialPositionAccount(accountTotal.account().accountType())) {
-        continue;
-      }
-      rowsByType.add(accountTotal.account().accountType(), financialPositionRow(accountTotal));
-    }
-    profitAndLossContributionMap(accountTotals)
-        .forEach(
-            (currencyUnit, signedMinorUnits) ->
-                rowsByType.add(
-                    AccountType.EQUITY,
-                    currentEarningsFinancialPositionRow(currencyUnit, signedMinorUnits)));
+    EffectiveDateRange comparativeRange =
+        policyPack
+            .statementComparativePolicy()
+            .comparativeAsOf(bookIdentity, criteria.effectiveDateTo());
     List<FinancialPositionSectionView> sections =
-        rowsByType.sections(List.of(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY));
-    assertAccountingEquation(sections);
+        financialPositionSections(
+            bookStore.accountTotals(
+                EffectiveDateRange.of(null, criteria.effectiveDateTo().orElse(null)),
+                postingCoverage));
+    List<FinancialPositionSectionView> comparativeSections =
+        comparativeRange.effectiveDateTo().isPresent()
+            ? financialPositionSections(
+                bookStore.accountTotals(
+                    EffectiveDateRange.of(null, comparativeRange.effectiveDateTo().orElseThrow()),
+                    postingCoverage))
+            : List.of();
     return new FinancialPositionView(
-        bookIdentity(),
+        bookIdentity,
         criteria.effectiveDateTo(),
-        comparativeRangeForAsOf(criteria.effectiveDateTo()),
+        comparativeRange,
         postingCoverage,
-        sections);
+        sections,
+        comparativeSections);
   }
 
   IncomeStatementView incomeStatement(IncomeStatementCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria");
+    BookIdentity bookIdentity = bookIdentity();
     PostingCoverage postingCoverage = PostingCoverage.NON_CLOSING_POSTINGS;
-    List<AccountCurrencyTotals> accountTotals =
-        bookStore.accountTotals(
-            EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+    EffectiveDateRange comparativeRange =
+        policyPack
+            .statementComparativePolicy()
+            .comparativePeriod(
+                bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
+    IncomeStatementSnapshot currentSnapshot =
+        incomeStatementSnapshot(
+            bookStore.accountTotals(
+                EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+                postingCoverage));
+    IncomeStatementSnapshot comparativeSnapshot =
+        incomeStatementSnapshot(bookStore.accountTotals(comparativeRange, postingCoverage));
+    return new IncomeStatementView(
+        bookIdentity,
+        criteria.effectiveDateFrom(),
+        criteria.effectiveDateTo(),
+        comparativeRange,
+        postingCoverage,
+        currentSnapshot.sections(),
+        currentSnapshot.netIncomeTotals(),
+        comparativeSnapshot.sections(),
+        comparativeSnapshot.netIncomeTotals());
+  }
+
+  ChangesInEquityView changesInEquity(ChangesInEquityCriteria criteria) {
+    Objects.requireNonNull(criteria, "criteria");
+    BookIdentity bookIdentity = bookIdentity();
+    PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
+    EffectiveDateRange comparativeRange =
+        policyPack
+            .statementComparativePolicy()
+            .comparativePeriod(
+                bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
+    ChangesInEquitySnapshot currentSnapshot =
+        changesInEquitySnapshot(
+            criteria.effectiveDateFrom(), criteria.effectiveDateTo(), postingCoverage);
+    ChangesInEquitySnapshot comparativeSnapshot =
+        changesInEquitySnapshot(
+            comparativeRange.effectiveDateFrom().orElseThrow(),
+            comparativeRange.effectiveDateTo().orElseThrow(),
             postingCoverage);
+    return new ChangesInEquityView(
+        bookIdentity,
+        criteria.effectiveDateFrom(),
+        criteria.effectiveDateTo(),
+        comparativeRange,
+        postingCoverage,
+        currentSnapshot.rows(),
+        currentSnapshot.openingTotals(),
+        currentSnapshot.movementTotals(),
+        currentSnapshot.closingTotals(),
+        comparativeSnapshot.rows(),
+        comparativeSnapshot.openingTotals(),
+        comparativeSnapshot.movementTotals(),
+        comparativeSnapshot.closingTotals());
+  }
+
+  private IncomeStatementSnapshot incomeStatementSnapshot(
+      List<AccountCurrencyTotals> accountTotals) {
     IncomeStatementRows rowsByType = new IncomeStatementRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       if (!AccountSemantics.closesIntoRetainedEarnings(accountTotal.account().accountType())) {
@@ -109,29 +172,20 @@ final class BookkeepingStatementService {
             .map(entry -> signedBalance(entry.getKey(), entry.getValue()))
             .sorted(BALANCE_ORDER)
             .toList();
-    return new IncomeStatementView(
-        bookIdentity(),
-        criteria.effectiveDateFrom(),
-        criteria.effectiveDateTo(),
-        comparativeRangeForPeriod(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
-        postingCoverage,
-        rowsByType.sections(List.of(AccountType.REVENUE, AccountType.EXPENSE)),
-        netIncomeTotals);
+    return new IncomeStatementSnapshot(
+        rowsByType.sections(List.of(AccountType.REVENUE, AccountType.EXPENSE)), netIncomeTotals);
   }
 
-  ChangesInEquityView changesInEquity(ChangesInEquityCriteria criteria) {
-    Objects.requireNonNull(criteria, "criteria");
-    LocalDate dayBefore = criteria.effectiveDateFrom().minusDays(1);
-    PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
+  private ChangesInEquitySnapshot changesInEquitySnapshot(
+      LocalDate effectiveDateFrom, LocalDate effectiveDateTo, PostingCoverage postingCoverage) {
+    LocalDate dayBefore = effectiveDateFrom.minusDays(1);
     List<AccountCurrencyTotals> openingTotals =
         bookStore.accountTotals(EffectiveDateRange.of(null, dayBefore), postingCoverage);
     List<AccountCurrencyTotals> movementTotals =
         bookStore.accountTotals(
-            EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
-            postingCoverage);
+            EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), postingCoverage);
     List<AccountCurrencyTotals> closingTotals =
-        bookStore.accountTotals(
-            EffectiveDateRange.of(null, criteria.effectiveDateTo()), postingCoverage);
+        bookStore.accountTotals(EffectiveDateRange.of(null, effectiveDateTo), postingCoverage);
     Map<AccountCurrencyKey, AccountCurrencyTotals> openingTotalsByKey =
         indexAccountTotals(openingTotals);
     Map<AccountCurrencyKey, AccountCurrencyTotals> movementTotalsByKey =
@@ -186,12 +240,7 @@ final class BookkeepingStatementService {
             });
 
     rows.sort(CHANGES_IN_EQUITY_ROW_ORDER);
-    return new ChangesInEquityView(
-        bookIdentity(),
-        criteria.effectiveDateFrom(),
-        criteria.effectiveDateTo(),
-        comparativeRangeForPeriod(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
-        postingCoverage,
+    return new ChangesInEquitySnapshot(
         rows,
         aggregateOpeningTotals(rows),
         aggregateMovementTotals(rows),
@@ -209,14 +258,25 @@ final class BookkeepingStatementService {
     };
   }
 
-  private static EffectiveDateRange comparativeRangeForAsOf(Optional<LocalDate> effectiveDateTo) {
-    return EffectiveDateRange.of(
-        null, effectiveDateTo.map(date -> date.minusYears(1)).orElse(null));
-  }
-
-  private static EffectiveDateRange comparativeRangeForPeriod(
-      LocalDate effectiveDateFrom, LocalDate effectiveDateTo) {
-    return EffectiveDateRange.of(effectiveDateFrom.minusYears(1), effectiveDateTo.minusYears(1));
+  private static List<FinancialPositionSectionView> financialPositionSections(
+      List<AccountCurrencyTotals> accountTotals) {
+    FinancialPositionRows rowsByType = new FinancialPositionRows();
+    for (AccountCurrencyTotals accountTotal : accountTotals) {
+      if (!isFinancialPositionAccount(accountTotal.account().accountType())) {
+        continue;
+      }
+      rowsByType.add(accountTotal.account().accountType(), financialPositionRow(accountTotal));
+    }
+    profitAndLossContributionMap(accountTotals)
+        .forEach(
+            (currencyUnit, signedMinorUnits) ->
+                rowsByType.add(
+                    AccountType.EQUITY,
+                    currentEarningsFinancialPositionRow(currencyUnit, signedMinorUnits)));
+    List<FinancialPositionSectionView> sections =
+        rowsByType.sections(List.of(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY));
+    assertAccountingEquation(sections);
+    return sections;
   }
 
   private static FinancialPositionSectionView toFinancialPositionSection(
@@ -513,6 +573,27 @@ final class BookkeepingStatementService {
     private AccountCurrencyKey {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(currencyUnit, "currencyUnit");
+    }
+  }
+
+  private record IncomeStatementSnapshot(
+      List<IncomeStatementSectionView> sections, List<CurrencyBalance> netIncomeTotals) {
+    private IncomeStatementSnapshot {
+      sections = List.copyOf(Objects.requireNonNull(sections, "sections"));
+      netIncomeTotals = List.copyOf(Objects.requireNonNull(netIncomeTotals, "netIncomeTotals"));
+    }
+  }
+
+  private record ChangesInEquitySnapshot(
+      List<ChangesInEquityRowView> rows,
+      List<CurrencyBalance> openingTotals,
+      List<CurrencyBalance> movementTotals,
+      List<CurrencyBalance> closingTotals) {
+    private ChangesInEquitySnapshot {
+      rows = List.copyOf(Objects.requireNonNull(rows, "rows"));
+      openingTotals = List.copyOf(Objects.requireNonNull(openingTotals, "openingTotals"));
+      movementTotals = List.copyOf(Objects.requireNonNull(movementTotals, "movementTotals"));
+      closingTotals = List.copyOf(Objects.requireNonNull(closingTotals, "closingTotals"));
     }
   }
 }

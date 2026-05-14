@@ -61,6 +61,56 @@ final class ChangesInEquityPdfRenderer {
                     report.movementTotals().stream().map(balance -> totalRow("Movement", balance)),
                     report.closingTotals().stream().map(balance -> totalRow("Closing", balance))))
             .toList());
+    if (!report.comparativeRows().isEmpty()) {
+      pageWriter.writeTable(
+          "Comparative Changes In Equity",
+          List.of(
+              new PdfTableColumn("Line code", 1.0f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Line name", 1.5f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Kind", 0.7f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Opening", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Movement", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Closing", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Closing side", 0.8f, PdfTableColumn.CellAlignment.LEFT)),
+          report.comparativeRows().stream()
+              .map(
+                  row ->
+                      List.of(
+                          row.lineCode(),
+                          row.lineName(),
+                          PdfValueFormatter.displayLineRole(row.lineRole()),
+                          PdfValueFormatter.displayRowKind(row.synthetic()),
+                          row.closingBalance().netAmount().currencyUnit().code(),
+                          PdfValueFormatter.displayMoney(row.openingBalance().netAmount()),
+                          PdfValueFormatter.displayMoney(row.movement().netAmount()),
+                          PdfValueFormatter.displayMoney(row.closingBalance().netAmount()),
+                          PdfValueFormatter.displayBalanceSide(row.closingBalance().balanceSide())))
+              .toList());
+    }
+    if (!report.comparativeOpeningTotals().isEmpty()
+        || !report.comparativeMovementTotals().isEmpty()
+        || !report.comparativeClosingTotals().isEmpty()) {
+      pageWriter.writeTable(
+          "Comparative Equity Totals",
+          List.of(
+              new PdfTableColumn("Basis", 1.0f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Credit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Net", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
+              new PdfTableColumn("Side", 0.8f, PdfTableColumn.CellAlignment.LEFT)),
+          java.util.stream.Stream.concat(
+                  report.comparativeOpeningTotals().stream()
+                      .map(balance -> totalRow("Opening", balance)),
+                  java.util.stream.Stream.concat(
+                      report.comparativeMovementTotals().stream()
+                          .map(balance -> totalRow("Movement", balance)),
+                      report.comparativeClosingTotals().stream()
+                          .map(balance -> totalRow("Closing", balance))))
+              .toList());
+    }
   }
 
   private static List<String> totalRow(String basis, CurrencyBalance balance) {

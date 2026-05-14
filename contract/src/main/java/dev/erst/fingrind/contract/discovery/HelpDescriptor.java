@@ -18,6 +18,7 @@ public record HelpDescriptor(
     String description,
     List<String> usage,
     ContractResponse.BookModelDescriptor bookModel,
+    ContractResponse.AccountingBaselineDescriptor accountingBaseline,
     @Nullable RequestShapesDescriptor requestShapes,
     @Nullable PostingRequestTemplateDescriptor requestTemplate,
     @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
@@ -27,6 +28,7 @@ public record HelpDescriptor(
     List<ExitCodeDescriptor> exitCodes,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
+    ContractResponse.ExtensionSurfaceDescriptor extensionSurface,
     EnvironmentDescriptor environment)
     implements ContractDiscoveryDescriptor {
   /** Validates one help descriptor payload. */
@@ -36,11 +38,15 @@ public record HelpDescriptor(
     description = ContractDescriptorValidation.requireText(description, "description");
     usage = ContractDescriptorValidation.copyList(usage, "usage");
     bookModel = ContractDescriptorValidation.requireValue(bookModel, "bookModel");
+    accountingBaseline =
+        ContractDescriptorValidation.requireValue(accountingBaseline, "accountingBaseline");
     commands = ContractDescriptorValidation.copyList(commands, "commands");
     quickStart = ContractDescriptorValidation.copyList(quickStart, "quickStart");
     exitCodes = ContractDescriptorValidation.copyList(exitCodes, "exitCodes");
     preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
     currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
+    extensionSurface =
+        ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
     environment = ContractDescriptorValidation.requireValue(environment, "environment");
   }
 }

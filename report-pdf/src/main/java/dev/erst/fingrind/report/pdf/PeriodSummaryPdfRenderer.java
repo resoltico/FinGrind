@@ -12,12 +12,15 @@ final class PeriodSummaryPdfRenderer {
     Objects.requireNonNull(report, "report");
     pageWriter.writeKeyValueTable(
         "Summary",
-        List.of(
-            List.of("Effective date from", report.effectiveDateFrom().toString()),
-            List.of("Effective date to", report.effectiveDateTo().toString()),
-            List.of("Posting count", Integer.toString(report.postingCount())),
-            List.of("Posting line count", Integer.toString(report.postingLineCount())),
-            List.of("Accounts touched", Integer.toString(report.accountsTouched()))));
+        PdfStatementMetadataRows.reportParameters(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            List.of(
+                List.of("Effective date from", report.effectiveDateFrom().toString()),
+                List.of("Effective date to", report.effectiveDateTo().toString()),
+                List.of("Posting count", Integer.toString(report.postingCount())),
+                List.of("Posting line count", Integer.toString(report.postingLineCount())),
+                List.of("Accounts touched", Integer.toString(report.accountsTouched())))));
     pageWriter.writeTable(
         "Currency Totals",
         List.of(
@@ -34,7 +37,7 @@ final class PeriodSummaryPdfRenderer {
                         PdfValueFormatter.displayMoney(summary.totals().debitTotal()),
                         PdfValueFormatter.displayMoney(summary.totals().creditTotal()),
                         PdfValueFormatter.displayMoney(summary.totals().netAmount()),
-                        summary.totals().balanceSide().wireValue()))
+                        PdfValueFormatter.displayBalanceSide(summary.totals().balanceSide())))
             .toList());
     pageWriter.writeTable(
         "Account Activity",
@@ -56,15 +59,15 @@ final class PeriodSummaryPdfRenderer {
                     List.of(
                         row.account().accountCode().value(),
                         row.account().accountName().value(),
-                        row.account().accountType().wireValue(),
-                        row.account().accountRole().wireValue(),
-                        row.account().normalBalance().wireValue(),
-                        Boolean.toString(row.account().active()),
+                        PdfValueFormatter.displayAccountType(row.account().accountType()),
+                        PdfValueFormatter.displayAccountRole(row.account().accountRole()),
+                        PdfValueFormatter.displayNormalBalance(row.account().normalBalance()),
+                        PdfValueFormatter.displayBoolean(row.account().active()),
                         row.movement().netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(row.movement().debitTotal()),
                         PdfValueFormatter.displayMoney(row.movement().creditTotal()),
                         PdfValueFormatter.displayMoney(row.movement().netAmount()),
-                        row.movement().balanceSide().wireValue()))
+                        PdfValueFormatter.displayBalanceSide(row.movement().balanceSide())))
             .toList());
   }
 }

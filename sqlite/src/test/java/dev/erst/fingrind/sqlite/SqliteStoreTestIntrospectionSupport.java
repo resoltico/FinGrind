@@ -222,7 +222,7 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static AccountBalanceSnapshot published(AccountBalanceView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static TrialBalanceReport published(TrialBalanceView view) {
@@ -230,11 +230,11 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static AccountLedgerReport published(AccountLedgerView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static PeriodSummaryReport published(PeriodSummaryView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static List<DeclaredAccount> publishedAccounts(AccountRegistryPage page) {

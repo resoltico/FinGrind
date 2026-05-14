@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -14,6 +15,8 @@ import org.jspecify.annotations.Nullable;
 final class CliRequestMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec EXECUTE_PLAN_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.RESULT_DETAIL), List.of());
 
   private CliRequestMutationArguments() {}
 
@@ -38,9 +41,17 @@ final class CliRequestMutationArguments {
 
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseRequestBoundArguments(arguments);
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, EXECUTE_PLAN_ARGUMENTS);
+    @Nullable PlanResultDetail resultDetail = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      argumentIterator.next();
+      resultDetail = CliArgumentValueParser.requirePlanResultDetail(resultDetail, argumentIterator);
+    }
     return new ExecutePlan(
-        parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
+        parsedArguments.bookAccess(),
+        parsedArguments.optionalRequestFile().orElseThrow(),
+        resultDetail == null ? PlanResultDetail.SUMMARY : resultDetail);
   }
 
   static CliCommand parsePreflightEntryCommand(List<String> arguments) {

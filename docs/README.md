@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-05-14"
 route:
@@ -55,9 +55,9 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): exact `print-plan-template` scaffold capture
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal
-- [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with a per-step journal
-- [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with a bounded per-step journal
-- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response whose query steps retain pagination facts and structured row groups
+- [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
+- [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with `resultDetail: "full"` and a bounded per-step journal
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
 - [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 

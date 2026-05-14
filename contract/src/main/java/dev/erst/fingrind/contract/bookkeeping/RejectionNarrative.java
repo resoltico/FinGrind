@@ -103,6 +103,11 @@ public final class RejectionNarrative {
               .formatted(
                   rejectionClosedPeriod.attemptedEffectiveDate(),
                   rejectionClosedPeriod.closedThroughEffectiveDate());
+      case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
+          "Opening-balance postings are allowed only before the first committed posting in this book; the first blocking posting is '%s' on '%s'."
+              .formatted(
+                  rejectionWindowClosed.firstBlockingPostingKind().wireValue(),
+                  rejectionWindowClosed.firstBlockingEffectiveDate());
       case PostingRejection.OpeningBalanceTouchesNominalAccount openingBalanceNominal ->
           "Opening-balance postings may seed only asset, liability, or equity accounts; '%s' is '%s'."
               .formatted(

@@ -19,7 +19,11 @@ public record ChangesInEquityReport(
     List<ChangesInEquityRow> rows,
     List<CurrencyBalance> openingTotals,
     List<CurrencyBalance> movementTotals,
-    List<CurrencyBalance> closingTotals) {
+    List<CurrencyBalance> closingTotals,
+    List<ChangesInEquityRow> comparativeRows,
+    List<CurrencyBalance> comparativeOpeningTotals,
+    List<CurrencyBalance> comparativeMovementTotals,
+    List<CurrencyBalance> comparativeClosingTotals) {
   /** Validates one changes-in-equity report. */
   public ChangesInEquityReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -34,5 +38,13 @@ public record ChangesInEquityReport(
     openingTotals = ContractDescriptorValidation.copyList(openingTotals, "openingTotals");
     movementTotals = ContractDescriptorValidation.copyList(movementTotals, "movementTotals");
     closingTotals = ContractDescriptorValidation.copyList(closingTotals, "closingTotals");
+    comparativeRows = ContractDescriptorValidation.copyList(comparativeRows, "comparativeRows");
+    comparativeOpeningTotals =
+        ContractDescriptorValidation.copyList(comparativeOpeningTotals, "comparativeOpeningTotals");
+    comparativeMovementTotals =
+        ContractDescriptorValidation.copyList(
+            comparativeMovementTotals, "comparativeMovementTotals");
+    comparativeClosingTotals =
+        ContractDescriptorValidation.copyList(comparativeClosingTotals, "comparativeClosingTotals");
   }
 }

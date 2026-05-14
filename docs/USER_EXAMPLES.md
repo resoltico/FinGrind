@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: USER_EXAMPLES
 updated: "2026-05-14"
 route:
@@ -318,6 +318,7 @@ fingrind \
   execute-plan \
   --book-file ./acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
+  --result-detail full \
   --request-file ./ledger-plan-request.json
 ```
 
@@ -326,6 +327,9 @@ That plan:
 - declares cash and revenue
 - posts one balanced entry
 - asserts the resulting cash balance
+
+`execute-plan` defaults to bounded summary output. The examples above pass `--result-detail full`
+because the checked-in response fixtures below include the full execution journal.
 
 Checked-in plan examples:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
@@ -345,6 +349,7 @@ fingrind \
   execute-plan \
   --book-file ./acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
+  --result-detail full \
   --request-file ./ledger-plan-query-request.json
 ```
 
@@ -439,8 +444,9 @@ Checked-in report examples:
 
 These report commands keep JSON as the default machine surface, while `--output human` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
-`--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds but that
-artifact write succeeds, diagnostics emit an info message with the normalized written path. If the
+`--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
+is selected on stdout, the success envelope also publishes the normalized PDF under
+`artifacts[]`. Diagnostics emit an info message with the same normalized written path. If the
 artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
 diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.

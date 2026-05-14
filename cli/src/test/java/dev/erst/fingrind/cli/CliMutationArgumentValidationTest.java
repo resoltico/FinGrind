@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -353,5 +354,77 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
     assertEquals("--book-key-file", exception.argument());
     assertEquals(
         "--book-file and --book-key-file must not point to the same path.", exception.getMessage());
+  }
+
+  @Test
+  void parse_executePlanAcceptsResultDetailAndRejectsUnsupportedCommandArguments() {
+    ExecutePlan command =
+        assertInstanceOf(
+            ExecutePlan.class,
+            CliArguments.parse(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "plan.json",
+                  "--result-detail",
+                  "full"
+                }));
+
+    assertEquals(PlanResultDetail.FULL, command.resultDetail());
+
+    ExecutePlan defaultDetailCommand =
+        assertInstanceOf(
+            ExecutePlan.class,
+            CliArguments.parse(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "plan.json"
+                }));
+    assertEquals(PlanResultDetail.SUMMARY, defaultDetailCommand.resultDetail());
+
+    CliArgumentsException invalidDetail =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "execute-plan",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "plan.json",
+                      "--result-detail",
+                      "verbose"
+                    }));
+    assertEquals("--result-detail", invalidDetail.argument());
+
+    CliArgumentsException unsupportedArgument =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "execute-plan",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "plan.json",
+                      "--verbose"
+                    }));
+    assertEquals("--verbose", unsupportedArgument.argument());
+    assertEquals("Unsupported argument: --verbose", unsupportedArgument.getMessage());
   }
 }

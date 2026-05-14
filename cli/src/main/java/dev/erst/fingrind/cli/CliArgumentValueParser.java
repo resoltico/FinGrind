@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.BookEntityName;
@@ -212,6 +213,30 @@ final class CliArgumentValueParser {
           ProtocolOptions.OUTPUT, unsupportedOutputModeMessage(rawOutputMode, supportedModes));
     }
     return outputMode;
+  }
+
+  static PlanResultDetail requirePlanResultDetail(
+      @Nullable PlanResultDetail currentResultDetail, ListIterator<String> argumentIterator) {
+    if (currentResultDetail != null) {
+      throw invalid(
+          ProtocolOptions.RESULT_DETAIL, "Duplicate argument: " + ProtocolOptions.RESULT_DETAIL);
+    }
+    String rawValue = requireValue(argumentIterator, ProtocolOptions.RESULT_DETAIL);
+    try {
+      return PlanResultDetail.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          ProtocolOptions.RESULT_DETAIL,
+          "Unsupported result detail for "
+              + ProtocolOptions.RESULT_DETAIL
+              + ": "
+              + rawValue
+              + ". Accepted values: "
+              + String.join(
+                  ", ", dev.erst.fingrind.core.WireValue.wireValues(PlanResultDetail.class))
+              + ".",
+          exception);
+    }
   }
 
   private static String unsupportedOutputModeMessage(

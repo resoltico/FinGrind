@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
+import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -46,6 +47,11 @@ final class CliPostingRequestParser {
   private CliPostingRequestParser() {}
 
   static PostEntryCommand readPostEntryCommand(ObjectNode rootNode) {
+    rejectWrappedTopLevelPayload(
+        rootNode,
+        ProtocolLedgerPlanFields.Step.POSTING,
+        CliJsonRequestSchemas.POST_ENTRY_TOP_LEVEL_FIELDS,
+        "Posting request fields must be top-level for direct request files; remove the posting wrapper.");
     rejectForbiddenField(rootNode, ProtocolPostEntryFields.TopLevel.CORRECTION);
     rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.POST_ENTRY_TOP_LEVEL_FIELDS);
     ObjectNode provenanceNode =
@@ -112,6 +118,11 @@ final class CliPostingRequestParser {
   }
 
   static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
+    rejectWrappedTopLevelPayload(
+        rootNode,
+        ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT,
+        CliJsonRequestSchemas.DECLARE_ACCOUNT_FIELDS,
+        "Declare-account request fields must be top-level for direct request files; remove the declareAccount wrapper.");
     rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.DECLARE_ACCOUNT_FIELDS);
     return new DeclareAccountCommand(
         new AccountCode(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_CODE)),
@@ -188,5 +199,32 @@ final class CliPostingRequestParser {
               + fieldName);
     }
     return value;
+  }
+
+  private static void rejectWrappedTopLevelPayload(
+      ObjectNode rootNode,
+      String wrapperFieldName,
+      java.util.Set<String> nestedAcceptedFields,
+      String message) {
+    @Nullable JsonNode wrappedNode = nullableField(rootNode, wrapperFieldName);
+    if (wrappedNode == null || wrappedNode.isNull() || !wrappedNode.isObject()) {
+      return;
+    }
+    ObjectNode wrappedObject = requireObjectNode(wrappedNode, wrapperFieldName);
+    List<String> wrappedFields =
+        CliJsonFieldAccess.unexpectedFields(wrappedObject, null, nestedAcceptedFields);
+    if (!wrappedFields.isEmpty()) {
+      return;
+    }
+    List<String> topLevelAcceptedFields =
+        rootNode
+            .propertyStream()
+            .map(java.util.Map.Entry::getKey)
+            .filter(nestedAcceptedFields::contains)
+            .toList();
+    if (!topLevelAcceptedFields.isEmpty()) {
+      return;
+    }
+    throw new IllegalArgumentException(message);
   }
 }

@@ -21,14 +21,16 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly gradlew="${repo_root}/gradlew"
 readonly build_logic_dir="${repo_root}/gradle/build-logic"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
+readonly repo_hygiene_verifier="${repo_root}/scripts/verify-repo-hygiene.sh"
 
 print_usage() {
     printf '%s\n' \
         'Usage: ./scripts/run-quality-gates.sh [supported Gradle options]' \
         '' \
         'Runs the canonical Stage 1 verification surface:' \
-        '  1. ./gradlew check coverage' \
-        '  2. ./gradlew -p gradle/build-logic test' \
+        '  1. ./scripts/verify-repo-hygiene.sh' \
+        '  2. ./gradlew check coverage' \
+        '  3. ./gradlew -p gradle/build-logic test' \
         '' \
         'Any remaining arguments are forwarded to both Gradle invocations.' \
         'Use ./check.sh for the full six-stage repository gate.'
@@ -47,6 +49,10 @@ done
     printf 'error: missing executable Gradle wrapper at %s\n' "${gradlew}" >&2
     exit 1
 }
+[[ -x "${repo_hygiene_verifier}" ]] || {
+    printf 'error: missing executable repo hygiene verifier at %s\n' "${repo_hygiene_verifier}" >&2
+    exit 1
+}
 [[ -d "${build_logic_dir}" ]] || {
     printf 'error: missing included build-logic directory at %s\n' "${build_logic_dir}" >&2
     exit 1
@@ -61,5 +67,6 @@ source "${repo_lock_support}"
 trap cleanup_lock EXIT
 acquire_lock
 
+"${repo_hygiene_verifier}"
 "${gradlew}" check coverage "$@"
 "${gradlew}" -p "${build_logic_dir}" test "$@"
