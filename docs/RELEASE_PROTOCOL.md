@@ -576,9 +576,12 @@ can still perform one end-to-end bookkeeping/reporting loop, not just print disc
 anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
 mounted workspace.
 
-Because this verifier asserts human statement output, it is part of the published report contract,
-not just the container-publication machinery. When the human `trial-balance` layout changes —
-for example new bookkeeping columns appear — update
+Because this verifier asserts human statement output and drives a real mounted-book initialization
+and posting path, it is part of the published bookkeeping contract, not just the
+container-publication machinery. When the human `trial-balance` layout changes — for example new
+bookkeeping columns appear — or when the mounted workflow grammar changes — for example
+`open-book` starts requiring additional identity flags or `post-entry` starts requiring new
+request fields — update
 `scripts/verify-public-container-surface.sh` and
 `scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
 process where the operator-side verifier lags behind the published statement surface.

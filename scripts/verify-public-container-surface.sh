@@ -20,6 +20,9 @@ readonly image_name="${1:-}"
 readonly expected_version="${2:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
 readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
+readonly fixture_entity_name='Release Protocol Fixture'
+readonly fixture_functional_currency='EUR'
+readonly fixture_fiscal_year_start='01-01'
 docker_config_dir=''
 report_root=''
 
@@ -73,8 +76,9 @@ JSON
 {"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY"}
 JSON
 
-    cat > "${report_root}/posting.json" <<'JSON'
+cat > "${report_root}/posting.json" <<'JSON'
 {
+  "postingKind": "STANDARD",
   "effectiveDate": "2026-04-08",
   "lines": [
     {
@@ -108,10 +112,10 @@ verify_human_trial_balance() {
         '^Account[[:space:]]+\|[[:space:]]+Name[[:space:]]+\|[[:space:]]+Account type[[:space:]]+\|[[:space:]]+Account role[[:space:]]+\|[[:space:]]+Normal balance[[:space:]]+\|[[:space:]]+Active[[:space:]]+\|[[:space:]]+Currency[[:space:]]+\|[[:space:]]+Debit total[[:space:]]+\|[[:space:]]+Credit total[[:space:]]+\|[[:space:]]+Net amount[[:space:]]+\|[[:space:]]+Balance side[[:space:]]*$' \
         || die "published human trial balance did not render the expected column header"
     require_match "${human_output}" \
-        '^1000[[:space:]]+\|[[:space:]]+Cash[[:space:]]+\|[[:space:]]+ASSET[[:space:]]+\|[[:space:]]+ORDINARY[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]*$' \
+        '^1000[[:space:]]+\|[[:space:]]+Cash[[:space:]]+\|[[:space:]]+Asset[[:space:]]+\|[[:space:]]+Ordinary[[:space:]]+\|[[:space:]]+Debit[[:space:]]+\|[[:space:]]+Yes[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+Debit[[:space:]]*$' \
         || die "published human trial balance did not report the expected Cash trial-balance row"
     require_match "${human_output}" \
-        '^2000[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+REVENUE[[:space:]]+\|[[:space:]]+ORDINARY[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]*$' \
+        '^2000[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+Ordinary[[:space:]]+\|[[:space:]]+Credit[[:space:]]+\|[[:space:]]+Yes[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+Credit[[:space:]]*$' \
         || die "published human trial balance did not report the expected Revenue trial-balance row"
 }
 
@@ -124,7 +128,12 @@ verify_mounted_book_surface() {
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
         generate-book-key-file --book-key-file /work/book.key >/dev/null
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
-        open-book --book-file /work/book.sqlite --book-key-file /work/book.key >/dev/null
+        open-book \
+        --book-file /work/book.sqlite \
+        --book-key-file /work/book.key \
+        --entity-name "${fixture_entity_name}" \
+        --functional-currency "${fixture_functional_currency}" \
+        --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
