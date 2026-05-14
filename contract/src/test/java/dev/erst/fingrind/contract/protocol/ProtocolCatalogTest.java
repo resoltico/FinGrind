@@ -363,12 +363,7 @@ class ProtocolCatalogTest {
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         ProtocolCatalog.requiredSqliteCompileOptions());
     assertEquals(List.of(ProtocolSuccessStatus.OK), ProtocolCatalog.successStatuses());
-    assertEquals(
-        List.of(
-            ProtocolRejectionStatus.REJECTED,
-            ProtocolRejectionStatus.PLAN_REJECTED,
-            ProtocolRejectionStatus.PLAN_ASSERTION_FAILED),
-        ProtocolCatalog.rejectionStatuses());
+    assertEquals(List.of(ProtocolRejectionStatus.REJECTED), ProtocolCatalog.rejectionStatuses());
     assertEquals(
         "single-functional-currency-per-book", ProtocolCatalog.bookModel().currencyScope());
     assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());
@@ -426,7 +421,13 @@ class ProtocolCatalogTest {
             "postingId"),
         ProtocolLedgerPlanFields.stepFields());
     assertEquals(
-        List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "cursor"),
+        List.of(
+            "accountCode",
+            "effectiveDateFrom",
+            "effectiveDateTo",
+            "postingCoverage",
+            "limit",
+            "cursor"),
         ProtocolLedgerPlanFields.queryFields());
     assertEquals(
         List.of(

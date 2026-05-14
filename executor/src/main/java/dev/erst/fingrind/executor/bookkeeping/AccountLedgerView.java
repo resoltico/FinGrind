@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.util.List;
 import java.util.Objects;
 
@@ -9,12 +10,14 @@ import java.util.Objects;
 public record AccountLedgerView(
     RegisteredAccount account,
     EffectiveDateRange effectiveDateRange,
+    PostingCoverage postingCoverage,
     List<CurrencyBalance> openingBalances,
     List<AccountLedgerEntryView> entries,
     List<CurrencyBalance> closingBalances) {
   public AccountLedgerView {
     Objects.requireNonNull(account, "account");
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    Objects.requireNonNull(postingCoverage, "postingCoverage");
     Objects.requireNonNull(openingBalances, "openingBalances");
     Objects.requireNonNull(entries, "entries");
     Objects.requireNonNull(closingBalances, "closingBalances");

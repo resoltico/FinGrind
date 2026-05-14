@@ -20,8 +20,35 @@ final class IncomeStatementPdfRenderer {
             List.of(
                 List.of("Effective date from", report.effectiveDateFrom().toString()),
                 List.of("Effective date to", report.effectiveDateTo().toString()))));
-    for (var section : report.sections()) {
-      String sectionTitle = PdfValueFormatter.displayAccountTypeSection(section.accountType());
+    renderSections(pageWriter, report.sections(), "");
+    pageWriter.writeTable(
+        "Net Income Totals",
+        balanceSummaryColumns(),
+        report.netIncomeTotals().stream()
+            .map(IncomeStatementPdfRenderer::balanceSummaryRow)
+            .toList());
+    renderSections(pageWriter, report.comparativeSections(), "Comparative ");
+    if (!report.comparativeNetIncomeTotals().isEmpty()) {
+      pageWriter.writeTable(
+          "Comparative Net Income Totals",
+          balanceSummaryColumns(),
+          report.comparativeNetIncomeTotals().stream()
+              .map(IncomeStatementPdfRenderer::balanceSummaryRow)
+              .toList());
+    }
+  }
+
+  private static void renderSections(
+      PdfPageWriter pageWriter,
+      List<dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection> sections,
+      String titlePrefix)
+      throws IOException {
+    for (var section : sections) {
+      if (section.rows().isEmpty() && section.totals().isEmpty()) {
+        continue;
+      }
+      String sectionTitle =
+          titlePrefix + PdfValueFormatter.displayAccountTypeSection(section.accountType());
       pageWriter.writeTable(
           sectionTitle,
           List.of(
@@ -48,17 +75,13 @@ final class IncomeStatementPdfRenderer {
                           PdfValueFormatter.displayMoney(row.movement().netAmount()),
                           PdfValueFormatter.displayBalanceSide(row.movement().balanceSide())))
               .toList());
-      pageWriter.writeTable(
-          sectionTitle + " Totals",
-          balanceSummaryColumns(),
-          section.totals().stream().map(IncomeStatementPdfRenderer::balanceSummaryRow).toList());
+      if (!section.totals().isEmpty()) {
+        pageWriter.writeTable(
+            sectionTitle + " Totals",
+            balanceSummaryColumns(),
+            section.totals().stream().map(IncomeStatementPdfRenderer::balanceSummaryRow).toList());
+      }
     }
-    pageWriter.writeTable(
-        "Net Income Totals",
-        balanceSummaryColumns(),
-        report.netIncomeTotals().stream()
-            .map(IncomeStatementPdfRenderer::balanceSummaryRow)
-            .toList());
   }
 
   private static List<PdfTableColumn> balanceSummaryColumns() {

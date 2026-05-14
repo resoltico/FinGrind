@@ -163,6 +163,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of(
             ContractResponse.BookModelDescriptor.class,
+            ContractResponse.AccountingBaselineDescriptor.class,
             ContractResponse.FieldDescriptor.class,
             ContractResponse.ErrorDescriptor.class,
             ContractResponse.ResponseModelDescriptor.class,
@@ -172,7 +173,8 @@ class ContractProtocolVocabularyTest {
             ContractResponse.AccountRegistryDescriptor.class,
             ContractResponse.ReversalDescriptor.class,
             ContractResponse.PreflightDescriptor.class,
-            ContractResponse.CurrencyDescriptor.class),
+            ContractResponse.CurrencyDescriptor.class,
+            ContractResponse.ExtensionSurfaceDescriptor.class),
         ContractResponse.descriptorTypes());
     assertEquals(
         List.of(

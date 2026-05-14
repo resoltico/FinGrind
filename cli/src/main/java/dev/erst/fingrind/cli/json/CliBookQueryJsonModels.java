@@ -34,6 +34,8 @@ public interface CliBookQueryJsonModels {
 
   record PostingPayload(
       String postingId,
+      String postingKind,
+      String reversalState,
       String effectiveDate,
       String recordedAt,
       String actorId,
@@ -48,6 +50,8 @@ public interface CliBookQueryJsonModels {
       implements CliSuccessPayload {
     public PostingPayload {
       postingId = requireText(postingId, "postingId");
+      postingKind = requireText(postingKind, "postingKind");
+      reversalState = requireText(reversalState, "reversalState");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
       actorId = requireText(actorId, "actorId");
@@ -96,6 +100,7 @@ public interface CliBookQueryJsonModels {
   }
 
   record AccountBalancePayload(
+      CliReportJsonModels.ReportContextPayload context,
       String accountCode,
       String accountName,
       String accountType,
@@ -108,6 +113,7 @@ public interface CliBookQueryJsonModels {
       List<BalanceBucketPayload> balances)
       implements CliSuccessPayload {
     public AccountBalancePayload {
+      Objects.requireNonNull(context, "context");
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");

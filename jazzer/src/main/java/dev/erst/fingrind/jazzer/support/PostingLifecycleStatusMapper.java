@@ -21,6 +21,8 @@ public final class PostingLifecycleStatusMapper {
           PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.ClosedPeriodViolation _ ->
           PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.OpeningBalanceWindowClosed _ ->
+          PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
       case PostingRejection.RetainedEarningsAccountReserved _ ->

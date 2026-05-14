@@ -15,6 +15,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           AccountTypeConflictDetails,
           PostingKindDetails,
           FunctionalCurrencyMismatchDetails,
+          OpeningBalanceWindowClosedDetails,
           OpeningBalanceNominalAccountDetails,
           PriorPostingDetails,
           AccountRoleConflictDetails,
@@ -90,6 +91,16 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     public OpeningBalanceNominalAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
       accountType = requireText(accountType, "accountType");
+    }
+  }
+
+  record OpeningBalanceWindowClosedDetails(
+      String firstBlockingPostingKind, String firstBlockingEffectiveDate)
+      implements RejectionDetails {
+    public OpeningBalanceWindowClosedDetails {
+      firstBlockingPostingKind = requireText(firstBlockingPostingKind, "firstBlockingPostingKind");
+      firstBlockingEffectiveDate =
+          requireText(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
     }
   }
 

@@ -89,6 +89,7 @@ class ReportingContractTypesTest {
             trialBalanceQuery.effectiveDateTo(),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             trialBalanceQuery.postingCoverage(),
+            List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)),
             List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)));
     TrialBalanceResult.Reported reportedTrialBalance =
         new TrialBalanceResult.Reported(trialBalanceReport);
@@ -107,8 +108,10 @@ class ReportingContractTypesTest {
             BalanceSide.DEBIT);
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
+            ContractFixtures.bookIdentity(),
             CASH_ACCOUNT,
             accountLedgerQuery.effectiveDateRange(),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(),
             List.of(accountLedgerEntry),
             List.of(EUR_DEBIT_BALANCE));
@@ -121,8 +124,10 @@ class ReportingContractTypesTest {
         new PeriodSummaryQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     PeriodSummaryReport periodSummaryReport =
         new PeriodSummaryReport(
+            ContractFixtures.bookIdentity(),
             periodSummaryQuery.effectiveDateFrom(),
             periodSummaryQuery.effectiveDateTo(),
+            PostingCoverage.ALL_POSTING_KINDS,
             1,
             2,
             1,
@@ -148,7 +153,12 @@ class ReportingContractTypesTest {
     AccountBalanceResult.Reported reportedBalance =
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
-                CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE)));
+                ContractFixtures.bookIdentity(),
+                CASH_ACCOUNT,
+                Optional.empty(),
+                Optional.empty(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of(EUR_DEBIT_BALANCE)));
     AccountBalanceResult.Rejected rejectedBalance =
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateTo());
@@ -211,7 +221,8 @@ class ReportingContractTypesTest {
                         Optional.empty(),
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,
-                        nullOf()))
+                        nullOf(),
+                        List.of()))
             .getMessage());
     assertThrows(
         NullPointerException.class, () -> new TrialBalanceRow(nullOf(), EUR_DEBIT_BALANCE));
@@ -219,15 +230,25 @@ class ReportingContractTypesTest {
     assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountLedgerQuery(nullOf(), EffectiveDateRange.unbounded()));
+        () ->
+            new AccountLedgerQuery(
+                nullOf(), EffectiveDateRange.unbounded(), PostingCoverage.ALL_POSTING_KINDS));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), nullOf()));
+        () ->
+            new AccountLedgerQuery(
+                CASH_ACCOUNT.accountCode(), nullOf(), PostingCoverage.ALL_POSTING_KINDS));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountLedgerReport(
-                nullOf(), EffectiveDateRange.unbounded(), List.of(), List.of(), List.of()));
+                nullOf(),
+                nullOf(),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of(),
+                List.of(),
+                List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -242,8 +263,10 @@ class ReportingContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new PeriodSummaryReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-30"),
                 LocalDate.parse("2026-04-01"),
+                PostingCoverage.ALL_POSTING_KINDS,
                 0,
                 0,
                 0,
@@ -253,8 +276,10 @@ class ReportingContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new PeriodSummaryReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30"),
+                PostingCoverage.ALL_POSTING_KINDS,
                 -1,
                 0,
                 0,
@@ -264,8 +289,10 @@ class ReportingContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new PeriodSummaryReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30"),
+                PostingCoverage.ALL_POSTING_KINDS,
                 0,
                 -1,
                 0,
@@ -275,8 +302,10 @@ class ReportingContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new PeriodSummaryReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30"),
+                PostingCoverage.ALL_POSTING_KINDS,
                 0,
                 0,
                 -1,
@@ -291,7 +320,12 @@ class ReportingContractTypesTest {
     AccountBalanceResult.Reported reportedBalance =
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
-                CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE)));
+                ContractFixtures.bookIdentity(),
+                CASH_ACCOUNT,
+                Optional.empty(),
+                Optional.empty(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                List.of(EUR_DEBIT_BALANCE)));
     assertThrows(
         NullPointerException.class, () -> reportedBalance.fold(nullOf(), ignored -> "rejected"));
     assertThrows(

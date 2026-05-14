@@ -269,7 +269,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       PostingHistoryQuery postingsQuery =
           new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
       AccountBalanceCriteria balanceQuery =
-          new AccountBalanceCriteria(new AccountCode("1000"), null, null);
+          AccountBalanceCriteria.unbounded(new AccountCode("1000"));
       assertEquals(postingFactStore.inspectBook(), ((BookStore) postingFactStore).inspectBook());
       assertTrue(((BookStore) postingFactStore).inspectBook().initialized());
       assertEquals(
@@ -330,8 +330,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           ((BookStore) postingFactStore).trialBalance(trialBalanceCriteria(Optional.empty())));
       assertEquals(
           new AccountLedgerReport(
+              bookIdentity(),
               publishedAccount(revenueAccount),
               EffectiveDateRange.unbounded(),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               List.of(),
               List.of(
                   new AccountLedgerEntry(
@@ -349,7 +351,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               ((BookStore) postingFactStore)
                   .accountLedger(
                       new AccountLedgerCriteria(
-                          new AccountCode("2000"), EffectiveDateRange.unbounded()),
+                          new AccountCode("2000"),
+                          EffectiveDateRange.unbounded(),
+                          dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS),
                       revenueAccount)));
       assertEquals(
           postingFactStore.periodSummary(
@@ -385,7 +389,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
+                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       IllegalStateException periodSummaryFailure =
           assertThrows(
               IllegalStateException.class,
@@ -409,8 +413,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void queryView_requiresInitializedBookForDirectQueryCalls() throws Exception {
     PostingHistoryQuery postingsQuery =
         new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
-    AccountBalanceCriteria balanceQuery =
-        new AccountBalanceCriteria(new AccountCode("1000"), null, null);
+    AccountBalanceCriteria balanceQuery = AccountBalanceCriteria.unbounded(new AccountCode("1000"));
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
@@ -452,7 +455,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                       new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty())),
           () ->
               ((BookStore) postingFactStore)
-                  .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+                  .accountBalance(AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       setStoreDatabase(postingFactStore, null);
     }
   }

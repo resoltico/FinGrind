@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-05-14"
 route:
@@ -104,6 +104,19 @@ public enum OutputMode implements WireValue
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
+## `PlanResultDetail`
+
+`PlanResultDetail` is the public result-detail vocabulary for `execute-plan`.
+
+```java
+public enum PlanResultDetail implements WireValue
+```
+
+- Members: `SUMMARY`, `FULL`
+- Purpose: let callers choose between the default concise plan summary and the full per-step
+  execution journal without inventing renderer-local flags or ad hoc booleans
+- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
+
 ## `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode`
 
 This marker interface plus these enums are the canonical owners of public envelope success payload
@@ -134,7 +147,7 @@ public final class ProtocolOptions
 
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
-  posting lookup, and date filters
+  posting lookup, date filters, and `execute-plan` result detail
 
 ## `ProtocolContractSchemaKeys`
 
@@ -293,13 +306,15 @@ public final class SqliteRuntimeStateValidator
   consume the same protocol-owned runtime-surface contract instead of carrying private copies of
   those wire values
 
-## `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts`
+## `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts`
 
 These typed records publish FinGrind's hard public model facts.
 
 ```java
 public record BookModelFacts(...)
 public record CurrencyFacts(...)
+public record AccountingBaselineFacts(...)
+public record ExtensionSurfaceFacts(...)
 public record PreflightFacts(...)
 public record PlanExecutionFacts(...)
 ```
@@ -310,6 +325,13 @@ public record PlanExecutionFacts(...)
 - Related types: `BookBoundaryFact`, `BookEntityScopeFact`, `BookFilesystemFact`,
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
   and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
+- `AccountingBaselineFacts`: publishes the declared standards posture, doctrine sources, built-in
+  statement inventory, deliberate exclusions, small-entity position, organizational position, and
+  the ISO-vs-IFRS clarification as typed machine facts instead of burying that scope only in prose
+  documentation
+- `ExtensionSurfaceFacts`: publishes the currently implemented extension seams plus the adjacent
+  future contexts that are intentionally outside today's bookkeeping kernel, so machine consumers
+  do not mistake roadmap domains for already-pluggable seams
 
 ## `MonetaryAmount`
 
@@ -385,9 +407,9 @@ public final class MachineContract
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
-- Help behavior: `help()` now owns curated typed quick-start workflows keyed by published surface,
-  so required scaffold-edit and provenance-replacement steps stay visible to both human and
-  machine readers without forcing one POSIX-only command stream onto every distribution
+- Help behavior: `help()` now owns the canonical typed workflow and note inventory, while the CLI
+  transport deliberately narrows the root help surface to one concise overview and uses
+  `capabilities` as the deep doctrine/runtime contract
 - Command-help behavior: `help(OperationId)` and the CLI `<command> --help` alias both scope the
   rendered discovery payload to one selected operation, while the CLI help renderer rewrites
   canonical `fingrind ...` examples and repair hints to the active launcher surface such as
@@ -396,8 +418,9 @@ public final class MachineContract
   valid payload from the CLI alone
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
   documents with explicit replace-before-submit placeholders for `effectiveDate` and provenance,
-  so checked-in template fixtures remain byte-identical to live command output without publishing
-  stale commit-ready dates
+  while the CLI raw-template commands now route both help snippets and `print-request-template`
+  / `print-plan-template` through the same canonical serializer so checked-in template fixtures
+  remain byte-identical to live command output without publishing stale commit-ready dates
 
 ## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 
@@ -478,8 +501,9 @@ public final class ContractTemplates
 - `ContractResponse.BookModelDescriptor`, `.FieldDescriptor`, `.ErrorDescriptor`,
   `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
   `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
-  `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, and
-  `.CurrencyDescriptor` are the nested typed response descriptors
+  `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`,
+  `.AccountingBaselineDescriptor`, and `.ExtensionSurfaceDescriptor` are the nested typed
+  response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
 - `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
   template-descriptor inventory

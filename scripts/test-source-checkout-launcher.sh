@@ -96,6 +96,8 @@ open_stdout="${tmp_dir}/open.out"
 open_stderr="${tmp_dir}/open.err"
 raw_help_stdout="${tmp_dir}/raw-help.out"
 raw_help_stderr="${tmp_dir}/raw-help.err"
+raw_command_help_stdout="${tmp_dir}/raw-command-help.out"
+raw_command_help_stderr="${tmp_dir}/raw-command-help.err"
 raw_capabilities_stdout="${tmp_dir}/raw-capabilities.out"
 raw_capabilities_stderr="${tmp_dir}/raw-capabilities.err"
 raw_open_stdout="${tmp_dir}/raw-open.out"
@@ -191,12 +193,23 @@ java -jar "${raw_jar}" help --output human >"${raw_help_stdout}" 2>"${raw_help_s
     die "developer raw JAR help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer raw JAR help wrote diagnostics"
-grep -Fq 'Developer Raw JAR' "${raw_help_stdout}" ||
-    die "developer raw JAR help did not render the direct-Java quick start"
-grep -Fq './scripts/direct-java-cli.sh' "${raw_help_stdout}" ||
-    die "developer raw JAR help did not publish the direct Java launcher command"
+grep -Fq 'Getting Started' "${raw_help_stdout}" ||
+    die "developer raw JAR help did not render the front-door guidance section"
+if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
+    die "developer raw JAR help regressed back to the retired runtime-specific quick-start block"
+fi
 if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been called' "${raw_help_stderr}"; then
     die "developer raw JAR help leaked the Java native-access warning"
+fi
+
+java -jar "${raw_jar}" help open-book --output human >"${raw_command_help_stdout}" \
+    2>"${raw_command_help_stderr}" || die "developer raw JAR command help failed"
+
+[[ ! -s "${raw_command_help_stderr}" ]] || die "developer raw JAR command help wrote diagnostics"
+grep -Fq './scripts/direct-java-cli.sh open-book' "${raw_command_help_stdout}" ||
+    die "developer raw JAR command help did not publish the direct Java launcher command"
+if grep -Fq 'fingrind open-book' "${raw_command_help_stdout}"; then
+    die "developer raw JAR command help leaked the generic launcher token"
 fi
 
 "${raw_java_wrapper}" capabilities --output json >"${raw_capabilities_stdout}" 2>"${raw_capabilities_stderr}" ||

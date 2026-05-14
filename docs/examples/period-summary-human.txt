@@ -1,16 +1,20 @@
 Period Summary
 ==============
 
-Range              : 2026-04-07 to 2026-04-08
-Posting count      : 1
-Posting line count : 2
-Accounts touched   : 2
+Entity              : Acme Studio
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds
+Range               : 2026-04-07 to 2026-04-08
+Posting count       : 1
+Posting line count  : 2
+Accounts touched    : 2
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | ZERO
+EUR      |       10.00 |        10.00 |       0.00 | Balanced
 
-Account | Name    | Normal balance | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | DEBIT          | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
-2000    | Revenue | CREDIT         | EUR      |        0.00 |        10.00 |      10.00 | CREDIT
+Account | Name    | Account type | Account role | Normal balance | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+--------------+--------------+----------------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | Asset        | Ordinary     | Debit          |      EUR |       10.00 |         0.00 | 10.00      | Debit
+2000    | Revenue | Revenue      | Ordinary     | Credit         |      EUR |        0.00 |        10.00 | 10.00      | Credit

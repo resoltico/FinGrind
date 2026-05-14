@@ -12,10 +12,8 @@ class ProtocolWireVocabularyTest {
   void responseAndPlanEnums_publishStableWireValues() {
     assertEquals(List.of("ok"), ProtocolSuccessStatus.wireValues());
     assertEquals("ok", ProtocolSuccessStatus.OK.toString());
-    assertEquals(
-        List.of("rejected", "plan-rejected", "plan-assertion-failed"),
-        ProtocolRejectionStatus.wireValues());
-    assertEquals("plan-rejected", ProtocolRejectionStatus.PLAN_REJECTED.toString());
+    assertEquals(List.of("rejected"), ProtocolRejectionStatus.wireValues());
+    assertEquals("rejected", ProtocolRejectionStatus.REJECTED.toString());
     assertEquals(List.of("error"), ProtocolFailureStatus.wireValues());
     assertEquals("error", ProtocolFailureStatus.ERROR.toString());
     assertEquals(
@@ -25,6 +23,9 @@ class ProtocolWireVocabularyTest {
     assertEquals("atomic", PlanTransactionMode.ATOMIC.toString());
     assertEquals(List.of("halt-on-first-failure"), PlanFailurePolicy.wireValues());
     assertEquals("halt-on-first-failure", PlanFailurePolicy.HALT_ON_FIRST_FAILURE.toString());
+    assertEquals(List.of("summary", "full"), PlanResultDetail.wireValues());
+    assertEquals("summary", PlanResultDetail.SUMMARY.toString());
+    assertEquals("full", PlanResultDetail.FULL.toString());
     assertEquals(
         List.of("bundle-managed", "source-checkout-managed", "environment-configured"),
         SqliteRuntimeProvenance.wireValues());
@@ -54,8 +55,7 @@ class ProtocolWireVocabularyTest {
   void responseAndPlanEnums_parseKnownValuesAndRejectUnknownOnes() {
     assertEquals(ProtocolSuccessStatus.OK, ProtocolSuccessStatus.fromWireValue("ok"));
     assertEquals(
-        ProtocolRejectionStatus.PLAN_REJECTED,
-        ProtocolRejectionStatus.fromWireValue("plan-rejected"));
+        ProtocolRejectionStatus.REJECTED, ProtocolRejectionStatus.fromWireValue("rejected"));
     assertEquals(ProtocolFailureStatus.ERROR, ProtocolFailureStatus.fromWireValue("error"));
     assertEquals(
         ProtocolDiagnosticCode.PDF_EXPORTED, ProtocolDiagnosticCode.fromWireValue("pdf-exported"));
@@ -63,6 +63,8 @@ class ProtocolWireVocabularyTest {
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
         PlanFailurePolicy.fromWireValue("halt-on-first-failure"));
+    assertEquals(PlanResultDetail.SUMMARY, PlanResultDetail.fromWireValue("summary"));
+    assertEquals(PlanResultDetail.FULL, PlanResultDetail.fromWireValue("full"));
     assertEquals(
         SqliteRuntimeProvenance.BUNDLE_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
@@ -98,6 +100,7 @@ class ProtocolWireVocabularyTest {
         IllegalArgumentException.class, () -> PlanTransactionMode.fromWireValue("best-effort"));
     assertThrows(
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
+    assertThrows(IllegalArgumentException.class, () -> PlanResultDetail.fromWireValue("verbose"));
     assertThrows(
         IllegalArgumentException.class,
         () -> SqliteRuntimeProvenance.fromWireValue("maybe-managed"));

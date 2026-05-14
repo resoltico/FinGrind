@@ -227,6 +227,11 @@ class JazzerReplayInternalsTest {
             new PostingRejection.ClosedPeriodViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
+        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.OpeningBalanceWindowClosed(
+                PostingKind.STANDARD, java.time.LocalDate.parse("2026-04-08"))));
+    assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
         JazzerReplayDetailsMapper.rejectionStatus(
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
@@ -445,6 +450,7 @@ class JazzerReplayInternalsTest {
     assertEquals(ReplayOutcomeKind.SUCCESS, ReplayOutcomeKind.fromWireValue("success"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("opening-balance-window-closed"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("retained-earnings-account-reserved"));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
@@ -452,6 +458,9 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         PostingLifecycleStatus.fromWireValue("closed-period-violation"));
+    assertEquals(
+        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
+        PostingLifecycleStatus.fromWireValue("opening-balance-window-closed"));
     assertEquals(
         PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
         PostingLifecycleStatus.fromWireValue("retained-earnings-account-reserved"));

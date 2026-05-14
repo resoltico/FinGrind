@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-05-14"
 route:
@@ -200,11 +200,14 @@ hatch only for custom direct-Java launches that have been moved away from the pr
 layout.
 
 The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
-one canonical `cli/build/docker-context/` directory containing the internal application JAR, the
-runtime-module list, the rendered Docker entrypoint, the managed-SQLite contract, and a generated
-`docker-build-context-manifest.json`, so the public bundle and container image consume one trimmed
-Java runtime closure and one compile-option owner instead of deriving competing module sets or
-private Docker-only contract copies. That same build path resolves runtime-distribution,
+one canonical Docker build-context directory under the active CLI build root, plus a mirrored
+checkout-local copy at `cli/build/docker-context/` for plain inspection and manual use. That
+context now contains the Dockerfile, the internal application JAR, the runtime-module list, the
+rendered Docker entrypoint, the managed-SQLite contract, a generated
+`docker-build-context-manifest.json`, and a `source-root/` snapshot of every checked source/build
+input the container assembly depends on, so the public bundle and container image consume one
+trimmed Java runtime closure and one compile-option owner instead of deriving competing module
+sets or private Docker-only contract copies. That same build path resolves runtime-distribution,
 public-distribution, storage, and managed-SQLite facts from the protocol-owned contract resources
 through
 `DistributionContractReader`, which now stays a small facade over dedicated path, JSON, schema,
@@ -215,11 +218,13 @@ verification therefore all consume one canonical runtime-surface owner instead o
 literal values.
 The staged manifest now also records a SHA3-256 fingerprint of the current CLI, contract, core,
 executor, report, SQLite, and Gradle build inputs that feed that staged runtime. A plain
-`docker build` from the repository root therefore rejects stale staged contexts instead of
-silently packaging an older `fingrind.jar` or entrypoint script after local source edits.
-When Gradle stages into a relocated build root, the same task now mirrors that fresh context back
-into `cli/build/docker-context/` automatically, so repository-root `docker build` sees the same
-fresh payload that Gradle assembled instead of an older leftover tree under the checkout.
+`docker build` from that staged context therefore rejects stale assembly inputs instead of
+silently packaging an older `fingrind.jar`, entrypoint script, or Dockerfile after local source
+edits. Repository-root `docker build .` is intentionally unsupported; the hygiene boundary is the
+staged context, not the whole checkout. When Gradle stages into a relocated build root, the same
+task mirrors that fresh context back into `cli/build/docker-context/` automatically so manual
+checkout-local Docker work sees the same payload Gradle assembled instead of an older leftover
+tree under the repository.
 The Unix bundle and Docker acceptance entrypoints now also delegate their shared office-worker
 workflow through `scripts/release-smoke-support.sh`, whose Bash wrapper now delegates the shared
 command/fixture/assertion lifecycle into the single Python owner

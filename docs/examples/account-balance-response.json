@@ -1,6 +1,14 @@
 {
   "status": "ok",
   "payload": {
+    "context": {
+      "bookIdentity": {
+        "entityName": "Acme Studio",
+        "functionalCurrency": "EUR",
+        "fiscalYearStart": "01-01"
+      },
+      "postingCoverage": "all-posting-kinds"
+    },
     "accountCode": "1000",
     "accountName": "Cash",
     "accountType": "ASSET",

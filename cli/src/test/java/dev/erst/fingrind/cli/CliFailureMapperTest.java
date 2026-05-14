@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
@@ -162,9 +163,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals(
         OutputMode.HUMAN,
         new AccountBalance(
-                bookAccess,
-                new AccountBalanceQuery(new AccountCode("1000"), null, null),
-                humanReport)
+                bookAccess, AccountBalanceQuery.unbounded(new AccountCode("1000")), humanReport)
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
@@ -174,9 +173,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals(
         OutputMode.HUMAN,
         new AccountLedger(
-                bookAccess,
-                new AccountLedgerQuery(new AccountCode("1000"), null, null),
-                humanReport)
+                bookAccess, AccountLedgerQuery.unbounded(new AccountCode("1000")), humanReport)
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
@@ -195,7 +192,9 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
         new PostEntry(bookAccess, Path.of("request.json"), OutputMode.HUMAN).failureOutputMode());
     assertEquals(OutputMode.JSON, new PrintPlanTemplate().failureOutputMode());
     assertEquals(
-        OutputMode.JSON, new ExecutePlan(bookAccess, Path.of("plan.json")).failureOutputMode());
+        OutputMode.JSON,
+        new ExecutePlan(bookAccess, Path.of("plan.json"), PlanResultDetail.SUMMARY)
+            .failureOutputMode());
     assertEquals(OutputMode.HUMAN, CliExecutionPolicy.inferredFailureOutputMode(new String[0]));
     assertEquals(
         OutputMode.HUMAN,

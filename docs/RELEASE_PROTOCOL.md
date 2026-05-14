@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-05-14"
 route:
@@ -51,6 +51,7 @@ git branch --show-current
 git status --short
 git fetch origin --prune --tags
 git rev-list --left-right --count HEAD...origin/main
+./scripts/verify-repo-hygiene.sh
 ```
 
 Requirements before continuing:
@@ -62,7 +63,8 @@ Requirements before continuing:
   continue in place, but first inspect that diff deliberately and move immediately onto
   `release/X.Y.Z` before doing more release edits; do not keep release work floating on `main`
 - if the primary checkout has unrelated local work, is intentionally dirty for some other reason,
-  or lives on a problematic or slow filesystem, create a clean release worktree from the same
+  lives on a problematic or slow filesystem, or fails `./scripts/verify-repo-hygiene.sh` for a
+  reason other than intentional root-local scratch state, create a clean release worktree from the same
   repository and do the release there:
 
 ```bash
@@ -77,6 +79,20 @@ Use a Git worktree, not a disconnected clone, whenever possible. A worktree shar
 primary checkout and makes post-release reconciliation mechanically obvious. A separate clone is a
 last resort and, if used, must still be reconciled back into the primary checkout before the
 release session ends.
+
+If `./scripts/verify-repo-hygiene.sh` fails because the primary checkout's Git object store is
+corrupt or unreadable, a worktree is not sufficient because it shares the same repository
+metadata. In that case, bootstrap a clean release clone from the remote and move the intended
+release payload into it explicitly before running `./check.sh`:
+
+```bash
+REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+RELEASE_CLONE="$(mktemp -d -t fingrind-release-clone-XXXXXX)"
+git clone "https://github.com/${REPO}.git" "$RELEASE_CLONE"
+cd "$RELEASE_CLONE"
+git fetch origin --prune --tags
+git checkout -b release/X.Y.Z origin/main
+```
 
 If the primary checkout has unpublished local work, decide before the release whether that work is
 real or stale. Real work that is not part of this release must move onto a named branch or
@@ -115,7 +131,10 @@ verification in the same checkout. Either wait for the active owner to finish, o
 release payload into a clean worktree and run the release gate there. A live lock owner is a
 checkout-availability problem, not proof that the release payload is bad.
 
-Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
+Run `./scripts/verify-repo-hygiene.sh`. It must exit 0. If it fails, repair the checkout or
+move the release into a clean clone before proceeding.
+
+Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves
 through the normal Gradle verification path; there is no mutable alias-verifier sidecar anymore.
 

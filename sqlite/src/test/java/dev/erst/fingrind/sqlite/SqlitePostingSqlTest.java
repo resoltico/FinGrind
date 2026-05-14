@@ -1,19 +1,25 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -60,7 +66,11 @@ class SqlitePostingSqlTest {
   void loadAccountLinesForBalance_includesOnlyRequestedDateFilters() {
     String unfiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
-            new AccountBalanceCriteria(new AccountCode("1000"), null, null));
+            AccountBalanceCriteria.unbounded(new AccountCode("1000")));
+    String nonClosingOnly =
+        SqlitePostingSql.loadAccountLinesForBalance(
+            AccountBalanceCriteria.unbounded(
+                new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS));
     String fullyFiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
             new AccountBalanceCriteria(
@@ -70,6 +80,8 @@ class SqlitePostingSqlTest {
 
     assertFalse(unfiltered.contains("posting_fact.effective_date >= ?"));
     assertFalse(unfiltered.contains("posting_fact.effective_date <= ?"));
+    assertFalse(unfiltered.contains("posting_fact.posting_kind <> ?"));
+    assertTrue(nonClosingOnly.contains(" and posting_fact.posting_kind <> ?"));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date >= ?"));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date <= ?"));
   }
@@ -85,7 +97,11 @@ class SqlitePostingSqlTest {
                 Optional.of(LocalDate.parse("2026-04-30"))));
     String unboundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerCriteria(new AccountCode("1000"), null, null));
+            AccountLedgerCriteria.unbounded(new AccountCode("1000")));
+    String nonClosingLedger =
+        SqlitePostingSql.listPostingsForAccountLedger(
+            AccountLedgerCriteria.unbounded(
+                new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS));
     String lowerBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerCriteria(
@@ -106,6 +122,8 @@ class SqlitePostingSqlTest {
 
     assertFalse(unboundedLedger.contains("effective_date >= ?"));
     assertFalse(unboundedLedger.contains("effective_date <= ?"));
+    assertFalse(unboundedLedger.contains("posting_fact.posting_kind <> ?"));
+    assertTrue(nonClosingLedger.contains(" and posting_fact.posting_kind <> ?"));
     assertTrue(lowerBoundLedger.contains(" and effective_date >= ?"));
     assertFalse(lowerBoundLedger.contains("effective_date <= ?"));
     assertFalse(upperBoundLedger.contains("effective_date >= ?"));
@@ -132,6 +150,10 @@ class SqlitePostingSqlTest {
 
   @Test
   void loadAccountTotals_includesRequestedCoverageAndDateBounds() {
+    String queryWithoutEffectiveDateTo =
+        SqlitePostingSql.loadAccountTotals(
+            new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
+                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS));
     String unboundedAllPostingKinds =
         SqlitePostingSql.loadAccountTotals(
             EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS);
@@ -151,6 +173,7 @@ class SqlitePostingSqlTest {
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
+    assertFalse(queryWithoutEffectiveDateTo.contains("posting_fact.effective_date <= ?"));
 
     assertTrue(toOnlyNonClosing.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
     assertFalse(toOnlyNonClosing.contains("posting_fact.effective_date >= ?"));
@@ -161,6 +184,35 @@ class SqlitePostingSqlTest {
 
     assertTrue(boundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
     assertTrue(boundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
+  }
+
+  @Test
+  void loadPeriodSummaryLines_andBalanceOrderingHonorPostingCoverageBranches() {
+    String allPostingKinds =
+        SqlitePostingSql.loadPeriodSummaryLines(
+            new PeriodSummaryCriteria(
+                LocalDate.parse("2026-04-01"),
+                LocalDate.parse("2026-04-30"),
+                PostingCoverage.ALL_POSTING_KINDS));
+    String nonClosingOnly =
+        SqlitePostingSql.loadPeriodSummaryLines(
+            new PeriodSummaryCriteria(
+                LocalDate.parse("2026-04-01"),
+                LocalDate.parse("2026-04-30"),
+                PostingCoverage.NON_CLOSING_POSTINGS));
+    List<CurrencyBalance> sortedBalances =
+        List.of(
+                CurrencyBalance.ofTotals(Money.parse("USD", "1.00"), Money.parse("USD", "0.00")),
+                CurrencyBalance.ofTotals(Money.parse("EUR", "1.00"), Money.parse("EUR", "0.00")))
+            .stream()
+            .sorted(SqliteReportRowValues.BALANCE_ORDER)
+            .toList();
+
+    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> ?"));
+    assertTrue(nonClosingOnly.contains(" and posting_fact.posting_kind <> ?"));
+    assertEquals(BalanceSide.DEBIT, sortedBalances.getFirst().balanceSide());
+    assertEquals("EUR", sortedBalances.getFirst().netAmount().currencyUnit().code());
+    assertEquals("USD", sortedBalances.getLast().netAmount().currencyUnit().code());
   }
 
   @Test

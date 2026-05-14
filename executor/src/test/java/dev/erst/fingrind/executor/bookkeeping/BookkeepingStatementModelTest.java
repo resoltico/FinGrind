@@ -268,6 +268,7 @@ class BookkeepingStatementModelTest {
             Optional.of(LocalDate.parse("2026-05-12")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-05-12")),
             PostingCoverage.ALL_POSTING_KINDS,
+            financialPositionSections,
             financialPositionSections);
     IncomeStatementView incomeStatementView =
         new IncomeStatementView(
@@ -277,6 +278,8 @@ class BookkeepingStatementModelTest {
             EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
             PostingCoverage.NON_CLOSING_POSTINGS,
             incomeSections,
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            incomeSections,
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
     ChangesInEquityView changesInEquityView =
         new ChangesInEquityView(
@@ -285,6 +288,10 @@ class BookkeepingStatementModelTest {
             LocalDate.parse("2026-05-12"),
             EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
             PostingCoverage.ALL_POSTING_KINDS,
+            equityRows,
+            List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             equityRows,
             List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
@@ -337,6 +344,8 @@ class BookkeepingStatementModelTest {
                 EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
                 PostingCoverage.NON_CLOSING_POSTINGS,
                 List.of(),
+                List.of(),
+                List.of(),
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
@@ -347,6 +356,10 @@ class BookkeepingStatementModelTest {
                 LocalDate.parse("2026-05-01"),
                 EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
                 PostingCoverage.ALL_POSTING_KINDS,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

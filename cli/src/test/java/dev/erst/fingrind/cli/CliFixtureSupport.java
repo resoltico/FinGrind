@@ -139,9 +139,11 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   protected static AccountBalanceSnapshot accountBalanceSnapshot(
       DeclaredAccount account, CurrencyBalance balance) {
     return new AccountBalanceSnapshot(
+        bookIdentity(),
         account,
         Optional.of(LocalDate.parse("2026-04-01")),
         Optional.of(LocalDate.parse("2026-04-30")),
+        allPostingKinds(),
         List.of(balance));
   }
 
@@ -152,14 +154,17 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
         allPostingKinds(),
-        List.of(new TrialBalanceRow(account, balance)));
+        List.of(new TrialBalanceRow(account, balance)),
+        List.of());
   }
 
   protected static AccountLedgerReport accountLedgerReport(
       DeclaredAccount account, PostingFact postingFact, CurrencyBalance balance) {
     return new AccountLedgerReport(
+        bookIdentity(),
         account,
         EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        allPostingKinds(),
         List.of(balance),
         List.of(
             new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT)),
@@ -169,8 +174,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   protected static AccountLedgerReport selfLedgerReport(
       DeclaredAccount account, PostingFact postingFact) {
     return new AccountLedgerReport(
+        bookIdentity(),
         account,
         EffectiveDateRange.unbounded(),
+        allPostingKinds(),
         List.of(),
         List.of(
             new AccountLedgerEntry(
@@ -184,8 +191,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   protected static PeriodSummaryReport periodSummaryReport(
       DeclaredAccount revenueAccount, CurrencyBalance balance) {
     return new PeriodSummaryReport(
+        bookIdentity(),
         LocalDate.parse("2026-04-01"),
         LocalDate.parse("2026-04-30"),
+        allPostingKinds(),
         1,
         2,
         2,
@@ -208,7 +217,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z")),
-                CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))));
+                CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
+        List.of());
   }
 
   protected static dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot
@@ -222,9 +232,11 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             true,
             Instant.parse("2026-04-07T12:00:00Z"));
     return new dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot(
+        bookIdentity(),
         cashAccount,
         Optional.of(LocalDate.parse("2026-04-01")),
         Optional.of(LocalDate.parse("2026-04-30")),
+        allPostingKinds(),
         List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
   }
 
@@ -239,9 +251,11 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             true,
             Instant.parse("2026-04-07T12:00:00Z"));
     return new dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport(
+        bookIdentity(),
         cashAccount,
         new dev.erst.fingrind.core.EffectiveDateRange.Bounded(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        allPostingKinds(),
         List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"))),
         List.of(),
         List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
@@ -250,8 +264,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   protected static dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport
       samplePeriodSummaryReport() {
     return new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport(
+        bookIdentity(),
         LocalDate.parse("2026-04-01"),
         LocalDate.parse("2026-04-30"),
+        allPostingKinds(),
         1,
         2,
         1,
@@ -262,11 +278,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   }
 
   protected static FinancialPositionReport sampleFinancialPositionReport() {
-    return new FinancialPositionReport(
-        bookIdentity(),
-        Optional.of(LocalDate.parse("2026-04-30")),
-        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
-        allPostingKinds(),
+    List<FinancialPositionSection> sections =
         List.of(
             new FinancialPositionSection(
                 AccountType.ASSET,
@@ -289,18 +301,20 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         Optional.of(AccountRole.RETAINED_EARNINGS),
                         false,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
-                List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))))));
+                List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))));
+    return new FinancialPositionReport(
+        bookIdentity(),
+        Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
+        sections,
+        sections);
   }
 
   protected static IncomeStatementReport sampleIncomeStatementReport() {
     CurrencyBalance revenueMovement =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
-    return new IncomeStatementReport(
-        bookIdentity(),
-        LocalDate.parse("2026-04-01"),
-        LocalDate.parse("2026-04-30"),
-        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-        standardOnly(),
+    List<IncomeStatementSection> sections =
         List.of(
             new IncomeStatementSection(
                 AccountType.REVENUE,
@@ -312,7 +326,16 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         Optional.of(AccountRole.ORDINARY),
                         false,
                         revenueMovement)),
-                List.of(revenueMovement))),
+                List.of(revenueMovement)));
+    return new IncomeStatementReport(
+        bookIdentity(),
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        standardOnly(),
+        sections,
+        List.of(revenueMovement),
+        sections,
         List.of(revenueMovement));
   }
 
@@ -323,12 +346,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
     CurrencyBalance closingBalance =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
-    return new ChangesInEquityReport(
-        bookIdentity(),
-        LocalDate.parse("2026-04-01"),
-        LocalDate.parse("2026-04-30"),
-        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-        allPostingKinds(),
+    List<ChangesInEquityRow> rows =
         List.of(
             new ChangesInEquityRow(
                 "3200",
@@ -338,7 +356,18 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 false,
                 openingBalance,
                 movementBalance,
-                closingBalance)),
+                closingBalance));
+    return new ChangesInEquityReport(
+        bookIdentity(),
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
+        rows,
+        List.of(openingBalance),
+        List.of(movementBalance),
+        List.of(closingBalance),
+        rows,
         List.of(openingBalance),
         List.of(movementBalance),
         List.of(closingBalance));

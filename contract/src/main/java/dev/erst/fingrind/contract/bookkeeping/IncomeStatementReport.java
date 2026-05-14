@@ -17,7 +17,9 @@ public record IncomeStatementReport(
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<IncomeStatementSection> sections,
-    List<CurrencyBalance> netIncomeTotals) {
+    List<CurrencyBalance> netIncomeTotals,
+    List<IncomeStatementSection> comparativeSections,
+    List<CurrencyBalance> comparativeNetIncomeTotals) {
   /** Validates one income-statement report. */
   public IncomeStatementReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -30,5 +32,10 @@ public record IncomeStatementReport(
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = ContractDescriptorValidation.copyList(sections, "sections");
     netIncomeTotals = ContractDescriptorValidation.copyList(netIncomeTotals, "netIncomeTotals");
+    comparativeSections =
+        ContractDescriptorValidation.copyList(comparativeSections, "comparativeSections");
+    comparativeNetIncomeTotals =
+        ContractDescriptorValidation.copyList(
+            comparativeNetIncomeTotals, "comparativeNetIncomeTotals");
   }
 }

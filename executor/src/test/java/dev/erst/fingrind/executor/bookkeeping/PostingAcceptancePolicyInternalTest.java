@@ -50,6 +50,24 @@ class PostingAcceptancePolicyInternalTest {
   void isInternalSystemPosting_distinguishesSystemDraftsAndUnknownRequestShapes() {
     assertTrue(
         PostingAcceptancePolicy.isInternalSystemPosting(
+            new PostingCommand(
+                PostingKind.PERIOD_CLOSE,
+                new JournalEntry(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
+                        line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+                PostingLineageModel.direct(),
+                new RequestProvenance(
+                    new ActorId("actor-1"),
+                    ActorType.SYSTEM,
+                    new CommandId("command-close"),
+                    new IdempotencyKey("idem-system-command"),
+                    new CausationId("cause-close"),
+                    Optional.of(new CorrelationId("corr-close"))),
+                SourceChannel.SYSTEM)));
+    assertTrue(
+        PostingAcceptancePolicy.isInternalSystemPosting(
             draft(SourceChannel.SYSTEM, "idem-system")));
     assertFalse(
         PostingAcceptancePolicy.isInternalSystemPosting(draft(SourceChannel.CLI, "idem-cli")));

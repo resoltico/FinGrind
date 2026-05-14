@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER
 updated: "2026-05-14"
 route:
@@ -182,10 +182,36 @@ FinGrind's current public model is:
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book
-- `./gradlew` relocates per-checkout project cache, included build output, and JaCoCo execution
-  data outside the checkout automatically, and it also relocates the project `build/` tree itself
-  when the repo lives on a fragile mounted filesystem such as `smbfs`, so contributor
-  verification can still run there; local disk remains the fastest path
+- `./gradlew` relocates per-checkout project cache, included build output, JaCoCo execution
+  data, and ordinary project `build/` trees outside the checkout automatically, so source roots do
+  not double as transient build caches; local disk remains the fastest path, but mounted
+  filesystems no longer get special-case build-tree behavior
+
+## Repo Hygiene
+
+Repository-root policy:
+- the checkout root is reserved for first-class project structure plus explicit ignored local-state
+  roots such as `tmp/`, `.gradle/`, and other declared developer-tool directories
+- temporary investigation state belongs under `tmp/`, not beside product modules or root docs
+- unexpected top-level entries such as ad hoc date directories, stray flag-shaped names, or root
+  `.DS_Store` files are verification failures
+
+Canonical commands:
+- `./scripts/verify-repo-hygiene.sh` verifies the root boundary and can print a local-state size
+  report with `--report-local-state`; the report now classifies each local-state root as generated
+  state, tool state, or scratch state and tells you which cleanup flag removes it
+- `./scripts/clean-repo-hygiene.sh` removes empty unexpected root entries and Finder droppings; use
+  `--purge-generated-state` to prune repo-owned generated caches, `--purge-tool-state` to discard
+  ignored tool/editor state such as `.claude/` or `.vscode/`, and `--purge-tmp` when you want to
+  clear the scratch tree explicitly
+
+Generated-state stance:
+- wrapper-owned Gradle project caches, JaCoCo data, included-build output, and ordinary build trees
+  belong outside the checkout by default
+- some explicitly mirrored consumer surfaces such as distribution or Docker context artifacts may
+  still appear under owned module paths when their contract requires a checked-out path
+- external tool state such as `.claude/` or `.vscode/` is ignored local state, not part of the
+  repository source footprint
 
 ## Foundations
 

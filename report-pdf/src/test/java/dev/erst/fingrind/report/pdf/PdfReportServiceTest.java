@@ -1,6 +1,7 @@
 package dev.erst.fingrind.report.pdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,7 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.JournalLine.EntrySide;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -72,7 +74,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.36.0", CLOCK);
+      new PdfReportService("FinGrind", "0.37.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new BookEntityName("Acme Studio"),
@@ -89,9 +91,11 @@ class PdfReportServiceTest {
     byte[] accountBalancePdf =
         PDF_REPORT_SERVICE.renderAccountBalance(
             new AccountBalanceSnapshot(
+                BOOK_IDENTITY,
                 CASH_ACCOUNT,
                 Optional.of(LocalDate.parse("2026-04-01")),
                 Optional.of(LocalDate.parse("2026-04-30")),
+                PostingCoverage.ALL_POSTING_KINDS,
                 List.of(
                     balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT),
                     balance("USD", "500.00", "100.00", "400.00", BalanceSide.DEBIT))));
@@ -108,7 +112,11 @@ class PdfReportServiceTest {
                         balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)),
                     new TrialBalanceRow(
                         REVENUE_ACCOUNT,
-                        balance("EUR", "10.00", "1250.00", "1240.00", BalanceSide.CREDIT)))));
+                        balance("EUR", "10.00", "1250.00", "1240.00", BalanceSide.CREDIT))),
+                List.of(
+                    new TrialBalanceRow(
+                        CASH_ACCOUNT,
+                        balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT)))));
     assertPdfMetadata(accountBalancePdf, "Account Balance", true);
     assertPdfMetadata(trialBalancePdf, "Trial Balance", false);
     assertTrue(extractedText(accountBalancePdf).contains("Cash on Hand and Bank Balances"));
@@ -118,6 +126,10 @@ class PdfReportServiceTest {
     assertTrue(trialBalanceText.contains("Acme Studio"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
+    assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
+    assertTrue(trialBalanceText.contains("Asset"));
+    assertTrue(trialBalanceText.contains("Ordinary"));
+    assertTrue(trialBalanceText.contains("Yes"));
     assertTrue(trialBalanceText.contains("Subscription Revenue from"));
     assertTrue(trialBalanceText.contains("Enterprise Customers"));
   }
@@ -126,16 +138,20 @@ class PdfReportServiceTest {
   void renderAccountLedgerAndPeriodSummaryPaginateLongTables() throws IOException {
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
+            BOOK_IDENTITY,
             CASH_ACCOUNT,
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO)),
             ledgerEntries(72),
             List.of(balance("EUR", "3600.00", "0.00", "3600.00", BalanceSide.DEBIT)));
     PeriodSummaryReport periodSummaryReport =
         new PeriodSummaryReport(
+            BOOK_IDENTITY,
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            PostingCoverage.ALL_POSTING_KINDS,
             72,
             144,
             72,
@@ -147,10 +163,95 @@ class PdfReportServiceTest {
     byte[] periodSummaryPdf = PDF_REPORT_SERVICE.renderPeriodSummary(periodSummaryReport);
     assertPdfPageCountAtLeast(accountLedgerPdf, 2);
     assertPdfPageCountAtLeast(periodSummaryPdf, 2);
-    assertTrue(extractedText(accountLedgerPdf).contains("Ledger Entries"));
-    assertTrue(extractedText(accountLedgerPdf).contains("Closing Balances"));
-    assertTrue(extractedText(periodSummaryPdf).contains("Account Activity"));
-    assertTrue(extractedText(periodSummaryPdf).contains("Accounts touched"));
+    String accountLedgerText = extractedText(accountLedgerPdf);
+    String periodSummaryText = extractedText(periodSummaryPdf);
+    assertTrue(accountLedgerText.contains("Acme Studio"));
+    assertTrue(accountLedgerText.contains("All posting kinds"));
+    assertTrue(accountLedgerText.contains("Classification"));
+    assertTrue(accountLedgerText.contains("Role and polarity"));
+    assertTrue(accountLedgerText.contains("Effective date range"));
+    assertTrue(accountLedgerText.contains("Ledger Entries"));
+    assertFalse(accountLedgerText.contains("Opening Balances"));
+    assertTrue(accountLedgerText.contains("Closing Balances"));
+    assertTrue(accountLedgerText.contains("1 / "));
+    assertTrue(periodSummaryText.contains("Acme Studio"));
+    assertTrue(periodSummaryText.contains("All posting kinds"));
+    assertTrue(periodSummaryText.contains("Account Activity"));
+    assertTrue(periodSummaryText.contains("Accounts touched"));
+    assertTrue(periodSummaryText.contains("Yes"));
+    assertTrue(periodSummaryText.contains("1 / "));
+  }
+
+  @Test
+  void renderAccountLedgerIncludesMeaningfulOpeningBalancesAndReversalSemantics()
+      throws IOException {
+    PostingFact reversalPosting =
+        new PostingFact(
+            new PostingId("019e26ff-0000-7000-8000-000000000001"),
+            new JournalEntry(
+                LocalDate.parse("2026-04-02"),
+                List.of(
+                    new JournalLine(
+                        CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "100.00")),
+                    new JournalLine(
+                        REVENUE_ACCOUNT.accountCode(), EntrySide.DEBIT, money("EUR", "100.00")))),
+            PostingLineage.reversal(
+                new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000000")),
+                new ReversalReason("duplicate-charge")),
+            PostingKind.STANDARD,
+            new CommittedProvenance(
+                new RequestProvenance(
+                    new ActorId("office-worker"),
+                    ActorType.HUMAN,
+                    new CommandId("command-reversal"),
+                    new IdempotencyKey("idem-reversal"),
+                    new CausationId("cause-reversal"),
+                    Optional.of(new CorrelationId("corr-reversal"))),
+                Instant.parse("2026-04-19T10:15:45Z"),
+                SourceChannel.CLI));
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            BOOK_IDENTITY,
+            CASH_ACCOUNT,
+            new EffectiveDateRange.Bounded(
+                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(balance("EUR", "250.00", "0.00", "250.00", BalanceSide.DEBIT)),
+            List.of(
+                new AccountLedgerEntry(
+                    reversalPosting,
+                    balance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT),
+                    money("EUR", "150.00"),
+                    BalanceSide.DEBIT)),
+            List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
+
+    String accountLedgerText =
+        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+
+    assertTrue(accountLedgerText.contains("Opening Balances"));
+    assertTrue(accountLedgerText.contains("250.00"));
+    assertTrue(accountLedgerText.contains("Reversal state"));
+    assertTrue(accountLedgerText.contains("Reversal target"));
+  }
+
+  @Test
+  void renderAccountLedgerTreatsCreditOnlyOpeningBalancesAsMeaningful() throws IOException {
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            BOOK_IDENTITY,
+            CASH_ACCOUNT,
+            new EffectiveDateRange.Bounded(
+                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)));
+
+    String accountLedgerText =
+        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+
+    assertTrue(accountLedgerText.contains("Opening Balances"));
+    assertTrue(accountLedgerText.contains("25.00"));
   }
 
   @Test
@@ -172,7 +273,19 @@ class PdfReportServiceTest {
                             Optional.of(AccountRole.ORDINARY),
                             false,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
-                    List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))));
+                    List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Prior Cash and Cash Equivalents",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT)))));
     IncomeStatementReport incomeStatementReport =
         new IncomeStatementReport(
             BOOK_IDENTITY,
@@ -192,7 +305,20 @@ class PdfReportServiceTest {
                             false,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
-            List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)));
+            List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)),
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Prior Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT))),
+                    List.of(balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT)))),
+            List.of(balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT)));
     ChangesInEquityReport changesInEquityReport =
         new ChangesInEquityReport(
             BOOK_IDENTITY,
@@ -212,7 +338,20 @@ class PdfReportServiceTest {
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
             List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)),
             List.of(balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT)),
-            List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)));
+            List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)),
+            List.of(
+                new ChangesInEquityRow(
+                    "3000",
+                    "Prior Owner Capital",
+                    Optional.of(AccountType.EQUITY),
+                    Optional.of(AccountRole.ORDINARY),
+                    false,
+                    balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT))),
+            List.of(balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)));
 
     byte[] financialPositionPdf =
         PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport);
@@ -229,24 +368,216 @@ class PdfReportServiceTest {
     assertTrue(financialPositionText.contains("Financial Position"));
     assertTrue(financialPositionText.contains("Acme Studio"));
     assertTrue(financialPositionText.contains("All posting kinds"));
-    assertTrue(financialPositionText.contains("ORDINARY"));
+    assertTrue(financialPositionText.contains("Ordinary"));
+    assertTrue(financialPositionText.contains("Comparative Assets"));
+    assertTrue(financialPositionText.contains("Prior Cash and Cash Equivalents"));
     assertTrue(incomeStatementText.contains("Subscription Revenue"));
     assertTrue(incomeStatementText.contains("Income Statement"));
     assertTrue(incomeStatementText.contains("Non-closing postings"));
-    assertTrue(incomeStatementText.contains("ORDINARY"));
+    assertTrue(incomeStatementText.contains("Ordinary"));
+    assertTrue(incomeStatementText.contains("Comparative Revenue"));
+    assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
+    assertTrue(incomeStatementText.contains("Prior Subscription Revenue"));
     assertTrue(changesInEquityText.contains("Owner Capital"));
     assertTrue(changesInEquityText.contains("Changes In Equity"));
     assertTrue(changesInEquityText.contains("Acme Studio"));
-    assertTrue(changesInEquityText.contains("ORDINARY"));
+    assertTrue(changesInEquityText.contains("Ordinary"));
+    assertTrue(changesInEquityText.contains("Comparative Changes In Equity"));
+    assertTrue(changesInEquityText.contains("Comparative Equity Totals"));
+    assertTrue(changesInEquityText.contains("Prior Owner Capital"));
+  }
+
+  @Test
+  void renderComparativeBranchesWhenComparativesAreOmittedOrPartiallyPresent() throws IOException {
+    TrialBalanceReport trialBalanceWithoutComparatives =
+        new TrialBalanceReport(
+            BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new TrialBalanceRow(
+                    CASH_ACCOUNT,
+                    balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
+            List.of());
+    IncomeStatementReport incomeStatementWithoutComparativeTotals =
+        new IncomeStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
+                    List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
+            List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of());
+
+    String trialBalanceText =
+        extractedText(PDF_REPORT_SERVICE.renderTrialBalance(trialBalanceWithoutComparatives));
+    String incomeStatementText =
+        extractedText(
+            PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementWithoutComparativeTotals));
+
+    assertFalse(trialBalanceText.contains("Comparative Trial Balance"));
+    assertFalse(incomeStatementText.contains("Comparative Net Income Totals"));
+
+    ChangesInEquityReport noComparativeEquity =
+        new ChangesInEquityReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new ChangesInEquityRow(
+                    "3000",
+                    "Owner Capital",
+                    Optional.of(AccountType.EQUITY),
+                    Optional.of(AccountRole.ORDINARY),
+                    false,
+                    balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
+            List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    ChangesInEquityReport movementOnlyComparativeEquity =
+        new ChangesInEquityReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            noComparativeEquity.rows(),
+            noComparativeEquity.openingTotals(),
+            noComparativeEquity.movementTotals(),
+            noComparativeEquity.closingTotals(),
+            List.of(),
+            List.of(),
+            List.of(balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT)),
+            List.of());
+    ChangesInEquityReport closingOnlyComparativeEquity =
+        new ChangesInEquityReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            noComparativeEquity.rows(),
+            noComparativeEquity.openingTotals(),
+            noComparativeEquity.movementTotals(),
+            noComparativeEquity.closingTotals(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)));
+
+    String noComparativeEquityText =
+        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(noComparativeEquity));
+    String movementOnlyComparativeEquityText =
+        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(movementOnlyComparativeEquity));
+    String closingOnlyComparativeEquityText =
+        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(closingOnlyComparativeEquity));
+
+    assertFalse(noComparativeEquityText.contains("Comparative Changes In Equity"));
+    assertFalse(noComparativeEquityText.contains("Comparative Equity Totals"));
+    assertTrue(movementOnlyComparativeEquityText.contains("Comparative Equity Totals"));
+    assertTrue(closingOnlyComparativeEquityText.contains("Comparative Equity Totals"));
+  }
+
+  @Test
+  void renderStatementsSkipEmptySectionsAndAllowRowsWithoutTotals() throws IOException {
+    FinancialPositionReport financialPositionReport =
+        new FinancialPositionReport(
+            BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new FinancialPositionSection(AccountType.LIABILITY, List.of(), List.of()),
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash without Totals",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
+                    List.of()),
+                new FinancialPositionSection(
+                    AccountType.EQUITY,
+                    List.of(),
+                    List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)))),
+            List.of(new FinancialPositionSection(AccountType.EQUITY, List.of(), List.of())));
+    IncomeStatementReport incomeStatementReport =
+        new IncomeStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(
+                new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of()),
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Revenue without Totals",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
+                    List.of()),
+                new IncomeStatementSection(
+                    AccountType.EXPENSE,
+                    List.of(),
+                    List.of(balance("EUR", "900.00", "0.00", "900.00", BalanceSide.DEBIT)))),
+            List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)),
+            List.of(new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of())),
+            List.of());
+
+    String financialPositionText =
+        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport));
+    String incomeStatementText =
+        extractedText(PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementReport));
+
+    assertTrue(financialPositionText.contains("Cash without Totals"));
+    assertFalse(financialPositionText.contains("Liabilities"));
+    assertFalse(financialPositionText.contains("Assets Totals"));
+    assertTrue(financialPositionText.contains("Equity Totals"));
+    assertFalse(financialPositionText.contains("Comparative Financial Position"));
+
+    assertTrue(incomeStatementText.contains("Revenue without Totals"));
+    assertTrue(incomeStatementText.contains("Expenses Totals"));
+    assertFalse(incomeStatementText.contains("Revenue Totals"));
+    assertFalse(incomeStatementText.contains("Comparative Income Statement"));
   }
 
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.36.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.37.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.36.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.37.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -263,7 +594,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.36.0", information.getCreator());
+      assertEquals("FinGrind 0.37.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

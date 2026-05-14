@@ -185,6 +185,12 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
             new PostingRejection.ClosedPeriodViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
+        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
+        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+            new PostingRejection.OpeningBalanceWindowClosed(
+                dev.erst.fingrind.core.PostingKind.STANDARD,
+                java.time.LocalDate.parse("2026-04-08"))));
+    assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.OpeningBalanceTouchesNominalAccount(

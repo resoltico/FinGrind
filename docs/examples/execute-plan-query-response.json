@@ -3,6 +3,14 @@
   "payload": {
     "planId": "plan-query-demo-1",
     "status": "succeeded",
+    "resultDetail": "full",
+    "summary": {
+      "startedAt": "2026-04-23T09:51:06.115760Z",
+      "finishedAt": "2026-04-23T09:51:06.255498Z",
+      "stepCount": 6,
+      "succeededStepCount": 6,
+      "failedStepCount": 0
+    },
     "journal": {
       "startedAt": "2026-04-23T09:51:06.115760Z",
       "finishedAt": "2026-04-23T09:51:06.255498Z",

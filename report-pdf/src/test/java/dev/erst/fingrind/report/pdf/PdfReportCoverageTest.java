@@ -50,7 +50,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.36.0",
+                "0.37.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -66,7 +66,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.36.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.37.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -167,7 +167,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.36.0");
+    return new PdfDocumentFactory("FinGrind", "0.37.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -186,7 +186,8 @@ class PdfReportCoverageTest {
         PostingCoverage.ALL_POSTING_KINDS,
         List.of(
             new TrialBalanceRow(
-                cashAccount, balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))));
+                cashAccount, balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
+        List.of());
   }
 
   private static BookIdentity bookIdentity() {

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: CORE
 updated: "2026-05-14"
 route:
@@ -279,7 +279,8 @@ public record FiscalYearStart(MonthDay value)
 ```
 
 - Purpose: make fiscal-year configuration explicit in book identity and enforce that one
-  `close-period` range stays inside one fiscal year
+  `close-period` range stays inside one fiscal year while comparative statement windows can be
+  derived from the same declared anchor
 - Validation: rejects invalid month-day values; `toString()` renders the canonical `MM-dd` form
   used on public command surfaces
 
@@ -464,6 +465,8 @@ public enum PostingKind implements WireValue {
 
 - Purpose: distinguish ordinary business postings, opening adoption balances, and generated
   period-close postings without leaking implementation-specific marker strings
+- Opening-balance boundary: `OPENING_BALANCE` is a one-time adoption-state posting family that is
+  admitted only before the first committed posting enters the book
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 - Surface: `callerSelectableWireValues()` publishes only caller-authored posting kinds, while

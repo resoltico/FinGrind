@@ -12,6 +12,8 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.PostingKind;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -28,18 +30,27 @@ final class CliQueryOutputFormatter {
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         postingFact.postingId().value(),
+        displayPostingKind(postingFact.postingKind()),
+        displayReversalStateHuman(postingFact),
         postingCurrency(postingFact),
         postingDebitTotal(postingFact),
         postingCreditTotal(postingFact),
         postingAccounts(postingFact),
-        postingFact
-            .reversalReference()
-            .map(reference -> reference.priorPostingId().value())
-            .orElse(""));
+        reversalTargetHuman(postingFact));
   }
 
   static List<String> postingRegisterCsvRow(PostingFact postingFact) {
-    return postingRegisterHumanRow(postingFact);
+    return List.of(
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        reversalStateWireValue(postingFact),
+        postingCurrency(postingFact),
+        postingDebitTotal(postingFact),
+        postingCreditTotal(postingFact),
+        postingAccounts(postingFact),
+        reversalTargetCsv(postingFact));
   }
 
   static List<String> balanceHumanRow(CurrencyBalance balance) {
@@ -95,6 +106,9 @@ final class CliQueryOutputFormatter {
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
         entry.postingFact().postingId().value(),
+        displayPostingKind(entry.postingFact().postingKind()),
+        displayReversalStateHuman(entry.postingFact()),
+        reversalTargetHuman(entry.postingFact()),
         entry.movement().netAmount().currencyUnit().code(),
         displayMoney(entry.movement().debitTotal()),
         displayMoney(entry.movement().creditTotal()),
@@ -108,6 +122,9 @@ final class CliQueryOutputFormatter {
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
         entry.postingFact().postingId().value(),
+        entry.postingFact().postingKind().wireValue(),
+        reversalStateWireValue(entry.postingFact()),
+        reversalTargetCsv(entry.postingFact()),
         entry.movement().netAmount().currencyUnit().code(),
         displayMoney(entry.movement().debitTotal()),
         displayMoney(entry.movement().creditTotal()),
@@ -160,7 +177,7 @@ final class CliQueryOutputFormatter {
       return "(none)";
     }
     return balances.stream()
-        .map(CliQueryOutputFormatter::displayBalance)
+        .map(CliQueryOutputFormatter::displayBalanceHuman)
         .collect(Collectors.joining(", "));
   }
 
@@ -231,6 +248,61 @@ final class CliQueryOutputFormatter {
     };
   }
 
+  static String displayPostingCoverage(PostingCoverage postingCoverage) {
+    return switch (postingCoverage) {
+      case ALL_POSTING_KINDS -> "All posting kinds";
+      case NON_CLOSING_POSTINGS -> "Non-closing postings";
+    };
+  }
+
+  static String displayPostingKind(PostingKind postingKind) {
+    return switch (postingKind) {
+      case STANDARD -> "Standard";
+      case PERIOD_CLOSE -> "Period close";
+      case OPENING_BALANCE -> "Opening balance";
+    };
+  }
+
+  static String displayReversalStateHuman(PostingFact postingFact) {
+    return postingFact.reversalReference().isPresent() ? "Reversal" : "Direct";
+  }
+
+  static String reversalStateWireValue(PostingFact postingFact) {
+    return postingFact.reversalReference().isPresent() ? "reversal" : "direct";
+  }
+
+  static String reversalTargetHuman(PostingFact postingFact) {
+    return postingFact
+        .reversalReference()
+        .map(reference -> reference.priorPostingId().value())
+        .orElse("(direct)");
+  }
+
+  static String reversalTargetCsv(PostingFact postingFact) {
+    return postingFact
+        .reversalReference()
+        .map(reference -> reference.priorPostingId().value())
+        .orElse("");
+  }
+
+  static String lowerDateBoundaryMeaning(@Nullable LocalDate effectiveDateFrom) {
+    return effectiveDateFrom == null ? "unbounded-lower-filter" : "selected-effective-date";
+  }
+
+  static String upperDateBoundaryMeaning(@Nullable LocalDate effectiveDateTo) {
+    return effectiveDateTo == null ? "current-durable-posting-horizon" : "selected-effective-date";
+  }
+
+  static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {
+    return effectiveDateFrom == null ? "(unbounded lower filter)" : effectiveDateFrom.toString();
+  }
+
+  static String upperDateBoundaryLabel(@Nullable LocalDate effectiveDateTo) {
+    return effectiveDateTo == null
+        ? "(current durable posting horizon)"
+        : effectiveDateTo.toString();
+  }
+
   static String displayBooleanLabel(boolean value) {
     return value ? "Yes" : "No";
   }
@@ -241,9 +313,9 @@ final class CliQueryOutputFormatter {
 
   static String dateRange(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
-    return (effectiveDateFrom == null ? "(start)" : effectiveDateFrom.toString())
+    return lowerDateBoundaryLabel(effectiveDateFrom)
         + " to "
-        + (effectiveDateTo == null ? "(current)" : effectiveDateTo.toString());
+        + upperDateBoundaryLabel(effectiveDateTo);
   }
 
   static String absolutePath(Path bookFilePath) {

@@ -334,6 +334,104 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_accountStyleAndSummaryReportsAcceptExplicitPostingCoverage() {
+    AccountBalance accountBalance =
+        assertInstanceOf(
+            AccountBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--posting-coverage",
+                  "non-closing-postings"
+                }));
+    AccountLedger accountLedger =
+        assertInstanceOf(
+            AccountLedger.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-ledger",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--posting-coverage",
+                  "non-closing-postings"
+                }));
+    PeriodSummary periodSummary =
+        assertInstanceOf(
+            PeriodSummary.class,
+            CliArguments.parse(
+                new String[] {
+                  "period-summary",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--posting-coverage",
+                  "non-closing-postings"
+                }));
+
+    assertEquals(
+        new AccountBalanceQuery(
+            new AccountCode("1000"),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        assertInstanceOf(
+                AccountBalance.class,
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--effective-date-from",
+                      "2026-04-01",
+                      "--effective-date-to",
+                      "2026-04-30",
+                      "--posting-coverage",
+                      "non-closing-postings"
+                    }))
+            .query());
+    assertEquals(
+        new AccountBalanceQuery(
+            new AccountCode("1000"), null, null, PostingCoverage.NON_CLOSING_POSTINGS),
+        accountBalance.query());
+    assertEquals(
+        new AccountLedgerQuery(
+            new AccountCode("1000"),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        accountLedger.query());
+    assertEquals(
+        new PeriodSummaryQuery(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            PostingCoverage.NON_CLOSING_POSTINGS),
+        periodSummary.query());
+  }
+
+  @Test
   void parse_supportsSelectableOutputModesForBookQueries() {
     GetPosting getPosting =
         assertInstanceOf(

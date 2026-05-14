@@ -6,6 +6,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_CREDIT_B
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_DEBIT_BALANCE;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_NET_ZERO;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCOUNT;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.currencyBalance;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.declareDefaultAccounts;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
@@ -13,6 +14,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
@@ -32,6 +34,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -66,9 +69,32 @@ class BookReadServiceReportQueryTest {
                   allPostingKinds(),
                   List.of(
                       new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
-                      new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)))),
+                      new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)),
+                  List.of())),
           service.trialBalance(
               new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE), allPostingKinds())));
+    }
+  }
+
+  @Test
+  void trialBalance_withoutAsOfDate_omitsComparativeRows() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      bookSession.commit(postingFact("posting-1", "idem-1"));
+      BookReadService service = readService(bookSession);
+
+      assertEquals(
+          new TrialBalanceResult.Reported(
+              new TrialBalanceReport(
+                  bookIdentity(),
+                  Optional.empty(),
+                  EffectiveDateRange.of(null, null),
+                  allPostingKinds(),
+                  List.of(
+                      new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
+                      new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)),
+                  List.of())),
+          service.trialBalance(new TrialBalanceQuery(Optional.empty(), allPostingKinds())));
     }
   }
 
@@ -80,7 +106,8 @@ class BookReadServiceReportQueryTest {
       assertEquals(
           new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.accountLedger(
-              new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded())));
+              new AccountLedgerQuery(
+                  CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded(), allPostingKinds())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
@@ -89,7 +116,8 @@ class BookReadServiceReportQueryTest {
           new AccountLedgerResult.Rejected(
               new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode())),
           service.accountLedger(
-              new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded())));
+              new AccountLedgerQuery(
+                  CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded(), allPostingKinds())));
     }
   }
 
@@ -105,9 +133,11 @@ class BookReadServiceReportQueryTest {
       assertEquals(
           new AccountLedgerResult.Reported(
               new AccountLedgerReport(
+                  bookIdentity(),
                   CASH_ACCOUNT,
                   EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
-                  List.of(),
+                  allPostingKinds(),
+                  List.of(currencyBalance("0", "0", "0", BalanceSide.ZERO)),
                   List.of(
                       new AccountLedgerEntry(
                           publishedPostingFact,
@@ -118,6 +148,18 @@ class BookReadServiceReportQueryTest {
           service.accountLedger(
               new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE)));
     }
+  }
+
+  @Test
+  void currentBookIdentity_rejectsMissingLifecycleIdentity() {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                BookReadService.requireInitializedBookIdentity(
+                    new BookLifecycleInspection.Missing(2)));
+
+    assertEquals("Book identity is unavailable because the book is missing.", failure.getMessage());
   }
 
   @Test
@@ -141,8 +183,10 @@ class BookReadServiceReportQueryTest {
       assertEquals(
           new PeriodSummaryResult.Reported(
               new PeriodSummaryReport(
+                  bookIdentity(),
                   EFFECTIVE_DATE,
                   EFFECTIVE_DATE,
+                  allPostingKinds(),
                   1,
                   2,
                   2,
@@ -152,5 +196,20 @@ class BookReadServiceReportQueryTest {
                       new PeriodAccountActivityRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)))),
           service.periodSummary(new PeriodSummaryQuery(EFFECTIVE_DATE, EFFECTIVE_DATE)));
     }
+  }
+
+  @Test
+  void currentBookIdentity_rejectsNonInitializedLifecycleIdentity() {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                BookReadService.requireInitializedBookIdentity(
+                    new BookLifecycleInspection.Existing(
+                        BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2)));
+
+    assertEquals(
+        "Book identity is unavailable for non-initialized book status blank-sqlite.",
+        failure.getMessage());
   }
 }

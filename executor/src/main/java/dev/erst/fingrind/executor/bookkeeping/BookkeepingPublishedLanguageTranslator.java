@@ -197,6 +197,10 @@ public final class BookkeepingPublishedLanguageTranslator {
           new PostingRejection.ClosedPeriodViolation(
               rejectionClosedPeriod.closedThroughEffectiveDate(),
               rejectionClosedPeriod.attemptedEffectiveDate());
+      case BookkeepingPostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
+          new PostingRejection.OpeningBalanceWindowClosed(
+              rejectionWindowClosed.firstBlockingPostingKind(),
+              rejectionWindowClosed.firstBlockingEffectiveDate());
       case BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount rejectionNominal ->
           new PostingRejection.OpeningBalanceTouchesNominalAccount(
               rejectionNominal.accountCode(), rejectionNominal.accountType());

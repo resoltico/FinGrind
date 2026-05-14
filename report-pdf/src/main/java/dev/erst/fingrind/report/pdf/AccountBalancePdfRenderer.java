@@ -12,18 +12,27 @@ final class AccountBalancePdfRenderer {
     Objects.requireNonNull(snapshot, "snapshot");
     pageWriter.writeKeyValueTable(
         "Snapshot",
-        List.of(
-            List.of("Account", snapshot.account().accountCode().value()),
-            List.of("Name", snapshot.account().accountName().value()),
-            List.of("Account type", snapshot.account().accountType().wireValue()),
-            List.of("Account role", snapshot.account().accountRole().wireValue()),
-            List.of("Normal balance", snapshot.account().normalBalance().wireValue()),
-            List.of("Active", Boolean.toString(snapshot.account().active())),
+        PdfStatementMetadataRows.reportParameters(
+            snapshot.bookIdentity(),
+            snapshot.postingCoverage(),
             List.of(
-                "Effective date range",
-                PdfValueFormatter.optionalDateRange(
-                    snapshot.effectiveDateFrom().orElse(null),
-                    snapshot.effectiveDateTo().orElse(null)))));
+                List.of("Account", snapshot.account().accountCode().value()),
+                List.of("Name", snapshot.account().accountName().value()),
+                List.of(
+                    "Account type",
+                    PdfValueFormatter.displayAccountType(snapshot.account().accountType())),
+                List.of(
+                    "Account role",
+                    PdfValueFormatter.displayAccountRole(snapshot.account().accountRole())),
+                List.of(
+                    "Normal balance",
+                    PdfValueFormatter.displayNormalBalance(snapshot.account().normalBalance())),
+                List.of("Active", PdfValueFormatter.displayBoolean(snapshot.account().active())),
+                List.of(
+                    "Effective date range",
+                    PdfValueFormatter.optionalDateRange(
+                        snapshot.effectiveDateFrom().orElse(null),
+                        snapshot.effectiveDateTo().orElse(null))))));
     pageWriter.writeTable(
         "Per-Currency Balances",
         List.of(

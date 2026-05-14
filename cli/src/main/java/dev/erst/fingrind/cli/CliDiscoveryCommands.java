@@ -48,13 +48,18 @@ record Capabilities(OutputMode outputMode) implements CliCommand.OutputModeComma
   }
 }
 
-/** Requests the canonical posting-request scaffold JSON document. */
-record PrintRequestTemplate() implements CliCommand.JsonFailureCommand {
+/** Requests one canonical request scaffold JSON document. */
+record PrintRequestTemplate(@Nullable OperationId commandTopic)
+    implements CliCommand.JsonFailureCommand {
+  PrintRequestTemplate() {
+    this(null);
+  }
+
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeRequestTemplate();
+        .writeRequestTemplate(commandTopic);
   }
 }
 

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_DOCKER
 updated: "2026-05-14"
 route:
@@ -58,17 +58,19 @@ The container image itself also stays on the same managed-runtime policy as the 
   compile-option surface
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
-- it consumes one repository-built `cli/build/docker-context/` directory produced by
-  `:cli:stageDockerBuildContext`; that staged directory carries the internal application JAR, the
-  runtime-module list, the rendered entrypoint, the managed-SQLite contract, and
-  `docker-build-context-manifest.json`; that manifest now includes a SHA3-256 fingerprint of the
-  current source/build inputs behind the staged runtime, and both Docker image build and
-  `scripts/docker-smoke.sh` verify that fingerprint before trusting the staged context, so Docker
-  and bundle publication cannot drift onto competing private-runtime closures, private
-  compile-option inputs, or stale in-checkout leftovers
-- when Gradle assembles that context outside the repository tree, the same staging task mirrors
-  the fresh payload back under `cli/build/docker-context/` automatically so repository-root
-  `docker build` sees the verified current context instead of an older checkout-local leftover
+- it consumes one repository-built staged Docker context produced by
+  `:cli:stageDockerBuildContext`; that staged directory lives under the active CLI build root and
+  is also mirrored into `cli/build/docker-context/` for plain inspection and manual checkout-local
+  use
+- that staged context carries the Dockerfile, the internal application JAR, the runtime-module
+  list, the rendered entrypoint, the managed-SQLite contract, `docker-build-context-manifest.json`,
+  and a `source-root/` snapshot of every checked source/build input the container assembly depends
+  on
+- that manifest includes a SHA3-256 fingerprint of the current source/build inputs behind the
+  staged runtime, and both Docker image build and `scripts/docker-smoke.sh` verify that
+  fingerprint before trusting the staged context, so Docker and bundle publication cannot drift
+  onto competing private-runtime closures, private compile-option inputs, or stale checkout-local
+  leftovers
 - it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
   same protocol-owned contract resources that drive bundle metadata, so the container does not
   carry a parallel handwritten runtime-distribution or storage contract
@@ -117,10 +119,12 @@ Then the supported local gates are:
 ```
 
 `./check.sh` Stage 6 invokes `scripts/docker-smoke.sh`, which:
-- builds the local image from the repository root through `docker buildx build --load`
-- refreshes `:cli:stageDockerBuildContext` first and, on fragile mounted filesystems, syncs the
-  fresh relocated `docker-context/` directory back into the repository-visible Docker build
-  context before image build
+- refreshes `:cli:stageDockerBuildContext` first, verifies the staged context against the live
+  repository copy, and then builds the local image from that staged context through
+  `docker buildx build --load`
+- treats the staged Docker context as the only supported container-assembly boundary; a
+  repository-root `docker build .` is intentionally unsupported because it reopens unrelated local
+  state and sibling build outputs
 - stages its mounted-workspace scratch tree under system temp instead of the repository root so
   SMB/WebDAV tombstones left behind by container cleanup cannot break later source-checkout gates
 - verifies that the image's private runtime stays trimmed and does not drag in `jdk.jdeps`,

@@ -15,19 +15,15 @@ public record TrialBalanceReport(
     Optional<LocalDate> effectiveDateTo,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
-    List<TrialBalanceRow> rows) {
+    List<TrialBalanceRow> rows,
+    List<TrialBalanceRow> comparativeRows) {
   /** Validates one trial-balance report. */
-  public TrialBalanceReport(
-      BookIdentity bookIdentity,
-      Optional<LocalDate> effectiveDateTo,
-      EffectiveDateRange comparativeEffectiveDateRange,
-      PostingCoverage postingCoverage,
-      List<TrialBalanceRow> rows) {
-    this.bookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
-    this.effectiveDateTo = Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    this.comparativeEffectiveDateRange =
-        Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
-    this.postingCoverage = Objects.requireNonNull(postingCoverage, "postingCoverage");
-    this.rows = ContractDescriptorValidation.copyList(rows, "rows");
+  public TrialBalanceReport {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
+    Objects.requireNonNull(postingCoverage, "postingCoverage");
+    rows = ContractDescriptorValidation.copyList(rows, "rows");
+    comparativeRows = ContractDescriptorValidation.copyList(comparativeRows, "comparativeRows");
   }
 }

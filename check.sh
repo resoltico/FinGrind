@@ -13,9 +13,9 @@
 #
 # Full verification always uses --no-daemon plus one repo-keyed cache-root GRADLE_USER_HOME so
 # root verification, nested Jazzer checks, and direct Docker or devcontainer verification do not
-# share daemon or cache state accidentally while wrapper lock files remain outside mounted
-# checkouts. Non-interactive runs use --console=plain unless the caller already selected a console
-# mode.
+# share daemon or cache state accidentally while wrapper lock files and ordinary project build
+# trees remain outside the checkout by default. Non-interactive runs use --console=plain unless
+# the caller already selected a console mode.
 #
 # Local shell resolution must already provide Java 26. FinGrind's product modules, CLI fat JAR,
 # and release flow all rely on the ambient `java` and `javac` commands, not only Gradle
@@ -39,7 +39,7 @@ die() {
 
 print_usage_stage_lines() {
     printf '%s\n' \
-        '  1. scripts/run-quality-gates.sh (check coverage + included build-logic test)' \
+        '  1. scripts/run-quality-gates.sh (repo hygiene + check coverage + included build-logic test)' \
         '  2. jazzer/bin/check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \

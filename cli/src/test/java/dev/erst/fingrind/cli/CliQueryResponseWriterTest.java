@@ -100,6 +100,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
+            bookIdentity(),
             CliIoFixtureSupport.declaredAccount(
                 "1000",
                 "Cash",
@@ -109,6 +110,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")),
             java.util.Optional.of(LocalDate.parse("2026-04-01")),
             java.util.Optional.of(LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
             List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
     ByteArrayOutputStream inspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
@@ -206,9 +208,11 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
+            bookIdentity(),
             declaredCashAccount(),
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
             List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
     ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
@@ -229,15 +233,19 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget"));
+            "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget"));
     assertTrue(
-        postingRegisterCsv.contains("2026-04-07,2026-04-07T10:15:30Z,posting-1,EUR,10.00,10.00"));
+        postingRegisterCsv.contains(
+            "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,reversal,EUR,10.00,10.00"));
     ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
         .writeAccountBalanceResult(
             new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.HUMAN);
     String balanceHuman = balanceHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(balanceHuman.contains("Account        : 1000"));
+    assertTrue(balanceHuman.contains("Account"));
+    assertTrue(balanceHuman.contains("1000"));
+    assertTrue(balanceHuman.contains("Entity"));
+    assertTrue(balanceHuman.contains("Acme Studio"));
     assertTrue(balanceHuman.contains("Debit total"));
     assertTrue(balanceHuman.contains("10.00"));
     assertTrue(balanceHuman.contains("6.00"));
@@ -248,10 +256,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
     assertTrue(
         balanceCsv.contains(
-            "1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
+            "Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT"));
   }
 
   @Test
@@ -265,11 +273,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             List.of(
                 new TrialBalanceRow(
                     declaredCashAccount(),
-                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
+                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))),
+            List.of());
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
+            bookIdentity(),
             declaredCashAccount(),
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
             List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
             List.of(
                 new AccountLedgerEntry(
@@ -280,8 +291,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
     PeriodSummaryReport periodSummaryReport =
         new PeriodSummaryReport(
+            bookIdentity(),
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            allPostingKinds(),
             1,
             2,
             2,
@@ -300,6 +313,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals("ok", trialBalanceJson.path("status").stringValue());
     assertEquals(
         "2026-04-30", trialBalanceJson.path("payload").path("effectiveDateTo").stringValue());
+    assertEquals(
+        "Acme Studio",
+        trialBalanceJson
+            .path("payload")
+            .path("context")
+            .path("bookIdentity")
+            .path("entityName")
+            .stringValue());
     assertEquals(
         "1000",
         trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").stringValue());
@@ -329,7 +350,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 accountLedgerReport),
             OutputMode.HUMAN);
     String accountLedgerHuman = accountLedgerHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(accountLedgerHuman.contains("Opening balances : EUR 10.00 DEBIT"));
+    assertTrue(accountLedgerHuman.contains("Opening balances"));
+    assertTrue(accountLedgerHuman.contains("EUR 10.00 Debit"));
     assertTrue(accountLedgerHuman.contains("Running balance"));
     assertTrue(accountLedgerHuman.contains("posting-1"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
@@ -345,6 +367,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(
         "posting-1",
         accountLedgerJson.path("payload").path("entries").get(0).path("postingId").stringValue());
+    assertEquals(
+        "reversal",
+        accountLedgerJson
+            .path("payload")
+            .path("entries")
+            .get(0)
+            .path("reversalState")
+            .stringValue());
     assertEquals(
         "2000",
         accountLedgerJson
@@ -364,10 +394,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
+            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
     assertTrue(
         accountLedgerCsv.contains(
-            "1000,Cash,ASSET,ORDINARY,2026-04-01,2026-04-30,posting-1,2026-04-07,2026-04-07T10:15:30Z,EUR,10.00,0.00,10.00,DEBIT,2000"));
+            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
     ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
         .writePeriodSummaryResult(
@@ -406,10 +436,46 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         periodSummaryCsv.startsWith(
-            "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode,accountName,accountType,accountRole,normalBalance,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt"));
     assertTrue(
         periodSummaryCsv.contains(
-            "2026-04-01,2026-04-30,1,2,2,1000,Cash,ASSET,ORDINARY,DEBIT,EUR,10.00,4.00,6.00,DEBIT"));
+            "account-activity,Acme Studio,EUR,01-01,all-posting-kinds,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,1,2,2,EUR,10.00,4.00,6.00,DEBIT,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-07T10:15:30Z"));
+  }
+
+  @Test
+  void writeAccountLedgerJson_marksDirectEntriesWithoutReversalTarget() throws IOException {
+    AccountLedgerReport directAccountLedgerReport =
+        new AccountLedgerReport(
+            bookIdentity(),
+            declaredCashAccount(),
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(
+                new AccountLedgerEntry(
+                    CliFixtureSupport.selfPostingFact(),
+                    currencyBalance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT),
+                    money("EUR", "5.00"),
+                    BalanceSide.DEBIT)),
+            List.of(currencyBalance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT)));
+    ByteArrayOutputStream directAccountLedgerJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(directAccountLedgerJsonOutput))
+        .writeAccountLedgerResult(
+            new dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult.Reported(
+                directAccountLedgerReport),
+            OutputMode.JSON);
+
+    JsonNode directAccountLedgerJson = readJson(directAccountLedgerJsonOutput);
+    assertEquals(
+        "direct",
+        directAccountLedgerJson
+            .path("payload")
+            .path("entries")
+            .get(0)
+            .path("reversalState")
+            .stringValue());
+    assertFalse(
+        directAccountLedgerJson.path("payload").path("entries").get(0).has("reversalTarget"));
   }
 
   @Test
@@ -453,7 +519,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,postingCoverage,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -492,7 +558,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo,postingCoverage,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -524,7 +590,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo,postingCoverage,lineCode,lineName,lineRole,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,totalBasis,lineCode,lineName,lineRole,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
   }
 
   @Test
@@ -541,6 +607,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                         LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
                     standardOnly(),
                     CliFixtureSupport.sampleIncomeStatementReport().sections(),
+                    List.of(),
+                    CliFixtureSupport.sampleIncomeStatementReport().comparativeSections(),
                     List.of())),
             OutputMode.HUMAN);
     String output = outputStream.toString(StandardCharsets.UTF_8);

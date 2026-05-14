@@ -1,11 +1,13 @@
 package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
+import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -18,12 +20,51 @@ import org.jspecify.annotations.Nullable;
 public interface CliPlanJsonModels {
 
   record LedgerPlanPayload(
-      String planId, LedgerPlanStatus status, LedgerExecutionJournalPayload journal)
+      String planId,
+      LedgerPlanStatus status,
+      PlanResultDetail resultDetail,
+      LedgerPlanSummaryPayload summary,
+      @Nullable LedgerExecutionJournalPayload journal)
       implements CliSuccessPayload {
     public LedgerPlanPayload {
       planId = requireText(planId, "planId");
       status = requireValue(status, "status");
-      journal = requireValue(journal, "journal");
+      resultDetail = requireValue(resultDetail, "resultDetail");
+      summary = requireValue(summary, "summary");
+      if (resultDetail == PlanResultDetail.FULL) {
+        if (journal == null) {
+          throw new IllegalArgumentException("journal must be present when resultDetail is full.");
+        }
+      } else if (journal != null) {
+        throw new IllegalArgumentException("journal must be absent unless resultDetail is full.");
+      }
+    }
+  }
+
+  record LedgerPlanSummaryPayload(
+      String startedAt,
+      String finishedAt,
+      int stepCount,
+      int succeededStepCount,
+      int failedStepCount,
+      @Nullable String failedStepId,
+      @Nullable String failureCode,
+      @Nullable String failureMessage) {
+    public LedgerPlanSummaryPayload {
+      startedAt = requireText(startedAt, "startedAt");
+      finishedAt = requireText(finishedAt, "finishedAt");
+      if (stepCount <= 0) {
+        throw new IllegalArgumentException("stepCount must be positive.");
+      }
+      if (succeededStepCount < 0) {
+        throw new IllegalArgumentException("succeededStepCount must be non-negative.");
+      }
+      if (failedStepCount < 0) {
+        throw new IllegalArgumentException("failedStepCount must be non-negative.");
+      }
+      failedStepId = requireOptionalText(failedStepId, "failedStepId");
+      failureCode = requireOptionalText(failureCode, "failureCode");
+      failureMessage = requireOptionalText(failureMessage, "failureMessage");
     }
   }
 

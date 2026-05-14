@@ -26,6 +26,47 @@ final class ProtocolCatalogFacts {
           BOOK_MODEL.currencyScope(),
           "not-supported",
           "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
+  private static final AccountingBaselineFacts ACCOUNTING_BASELINE =
+      new AccountingBaselineFacts(
+          "country-agnostic-bookkeeping-kernel",
+          List.of(
+              "IFRS Conceptual Framework general-purpose financial-reporting concepts",
+              "IAS 21 functional-currency anchor concepts"),
+          List.of(
+              OperationId.FINANCIAL_POSITION.wireName(),
+              OperationId.INCOME_STATEMENT.wireName(),
+              OperationId.CHANGES_IN_EQUITY.wireName()),
+          List.of(
+              "statement-of-cash-flows",
+              "oci-and-comprehensive-income-presentation",
+              "external-note-and-disclosure-packages",
+              "rich-statement-presentation-taxonomy-and-current-non-current-classification",
+              "hierarchical-chart-of-accounts-and-report-taxonomy",
+              "operational-subledgers-for-invoicing-receivables-payables-inventory-or-payroll",
+              "jurisdiction-specific-tax-or-filing-rules",
+              "group-reporting-and-consolidation",
+              "foreign-currency-translation-and-exchange-difference-accounting-inside-one-book"),
+          "FinGrind targets one exact-money bookkeeping kernel, not one full IFRS or local-GAAP compliance/reporting package.",
+          "Built-in reporting stops at financial position, income statement, and changes in equity. Cash flows, OCI/comprehensive-income reporting, and note/disclosure packages belong to adjacent reporting contexts rather than the current kernel.",
+          "The current chart of accounts is flat. No parent-child hierarchy or first-class report-taxonomy structure is built into the kernel account model.",
+          "FinGrind does not yet claim IFRS for SMEs parity. The current kernel fits one single-entity, single-functional-currency internal book for sole traders and small organizations, but not one full SME reporting regime.",
+          "Operational contexts such as invoicing, receivables, payables, inventory, payroll, and settlement orchestration are not modeled in the current kernel. They belong above the ledger as adjacent bounded contexts that publish postings into the book.",
+          "Tax is not a first-class domain in the current kernel. Users may post tax-bearing amounts manually, but tax registrations, tax codes, rate schedules, recoverability, inclusivity, determination rules, and filing obligations are not modeled yet.",
+          "FinGrind does not yet claim multi-entity organizational accounting. Group reporting, consolidations, and intercompany elimination belong to a separate future context above the current single-entity book kernel.",
+          "ISO 21378 informs audit-data collection, not the substantive bookkeeping doctrine FinGrind uses as its current accounting baseline.");
+  private static final ExtensionSurfaceFacts EXTENSION_SURFACE =
+      new ExtensionSurfaceFacts(
+          "bookkeeping-policy-pack",
+          List.of("statement-comparative-policy"),
+          List.of(
+              "statement-presentation-policy",
+              "cash-flow-and-oci-reporting",
+              "notes-and-disclosures",
+              "fx-accounting-and-translation",
+              "tax-determination-and-filing",
+              "operational-subledgers-ar-ap-invoicing",
+              "group-reporting-and-consolidation"),
+          "Future standards-specific or jurisdiction-specific behavior must arrive as explicit adjacent contexts or stabilized policy seams layered on top of the current kernel instead of compatibility shims inside the core model. The only published seam implemented today is the fiscal-year-aware statement-comparative-policy.");
   private static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",
@@ -70,6 +111,14 @@ final class ProtocolCatalogFacts {
 
   static CurrencyFacts currency() {
     return CURRENCY;
+  }
+
+  static AccountingBaselineFacts accountingBaseline() {
+    return ACCOUNTING_BASELINE;
+  }
+
+  static ExtensionSurfaceFacts extensionSurface() {
+    return EXTENSION_SURFACE;
   }
 
   static PreflightFacts preflight() {

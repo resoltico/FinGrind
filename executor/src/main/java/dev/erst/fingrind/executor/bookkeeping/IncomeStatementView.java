@@ -16,7 +16,9 @@ public record IncomeStatementView(
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<IncomeStatementSectionView> sections,
-    List<CurrencyBalance> netIncomeTotals) {
+    List<CurrencyBalance> netIncomeTotals,
+    List<IncomeStatementSectionView> comparativeSections,
+    List<CurrencyBalance> comparativeNetIncomeTotals) {
   public IncomeStatementView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
@@ -28,5 +30,10 @@ public record IncomeStatementView(
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = List.copyOf(Objects.requireNonNull(sections, "sections"));
     netIncomeTotals = List.copyOf(Objects.requireNonNull(netIncomeTotals, "netIncomeTotals"));
+    comparativeSections =
+        List.copyOf(Objects.requireNonNull(comparativeSections, "comparativeSections"));
+    comparativeNetIncomeTotals =
+        List.copyOf(
+            Objects.requireNonNull(comparativeNetIncomeTotals, "comparativeNetIncomeTotals"));
   }
 }

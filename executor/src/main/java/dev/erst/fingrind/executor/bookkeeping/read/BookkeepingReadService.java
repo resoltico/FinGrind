@@ -23,8 +23,11 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookStore;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -32,12 +35,21 @@ import java.util.function.Supplier;
 /** Local bookkeeping read/query service used before any public published-language projection. */
 public final class BookkeepingReadService {
   private final BookStore bookStore;
+  private final BookkeepingPolicyPack policyPack;
   private final BookkeepingStatementService statementService;
 
   /** Creates the local bookkeeping read service over one selected-book store seam. */
   public BookkeepingReadService(BookStore bookStore) {
+    this(bookStore, CoreBookkeepingPolicyPack.current());
+  }
+
+  /**
+   * Creates the local bookkeeping read service over one selected-book store seam and policy pack.
+   */
+  BookkeepingReadService(BookStore bookStore, BookkeepingPolicyPack policyPack) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
-    this.statementService = new BookkeepingStatementService(this.bookStore);
+    this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
+    this.statementService = new BookkeepingStatementService(this.bookStore, this.policyPack);
   }
 
   /** Returns the local lifecycle snapshot before public contract projection. */
@@ -112,7 +124,7 @@ public final class BookkeepingReadService {
   public BookkeepingReadOutcome<TrialBalanceView> trialBalance(TrialBalanceCriteria query) {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(bookStore.trialBalance(query)));
+        () -> new BookkeepingReadOutcome.Reported<>(trialBalanceView(query)));
   }
 
   /** Computes one running ledger for the selected declared account. */
@@ -166,6 +178,27 @@ public final class BookkeepingReadService {
       return Optional.of(new BookkeepingQueryRejection.UnknownAccount(accountCode.orElseThrow()));
     }
     return Optional.empty();
+  }
+
+  private TrialBalanceView trialBalanceView(TrialBalanceCriteria query) {
+    TrialBalanceView currentView = bookStore.trialBalance(query);
+    var comparativeRange =
+        policyPack
+            .statementComparativePolicy()
+            .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateTo());
+    return new TrialBalanceView(
+        currentView.bookIdentity(),
+        currentView.effectiveDateTo(),
+        comparativeRange,
+        currentView.postingCoverage(),
+        currentView.rows(),
+        comparativeRange.effectiveDateTo().isPresent()
+            ? bookStore
+                .trialBalance(
+                    new TrialBalanceCriteria(
+                        comparativeRange.effectiveDateTo(), query.postingCoverage()))
+                .rows()
+            : List.of());
   }
 
   private <T> BookkeepingReadOutcome<T> ifInitializedOutcome(

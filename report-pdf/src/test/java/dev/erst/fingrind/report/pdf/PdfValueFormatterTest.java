@@ -74,8 +74,49 @@ class PdfValueFormatterTest {
 
   @Test
   void displayLineRoleFormatsDeclaredAndDerivedRoles() {
-    assertEquals("ORDINARY", PdfValueFormatter.displayLineRole(Optional.of(AccountRole.ORDINARY)));
+    assertEquals("Ordinary", PdfValueFormatter.displayLineRole(Optional.of(AccountRole.ORDINARY)));
     assertEquals("(derived)", PdfValueFormatter.displayLineRole(Optional.empty()));
+  }
+
+  @Test
+  void displayAccountTypeFormatsEveryVariant() {
+    assertEquals(
+        "Asset", PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.ASSET));
+    assertEquals(
+        "Liability",
+        PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.LIABILITY));
+    assertEquals(
+        "Equity", PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.EQUITY));
+    assertEquals(
+        "Revenue",
+        PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.REVENUE));
+    assertEquals(
+        "Expense",
+        PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.EXPENSE));
+  }
+
+  @Test
+  void displayAccountRoleFormatsEveryVariant() {
+    assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
+    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.CONTRA));
+    assertEquals(
+        "Retained earnings", PdfValueFormatter.displayAccountRole(AccountRole.RETAINED_EARNINGS));
+  }
+
+  @Test
+  void displayNormalBalanceFormatsEveryVariant() {
+    assertEquals(
+        "Debit",
+        PdfValueFormatter.displayNormalBalance(dev.erst.fingrind.core.NormalBalance.DEBIT));
+    assertEquals(
+        "Credit",
+        PdfValueFormatter.displayNormalBalance(dev.erst.fingrind.core.NormalBalance.CREDIT));
+  }
+
+  @Test
+  void displayBooleanFormatsBothVariants() {
+    assertEquals("Yes", PdfValueFormatter.displayBoolean(true));
+    assertEquals("No", PdfValueFormatter.displayBoolean(false));
   }
 
   @Test
@@ -89,8 +130,16 @@ class PdfValueFormatterTest {
   }
 
   @Test
+  void displayPostingKindFormatsEveryVariant() {
+    assertEquals("Standard", PdfValueFormatter.displayPostingKind(PostingKind.STANDARD));
+    assertEquals("Period close", PdfValueFormatter.displayPostingKind(PostingKind.PERIOD_CLOSE));
+    assertEquals(
+        "Opening balance", PdfValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
+  }
+
+  @Test
   void optionalDateFormatsNullAndConcreteDates() {
-    assertEquals("(current)", PdfValueFormatter.optionalDate(null));
+    assertEquals("(current durable posting horizon)", PdfValueFormatter.optionalDate(null));
     assertEquals("2026-05-07", PdfValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
   }
 
@@ -99,9 +148,14 @@ class PdfValueFormatterTest {
     LocalDate from = LocalDate.parse("2026-05-01");
     LocalDate to = LocalDate.parse("2026-05-31");
 
-    assertEquals("(start) to (current)", PdfValueFormatter.optionalDateRange(null, null));
-    assertEquals("2026-05-01 to (current)", PdfValueFormatter.optionalDateRange(from, null));
-    assertEquals("(start) to 2026-05-31", PdfValueFormatter.optionalDateRange(null, to));
+    assertEquals(
+        "(unbounded lower filter) to (current durable posting horizon)",
+        PdfValueFormatter.optionalDateRange(null, null));
+    assertEquals(
+        "2026-05-01 to (current durable posting horizon)",
+        PdfValueFormatter.optionalDateRange(from, null));
+    assertEquals(
+        "(unbounded lower filter) to 2026-05-31", PdfValueFormatter.optionalDateRange(null, to));
     assertEquals("2026-05-01 to 2026-05-31", PdfValueFormatter.optionalDateRange(from, to));
   }
 
@@ -111,13 +165,13 @@ class PdfValueFormatterTest {
     LocalDate to = LocalDate.parse("2026-05-31");
 
     assertEquals(
-        "(start) to (current)",
+        "(unbounded lower filter) to (current durable posting horizon)",
         PdfValueFormatter.effectiveDateRange(EffectiveDateRange.unbounded()));
     assertEquals(
-        "2026-05-01 to (current)",
+        "2026-05-01 to (current durable posting horizon)",
         PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.From(from)));
     assertEquals(
-        "(start) to 2026-05-31",
+        "(unbounded lower filter) to 2026-05-31",
         PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.To(to)));
     assertEquals(
         "2026-05-01 to 2026-05-31",
@@ -128,7 +182,7 @@ class PdfValueFormatterTest {
   void comparativeRangeFormatsNoneAndBoundedComparatives() {
     assertEquals("(none)", PdfValueFormatter.comparativeRange(EffectiveDateRange.unbounded()));
     assertEquals(
-        "(start) to 2026-05-31",
+        "(unbounded lower filter) to 2026-05-31",
         PdfValueFormatter.comparativeRange(
             new EffectiveDateRange.To(LocalDate.parse("2026-05-31"))));
     assertEquals(

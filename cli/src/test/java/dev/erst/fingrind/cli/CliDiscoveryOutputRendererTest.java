@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
@@ -93,13 +92,14 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("json, human (via --output)"));
     assertTrue(rendered.contains("json envelope (fixed)"));
     assertTrue(rendered.contains("raw json (fixed)"));
-    assertTrue(rendered.contains("Quick Start"));
-    assertTrue(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
-    assertTrue(rendered.contains("demo"));
+    assertTrue(rendered.contains("Getting Started"));
+    assertFalse(rendered.contains("Quick Start"));
+    assertFalse(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
+    assertFalse(rendered.contains("demo"));
   }
 
   @Test
-  void renderHelpHuman_rendersExpandedRuntimeSpecificQuickStartTitles() {
+  void renderHelpHuman_rootHelpOmitsRuntimeSpecificQuickStartTitles() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             helpDescriptor(
@@ -147,9 +147,10 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Source Checkout Launcher (POSIX Shell)"));
-    assertTrue(rendered.contains("Developer Raw JAR (Windows PowerShell)"));
-    assertTrue(rendered.contains("Container Image (Docker CLI)"));
+    assertFalse(rendered.contains("Source Checkout Launcher (POSIX Shell)"));
+    assertFalse(rendered.contains("Developer Raw JAR (Windows PowerShell)"));
+    assertFalse(rendered.contains("Container Image (Docker CLI)"));
+    assertTrue(rendered.contains("Getting Started"));
   }
 
   @Test
@@ -194,8 +195,8 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Quick Start"));
-    assertTrue(rendered.contains("(none)"));
+    assertFalse(rendered.contains("Quick Start"));
+    assertTrue(rendered.contains("Getting Started"));
   }
 
   @Test
@@ -236,9 +237,9 @@ class CliDiscoveryOutputRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertFalse(rendered.contains("Guidance"));
-    assertTrue(rendered.contains("Steps"));
-    assertTrue(rendered.contains("1. Run"));
-    assertTrue(rendered.contains("2. Create ./request.json"));
+    assertFalse(rendered.contains("Steps"));
+    assertFalse(rendered.contains("Create ./request.json"));
+    assertTrue(rendered.contains("Getting Started"));
   }
 
   @Test
@@ -398,7 +399,9 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(
         rendered.contains("Provide one ledger plan JSON object through --request-file <path|->."));
-    assertTrue(rendered.contains("Shortcut: fingrind print-plan-template"));
+    assertTrue(
+        rendered.contains(
+            "Shortcut: " + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
     assertTrue(rendered.contains("Step Fields"));
     assertTrue(rendered.contains("Query Fields"));
     assertTrue(rendered.contains("Assertion Fields"));
@@ -429,6 +432,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
+                postEntryCanonical.accountingBaseline(),
                 postEntryCanonical.requestShapes(),
                 null,
                 postEntryCanonical.declareAccountTemplate(),
@@ -438,6 +442,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel(),
+                postEntryCanonical.extensionSurface(),
                 postEntryCanonical.environment()));
     String declareRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -447,6 +452,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
+                declareCanonical.accountingBaseline(),
                 declareCanonical.requestShapes(),
                 declareCanonical.requestTemplate(),
                 null,
@@ -456,6 +462,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
+                declareCanonical.extensionSurface(),
                 declareCanonical.environment()));
     String executePlanRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -465,6 +472,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
+                executePlanCanonical.accountingBaseline(),
                 executePlanCanonical.requestShapes(),
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
@@ -474,6 +482,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
+                executePlanCanonical.extensionSurface(),
                 executePlanCanonical.environment()));
 
     assertFalse(postEntryRendered.contains("Request File"));
@@ -498,6 +507,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
+                postEntryCanonical.accountingBaseline(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
                     null,
@@ -511,6 +521,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel(),
+                postEntryCanonical.extensionSurface(),
                 postEntryCanonical.environment()));
     String declareWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -520,6 +531,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
+                declareCanonical.accountingBaseline(),
                 null,
                 declareCanonical.requestTemplate(),
                 declareCanonical.declareAccountTemplate(),
@@ -529,6 +541,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
+                declareCanonical.extensionSurface(),
                 declareCanonical.environment()));
     String declareWithoutDeclareShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -538,6 +551,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
+                declareCanonical.accountingBaseline(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
                     declareCanonical.requestShapes().postEntry(),
@@ -551,6 +565,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
+                declareCanonical.extensionSurface(),
                 declareCanonical.environment()));
     String executePlanWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -560,6 +575,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
+                executePlanCanonical.accountingBaseline(),
                 null,
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
@@ -569,6 +585,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
+                executePlanCanonical.extensionSurface(),
                 executePlanCanonical.environment()));
     String executePlanWithoutLedgerShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -578,6 +595,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
+                executePlanCanonical.accountingBaseline(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
                     executePlanCanonical.requestShapes().postEntry(),
@@ -591,6 +609,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
+                executePlanCanonical.extensionSurface(),
                 executePlanCanonical.environment()));
 
     assertFalse(postEntryWithoutPostShape.contains("Request File"));
@@ -638,8 +657,9 @@ class CliDiscoveryOutputRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Commands"));
-    assertTrue(rendered.contains("Quick Start"));
+    assertTrue(rendered.contains("Getting Started"));
     assertTrue(rendered.contains("help"));
+    assertFalse(rendered.contains("Quick Start"));
   }
 
   @Test
@@ -652,7 +672,7 @@ class CliDiscoveryOutputRendererTest {
                 () ->
                     CliDiscoveryOutputRenderer.renderJsonTemplate(
                         new CliResponseWriterTestSupport.SelfReferentialValue(),
-                        OperationId.HELP)));
+                        CliInvocationText.commandExample(OperationId.HELP))));
     assertTrue(
         Objects.requireNonNull(failure.getMessage())
             .contains("Failed to render CLI help request template JSON."));
@@ -660,14 +680,52 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderQuickStartStep_rejectsUnfilteredNoteSteps() {
-    IllegalArgumentException failure =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                CliDiscoveryOutputRenderer.renderQuickStartStep(
-                    1, WorkflowStepDescriptor.note("guidance")));
-    assertTrue(Objects.requireNonNull(failure.getMessage()).contains("guidance block"));
+  void renderJsonTemplate_withoutShortcutRendersIndentedJsonOnly() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderJsonTemplate(MachineContract.requestTemplate(), null);
+
+    assertTrue(rendered.startsWith("  {"));
+    assertTrue(rendered.contains("\"postingKind\" : \"STANDARD\""));
+    assertFalse(rendered.contains("Shortcut:"));
+  }
+
+  @Test
+  void renderHelpHuman_frontDoorHelpOmitsQuickStartWorkflowNoteBodies() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            helpDescriptor(
+                identity(),
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of("--help", "-h"),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new dev.erst.fingrind.contract.discovery.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.discovery.WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(WorkflowStepDescriptor.note("guidance")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertFalse(rendered.contains("guidance"));
+    assertTrue(rendered.contains("Getting Started"));
   }
 
   @Test
@@ -685,6 +743,54 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("trial-balance"));
     assertTrue(rendered.contains("json, human, csv (via --output)"));
     assertTrue(rendered.contains("Selectable stdout flag"));
+    assertFalse(rendered.contains("Reporting position"));
+    assertFalse(rendered.contains("Implemented extension seams"));
+  }
+
+  @Test
+  void renderCapabilitiesHuman_omitsDeepBoundaryDoctrineFromHumanSurface() {
+    var canonical = MachineContract.capabilities(identity(), environment(), Instant.now());
+    String rendered =
+        CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
+            new dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor(
+                canonical.application(),
+                canonical.version(),
+                canonical.storage(),
+                canonical.commands(),
+                canonical.requestInput(),
+                canonical.requestShapes(),
+                canonical.responseModel(),
+                canonical.planExecution(),
+                canonical.audit(),
+                canonical.accountRegistry(),
+                canonical.reversals(),
+                canonical.preflight(),
+                canonical.currencyModel(),
+                new ContractResponse.AccountingBaselineDescriptor(
+                    OperationId.FINANCIAL_POSITION.wireName(),
+                    canonical.accountingBaseline().doctrineSources(),
+                    canonical.accountingBaseline().builtInStatements(),
+                    canonical.accountingBaseline().deliberateExclusions(),
+                    canonical.accountingBaseline().standardsPosition(),
+                    canonical.accountingBaseline().reportingPosition(),
+                    canonical.accountingBaseline().chartModelPosition(),
+                    canonical.accountingBaseline().smallEntityPosition(),
+                    canonical.accountingBaseline().operationalPosition(),
+                    canonical.accountingBaseline().taxPosition(),
+                    canonical.accountingBaseline().organizationalPosition(),
+                    canonical.accountingBaseline().isoClarification()),
+                new ContractResponse.ExtensionSurfaceDescriptor(
+                    "ifrs-ias-iso-fx-ar-ap-gaap-playbook",
+                    List.of("ifrs-ias-iso-fx-ar-ap-gaap-playbook", "oci"),
+                    canonical.extensionSurface().futureContexts(),
+                    canonical.extensionSurface().description()),
+                canonical.environment(),
+                canonical.timestamp()));
+
+    assertFalse(rendered.contains("Financial position"));
+    assertFalse(rendered.contains("Extension model"));
+    assertFalse(rendered.contains("IFRS IAS ISO FX AR AP GAAP Playbook"));
+    assertFalse(rendered.contains("OCI"));
   }
 
   @Test
@@ -694,7 +800,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.36.0"));
+    assertTrue(rendered.contains("0.37.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -738,6 +844,7 @@ class CliDiscoveryOutputRendererTest {
         applicationIdentity.description(),
         usage,
         bookModel,
+        canonical.accountingBaseline(),
         requestShapes,
         canonical.requestTemplate(),
         canonical.declareAccountTemplate(),
@@ -747,6 +854,7 @@ class CliDiscoveryOutputRendererTest {
         exitCodes,
         preflight,
         currencyModel,
+        canonical.extensionSurface(),
         environment());
   }
 
@@ -765,7 +873,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.36.0",
+        "0.37.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

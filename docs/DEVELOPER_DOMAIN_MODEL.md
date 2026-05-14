@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_DOMAIN_MODEL
 updated: "2026-05-14"
 route:
@@ -103,6 +103,8 @@ Current account-registry policy:
 - `NormalBalance` is also immutable after first declaration
 - account codes are opaque book-local identifiers, not semantic numeric ranges
 - the chart of accounts is flat; there is no parent-child account hierarchy in the current model
+- no built-in reporting taxonomy maps accounts into current/non-current, liquidity, operational,
+  or group-reporting presentation buckets today
 
 Exact money belongs in that shared kernel. Future tax rates, exchange rates, percentages, and
 other non-money decimal factors do not. When those domains arrive, they must enter as separate
@@ -113,10 +115,25 @@ mutable host-JVM currency runtime data.
 Current accounting-standards scope:
 - FinGrind's current core is one country-agnostic bookkeeping kernel, not one full external IFRS
   or local-GAAP compliance/reporting package
+- FinGrind does not yet claim IFRS for SMEs parity; the current kernel sits below one full
+  small-entity reporting package
 - the current built-in reporting surface is financial position, income statement, and changes in
   equity
+- comparative windows and comparative payload data for those built-in statements are derived from
+  one book's declared fiscal-year anchor through the built-in bookkeeping policy pack
 - statement of cash flows, OCI, note/disclosure packages, and multi-currency translation remain
   separate future domains
+- tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent
+  future contexts above the current kernel
+
+Adjacent future contexts implied by the current boundary:
+- one external-reporting context for cash flow, OCI, note/disclosure, and richer presentation
+  taxonomy
+- one FX/currency-accounting context for foreign-currency measurement and translation
+- one tax context for tax regimes, rates, inclusivity, recoverability, and filing
+- one operational-sales-and-settlement context for invoices, receivables, payables, and cash
+  application
+- one group-reporting context for consolidation and intercompany elimination
 
 ### Workflow Context
 

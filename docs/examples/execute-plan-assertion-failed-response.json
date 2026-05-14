@@ -1,11 +1,19 @@
 {
-  "status": "plan-assertion-failed",
-  "code": "assertion-failed",
-  "message": "Account balance does not match expected value.",
-  "details": {
-    "plan": {
+  "status": "ok",
+  "payload": {
       "planId": "plan-demo-1",
       "status": "assertion-failed",
+      "resultDetail": "full",
+      "summary": {
+        "startedAt": "2026-04-23T09:56:46.990036Z",
+        "finishedAt": "2026-04-23T09:56:47.117316Z",
+        "stepCount": 5,
+        "succeededStepCount": 4,
+        "failedStepCount": 1,
+        "failedStepId": "assert-cash-balance",
+        "failureCode": "assertion-failed",
+        "failureMessage": "Account balance does not match expected value."
+      },
       "journal": {
         "startedAt": "2026-04-23T09:56:46.990036Z",
         "finishedAt": "2026-04-23T09:56:47.117316Z",
@@ -236,6 +244,5 @@
           }
         ]
       }
-    }
   }
 }

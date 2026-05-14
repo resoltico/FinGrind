@@ -5,8 +5,6 @@ import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
-import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
-import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
@@ -42,12 +40,12 @@ final class CliDiscoveryOutputRenderer {
                             command.stdoutContractSummary(),
                             command.summary()))
                 .toList());
-    String quickStart =
-        helpDescriptor.quickStart().isEmpty()
-            ? "(none)"
-            : helpDescriptor.quickStart().stream()
-                .map(CliDiscoveryOutputRenderer::renderQuickStartWorkflow)
-                .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
+    String gettingStarted =
+        String.join(
+            System.lineSeparator(),
+            List.of(
+                "Run 'fingrind help <command>' for command-specific usage, request grammar, and examples.",
+                "Run 'fingrind capabilities --output json' for the full machine-readable contract."));
     String exitCodes =
         CliTextFormat.renderTable(
             List.of("Code", "Meaning"),
@@ -60,7 +58,7 @@ final class CliDiscoveryOutputRenderer {
         joinSections(
             header,
             section("Commands", commands),
-            section("Quick Start", quickStart),
+            section("Getting Started", gettingStarted),
             section("Exit Codes", exitCodes)));
   }
 
@@ -243,62 +241,6 @@ final class CliDiscoveryOutputRenderer {
         : section("Operator Notes", String.join(System.lineSeparator(), notes));
   }
 
-  private static String renderQuickStartWorkflow(WorkflowDescriptor workflow) {
-    String title =
-        switch (workflow.surface()) {
-          case BUNDLE_POSIX_SHELL -> "Self-Contained Bundle (POSIX Shell)";
-          case BUNDLE_WINDOWS_POWERSHELL -> "Self-Contained Bundle (Windows PowerShell)";
-          case SOURCE_CHECKOUT_POSIX_SHELL -> "Source Checkout Launcher (POSIX Shell)";
-          case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-              "Source Checkout Launcher (Windows PowerShell)";
-          case DIRECT_JAVA_POSIX_SHELL -> "Developer Raw JAR (POSIX Shell)";
-          case DIRECT_JAVA_WINDOWS_POWERSHELL -> "Developer Raw JAR (Windows PowerShell)";
-          case CONTAINER_DOCKER -> "Container Image (Docker CLI)";
-        };
-    List<String> guidanceNotes =
-        workflow.steps().stream()
-            .filter(WorkflowStepDescriptor.Note.class::isInstance)
-            .map(WorkflowStepDescriptor.Note.class::cast)
-            .map(WorkflowStepDescriptor.Note::text)
-            .map(note -> "- " + note)
-            .toList();
-    List<WorkflowStepDescriptor> executableSteps =
-        workflow.steps().stream()
-            .filter(step -> !(step instanceof WorkflowStepDescriptor.Note))
-            .toList();
-    java.util.concurrent.atomic.AtomicInteger stepNumber =
-        new java.util.concurrent.atomic.AtomicInteger(1);
-    String steps =
-        executableSteps.stream()
-            .map(step -> renderQuickStartStep(stepNumber.getAndIncrement(), step))
-            .collect(
-                java.util.stream.Collectors.joining(
-                    System.lineSeparator() + System.lineSeparator()));
-    return title
-        + System.lineSeparator()
-        + joinSections(
-            guidanceNotes.isEmpty()
-                ? ""
-                : section("Guidance", String.join(System.lineSeparator(), guidanceNotes)),
-            section("Steps", steps));
-  }
-
-  static String renderQuickStartStep(int stepNumber, WorkflowStepDescriptor step) {
-    return switch (step) {
-      case WorkflowStepDescriptor.Command command ->
-          stepNumber + ". Run" + System.lineSeparator() + indent(command.text(), "   ");
-      case WorkflowStepDescriptor.Edit edit ->
-          stepNumber
-              + ". Create "
-              + edit.path()
-              + System.lineSeparator()
-              + indent(edit.content(), "   ");
-      case WorkflowStepDescriptor.Note ignored ->
-          throw new IllegalArgumentException(
-              "Quick-start note steps must be rendered through the guidance block.");
-    };
-  }
-
   private static String indent(String text, String prefix) {
     return text.lines()
         .map(line -> prefix + line)
@@ -341,7 +283,8 @@ final class CliDiscoveryOutputRenderer {
             section(
                 "Template",
                 renderJsonTemplate(
-                    helpDescriptor.requestTemplate(), OperationId.PRINT_REQUEST_TEMPLATE)),
+                    helpDescriptor.requestTemplate(),
+                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE))),
             renderFieldGroup("Top-Level Fields", postEntry.topLevelFields()),
             renderFieldGroup("Journal Line Fields", postEntry.lineFields()),
             renderFieldGroup("Provenance Fields", postEntry.provenanceFields()),
@@ -361,7 +304,13 @@ final class CliDiscoveryOutputRenderer {
         "Request File",
         joinSections(
             "Provide one JSON object through --request-file <path|->.",
-            section("Template", renderJsonTemplate(helpDescriptor.declareAccountTemplate(), null)),
+            section(
+                "Template",
+                renderJsonTemplate(
+                    helpDescriptor.declareAccountTemplate(),
+                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                        + " "
+                        + OperationId.DECLARE_ACCOUNT.wireName())),
             renderFieldGroup("Top-Level Fields", declareAccount.topLevelFields()),
             renderEnumVocabularyBlock(declareAccount.enumVocabularies())));
   }
@@ -380,7 +329,9 @@ final class CliDiscoveryOutputRenderer {
             "Provide one ledger plan JSON object through --request-file <path|->.",
             section(
                 "Template",
-                renderJsonTemplate(helpDescriptor.planTemplate(), OperationId.PRINT_PLAN_TEMPLATE)),
+                renderJsonTemplate(
+                    helpDescriptor.planTemplate(),
+                    CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE))),
             renderFieldGroup("Top-Level Fields", ledgerPlan.topLevelFields()),
             renderFieldGroup("Step Fields", ledgerPlan.stepFields()),
             renderFieldGroup("Query Fields", ledgerPlan.queryFields()),
@@ -389,19 +340,15 @@ final class CliDiscoveryOutputRenderer {
   }
 
   static String renderJsonTemplate(
-      Object templateDescriptor,
-      @org.jspecify.annotations.Nullable OperationId shortcutOperationId) {
+      Object templateDescriptor, @org.jspecify.annotations.Nullable String shortcutCommand) {
     try {
-      String template =
-          CliJsonObjectMappers.configuredObjectMapper()
-              .writerWithDefaultPrettyPrinter()
-              .writeValueAsString(templateDescriptor);
+      String template = CliWireJson.prettyJsonText(templateDescriptor);
       String templateBlock = indent(template, "  ");
-      if (shortcutOperationId == null) {
+      if (shortcutCommand == null) {
         return templateBlock;
       }
-      return "Shortcut: fingrind "
-          + ProtocolCatalog.operationName(shortcutOperationId)
+      return "Shortcut: "
+          + shortcutCommand
           + System.lineSeparator()
           + System.lineSeparator()
           + templateBlock;

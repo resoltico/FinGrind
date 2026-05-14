@@ -74,7 +74,7 @@ class LedgerPlanServiceWorkflowTest {
                                   Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(new AccountCode("1000"), null, null)),
+                              AccountBalanceQuery.unbounded(new AccountCode("1000"))),
                           new LedgerStep.Assert(
                               stepId("assert-declared"),
                               new LedgerAssertion.AccountDeclared(new AccountCode("1000"))),
@@ -155,7 +155,7 @@ class LedgerPlanServiceWorkflowTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(new AccountCode("1000"), null, null)))));
+                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))));
 
       assertEquals(LedgerPlanStatus.REJECTED, queryResult.status());
       assertEquals(

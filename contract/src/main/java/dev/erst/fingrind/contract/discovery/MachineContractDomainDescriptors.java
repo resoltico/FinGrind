@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.BookModelFacts;
 import dev.erst.fingrind.contract.protocol.CurrencyFacts;
+import dev.erst.fingrind.contract.protocol.ExtensionSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.PlanExecutionFacts;
@@ -29,6 +30,24 @@ final class MachineContractDomainDescriptors {
         bookModel.initialization(),
         bookModel.accountRegistry(),
         bookModel.currencyScope());
+  }
+
+  static ContractResponse.AccountingBaselineDescriptor accountingBaseline() {
+    dev.erst.fingrind.contract.protocol.AccountingBaselineFacts baseline =
+        ProtocolCatalog.accountingBaseline();
+    return new ContractResponse.AccountingBaselineDescriptor(
+        baseline.scope(),
+        baseline.doctrineSources(),
+        baseline.builtInStatements(),
+        baseline.deliberateExclusions(),
+        baseline.standardsPosition(),
+        baseline.reportingPosition(),
+        baseline.chartModelPosition(),
+        baseline.smallEntityPosition(),
+        baseline.operationalPosition(),
+        baseline.taxPosition(),
+        baseline.organizationalPosition(),
+        baseline.isoClarification());
   }
 
   static List<CommandDescriptor> commandDescriptors() {
@@ -147,6 +166,15 @@ final class MachineContractDomainDescriptors {
     CurrencyFacts currency = ProtocolCatalog.currency();
     return new ContractResponse.CurrencyDescriptor(
         currency.scope(), currency.multiCurrencyStatus(), currency.description());
+  }
+
+  static ContractResponse.ExtensionSurfaceDescriptor extensionSurface() {
+    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
+    return new ContractResponse.ExtensionSurfaceDescriptor(
+        extensionSurface.model(),
+        extensionSurface.implementedSeams(),
+        extensionSurface.futureContexts(),
+        extensionSurface.description());
   }
 
   static ContractResponse.PlanExecutionDescriptor planExecution() {

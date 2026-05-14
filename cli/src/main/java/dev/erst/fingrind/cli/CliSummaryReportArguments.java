@@ -30,6 +30,7 @@ final class CliSummaryReportArguments {
           List.of(
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.POSTING_COVERAGE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -102,6 +103,7 @@ final class CliSummaryReportArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, PERIOD_SUMMARY_ARGUMENTS);
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable PostingCoverage postingCoverage = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -117,6 +119,11 @@ final class CliSummaryReportArguments {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
                 effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
+      }
+      if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
+        postingCoverage =
+            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
@@ -137,6 +144,8 @@ final class CliSummaryReportArguments {
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
+    PostingCoverage resolvedPostingCoverage =
+        postingCoverage == null ? PostingCoverage.ALL_POSTING_KINDS : postingCoverage;
     CliArgumentValueParser.requireOrderedDateRange(
         requiredEffectiveDateFrom,
         requiredEffectiveDateTo,
@@ -144,7 +153,8 @@ final class CliSummaryReportArguments {
         ProtocolOptions.EFFECTIVE_DATE_TO);
     return new PeriodSummary(
         parsedArguments.bookAccess(),
-        new PeriodSummaryQuery(requiredEffectiveDateFrom, requiredEffectiveDateTo),
+        new PeriodSummaryQuery(
+            requiredEffectiveDateFrom, requiredEffectiveDateTo, resolvedPostingCoverage),
         CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 

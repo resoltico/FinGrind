@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -94,7 +95,8 @@ public final class BookReadService {
                   dev.erst.fingrind.executor.bookkeeping.AccountBalanceView>
               reported ->
           new AccountBalanceResult.Reported(
-              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+              BookkeepingReadPublishedLanguageTranslator.toPublished(
+                  currentBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<
                   dev.erst.fingrind.executor.bookkeeping.AccountBalanceView>
               rejected ->
@@ -125,7 +127,8 @@ public final class BookReadService {
       case BookkeepingReadOutcome.Reported<dev.erst.fingrind.executor.bookkeeping.AccountLedgerView>
               reported ->
           new AccountLedgerResult.Reported(
-              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+              BookkeepingReadPublishedLanguageTranslator.toPublished(
+                  currentBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<dev.erst.fingrind.executor.bookkeeping.AccountLedgerView>
               rejected ->
           new AccountLedgerResult.Rejected(
@@ -140,7 +143,8 @@ public final class BookReadService {
       case BookkeepingReadOutcome.Reported<dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView>
               reported ->
           new PeriodSummaryResult.Reported(
-              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+              BookkeepingReadPublishedLanguageTranslator.toPublished(
+                  currentBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView>
               rejected ->
           new PeriodSummaryResult.Rejected(
@@ -196,6 +200,27 @@ public final class BookReadService {
               rejected ->
           new ChangesInEquityResult.Rejected(
               BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
+    };
+  }
+
+  private BookIdentity currentBookIdentity() {
+    return requireInitializedBookIdentity(bookkeepingReadService.inspectBook());
+  }
+
+  static BookIdentity requireInitializedBookIdentity(
+      dev.erst.fingrind.executor.spi.BookLifecycleInspection inspection) {
+    Objects.requireNonNull(inspection, "inspection");
+    return switch (inspection) {
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized ->
+          initialized.bookIdentity();
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing _ ->
+          throw new IllegalStateException(
+              "Book identity is unavailable because the book is missing.");
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Existing existing ->
+          throw new IllegalStateException(
+              "Book identity is unavailable for non-initialized book status "
+                  + existing.status().wireValue()
+                  + ".");
     };
   }
 }

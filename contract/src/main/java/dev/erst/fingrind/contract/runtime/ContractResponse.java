@@ -23,6 +23,7 @@ public final class ContractResponse {
   /** Sealed inventory root for the response descriptor namespace. */
   public sealed interface ResponseDescriptorType
       permits BookModelDescriptor,
+          AccountingBaselineDescriptor,
           FieldDescriptor,
           ErrorDescriptor,
           ResponseModelDescriptor,
@@ -32,7 +33,8 @@ public final class ContractResponse {
           AccountRegistryDescriptor,
           ReversalDescriptor,
           PreflightDescriptor,
-          CurrencyDescriptor {}
+          CurrencyDescriptor,
+          ExtensionSurfaceDescriptor {}
 
   /** Stable initialization requirements for account-registry operations. */
   public enum InitializationRequirement implements WireValue {
@@ -107,6 +109,48 @@ public final class ContractResponse {
     }
   }
 
+  /** Descriptor for the machine-readable accounting baseline. */
+  public record AccountingBaselineDescriptor(
+      String scope,
+      List<String> doctrineSources,
+      List<String> builtInStatements,
+      List<String> deliberateExclusions,
+      String standardsPosition,
+      String reportingPosition,
+      String chartModelPosition,
+      String smallEntityPosition,
+      String operationalPosition,
+      String taxPosition,
+      String organizationalPosition,
+      String isoClarification)
+      implements ResponseDescriptorType {
+    /** Validates one accounting-baseline descriptor payload. */
+    public AccountingBaselineDescriptor {
+      scope = ContractDescriptorValidation.requireText(scope, "scope");
+      doctrineSources = ContractDescriptorValidation.copyList(doctrineSources, "doctrineSources");
+      builtInStatements =
+          ContractDescriptorValidation.copyList(builtInStatements, "builtInStatements");
+      deliberateExclusions =
+          ContractDescriptorValidation.copyList(deliberateExclusions, "deliberateExclusions");
+      standardsPosition =
+          ContractDescriptorValidation.requireText(standardsPosition, "standardsPosition");
+      reportingPosition =
+          ContractDescriptorValidation.requireText(reportingPosition, "reportingPosition");
+      chartModelPosition =
+          ContractDescriptorValidation.requireText(chartModelPosition, "chartModelPosition");
+      smallEntityPosition =
+          ContractDescriptorValidation.requireText(smallEntityPosition, "smallEntityPosition");
+      operationalPosition =
+          ContractDescriptorValidation.requireText(operationalPosition, "operationalPosition");
+      taxPosition = ContractDescriptorValidation.requireText(taxPosition, "taxPosition");
+      organizationalPosition =
+          ContractDescriptorValidation.requireText(
+              organizationalPosition, "organizationalPosition");
+      isoClarification =
+          ContractDescriptorValidation.requireText(isoClarification, "isoClarification");
+    }
+  }
+
   /** One general field descriptor for envelopes or emitted payloads. */
   public record FieldDescriptor(String name, String description) implements ResponseDescriptorType {
     /** Validates one field descriptor payload. */
@@ -135,6 +179,7 @@ public final class ContractResponse {
   /** Descriptor for the stable response contract. */
   public record ResponseModelDescriptor(
       List<ProtocolSuccessStatus> successStatuses,
+      List<FieldDescriptor> successFields,
       List<ProtocolRejectionStatus> rejectionStatuses,
       ProtocolFailureStatus errorStatus,
       List<RejectionDescriptor> rejections,
@@ -146,6 +191,7 @@ public final class ContractResponse {
     /** Validates one response-model descriptor payload. */
     public ResponseModelDescriptor {
       successStatuses = ContractDescriptorValidation.copyList(successStatuses, "successStatuses");
+      successFields = ContractDescriptorValidation.copyList(successFields, "successFields");
       rejectionStatuses =
           ContractDescriptorValidation.copyList(rejectionStatuses, "rejectionStatuses");
       errorStatus = ContractDescriptorValidation.requireValue(errorStatus, "errorStatus");
@@ -265,6 +311,20 @@ public final class ContractResponse {
       scope = ContractDescriptorValidation.requireText(scope, "scope");
       multiCurrencyStatus =
           ContractDescriptorValidation.requireText(multiCurrencyStatus, "multiCurrencyStatus");
+      description = ContractDescriptorValidation.requireText(description, "description");
+    }
+  }
+
+  /** Descriptor for sanctioned implemented seams and adjacent future contexts. */
+  public record ExtensionSurfaceDescriptor(
+      String model, List<String> implementedSeams, List<String> futureContexts, String description)
+      implements ResponseDescriptorType {
+    /** Validates one extension-surface descriptor payload. */
+    public ExtensionSurfaceDescriptor {
+      model = ContractDescriptorValidation.requireText(model, "model");
+      implementedSeams =
+          ContractDescriptorValidation.copyList(implementedSeams, "implementedSeams");
+      futureContexts = ContractDescriptorValidation.copyList(futureContexts, "futureContexts");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }

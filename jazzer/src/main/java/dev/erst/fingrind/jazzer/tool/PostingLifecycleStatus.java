@@ -19,6 +19,7 @@ public enum PostingLifecycleStatus implements WireValue {
   POSTING_KIND_RESERVED("posting-kind-reserved"),
   BOOK_FUNCTIONAL_CURRENCY_MISMATCH("book-functional-currency-mismatch"),
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
+  OPENING_BALANCE_WINDOW_CLOSED("opening-balance-window-closed"),
   OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT("opening-balance-touches-nominal-account"),
   RETAINED_EARNINGS_ACCOUNT_RESERVED("retained-earnings-account-reserved"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),

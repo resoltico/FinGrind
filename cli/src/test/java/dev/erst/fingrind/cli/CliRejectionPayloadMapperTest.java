@@ -126,6 +126,11 @@ class CliRejectionPayloadMapperTest {
             "idem-2",
             new PostingRejection.BookFunctionalCurrencyMismatch(
                 CurrencyUnit.of("EUR"), CurrencyUnit.of("USD")));
+    var openingBalanceWindowClosed =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-window",
+            new PostingRejection.OpeningBalanceWindowClosed(
+                PostingKind.STANDARD, LocalDate.parse("2026-04-07")));
     var openingBalanceNominalAccount =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-3",
@@ -146,6 +151,15 @@ class CliRejectionPayloadMapperTest {
             functionalCurrencyMismatch.details());
     assertEquals("EUR", currencyDetails.functionalCurrency());
     assertEquals("USD", currencyDetails.attemptedCurrency());
+    assertNotNull(openingBalanceWindowClosed.hint());
+    assertTrue(openingBalanceWindowClosed.hint().contains("window closed with STANDARD"));
+
+    CliRejectionJsonModels.OpeningBalanceWindowClosedDetails openingBalanceWindowDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.OpeningBalanceWindowClosedDetails.class,
+            openingBalanceWindowClosed.details());
+    assertEquals("STANDARD", openingBalanceWindowDetails.firstBlockingPostingKind());
+    assertEquals("2026-04-07", openingBalanceWindowDetails.firstBlockingEffectiveDate());
 
     CliRejectionJsonModels.OpeningBalanceNominalAccountDetails openingBalanceDetails =
         assertInstanceOf(

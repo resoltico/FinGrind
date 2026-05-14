@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +21,7 @@ final class CliAccountReportArguments {
               ProtocolOptions.ACCOUNT_CODE,
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.POSTING_COVERAGE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -33,7 +35,10 @@ final class CliAccountReportArguments {
             parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo());
     return new AccountBalance(
         parsedArguments.bookAccess(),
-        new AccountBalanceQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
+        new AccountBalanceQuery(
+            parsedArguments.accountCode(),
+            resolvedEffectiveDateRange,
+            parsedArguments.postingCoverage()),
         parsedArguments.output());
   }
 
@@ -44,7 +49,10 @@ final class CliAccountReportArguments {
             parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo());
     return new AccountLedger(
         parsedArguments.bookAccess(),
-        new AccountLedgerQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
+        new AccountLedgerQuery(
+            parsedArguments.accountCode(),
+            resolvedEffectiveDateRange,
+            parsedArguments.postingCoverage()),
         parsedArguments.output());
   }
 
@@ -55,6 +63,7 @@ final class CliAccountReportArguments {
     @Nullable String accountCodeValue = null;
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable PostingCoverage postingCoverage = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -81,6 +90,11 @@ final class CliAccountReportArguments {
                 effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
         continue;
       }
+      if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
+        postingCoverage =
+            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
+        continue;
+      }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
@@ -101,6 +115,7 @@ final class CliAccountReportArguments {
         resolvedAccountCode,
         effectiveDateFrom,
         effectiveDateTo,
+        postingCoverage == null ? PostingCoverage.ALL_POSTING_KINDS : postingCoverage,
         CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
@@ -109,6 +124,7 @@ final class CliAccountReportArguments {
       AccountCode accountCode,
       @Nullable LocalDate effectiveDateFrom,
       @Nullable LocalDate effectiveDateTo,
+      PostingCoverage postingCoverage,
       CliCommand.ReportOutput output) {}
 
   private static EffectiveDateRange validatedEffectiveDateRange(

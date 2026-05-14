@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -111,5 +112,27 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(
         "Journal entry must balance debits and credits.",
         json.path("details").path("violations").get(0).stringValue());
+  }
+
+  @Test
+  void writeRequestTemplate_writesCanonicalRawJsonTemplate() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    String expected = CliWireJson.prettyJsonText(MachineContract.requestTemplate());
+
+    responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
+
+    assertEquals(expected, outputStream.toString(StandardCharsets.UTF_8).trim());
+  }
+
+  @Test
+  void writePlanTemplate_writesCanonicalRawJsonTemplate() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    String expected = CliWireJson.prettyJsonText(MachineContract.planTemplate());
+
+    responseWriter.writePlanTemplate(MachineContract.planTemplate());
+
+    assertEquals(expected, outputStream.toString(StandardCharsets.UTF_8).trim());
   }
 }

@@ -61,7 +61,17 @@ final class CliDiscoveryArguments {
   }
 
   static CliCommand parsePrintRequestTemplate(List<String> arguments) {
-    return parseSingleToken(arguments, new PrintRequestTemplate());
+    if (arguments.size() == 1) {
+      return new PrintRequestTemplate(null);
+    }
+    if (arguments.size() == 2) {
+      return new PrintRequestTemplate(requiredRequestTemplateTopic(arguments.get(1)));
+    }
+    String unsupportedArgument = arguments.get(2);
+    throw CliArgumentValueParser.invalid(
+        unsupportedArgument,
+        "%s accepts at most one optional request-bearing command topic."
+            .formatted(arguments.getFirst()));
   }
 
   static CliCommand parsePrintPlanTemplate(List<String> arguments) {
@@ -104,6 +114,30 @@ final class CliDiscoveryArguments {
       throw CliArgumentValueParser.invalid(token, "Unsupported help topic: " + token);
     }
     return operation.orElseThrow().id();
+  }
+
+  private static OperationId requiredRequestTemplateTopic(String token) {
+    OperationId topic = requiredCommandTopic(token);
+    if (topic == OperationId.POST_ENTRY
+        || topic == OperationId.PREFLIGHT_ENTRY
+        || topic == OperationId.DECLARE_ACCOUNT) {
+      return topic;
+    }
+    throw CliArgumentValueParser.invalid(
+        token,
+        "Unsupported request-template topic: "
+            + token
+            + ". Use "
+            + supportedRequestTemplateTopics()
+            + ".");
+  }
+
+  private static String supportedRequestTemplateTopics() {
+    return String.join(
+        ", ",
+        ProtocolCatalog.operationName(OperationId.POST_ENTRY),
+        ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
+        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT));
   }
 
   /** Factory for one discovery command that only varies by the selected output mode. */

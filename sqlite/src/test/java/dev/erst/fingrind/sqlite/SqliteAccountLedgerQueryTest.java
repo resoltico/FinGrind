@@ -60,8 +60,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
       assertEquals(
           new AccountLedgerReport(
+              bookIdentity(),
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
               List.of(
                   new AccountLedgerEntry(
@@ -105,8 +107,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
       assertEquals(
           new AccountLedgerReport(
+              bookIdentity(),
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.MIN, null),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               List.of(),
               List.of(
                   new AccountLedgerEntry(
@@ -152,8 +156,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
       assertEquals(
           new AccountLedgerReport(
+              bookIdentity(),
               publishedAccount(revenueAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               List.of(balance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT)),
               List.of(
                   new AccountLedgerEntry(
@@ -202,8 +208,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
       assertEquals(
           new AccountLedgerReport(
+              bookIdentity(),
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
               List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT)),
               List.of(),
               List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT))),

@@ -83,7 +83,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
             writer.writeListPostingsResult(result, OutputMode.CSV),
         postingId.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountBalance(bookAccess, new AccountBalanceQuery(primaryAccount, null, null)),
+        workflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(primaryAccount)),
         OutputMode.HUMAN,
         (CliResponseWriter writer, AccountBalanceResult result) ->
             writer.writeAccountBalanceResult(result, OutputMode.HUMAN),
@@ -97,7 +97,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
             writer.writeTrialBalanceResult(result, OutputMode.CSV),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountLedger(bookAccess, new AccountLedgerQuery(primaryAccount, null, null)),
+        workflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(primaryAccount)),
         OutputMode.HUMAN,
         (CliResponseWriter writer, AccountLedgerResult result) ->
             writer.writeAccountLedgerResult(result, OutputMode.HUMAN),
@@ -116,15 +116,13 @@ final class SqliteRoundTripWorkflowCliCoverage {
             writer.writeGetPostingResult(result, OutputMode.JSON),
         "posting-not-found");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountBalance(
-            bookAccess, new AccountBalanceQuery(new AccountCode("9999"), null, null)),
+        workflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(new AccountCode("9999"))),
         OutputMode.JSON,
         (CliResponseWriter writer, AccountBalanceResult result) ->
             writer.writeAccountBalanceResult(result, OutputMode.JSON),
         "unknown-account");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountLedger(
-            bookAccess, new AccountLedgerQuery(new AccountCode("9999"), null, null)),
+        workflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(new AccountCode("9999"))),
         OutputMode.CSV,
         (CliResponseWriter writer, AccountLedgerResult result) ->
             writer.writeAccountLedgerResult(result, OutputMode.CSV),

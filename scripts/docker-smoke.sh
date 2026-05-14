@@ -134,7 +134,6 @@ trap cleanup EXIT
 command -v docker >/dev/null 2>&1 || die "docker is required for the Docker acceptance gate"
 docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the Docker acceptance gate"
 [[ -x "${gradlew}" ]] || die "missing Gradle wrapper at ${gradlew}"
-[[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 
 mkdir -p "${gradle_user_home}"
 acquire_lock
@@ -145,6 +144,8 @@ env GRADLE_USER_HOME="${gradle_user_home}" \
 
 [[ -d "${cli_docker_context_dir}" ]] || die \
     "missing staged Docker build context at ${cli_docker_context_dir} after :cli:stageDockerBuildContext"
+[[ -f "${cli_docker_context_dir}/Dockerfile" ]] || die \
+    "missing staged Dockerfile at ${cli_docker_context_dir}/Dockerfile after :cli:stageDockerBuildContext"
 python3 "${docker_context_verifier}" --context-dir "${cli_docker_context_dir}" --source-root "${repo_root}"
 
 docker_endpoint="${DOCKER_HOST:-}"
@@ -167,7 +168,7 @@ if ! docker_with_repo_config buildx version >/dev/null 2>&1; then
 fi
 
 printf 'Docker acceptance: building local image\n'
-docker_with_repo_config buildx build --load -t "${image_tag}" "${repo_root}" >/dev/null
+docker_with_repo_config buildx build --load -t "${image_tag}" "${cli_docker_context_dir}" >/dev/null
 
 runtime_modules_output="$(
     docker_with_repo_config run --rm \

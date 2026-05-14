@@ -20,6 +20,7 @@ readonly check_stage_labels=(
 )
 
 readonly check_stage5_executable_script_paths=(
+    scripts/test-run-quality-gates-hygiene.sh
     scripts/test-devcontainer-workflow.sh
     scripts/test-repo-verification-lock.sh
     scripts/test-ci-release-surface-workflow.sh
@@ -56,6 +57,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-sqlite-runtime-contract.sh
     scripts/test-render-managed-sqlite-compiler-flags.sh
+    scripts/test-verify-repo-hygiene.sh
     scripts/validate-devcontainer.sh
     scripts/verify-source-checkout-sqlite-runtime.sh
     scripts/verify-environment-configured-sqlite-runtime.sh
@@ -69,7 +71,7 @@ readonly check_stage5_shell_only_script_paths=(
 
 check_stage_usage_lines() {
     printf '%s\n' \
-        '  1. scripts/run-quality-gates.sh (check coverage + included build-logic test)' \
+        '  1. scripts/run-quality-gates.sh (repo hygiene + check coverage + included build-logic test)' \
         '  2. jazzer/bin/check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \

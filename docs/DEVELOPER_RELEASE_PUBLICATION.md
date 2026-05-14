@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
 updated: "2026-05-14"
 route:
@@ -128,6 +128,13 @@ gh release view vX.Y.Z
 ```
 
 If those checks disagree with a green workflow badge, trust the direct verification.
+
+The release procedure assumes the checkout driving publication has a readable Git object store. A
+Git worktree is the preferred release vehicle because it keeps post-release reconciliation obvious,
+but a worktree shares the same `.git` metadata as the primary checkout. If
+`./scripts/verify-repo-hygiene.sh` reports object-store corruption in the primary checkout, switch
+to a clean clone before continuing the publication path; a sibling worktree will inherit the same
+object-store defect.
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,

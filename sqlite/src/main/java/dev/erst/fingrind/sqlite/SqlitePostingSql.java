@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.util.Collections;
@@ -484,6 +485,9 @@ final class SqlitePostingSql {
     StringBuilder sql =
         new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
             .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
+    if (query.postingCoverage().isNonClosingOnly()) {
+      sql.append(" and posting_fact.posting_kind <> ?");
+    }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");
     }
@@ -565,13 +569,23 @@ final class SqlitePostingSql {
     return sql.toString();
   }
 
-  static String loadPeriodSummaryLines() {
-    return BASE_REPORT_LINE_SELECT
-        + """
-           where posting_fact.effective_date >= ?
-             and posting_fact.effective_date <= ?
-           order by posting_fact.effective_date, posting_fact.recorded_at, posting_fact.posting_id, journal_line.line_order
-           """;
+  static String loadPeriodSummaryLines(PeriodSummaryCriteria query) {
+    StringBuilder sql =
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 128)
+            .append(BASE_REPORT_LINE_SELECT)
+            .append(
+                """
+                 where posting_fact.effective_date >= ?
+                   and posting_fact.effective_date <= ?
+                """);
+    if (query.postingCoverage().isNonClosingOnly()) {
+      sql.append(" and posting_fact.posting_kind <> ?");
+    }
+    sql.append(
+        """
+         order by posting_fact.effective_date, posting_fact.recorded_at, posting_fact.posting_id, journal_line.line_order
+        """);
+    return sql.toString();
   }
 
   static String listPostingsForAccountLedger(AccountLedgerCriteria query) {
@@ -587,6 +601,9 @@ final class SqlitePostingSql {
                        and journal_line.account_code = ?
                  )
                 """);
+    if (query.postingCoverage().isNonClosingOnly()) {
+      sql.append(" and posting_fact.posting_kind <> ?");
+    }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");
     }

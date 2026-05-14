@@ -65,6 +65,7 @@ class StatementAndCloseContractTypesTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            new ArrayList<>(List.of(financialPositionSection)),
             new ArrayList<>(List.of(financialPositionSection)));
     FinancialPositionResult.Reported reportedFinancialPosition =
         new FinancialPositionResult.Reported(financialPositionReport);
@@ -94,6 +95,8 @@ class StatementAndCloseContractTypesTest {
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.NON_CLOSING_POSTINGS,
             new ArrayList<>(List.of(incomeStatementSection)),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
+            new ArrayList<>(List.of(incomeStatementSection)),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))));
     IncomeStatementResult.Reported reportedIncomeStatement =
         new IncomeStatementResult.Reported(incomeStatementReport);
@@ -119,6 +122,10 @@ class StatementAndCloseContractTypesTest {
             LocalDate.parse("2026-04-30"),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            new ArrayList<>(List.of(changesRow)),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "100.00"))),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "110.00"))),
             new ArrayList<>(List.of(changesRow)),
             new ArrayList<>(List.of(balance("EUR", "0.00", "100.00"))),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
@@ -194,7 +201,8 @@ class StatementAndCloseContractTypesTest {
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
                 PostingCoverage.ALL_POSTING_KINDS,
-                nullOf()));
+                nullOf(),
+                List.of()));
     assertThrows(
         NullPointerException.class,
         () -> new FinancialPositionSection(nullOf(), List.of(), List.of()));
@@ -224,6 +232,8 @@ class StatementAndCloseContractTypesTest {
                 LocalDate.parse("2026-04-01"),
                 EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
                 PostingCoverage.NON_CLOSING_POSTINGS,
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of()));
     assertThrows(
@@ -255,6 +265,10 @@ class StatementAndCloseContractTypesTest {
                 LocalDate.parse("2026-04-01"),
                 EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
                 PostingCoverage.ALL_POSTING_KINDS,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

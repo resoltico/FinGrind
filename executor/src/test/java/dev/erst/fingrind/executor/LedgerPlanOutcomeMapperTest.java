@@ -28,6 +28,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -407,12 +408,54 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanOutcomeMapper.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalDoesNotNegateTarget(new PostingId("posting-3")));
+    var postingKindReserved =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .PostingKindReserved(PostingKind.PERIOD_CLOSE));
+    var functionalCurrencyMismatch =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .BookFunctionalCurrencyMismatch(
+                    dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+                    dev.erst.fingrind.core.CurrencyUnit.of("USD")));
+    var closedPeriodViolation =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .ClosedPeriodViolation(
+                    LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-06")));
+    var openingBalanceWindowClosed =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .OpeningBalanceWindowClosed(
+                    PostingKind.STANDARD, LocalDate.parse("2026-04-07")));
+    var openingBalanceNominalAccount =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .OpeningBalanceTouchesNominalAccount(
+                    new AccountCode("4000"), AccountType.REVENUE));
+    var retainedEarningsReserved =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .RetainedEarningsAccountReserved(new AccountCode("3200")));
 
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals("duplicate-idempotency-key", duplicateIdempotencyKey.failure().code());
     assertEquals("reversal-target-not-found", reversalTargetNotFound.failure().code());
     assertEquals("reversal-already-exists", reversalAlreadyExists.failure().code());
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
+    assertEquals("posting-kind-reserved", postingKindReserved.failure().code());
+    assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
+    assertEquals("closed-period-violation", closedPeriodViolation.failure().code());
+    assertEquals("opening-balance-window-closed", openingBalanceWindowClosed.failure().code());
+    assertEquals(
+        "opening-balance-touches-nominal-account", openingBalanceNominalAccount.failure().code());
+    assertEquals("retained-earnings-account-reserved", retainedEarningsReserved.failure().code());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
         reversalTargetNotFound.failure().facts());
@@ -422,6 +465,32 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-3")),
         reversalDoesNotNegateTarget.failure().facts());
+    assertEquals(
+        List.of(BookWorkflowFact.text("postingKind", PostingKind.PERIOD_CLOSE.wireValue())),
+        postingKindReserved.failure().facts());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("functionalCurrency", "EUR"),
+            BookWorkflowFact.text("attemptedCurrency", "USD")),
+        functionalCurrencyMismatch.failure().facts());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("closedThroughEffectiveDate", "2026-04-07"),
+            BookWorkflowFact.text("attemptedEffectiveDate", "2026-04-06")),
+        closedPeriodViolation.failure().facts());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("firstBlockingPostingKind", PostingKind.STANDARD.wireValue()),
+            BookWorkflowFact.text("firstBlockingEffectiveDate", "2026-04-07")),
+        openingBalanceWindowClosed.failure().facts());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("accountCode", "4000"),
+            BookWorkflowFact.text("accountType", AccountType.REVENUE.wireValue())),
+        openingBalanceNominalAccount.failure().facts());
+    assertEquals(
+        List.of(BookWorkflowFact.text("accountCode", "3200")),
+        retainedEarningsReserved.failure().facts());
   }
 
   @Test
@@ -490,7 +559,9 @@ class LedgerPlanOutcomeMapperTest {
             new BookWorkflowStep.AccountBalance(
                 "balance",
                 new AccountBalanceCriteria(
-                    new AccountCode("1000"), EffectiveDateRange.unbounded()))));
+                    new AccountCode("1000"),
+                    EffectiveDateRange.unbounded(),
+                    PostingCoverage.ALL_POSTING_KINDS))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(

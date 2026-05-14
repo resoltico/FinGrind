@@ -32,6 +32,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
               "--request-file",
               planFile.toString()
             });
@@ -63,6 +65,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
               "--request-file",
               planFile.toString()
             });
@@ -87,16 +91,17 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
               "--request-file",
               planFile.toString()
             });
     assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-rejected\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"administration-book-not-initialized\""));
+            .contains("\"failureCode\":\"administration-book-not-initialized\""));
   }
 
   @Test
@@ -117,12 +122,15 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
               "--request-file",
               planFile.toString()
             });
     assertEquals(3, exitCode);
     JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
-    assertEquals("plan-assertion-failed", planResult.path("status").stringValue());
+    assertEquals("ok", planResult.path("status").stringValue());
+    assertEquals("assertion-failed", planResult.path("payload").path("status").stringValue());
     assertFalse(Files.exists(bookFilePath));
     ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();
     FinGrindCli inspectCli =
@@ -226,6 +234,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
               "--request-file",
               planFile.toString()
             });

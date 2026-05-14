@@ -11,13 +11,9 @@ import java.util.Objects;
 final class PdfStatementMetadataRows {
   private PdfStatementMetadataRows() {}
 
-  static List<List<String>> statementParameters(
-      BookIdentity bookIdentity,
-      EffectiveDateRange comparativeEffectiveDateRange,
-      PostingCoverage postingCoverage,
-      List<List<String>> rows) {
+  static List<List<String>> reportParameters(
+      BookIdentity bookIdentity, PostingCoverage postingCoverage, List<List<String>> rows) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     Objects.requireNonNull(rows, "rows");
     List<List<String>> statementRows = new ArrayList<>();
@@ -26,6 +22,18 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     statementRows.add(
         List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
+    statementRows.addAll(rows);
+    return List.copyOf(statementRows);
+  }
+
+  static List<List<String>> statementParameters(
+      BookIdentity bookIdentity,
+      EffectiveDateRange comparativeEffectiveDateRange,
+      PostingCoverage postingCoverage,
+      List<List<String>> rows) {
+    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
+    List<List<String>> statementRows =
+        new ArrayList<>(reportParameters(bookIdentity, postingCoverage, List.of()));
     statementRows.add(
         List.of(
             "Comparative range",

@@ -112,6 +112,7 @@ final class ProtocolQueryOperations {
                     ProtocolOptions.ACCOUNT_CODE + " <account-code>",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
+                    ProtocolOptions.optionalPostingCoverageSyntax(),
                     ProtocolOptions.optionalPdfOutSyntax(),
                     ProtocolOptions.optionalOutputSyntax(
                         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
@@ -167,6 +168,7 @@ final class ProtocolQueryOperations {
                     ProtocolOptions.ACCOUNT_CODE + " <account-code>",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
+                    ProtocolOptions.optionalPostingCoverageSyntax(),
                     ProtocolOptions.optionalPdfOutSyntax(),
                     ProtocolOptions.optionalOutputSyntax(
                         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
@@ -197,13 +199,14 @@ final class ProtocolQueryOperations {
                     ProtocolOptions.currentPassphraseSourceSyntax(),
                     ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
                     ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
+                    ProtocolOptions.optionalPostingCoverageSyntax(),
                     ProtocolOptions.optionalPdfOutSyntax(),
                     ProtocolOptions.optionalOutputSyntax(
                         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
                 ExecutionMode.JSON_ENVELOPE,
                 List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one bounded office-work period summary with posting totals, currency totals, and per-account activity.",
+                "Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
                 List.of(
                     ProtocolExampleStep.command(
                         "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s human"

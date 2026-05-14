@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: ADR_ACCOUNTING_BASELINE
 updated: "2026-05-14"
 route:
@@ -29,6 +29,11 @@ The present baseline is:
 - a double-entry ledger whose current built-in primary statements are financial position, income
   statement, and changes in equity
 
+FinGrind does not currently claim:
+- full IFRS compliance
+- IFRS for SMEs parity
+- one complete statutory bookkeeping-and-reporting product for every entity shape
+
 FinGrind does not currently claim built-in support for:
 - a full statement-of-cash-flows model
 - OCI / comprehensive-income presentation
@@ -44,8 +49,13 @@ On the current hard-break line:
 - every caller-authored posting and every persisted journal line must use that book functional
   currency
 - mixed-currency journal entries are rejected
-- opening adoption balances are represented through `OPENING_BALANCE` postings
+- opening adoption balances are represented through `OPENING_BALANCE` postings and are accepted
+  only before the first committed posting enters the book, which makes the opening statement a
+  one-time seed boundary rather than one ongoing posting family
 - generated period-close postings are separate from caller-authored postings
+- comparative reporting windows and comparative statement payloads are derived from the declared
+  fiscal-year anchor through the built-in statement-comparative policy seam rather than by blind
+  calendar subtraction
 
 This means FinGrind currently models one clean bookkeeping kernel for:
 - sole traders and small organizations that keep one functional-currency book
@@ -53,6 +63,21 @@ This means FinGrind currently models one clean bookkeeping kernel for:
 
 It intentionally does not yet model the broader external-reporting and multi-currency layers that
 standards such as IAS 7 and IAS 21 require beyond that bookkeeping kernel.
+It also does not yet model the broader SME-operating subdomains that real businesses need above a
+ledger, such as invoices, receivables, payables, tax determination, inventory, payroll, or group
+reporting.
+
+More specifically on the current kernel line:
+- built-in reporting stops at financial position, income statement, and changes in equity; cash
+  flows, OCI/comprehensive-income reporting, and note/disclosure packages belong to adjacent
+  reporting contexts
+- the chart of accounts is flat; no parent-child hierarchy or first-class report-taxonomy
+  structure is built into the kernel account model
+- tax is not a first-class domain; users may post tax-bearing amounts manually, but tax
+  registrations, tax codes, rate schedules, recoverability, inclusivity, determination rules, and
+  filing obligations are not modeled yet
+- group reporting, consolidation, and intercompany elimination are not modeled in the current
+  single-entity kernel
 
 ## Consequence
 
@@ -71,8 +96,16 @@ Future extensions may add:
 - statement of cash flows
 - OCI / comprehensive-income layers
 - FX translation and exchange-difference accounting
+- hierarchical chart and reporting taxonomy
+- invoicing / receivables / payables operational contexts
+- tax determination and filing contexts
+- group reporting and consolidation
 - jurisdiction-specific close/reporting rules
 - statutory chart templates or filing exports
 
 Those extensions must preserve the current core invariants rather than weakening them with
 compatibility shims.
+
+The built-in policy pack already owns:
+- fiscal-year-aware comparative reporting windows and comparative payload data
+- the named comparative-reporting seam that future jurisdiction-specific packs may override

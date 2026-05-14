@@ -28,15 +28,19 @@ final class CliReportPayloadMapper {
   static CliReportJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
     return new CliReportJsonModels.TrialBalancePayload(
         report.effectiveDateTo().map(Object::toString).orElse(null),
-        statementContextPayload(
+        reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
             report.comparativeEffectiveDateRange()),
-        report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList());
+        report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList(),
+        report.comparativeRows().stream()
+            .map(CliReportPayloadMapper::trialBalanceRowPayload)
+            .toList());
   }
 
   static CliReportJsonModels.AccountLedgerPayload accountLedgerPayload(AccountLedgerReport report) {
     return new CliReportJsonModels.AccountLedgerPayload(
+        reportContextPayload(report.bookIdentity(), report.postingCoverage()),
         report.account().accountCode().value(),
         report.account().accountName().value(),
         report.account().accountType().wireValue(),
@@ -55,6 +59,7 @@ final class CliReportPayloadMapper {
 
   static CliReportJsonModels.PeriodSummaryPayload periodSummaryPayload(PeriodSummaryReport report) {
     return new CliReportJsonModels.PeriodSummaryPayload(
+        reportContextPayload(report.bookIdentity(), report.postingCoverage()),
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
         report.postingCount(),
@@ -72,11 +77,14 @@ final class CliReportPayloadMapper {
       FinancialPositionReport report) {
     return new CliReportJsonModels.FinancialPositionPayload(
         report.effectiveDateTo().map(Object::toString).orElse(null),
-        statementContextPayload(
+        reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
             report.comparativeEffectiveDateRange()),
         report.sections().stream()
+            .map(CliReportPayloadMapper::financialPositionSectionPayload)
+            .toList(),
+        report.comparativeSections().stream()
             .map(CliReportPayloadMapper::financialPositionSectionPayload)
             .toList());
   }
@@ -86,14 +94,20 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.IncomeStatementPayload(
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
-        statementContextPayload(
+        reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
             report.comparativeEffectiveDateRange()),
         report.sections().stream()
             .map(CliReportPayloadMapper::incomeStatementSectionPayload)
             .toList(),
-        report.netIncomeTotals().stream().map(CliPayloadAssembler::balancePayload).toList());
+        report.netIncomeTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.comparativeSections().stream()
+            .map(CliReportPayloadMapper::incomeStatementSectionPayload)
+            .toList(),
+        report.comparativeNetIncomeTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList());
   }
 
   static CliReportJsonModels.ChangesInEquityPayload changesInEquityPayload(
@@ -101,14 +115,26 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.ChangesInEquityPayload(
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
-        statementContextPayload(
+        reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
             report.comparativeEffectiveDateRange()),
         report.rows().stream().map(CliReportPayloadMapper::changesInEquityRowPayload).toList(),
         report.openingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
         report.movementTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
-        report.closingTotals().stream().map(CliPayloadAssembler::balancePayload).toList());
+        report.closingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.comparativeRows().stream()
+            .map(CliReportPayloadMapper::changesInEquityRowPayload)
+            .toList(),
+        report.comparativeOpeningTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList(),
+        report.comparativeMovementTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList(),
+        report.comparativeClosingTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList());
   }
 
   private static CliReportJsonModels.TrialBalanceRowPayload trialBalanceRowPayload(
@@ -131,6 +157,14 @@ final class CliReportPayloadMapper {
       DeclaredAccount account, AccountLedgerEntry entry) {
     return new CliReportJsonModels.AccountLedgerEntryPayload(
         entry.postingFact().postingId().value(),
+        entry.postingFact().postingKind().wireValue(),
+        entry.postingFact().reversalReference().isPresent() ? "reversal" : "direct",
+        entry
+            .postingFact()
+            .reversalReference()
+            .map(reference -> reference.priorPostingId().value())
+            .orElse(null),
+        entry.postingFact().reversalReason().map(reason -> reason.value()).orElse(null),
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
         MonetaryAmount.of(entry.movement().debitTotal()),
@@ -207,11 +241,17 @@ final class CliReportPayloadMapper {
         CliPayloadAssembler.balancePayload(row.closingBalance()));
   }
 
-  private static CliReportJsonModels.StatementContextPayload statementContextPayload(
+  static CliReportJsonModels.ReportContextPayload reportContextPayload(
+      BookIdentity bookIdentity, PostingCoverage postingCoverage) {
+    return reportContextPayload(
+        bookIdentity, postingCoverage, dev.erst.fingrind.core.EffectiveDateRange.unbounded());
+  }
+
+  static CliReportJsonModels.ReportContextPayload reportContextPayload(
       BookIdentity bookIdentity,
       PostingCoverage postingCoverage,
       EffectiveDateRange comparativeEffectiveDateRange) {
-    return new CliReportJsonModels.StatementContextPayload(
+    return new CliReportJsonModels.ReportContextPayload(
         CliBookPayloadMapper.bookIdentityPayload(bookIdentity),
         postingCoverage.wireValue(),
         comparativeEffectiveDateRange.effectiveDateFrom().map(Object::toString).orElse(null),

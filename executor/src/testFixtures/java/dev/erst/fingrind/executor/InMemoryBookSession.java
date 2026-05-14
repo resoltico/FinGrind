@@ -375,6 +375,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           }
           Map<CurrencyUnit, Totals> totalsByCurrency = mutableMap();
           postingsByPostingId.values().stream()
+              .filter(posting -> query.postingCoverage().includes(posting.postingKind()))
               .filter(
                   posting ->
                       matchesDateRange(
@@ -389,7 +390,9 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                   .sorted(Comparator.comparing(entry -> entry.getKey().code()))
                   .map(entry -> balance(entry.getKey(), entry.getValue()))
                   .toList();
-          return Optional.of(new AccountBalanceView(account, query.effectiveDateRange(), balances));
+          return Optional.of(
+              new AccountBalanceView(
+                  account, query.effectiveDateRange(), query.postingCoverage(), balances));
         });
   }
 
@@ -442,8 +445,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
             new TrialBalanceView(
                 bookIdentity,
                 query.effectiveDateTo(),
-                dev.erst.fingrind.core.EffectiveDateRange.of(
-                    null, query.effectiveDateTo().map(date -> date.minusYears(1)).orElse(null)),
+                dev.erst.fingrind.core.EffectiveDateRange.of(null, null),
                 query.postingCoverage(),
                 accountsByCode.values().stream()
                     .sorted(Comparator.comparing(account -> account.accountCode().value()))
@@ -469,7 +471,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                                         .toList())
                                 .stream()
                                 .map(balance -> new TrialBalanceRowView(account, balance)))
-                    .toList()));
+                    .toList(),
+                List.of()));
   }
 
   @Override
@@ -484,6 +487,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                               (CommittedPosting posting) -> posting.journalEntry().effectiveDate())
                           .thenComparing(posting -> posting.provenance().recordedAt())
                           .thenComparing(posting -> posting.postingId().value()))
+                  .filter(posting -> query.postingCoverage().includes(posting.postingKind()))
                   .filter(
                       posting ->
                           posting.journalEntry().lines().stream()
@@ -526,7 +530,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                             runningBalance.balanceSide()));
                   });
           List<CurrencyBalance> closingBalances = balancesFromTotals(runningTotals);
-          return new AccountLedgerView(account, range, openingBalances, entries, closingBalances);
+          return new AccountLedgerView(
+              account, range, query.postingCoverage(), openingBalances, entries, closingBalances);
         });
   }
 
@@ -536,6 +541,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
         () -> {
           List<CommittedPosting> postings =
               postingsByPostingId.values().stream()
+                  .filter(posting -> query.postingCoverage().includes(posting.postingKind()))
                   .filter(
                       posting ->
                           !posting
@@ -593,6 +599,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           return new PeriodSummaryView(
               query.effectiveDateFrom(),
               query.effectiveDateTo(),
+              query.postingCoverage(),
               postings.size(),
               postingLineCount,
               Math.toIntExact(accountsTouched),

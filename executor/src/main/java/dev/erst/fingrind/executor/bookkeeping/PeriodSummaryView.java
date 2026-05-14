@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -8,6 +9,7 @@ import java.util.Objects;
 public record PeriodSummaryView(
     LocalDate effectiveDateFrom,
     LocalDate effectiveDateTo,
+    PostingCoverage postingCoverage,
     int postingCount,
     int postingLineCount,
     int accountsTouched,
@@ -16,6 +18,7 @@ public record PeriodSummaryView(
   public PeriodSummaryView {
     Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
     Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(postingCoverage, "postingCoverage");
     Objects.requireNonNull(currencySummaries, "currencySummaries");
     Objects.requireNonNull(accountActivity, "accountActivity");
     if (effectiveDateFrom.isAfter(effectiveDateTo)) {

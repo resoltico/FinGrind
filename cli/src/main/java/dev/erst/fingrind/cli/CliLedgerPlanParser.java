@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -293,6 +294,9 @@ final class CliLedgerPlanParser {
             .orElse(null),
         optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
             .map(LocalDate::parse)
-            .orElse(null));
+            .orElse(null),
+        optionalText(query, ProtocolLedgerPlanFields.Query.POSTING_COVERAGE)
+            .map(PostingCoverage::fromWireValue)
+            .orElse(PostingCoverage.ALL_POSTING_KINDS));
   }
 }

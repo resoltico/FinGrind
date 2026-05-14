@@ -432,6 +432,7 @@ class InMemoryBookSessionTest {
                   cashAccount,
                   EffectiveDateRange.of(
                       LocalDate.parse("2026-04-05"), LocalDate.parse("2026-04-07")),
+                  allPostingKinds(),
                   closingBalances)),
           bookSession.accountBalance(
               new AccountBalanceCriteria(
@@ -442,7 +443,7 @@ class InMemoryBookSessionTest {
           new TrialBalanceView(
               bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-07")),
-              EffectiveDateRange.of(null, LocalDate.parse("2025-04-07")),
+              EffectiveDateRange.of(null, null),
               allPostingKinds(),
               List.of(
                   new TrialBalanceRowView(
@@ -450,7 +451,8 @@ class InMemoryBookSessionTest {
                       currencyBalance("EUR", "13.00", "0.00", "13.00", BalanceSide.DEBIT)),
                   new TrialBalanceRowView(
                       bookSession.findAccount(new AccountCode("2000")).orElseThrow(),
-                      currencyBalance("EUR", "0.00", "13.00", "13.00", BalanceSide.CREDIT)))),
+                      currencyBalance("EUR", "0.00", "13.00", "13.00", BalanceSide.CREDIT))),
+              List.of()),
           bookSession.trialBalance(
               new TrialBalanceCriteria(
                   Optional.of(LocalDate.parse("2026-04-07")), allPostingKinds())));
@@ -458,6 +460,7 @@ class InMemoryBookSessionTest {
           new AccountLedgerView(
               cashAccount,
               reportDate,
+              allPostingKinds(),
               openingBalances,
               List.of(
                   new AccountLedgerEntryView(
@@ -467,11 +470,13 @@ class InMemoryBookSessionTest {
                       BalanceSide.DEBIT)),
               closingBalances),
           bookSession.accountLedger(
-              new AccountLedgerCriteria(cashAccount.accountCode(), reportDate), cashAccount));
+              new AccountLedgerCriteria(cashAccount.accountCode(), reportDate, allPostingKinds()),
+              cashAccount));
       assertEquals(
           new PeriodSummaryView(
               LocalDate.parse("2026-04-07"),
               LocalDate.parse("2026-04-07"),
+              allPostingKinds(),
               1,
               2,
               2,

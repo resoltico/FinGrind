@@ -19,6 +19,7 @@ public sealed interface PostingRejection
         PostingRejection.PostingKindReserved,
         PostingRejection.BookFunctionalCurrencyMismatch,
         PostingRejection.ClosedPeriodViolation,
+        PostingRejection.OpeningBalanceWindowClosed,
         PostingRejection.OpeningBalanceTouchesNominalAccount,
         PostingRejection.RetainedEarningsAccountReserved,
         PostingRejection.ReversalTargetNotFound,
@@ -107,6 +108,16 @@ public sealed interface PostingRejection
     public ClosedPeriodViolation {
       Objects.requireNonNull(closedThroughEffectiveDate, "closedThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
+    }
+  }
+
+  /** Rejection for an opening-balance posting after ordinary book activity has begun. */
+  record OpeningBalanceWindowClosed(
+      PostingKind firstBlockingPostingKind, LocalDate firstBlockingEffectiveDate)
+      implements PostingRejection {
+    public OpeningBalanceWindowClosed {
+      Objects.requireNonNull(firstBlockingPostingKind, "firstBlockingPostingKind");
+      Objects.requireNonNull(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
     }
   }
 

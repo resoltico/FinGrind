@@ -12,12 +12,12 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Renders query and reporting CLI results through the shared output channel. */
 final class CliQueryResponseWriter {
@@ -103,13 +103,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeAccountBalanceResult(AccountBalanceResult result, OutputMode outputMode) {
+    writeAccountBalanceResult(result, outputMode, null);
+  }
+
+  void writeAccountBalanceResult(
+      AccountBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case AccountBalanceResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountBalancePayload(reported.snapshot()))),
+                          CliResponsePayloadMapper.accountBalancePayload(reported.snapshot()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountBalanceHuman(reported.snapshot())),
@@ -123,13 +129,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeTrialBalanceResult(TrialBalanceResult result, OutputMode outputMode) {
+    writeTrialBalanceResult(result, outputMode, null);
+  }
+
+  void writeTrialBalanceResult(
+      TrialBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case TrialBalanceResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.trialBalancePayload(reported.report()))),
+                          CliResponsePayloadMapper.trialBalancePayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderTrialBalanceHuman(reported.report())),
@@ -143,13 +155,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeAccountLedgerResult(AccountLedgerResult result, OutputMode outputMode) {
+    writeAccountLedgerResult(result, outputMode, null);
+  }
+
+  void writeAccountLedgerResult(
+      AccountLedgerResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case AccountLedgerResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountLedgerPayload(reported.report()))),
+                          CliResponsePayloadMapper.accountLedgerPayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountLedgerHuman(reported.report())),
@@ -163,13 +181,19 @@ final class CliQueryResponseWriter {
   }
 
   void writePeriodSummaryResult(PeriodSummaryResult result, OutputMode outputMode) {
+    writePeriodSummaryResult(result, outputMode, null);
+  }
+
+  void writePeriodSummaryResult(
+      PeriodSummaryResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case PeriodSummaryResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.periodSummaryPayload(reported.report()))),
+                          CliResponsePayloadMapper.periodSummaryPayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPeriodSummaryHuman(reported.report())),
@@ -183,13 +207,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeFinancialPositionResult(FinancialPositionResult result, OutputMode outputMode) {
+    writeFinancialPositionResult(result, outputMode, null);
+  }
+
+  void writeFinancialPositionResult(
+      FinancialPositionResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case FinancialPositionResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.financialPositionPayload(reported.report()))),
+                          CliResponsePayloadMapper.financialPositionPayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderFinancialPositionHuman(reported.report())),
@@ -203,13 +233,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeIncomeStatementResult(IncomeStatementResult result, OutputMode outputMode) {
+    writeIncomeStatementResult(result, outputMode, null);
+  }
+
+  void writeIncomeStatementResult(
+      IncomeStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case IncomeStatementResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.incomeStatementPayload(reported.report()))),
+                          CliResponsePayloadMapper.incomeStatementPayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderIncomeStatementHuman(reported.report())),
@@ -223,13 +259,19 @@ final class CliQueryResponseWriter {
   }
 
   void writeChangesInEquityResult(ChangesInEquityResult result, OutputMode outputMode) {
+    writeChangesInEquityResult(result, outputMode, null);
+  }
+
+  void writeChangesInEquityResult(
+      ChangesInEquityResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     switch (result) {
       case ChangesInEquityResult.Reported reported ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.changesInEquityPayload(reported.report()))),
+                          CliResponsePayloadMapper.changesInEquityPayload(reported.report()),
+                          exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderChangesInEquityHuman(reported.report())),
@@ -242,23 +284,9 @@ final class CliQueryResponseWriter {
     }
   }
 
-  void writeLedgerPlanResult(LedgerPlanResult result) {
-    Record envelope =
-        switch (result) {
-          case LedgerPlanResult.Succeeded succeeded ->
-              CliResponsePayloadMapper.successEnvelope(
-                  CliResponsePayloadMapper.ledgerPlanPayload(succeeded));
-          case LedgerPlanResult.Rejected rejected ->
-              CliResponsePayloadMapper.rejectedPlanEnvelope(
-                  rejected, ProtocolRejectionStatus.PLAN_REJECTED);
-          case LedgerPlanResult.AssertionFailed assertionFailed ->
-              CliResponsePayloadMapper.rejectedPlanEnvelope(
-                  assertionFailed, ProtocolRejectionStatus.PLAN_ASSERTION_FAILED);
-        };
-    outputChannel.writeEnvelope(envelope);
-  }
-
-  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
-    return CliResponsePayloadMapper.planRejectionStatus(status);
+  void writeLedgerPlanResult(LedgerPlanResult result, PlanResultDetail resultDetail) {
+    outputChannel.writeEnvelope(
+        CliResponsePayloadMapper.successEnvelope(
+            CliResponsePayloadMapper.ledgerPlanPayload(result, resultDetail)));
   }
 }

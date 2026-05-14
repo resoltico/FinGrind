@@ -10,4 +10,6 @@ dependencies {
     api(project(":contract"))
     api(project(":core"))
     testFixturesApi(project(":contract"))
+    testFixturesImplementation(project(":contract"))
+    testFixturesImplementation(project(":core"))
 }

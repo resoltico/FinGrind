@@ -20,6 +20,8 @@ public record CapabilitiesDescriptor(
     ContractResponse.ReversalDescriptor reversals,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
+    ContractResponse.AccountingBaselineDescriptor accountingBaseline,
+    ContractResponse.ExtensionSurfaceDescriptor extensionSurface,
     EnvironmentDescriptor environment,
     String timestamp)
     implements ContractDiscoveryDescriptor {
@@ -38,6 +40,10 @@ public record CapabilitiesDescriptor(
     reversals = ContractDescriptorValidation.requireValue(reversals, "reversals");
     preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
     currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
+    accountingBaseline =
+        ContractDescriptorValidation.requireValue(accountingBaseline, "accountingBaseline");
+    extensionSurface =
+        ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
     environment = ContractDescriptorValidation.requireValue(environment, "environment");
     timestamp = ContractDescriptorValidation.requireText(timestamp, "timestamp");
   }

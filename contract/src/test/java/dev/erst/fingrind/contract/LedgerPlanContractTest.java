@@ -102,7 +102,7 @@ class LedgerPlanContractTest {
     assertEquals(
         LedgerStepKind.ACCOUNT_BALANCE,
         new LedgerStep.AccountBalance(
-                stepId("balance"), new AccountBalanceQuery(new AccountCode("1000"), null, null))
+                stepId("balance"), AccountBalanceQuery.unbounded(new AccountCode("1000")))
             .kind());
     assertEquals(
         LedgerStepKind.ASSERT,

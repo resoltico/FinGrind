@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -18,7 +17,8 @@ final class CliDiscoveryResponseWriter {
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writePrettySuccess(helpDescriptor),
+        () ->
+            outputChannel.writePrettySuccess(CliDiscoveryPayloadMapper.helpPayload(helpDescriptor)),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -50,11 +50,7 @@ final class CliDiscoveryResponseWriter {
         });
   }
 
-  void writeRequestTemplate(ContractTemplates.PostingRequestTemplateDescriptor requestTemplate) {
-    outputChannel.writePrettyJson(requestTemplate);
-  }
-
-  void writePlanTemplate(ContractTemplates.LedgerPlanTemplateDescriptor planTemplate) {
-    outputChannel.writePrettyJson(planTemplate);
+  void writeRawTemplate(Object template) {
+    outputChannel.writePrettyJson(template);
   }
 }

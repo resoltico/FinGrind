@@ -50,12 +50,15 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Print Request Template",
             List.of("--print-request-template"),
-            List.of(),
+            List.of("[post-entry|preflight-entry|declare-account]"),
             ExecutionMode.RAW_JSON,
-            "Print the canonical minimal posting request scaffold JSON document.",
+            "Print the canonical minimal request scaffold JSON document for one request-file command.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > request.json"
+                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
                     "Edit request.json and replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value before submission."))),

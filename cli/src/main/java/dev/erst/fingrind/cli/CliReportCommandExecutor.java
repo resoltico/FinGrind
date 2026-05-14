@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -43,8 +44,10 @@ final class CliReportCommandExecutor {
         bookWorkflow.accountBalance(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeAccountBalanceResult(result, output.outputMode());
-          exportAccountBalance(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportAccountBalance(result, output.pdfOutPath());
+          responseWriter.writeAccountBalanceResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -56,8 +59,9 @@ final class CliReportCommandExecutor {
         bookWorkflow.trialBalance(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeTrialBalanceResult(result, output.outputMode());
-          exportTrialBalance(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportTrialBalance(result, output.pdfOutPath());
+          responseWriter.writeTrialBalanceResult(result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -69,8 +73,10 @@ final class CliReportCommandExecutor {
         bookWorkflow.accountLedger(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeAccountLedgerResult(result, output.outputMode());
-          exportAccountLedger(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportAccountLedger(result, output.pdfOutPath());
+          responseWriter.writeAccountLedgerResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -82,8 +88,10 @@ final class CliReportCommandExecutor {
         bookWorkflow.periodSummary(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writePeriodSummaryResult(result, output.outputMode());
-          exportPeriodSummary(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportPeriodSummary(result, output.pdfOutPath());
+          responseWriter.writePeriodSummaryResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -95,8 +103,11 @@ final class CliReportCommandExecutor {
         bookWorkflow.financialPosition(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeFinancialPositionResult(result, output.outputMode());
-          exportFinancialPosition(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath =
+              exportFinancialPosition(result, output.pdfOutPath());
+          responseWriter.writeFinancialPositionResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -108,8 +119,10 @@ final class CliReportCommandExecutor {
         bookWorkflow.incomeStatement(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeIncomeStatementResult(result, output.outputMode());
-          exportIncomeStatement(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportIncomeStatement(result, output.pdfOutPath());
+          responseWriter.writeIncomeStatementResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -121,110 +134,143 @@ final class CliReportCommandExecutor {
         bookWorkflow.changesInEquity(bookAccess, query),
         output.outputMode(),
         result -> {
-          responseWriter.writeChangesInEquityResult(result, output.outputMode());
-          exportChangesInEquity(result, output.pdfOutPath());
+          @Nullable Path exportedArtifactPath = exportChangesInEquity(result, output.pdfOutPath());
+          responseWriter.writeChangesInEquityResult(
+              result, output.outputMode(), exportedArtifactPath);
+          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }
 
-  private void exportAccountBalance(AccountBalanceResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportAccountBalance(
+      AccountBalanceResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case AccountBalanceResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportAccountBalance(outputPath, reported.snapshot()));
-      case AccountBalanceResult.Rejected _ -> {}
+      case AccountBalanceResult.Reported reported -> {
+        return exportPdf(
+            outputPath,
+            () -> pdfReportExporter.exportAccountBalance(outputPath, reported.snapshot()));
+      }
+      case AccountBalanceResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportTrialBalance(TrialBalanceResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportTrialBalance(TrialBalanceResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case TrialBalanceResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportTrialBalance(outputPath, reported.report()));
-      case TrialBalanceResult.Rejected _ -> {}
+      case TrialBalanceResult.Reported reported -> {
+        return exportPdf(
+            outputPath, () -> pdfReportExporter.exportTrialBalance(outputPath, reported.report()));
+      }
+      case TrialBalanceResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportAccountLedger(AccountLedgerResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportAccountLedger(
+      AccountLedgerResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case AccountLedgerResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportAccountLedger(outputPath, reported.report()));
-      case AccountLedgerResult.Rejected _ -> {}
+      case AccountLedgerResult.Reported reported -> {
+        return exportPdf(
+            outputPath, () -> pdfReportExporter.exportAccountLedger(outputPath, reported.report()));
+      }
+      case AccountLedgerResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportPeriodSummary(PeriodSummaryResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportPeriodSummary(
+      PeriodSummaryResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case PeriodSummaryResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportPeriodSummary(outputPath, reported.report()));
-      case PeriodSummaryResult.Rejected _ -> {}
+      case PeriodSummaryResult.Reported reported -> {
+        return exportPdf(
+            outputPath, () -> pdfReportExporter.exportPeriodSummary(outputPath, reported.report()));
+      }
+      case PeriodSummaryResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportFinancialPosition(FinancialPositionResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportFinancialPosition(
+      FinancialPositionResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case FinancialPositionResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportFinancialPosition(outputPath, reported.report()));
-      case FinancialPositionResult.Rejected _ -> {}
+      case FinancialPositionResult.Reported reported -> {
+        return exportPdf(
+            outputPath,
+            () -> pdfReportExporter.exportFinancialPosition(outputPath, reported.report()));
+      }
+      case FinancialPositionResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportIncomeStatement(IncomeStatementResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportIncomeStatement(
+      IncomeStatementResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case IncomeStatementResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportIncomeStatement(outputPath, reported.report()));
-      case IncomeStatementResult.Rejected _ -> {}
+      case IncomeStatementResult.Reported reported -> {
+        return exportPdf(
+            outputPath,
+            () -> pdfReportExporter.exportIncomeStatement(outputPath, reported.report()));
+      }
+      case IncomeStatementResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportChangesInEquity(ChangesInEquityResult result, @Nullable Path outputPath) {
+  private @Nullable Path exportChangesInEquity(
+      ChangesInEquityResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
-      return;
+      return null;
     }
     switch (result) {
-      case ChangesInEquityResult.Reported reported ->
-          exportPdfWithDiagnostics(
-              outputPath,
-              () -> pdfReportExporter.exportChangesInEquity(outputPath, reported.report()));
-      case ChangesInEquityResult.Rejected _ -> {}
+      case ChangesInEquityResult.Reported reported -> {
+        return exportPdf(
+            outputPath,
+            () -> pdfReportExporter.exportChangesInEquity(outputPath, reported.report()));
+      }
+      case ChangesInEquityResult.Rejected _ -> {
+        return null;
+      }
     }
   }
 
-  private void exportPdfWithDiagnostics(Path outputPath, Runnable pdfExport) {
+  private @Nullable Path exportPdf(Path outputPath, Runnable pdfExport) {
     try {
       pdfExport.run();
-      diagnosticsWriter.writePdfExportInfo(outputPath);
+      return outputPath.toAbsolutePath().normalize();
     } catch (RuntimeException exception) {
       diagnosticsWriter.writePdfExportWarning(exception);
+      return null;
+    }
+  }
+
+  private void writePdfExportInfo(OutputMode outputMode, @Nullable Path outputPath) {
+    if (outputPath != null && outputMode != OutputMode.JSON) {
+      diagnosticsWriter.writePdfExportInfo(outputPath);
     }
   }
 }

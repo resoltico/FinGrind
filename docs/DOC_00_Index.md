@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.36.0"
+version: "0.37.0"
 domain: INDEX
 updated: "2026-05-14"
 route:
@@ -108,6 +108,7 @@ route:
 | `OperationCategory` | `DOC_02_ProtocolAndDiscovery.md` | `OperationCategory` |
 | `ExecutionMode` | `DOC_02_ProtocolAndDiscovery.md` | `ExecutionMode` |
 | `OutputMode` | `DOC_02_ProtocolAndDiscovery.md` | `OutputMode` |
+| `PlanResultDetail` | `DOC_02_ProtocolAndDiscovery.md` | `PlanResultDetail` |
 | `ProtocolSuccessStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode` |
 | `ProtocolRejectionStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode` |
 | `ProtocolFailureStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode` |
@@ -131,17 +132,19 @@ route:
 | `SqliteRuntimeTrustBasis` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeStatus` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeStateValidator` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
-| `BookModelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookBoundaryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookEntityScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookFilesystemFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookCredentialFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookInitializationFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookAccountRegistryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookCurrencyScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `PlanExecutionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookModelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookBoundaryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookEntityScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookFilesystemFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookCredentialFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookInitializationFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookAccountRegistryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookCurrencyScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `AccountingBaselineFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `ExtensionSurfaceFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PlanExecutionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
 | `ProtocolSharedRequestFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSharedRequestFields` |
 | `ProtocolMoneyFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolMoneyFields` |
@@ -209,6 +212,8 @@ route:
 | `ContractResponse.PreflightDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractResponse.CommitGuarantee` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractResponse.CurrencyDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractResponse.AccountingBaselineDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractResponse.ExtensionSurfaceDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.OpenBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |

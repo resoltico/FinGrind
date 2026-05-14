@@ -48,6 +48,7 @@ final class SqliteAccountLedgerReader {
     return new AccountLedgerView(
         account,
         query.effectiveDateRange(),
+        query.postingCoverage(),
         openingBalances,
         entries,
         closingBalances(activeDatabase, query, account));
@@ -67,7 +68,9 @@ final class SqliteAccountLedgerReader {
         .accountBalance(
             activeDatabase,
             new AccountBalanceCriteria(
-                account.accountCode(), EffectiveDateRange.of(null, lowerBound.minusDays(1))),
+                account.accountCode(),
+                EffectiveDateRange.of(null, lowerBound.minusDays(1)),
+                query.postingCoverage()),
             account)
         .balances();
   }
@@ -80,7 +83,8 @@ final class SqliteAccountLedgerReader {
             new AccountBalanceCriteria(
                 account.accountCode(),
                 EffectiveDateRange.of(
-                    null, query.effectiveDateRange().effectiveDateTo().orElse(null))),
+                    null, query.effectiveDateRange().effectiveDateTo().orElse(null)),
+                query.postingCoverage()),
             account)
         .balances();
   }
@@ -94,6 +98,11 @@ final class SqliteAccountLedgerReader {
           int bindIndex = 1;
           statement.bindText(bindIndex, query.accountCode().value());
           bindIndex++;
+          if (query.postingCoverage().isNonClosingOnly()) {
+            statement.bindText(
+                bindIndex, dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE.wireValue());
+            bindIndex++;
+          }
           if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
             statement.bindText(
                 bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());

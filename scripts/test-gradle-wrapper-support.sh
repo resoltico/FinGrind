@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Regress the shared Gradle wrapper support helpers that keep project cache state off
-# fragile checkout filesystems.
+# Regress the shared Gradle wrapper support helpers that keep wrapper-owned project state
+# out of the checkout by default.
 
 set -euo pipefail
 
@@ -52,11 +52,8 @@ fg_gradle_has_project_build_root_property_arg -Dfingrind.gradle.project-build-ro
 if fg_gradle_has_project_build_root_property_arg --stacktrace --info; then
     die "incorrectly detected project-build-root system property when none was present"
 fi
-fg_gradle_should_externalize_project_builds_for_filesystem_type smbfs || die \
-    "failed to flag smbfs as requiring externalized project builds"
-if fg_gradle_should_externalize_project_builds_for_filesystem_type apfs; then
-    die "incorrectly flagged apfs as requiring externalized project builds"
-fi
+fg_gradle_should_externalize_project_builds "${sample_network_repo_root:-/Volumes/erst/Tools/FinGrind}" || die \
+    "wrapper support no longer externalizes project build trees by default"
 
 readonly sample_network_repo_root="/Volumes/erst/Tools/FinGrind"
 readonly sample_local_repo_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-gradle-wrapper-support.XXXXXX")"
@@ -68,6 +65,8 @@ trap cleanup EXIT
 readonly expected_repo_key="$(fg_gradle_cache_key "${sample_network_repo_root}")"
 readonly expected_linux_root="/cache-root/fingrind/gradle-project-cache"
 readonly expected_linux_dir="${expected_linux_root}/${expected_repo_key}"
+readonly expected_local_repo_key="$(fg_gradle_cache_key "${sample_local_repo_root}")"
+readonly expected_local_linux_dir="${expected_linux_root}/${expected_local_repo_key}"
 
 actual_linux_dir="$(
         HOME='/tmp/fingrind-home' \
@@ -153,22 +152,14 @@ actual_override_gradle_user_home="$(
     "Gradle user home override was not honored"
 
 actual_local_cli_build_dir="$(
-    FINGRIND_GRADLE_PROJECT_BUILD_ROOT='' \
-        fg_gradle_project_build_dir "${sample_local_repo_root}" 'cli' false
-)"
-[[ "${actual_local_cli_build_dir}" == "${sample_local_repo_root}/cli/build" ]] || die \
-    "unexpected local cli build directory: ${actual_local_cli_build_dir}"
-
-actual_filesystem_externalized_cli_build_dir="$(
     HOME='/tmp/fingrind-home' \
         XDG_CACHE_HOME='/cache-root' \
         TMPDIR='/tmp/fingrind-tmp' \
-        FINGRIND_GRADLE_FILESYSTEM_TYPE='smbfs' \
-        FINGRIND_GRADLE_PROJECT_BUILD_ROOT='' \
-        fg_gradle_project_build_dir "${sample_network_repo_root}" 'cli' false
+    FINGRIND_GRADLE_PROJECT_BUILD_ROOT='' \
+        fg_gradle_project_build_dir "${sample_local_repo_root}" 'cli' false
 )"
-[[ "${actual_filesystem_externalized_cli_build_dir}" == "${expected_linux_dir}/project-build/cli" ]] || die \
-    "unexpected filesystem-externalized cli build directory: ${actual_filesystem_externalized_cli_build_dir}"
+[[ "${actual_local_cli_build_dir}" == "${expected_local_linux_dir}/project-build/cli" ]] || die \
+    "unexpected local cli build directory: ${actual_local_cli_build_dir}"
 
 actual_external_cli_build_dir="$(
     FINGRIND_GRADLE_PROJECT_BUILD_ROOT='/override/project-build-root' \

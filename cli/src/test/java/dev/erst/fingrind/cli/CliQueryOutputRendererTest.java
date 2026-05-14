@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
@@ -10,7 +11,11 @@ import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -23,11 +28,13 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -156,7 +163,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     assertTrue(accountBalanceHuman.contains("Account Balance"));
     assertTrue(accountBalanceHuman.contains("Range"));
-    assertTrue(accountBalanceCsv.contains("effectiveDateFrom,effectiveDateTo"));
+    assertTrue(
+        accountBalanceCsv.contains(
+            "effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning"));
     assertTrue(trialBalanceHuman.contains("Trial Balance"));
     assertTrue(trialBalanceHuman.contains("Effective date to"));
     assertTrue(
@@ -165,11 +174,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerHuman.contains("Opening balances"));
     assertTrue(accountLedgerHuman.contains("2000"));
     assertTrue(accountLedgerCsv.contains("counterpartAccounts"));
+    List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
+    int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
+    for (String line : accountLedgerCsvLines) {
+      assertEquals(accountLedgerCsvColumnCount, csvFieldCount(line));
+    }
     assertTrue(selfLedgerHuman.contains("(self)"));
     assertTrue(selfLedgerHuman.contains("(none)"));
     assertTrue(periodSummaryHuman.contains("Period Summary"));
     assertTrue(periodSummaryHuman.contains("Posting line count"));
-    assertTrue(periodSummaryCsv.contains("effectiveDateFrom,effectiveDateTo,postingCount"));
+    assertTrue(
+        periodSummaryCsv.contains(
+            "effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount"));
     assertTrue(generatedKeyHuman.contains("Book Key File Generated"));
     assertTrue(openBookHuman.contains("Book Initialized"));
     assertTrue(openBookHuman.contains("Entity name"));
@@ -207,6 +223,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             Optional.empty(),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
+            List.of(),
             List.of());
     IncomeStatementReport emptyIncomeStatement =
         new IncomeStatementReport(
@@ -215,6 +232,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             LocalDate.parse("2026-04-30"),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             standardOnly(),
+            List.of(),
+            List.of(),
             List.of(),
             List.of());
     ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
@@ -232,6 +251,26 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(incomeStatementHuman.contains("(none)"));
     assertTrue(changesInEquityHuman.contains("Changes In Equity"));
     assertTrue(changesInEquityHuman.contains("Balanced"));
+  }
+
+  private static int csvFieldCount(String row) {
+    int fieldCount = 1;
+    boolean insideQuotes = false;
+    int index = 0;
+    while (index < row.length()) {
+      char character = row.charAt(index);
+      if (character == '"') {
+        if (insideQuotes && index + 1 < row.length() && row.charAt(index + 1) == '"') {
+          index++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (character == ',' && !insideQuotes) {
+        fieldCount++;
+      }
+      index++;
+    }
+    return fieldCount;
   }
 
   @Test
@@ -276,6 +315,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "2026-04-07",
             "2026-04-07T10:15:30Z",
             "posting-1",
+            "STANDARD",
+            "reversal",
+            "posting-0",
             "EUR",
             "10.00",
             "4.00",
@@ -303,6 +345,76 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals(
         "Retained earnings",
         CliQueryOutputFormatter.displayAccountRoleLabel(AccountRole.RETAINED_EARNINGS));
+    assertEquals("Standard", CliQueryOutputFormatter.displayPostingKind(PostingKind.STANDARD));
+    assertEquals(
+        "Period close", CliQueryOutputFormatter.displayPostingKind(PostingKind.PERIOD_CLOSE));
+    assertEquals(
+        "Opening balance", CliQueryOutputFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
+  }
+
+  @Test
+  void renderStatementHumans_skipEmptySectionsAndKeepTotalsOnlySections() {
+    CurrencyBalance debitBalance = eurDebitBalance();
+    FinancialPositionReport financialPositionReport =
+        new FinancialPositionReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash without Totals",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            debitBalance)),
+                    List.of()),
+                new FinancialPositionSection(AccountType.LIABILITY, List.of(), List.of()),
+                new FinancialPositionSection(AccountType.EQUITY, List.of(), List.of(debitBalance))),
+            List.of());
+    IncomeStatementReport incomeStatementReport =
+        new IncomeStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            standardOnly(),
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Revenue without Totals",
+                            AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
+                            false,
+                            debitBalance)),
+                    List.of()),
+                new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of()),
+                new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of(debitBalance))),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String financialPositionHuman =
+        CliReportOutputRenderer.renderFinancialPositionHuman(financialPositionReport);
+    String incomeStatementHuman =
+        CliReportOutputRenderer.renderIncomeStatementHuman(incomeStatementReport);
+
+    assertTrue(financialPositionHuman.contains("Cash without Totals"));
+    assertTrue(financialPositionHuman.contains("Equity"));
+    assertTrue(financialPositionHuman.contains("Section totals"));
+    assertFalse(financialPositionHuman.contains("Liabilities"));
+    assertFalse(financialPositionHuman.contains("Comparative Financial Position"));
+    assertTrue(incomeStatementHuman.contains("Revenue without Totals"));
+    assertTrue(incomeStatementHuman.contains("Expenses"));
+    assertTrue(incomeStatementHuman.contains("Section totals"));
+    assertFalse(incomeStatementHuman.contains("Comparative Income Statement"));
   }
 
   @Test
@@ -327,8 +439,179 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
   @Test
   void postingWireLabels_coverSystemInternalAndFallbackValues() {
+    assertEquals("CLI", CliPostingOutputRenderer.displayWireLabel("CLI"));
+    assertEquals("Human", CliPostingOutputRenderer.displayWireLabel("HUMAN"));
     assertEquals("System", CliPostingOutputRenderer.displayWireLabel("SYSTEM"));
     assertEquals("Internal", CliPostingOutputRenderer.displayWireLabel("INTERNAL"));
     assertEquals("agent batch", CliPostingOutputRenderer.displayWireLabel("AGENT_BATCH"));
+  }
+
+  @Test
+  void reportRenderers_andBalanceFormatter_renderComparativeBranches() {
+    DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
+    CurrencyBalance eurDebitBalance = eurDebitBalance();
+    TrialBalanceRow currentRow = new TrialBalanceRow(cashAccount, eurDebitBalance);
+    TrialBalanceRow comparativeRow =
+        new TrialBalanceRow(
+            cashAccount,
+            CliResponseWriterTestSupport.currencyBalance(
+                "EUR", "7.00", "1.00", "6.00", BalanceSide.DEBIT));
+    TrialBalanceReport comparativeTrialBalance =
+        new TrialBalanceReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(currentRow),
+            List.of(comparativeRow));
+    IncomeStatementReport comparativeTotalsOnlyIncomeStatement =
+        new IncomeStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(eurDebitBalance));
+    ChangesInEquityReport partialComparativeEquityReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(eurDebitBalance),
+            List.of());
+
+    String trialBalanceHuman =
+        CliReportOutputRenderer.renderTrialBalanceHuman(comparativeTrialBalance);
+    String trialBalanceCsv = CliReportOutputRenderer.renderTrialBalanceCsv(comparativeTrialBalance);
+    String incomeStatementHuman =
+        CliReportOutputRenderer.renderIncomeStatementHuman(comparativeTotalsOnlyIncomeStatement);
+    String changesInEquityHuman =
+        CliReportOutputRenderer.renderChangesInEquityHuman(partialComparativeEquityReport);
+
+    assertEquals(
+        "EUR 6.00 DEBIT", CliQueryOutputFormatter.displayBalance(comparativeRow.balance()));
+    assertTrue(trialBalanceHuman.contains("Comparative Trial Balance"));
+    assertTrue(trialBalanceCsv.contains("comparative"));
+    assertTrue(incomeStatementHuman.contains("Comparative Income Statement"));
+    assertTrue(incomeStatementHuman.contains("Comparative Net Income Totals"));
+    assertTrue(changesInEquityHuman.contains("Comparative Changes In Equity"));
+    assertTrue(changesInEquityHuman.contains("Comparative movement totals"));
+  }
+
+  @Test
+  void renderChangesInEquityHuman_omitsComparativeSectionWhenComparativeDataIsAbsent() {
+    ChangesInEquityReport nonComparativeReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(nonComparativeReport);
+
+    assertTrue(rendered.contains("Changes In Equity"));
+    assertTrue(rendered.contains("Opening totals"));
+    assertFalse(rendered.contains("Comparative Changes In Equity"));
+  }
+
+  @Test
+  void renderChangesInEquityHuman_rendersComparativeSectionWhenOnlyClosingTotalsExist() {
+    CurrencyBalance comparativeClosing =
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "0.00", "8.00", "8.00", BalanceSide.CREDIT);
+    ChangesInEquityReport report =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(comparativeClosing));
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(report);
+
+    assertTrue(rendered.contains("Comparative Changes In Equity"));
+    assertTrue(rendered.contains("Comparative closing totals"));
+  }
+
+  @Test
+  void renderChangesInEquityHuman_rendersComparativeSectionWhenOnlyOpeningTotalsExist() {
+    CurrencyBalance comparativeOpening =
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT);
+    ChangesInEquityReport report =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(comparativeOpening),
+            List.of(),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(report);
+
+    assertTrue(rendered.contains("Comparative Changes In Equity"));
+    assertTrue(rendered.contains("Comparative opening totals"));
+  }
+
+  @Test
+  void renderChangesInEquityHuman_rendersComparativeSectionWhenOnlyMovementTotalsExist() {
+    CurrencyBalance comparativeMovement =
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "0.00", "5.00", "5.00", BalanceSide.CREDIT);
+    ChangesInEquityReport report =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(comparativeMovement),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(report);
+
+    assertTrue(rendered.contains("Comparative Changes In Equity"));
+    assertTrue(rendered.contains("Comparative movement totals"));
   }
 }
