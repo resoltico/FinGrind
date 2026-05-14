@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   paths, the bundle-output task now publishes one machine-readable path contract for both Bash and
   PowerShell workflow owners, and the release-workflow regression and bundle-pruning proofs now
   guard that contract so post-tag reruns can republish the existing immutable tag safely.
+- Repaired the post-tag release rerun seam again: `release.yml` now accepts both the current
+  machine-readable bundle-path lines and the older human-labeled bundle-path lines that an
+  immutable tagged source can emit during `workflow_dispatch`, and the release-publication docs
+  plus the release-workflow regression now guard that mixed `main`-workflow versus tagged-source
+  handoff explicitly.
 
 ## [0.37.0] - 2026-05-14
 

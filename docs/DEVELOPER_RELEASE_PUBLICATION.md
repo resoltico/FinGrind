@@ -48,6 +48,10 @@ These publication invariants are release-critical:
 - the tag-driven bundle publisher must consume the archive and checksum paths reported by
   `:cli:bundleCliArchive`; it must not guess checkout-local `cli/build/distributions/...` paths
   because ordinary Gradle project outputs are externalized outside the checkout by default
+- when `release.yml` is rerun from `main` with `workflow_dispatch` against an existing immutable
+  tag, the bundle-path parser must accept the bundle-output contract emitted by that tag's source
+  line as well as the current `main` contract; a workflow repair on `main` is not allowed to
+  strand a tagged release because the task output text evolved afterward
 - each published archive and checksum file must verify through `gh attestation verify`
 - the attested digest must match the exact asset bytes downloadable from GitHub Release
 - the container workflow must wait for the verified release asset set before treating publication
@@ -110,6 +114,11 @@ safe repair path is:
 
 Do not move the release tag. Do not create a replacement tag for the same version. Repair the
 publication machinery and replay it against the immutable released commit.
+
+If the repair changes how `main` parses bundle-path task output, the rerun workflow must remain
+compatible with the tagged source line it is about to rebuild. The rerun path executes the
+workflow definition from `main` against source code from the immutable tag; those two surfaces can
+legitimately speak different bundle-output dialects after a post-tag publication repair.
 
 ## Evidence Owners
 

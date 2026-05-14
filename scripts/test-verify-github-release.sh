@@ -70,8 +70,15 @@ required_lines = (
     "      contents: write\n",
     "        id: unix-bundle-build\n",
     "        id: windows-bundle-build\n",
-    "          archive_path=\"$(printf '%s\\n' \"${task_output}\" | sed -n 's/^FINGRIND_BUNDLE_ARCHIVE=//p' | tail -n 1)\"\n",
-    "          checksum_path=\"$(printf '%s\\n' \"${task_output}\" | sed -n 's/^FINGRIND_BUNDLE_CHECKSUM=//p' | tail -n 1)\"\n",
+    "          resolve_bundle_path() {\n",
+    "                -e \"s/^${machine_prefix}=//p\" \\\n",
+    "                -e \"s/^${legacy_prefix}//p\" | tail -n 1\n",
+    "          archive_path=\"$(resolve_bundle_path 'bundle archive path' 'FINGRIND_BUNDLE_ARCHIVE' 'FinGrind bundle archive: ')\"\n",
+    "          checksum_path=\"$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')\"\n",
+    "          function Resolve-BundlePath {\n",
+    "              $_.StartsWith($MachinePrefix) -or $_.StartsWith($LegacyPrefix)\n",
+    "            -LegacyPrefix 'FinGrind bundle archive: ' `\n",
+    "            -LegacyPrefix 'FinGrind bundle checksum: ' `\n",
     "          Add-Content -Path $env:GITHUB_OUTPUT -Value \"archive-path=$archivePath\"\n",
     "          Add-Content -Path $env:GITHUB_OUTPUT -Value \"checksum-path=$checksumPath\"\n",
     '            "${{ steps.unix-bundle-build.outputs.archive-path }}"\n',
@@ -82,6 +89,10 @@ required_lines = (
 missing = [line.strip() for line in required_lines if line not in job_text]
 if missing:
     raise SystemExit("missing build-bundles publish permission lines: " + ", ".join(missing))
+if "bundleCliArchive did not report FINGRIND_BUNDLE_ARCHIVE" in job_text:
+    raise SystemExit("build-bundles job still hard-fails on the current machine-readable archive label instead of accepting the immutable tag fallback line")
+if "bundleCliArchive did not report FINGRIND_BUNDLE_CHECKSUM" in job_text:
+    raise SystemExit("build-bundles job still hard-fails on the current machine-readable checksum label instead of accepting the immutable tag fallback line")
 PY
 python3 - <<'PY' "${release_workflow}" || die \
     "release workflow no longer grants the published-asset attestation job the permissions and download path required for exact-byte signing"
