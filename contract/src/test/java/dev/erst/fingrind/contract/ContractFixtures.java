@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -12,13 +13,19 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.time.LocalDate;
@@ -29,8 +36,22 @@ import java.util.Optional;
 final class ContractFixtures {
   private ContractFixtures() {}
 
+  static BookIdentity bookIdentity() {
+    return new BookIdentity(
+        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
+  }
+
+  static OpenBookCommand openBookCommand() {
+    return new OpenBookCommand(bookIdentity());
+  }
+
+  static PostingCoverage postingCoverage() {
+    return PostingCoverage.ALL_POSTING_KINDS;
+  }
+
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
+        PostingKind.STANDARD,
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(

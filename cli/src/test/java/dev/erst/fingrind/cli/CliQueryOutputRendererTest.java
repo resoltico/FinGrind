@@ -11,7 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -19,9 +19,12 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -49,7 +52,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String initializedInspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
-            new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
+            initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
     AccountPageCursor nextAccountCursor = AccountPageCursor.fromAccount(cashAccount);
     String accountsHuman =
         CliQueryOutputRenderer.renderAccountsHuman(
@@ -78,14 +81,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String postingRegisterCsv =
         CliQueryOutputRenderer.renderPostingRegisterCsv(
             new PostingPage(List.of(postingFact), 10, Optional.empty()));
-    assertTrue(missingInspection.contains("missing"));
+    assertTrue(missingInspection.contains("Missing"));
     assertTrue(missingInspection.contains("Can initialize with open-book"));
-    assertTrue(missingInspection.contains("true"));
+    assertTrue(missingInspection.contains("Yes"));
     assertTrue(missingInspection.contains("Supported book format version"));
     assertTrue(existingInspection.contains("SQLite applicationId"));
     assertTrue(existingInspection.contains("State"));
-    assertTrue(existingInspection.contains("blank-sqlite"));
+    assertTrue(existingInspection.contains("Blank SQLite"));
     assertTrue(initializedInspection.contains("Initialized at"));
+    assertTrue(initializedInspection.contains("Entity name"));
+    assertTrue(initializedInspection.contains("Acme Studio"));
+    assertTrue(initializedInspection.contains("Functional currency"));
+    assertTrue(initializedInspection.contains("Fiscal year start"));
     assertTrue(accountsHuman.contains("Cash, reserve"));
     assertTrue(accountsHuman.contains(nextAccountCursor.wireValue()));
     assertTrue(accountsHumanWithoutCursor.contains("(none)"));
@@ -131,7 +138,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String openBookHuman =
         CliMutationOutputRenderer.renderOpenBookHuman(
             Path.of("office/report.sqlite"),
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")));
+            openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String rekeyBookHuman =
         CliMutationOutputRenderer.renderRekeyBookHuman(
             new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")));
@@ -152,7 +159,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountBalanceCsv.contains("effectiveDateFrom,effectiveDateTo"));
     assertTrue(trialBalanceHuman.contains("Trial Balance"));
     assertTrue(trialBalanceHuman.contains("Effective date to"));
-    assertTrue(trialBalanceCsv.contains("effectiveDateTo,accountCode"));
+    assertTrue(
+        trialBalanceCsv.contains("entityName,functionalCurrency,fiscalYearStart,effectiveDateTo"));
     assertTrue(accountLedgerHuman.contains("Account Ledger"));
     assertTrue(accountLedgerHuman.contains("Opening balances"));
     assertTrue(accountLedgerHuman.contains("2000"));
@@ -164,6 +172,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(periodSummaryCsv.contains("effectiveDateFrom,effectiveDateTo,postingCount"));
     assertTrue(generatedKeyHuman.contains("Book Key File Generated"));
     assertTrue(openBookHuman.contains("Book Initialized"));
+    assertTrue(openBookHuman.contains("Entity name"));
+    assertTrue(openBookHuman.contains("Acme Studio"));
+    assertTrue(openBookHuman.contains("Functional currency"));
+    assertTrue(openBookHuman.contains("Fiscal year start"));
     assertTrue(rekeyBookHuman.contains("Book Rekeyed"));
     assertTrue(declaredAccountHuman.contains("Account Declared"));
     assertTrue(preflightHuman.contains("Entry Preflight Accepted"));
@@ -190,10 +202,21 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("Expense", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.EXPENSE));
 
     FinancialPositionReport emptyFinancialPosition =
-        new FinancialPositionReport(Optional.empty(), List.of());
+        new FinancialPositionReport(
+            bookIdentity(),
+            Optional.empty(),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of());
     IncomeStatementReport emptyIncomeStatement =
         new IncomeStatementReport(
-            LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"), List.of(), List.of());
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            standardOnly(),
+            List.of(),
+            List.of());
     ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
 
     String financialPositionHuman =
@@ -209,5 +232,103 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(incomeStatementHuman.contains("(none)"));
     assertTrue(changesInEquityHuman.contains("Changes In Equity"));
     assertTrue(changesInEquityHuman.contains("Balanced"));
+  }
+
+  @Test
+  void displayRowKind_labelsSyntheticAndDeclaredRows() {
+    assertEquals("Synthetic", CliQueryOutputFormatter.displayRowKind(true));
+    assertEquals("Account", CliQueryOutputFormatter.displayRowKind(false));
+  }
+
+  @Test
+  void formatterHelpers_coverCsvRowsAndRemainingRoleLabels() {
+    DeclaredAccount contraRevenueAccount =
+        declaredAccount(
+            "2900",
+            "Sales returns",
+            AccountType.REVENUE,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    CurrencyBalance balance = eurDebitBalance();
+    PostingFact postingFact = reversalPostingFact();
+
+    assertEquals(
+        List.of("EUR", "10.00", "4.00", "6.00", "DEBIT"),
+        CliQueryOutputFormatter.balanceCsvRow(balance));
+    assertEquals(
+        List.of(
+            "2900",
+            "Sales returns",
+            "REVENUE",
+            "CONTRA",
+            "DEBIT",
+            "true",
+            "EUR",
+            "10.00",
+            "4.00",
+            "6.00",
+            "DEBIT"),
+        CliQueryOutputFormatter.trialBalanceCsvRow(
+            new TrialBalanceRow(contraRevenueAccount, balance)));
+    assertEquals(
+        List.of(
+            "2026-04-07",
+            "2026-04-07T10:15:30Z",
+            "posting-1",
+            "EUR",
+            "10.00",
+            "4.00",
+            "6.00",
+            "DEBIT",
+            "1000, 2000"),
+        CliQueryOutputFormatter.accountLedgerCsvRow(
+            contraRevenueAccount,
+            accountLedgerReport(contraRevenueAccount, postingFact, balance).entries().getFirst()));
+    assertEquals(
+        List.of(
+            "2900",
+            "Sales returns",
+            "REVENUE",
+            "CONTRA",
+            "DEBIT",
+            "EUR",
+            "10.00",
+            "4.00",
+            "6.00",
+            "DEBIT"),
+        CliQueryOutputFormatter.periodActivityCsvRow(
+            new PeriodAccountActivityRow(contraRevenueAccount, balance)));
+    assertEquals("Contra", CliQueryOutputFormatter.displayAccountRoleLabel(AccountRole.CONTRA));
+    assertEquals(
+        "Retained earnings",
+        CliQueryOutputFormatter.displayAccountRoleLabel(AccountRole.RETAINED_EARNINGS));
+  }
+
+  @Test
+  void renderBookInspectionHuman_coversEveryStatusLabel() {
+    assertTrue(
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+                Path.of("office/report.sqlite"),
+                new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 123, 0, 1))
+            .contains("Foreign SQLite"));
+    assertTrue(
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+                Path.of("office/report.sqlite"),
+                new BookInspection.Existing(
+                    BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 123, 99, 4))
+            .contains("Unsupported format version"));
+    assertTrue(
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+                Path.of("office/report.sqlite"),
+                new BookInspection.Existing(BookInspection.Status.INCOMPLETE_FINGRIND, 123, 2, 4))
+            .contains("Incomplete FinGrind"));
+  }
+
+  @Test
+  void postingWireLabels_coverSystemInternalAndFallbackValues() {
+    assertEquals("System", CliPostingOutputRenderer.displayWireLabel("SYSTEM"));
+    assertEquals("Internal", CliPostingOutputRenderer.displayWireLabel("INTERNAL"));
+    assertEquals("agent batch", CliPostingOutputRenderer.displayWireLabel("AGENT_BATCH"));
   }
 }

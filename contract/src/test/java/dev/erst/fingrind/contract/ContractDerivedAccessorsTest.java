@@ -61,7 +61,12 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             Optional.empty());
     dev.erst.fingrind.core.JournalEntry requestJournalEntry = journalEntry();
     PostEntryCommand command =
-        new PostEntryCommand(requestJournalEntry, reversal, requestProvenance, SourceChannel.CLI);
+        new PostEntryCommand(
+            PostingKind.STANDARD,
+            requestJournalEntry,
+            reversal,
+            requestProvenance,
+            SourceChannel.CLI);
     PostingFact postingFact =
         new PostingFact(
             new PostingId("posting-1"),

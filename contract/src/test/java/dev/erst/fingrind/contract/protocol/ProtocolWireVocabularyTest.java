@@ -10,9 +10,7 @@ import org.junit.jupiter.api.Test;
 class ProtocolWireVocabularyTest {
   @Test
   void responseAndPlanEnums_publishStableWireValues() {
-    assertEquals(
-        List.of("ok", "preflight-accepted", "committed", "plan-committed"),
-        ProtocolSuccessStatus.wireValues());
+    assertEquals(List.of("ok"), ProtocolSuccessStatus.wireValues());
     assertEquals("ok", ProtocolSuccessStatus.OK.toString());
     assertEquals(
         List.of("rejected", "plan-rejected", "plan-assertion-failed"),

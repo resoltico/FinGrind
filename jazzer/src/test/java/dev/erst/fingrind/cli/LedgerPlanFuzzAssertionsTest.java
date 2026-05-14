@@ -39,7 +39,12 @@ class LedgerPlanFuzzAssertionsTest {
               "steps": [
                 {
                   "stepId": "open",
-                  "kind": "open-book"
+                  "kind": "open-book",
+                  "openBook": {
+                    "entityName": "Acme Studio",
+                    "functionalCurrency": "EUR",
+                    "fiscalYearStart": "01-01"
+                  }
                 },
                 {
                   "stepId": "declare-cash",
@@ -65,6 +70,7 @@ class LedgerPlanFuzzAssertionsTest {
                   "stepId": "post-sale",
                   "kind": "post-entry",
                   "posting": {
+                    "postingKind": "STANDARD",
                     "effectiveDate": "2026-04-07",
                     "lines": [
                       {
@@ -586,7 +592,12 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -610,7 +621,12 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -636,6 +652,7 @@ class LedgerPlanFuzzAssertionsTest {
               "stepId": "post-sale",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {
@@ -690,7 +707,12 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -706,6 +728,7 @@ class LedgerPlanFuzzAssertionsTest {
               "stepId": "preflight-sale",
               "kind": "preflight-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {
@@ -738,6 +761,7 @@ class LedgerPlanFuzzAssertionsTest {
               "stepId": "post-sale",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {

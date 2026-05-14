@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]

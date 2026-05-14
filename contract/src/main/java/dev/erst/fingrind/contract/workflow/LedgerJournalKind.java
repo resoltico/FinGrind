@@ -1,20 +1,21 @@
 package dev.erst.fingrind.contract.workflow;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
 
 /** Stable journal-visible kinds emitted by ledger-plan execution. */
 public enum LedgerJournalKind implements WireValue {
-  OPEN_BOOK("open-book"),
-  DECLARE_ACCOUNT("declare-account"),
-  PREFLIGHT_ENTRY("preflight-entry"),
-  POST_ENTRY("post-entry"),
-  INSPECT_BOOK("inspect-book"),
-  LIST_ACCOUNTS("list-accounts"),
-  GET_POSTING("get-posting"),
-  LIST_POSTINGS("list-postings"),
-  ACCOUNT_BALANCE("account-balance"),
+  OPEN_BOOK(OperationId.OPEN_BOOK),
+  DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
+  PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
+  POST_ENTRY(OperationId.POST_ENTRY),
+  INSPECT_BOOK(OperationId.INSPECT_BOOK),
+  LIST_ACCOUNTS(OperationId.LIST_ACCOUNTS),
+  GET_POSTING(OperationId.GET_POSTING),
+  LIST_POSTINGS(OperationId.LIST_POSTINGS),
+  ACCOUNT_BALANCE(OperationId.ACCOUNT_BALANCE),
   ASSERT("assert"),
   PLAN_BOUNDARY("plan-boundary");
 
@@ -22,6 +23,10 @@ public enum LedgerJournalKind implements WireValue {
 
   LedgerJournalKind(String wireValue) {
     this.wireValue = Objects.requireNonNull(wireValue, "wireValue");
+  }
+
+  LedgerJournalKind(OperationId operationId) {
+    this(Objects.requireNonNull(operationId, "operationId").wireName());
   }
 
   @Override

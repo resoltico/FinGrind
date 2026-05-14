@@ -2,7 +2,12 @@
   "planId" : "plan-1",
   "steps" : [ {
     "stepId" : "initialize-book",
-    "kind" : "open-book"
+    "kind" : "open-book",
+    "openBook" : {
+      "entityName" : "Acme Studio",
+      "functionalCurrency" : "EUR",
+      "fiscalYearStart" : "01-01"
+    }
   }, {
     "stepId" : "declare-cash",
     "kind" : "declare-account",
@@ -25,6 +30,7 @@
     "stepId" : "post-journal",
     "kind" : "post-entry",
     "posting" : {
+      "postingKind" : "STANDARD",
       "effectiveDate" : "replace-before-commit-effective-date",
       "lines" : [ {
         "accountCode" : "1000",

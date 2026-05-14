@@ -18,6 +18,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -47,6 +48,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -90,6 +92,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "reversal": {
@@ -122,6 +125,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -151,6 +155,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -180,6 +185,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -209,6 +215,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

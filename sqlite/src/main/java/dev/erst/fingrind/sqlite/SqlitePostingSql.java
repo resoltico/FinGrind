@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
@@ -10,6 +12,9 @@ import java.util.List;
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
   static final String INITIALIZED_AT_META_KEY = "initialized_at";
+  static final String BOOK_ENTITY_NAME_META_KEY = "entity_name";
+  static final String BOOK_FUNCTIONAL_CURRENCY_META_KEY = "functional_currency_code";
+  static final String BOOK_FISCAL_YEAR_START_META_KEY = "fiscal_year_start";
   static final String SCHEMA_FINGERPRINT_META_KEY = "schema_fingerprint_sha256";
 
   static final int COL_POSTING_ID = 0;
@@ -41,6 +46,9 @@ final class SqlitePostingSql {
   static final int COL_REPORT_ENTRY_SIDE = 7;
   static final int COL_REPORT_CURRENCY_CODE = 8;
   static final int COL_REPORT_AMOUNT_MINOR = 9;
+  static final int COL_TOTAL_CURRENCY_CODE = 6;
+  static final int COL_TOTAL_DEBIT_MINOR = 7;
+  static final int COL_TOTAL_CREDIT_MINOR = 8;
 
   private static final String BASE_POSTING_SELECT =
       """
@@ -133,7 +141,6 @@ final class SqlitePostingSql {
           "audit_event_by_recorded_at",
           "period_close_by_effective_date_to",
           "period_close_posting_by_posting_id",
-          "account_one_retained_earnings",
           "posting_fact_one_reversal_per_target",
           "posting_fact_reject_update",
           "posting_fact_reject_delete",
@@ -389,6 +396,17 @@ final class SqlitePostingSql {
       order by posting_id, line_order
       """;
 
+  static final String FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY =
+      """
+      select journal_line.posting_id
+      from journal_line
+      join book_meta
+        on book_meta.key = '%s'
+      where journal_line.currency_code <> book_meta.value
+      limit 1
+      """
+          .formatted(BOOK_FUNCTIONAL_CURRENCY_META_KEY);
+
   static final String INSERT_BOOK_INITIALIZED_AT =
       """
       insert into book_meta (key, value)
@@ -482,11 +500,68 @@ final class SqlitePostingSql {
         new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 96)
             .append(BASE_REPORT_LINE_SELECT)
             .append(" where 1 = 1");
+    if (query.postingCoverage().isNonClosingOnly()) {
+      sql.append(" and posting_fact.posting_kind <> 'PERIOD_CLOSE'");
+    }
     if (query.effectiveDateTo().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
     }
     sql.append(
         " order by account.account_code, journal_line.currency_code, posting_fact.effective_date, posting_fact.recorded_at, posting_fact.posting_id");
+    return sql.toString();
+  }
+
+  static String loadAccountTotals(TrialBalanceCriteria query) {
+    return loadAccountTotals(
+        query
+            .effectiveDateTo()
+            .map(date -> EffectiveDateRange.of(null, date))
+            .orElseGet(() -> EffectiveDateRange.of(null, null)),
+        query.postingCoverage());
+  }
+
+  static String loadAccountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+    StringBuilder sql =
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 256)
+            .append(
+                """
+                select
+                    account.account_code,
+                    account.account_name,
+                    account.account_type,
+                    account.account_role,
+                    account.active,
+                    account.declared_at,
+                    journal_line.currency_code,
+                    sum(case when journal_line.entry_side = 'DEBIT' then journal_line.amount_minor else 0 end) as debit_minor,
+                    sum(case when journal_line.entry_side = 'CREDIT' then journal_line.amount_minor else 0 end) as credit_minor
+                from journal_line
+                join posting_fact on posting_fact.posting_id = journal_line.posting_id
+                join account on account.account_code = journal_line.account_code
+                where 1 = 1
+                """);
+    if (postingCoverage.isNonClosingOnly()) {
+      sql.append(" and posting_fact.posting_kind <> 'PERIOD_CLOSE'");
+    }
+    if (effectiveDateRange.effectiveDateFrom().isPresent()) {
+      sql.append(" and posting_fact.effective_date >= ?");
+    }
+    if (effectiveDateRange.effectiveDateTo().isPresent()) {
+      sql.append(" and posting_fact.effective_date <= ?");
+    }
+    sql.append(
+        """
+         group by
+             account.account_code,
+             account.account_name,
+             account.account_type,
+             account.account_role,
+             account.active,
+             account.declared_at,
+             journal_line.currency_code
+         order by account.account_code, journal_line.currency_code
+        """);
     return sql.toString();
   }
 

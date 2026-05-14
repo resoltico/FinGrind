@@ -160,12 +160,12 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
-          postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z")));
+          postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z"), bookIdentity()));
     }
   }
 
@@ -176,8 +176,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
@@ -205,7 +205,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       IllegalStateException openException =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+              () ->
+                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(
           NullTestSupport.messageOf(openException)
               .contains("incomplete or corrupted and cannot be opened safely"));
@@ -235,7 +236,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(initializedBookPath))) {
       assertEquals(
-          new BookLifecycleInspection.Initialized(
+          initializedLifecycleInspection(
               SqliteBookContract.APPLICATION_ID,
               SqliteBookContract.FORMAT_VERSION,
               SqliteBookContract.FORMAT_VERSION,
@@ -311,7 +312,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+              () ->
+                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(
           NullTestSupport.messageOf(exception).contains("Failed to initialize SQLite book."));
       setStoreDatabase(postingFactStore, null);

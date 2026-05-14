@@ -140,7 +140,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       assertDoesNotThrow(
           () ->

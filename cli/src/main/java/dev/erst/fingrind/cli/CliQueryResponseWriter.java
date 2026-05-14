@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
@@ -14,7 +13,6 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -248,8 +246,7 @@ final class CliQueryResponseWriter {
     Record envelope =
         switch (result) {
           case LedgerPlanResult.Succeeded succeeded ->
-              new CliEnvelopeJsonModels.SuccessEnvelope(
-                  ProtocolSuccessStatus.PLAN_COMMITTED,
+              CliResponsePayloadMapper.successEnvelope(
                   CliResponsePayloadMapper.ledgerPlanPayload(succeeded));
           case LedgerPlanResult.Rejected rejected ->
               CliResponsePayloadMapper.rejectedPlanEnvelope(

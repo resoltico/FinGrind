@@ -1,6 +1,9 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,13 +76,12 @@ class InMemoryBookSessionTest {
   void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertFalse(bookSession.inspectBook().initialized());
-      assertEquals(
-          new BookOpeningOutcome.Opened(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT));
+      assertEquals(openedBook(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT, bookIdentity()));
       assertTrue(bookSession.inspectBook().initialized());
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
-          bookSession.openBook(FIXED_INSTANT));
+          bookSession.openBook(FIXED_INSTANT, bookIdentity()));
     }
   }
 
@@ -101,7 +103,7 @@ class InMemoryBookSessionTest {
   @Test
   void declareAccount_storesAndListsAccountSnapshots() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
 
       AccountDeclarationOutcome result =
           bookSession.declareAccount(
@@ -140,7 +142,7 @@ class InMemoryBookSessionTest {
   @Test
   void listAccounts_sortsAndPaginatesFromStableCursorBoundaries() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       RegisteredAccount cash =
           declareAccount(
               bookSession,
@@ -181,7 +183,7 @@ class InMemoryBookSessionTest {
   @Test
   void declareAccount_reactivatesExistingAccountUsingThePersistedRedeclarationTimestamp() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
@@ -214,7 +216,7 @@ class InMemoryBookSessionTest {
   @Test
   void declareAccount_rejectsAccountRoleConflict() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
@@ -250,7 +252,7 @@ class InMemoryBookSessionTest {
   @Test
   void commit_rejectsUnknownAndInactiveAccounts() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       assertEquals(
           new PostingCommitResult.Rejected(
               new BookkeepingPostingRejection.AccountStateViolations(
@@ -274,7 +276,7 @@ class InMemoryBookSessionTest {
   @Test
   void commit_storesPostingAndDuplicateOutcomesAfterInitialization() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       declareDefaultAccounts(bookSession);
       CommittedPosting originalPosting = postingFact("idem-original");
       CommittedPosting firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
@@ -312,7 +314,7 @@ class InMemoryBookSessionTest {
   @Test
   void listPostings_appliesFiltersAndStableReverseChronologicalPagination() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       declareDefaultAccounts(bookSession);
       declareAccount(
           bookSession,
@@ -346,8 +348,8 @@ class InMemoryBookSessionTest {
               LocalDate.parse("2026-04-08"),
               Instant.parse("2026-04-08T11:00:00Z"),
               List.of(
-                  line("3000", "USD", JournalLine.EntrySide.DEBIT, "5.00"),
-                  line("2000", "USD", JournalLine.EntrySide.CREDIT, "5.00")));
+                  line("3000", "EUR", JournalLine.EntrySide.DEBIT, "5.00"),
+                  line("2000", "EUR", JournalLine.EntrySide.CREDIT, "5.00")));
       bookSession.commit(olderPosting);
       bookSession.commit(sameMomentLowerId);
       bookSession.commit(sameMomentHigherId);
@@ -391,18 +393,9 @@ class InMemoryBookSessionTest {
   @Test
   void readModels_computeOpeningBalancesStableCurrencyOrderingAndSortedReports() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       declareDefaultAccounts(bookSession);
 
-      CommittedPosting openingUsd =
-          postingFact(
-              "posting-opening-usd",
-              "idem-opening-usd",
-              LocalDate.parse("2026-04-05"),
-              Instant.parse("2026-04-05T09:00:00Z"),
-              List.of(
-                  line("1000", "USD", JournalLine.EntrySide.DEBIT, "5.00"),
-                  line("2000", "USD", JournalLine.EntrySide.CREDIT, "5.00")));
       CommittedPosting openingEur =
           postingFact(
               "posting-opening-eur",
@@ -412,15 +405,6 @@ class InMemoryBookSessionTest {
               List.of(
                   line("1000", "EUR", JournalLine.EntrySide.DEBIT, "3.00"),
                   line("2000", "EUR", JournalLine.EntrySide.CREDIT, "3.00")));
-      CommittedPosting periodUsd =
-          postingFact(
-              "posting-period-usd",
-              "idem-period-usd",
-              LocalDate.parse("2026-04-07"),
-              Instant.parse("2026-04-07T08:00:00Z"),
-              List.of(
-                  line("1000", "USD", JournalLine.EntrySide.CREDIT, "2.00"),
-                  line("2000", "USD", JournalLine.EntrySide.DEBIT, "2.00")));
       CommittedPosting periodEur =
           postingFact(
               "posting-period-eur",
@@ -430,9 +414,7 @@ class InMemoryBookSessionTest {
               List.of(
                   line("1000", "EUR", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("2000", "EUR", JournalLine.EntrySide.CREDIT, "10.00")));
-      bookSession.commit(openingUsd);
       bookSession.commit(openingEur);
-      bookSession.commit(periodUsd);
       bookSession.commit(periodEur);
 
       RegisteredAccount cashAccount =
@@ -440,13 +422,9 @@ class InMemoryBookSessionTest {
       EffectiveDateRange reportDate =
           EffectiveDateRange.of(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"));
       List<CurrencyBalance> openingBalances =
-          List.of(
-              currencyBalance("EUR", "3.00", "0.00", "3.00", BalanceSide.DEBIT),
-              currencyBalance("USD", "5.00", "0.00", "5.00", BalanceSide.DEBIT));
+          List.of(currencyBalance("EUR", "3.00", "0.00", "3.00", BalanceSide.DEBIT));
       List<CurrencyBalance> closingBalances =
-          List.of(
-              currencyBalance("EUR", "13.00", "0.00", "13.00", BalanceSide.DEBIT),
-              currencyBalance("USD", "5.00", "2.00", "3.00", BalanceSide.DEBIT));
+          List.of(currencyBalance("EUR", "13.00", "0.00", "13.00", BalanceSide.DEBIT));
 
       assertEquals(
           Optional.of(
@@ -462,33 +440,26 @@ class InMemoryBookSessionTest {
                   LocalDate.parse("2026-04-07"))));
       assertEquals(
           new TrialBalanceView(
+              bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-07")),
+              EffectiveDateRange.of(null, LocalDate.parse("2025-04-07")),
+              allPostingKinds(),
               List.of(
                   new TrialBalanceRowView(
                       cashAccount,
                       currencyBalance("EUR", "13.00", "0.00", "13.00", BalanceSide.DEBIT)),
                   new TrialBalanceRowView(
-                      cashAccount,
-                      currencyBalance("USD", "5.00", "2.00", "3.00", BalanceSide.DEBIT)),
-                  new TrialBalanceRowView(
                       bookSession.findAccount(new AccountCode("2000")).orElseThrow(),
-                      currencyBalance("EUR", "0.00", "13.00", "13.00", BalanceSide.CREDIT)),
-                  new TrialBalanceRowView(
-                      bookSession.findAccount(new AccountCode("2000")).orElseThrow(),
-                      currencyBalance("USD", "2.00", "5.00", "3.00", BalanceSide.CREDIT)))),
+                      currencyBalance("EUR", "0.00", "13.00", "13.00", BalanceSide.CREDIT)))),
           bookSession.trialBalance(
-              new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-07")))));
+              new TrialBalanceCriteria(
+                  Optional.of(LocalDate.parse("2026-04-07")), allPostingKinds())));
       assertEquals(
           new AccountLedgerView(
               cashAccount,
               reportDate,
               openingBalances,
               List.of(
-                  new AccountLedgerEntryView(
-                      periodUsd,
-                      currencyBalance("USD", "0.00", "2.00", "2.00", BalanceSide.CREDIT),
-                      Money.parse("USD", "3.00"),
-                      BalanceSide.DEBIT),
                   new AccountLedgerEntryView(
                       periodEur,
                       currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
@@ -501,27 +472,19 @@ class InMemoryBookSessionTest {
           new PeriodSummaryView(
               LocalDate.parse("2026-04-07"),
               LocalDate.parse("2026-04-07"),
+              1,
               2,
-              4,
               2,
               List.of(
                   new PeriodCurrencySummaryView(
-                      currencyBalance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)),
-                  new PeriodCurrencySummaryView(
-                      currencyBalance("USD", "2.00", "2.00", "0.00", BalanceSide.ZERO))),
+                      currencyBalance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
               List.of(
                   new PeriodAccountActivityView(
                       cashAccount,
                       currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
                   new PeriodAccountActivityView(
-                      cashAccount,
-                      currencyBalance("USD", "0.00", "2.00", "2.00", BalanceSide.CREDIT)),
-                  new PeriodAccountActivityView(
                       bookSession.findAccount(new AccountCode("2000")).orElseThrow(),
-                      currencyBalance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT)),
-                  new PeriodAccountActivityView(
-                      bookSession.findAccount(new AccountCode("2000")).orElseThrow(),
-                      currencyBalance("USD", "2.00", "0.00", "2.00", BalanceSide.DEBIT)))),
+                      currencyBalance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
           bookSession.periodSummary(
               new PeriodSummaryCriteria(
                   LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))));
@@ -531,7 +494,7 @@ class InMemoryBookSessionTest {
   @Test
   void ledgerPlanTransactions_guardLifecycleAndRestoreSnapshotState() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
       declareDefaultAccounts(bookSession);
       CommittedPosting baselinePosting = postingFact("idem-baseline");
       bookSession.commit(baselinePosting);
@@ -595,7 +558,7 @@ class InMemoryBookSessionTest {
   @Test
   void deactivateAccount_rejectsUnknownAccount() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT);
+      bookSession.openBook(FIXED_INSTANT, bookIdentity());
 
       IllegalArgumentException thrown =
           org.junit.jupiter.api.Assertions.assertThrows(

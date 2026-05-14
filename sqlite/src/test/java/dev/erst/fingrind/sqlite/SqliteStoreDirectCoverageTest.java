@@ -14,17 +14,22 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Path;
@@ -172,6 +177,141 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
+  @Test
+  void accountTotals_surfaceHonorsDateRangesAndPostingCoverage() {
+    Path bookPath = tempDirectory.resolve("account-totals-direct.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      assertEquals(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
+                  new AccountCode("3200"),
+                  new AccountName("Retained Earnings"),
+                  AccountType.EQUITY,
+                  AccountRole.RETAINED_EARNINGS,
+                  true,
+                  FIXED_INSTANT)),
+          postingFactStore.declareAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              AccountRole.RETAINED_EARNINGS,
+              FIXED_INSTANT));
+
+      commitPosting(
+          postingFactStore,
+          postingFact(
+              "posting-1",
+              "idem-1",
+              LocalDate.parse("2026-04-07"),
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
+      assertInstanceOf(
+          PeriodCloseOutcome.Closed.class,
+          postingFactStore.closePeriod(
+              new PeriodCloseDraft(
+                  new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+                  new AccountCode("3200"),
+                  List.of(),
+                  FIXED_INSTANT,
+                  List.of(
+                      new PostingDraft(
+                          new JournalEntry(
+                              LocalDate.parse("2026-04-07"),
+                              List.of(
+                                  line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
+                                  line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+                          dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+                          PostingKind.PERIOD_CLOSE,
+                          periodCloseProvenance("EUR")))),
+              () -> new PostingId("period-close-1")));
+      commitPosting(
+          postingFactStore,
+          postingFact(
+              "posting-2",
+              "idem-2",
+              LocalDate.parse("2026-04-08"),
+              Instant.parse("2026-04-08T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "4.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "4.00"))));
+
+      RegisteredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+      RegisteredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+      RegisteredAccount retainedEarningsAccount =
+          postingFactStore.findAccount(new AccountCode("3200")).orElseThrow();
+
+      assertEquals(
+          List.of(
+              new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 1400L, 0L),
+              new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 1000L, 1400L),
+              new AccountCurrencyTotals(
+                  retainedEarningsAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
+          postingFactStore.accountTotals(
+              EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS));
+      assertEquals(
+          List.of(
+              new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 1000L, 0L),
+              new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
+          postingFactStore.accountTotals(
+              EffectiveDateRange.of(null, LocalDate.parse("2026-04-07")),
+              PostingCoverage.NON_CLOSING_POSTINGS));
+      assertEquals(
+          List.of(
+              new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 400L, 0L),
+              new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 0L, 400L)),
+          postingFactStore.accountTotals(
+              EffectiveDateRange.of(LocalDate.parse("2026-04-08"), null),
+              PostingCoverage.ALL_POSTING_KINDS));
+      assertEquals(
+          List.of(
+              new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 1000L, 0L),
+              new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 1000L, 1000L),
+              new AccountCurrencyTotals(
+                  retainedEarningsAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
+          postingFactStore.accountTotals(
+              EffectiveDateRange.of(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+              PostingCoverage.ALL_POSTING_KINDS));
+    }
+  }
+
+  @Test
+  void postingReader_accountBalanceOrdersCurrencyBucketsByCurrencyCode() {
+    Path bookPath = tempDirectory.resolve("posting-reader-account-balance-order.sqlite");
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          insertPostingFactRow(database, "posting-eur", "idem-eur");
+          insertJournalLineRow(database, "posting-eur", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-eur", 1, "2000", "CREDIT", "EUR", 1000);
+          insertPostingFactRow(database, "posting-usd", "idem-usd");
+          insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 500);
+          insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 500);
+
+          RegisteredAccount cashAccount =
+              SqliteStatementQueries.findOneAccount(database, new AccountCode("1000"))
+                  .orElseThrow();
+
+          assertEquals(
+              List.of("EUR", "USD"),
+              new SqlitePostingReader()
+                      .accountBalance(
+                          database,
+                          new AccountBalanceCriteria(new AccountCode("1000"), null, null),
+                          cashAccount)
+                      .balances()
+                      .stream()
+                      .map(balance -> balance.debitTotal().currencyUnit().code())
+                      .toList());
+        });
+  }
+
   private static CommittedProvenance periodCloseProvenance(String currencyCode) {
     String closeToken = EFFECTIVE_DATE + ":" + EFFECTIVE_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
@@ -182,6 +322,6 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
             new IdempotencyKey("periodClose:" + closeToken + ":" + currencyCode),
             new CausationId("periodClose:" + closeToken),
             Optional.of(new CorrelationId("periodClose:" + closeToken)));
-    return new CommittedProvenance(requestProvenance, FIXED_INSTANT, SourceChannel.CLI);
+    return new CommittedProvenance(requestProvenance, FIXED_INSTANT, SourceChannel.SYSTEM);
   }
 }

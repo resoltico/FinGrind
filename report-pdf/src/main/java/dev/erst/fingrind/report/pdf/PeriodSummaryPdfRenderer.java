@@ -41,6 +41,8 @@ final class PeriodSummaryPdfRenderer {
         List.of(
             new PdfTableColumn("Account", 0.9f, PdfTableColumn.CellAlignment.LEFT),
             new PdfTableColumn("Name", 1.5f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Type", 0.9f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
             new PdfTableColumn("Normal", 0.8f, PdfTableColumn.CellAlignment.LEFT),
             new PdfTableColumn("Active", 0.6f, PdfTableColumn.CellAlignment.LEFT),
             new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
@@ -54,6 +56,8 @@ final class PeriodSummaryPdfRenderer {
                     List.of(
                         row.account().accountCode().value(),
                         row.account().accountName().value(),
+                        row.account().accountType().wireValue(),
+                        row.account().accountRole().wireValue(),
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
                         row.movement().netAmount().currencyUnit().code(),

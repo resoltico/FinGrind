@@ -8,11 +8,14 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -211,6 +214,13 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
+  public List<AccountCurrencyTotals> accountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+    threadOwner.requireOwnerThread();
+    return readOperations.accountTotals(effectiveDateRange, postingCoverage);
+  }
+
+  @Override
   public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.trialBalance(query);
@@ -229,9 +239,9 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
-  public BookOpeningOutcome openBook(Instant initializedAt) {
+  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
     threadOwner.requireOwnerThread();
-    return mutationOperations.openBook(initializedAt);
+    return mutationOperations.openBook(initializedAt, bookIdentity);
   }
 
   @Override

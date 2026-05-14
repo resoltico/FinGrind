@@ -6,6 +6,8 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -16,10 +18,13 @@ final class CliReportOutputRenderer {
   static String renderTrialBalanceHuman(TrialBalanceReport report) {
     String header =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
+            statementIdentityRows(
+                report.bookIdentity(),
+                report.postingCoverage(),
                 List.of(
-                    "Effective date to",
-                    report.effectiveDateTo().map(LocalDate::toString).orElse("(current)"))));
+                    List.of(
+                        "Effective date to",
+                        report.effectiveDateTo().map(LocalDate::toString).orElse("(current)")))));
     String table =
         CliTextFormat.renderTable(
             List.of(
@@ -34,7 +39,7 @@ final class CliReportOutputRenderer {
                 "Credit total",
                 "Net amount",
                 "Balance side"),
-            report.rows().stream().map(CliQueryOutputFormatter::trialBalanceRow).toList(),
+            report.rows().stream().map(CliQueryOutputFormatter::trialBalanceHumanRow).toList(),
             6,
             7,
             8);
@@ -45,7 +50,11 @@ final class CliReportOutputRenderer {
   static String renderTrialBalanceCsv(TrialBalanceReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "entityName",
+            "functionalCurrency",
+            "fiscalYearStart",
             "effectiveDateTo",
+            "postingCoverage",
             "accountCode",
             "accountName",
             "accountType",
@@ -61,7 +70,11 @@ final class CliReportOutputRenderer {
             .map(
                 row ->
                     List.of(
+                        report.bookIdentity().entityName().value(),
+                        report.bookIdentity().functionalCurrency().code(),
+                        report.bookIdentity().fiscalYearStart().wireValue(),
                         report.effectiveDateTo().map(LocalDate::toString).orElse(""),
+                        report.postingCoverage().wireValue(),
                         row.account().accountCode().value(),
                         row.account().accountName().value(),
                         row.account().accountType().wireValue(),
@@ -109,7 +122,8 @@ final class CliReportOutputRenderer {
                 "Balance side",
                 "Counterpart accounts"),
             report.entries().stream()
-                .map(entry -> CliQueryOutputFormatter.accountLedgerRow(report.account(), entry))
+                .map(
+                    entry -> CliQueryOutputFormatter.accountLedgerHumanRow(report.account(), entry))
                 .toList(),
             4,
             5,
@@ -179,7 +193,7 @@ final class CliReportOutputRenderer {
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
             report.currencyTotals().stream()
-                .map(summary -> CliQueryOutputFormatter.balanceRow(summary.totals()))
+                .map(summary -> CliQueryOutputFormatter.balanceHumanRow(summary.totals()))
                 .toList(),
             1,
             2,
@@ -198,7 +212,7 @@ final class CliReportOutputRenderer {
                 "Net amount",
                 "Balance side"),
             report.accountActivity().stream()
-                .map(CliQueryOutputFormatter::periodActivityRow)
+                .map(CliQueryOutputFormatter::periodActivityHumanRow)
                 .toList(),
             5,
             6,
@@ -257,10 +271,13 @@ final class CliReportOutputRenderer {
   static String renderFinancialPositionHuman(FinancialPositionReport report) {
     String header =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
+            statementIdentityRows(
+                report.bookIdentity(),
+                report.postingCoverage(),
                 List.of(
-                    "Effective date to",
-                    report.effectiveDateTo().map(LocalDate::toString).orElse("(current)"))));
+                    List.of(
+                        "Effective date to",
+                        report.effectiveDateTo().map(LocalDate::toString).orElse("(current)")))));
     String sections =
         report.sections().isEmpty()
             ? "(none)"
@@ -274,6 +291,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     "Line code",
                                     "Line name",
+                                    "Role",
                                     "Kind",
                                     "Currency",
                                     "Debit total",
@@ -286,6 +304,8 @@ final class CliReportOutputRenderer {
                                             List.of(
                                                 row.lineCode(),
                                                 row.lineName(),
+                                                CliQueryOutputFormatter.displayLineRole(
+                                                    row.lineRole()),
                                                 CliQueryOutputFormatter.displayRowKind(
                                                     row.synthetic()),
                                                 row.balance().netAmount().currencyUnit().code(),
@@ -312,10 +332,15 @@ final class CliReportOutputRenderer {
   static String renderFinancialPositionCsv(FinancialPositionReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "entityName",
+            "functionalCurrency",
+            "fiscalYearStart",
             "effectiveDateTo",
+            "postingCoverage",
             "sectionAccountType",
             "lineCode",
             "lineName",
+            "lineRole",
             "lineType",
             "synthetic",
             "currencyCode",
@@ -330,10 +355,17 @@ final class CliReportOutputRenderer {
                         .map(
                             row ->
                                 List.of(
+                                    report.bookIdentity().entityName().value(),
+                                    report.bookIdentity().functionalCurrency().code(),
+                                    report.bookIdentity().fiscalYearStart().wireValue(),
                                     report.effectiveDateTo().map(LocalDate::toString).orElse(""),
+                                    report.postingCoverage().wireValue(),
                                     section.accountType().wireValue(),
                                     row.lineCode(),
                                     row.lineName(),
+                                    row.lineRole()
+                                        .map(dev.erst.fingrind.core.AccountRole::wireValue)
+                                        .orElse(""),
                                     row.lineType().wireValue(),
                                     Boolean.toString(row.synthetic()),
                                     row.balance().netAmount().currencyUnit().code(),
@@ -349,16 +381,19 @@ final class CliReportOutputRenderer {
   static String renderIncomeStatementHuman(IncomeStatementReport report) {
     String header =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Effective date from", report.effectiveDateFrom().toString()),
-                List.of("Effective date to", report.effectiveDateTo().toString()),
+            statementIdentityRows(
+                report.bookIdentity(),
+                report.postingCoverage(),
                 List.of(
-                    "Net income totals",
-                    report.netIncomeTotals().isEmpty()
-                        ? "(none)"
-                        : report.netIncomeTotals().stream()
-                            .map(CliQueryOutputFormatter::displayBalanceHuman)
-                            .collect(java.util.stream.Collectors.joining(", ")))));
+                    List.of("Effective date from", report.effectiveDateFrom().toString()),
+                    List.of("Effective date to", report.effectiveDateTo().toString()),
+                    List.of(
+                        "Net income totals",
+                        report.netIncomeTotals().isEmpty()
+                            ? "(none)"
+                            : report.netIncomeTotals().stream()
+                                .map(CliQueryOutputFormatter::displayBalanceHuman)
+                                .collect(java.util.stream.Collectors.joining(", "))))));
     String sections =
         report.sections().isEmpty()
             ? "(none)"
@@ -372,6 +407,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     "Line code",
                                     "Line name",
+                                    "Role",
                                     "Kind",
                                     "Currency",
                                     "Debit total",
@@ -384,6 +420,8 @@ final class CliReportOutputRenderer {
                                             List.of(
                                                 row.lineCode(),
                                                 row.lineName(),
+                                                CliQueryOutputFormatter.displayLineRole(
+                                                    row.lineRole()),
                                                 CliQueryOutputFormatter.displayRowKind(
                                                     row.synthetic()),
                                                 row.movement().netAmount().currencyUnit().code(),
@@ -410,11 +448,16 @@ final class CliReportOutputRenderer {
   static String renderIncomeStatementCsv(IncomeStatementReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "entityName",
+            "functionalCurrency",
+            "fiscalYearStart",
             "effectiveDateFrom",
             "effectiveDateTo",
+            "postingCoverage",
             "sectionAccountType",
             "lineCode",
             "lineName",
+            "lineRole",
             "lineType",
             "synthetic",
             "currencyCode",
@@ -429,11 +472,18 @@ final class CliReportOutputRenderer {
                         .map(
                             row ->
                                 List.of(
+                                    report.bookIdentity().entityName().value(),
+                                    report.bookIdentity().functionalCurrency().code(),
+                                    report.bookIdentity().fiscalYearStart().wireValue(),
                                     report.effectiveDateFrom().toString(),
                                     report.effectiveDateTo().toString(),
+                                    report.postingCoverage().wireValue(),
                                     section.accountType().wireValue(),
                                     row.lineCode(),
                                     row.lineName(),
+                                    row.lineRole()
+                                        .map(dev.erst.fingrind.core.AccountRole::wireValue)
+                                        .orElse(""),
                                     row.lineType().wireValue(),
                                     Boolean.toString(row.synthetic()),
                                     row.movement().netAmount().currencyUnit().code(),
@@ -450,17 +500,21 @@ final class CliReportOutputRenderer {
   static String renderChangesInEquityHuman(ChangesInEquityReport report) {
     String header =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Effective date from", report.effectiveDateFrom().toString()),
-                List.of("Effective date to", report.effectiveDateTo().toString()),
-                List.of("Opening totals", joinedBalancesHuman(report.openingTotals())),
-                List.of("Movement totals", joinedBalancesHuman(report.movementTotals())),
-                List.of("Closing totals", joinedBalancesHuman(report.closingTotals()))));
+            statementIdentityRows(
+                report.bookIdentity(),
+                report.postingCoverage(),
+                List.of(
+                    List.of("Effective date from", report.effectiveDateFrom().toString()),
+                    List.of("Effective date to", report.effectiveDateTo().toString()),
+                    List.of("Opening totals", joinedBalancesHuman(report.openingTotals())),
+                    List.of("Movement totals", joinedBalancesHuman(report.movementTotals())),
+                    List.of("Closing totals", joinedBalancesHuman(report.closingTotals())))));
     String table =
         CliTextFormat.renderTable(
             List.of(
                 "Line code",
                 "Line name",
+                "Role",
                 "Kind",
                 "Currency",
                 "Opening",
@@ -473,6 +527,7 @@ final class CliReportOutputRenderer {
                         List.of(
                             row.lineCode(),
                             row.lineName(),
+                            CliQueryOutputFormatter.displayLineRole(row.lineRole()),
                             CliQueryOutputFormatter.displayRowKind(row.synthetic()),
                             row.closingBalance().netAmount().currencyUnit().code(),
                             CliQueryOutputFormatter.displayMoney(row.openingBalance().netAmount()),
@@ -491,10 +546,15 @@ final class CliReportOutputRenderer {
   static String renderChangesInEquityCsv(ChangesInEquityReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "entityName",
+            "functionalCurrency",
+            "fiscalYearStart",
             "effectiveDateFrom",
             "effectiveDateTo",
+            "postingCoverage",
             "lineCode",
             "lineName",
+            "lineRole",
             "synthetic",
             "currencyCode",
             "openingDebitTotal",
@@ -513,10 +573,17 @@ final class CliReportOutputRenderer {
             .map(
                 row ->
                     List.of(
+                        report.bookIdentity().entityName().value(),
+                        report.bookIdentity().functionalCurrency().code(),
+                        report.bookIdentity().fiscalYearStart().wireValue(),
                         report.effectiveDateFrom().toString(),
                         report.effectiveDateTo().toString(),
+                        report.postingCoverage().wireValue(),
                         row.lineCode(),
                         row.lineName(),
+                        row.lineRole()
+                            .map(dev.erst.fingrind.core.AccountRole::wireValue)
+                            .orElse(""),
                         Boolean.toString(row.synthetic()),
                         row.closingBalance().netAmount().currencyUnit().code(),
                         CliQueryOutputFormatter.displayMoney(row.openingBalance().debitTotal()),
@@ -554,5 +621,23 @@ final class CliReportOutputRenderer {
         + System.lineSeparator()
         + CliTextFormat.renderKeyValueBlock(
             List.of(List.of("Section totals", joinedBalancesHuman(totals))));
+  }
+
+  private static List<List<String>> statementIdentityRows(
+      BookIdentity bookIdentity, PostingCoverage postingCoverage, List<List<String>> rows) {
+    List<List<String>> identityRows = new java.util.ArrayList<>();
+    identityRows.add(List.of("Entity", bookIdentity.entityName().value()));
+    identityRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
+    identityRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    identityRows.add(List.of("Posting coverage", displayPostingCoverage(postingCoverage)));
+    identityRows.addAll(rows);
+    return List.copyOf(identityRows);
+  }
+
+  private static String displayPostingCoverage(PostingCoverage postingCoverage) {
+    return switch (postingCoverage) {
+      case ALL_POSTING_KINDS -> "All posting kinds";
+      case NON_CLOSING_POSTINGS -> "Non-closing postings";
+    };
   }
 }

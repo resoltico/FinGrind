@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -14,8 +15,11 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.AccountTypeConflict,
         BookkeepingAdministrationRejection.AccountRoleConflict,
         BookkeepingAdministrationRejection.RetainedEarningsAccountMissing,
+        BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch,
         BookkeepingAdministrationRejection.RetainedEarningsAccountInactive,
-        BookkeepingAdministrationRejection.PeriodCloseMustStartAt {
+        BookkeepingAdministrationRejection.PeriodCloseMustStartAt,
+        BookkeepingAdministrationRejection.PeriodCloseFutureDate,
+        BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
 
   /** Refusal for an explicit open-book request against an initialized book. */
   record BookAlreadyInitialized() implements BookkeepingAdministrationRejection {}
@@ -49,7 +53,21 @@ public sealed interface BookkeepingAdministrationRejection
   }
 
   /** Refusal for period close when no retained-earnings account has been declared. */
-  record RetainedEarningsAccountMissing() implements BookkeepingAdministrationRejection {}
+  record RetainedEarningsAccountMissing(AccountCode accountCode)
+      implements BookkeepingAdministrationRejection {
+    public RetainedEarningsAccountMissing {
+      Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
+
+  /** Refusal for period close when the selected account is not doctrinally retained earnings. */
+  record RetainedEarningsAccountRoleMismatch(AccountCode accountCode, AccountRole actualAccountRole)
+      implements BookkeepingAdministrationRejection {
+    public RetainedEarningsAccountRoleMismatch {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(actualAccountRole, "actualAccountRole");
+    }
+  }
 
   /** Refusal for period close when the retained-earnings account exists but is inactive. */
   record RetainedEarningsAccountInactive(AccountCode accountCode)
@@ -64,6 +82,27 @@ public sealed interface BookkeepingAdministrationRejection
       implements BookkeepingAdministrationRejection {
     public PeriodCloseMustStartAt {
       Objects.requireNonNull(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
+    }
+  }
+
+  /** Refusal for period close when the requested period ends after the current UTC date. */
+  record PeriodCloseFutureDate(LocalDate attemptedEffectiveDateTo)
+      implements BookkeepingAdministrationRejection {
+    public PeriodCloseFutureDate {
+      Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+    }
+  }
+
+  /** Refusal for period close when the requested range spans more than one fiscal year. */
+  record PeriodCloseCrossesFiscalYearBoundary(
+      LocalDate attemptedEffectiveDateFrom,
+      LocalDate attemptedEffectiveDateTo,
+      FiscalYearStart fiscalYearStart)
+      implements BookkeepingAdministrationRejection {
+    public PeriodCloseCrossesFiscalYearBoundary {
+      Objects.requireNonNull(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
+      Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+      Objects.requireNonNull(fiscalYearStart, "fiscalYearStart");
     }
   }
 }

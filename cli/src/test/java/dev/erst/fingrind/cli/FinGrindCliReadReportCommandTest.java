@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -64,14 +65,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
-            .run(
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+            .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
         0,
         cli(
@@ -121,6 +115,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     String postingId =
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
+            .path("payload")
             .path("postingId")
             .stringValue();
     assertCommandOutputContains(
@@ -170,7 +165,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDate,recordedAt,postingId,currencyCode,totalAmount,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
     assertCommandOutputContains(
         new String[] {
           "account-balance",
@@ -194,7 +189,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -247,14 +242,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
-            .run(
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+            .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
         0,
         cli(
@@ -331,6 +319,8 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
+                  "--retained-earnings-account",
+                  "3200",
                   "--effective-date-from",
                   "2026-04-07",
                   "--effective-date-to",
@@ -367,7 +357,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",
@@ -449,7 +439,8 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
   /** Minimal workflow stub that only serves deterministic report rejections. */
   private static final class RecordingReportWorkflow implements CliBookWorkflow {
     @Override
-    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(
+        BookAccess bookAccess, OpenBookCommand command) {
       throw new AssertionError("openBook should not be called in this test");
     }
 

@@ -7,7 +7,12 @@
     },
     {
       "stepId": "open",
-      "kind": "open-book"
+      "kind": "open-book",
+      "openBook": {
+        "entityName": "Late Open Seed",
+        "functionalCurrency": "EUR",
+        "fiscalYearStart": "01-01"
+      }
     }
   ]
 }

@@ -14,8 +14,14 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -44,7 +50,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.35.0",
+                "0.36.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -60,7 +66,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.35.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.36.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -161,7 +167,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.35.0");
+    return new PdfDocumentFactory("FinGrind", "0.36.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -174,10 +180,18 @@ class PdfReportCoverageTest {
             true,
             Instant.parse("2026-04-01T08:00:00Z"));
     return new TrialBalanceReport(
+        bookIdentity(),
         Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        PostingCoverage.ALL_POSTING_KINDS,
         List.of(
             new TrialBalanceRow(
                 cashAccount, balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))));
+  }
+
+  private static BookIdentity bookIdentity() {
+    return new BookIdentity(
+        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
   }
 
   private static List<List<String>> paginatedKeyValueRows() {

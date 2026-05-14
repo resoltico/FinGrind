@@ -35,7 +35,12 @@ final class PostingRejectionDescriptors {
       case PostingRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations _ -> Descriptor.ACCOUNT_STATE_VIOLATIONS;
       case PostingRejection.DuplicateIdempotencyKey _ -> Descriptor.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.PostingKindReserved _ -> Descriptor.POSTING_KIND_RESERVED;
+      case PostingRejection.BookFunctionalCurrencyMismatch _ ->
+          Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.ClosedPeriodViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
+          Descriptor.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
       case PostingRejection.RetainedEarningsAccountReserved _ ->
           Descriptor.RETAINED_EARNINGS_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ -> Descriptor.REVERSAL_TARGET_NOT_FOUND;
@@ -58,7 +63,10 @@ final class PostingRejectionDescriptors {
     BOOK_NOT_INITIALIZED,
     ACCOUNT_STATE_VIOLATIONS,
     DUPLICATE_IDEMPOTENCY_KEY,
+    POSTING_KIND_RESERVED,
+    BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
     CLOSED_PERIOD_VIOLATION,
+    OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
     RETAINED_EARNINGS_ACCOUNT_RESERVED,
     REVERSAL_TARGET_NOT_FOUND,
     REVERSAL_ALREADY_EXISTS,
@@ -69,7 +77,10 @@ final class PostingRejectionDescriptors {
         case BOOK_NOT_INITIALIZED -> "posting-book-not-initialized";
         case ACCOUNT_STATE_VIOLATIONS -> "account-state-violations";
         case DUPLICATE_IDEMPOTENCY_KEY -> "duplicate-idempotency-key";
+        case POSTING_KIND_RESERVED -> "posting-kind-reserved";
+        case BOOK_FUNCTIONAL_CURRENCY_MISMATCH -> "book-functional-currency-mismatch";
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
+        case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT -> "opening-balance-touches-nominal-account";
         case RETAINED_EARNINGS_ACCOUNT_RESERVED -> "retained-earnings-account-reserved";
         case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
         case REVERSAL_ALREADY_EXISTS -> "reversal-already-exists";
@@ -87,8 +98,14 @@ final class PostingRejectionDescriptors {
             "Posting refused because one or more journal lines reference undeclared or inactive accounts.";
         case DUPLICATE_IDEMPOTENCY_KEY ->
             "Posting refused because the selected book already contains the same idempotency key.";
+        case POSTING_KIND_RESERVED ->
+            "Posting refused because generated posting kinds are reserved for FinGrind workflows and cannot be submitted directly.";
+        case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
+            "Posting refused because the journal-entry currency does not match the selected book functional currency.";
         case CLOSED_PERIOD_VIOLATION ->
             "Posting refused because its effective date falls inside one closed reporting period.";
+        case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
+            "Posting refused because opening-balance entries may seed only asset, liability, or equity accounts.";
         case RETAINED_EARNINGS_ACCOUNT_RESERVED ->
             "Posting refused because the retained-earnings account is reserved for generated period-close postings.";
         case REVERSAL_TARGET_NOT_FOUND ->
@@ -108,6 +125,18 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "violations",
                     "Array of per-line account-state issue objects with stable code and accountCode."));
+        case POSTING_KIND_RESERVED ->
+            List.of(
+                detailField(
+                    "postingKind",
+                    "Rejected generated postingKind that callers may not submit directly."));
+        case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
+            List.of(
+                detailField(
+                    "functionalCurrency", "Functional currency declared by the selected book."),
+                detailField(
+                    "attemptedCurrency",
+                    "Rejected journal-entry currency from the posting request."));
         case CLOSED_PERIOD_VIOLATION ->
             List.of(
                 detailField(
@@ -115,6 +144,14 @@ final class PostingRejectionDescriptors {
                     "Inclusive effective date through which postings are already closed."),
                 detailField(
                     "attemptedEffectiveDate", "Rejected effective date from the posting request."));
+        case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Nominal accountCode that an opening-balance posting attempted to seed."),
+                detailField(
+                    "accountType",
+                    "Nominal accountType that opening-balance postings are not allowed to touch."));
         case RETAINED_EARNINGS_ACCOUNT_RESERVED ->
             List.of(
                 detailField(
@@ -143,7 +180,10 @@ final class PostingRejectionDescriptors {
         case ACCOUNT_STATE_VIOLATIONS -> AccountStateDetailDescriptor.descriptors();
         case BOOK_NOT_INITIALIZED,
             DUPLICATE_IDEMPOTENCY_KEY,
+            POSTING_KIND_RESERVED,
+            BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
+            OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
             RETAINED_EARNINGS_ACCOUNT_RESERVED,
             REVERSAL_TARGET_NOT_FOUND,
             REVERSAL_ALREADY_EXISTS,
@@ -162,7 +202,10 @@ final class PostingRejectionDescriptors {
               BOOK_NOT_INITIALIZED,
               ACCOUNT_STATE_VIOLATIONS,
               DUPLICATE_IDEMPOTENCY_KEY,
+              POSTING_KIND_RESERVED,
+              BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
               CLOSED_PERIOD_VIOLATION,
+              OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
               RETAINED_EARNINGS_ACCOUNT_RESERVED,
               REVERSAL_TARGET_NOT_FOUND,
               REVERSAL_ALREADY_EXISTS,

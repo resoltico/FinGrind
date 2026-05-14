@@ -1,10 +1,15 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Descriptor for the help payload. */
 public record HelpDescriptor(
@@ -13,10 +18,10 @@ public record HelpDescriptor(
     String description,
     List<String> usage,
     ContractResponse.BookModelDescriptor bookModel,
-    ContractRequestShapes.RequestShapesDescriptor requestShapes,
-    ContractTemplates.PostingRequestTemplateDescriptor requestTemplate,
-    ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate,
-    ContractTemplates.LedgerPlanTemplateDescriptor planTemplate,
+    @Nullable RequestShapesDescriptor requestShapes,
+    @Nullable PostingRequestTemplateDescriptor requestTemplate,
+    @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
+    @Nullable LedgerPlanTemplateDescriptor planTemplate,
     List<CommandDescriptor> commands,
     List<WorkflowDescriptor> quickStart,
     List<ExitCodeDescriptor> exitCodes,
@@ -31,11 +36,6 @@ public record HelpDescriptor(
     description = ContractDescriptorValidation.requireText(description, "description");
     usage = ContractDescriptorValidation.copyList(usage, "usage");
     bookModel = ContractDescriptorValidation.requireValue(bookModel, "bookModel");
-    requestShapes = ContractDescriptorValidation.requireValue(requestShapes, "requestShapes");
-    requestTemplate = ContractDescriptorValidation.requireValue(requestTemplate, "requestTemplate");
-    declareAccountTemplate =
-        ContractDescriptorValidation.requireValue(declareAccountTemplate, "declareAccountTemplate");
-    planTemplate = ContractDescriptorValidation.requireValue(planTemplate, "planTemplate");
     commands = ContractDescriptorValidation.copyList(commands, "commands");
     quickStart = ContractDescriptorValidation.copyList(quickStart, "quickStart");
     exitCodes = ContractDescriptorValidation.copyList(exitCodes, "exitCodes");

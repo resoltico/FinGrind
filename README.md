@@ -4,10 +4,11 @@ FinGrind is a command-line bookkeeping tool. Each accounting entity gets one enc
 file. Every entry is validated before it commits. Balances, ledgers, and period summaries come
 back as tables, JSON, CSV, or PDF.
 
-Every bookkeeping setup hits the same morning problem: you need to know where things stand and the
-answer is spread across notes, tabs, and half-finished checks. With FinGrind the daily grind stays
-clean — one protected file, one command to read it back, and bad entries rejected before they
-ever reach the book.
+Most bookkeeping setups have the same problem: the current position is spread across multiple
+places, so confirming balances or recent activity takes manual reconstruction. FinGrind keeps one
+protected book per accounting entity. You post validated entries to that book and query the same
+file for balances, ledgers, and summaries. Invalid entries are rejected before they change the
+book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
 - Declare accounts before posting; unbalanced entries and undeclared accounts are rejected at commit
@@ -15,16 +16,19 @@ ever reach the book.
 - Read back account balances, trial balances, account ledgers, and period summaries
 - Export any report as human-readable tables, JSON, CSV, or PDF
 
+**Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
+
 ## The Daily Grind
 
-Every command reads from or writes to the same protected file. The key file is required every time
-— lose the key and the book stays locked. Keep the key outside the book directory so copies of the
-book do not automatically carry the unlocking secret with them:
+Every command reads from or writes to the same protected file. The key file is required every
+time. If the key is lost, the book cannot be opened. Keep the key outside the book directory so a
+copy of the book does not automatically include the unlocking key:
 
 ```bash
 # Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+  --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
 
 # Declare accounts, then post a balanced entry
 fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
@@ -43,8 +47,8 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 2000    | Revenue | EUR      |        0.00 |       811.00 |     811.00 | CREDIT
 ```
 
-Wrong entries come back as clear errors before they land: unbalanced lines, undeclared accounts,
-duplicate idempotency keys — all rejected at the point where they happen.
+Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced
+lines, undeclared accounts, or duplicate idempotency keys.
 
 ## Documentation
 

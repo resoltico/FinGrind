@@ -26,6 +26,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import java.io.IOException;
@@ -88,7 +89,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
             writer.writeAccountBalanceResult(result, OutputMode.HUMAN),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.trialBalance(bookAccess, new TrialBalanceQuery(Optional.of(effectiveDate))),
+        workflow.trialBalance(
+            bookAccess,
+            new TrialBalanceQuery(Optional.of(effectiveDate), PostingCoverage.ALL_POSTING_KINDS)),
         OutputMode.CSV,
         (CliResponseWriter writer, TrialBalanceResult result) ->
             writer.writeTrialBalanceResult(result, OutputMode.CSV),
@@ -157,7 +160,11 @@ final class SqliteRoundTripWorkflowCliCoverage {
       throws IOException {
     Path bookPath = bookAccess.bookFilePath();
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
-        workflow.openBook(bookAccess), bookPath, OutputMode.JSON, "\"initializedAt\"");
+        workflow.openBook(
+            bookAccess, CliFuzzFixtures.openBookCommand(command.journalEntry().currencyUnit())),
+        bookPath,
+        OutputMode.JSON,
+        "\"initializedAt\"");
     for (DeclareAccountCommand declareAccountCommand :
         CliFuzzFixtures.declarePostingAccountCommands(command)) {
       SqliteRoundTripWorkflowRenderingAssertions.assertDeclared(

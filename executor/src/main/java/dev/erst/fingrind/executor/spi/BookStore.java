@@ -4,8 +4,12 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -23,12 +27,13 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /** Public executor-facing store boundary for one selected book. */
 public interface BookStore extends PostingValidationStore {
   /** Explicitly initializes one new book if the selected path is currently empty. */
-  BookOpeningOutcome openBook(Instant initializedAt);
+  BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity);
 
   /** Declares or reactivates one account in the selected book. */
   AccountDeclarationOutcome declareAccount(
@@ -46,6 +51,10 @@ public interface BookStore extends PostingValidationStore {
 
   /** Computes grouped per-currency balances for one declared account in one initialized book. */
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query);
+
+  /** Aggregates exact debit and credit totals by account and currency for one read-time window. */
+  List<AccountCurrencyTotals> accountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage);
 
   /** Computes one canonical trial-balance report. */
   TrialBalanceView trialBalance(TrialBalanceCriteria query);

@@ -103,7 +103,12 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(command, "concurrent");
 
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
-        workflow.openBook(bookAccess), bookPath, OutputMode.JSON, "\"initializedAt\"");
+        workflow.openBook(
+            bookAccess,
+            CliFuzzFixtures.openBookCommand(concurrentCommand.journalEntry().currencyUnit())),
+        bookPath,
+        OutputMode.JSON,
+        "\"initializedAt\"");
     for (var declareAccountCommand :
         CliFuzzFixtures.declarePostingAccountCommands(concurrentCommand)) {
       SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
@@ -22,11 +22,12 @@ public final class BookAdministrationService
 ```
 
 - Constructor: requires `BookStore` and `Clock`
-- Surface: `openBook()`, `declareAccount(AccountDeclaration)`, and
+- Surface: `openBook(BookIdentity)`, `declareAccount(AccountDeclaration)`, and
   `closePeriod(ReportingPeriod)`
 - Policy: stamps lifecycle timestamps from the application clock
 - Boundary: the service operates after the public `DeclareAccountCommand` has crossed the
-  bookkeeping translator edge and become one local `AccountDeclaration` or `ReportingPeriod`
+  bookkeeping translator edge and become one local `BookIdentity`, `AccountDeclaration`, or
+  `ReportingPeriod`
 
 ## `BookReadService`
 
@@ -109,17 +110,30 @@ public record DeclaredAccount(
 These types own the public period-close administration surface.
 
 ```java
-public record ClosePeriodCommand(ReportingPeriod reportingPeriod)
+public record ClosePeriodCommand(
+    ReportingPeriod reportingPeriod,
+    AccountCode retainedEarningsAccountCode)
 public sealed interface ClosePeriodResult
 public record ClosedPeriod(...)
 ```
 
 - Purpose: request and describe one contiguous reporting-period close that writes generated
-  retained-earnings postings
+  retained-earnings postings into one selected retained-earnings account
 - Result variants: `Closed`, `Rejected`
 - Durable fact: `ClosedPeriod` carries `closeOrder`, the inclusive `ReportingPeriod`, the
   retained-earnings account code used for the close, the per-currency closed totals moved into
   equity, the close timestamp, and every generated closing posting id
+
+## `OpenBookCommand`
+
+`OpenBookCommand` is the explicit initialization command for one new book.
+
+```java
+public record OpenBookCommand(BookIdentity bookIdentity)
+```
+
+- Purpose: require entity name, functional currency, and fiscal-year anchor at initialization time
+- Validation: rejects `null` book identity
 
 ## `OpenBookResult`
 
@@ -130,6 +144,7 @@ public sealed interface OpenBookResult
 ```
 
 - Variants: `Opened`, `Rejected`
+- `Opened`: carries both the initialization instant and the persisted `BookIdentity`
 
 ## `DeclareAccountResult`
 
@@ -483,7 +498,8 @@ public final class PeriodCloseService
 - `PeriodCloseOutcome`: closed family of accepted-versus-rejected local close outcomes
 - `PeriodCloseService`: application service that validates retained-earnings configuration,
   allows the first close to begin before the earliest posting date, enforces strict day-after
-  contiguity once one close is recorded, and generates `PostingKind.PERIOD_CLOSE` postings
+  contiguity once one close is recorded, rejects close ranges that cross the configured fiscal
+  year boundary, and generates `PostingKind.PERIOD_CLOSE` postings
 
 ## `BookAdministrationRejection`
 

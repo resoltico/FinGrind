@@ -66,5 +66,6 @@ fi
 
 bash -n "${release_surface_script_targets[@]}"
 for script_path in "${check_stage5_executable_script_paths[@]}"; do
+    printf 'release-surface subcheck: %s\n' "${script_path}"
     bash "${repo_root}/${script_path}"
 done

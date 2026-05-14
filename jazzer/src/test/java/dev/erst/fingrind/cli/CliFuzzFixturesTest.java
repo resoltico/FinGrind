@@ -11,11 +11,14 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -152,8 +155,8 @@ class CliFuzzFixturesTest {
         new BookAdministrationService(
             new AbstractBookStoreStub() {
               @Override
-              public BookOpeningOutcome openBook(Instant initializedAt) {
-                return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1));
+              public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+                return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
               }
             },
             CliFuzzFixtures.fixedClock());
@@ -230,7 +233,8 @@ class CliFuzzFixturesTest {
         new AbstractBookStoreStub() {
           @Override
           public BookLifecycleInspection inspectBook() {
-            return new BookLifecycleInspection.Initialized(7, 1, 1, Instant.EPOCH);
+            return new BookLifecycleInspection.Initialized(
+                7, 1, 1, Instant.EPOCH, CliFuzzFixtures.bookIdentity());
           }
 
           @Override
@@ -253,7 +257,7 @@ class CliFuzzFixturesTest {
 
   private abstract static class AbstractBookStoreStub implements BookStore {
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
+    public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
       throw new UnsupportedOperationException("not used");
     }
 
@@ -330,6 +334,12 @@ class CliFuzzFixturesTest {
     }
 
     @Override
+    public List<AccountCurrencyTotals> accountTotals(
+        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
     public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
       throw new UnsupportedOperationException("not used");
     }
@@ -370,6 +380,7 @@ class CliFuzzFixturesTest {
   private static String basicValidRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -407,7 +418,12 @@ class CliFuzzFixturesTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             }
           ]
         }

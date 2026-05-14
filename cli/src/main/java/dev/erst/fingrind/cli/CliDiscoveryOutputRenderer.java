@@ -154,9 +154,29 @@ final class CliDiscoveryOutputRenderer {
             List.of(
                 List.of(
                     "Selectable stdout flag", capabilitiesDescriptor.requestInput().outputOption()),
+                List.of(
+                    "Default selectable stdout (interactive terminal)",
+                    capabilitiesDescriptor
+                        .requestInput()
+                        .interactiveDefaultSelectableOutputMode()
+                        .wireValue()),
+                List.of(
+                    "Default selectable stdout (redirected)",
+                    capabilitiesDescriptor
+                        .requestInput()
+                        .redirectedDefaultSelectableOutputMode()
+                        .wireValue()),
                 List.of("Book file flag", capabilitiesDescriptor.requestInput().bookFileOption()),
                 List.of(
-                    "Request file flag", capabilitiesDescriptor.requestInput().requestFileOption()),
+                    "Request document flag",
+                    capabilitiesDescriptor.requestInput().requestFileOption()),
+                List.of(
+                    "Request document commands",
+                    String.join(", ", capabilitiesDescriptor.requestInput().requestFileCommands())),
+                List.of(
+                    "Direct-argument commands",
+                    String.join(
+                        ", ", capabilitiesDescriptor.requestInput().directArgumentCommands())),
                 List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics())));
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
@@ -235,19 +255,47 @@ final class CliDiscoveryOutputRenderer {
           case DIRECT_JAVA_WINDOWS_POWERSHELL -> "Developer Raw JAR (Windows PowerShell)";
           case CONTAINER_DOCKER -> "Container Image (Docker CLI)";
         };
+    List<String> guidanceNotes =
+        workflow.steps().stream()
+            .filter(WorkflowStepDescriptor.Note.class::isInstance)
+            .map(WorkflowStepDescriptor.Note.class::cast)
+            .map(WorkflowStepDescriptor.Note::text)
+            .map(note -> "- " + note)
+            .toList();
+    List<WorkflowStepDescriptor> executableSteps =
+        workflow.steps().stream()
+            .filter(step -> !(step instanceof WorkflowStepDescriptor.Note))
+            .toList();
+    java.util.concurrent.atomic.AtomicInteger stepNumber =
+        new java.util.concurrent.atomic.AtomicInteger(1);
+    String steps =
+        executableSteps.stream()
+            .map(step -> renderQuickStartStep(stepNumber.getAndIncrement(), step))
+            .collect(
+                java.util.stream.Collectors.joining(
+                    System.lineSeparator() + System.lineSeparator()));
     return title
         + System.lineSeparator()
-        + workflow.steps().stream()
-            .map(CliDiscoveryOutputRenderer::renderQuickStartStep)
-            .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
+        + joinSections(
+            guidanceNotes.isEmpty()
+                ? ""
+                : section("Guidance", String.join(System.lineSeparator(), guidanceNotes)),
+            section("Steps", steps));
   }
 
-  private static String renderQuickStartStep(WorkflowStepDescriptor step) {
+  static String renderQuickStartStep(int stepNumber, WorkflowStepDescriptor step) {
     return switch (step) {
-      case WorkflowStepDescriptor.Command command -> command.text();
+      case WorkflowStepDescriptor.Command command ->
+          stepNumber + ". Run" + System.lineSeparator() + indent(command.text(), "   ");
       case WorkflowStepDescriptor.Edit edit ->
-          "Write: " + edit.path() + System.lineSeparator() + indent(edit.content(), "  ");
-      case WorkflowStepDescriptor.Note note -> "Note: " + note.text();
+          stepNumber
+              + ". Create "
+              + edit.path()
+              + System.lineSeparator()
+              + indent(edit.content(), "   ");
+      case WorkflowStepDescriptor.Note ignored ->
+          throw new IllegalArgumentException(
+              "Quick-start note steps must be rendered through the guidance block.");
     };
   }
 
@@ -271,64 +319,73 @@ final class CliDiscoveryOutputRenderer {
   private static String renderRequestGuidance(
       HelpDescriptor helpDescriptor, OperationId operationId) {
     return switch (operationId) {
-      case POST_ENTRY, PREFLIGHT_ENTRY ->
-          section(
-              "Request File",
-              joinSections(
-                  "Provide one JSON object through --request-file <path|->.",
-                  section(
-                      "Template",
-                      renderJsonTemplate(
-                          helpDescriptor.requestTemplate(), OperationId.PRINT_REQUEST_TEMPLATE)),
-                  renderFieldGroup(
-                      "Top-Level Fields",
-                      helpDescriptor.requestShapes().postEntry().topLevelFields()),
-                  renderFieldGroup(
-                      "Journal Line Fields",
-                      helpDescriptor.requestShapes().postEntry().lineFields()),
-                  renderFieldGroup(
-                      "Provenance Fields",
-                      helpDescriptor.requestShapes().postEntry().provenanceFields()),
-                  renderFieldGroup(
-                      "Reversal Fields",
-                      helpDescriptor.requestShapes().postEntry().reversalFields()),
-                  renderEnumVocabularyBlock(
-                      helpDescriptor.requestShapes().postEntry().enumVocabularies())));
-      case DECLARE_ACCOUNT ->
-          section(
-              "Request File",
-              joinSections(
-                  "Provide one JSON object through --request-file <path|->.",
-                  section(
-                      "Template",
-                      renderJsonTemplate(helpDescriptor.declareAccountTemplate(), null)),
-                  renderFieldGroup(
-                      "Top-Level Fields",
-                      helpDescriptor.requestShapes().declareAccount().topLevelFields()),
-                  renderEnumVocabularyBlock(
-                      helpDescriptor.requestShapes().declareAccount().enumVocabularies())));
-      case EXECUTE_PLAN ->
-          section(
-              "Request File",
-              joinSections(
-                  "Provide one ledger plan JSON object through --request-file <path|->.",
-                  section(
-                      "Template",
-                      renderJsonTemplate(
-                          helpDescriptor.planTemplate(), OperationId.PRINT_PLAN_TEMPLATE)),
-                  renderFieldGroup(
-                      "Top-Level Fields",
-                      helpDescriptor.requestShapes().ledgerPlan().topLevelFields()),
-                  renderFieldGroup(
-                      "Step Fields", helpDescriptor.requestShapes().ledgerPlan().stepFields()),
-                  renderFieldGroup(
-                      "Query Fields", helpDescriptor.requestShapes().ledgerPlan().queryFields()),
-                  renderFieldGroup(
-                      "Assertion Fields",
-                      helpDescriptor.requestShapes().ledgerPlan().assertionFields()),
-                  renderLedgerPlanVocabularies(helpDescriptor)));
+      case POST_ENTRY, PREFLIGHT_ENTRY -> renderPostingRequestGuidance(helpDescriptor);
+      case DECLARE_ACCOUNT -> renderDeclareAccountRequestGuidance(helpDescriptor);
+      case EXECUTE_PLAN -> renderLedgerPlanRequestGuidance(helpDescriptor);
       default -> "";
     };
+  }
+
+  private static String renderPostingRequestGuidance(HelpDescriptor helpDescriptor) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().postEntry() == null
+        || helpDescriptor.requestTemplate() == null) {
+      return "";
+    }
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntry =
+        helpDescriptor.requestShapes().postEntry();
+    return section(
+        "Request File",
+        joinSections(
+            "Provide one JSON object through --request-file <path|->.",
+            section(
+                "Template",
+                renderJsonTemplate(
+                    helpDescriptor.requestTemplate(), OperationId.PRINT_REQUEST_TEMPLATE)),
+            renderFieldGroup("Top-Level Fields", postEntry.topLevelFields()),
+            renderFieldGroup("Journal Line Fields", postEntry.lineFields()),
+            renderFieldGroup("Provenance Fields", postEntry.provenanceFields()),
+            renderFieldGroup("Reversal Fields", postEntry.reversalFields()),
+            renderEnumVocabularyBlock(postEntry.enumVocabularies())));
+  }
+
+  private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().declareAccount() == null
+        || helpDescriptor.declareAccountTemplate() == null) {
+      return "";
+    }
+    ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccount =
+        helpDescriptor.requestShapes().declareAccount();
+    return section(
+        "Request File",
+        joinSections(
+            "Provide one JSON object through --request-file <path|->.",
+            section("Template", renderJsonTemplate(helpDescriptor.declareAccountTemplate(), null)),
+            renderFieldGroup("Top-Level Fields", declareAccount.topLevelFields()),
+            renderEnumVocabularyBlock(declareAccount.enumVocabularies())));
+  }
+
+  private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().ledgerPlan() == null
+        || helpDescriptor.planTemplate() == null) {
+      return "";
+    }
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
+        helpDescriptor.requestShapes().ledgerPlan();
+    return section(
+        "Request File",
+        joinSections(
+            "Provide one ledger plan JSON object through --request-file <path|->.",
+            section(
+                "Template",
+                renderJsonTemplate(helpDescriptor.planTemplate(), OperationId.PRINT_PLAN_TEMPLATE)),
+            renderFieldGroup("Top-Level Fields", ledgerPlan.topLevelFields()),
+            renderFieldGroup("Step Fields", ledgerPlan.stepFields()),
+            renderFieldGroup("Query Fields", ledgerPlan.queryFields()),
+            renderFieldGroup("Assertion Fields", ledgerPlan.assertionFields()),
+            renderLedgerPlanVocabularies(ledgerPlan)));
   }
 
   static String renderJsonTemplate(
@@ -382,28 +439,19 @@ final class CliDiscoveryOutputRenderer {
                 .toList()));
   }
 
-  private static String renderLedgerPlanVocabularies(HelpDescriptor helpDescriptor) {
+  private static String renderLedgerPlanVocabularies(
+      ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan) {
     return section(
         "Enum Vocabulary",
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
                     "administrationStepKinds",
-                    joinWireValues(
-                        helpDescriptor.requestShapes().ledgerPlan().administrationStepKinds())),
-                List.of(
-                    "queryStepKinds",
-                    joinWireValues(helpDescriptor.requestShapes().ledgerPlan().queryStepKinds())),
-                List.of(
-                    "writeStepKinds",
-                    joinWireValues(helpDescriptor.requestShapes().ledgerPlan().writeStepKinds())),
-                List.of(
-                    "assertStepKind",
-                    helpDescriptor.requestShapes().ledgerPlan().assertStepKind().wireValue()),
-                List.of(
-                    "assertionKinds",
-                    joinWireValues(
-                        helpDescriptor.requestShapes().ledgerPlan().assertionKinds())))));
+                    joinWireValues(ledgerPlan.administrationStepKinds())),
+                List.of("queryStepKinds", joinWireValues(ledgerPlan.queryStepKinds())),
+                List.of("writeStepKinds", joinWireValues(ledgerPlan.writeStepKinds())),
+                List.of("assertStepKind", ledgerPlan.assertStepKind().wireValue()),
+                List.of("assertionKinds", joinWireValues(ledgerPlan.assertionKinds())))));
   }
 
   private static String joinWireValues(List<? extends dev.erst.fingrind.core.WireValue> values) {

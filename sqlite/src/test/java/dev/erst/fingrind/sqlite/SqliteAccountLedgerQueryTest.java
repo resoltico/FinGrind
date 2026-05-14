@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
-  void accountLedger_computesOpeningRunningAndClosingBalances() {
+  void accountLedger_computesOpeningRunningAndClosingBalancesInsideBookFunctionalCurrency() {
     Path databasePath = tempDirectory.resolve("account-ledger-report.sqlite");
     CommittedPosting postingOne =
         postingFact(
@@ -48,8 +48,8 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             LocalDate.parse("2026-04-09"),
             Instant.parse("2026-04-09T10:15:30Z"),
             List.of(
-                line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
-                line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "8.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "8.00")));
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -71,12 +71,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       BalanceSide.DEBIT),
                   new AccountLedgerEntry(
                       publishedPostingFact(postingThree),
-                      balance("USD", "8.00", "0.00", "8.00", BalanceSide.DEBIT),
-                      money("USD", "8.00"),
+                      balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT),
+                      money("EUR", "14.00"),
                       BalanceSide.DEBIT)),
-              List.of(
-                  balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT),
-                  balance("USD", "8.00", "0.00", "8.00", BalanceSide.DEBIT))),
+              List.of(balance("EUR", "18.00", "4.00", "14.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
@@ -175,7 +173,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void accountLedger_sortsMultipleOpeningCurrenciesBeforeRunningBalances() {
+  void accountLedger_sortsMultipleOpeningBalancesInsideBookFunctionalCurrency() {
     Path databasePath = tempDirectory.resolve("account-ledger-multi-opening.sqlite");
     CommittedPosting eurOpeningPosting =
         postingFact(
@@ -186,33 +184,29 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    CommittedPosting usdOpeningPosting =
+    CommittedPosting secondOpeningPosting =
         postingFact(
             "posting-2",
             "idem-2",
             LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T10:15:30Z"),
             List.of(
-                line("1000", JournalLine.EntrySide.DEBIT, "USD", "7.00"),
-                line("2000", JournalLine.EntrySide.CREDIT, "USD", "7.00")));
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "7.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "7.00")));
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(postingFactStore, eurOpeningPosting);
-      commitPosting(postingFactStore, usdOpeningPosting);
+      commitPosting(postingFactStore, secondOpeningPosting);
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
-              List.of(
-                  balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
-                  balance("USD", "7.00", "0.00", "7.00", BalanceSide.DEBIT)),
+              List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT)),
               List.of(),
-              List.of(
-                  balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
-                  balance("USD", "7.00", "0.00", "7.00", BalanceSide.DEBIT))),
+              List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(

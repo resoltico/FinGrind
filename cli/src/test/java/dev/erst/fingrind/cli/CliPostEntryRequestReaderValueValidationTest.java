@@ -23,6 +23,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -50,6 +51,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -78,6 +80,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": 20260407,
                   "lines": %s,
                   "provenance": {
@@ -106,6 +109,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-02-30",
                   "lines": %s,
                   "provenance": {
@@ -134,6 +138,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -169,6 +174,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -204,6 +210,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -239,6 +246,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -269,6 +277,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -301,6 +310,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -378,6 +388,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

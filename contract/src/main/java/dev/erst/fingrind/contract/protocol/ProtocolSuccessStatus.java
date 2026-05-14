@@ -6,14 +6,8 @@ import java.util.Objects;
 
 /** Canonical public success-status tokens emitted by FinGrind JSON envelopes. */
 public enum ProtocolSuccessStatus implements WireValue {
-  /** Generic discovery, administration, and query success status. */
-  OK("ok"),
-  /** Single posting preflight success status. */
-  PREFLIGHT_ACCEPTED("preflight-accepted"),
-  /** Single posting durable commit success status. */
-  COMMITTED("committed"),
-  /** Ledger-plan durable commit success status. */
-  PLAN_COMMITTED("plan-committed");
+  /** Generic success status for every successful FinGrind JSON envelope. */
+  OK("ok");
 
   private final String wireValue;
 

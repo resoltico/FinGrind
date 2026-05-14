@@ -1,6 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -171,6 +175,42 @@ final class SqliteStatementQueries {
           }
           return Optional.of(Instant.parse(SqlitePostingMapper.requiredText(statement, 0)));
         });
+  }
+
+  static Optional<BookIdentity> loadBookIdentity(SqliteNativeDatabase activeDatabase) {
+    Optional<String> entityName =
+        loadOptionalText(
+            activeDatabase,
+            SqlitePostingSql.FIND_BOOK_META_VALUE,
+            statement -> statement.bindText(1, SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY));
+    if (entityName.isEmpty()) {
+      return Optional.empty();
+    }
+    String requiredFunctionalCurrency =
+        loadOptionalText(
+                activeDatabase,
+                SqlitePostingSql.FIND_BOOK_META_VALUE,
+                statement ->
+                    statement.bindText(1, SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY))
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Initialized SQLite book is missing functional-currency metadata."));
+    String requiredFiscalYearStart =
+        loadOptionalText(
+                activeDatabase,
+                SqlitePostingSql.FIND_BOOK_META_VALUE,
+                statement ->
+                    statement.bindText(1, SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY))
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Initialized SQLite book is missing fiscal-year-start metadata."));
+    return Optional.of(
+        new BookIdentity(
+            new BookEntityName(entityName.orElseThrow()),
+            CurrencyUnit.of(requiredFunctionalCurrency),
+            FiscalYearStart.parse(requiredFiscalYearStart)));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {

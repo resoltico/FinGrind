@@ -3,7 +3,12 @@
   "steps": [
     {
       "stepId": "initialize-book",
-      "kind": "open-book"
+      "kind": "open-book",
+      "openBook": {
+        "entityName": "Acme Studio",
+        "functionalCurrency": "EUR",
+        "fiscalYearStart": "01-01"
+      }
     },
     {
       "stepId": "declare-cash",
@@ -29,6 +34,7 @@
       "stepId": "post-journal",
       "kind": "post-entry",
       "posting": {
+        "postingKind": "STANDARD",
         "effectiveDate": "2026-04-07",
         "lines": [
           {

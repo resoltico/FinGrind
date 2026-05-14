@@ -13,6 +13,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -49,6 +50,11 @@ class PostingModelTest {
           @Override
           public JournalEntry journalEntry() {
             return testJournalEntry();
+          }
+
+          @Override
+          public PostingKind postingKind() {
+            return PostingKind.STANDARD;
           }
 
           @Override

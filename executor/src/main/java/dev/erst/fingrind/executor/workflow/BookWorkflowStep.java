@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -24,10 +25,11 @@ public sealed interface BookWorkflowStep
   String stepId();
 
   /** Initializes the selected book inside the workflow transaction. */
-  record OpenBook(String stepId) implements BookWorkflowStep {
+  record OpenBook(String stepId, BookIdentity bookIdentity) implements BookWorkflowStep {
     /** Validates the step. */
     public OpenBook {
       requireStepId(stepId);
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
   }
 

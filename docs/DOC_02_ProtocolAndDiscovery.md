@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -350,12 +350,13 @@ public final class ProtocolMoneyFields
   contracts, request parsing, templates, response renderers, and docs
 - Current fields: `currencyCode` and `minorUnits`, returned in stable wire order by `fields()`
 
-## `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
+## `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
 These protocol-owned constant classes keep public JSON field names canonical for their
 surface-specific JSON scopes.
 
 ```java
+public final class ProtocolOpenBookFields
 public final class ProtocolDeclareAccountFields
 public final class ProtocolPostEntryFields
 public final class ProtocolLedgerPlanFields
@@ -363,6 +364,8 @@ public final class ProtocolLedgerPlanFields
 
 - Purpose: prevent request parsing, templates, capabilities, and docs from carrying divergent
   field-name registries
+- `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, and
+  `fiscalYearStart` field names for explicit book initialization
 - `ProtocolPostEntryFields.TopLevel`, `.JournalLine`, `.Provenance`, and `.Reversal` group the
   canonical posting-request field families by JSON object scope; journal-line `amount` is one
   nested exact-money object keyed by `ProtocolMoneyFields`
@@ -480,8 +483,8 @@ public final class ContractTemplates
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
 - `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
   template-descriptor inventory
-- `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
-  `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
+- `ContractTemplates.OpenBookTemplateDescriptor`, `.PostingRequestTemplateDescriptor`,
+  `.JournalLineTemplateDescriptor`, `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
   `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
   `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
@@ -541,7 +544,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 2`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 4`
 
 ## `ProtectedBookFormatContract`
 

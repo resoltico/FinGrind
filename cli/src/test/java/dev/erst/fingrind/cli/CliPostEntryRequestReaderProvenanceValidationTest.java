@@ -18,6 +18,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": []
                 }
@@ -38,6 +39,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [],
                   "provenance": "not-an-object"
@@ -59,6 +61,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [],
                   "provenance": null

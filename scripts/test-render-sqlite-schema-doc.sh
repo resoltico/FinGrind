@@ -64,7 +64,7 @@ EOF
 
 python3 "${render_script}" --repo-root "${fixture_root}" --write
 
-grep -Fq 'pragma user_version = 2;' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
+grep -Fq 'pragma user_version = 4;' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
     "generated schema doc did not embed the canonical SQL body"
 grep -Fq '`book_meta.schema_fingerprint_sha256`' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
     "generated schema doc did not describe runtime integrity semantics"
@@ -78,7 +78,7 @@ import sys
 schema_path = Path(sys.argv[1])
 text = schema_path.read_text(encoding="utf-8")
 schema_path.write_text(
-    text.replace("pragma user_version = 2;", "pragma user_version = 7;"),
+    text.replace("pragma user_version = 4;", "pragma user_version = 7;"),
     encoding="utf-8",
 )
 PY

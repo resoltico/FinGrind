@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 2;
+pragma user_version = 4;
 
 create table if not exists book_meta (
     key text primary key,
@@ -26,7 +26,7 @@ create table if not exists account (
 
 create table if not exists posting_fact (
     posting_id text primary key,
-    posting_kind text not null check (posting_kind in ('STANDARD', 'PERIOD_CLOSE')),
+    posting_kind text not null check (posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE')),
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null check (length(trim(actor_id)) > 0),
@@ -40,7 +40,7 @@ create table if not exists posting_fact (
     causation_id text not null check (length(trim(causation_id)) > 0),
     correlation_id text check (correlation_id is null or length(trim(correlation_id)) > 0),
     reason text,
-    source_channel text not null check (source_channel in ('CLI')),
+    source_channel text not null,
     prior_posting_id text,
     unique (idempotency_key),
     foreign key (prior_posting_id) references posting_fact(posting_id),
@@ -134,10 +134,6 @@ create index if not exists period_close_by_effective_date_to
 
 create index if not exists period_close_posting_by_posting_id
     on period_close_posting (posting_id, period_close_order);
-
-create unique index if not exists account_one_retained_earnings
-    on account (account_role)
-    where account_role = 'RETAINED_EARNINGS';
 
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)

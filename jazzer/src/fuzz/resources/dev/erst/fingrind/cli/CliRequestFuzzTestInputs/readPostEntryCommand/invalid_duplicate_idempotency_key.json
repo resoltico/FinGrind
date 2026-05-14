@@ -1,4 +1,5 @@
 {
+  "postingKind": "STANDARD",
   "effectiveDate": "2026-04-07",
   "lines": [
     {
@@ -22,6 +23,7 @@
     "actorId": "actor-7",
     "actorType": "AGENT",
     "commandId": "command-7",
+    "idempotencyKey": "idem-7-a",
     "idempotencyKey": "idem-7-b",
     "causationId": "cause-7"
   }

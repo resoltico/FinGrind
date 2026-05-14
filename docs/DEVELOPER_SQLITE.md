@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,7 +44,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `3`, owned by `BookFormatContract`
+- the current supported book format is `4`, owned by `BookFormatContract`
 - FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - legacy plaintext books and other encryption variants are out of scope for the current

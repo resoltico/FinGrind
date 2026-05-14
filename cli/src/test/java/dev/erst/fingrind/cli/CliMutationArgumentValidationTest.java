@@ -336,7 +336,17 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "open-book", "--book-file", "shared.path", "--book-key-file", "shared.path"
+                      "open-book",
+                      "--book-file",
+                      "shared.path",
+                      "--book-key-file",
+                      "shared.path",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01"
                     }));
 
     assertEquals("invalid-request", exception.code());

@@ -13,10 +13,31 @@ import org.jspecify.annotations.Nullable;
 /** Report-oriented JSON records emitted by the CLI transport layer. */
 public interface CliReportJsonModels extends CliBookQueryJsonModels {
 
-  record TrialBalancePayload(@Nullable String effectiveDateTo, List<TrialBalanceRowPayload> rows)
+  record StatementContextPayload(
+      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      String postingCoverage,
+      @Nullable String comparativeReferenceEffectiveDateFrom,
+      @Nullable String comparativeReferenceEffectiveDateTo) {
+    public StatementContextPayload {
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      postingCoverage = requireText(postingCoverage, "postingCoverage");
+      comparativeReferenceEffectiveDateFrom =
+          requireOptionalText(
+              comparativeReferenceEffectiveDateFrom, "comparativeReferenceEffectiveDateFrom");
+      comparativeReferenceEffectiveDateTo =
+          requireOptionalText(
+              comparativeReferenceEffectiveDateTo, "comparativeReferenceEffectiveDateTo");
+    }
+  }
+
+  record TrialBalancePayload(
+      @Nullable String effectiveDateTo,
+      StatementContextPayload context,
+      List<TrialBalanceRowPayload> rows)
       implements CliSuccessPayload {
     public TrialBalancePayload {
       effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      Objects.requireNonNull(context, "context");
       rows = copyList(rows, "rows");
     }
   }
@@ -144,10 +165,13 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   }
 
   record FinancialPositionPayload(
-      @Nullable String effectiveDateTo, List<FinancialPositionSectionPayload> sections)
+      @Nullable String effectiveDateTo,
+      StatementContextPayload context,
+      List<FinancialPositionSectionPayload> sections)
       implements CliSuccessPayload {
     public FinancialPositionPayload {
       effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      Objects.requireNonNull(context, "context");
       sections = copyList(sections, "sections");
     }
   }
@@ -167,12 +191,14 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineCode,
       String lineName,
       String lineType,
+      @Nullable String lineRole,
       boolean synthetic,
       BalanceBucketPayload balance) {
     public FinancialPositionRowPayload {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
+      lineRole = requireOptionalText(lineRole, "lineRole");
       Objects.requireNonNull(balance, "balance");
     }
   }
@@ -180,12 +206,14 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record IncomeStatementPayload(
       String effectiveDateFrom,
       String effectiveDateTo,
+      StatementContextPayload context,
       List<IncomeStatementSectionPayload> sections,
       List<BalanceBucketPayload> netIncomeTotals)
       implements CliSuccessPayload {
     public IncomeStatementPayload {
       effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
+      Objects.requireNonNull(context, "context");
       sections = copyList(sections, "sections");
       netIncomeTotals = copyList(netIncomeTotals, "netIncomeTotals");
     }
@@ -204,12 +232,14 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineCode,
       String lineName,
       String lineType,
+      @Nullable String lineRole,
       boolean synthetic,
       BalanceBucketPayload movement) {
     public IncomeStatementRowPayload {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
+      lineRole = requireOptionalText(lineRole, "lineRole");
       Objects.requireNonNull(movement, "movement");
     }
   }
@@ -217,6 +247,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record ChangesInEquityPayload(
       String effectiveDateFrom,
       String effectiveDateTo,
+      StatementContextPayload context,
       List<ChangesInEquityRowPayload> rows,
       List<BalanceBucketPayload> openingTotals,
       List<BalanceBucketPayload> movementTotals,
@@ -225,6 +256,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
     public ChangesInEquityPayload {
       effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
+      Objects.requireNonNull(context, "context");
       rows = copyList(rows, "rows");
       openingTotals = copyList(openingTotals, "openingTotals");
       movementTotals = copyList(movementTotals, "movementTotals");
@@ -235,6 +267,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record ChangesInEquityRowPayload(
       String lineCode,
       String lineName,
+      @Nullable String lineType,
+      @Nullable String lineRole,
       boolean synthetic,
       BalanceBucketPayload openingBalance,
       BalanceBucketPayload movement,
@@ -242,6 +276,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
     public ChangesInEquityRowPayload {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
+      lineType = requireOptionalText(lineType, "lineType");
+      lineRole = requireOptionalText(lineRole, "lineRole");
       Objects.requireNonNull(openingBalance, "openingBalance");
       Objects.requireNonNull(movement, "movement");
       Objects.requireNonNull(closingBalance, "closingBalance");

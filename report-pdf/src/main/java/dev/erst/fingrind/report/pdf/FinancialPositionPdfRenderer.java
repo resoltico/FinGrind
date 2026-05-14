@@ -13,10 +13,14 @@ final class FinancialPositionPdfRenderer {
     Objects.requireNonNull(report, "report");
     pageWriter.writeKeyValueTable(
         "Parameters",
-        List.of(
+        PdfStatementMetadataRows.statementParameters(
+            report.bookIdentity(),
+            report.comparativeEffectiveDateRange(),
+            report.postingCoverage(),
             List.of(
-                "Effective date to",
-                PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null)))));
+                List.of(
+                    "Effective date to",
+                    PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null))))));
     for (var section : report.sections()) {
       String sectionTitle = PdfValueFormatter.displayAccountTypeSection(section.accountType());
       pageWriter.writeTable(
@@ -24,6 +28,7 @@ final class FinancialPositionPdfRenderer {
           List.of(
               new PdfTableColumn("Line code", 1.0f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Line name", 1.7f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Kind", 0.8f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
@@ -36,6 +41,7 @@ final class FinancialPositionPdfRenderer {
                       List.of(
                           row.lineCode(),
                           row.lineName(),
+                          PdfValueFormatter.displayLineRole(row.lineRole()),
                           PdfValueFormatter.displayRowKind(row.synthetic()),
                           row.balance().netAmount().currencyUnit().code(),
                           PdfValueFormatter.displayMoney(row.balance().debitTotal()),

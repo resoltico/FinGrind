@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingKind;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,8 @@ final class MachineContractPostEntrySchemas {
         MachineContractSchemaSupport.requestFieldDescriptors(reversalFields()),
         List.of(
             new ContractRequestShapes.EnumVocabularyDescriptor(
+                "postingKind", PostingKind.callerSelectableWireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
                 "lineSide", JournalLine.EntrySide.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "actorType", ActorType.wireValues())),
@@ -51,6 +54,11 @@ final class MachineContractPostEntrySchemas {
 
   private static List<MachineContractFieldSpec> topLevelFields() {
     return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+            "Caller-authored posting family. Accepted values are STANDARD and OPENING_BALANCE.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Caller-authored posting family.", PostingKind.callerSelectableWireValues())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
             "ISO-8601 local date that makes the journal entry effective.",

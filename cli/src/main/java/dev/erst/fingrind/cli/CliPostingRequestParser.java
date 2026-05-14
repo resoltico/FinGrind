@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -88,6 +89,11 @@ final class CliPostingRequestParser {
             ProtocolPostEntryFields.Provenance.CAUSATION_ID,
             ScaffoldPlaceholders.CAUSATION_ID);
     return new PostEntryCommand(
+        parseWireValue(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
+            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+            PostingKind.wireValues(),
+            PostingKind::fromWireValue),
         new JournalEntry(effectiveDate, lines),
         reversal,
         new RequestProvenance(

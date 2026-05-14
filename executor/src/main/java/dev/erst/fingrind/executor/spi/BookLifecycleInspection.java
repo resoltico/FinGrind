@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.spi;
 
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.util.List;
@@ -188,21 +189,15 @@ public sealed interface BookLifecycleInspection
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      Instant initializedAt)
+      Instant initializedAt,
+      BookIdentity bookIdentity)
       implements BookLifecycleInspection {
     /** Creates one initialized-book inspection snapshot. */
-    public Initialized(
-        int applicationId,
-        int detectedBookFormatVersion,
-        int supportedBookFormatVersion,
-        Instant initializedAt) {
+    public Initialized {
       requireDetectedBookMetadata(
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
       Objects.requireNonNull(initializedAt, "initializedAt");
-      this.applicationId = applicationId;
-      this.detectedBookFormatVersion = detectedBookFormatVersion;
-      this.supportedBookFormatVersion = supportedBookFormatVersion;
-      this.initializedAt = initializedAt;
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
 
     @Override

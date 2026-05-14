@@ -48,7 +48,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
-        new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")).initializedAt());
+        new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity())
+            .initializedAt());
     assertEquals(
         new BookAdministrationRejection.BookAlreadyInitialized(),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())
@@ -87,7 +88,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BookFormatContract.APPLICATION_ID,
             BookFormatContract.FORMAT_VERSION,
             BookFormatContract.FORMAT_VERSION,
-            Instant.parse("2026-04-07T10:15:30Z"));
+            Instant.parse("2026-04-07T10:15:30Z"),
+            bookIdentity());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             declaredAccount("1000"),
@@ -145,7 +147,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.APPLICATION_ID,
                 BookFormatContract.FORMAT_VERSION,
                 BookFormatContract.FORMAT_VERSION,
-                Instant.parse("2026-04-07T10:15:30Z")),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity()),
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 0x12345678,
@@ -207,6 +210,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.FORMAT_VERSION));
     assertThrows(
         NullPointerException.class,
-        () -> new BookInspection.Initialized(BookFormatContract.APPLICATION_ID, 1, 1, nullOf()));
+        () ->
+            new BookInspection.Initialized(
+                BookFormatContract.APPLICATION_ID, 1, 1, nullOf(), bookIdentity()));
   }
 }

@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Objects;
@@ -83,23 +84,7 @@ final class JazzerReplayDetailsMapper {
   }
 
   static PostingLifecycleStatus rejectionStatus(PostingRejection rejection) {
-    return switch (rejection) {
-      case PostingRejection.BookNotInitialized _ -> PostingLifecycleStatus.BOOK_NOT_INITIALIZED;
-      case PostingRejection.AccountStateViolations accountStateViolations ->
-          accountStateViolationStatus(accountStateViolations);
-      case PostingRejection.DuplicateIdempotencyKey _ ->
-          PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
-      case PostingRejection.ClosedPeriodViolation _ ->
-          PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
-      case PostingRejection.RetainedEarningsAccountReserved _ ->
-          PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED;
-      case PostingRejection.ReversalTargetNotFound _ ->
-          PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
-      case PostingRejection.ReversalAlreadyExists _ ->
-          PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS;
-      case PostingRejection.ReversalDoesNotNegateTarget _ ->
-          PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET;
-    };
+    return PostingLifecycleStatusMapper.forRejection(rejection);
   }
 
   static PreflightRejected requiredPreflightRejected(PreflightEntryResult result) {
@@ -145,23 +130,6 @@ final class JazzerReplayDetailsMapper {
         plan.steps().getLast().kind(),
         assertionStepCount(plan),
         plan.beginsWithOpenBook());
-  }
-
-  private static PostingLifecycleStatus accountStateViolationStatus(
-      PostingRejection.AccountStateViolations accountStateViolations) {
-    boolean allUnknown =
-        accountStateViolations.violations().stream()
-            .allMatch(PostingRejection.UnknownAccount.class::isInstance);
-    if (allUnknown) {
-      return PostingLifecycleStatus.UNKNOWN_ACCOUNT;
-    }
-    boolean allInactive =
-        accountStateViolations.violations().stream()
-            .allMatch(PostingRejection.InactiveAccount.class::isInstance);
-    if (allInactive) {
-      return PostingLifecycleStatus.INACTIVE_ACCOUNT;
-    }
-    return PostingLifecycleStatus.ACCOUNT_STATE_VIOLATIONS;
   }
 
   private static String stackTrace(Throwable error) {

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.InteractionLimits;
@@ -15,9 +16,38 @@ final class MachineContractRequestInputDescriptors {
         ProtocolOptions.BOOK_FILE,
         ProtocolOptions.bookPassphraseOptions(),
         ProtocolOptions.REQUEST_FILE,
-        ProtocolOptions.OUTPUT,
         List.of(
-            "commands in capabilities.commands that advertise non-empty outputModes accept --output with one of those public values",
+            operation(OperationId.DECLARE_ACCOUNT),
+            operation(OperationId.PREFLIGHT_ENTRY),
+            operation(OperationId.POST_ENTRY),
+            operation(OperationId.EXECUTE_PLAN)),
+        List.of(
+            operation(OperationId.HELP),
+            operation(OperationId.VERSION),
+            operation(OperationId.CAPABILITIES),
+            operation(OperationId.GENERATE_BOOK_KEY_FILE),
+            operation(OperationId.OPEN_BOOK),
+            operation(OperationId.REKEY_BOOK),
+            operation(OperationId.CLOSE_PERIOD),
+            operation(OperationId.INSPECT_BOOK),
+            operation(OperationId.LIST_ACCOUNTS),
+            operation(OperationId.GET_POSTING),
+            operation(OperationId.LIST_POSTINGS),
+            operation(OperationId.ACCOUNT_BALANCE),
+            operation(OperationId.TRIAL_BALANCE),
+            operation(OperationId.ACCOUNT_LEDGER),
+            operation(OperationId.PERIOD_SUMMARY),
+            operation(OperationId.FINANCIAL_POSITION),
+            operation(OperationId.INCOME_STATEMENT),
+            operation(OperationId.CHANGES_IN_EQUITY),
+            operation(OperationId.PRINT_REQUEST_TEMPLATE),
+            operation(OperationId.PRINT_PLAN_TEMPLATE)),
+        ProtocolOptions.OUTPUT,
+        OutputMode.HUMAN,
+        OutputMode.JSON,
+        List.of(
+            "commands in capabilities.commands that advertise non-empty outputModes default successful stdout to human text on an interactive terminal and to JSON when stdout is redirected or captured, unless callers select a different public value explicitly through --output",
+            "commands listed in requestFileCommands accept one structured JSON request document through --request-file <path|->, while commands listed in directArgumentCommands accept typed CLI flags instead of a request document",
             "commands in capabilities.commands with empty outputModes still publish one fixed stdout contract through executionMode, so agents can distinguish fixed raw JSON from fixed JSON envelopes",
             "supported report commands also accept --pdf-out <path> and write one PDF artifact on successful execution without changing the command's selected stdout output mode; successful exports also report the normalized artifact path on the diagnostics stream",
             "successful discovery, administration, write, query, and report commands honor the selected output mode when they advertise one, while deterministic failures remain canonical JSON error envelopes so repair logic stays machine-readable"),

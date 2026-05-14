@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -140,7 +142,7 @@ class BookLifecycleInspectionTest {
   void initialized_requiresMetadataAndInitializationTimestamp() {
     Instant initializedAt = Instant.parse("2026-05-07T09:10:11Z");
     BookLifecycleInspection.Initialized inspection =
-        new BookLifecycleInspection.Initialized(1, 2, 3, initializedAt);
+        initializedLifecycleInspection(1, 2, 3, initializedAt);
 
     assertEquals(BookLifecycleInspection.Status.INITIALIZED, inspection.status());
     assertEquals(initializedAt, inspection.initializedAt());
@@ -150,25 +152,25 @@ class BookLifecycleInspectionTest {
         "Supported book format version must be at least 1.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new BookLifecycleInspection.Initialized(1, 2, 0, initializedAt))
+                () -> initializedLifecycleInspection(1, 2, 0, initializedAt))
             .getMessage());
     assertEquals(
         "SQLite applicationId must be non-negative.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new BookLifecycleInspection.Initialized(-1, 2, 3, initializedAt))
+                () -> initializedLifecycleInspection(-1, 2, 3, initializedAt))
             .getMessage());
     assertEquals(
         "Detected book format version must be non-negative.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new BookLifecycleInspection.Initialized(1, -1, 3, initializedAt))
+                () -> initializedLifecycleInspection(1, -1, 3, initializedAt))
             .getMessage());
     assertEquals(
         "initializedAt",
         assertThrows(
                 NullPointerException.class,
-                () -> new BookLifecycleInspection.Initialized(1, 2, 3, nullOf()))
+                () -> new BookLifecycleInspection.Initialized(1, 2, 3, nullOf(), bookIdentity()))
             .getMessage());
   }
 
@@ -182,7 +184,7 @@ class BookLifecycleInspectionTest {
         new BookLifecycleInspection.Existing(BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 1)
             .allowsInitializedWorkflow());
     assertTrue(
-        new BookLifecycleInspection.Initialized(1, 1, 1, Instant.parse("2026-05-07T09:10:11Z"))
+        initializedLifecycleInspection(1, 1, 1, Instant.parse("2026-05-07T09:10:11Z"))
             .allowsInitializedWorkflow());
     assertEquals(
         "inspection",
@@ -200,7 +202,9 @@ class BookLifecycleInspectionTest {
                         .allowsInitializedWorkflow())
             .getMessage());
     assertEquals(
-        "The selected FinGrind book format version 7 is unsupported. Expected version 2.",
+        "The selected FinGrind book format version 7 is unsupported. Expected version "
+            + BookFormatContract.FORMAT_VERSION
+            + ".",
         assertThrows(
                 IllegalStateException.class,
                 () ->

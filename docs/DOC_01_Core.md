@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: CORE
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -69,6 +69,32 @@ public record AccountName(String value)
 
 - Purpose: keep account display text typed instead of using raw strings
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `BookEntityName`
+
+`BookEntityName` is the canonical accounting-entity name stored in one initialized book.
+
+```java
+public record BookEntityName(String value)
+```
+
+- Purpose: keep book identity explicit instead of leaving initialized books anonymous
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `BookIdentity`
+
+`BookIdentity` is the structured identity metadata persisted with one book.
+
+```java
+public record BookIdentity(
+    BookEntityName entityName,
+    CurrencyUnit functionalCurrency,
+    FiscalYearStart fiscalYearStart)
+```
+
+- Purpose: couple entity name, functional currency, and fiscal-year anchor as one typed
+  bookkeeping fact
+- Validation: rejects `null` entity name, functional currency, and fiscal-year start
 
 ## `AccountType`
 
@@ -244,6 +270,19 @@ public final class CurrencyUnit
   codes, and rejects units whose published scale falls outside FinGrind's supported exact-money
   range of `0..9`
 
+## `FiscalYearStart`
+
+`FiscalYearStart` is the canonical month-day anchor for one book's fiscal year boundary.
+
+```java
+public record FiscalYearStart(MonthDay value)
+```
+
+- Purpose: make fiscal-year configuration explicit in book identity and enforce that one
+  `close-period` range stays inside one fiscal year
+- Validation: rejects invalid month-day values; `toString()` renders the canonical `MM-dd` form
+  used on public command surfaces
+
 ## `EffectiveDateRange`
 
 `EffectiveDateRange` is the shared-kernel effective-date filter reused by public bookkeeping
@@ -418,15 +457,34 @@ public enum NormalBalance implements WireValue {
 ```java
 public enum PostingKind implements WireValue {
   STANDARD,
+  OPENING_BALANCE,
   PERIOD_CLOSE
 }
 ```
 
-- Purpose: distinguish ordinary business postings from generated period-close postings without
-  leaking implementation-specific marker strings
+- Purpose: distinguish ordinary business postings, opening adoption balances, and generated
+  period-close postings without leaking implementation-specific marker strings
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
-- Surface: `isStandard()` is the doctrinal predicate reused by close and reporting logic
+- Surface: `callerSelectableWireValues()` publishes only caller-authored posting kinds, while
+  generated close postings remain internal to FinGrind workflows
+
+## `PostingCoverage`
+
+`PostingCoverage` is the canonical vocabulary for whether one read path includes all posting kinds
+or excludes generated close postings.
+
+```java
+public enum PostingCoverage implements WireValue {
+  ALL_POSTING_KINDS,
+  NON_CLOSING_POSTINGS
+}
+```
+
+- Purpose: make report and query coverage explicit instead of burying close-entry inclusion rules
+  inside adapter-local filters
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `PostingId`
 
@@ -495,16 +553,20 @@ public record ReversalReference(PostingId priorPostingId)
 
 ## `SourceChannel`
 
-`SourceChannel` is the singleton owner of the current public committed-entry surface token.
+`SourceChannel` is the canonical owner of committed-entry ingress provenance.
 
 ```java
-public final class SourceChannel implements WireValue
+public enum SourceChannel implements WireValue {
+  CLI,
+  SYSTEM
+}
 ```
 
-- Purpose: record committed ingress explicitly without pretending the current public line has an
-  extensible source-channel taxonomy
-- Current scope: only the singleton `CLI` instance is currently supported
-- Wire contract: `CLI.wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the
+- Purpose: record whether one committed posting came from the operator-facing CLI surface or an
+  internal system workflow such as period close
+- Current scope: `CLI` for operator-issued commands and `SYSTEM` for FinGrind-generated
+  administrative postings
+- Wire contract: `wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the
   stable public vocabulary
 
 ## `WireValue`

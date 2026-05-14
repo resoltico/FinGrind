@@ -160,7 +160,10 @@ public final class BookWorkflowPublishedLanguageTranslator {
 
   private static BookWorkflowStep fromPublished(LedgerStep step) {
     return switch (step) {
-      case LedgerStep.OpenBook openBook -> new BookWorkflowStep.OpenBook(openBook.stepId().value());
+      case LedgerStep.OpenBook openBook ->
+          new BookWorkflowStep.OpenBook(
+              openBook.stepId().value(),
+              BookkeepingPublishedLanguageTranslator.fromPublished(openBook.command()));
       case LedgerStep.DeclareAccount declareAccount ->
           new BookWorkflowStep.DeclareAccount(
               declareAccount.stepId().value(),

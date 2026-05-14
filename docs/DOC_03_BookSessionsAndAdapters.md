@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: ADAPTERS
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -53,11 +53,14 @@ public record CommittedPosting(
     PostingId postingId,
     JournalEntry journalEntry,
     PostingLineageModel postingLineage,
+    PostingKind postingKind,
     CommittedProvenance provenance)
 ```
 
 - Purpose: preserve bookkeeping-local lineage typing and provenance while one write is being
   stored, queried, or journaled
+- Added fact: `postingKind` keeps standard, opening-balance, and period-close postings distinct
+  inside local bookkeeping seams
 - Boundary: projected to `PostingFact` only at the public published-language edge
 
 ## `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount`
@@ -111,11 +114,30 @@ public interface BookStore extends PostingValidationStore
 ```
 
 - Surface: `inspectBook()`, `openBook(...)`, `declareAccount(...)`, `listAccounts(...)`,
-  `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`,
-  `periodSummary(...)`, and durable `commit(PostingDraft, PostingIdGenerator)`
+  `listPostings(...)`, `accountBalance(...)`, `accountTotals(...)`, `trialBalance(...)`,
+  `accountLedger(...)`, `periodSummary(...)`, and durable `commit(PostingDraft, PostingIdGenerator)`
 - Purpose: keep initialization, administration, read/report, lookup, and ordinary posting commit
   on one explicit selected-book seam instead of fragmenting them into parallel narrow interfaces
 - Lifecycle: the outer workflow or adapter owns `close()`, not this executor seam
+- Initialization fact: `openBook(...)` takes both the initialization instant and one
+  `BookIdentity`
+
+## `AccountCurrencyTotals`
+
+`AccountCurrencyTotals` is the executor-owned aggregate row used by statement reads and close
+generation.
+
+```java
+public record AccountCurrencyTotals(
+    RegisteredAccount account,
+    CurrencyUnit currencyUnit,
+    CurrencyBalance balance)
+```
+
+- Purpose: move per-account, per-currency exact totals across the `BookStore.accountTotals(...)`
+  seam without materializing full posting streams for statement computation
+- Boundary: stores compute these totals; statement and close services consume them as local
+  aggregate truth
 
 ## `PostingValidationStore`
 

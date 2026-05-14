@@ -31,6 +31,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -147,7 +148,11 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   protected static TrialBalanceReport trialBalanceReport(
       DeclaredAccount account, CurrencyBalance balance) {
     return new TrialBalanceReport(
-        Optional.of(LocalDate.parse("2026-04-30")), List.of(new TrialBalanceRow(account, balance)));
+        bookIdentity(),
+        Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
+        List.of(new TrialBalanceRow(account, balance)));
   }
 
   protected static AccountLedgerReport accountLedgerReport(
@@ -190,7 +195,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static TrialBalanceReport sampleTrialBalanceReport() {
     return new TrialBalanceReport(
+        bookIdentity(),
         Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
         List.of(
             new TrialBalanceRow(
                 declaredAccount(
@@ -255,7 +263,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static FinancialPositionReport sampleFinancialPositionReport() {
     return new FinancialPositionReport(
+        bookIdentity(),
         Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
         List.of(
             new FinancialPositionSection(
                 AccountType.ASSET,
@@ -264,6 +275,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "1000",
                         "Cash",
                         AccountType.ASSET,
+                        Optional.of(AccountRole.ORDINARY),
                         false,
                         CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
@@ -274,6 +286,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "3200",
                         "Retained Earnings",
                         AccountType.EQUITY,
+                        Optional.of(AccountRole.RETAINED_EARNINGS),
                         false,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))))));
@@ -283,14 +296,22 @@ class CliFixtureSupport extends CliIoFixtureSupport {
     CurrencyBalance revenueMovement =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
     return new IncomeStatementReport(
+        bookIdentity(),
         LocalDate.parse("2026-04-01"),
         LocalDate.parse("2026-04-30"),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        standardOnly(),
         List.of(
             new IncomeStatementSection(
                 AccountType.REVENUE,
                 List.of(
                     new IncomeStatementRow(
-                        "2000", "Revenue", AccountType.REVENUE, false, revenueMovement)),
+                        "2000",
+                        "Revenue",
+                        AccountType.REVENUE,
+                        Optional.of(AccountRole.ORDINARY),
+                        false,
+                        revenueMovement)),
                 List.of(revenueMovement))),
         List.of(revenueMovement));
   }
@@ -303,12 +324,17 @@ class CliFixtureSupport extends CliIoFixtureSupport {
     CurrencyBalance closingBalance =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
     return new ChangesInEquityReport(
+        bookIdentity(),
         LocalDate.parse("2026-04-01"),
         LocalDate.parse("2026-04-30"),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
         List.of(
             new ChangesInEquityRow(
                 "3200",
                 "Retained Earnings",
+                Optional.of(AccountType.EQUITY),
+                Optional.of(AccountRole.RETAINED_EARNINGS),
                 false,
                 openingBalance,
                 movementBalance,

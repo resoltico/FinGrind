@@ -17,6 +17,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -32,6 +33,7 @@ class PostEntryCommandTest {
   void constructor_acceptsValidCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
+            PostingKind.STANDARD,
             journalEntry(),
             PostingLineage.reversal(
                 new ReversalReference(new PostingId("posting-1")),
@@ -48,7 +50,11 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                nullOf(), PostingLineage.direct(), requestProvenance("idem-1"), SourceChannel.CLI));
+                PostingKind.STANDARD,
+                nullOf(),
+                PostingLineage.direct(),
+                requestProvenance("idem-1"),
+                SourceChannel.CLI));
   }
 
   @Test
@@ -57,7 +63,11 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                journalEntry(), nullOf(), requestProvenance("idem-1"), SourceChannel.CLI));
+                PostingKind.STANDARD,
+                journalEntry(),
+                nullOf(),
+                requestProvenance("idem-1"),
+                SourceChannel.CLI));
   }
 
   private static JournalEntry journalEntry() {

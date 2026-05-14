@@ -42,9 +42,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeOpenBookResult(
         Path.of("books/book.sqlite"),
-        new OpenBookResult.Opened(Instant.parse("2026-04-17T10:15:30Z")),
+        openedBookResult(Instant.parse("2026-04-17T10:15:30Z")),
         OutputMode.HUMAN);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Initialized"));
+    String openBookHuman = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(openBookHuman.contains("Book Initialized"));
+    assertTrue(openBookHuman.contains("Entity name"));
+    assertTrue(openBookHuman.contains("Acme Studio"));
+    assertTrue(openBookHuman.contains("Functional currency"));
+    assertTrue(openBookHuman.contains("Fiscal year start"));
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.HUMAN);
@@ -98,7 +103,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         () ->
             responseWriter.writeOpenBookResult(
                 Path.of("books/book.sqlite"),
-                new OpenBookResult.Opened(Instant.parse("2026-04-17T10:15:30Z")),
+                openedBookResult(Instant.parse("2026-04-17T10:15:30Z")),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -163,7 +168,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.RetainedEarningsAccountMissing()),
+            new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                new AccountCode("3200"))),
         OutputMode.HUMAN);
     assertTrue(
         outputStream
@@ -176,11 +182,15 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeOpenBookResult(
-        Path.of("book.sqlite"), new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")));
+        Path.of("book.sqlite"), openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"status\":\"ok\""));
     assertTrue(json.contains("\"bookFile\""));
     assertTrue(json.contains("\"initializedAt\":\"2026-04-07T10:15:30Z\""));
+    assertTrue(json.contains("\"bookIdentity\""));
+    assertTrue(json.contains("\"entityName\":\"Acme Studio\""));
+    assertTrue(json.contains("\"functionalCurrency\":\"EUR\""));
+    assertTrue(json.contains("\"fiscalYearStart\":\"01-01\""));
   }
 
   @Test
@@ -290,7 +300,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
     missingWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.RetainedEarningsAccountMissing()),
+            new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                new AccountCode("3200"))),
         OutputMode.JSON);
     assertTrue(
         missingOutput
@@ -334,7 +345,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         2,
         CliExecutionPolicy.exitCodeFor(
             new ClosePeriodResult.Rejected(
-                new BookAdministrationRejection.RetainedEarningsAccountMissing())));
+                new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                    new AccountCode("3200")))));
   }
 
   @Test

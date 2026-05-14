@@ -29,6 +29,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     write_json(
         config.request_sale.local_path,
         {
+            "postingKind": "STANDARD",
             "effectiveDate": "2026-04-07",
             "lines": [
                 {
@@ -60,6 +61,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     write_json(
         config.request_adjustment.local_path,
         {
+            "postingKind": "STANDARD",
             "effectiveDate": "2026-04-08",
             "lines": [
                 {

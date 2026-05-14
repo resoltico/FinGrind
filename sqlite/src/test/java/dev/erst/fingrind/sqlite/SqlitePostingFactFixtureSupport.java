@@ -10,15 +10,20 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -26,10 +31,12 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -38,6 +45,32 @@ import java.util.Optional;
 
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
+  static BookIdentity bookIdentity() {
+    return new BookIdentity(
+        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
+  }
+
+  static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
+    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity());
+  }
+
+  static BookLifecycleInspection.Initialized initializedLifecycleInspection(
+      int applicationId,
+      int detectedBookFormatVersion,
+      int supportedBookFormatVersion,
+      Instant initializedAt) {
+    return new BookLifecycleInspection.Initialized(
+        applicationId,
+        detectedBookFormatVersion,
+        supportedBookFormatVersion,
+        initializedAt,
+        bookIdentity());
+  }
+
+  static PostingCoverage allPostingKinds() {
+    return PostingCoverage.ALL_POSTING_KINDS;
+  }
+
   static CommittedPosting postingFact(
       String postingId,
       String idempotencyKey,
@@ -148,7 +181,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   }
 
   static void initializeBookWithDefaultAccounts(SqlitePostingFactStore postingFactStore) {
-    postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+    postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
     declareDefaultAccounts(postingFactStore);
   }
 

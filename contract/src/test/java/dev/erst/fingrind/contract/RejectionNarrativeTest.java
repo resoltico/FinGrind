@@ -39,8 +39,15 @@ class RejectionNarrativeTest {
                     new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA))
             .contains("1000"));
     assertTrue(
-        RejectionNarrative.message(new BookAdministrationRejection.RetainedEarningsAccountMissing())
-            .contains("retained-earnings account"));
+        RejectionNarrative.message(
+                new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                    new AccountCode("3200")))
+            .contains("Retained-earnings account"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
+                    new AccountCode("3200"), AccountRole.ORDINARY))
+            .contains("ORDINARY"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.RetainedEarningsAccountInactive(
@@ -51,6 +58,18 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.PeriodCloseMustStartAt(
                     LocalDate.parse("2026-01-01")))
             .contains("2026-01-01"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.PeriodCloseFutureDate(
+                    LocalDate.parse("2026-12-31")))
+            .contains("2026-12-31"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+                    LocalDate.parse("2026-12-15"),
+                    LocalDate.parse("2027-01-15"),
+                    dev.erst.fingrind.core.FiscalYearStart.parse("01-01")))
+            .contains("01-01"));
   }
 
   @Test
@@ -84,9 +103,25 @@ class RejectionNarrativeTest {
             .contains("same idempotency key"));
     assertTrue(
         RejectionNarrative.message(
+                new PostingRejection.PostingKindReserved(
+                    dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE))
+            .contains("PERIOD_CLOSE"));
+    assertTrue(
+        RejectionNarrative.message(
+                new PostingRejection.BookFunctionalCurrencyMismatch(
+                    dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+                    dev.erst.fingrind.core.CurrencyUnit.of("USD")))
+            .contains("EUR"));
+    assertTrue(
+        RejectionNarrative.message(
                 new PostingRejection.ClosedPeriodViolation(
                     LocalDate.parse("2026-05-01"), LocalDate.parse("2026-04-30")))
             .contains("closed-through horizon"));
+    assertTrue(
+        RejectionNarrative.message(
+                new PostingRejection.OpeningBalanceTouchesNominalAccount(
+                    new AccountCode("4000"), AccountType.REVENUE))
+            .contains("4000"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3900")))

@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -48,10 +49,11 @@ public sealed interface LedgerStep
   }
 
   /** Initializes the selected book inside the plan transaction. */
-  record OpenBook(LedgerStepId stepId) implements LedgerStep {
+  record OpenBook(LedgerStepId stepId, OpenBookCommand command) implements LedgerStep {
     /** Validates the step. */
     public OpenBook {
       requireStepId(stepId);
+      Objects.requireNonNull(command, "command");
     }
 
     @Override

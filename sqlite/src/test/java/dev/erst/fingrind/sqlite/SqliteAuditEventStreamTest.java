@@ -21,7 +21,7 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("audit-event-sequence.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),

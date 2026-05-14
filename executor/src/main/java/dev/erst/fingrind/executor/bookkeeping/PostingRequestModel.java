@@ -15,9 +15,7 @@ public interface PostingRequestModel {
   PostingLineageModel postingLineage();
 
   /** Returns the canonical durable posting kind for this posting attempt. */
-  default PostingKind postingKind() {
-    return PostingKind.STANDARD;
-  }
+  PostingKind postingKind();
 
   /** Returns the optional reversal target. */
   default java.util.Optional<ReversalReference> reversalReference() {

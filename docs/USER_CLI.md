@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: USER_CLI
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -30,8 +30,9 @@ Every book-bound command also requires exactly one passphrase source:
 - `--book-passphrase-prompt` for an interactive non-echo terminal prompt
 
 `help` is returned when no command is supplied.
-`help`, `version`, and `capabilities` default to human-readable discovery output and also accept
-`--output json` for machine parsing.
+`help`, `version`, and `capabilities` default to human-readable discovery output on an interactive
+terminal and to JSON when stdout is redirected or captured; they also accept `--output json` or
+`--output human` explicitly.
 `help <command>` and `<command> --help` both return command-scoped usage, options, executable
 examples, operator notes, and exit-code guidance for one selected command. Request-file commands
 such as `declare-account`, `post-entry`, `preflight-entry`, and `execute-plan` also inline the
@@ -54,7 +55,7 @@ copy the `.sqlite` file to protected storage, keep the key file protected separa
 by replacing the closed `.sqlite` file from that copy before reopening it.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType` plus immutable `accountRole` and derived `normalBalance`.
-`close-period` closes one contiguous reporting period into exactly one active declared
+`close-period` closes one contiguous reporting period into one selected active declared
 retained-earnings account, and successful results surface the retained-earnings account code plus
 the per-currency closed totals that were moved into equity. The first close may begin before the
 earliest posting date; after one close is recorded, later closes must start on the day after the
@@ -80,11 +81,11 @@ executable examples and operator notes share one source.
 `capabilities.commands` publishes those command contracts as grouped `CommandDescriptor` objects,
 so automation can read the per-command `executionMode`, `outputModes`, `artifactOutputs`, aliases,
 options, and summary directly instead of inferring stdout behavior from one global mode list.
-Commands that advertise `--output` keep JSON as the default machine surface for successful
-results. Discovery, administration, write, and query/report commands can render operator-facing
-`--output human`, and the tabular read/report commands also accept `--output csv`. Invalid
-invocation failures default to human repair guidance unless one recognized machine output mode is
-selected explicitly, such as `--output json`. The report commands
+Commands that advertise `--output` default successful stdout to human text on an interactive
+terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
+query/report commands can render operator-facing `--output human`, and the tabular read/report
+commands also accept `--output csv`. Invalid invocation failures default to human repair guidance
+unless one recognized machine output mode is selected explicitly, such as `--output json`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. Successful exports keep the main stdout result unchanged and emit the
@@ -110,10 +111,10 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td>none</td><td>Print the canonical minimal posting request scaffold JSON document.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
-    <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into the declared retained-earnings account.</td></tr>
+    <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>--retained-earnings-account &lt;account-code&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into one selected retained-earnings account.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
@@ -268,7 +269,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
-| `0` | successful command | `ok`, raw request or plan template JSON, `preflight-accepted`, `committed` |
+| `0` | successful command | `ok`, including request templates, query/report payloads, preflight payloads, committed posting payloads, and succeeded plan payloads |
 | `1` | invalid invocation or malformed request | human repair text by default, or `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar when a recognized machine output mode is selected explicitly |
 | `2` | deterministic refusal after the command was understood | human `Rejected`, `error`, `rejected`, or `plan-rejected` depending on the command family and selected output mode |
 | `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
@@ -391,7 +392,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   nested `assertion` object for assertion steps.
 - `execute-plan` reuses the same posting and query rules as the single-command surface, but runs
   the whole plan inside one atomic transaction and returns the resulting journal in
-  `payload.journal` with `status: "plan-committed"` on success, or in `details.plan.journal` with
+  `payload.journal` with top-level `status: "ok"` on success, or in `details.plan.journal` with
   `status: "plan-rejected"` / `status: "plan-assertion-failed"` on deterministic plan failure.
   Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped
   `facts`; successful `list-accounts` and `list-postings` steps keep both pagination facts and

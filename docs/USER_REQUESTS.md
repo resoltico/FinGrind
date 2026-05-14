@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -59,6 +59,7 @@ plus the accepted fields and enum vocabularies for their `--request-file` payloa
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
+- `postingKind` is required and must be `STANDARD` or `OPENING_BALANCE`
 - `lines[].amount` is one exact money object with `currencyCode` and `minorUnits`
 - `lines[].amount.currencyCode` must be one canonical three-letter uppercase ISO 4217 code
   supported by FinGrind's pinned currency registry
@@ -66,12 +67,13 @@ Current posting-request rules:
   zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit
   range
 - `lines[].amount` must decode to one strictly positive posted amount
-- `effectiveDate`, `lines`, and `provenance` are required
+- `postingKind`, `effectiveDate`, `lines`, and `provenance` are required
 - `lines` must contain at least one journal line
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
   letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every entry must contain at least one `DEBIT` line and at least one `CREDIT` line
 - every line inside one entry must share the same `lines[].amount.currencyCode`
+- every line inside one entry must use the selected book's functional currency
 - `reversal` is optional
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
@@ -82,6 +84,7 @@ Current posting-request rules:
 - optional fields may be omitted; `null` is accepted for `reversal` and `correlationId`
 - `reversal.priorPostingId` must already exist in the selected book
 - a reversal requires an exact line-by-line negation of the target posting and only one reversal is allowed per target
+- `OPENING_BALANCE` postings may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
 - legacy `correction` and `reversal.kind` fields are rejected
 - unknown fields are rejected at every object level
 - duplicate JSON object keys are rejected
@@ -133,7 +136,8 @@ Current ledger-plan rules:
 - `steps` must contain at least one object and every `stepId` must be unique
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `open-book` takes no nested payload
+- `open-book` uses nested `openBook`, which requires `entityName`, `functionalCurrency`, and
+  `fiscalYearStart`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
@@ -189,9 +193,9 @@ repair data.
 |:-------|:------------|:-------|
 | success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary` | `status`, `payload` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request or AI-agent ledger-plan scaffold JSON |
-| `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
-| `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
-| `plan-committed` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, and `payload.journal` |
+| `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
+| `ok` | successful `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
+| `ok` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, and `payload.journal` |
 | `plan-rejected` | deterministic `execute-plan` step rejection | `status`, `code`, `message`, `details.plan` |
 | `plan-assertion-failed` | failed `execute-plan` assertion | `status`, `code`, `message`, `details.plan` |
 | `rejected` | deterministic single-command business rejection | `status`, `code`, `message`, optional `idempotencyKey`, optional `details` |
@@ -206,23 +210,27 @@ Dynamic fields:
   real actor, command, idempotency, and causation values before commit
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
+- `open-book.payload.bookIdentity.entityName`, `.functionalCurrency`, and `.fiscalYearStart`
+  echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
-- `committed.postingId` is generated per successful commit as a UUID v7 value
+- `committed.payload.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
-- `plan-committed.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
+- `ok.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
   facts nest their child observations under `facts`
+- successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
+  `fiscalYearStart`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
   `balance` buckets
 - `execute-plan` accepts at most 100 steps, so returned plan journals are complete but bounded
 
-`preflight-accepted` is advisory. It confirms that the current request passed validation against
+Successful `preflight-entry` output is advisory. It confirms that the current request passed validation against
 the current book state, but it is not a durable commit guarantee: `post-entry` still performs its
 authoritative transactional checks before committing.
 
@@ -266,6 +274,15 @@ rendered:
 - `commands` also lists `print-plan-template` and `execute-plan`, both rendered from the contract
   protocol catalog
 
+## Book Initialization Responses
+
+`open-book` success returns:
+- `payload.bookFile`
+- `payload.initializedAt`
+- `payload.bookIdentity.entityName`
+- `payload.bookIdentity.functionalCurrency`
+- `payload.bookIdentity.fiscalYearStart`
+
 ## Book Inspection And Query Responses
 
 `inspect-book` success returns:
@@ -277,6 +294,9 @@ rendered:
 - optional `payload.detectedBookFormatVersion`
 - `payload.supportedBookFormatVersion`
 - optional `payload.initializedAt`
+- optional `payload.bookIdentity.entityName`
+- optional `payload.bookIdentity.functionalCurrency`
+- optional `payload.bookIdentity.fiscalYearStart`
 
 `payload.state` uses the stable lower-case vocabulary `missing`, `blank-sqlite`, `initialized`,
 `foreign-sqlite`, `unsupported-format-version`, or `incomplete-fingrind`.
@@ -293,7 +313,7 @@ path directly. The current public line reports `true` for `missing` and `blank-s
   `accountRole`, derived `normalBalance`, `active`, and `declaredAt`
 
 `get-posting` success returns:
-- one committed posting payload with `postingId`, `effectiveDate`, `recordedAt`, request-provenance fields, `sourceChannel`, optional `reversal`, and `lines[]`
+- one committed posting payload with `payload.postingId`, `payload.effectiveDate`, `payload.recordedAt`, request-provenance fields, `sourceChannel`, optional `reversal`, and `lines[]`
 - each `lines[].amount` value reuses the same exact money object shape with `currencyCode`,
   `minorUnits`
 
@@ -341,11 +361,12 @@ path directly. The current public line reports `true` for `missing` and `blank-s
   `accountType`, `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed
   `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 
-Commands that advertise `--output` keep JSON as the default machine surface for successful
-results. Discovery, administration, write, and read/report commands can also render
-operator-facing `--output human`, and the tabular read/report commands support `--output csv` for
-spreadsheet import. Invalid invocation failures default to human repair guidance unless callers
-select one recognized machine output mode explicitly, such as `--output json`.
+Commands that advertise `--output` default successful stdout to human text on an interactive
+terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
+read/report commands can also render operator-facing `--output human`, and the tabular
+read/report commands support `--output csv` for spreadsheet import. Invalid invocation failures
+default to human repair guidance unless callers select one recognized machine output mode
+explicitly, such as `--output json`.
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
 one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
 model; it does not change the JSON payload contract. Successful exports emit a diagnostics info

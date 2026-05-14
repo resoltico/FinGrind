@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
@@ -12,6 +13,7 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -19,6 +21,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -81,5 +84,17 @@ class ContractTestSupport {
 
   protected MonetaryAmount monetaryAmount(String currencyCode, String amountText) {
     return MonetaryAmount.of(Money.parse(currencyCode, amountText));
+  }
+
+  protected BookIdentity bookIdentity() {
+    return ContractFixtures.bookIdentity();
+  }
+
+  protected OpenBookCommand openBookCommand() {
+    return ContractFixtures.openBookCommand();
+  }
+
+  protected PostingCoverage postingCoverage() {
+    return ContractFixtures.postingCoverage();
   }
 }

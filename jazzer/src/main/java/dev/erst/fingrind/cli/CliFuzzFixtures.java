@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -16,6 +17,10 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationService;
@@ -66,6 +71,29 @@ public final class CliFuzzFixtures {
     return FIXED_CLOCK;
   }
 
+  /** Returns the canonical book identity used by Jazzer lifecycle setup. */
+  public static BookIdentity bookIdentity() {
+    return bookIdentity(CurrencyUnit.of("EUR"));
+  }
+
+  /** Returns the canonical book identity used by Jazzer lifecycle setup for one currency. */
+  public static BookIdentity bookIdentity(CurrencyUnit functionalCurrency) {
+    return new BookIdentity(
+        new BookEntityName("Acme Studio"),
+        Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
+        FiscalYearStart.parse("01-01"));
+  }
+
+  /** Returns the canonical open-book command used by workflow and replay setup. */
+  public static OpenBookCommand openBookCommand() {
+    return openBookCommand(CurrencyUnit.of("EUR"));
+  }
+
+  /** Returns the canonical open-book command used by workflow and replay setup for one currency. */
+  public static OpenBookCommand openBookCommand(CurrencyUnit functionalCurrency) {
+    return new OpenBookCommand(bookIdentity(functionalCurrency));
+  }
+
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */
   public static BookAdministrationService administrationService(BookStore bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
@@ -74,9 +102,16 @@ public final class CliFuzzFixtures {
 
   /** Opens one book and fails fast if lifecycle setup drifts unexpectedly. */
   public static void openBook(BookAdministrationService administrationService) {
+    openBook(administrationService, CurrencyUnit.of("EUR"));
+  }
+
+  /** Opens one book in the supplied functional currency and fails fast on lifecycle drift. */
+  public static void openBook(
+      BookAdministrationService administrationService, CurrencyUnit functionalCurrency) {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     OpenBookResult result =
-        BookkeepingPublishedLanguageTranslator.toPublished(administrationService.openBook());
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            administrationService.openBook(bookIdentity(functionalCurrency)));
     OpenBookResult.Opened opened =
         switch (result) {
           case OpenBookResult.Opened accepted -> accepted;

@@ -36,8 +36,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
     assertTrue(Files.exists(bookFilePath));
   }
 
@@ -52,16 +51,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
-    assertEquals(
-        0,
-        openCli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
@@ -77,8 +67,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
   }
 
   @Test
@@ -196,16 +185,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
-    assertEquals(
-        0,
-        openCli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     FinGrindCli declareCli =
         cli(
             new ByteArrayInputStream(new byte[0]),
@@ -281,7 +261,12 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "steps": [
                 {
                   "stepId": "open",
-                  "kind": "open-book"
+                  "kind": "open-book",
+                  "openBook": {
+                    "entityName": "Acme Studio",
+                    "functionalCurrency": "EUR",
+                    "fiscalYearStart": "01-01"
+                  }
                 },
                 {
                   "stepId": "declare-cash",

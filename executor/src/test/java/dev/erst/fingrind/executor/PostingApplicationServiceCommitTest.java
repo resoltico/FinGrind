@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
@@ -140,7 +141,7 @@ class PostingApplicationServiceCommitTest {
         new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
           @Override
           public BookLifecycleInspection inspectBook() {
-            return new BookLifecycleInspection.Initialized(1001, 1, 1, FIXED_CLOCK.instant());
+            return initializedLifecycleInspection(1001, 1, 1, FIXED_CLOCK.instant());
           }
 
           @Override

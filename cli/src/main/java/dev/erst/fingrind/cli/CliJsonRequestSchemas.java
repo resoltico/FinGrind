@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
+import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import java.util.Set;
 
@@ -14,6 +15,11 @@ final class CliJsonRequestSchemas {
           ProtocolDeclareAccountFields.ACCOUNT_NAME,
           ProtocolDeclareAccountFields.ACCOUNT_TYPE,
           ProtocolDeclareAccountFields.ACCOUNT_ROLE);
+  static final Set<String> OPEN_BOOK_FIELDS =
+      Set.of(
+          ProtocolOpenBookFields.ENTITY_NAME,
+          ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
+          ProtocolOpenBookFields.FISCAL_YEAR_START);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   static final Set<String> PROVENANCE_FIELDS =

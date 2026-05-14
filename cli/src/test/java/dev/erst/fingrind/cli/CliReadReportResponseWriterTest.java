@@ -24,7 +24,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -49,14 +48,14 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
-                new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
+                initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"ok\"");
     assertWriterOutput(
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
-                new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
+                initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
         "Initialized at");
     assertWriterOutput(
@@ -112,7 +111,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListPostingsResult.Listed(
                     new PostingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "effectiveDate,recordedAt,postingId,currencyCode,totalAmount,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
   }
 
   @Test
@@ -127,7 +126,11 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             cashAccount, Optional.empty(), Optional.empty(), List.of(eurDebitBalance));
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
-            Optional.empty(), List.of(new TrialBalanceRow(cashAccount, eurDebitBalance)));
+            bookIdentity(),
+            Optional.empty(),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(new TrialBalanceRow(cashAccount, eurDebitBalance)));
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
             cashAccount,
@@ -181,7 +184,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "effectiveDateTo,accountCode");
+        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
@@ -271,8 +274,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
-                    new BookInspection.Initialized(
-                        123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
+                    initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                     dev.erst.fingrind.contract.protocol.OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -287,8 +289,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
-                    new BookInspection.Initialized(
-                        123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
+                    initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                     nullOf()));
     assertThrows(
         NullPointerException.class,

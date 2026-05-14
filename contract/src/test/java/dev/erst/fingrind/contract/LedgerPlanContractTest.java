@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test;
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    LedgerStep step = new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand());
     LedgerPlan plan = new LedgerPlan(planId("plan-1"), List.of(step));
     assertEquals(planId("plan-1"), plan.planId());
     assertTrue(plan.beginsWithOpenBook());
@@ -65,12 +65,14 @@ class LedgerPlanContractTest {
                 planId("plan-1"),
                 List.of(
                     new LedgerStep.InspectBook(stepId("inspect")),
-                    new LedgerStep.OpenBook(stepId("open")))));
+                    new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand()))));
   }
 
   @Test
   void stepRecords_publishCanonicalKindsAndRejectInvalidShape() {
-    assertEquals(LedgerStepKind.OPEN_BOOK, new LedgerStep.OpenBook(stepId("open")).kind());
+    assertEquals(
+        LedgerStepKind.OPEN_BOOK,
+        new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand()).kind());
     assertEquals(
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
@@ -112,7 +114,9 @@ class LedgerPlanContractTest {
         new LedgerStep.Assert(
                 stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .detailKind());
-    assertThrows(IllegalArgumentException.class, () -> new LedgerStep.OpenBook(stepId(" ")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LedgerStep.OpenBook(stepId(" "), ContractFixtures.openBookCommand()));
     assertThrows(
         NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), nullOf()));
   }

@@ -286,7 +286,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+              () ->
+                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertEquals(
           "This FinGrind SQLite session cannot initialize or create a book file.",
           exception.getMessage());

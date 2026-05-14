@@ -82,7 +82,9 @@ final class SqliteBookStateReader {
           && SqliteBookIntegrityVerifier.passesForeignKeyCheck(activeDatabase)
           && SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(activeDatabase)
           && SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(activeDatabase)
-          && SqliteBookIntegrityVerifier.hasValidPersistedMoney(activeDatabase);
+          && SqliteStatementQueries.loadBookIdentity(activeDatabase).isPresent()
+          && SqliteBookIntegrityVerifier.hasValidPersistedMoney(activeDatabase)
+          && SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(activeDatabase);
     } catch (RuntimeException exception) {
       return false;
     }

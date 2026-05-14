@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
@@ -53,7 +54,7 @@ final class SqliteStoreMutationOperations {
     this.commitFaultHook = Objects.requireNonNull(commitFaultHook, "commitFaultHook");
   }
 
-  BookOpeningOutcome openBook(Instant initializedAt) {
+  BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableInitialization();
     SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
@@ -72,6 +73,7 @@ final class SqliteStoreMutationOperations {
             SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
             SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
             SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
+            SqliteMutationWriter.insertBookIdentity(activeDatabase, bookIdentity);
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase, BookAuditEvent.bookOpened(initializedAt));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
@@ -80,7 +82,7 @@ final class SqliteStoreMutationOperations {
                     SqliteBookContract.APPLICATION_ID,
                     SqliteBookContract.FORMAT_VERSION,
                     SqliteBookState.INITIALIZED_FINGRIND));
-            return new BookOpeningOutcome.Opened(initializedAt);
+            return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(

@@ -10,6 +10,8 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.declareDefau
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
@@ -43,7 +45,8 @@ class BookReadServiceReportQueryTest {
 
       assertEquals(
           new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.trialBalance(new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE))));
+          service.trialBalance(
+              new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE), allPostingKinds())));
     }
   }
 
@@ -57,11 +60,15 @@ class BookReadServiceReportQueryTest {
       assertEquals(
           new TrialBalanceResult.Reported(
               new TrialBalanceReport(
+                  bookIdentity(),
                   Optional.of(EFFECTIVE_DATE),
+                  EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
+                  allPostingKinds(),
                   List.of(
                       new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
                       new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)))),
-          service.trialBalance(new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE))));
+          service.trialBalance(
+              new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE), allPostingKinds())));
     }
   }
 

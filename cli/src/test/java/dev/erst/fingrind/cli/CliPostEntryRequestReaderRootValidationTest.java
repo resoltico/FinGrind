@@ -39,6 +39,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {
@@ -84,6 +85,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {

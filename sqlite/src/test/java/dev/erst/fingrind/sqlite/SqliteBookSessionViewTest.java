@@ -31,7 +31,6 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.spi.AtomicBookStore;
 import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
@@ -117,7 +116,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookContainsSchema()),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
     }
   }
 
@@ -192,8 +191,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          ((BookStore) postingFactStore).openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          ((BookStore) postingFactStore)
+              .openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -326,8 +326,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           Optional.of(cashAccount),
           ((BookStore) postingFactStore).findAccount(new AccountCode("1000")));
       assertEquals(
-          postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())),
-          ((BookStore) postingFactStore).trialBalance(new TrialBalanceCriteria(Optional.empty())));
+          postingFactStore.trialBalance(trialBalanceCriteria(Optional.empty())),
+          ((BookStore) postingFactStore).trialBalance(trialBalanceCriteria(Optional.empty())));
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(revenueAccount),
@@ -379,7 +379,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException trialBalanceFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
+              () -> postingFactStore.trialBalance(trialBalanceCriteria(Optional.empty())));
       IllegalStateException accountLedgerFailure =
           assertThrows(
               IllegalStateException.class,

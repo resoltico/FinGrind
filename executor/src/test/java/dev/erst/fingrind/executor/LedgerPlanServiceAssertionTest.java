@@ -8,6 +8,7 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.bookWithCo
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.moneyFact;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.openBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
@@ -56,7 +57,7 @@ class LedgerPlanServiceAssertionTest {
                   new LedgerPlan(
                       planId("plan-1"),
                       List.of(
-                          new LedgerStep.OpenBook(stepId("open")),
+                          openBookStep("open"),
                           new LedgerStep.DeclareAccount(
                               stepId("cash"),
                               account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),

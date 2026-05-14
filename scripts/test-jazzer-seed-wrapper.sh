@@ -8,6 +8,10 @@ die() {
     exit 1
 }
 
+note() {
+    printf 'jazzer seed wrapper check: %s\n' "$1"
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -40,6 +44,7 @@ printf '%s\n' '{}' > "${input_path}"
 readonly missing_input_path="${tmp_dir}/missing.json"
 readonly missing_input_path_resolved="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).resolve())' "${missing_input_path}")"
 
+note 'promote-seed unknown-target fast-fail'
 set +e
 unknown_target_output="$("${promote_wrapper}" missing-target "${input_path}" --name test_seed --intent 'tmp' 2>&1)"
 unknown_target_status=$?
@@ -53,6 +58,7 @@ set -e
 [[ "${unknown_target_output}" != *'Task :'* ]] || die "promote-seed leaked Gradle task output for an unknown target"
 [[ "${unknown_target_output}" != *'BUILD FAILED'* ]] || die "promote-seed leaked Gradle failure output for an unknown target"
 
+note 'promote-seed missing-input fast-fail'
 set +e
 missing_input_output="$("${promote_wrapper}" cli-request "${missing_input_path}" --name test_seed --intent 'tmp' 2>&1)"
 missing_input_status=$?
@@ -63,6 +69,7 @@ set -e
     die "promote-seed did not report the missing file path"
 [[ "${missing_input_output}" != *'Task :'* ]] || die "promote-seed leaked Gradle task output for a missing file"
 
+note 'promote-seed required-option guards'
 set +e
 missing_name_output="$("${promote_wrapper}" cli-request "${input_path}" --intent 'tmp' 2>&1)"
 missing_name_status=$?
@@ -91,6 +98,7 @@ set -e
     die "promote-seed did not report the seed-name grammar or suggestion"
 [[ "${invalid_name_output}" != *'Task :'* ]] || die "promote-seed leaked Gradle task output for an invalid seed name"
 
+note 'promote-seed json failure payloads'
 set +e
 unknown_target_json_output="$("${promote_wrapper}" missing-target "${input_path}" --name test_seed --intent 'tmp' --json --console=plain 2>&1)"
 unknown_target_json_status=$?
@@ -112,6 +120,7 @@ python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["st
 readonly duplicate_input_path="${tmp_dir}/duplicate seed.json"
 cp "${duplicate_seed_source}" "${duplicate_input_path}"
 
+note 'promote-seed duplicate-byte rejection'
 set +e
 duplicate_json_output="$("${promote_wrapper}" cli-request "${duplicate_input_path}" --name duplicate_basic_valid --intent 'duplicate byte smoke' --json --console=plain 2>&1)"
 duplicate_json_status=$?
@@ -123,6 +132,7 @@ set -e
 python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["status"] == "error"; assert payload["command"] == "promote-seed"; assert "Committed seed content already exists at:" in payload["message"]; assert payload["exitCode"] == 1' \
     "${duplicate_json_output}" || die "promote-seed duplicate JSON failure payload was not valid"
 
+note 'seed-audit json corpus check'
 set +e
 seed_audit_json_output="$("${audit_wrapper}" --json --console=plain 2>&1)"
 seed_audit_json_status=$?
@@ -134,6 +144,7 @@ set -e
 python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["duplicateContentGroups"] == []; assert payload["orphanedInputCount"] == 0; assert payload["unexpectedFailureSeedCount"] == 0; assert payload["integrityProblemCount"] == 0' \
     "${seed_audit_json_output}" || die "seed-audit JSON payload was not valid or reported duplicates"
 
+note 'seed-audit unknown-target rejection'
 set +e
 seed_audit_unknown_json_output="$("${audit_wrapper}" missing-target --json --console=plain 2>&1)"
 seed_audit_unknown_json_status=$?
@@ -143,6 +154,7 @@ set -e
 python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["status"] == "error"; assert payload["command"] == "seed-audit"; assert "Unknown Jazzer run target: missing-target" in payload["message"]; assert payload["supportedTargetKeys"] == ["cli-request", "ledger-plan-request", "posting-workflow", "sqlite-book-roundtrip"]' \
     "${seed_audit_unknown_json_output}" || die "seed-audit unknown-target JSON failure payload was not valid"
 
+note 'seed-audit plain summary'
 set +e
 seed_audit_output="$("${audit_wrapper}" --console=plain 2>&1)"
 seed_audit_status=$?
@@ -155,6 +167,7 @@ set -e
 [[ "${seed_audit_output}" == *'Integrity problems: 0'* ]] || die "seed-audit plain output omitted integrity summary"
 [[ "${seed_audit_output}" == *'Duplicate content groups: 0'* ]] || die "seed-audit plain output omitted duplicate summary"
 
+note 'regression wrapper argument guard'
 set +e
 regression_extra_output="$("${regression_wrapper}" cli-request 2>&1)"
 regression_extra_status=$?

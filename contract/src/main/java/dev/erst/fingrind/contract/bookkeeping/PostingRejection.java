@@ -3,7 +3,10 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -13,7 +16,10 @@ public sealed interface PostingRejection
     permits PostingRejection.BookNotInitialized,
         PostingRejection.AccountStateViolations,
         PostingRejection.DuplicateIdempotencyKey,
+        PostingRejection.PostingKindReserved,
+        PostingRejection.BookFunctionalCurrencyMismatch,
         PostingRejection.ClosedPeriodViolation,
+        PostingRejection.OpeningBalanceTouchesNominalAccount,
         PostingRejection.RetainedEarningsAccountReserved,
         PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
@@ -78,6 +84,22 @@ public sealed interface PostingRejection
   /** Duplicate idempotency rejection for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements PostingRejection {}
 
+  /** Rejection for a caller-authored posting that attempts to use a generated posting kind. */
+  record PostingKindReserved(PostingKind postingKind) implements PostingRejection {
+    public PostingKindReserved {
+      Objects.requireNonNull(postingKind, "postingKind");
+    }
+  }
+
+  /** Rejection for a posting whose entry currency diverges from the book functional currency. */
+  record BookFunctionalCurrencyMismatch(
+      CurrencyUnit functionalCurrency, CurrencyUnit attemptedCurrency) implements PostingRejection {
+    public BookFunctionalCurrencyMismatch {
+      Objects.requireNonNull(functionalCurrency, "functionalCurrency");
+      Objects.requireNonNull(attemptedCurrency, "attemptedCurrency");
+    }
+  }
+
   /** Rejection for a posting attempt whose effective date falls inside one closed period. */
   record ClosedPeriodViolation(
       LocalDate closedThroughEffectiveDate, LocalDate attemptedEffectiveDate)
@@ -85,6 +107,15 @@ public sealed interface PostingRejection
     public ClosedPeriodViolation {
       Objects.requireNonNull(closedThroughEffectiveDate, "closedThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
+    }
+  }
+
+  /** Rejection for an opening-balance posting that touches nominal income-statement accounts. */
+  record OpeningBalanceTouchesNominalAccount(AccountCode accountCode, AccountType accountType)
+      implements PostingRejection {
+    public OpeningBalanceTouchesNominalAccount {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(accountType, "accountType");
     }
   }
 

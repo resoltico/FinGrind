@@ -9,6 +9,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REGISTERED_C
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCOUNT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.currencyBalance;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -29,10 +30,12 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
@@ -247,7 +250,10 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
         new ChangesInEquityQuery(EFFECTIVE_DATE, EFFECTIVE_DATE);
     FinancialPositionView financialPositionView =
         new FinancialPositionView(
+            bookIdentity(),
             Optional.of(EFFECTIVE_DATE),
+            EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new FinancialPositionSectionView(
                     AccountType.ASSET,
@@ -256,13 +262,17 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
     IncomeStatementView incomeStatementView =
         new IncomeStatementView(
+            bookIdentity(),
             EFFECTIVE_DATE,
             EFFECTIVE_DATE,
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.NON_CLOSING_POSTINGS,
             List.of(
                 new IncomeStatementSectionView(
                     AccountType.REVENUE,
@@ -271,18 +281,24 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
     ChangesInEquityView changesInEquityView =
         new ChangesInEquityView(
+            bookIdentity(),
             EFFECTIVE_DATE,
             EFFECTIVE_DATE,
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new ChangesInEquityRowView(
                     "current-earnings",
                     "Current Earnings",
+                    Optional.empty(),
+                    Optional.empty(),
                     true,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
@@ -302,7 +318,10 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
         BookkeepingReadPublishedLanguageTranslator.fromPublished(changesInEquityQuery));
     assertEquals(
         new FinancialPositionReport(
+            bookIdentity(),
             Optional.of(EFFECTIVE_DATE),
+            EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new FinancialPositionSection(
                     AccountType.ASSET,
@@ -311,14 +330,18 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(financialPositionView));
     assertEquals(
         new IncomeStatementReport(
+            bookIdentity(),
             EFFECTIVE_DATE,
             EFFECTIVE_DATE,
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.NON_CLOSING_POSTINGS,
             List.of(
                 new IncomeStatementSection(
                     AccountType.REVENUE,
@@ -327,6 +350,7 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
@@ -334,12 +358,17 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
         BookkeepingReadPublishedLanguageTranslator.toPublished(incomeStatementView));
     assertEquals(
         new ChangesInEquityReport(
+            bookIdentity(),
             EFFECTIVE_DATE,
             EFFECTIVE_DATE,
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new ChangesInEquityRow(
                     "current-earnings",
                     "Current Earnings",
+                    Optional.empty(),
+                    Optional.empty(),
                     true,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),

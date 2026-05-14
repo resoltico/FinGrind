@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -37,7 +38,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 /** Execution seam for routing CLI commands through the selected book adapter. */
 interface CliBookWorkflow {
   /** Opens the selected book and installs the canonical FinGrind schema when possible. */
-  ContractDecision<OpenBookResult> openBook(BookAccess bookAccess);
+  ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command);
 
   /** Rotates the passphrase that protects one existing book file. */
   ContractDecision<RekeyBookResult> rekeyBook(

@@ -32,10 +32,11 @@ final class CliAccountPageOutputRenderer {
                         List.of(
                             account.accountCode().value(),
                             account.accountName().value(),
-                            account.accountType().wireValue(),
-                            account.accountRole().wireValue(),
-                            account.normalBalance().wireValue(),
-                            Boolean.toString(account.active()),
+                            CliQueryOutputFormatter.displayLineTypeLabel(account.accountType()),
+                            CliQueryOutputFormatter.displayAccountRoleLabel(account.accountRole()),
+                            CliQueryOutputFormatter.displayNormalBalanceLabel(
+                                account.normalBalance()),
+                            CliQueryOutputFormatter.displayBooleanLabel(account.active()),
                             account.declaredAt().toString()))
                 .toList());
     return CliTextFormat.renderTitledBlock(

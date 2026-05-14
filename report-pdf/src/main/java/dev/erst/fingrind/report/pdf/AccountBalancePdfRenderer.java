@@ -15,6 +15,8 @@ final class AccountBalancePdfRenderer {
         List.of(
             List.of("Account", snapshot.account().accountCode().value()),
             List.of("Name", snapshot.account().accountName().value()),
+            List.of("Account type", snapshot.account().accountType().wireValue()),
+            List.of("Account role", snapshot.account().accountRole().wireValue()),
             List.of("Normal balance", snapshot.account().normalBalance().wireValue()),
             List.of("Active", Boolean.toString(snapshot.account().active())),
             List.of(

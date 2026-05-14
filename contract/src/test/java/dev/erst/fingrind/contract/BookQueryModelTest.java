@@ -325,7 +325,8 @@ class BookQueryModelTest {
         IllegalArgumentException.class,
         () -> new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 0, -1, 1));
     assertThrows(
-        NullPointerException.class, () -> new BookInspection.Initialized(1, 1, 1, nullOf()));
+        NullPointerException.class,
+        () -> new BookInspection.Initialized(1, 1, 1, nullOf(), ContractFixtures.bookIdentity()));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
   }
 

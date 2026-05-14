@@ -38,6 +38,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             : "";
     return """
             {
+              "postingKind": "STANDARD",
               "effectiveDate": "2026-04-07",
               "lines": [
                 {
@@ -68,6 +69,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
   static String validLegacyCorrectionRequestJson() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -109,7 +111,12 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare",

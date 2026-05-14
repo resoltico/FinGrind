@@ -8,6 +8,10 @@ die() {
     exit 1
 }
 
+note() {
+    printf 'jazzer replay wrapper check: %s\n' "$1"
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -68,6 +72,7 @@ readonly missing_file_path="${tmp_dir}/missing-input.bin"
 readonly missing_parent_file_path="${tmp_dir}/missing-parent/input.bin"
 readonly resolved_missing_file_path="$(cd "${tmp_dir}" && pwd -P)/$(basename "${missing_file_path}")"
 
+note 'unknown-target fast-fail'
 set +e
 output="$("${wrapper}" missing-target "${input_path}" 2>&1)"
 status=$?
@@ -79,6 +84,7 @@ set -e
 [[ "${output}" != *'Task :'* ]] || die "replay wrapper leaked Gradle task output for an unknown target"
 [[ "${output}" != *'BUILD FAILED'* ]] || die "replay wrapper leaked Gradle failure output for an unknown target"
 
+note 'missing-file fast-fail'
 set +e
 missing_file_output="$("${wrapper}" cli-request "${missing_file_path}" --json 2>&1)"
 missing_file_status=$?
@@ -92,6 +98,7 @@ set -e
 [[ "${missing_file_output}" != *'Task :'* ]] || die \
     "replay wrapper leaked Gradle task output for a missing file"
 
+note 'missing-parent fast-fail'
 set +e
 missing_parent_output="$("${wrapper}" cli-request "${missing_parent_file_path}" --json 2>&1)"
 missing_parent_status=$?
@@ -106,6 +113,7 @@ set -e
 [[ "${missing_parent_output}" != *'Task :'* ]] || die \
     "replay wrapper leaked Gradle task output for a missing parent directory"
 
+note 'valid replay json path'
 set +e
 valid_replay_output="$("${wrapper}" cli-request "${input_path}" --json --console=plain 2>&1)"
 valid_replay_status=$?
@@ -124,6 +132,7 @@ import sys
 json.loads(sys.argv[1])
 PY
 
+note 'list-findings json path'
 set +e
 list_findings_output="$("${list_findings_wrapper}" cli-request --json --console=plain 2>&1)"
 list_findings_status=$?
@@ -142,6 +151,7 @@ if not isinstance(payload, list):
     raise SystemExit("list-findings JSON payload was not an array")
 PY
 
+note 'list-findings plain path'
 set +e
 plain_list_findings_output="$("${list_findings_wrapper}" cli-request --console=plain 2>&1)"
 plain_list_findings_status=$?
@@ -151,6 +161,7 @@ set -e
 [[ "${plain_list_findings_output}" != *'Task :clean'* ]] || die \
     "list-findings wrapper unexpectedly cleaned the nested build before read-only classification"
 
+note 'inactive-target rejection path'
 set +e
 inactive_target_output="$("${list_findings_wrapper}" regression --json --console=plain 2>&1)"
 inactive_target_status=$?
@@ -180,6 +191,7 @@ lock_holder_pid=$!
 wait_for_published_lock_owner "${lock_fixture_pid_file}" "${lock_holder_pid}" || die \
     "failed to publish the repo verification lock fixture for replay-wrapper regression"
 
+note 'repo lock conflict for replay wrapper'
 set +e
 lock_conflict_output="$(
     lock_dir="${lock_fixture_dir}" \
@@ -198,6 +210,7 @@ set -e
 [[ "${lock_conflict_output}" != *'Task :'* ]] || die \
     "replay wrapper leaked Gradle task output during a lock conflict"
 
+note 'repo lock conflict for fuzz-all wrapper'
 set +e
 fuzz_all_lock_output="$(
     lock_dir="${lock_fixture_dir}" \

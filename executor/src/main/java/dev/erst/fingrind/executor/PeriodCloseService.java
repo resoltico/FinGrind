@@ -26,6 +26,7 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -43,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class PeriodCloseService {
   private static final ActorId PERIOD_CLOSE_ACTOR_ID = new ActorId("system:periodClose");
   private static final ActorType PERIOD_CLOSE_ACTOR_TYPE = ActorType.SYSTEM;
-  private static final SourceChannel PERIOD_CLOSE_SOURCE_CHANNEL = SourceChannel.CLI;
+  private static final SourceChannel PERIOD_CLOSE_SOURCE_CHANNEL = SourceChannel.SYSTEM;
   private static final String PERIOD_CLOSE_REQUEST_TOKEN = "periodClose";
 
   private final BookStore bookStore;
@@ -59,23 +60,29 @@ public final class PeriodCloseService {
   }
 
   /** Closes one contiguous reporting period using generated retained-earnings closing postings. */
-  public PeriodCloseOutcome closePeriod(ReportingPeriod reportingPeriod) {
+  public PeriodCloseOutcome closePeriod(
+      ReportingPeriod reportingPeriod, AccountCode retainedEarningsAccountCode) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    if (!bookStore.inspectBook().allowsInitializedWorkflow()) {
+    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    BookLifecycleInspection inspection = bookStore.inspectBook();
+    if (!inspection.allowsInitializedWorkflow()) {
       return new PeriodCloseOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }
+    BookLifecycleInspection.Initialized initialized =
+        (BookLifecycleInspection.Initialized) inspection;
 
     List<RegisteredAccount> accounts = bookStore.allAccounts();
-    Optional<RegisteredAccount> retainedEarningsAccount = retainedEarningsAccount(accounts);
+    Optional<RegisteredAccount> retainedEarningsAccount =
+        retainedEarningsAccount(accounts, retainedEarningsAccountCode);
     Optional<BookkeepingAdministrationRejection> retainedEarningsRejection =
-        retainedEarningsRejection(retainedEarningsAccount);
+        retainedEarningsRejection(retainedEarningsAccountCode, retainedEarningsAccount);
     if (retainedEarningsRejection.isPresent()) {
       return new PeriodCloseOutcome.Rejected(retainedEarningsRejection.orElseThrow());
     }
 
     Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
-        closeHorizonRejection(reportingPeriod);
+        closeHorizonRejection(reportingPeriod, initialized.bookIdentity());
     if (closeHorizonRejection.isPresent()) {
       return new PeriodCloseOutcome.Rejected(closeHorizonRejection.orElseThrow());
     }
@@ -94,27 +101,28 @@ public final class PeriodCloseService {
         postingIdGenerator);
   }
 
-  private Optional<RegisteredAccount> retainedEarningsAccount(List<RegisteredAccount> accounts) {
+  private Optional<RegisteredAccount> retainedEarningsAccount(
+      List<RegisteredAccount> accounts, AccountCode retainedEarningsAccountCode) {
     Objects.requireNonNull(accounts, "accounts");
-    List<RegisteredAccount> retainedEarningsAccounts =
-        accounts.stream()
-            .filter(account -> account.accountRole() == AccountRole.RETAINED_EARNINGS)
-            .sorted(Comparator.comparing(account -> account.accountCode().value()))
-            .toList();
-    if (retainedEarningsAccounts.isEmpty()) {
-      return Optional.empty();
-    }
-    if (retainedEarningsAccounts.size() > 1) {
-      throw new IllegalStateException(
-          "Retained-earnings account lookup returned more than one account.");
-    }
-    return Optional.of(retainedEarningsAccounts.getFirst());
+    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    return accounts.stream()
+        .filter(account -> account.accountCode().equals(retainedEarningsAccountCode))
+        .findFirst();
   }
 
   private Optional<BookkeepingAdministrationRejection> retainedEarningsRejection(
+      AccountCode retainedEarningsAccountCode,
       Optional<RegisteredAccount> retainedEarningsAccount) {
+    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
     if (retainedEarningsAccount.isEmpty()) {
-      return Optional.of(new BookkeepingAdministrationRejection.RetainedEarningsAccountMissing());
+      return Optional.of(
+          new BookkeepingAdministrationRejection.RetainedEarningsAccountMissing(
+              retainedEarningsAccountCode));
+    }
+    if (retainedEarningsAccount.orElseThrow().accountRole() != AccountRole.RETAINED_EARNINGS) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
+              retainedEarningsAccountCode, retainedEarningsAccount.orElseThrow().accountRole()));
     }
     if (!retainedEarningsAccount.orElseThrow().active()) {
       return Optional.of(
@@ -125,7 +133,24 @@ public final class PeriodCloseService {
   }
 
   private Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
-      ReportingPeriod reportingPeriod) {
+      ReportingPeriod reportingPeriod, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+    java.time.LocalDate currentUtcDate =
+        clock.instant().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+    if (reportingPeriod.effectiveDateTo().isAfter(currentUtcDate)) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.PeriodCloseFutureDate(
+              reportingPeriod.effectiveDateTo()));
+    }
+    if (!bookIdentity
+        .fiscalYearStart()
+        .containsSingleFiscalYear(
+            reportingPeriod.effectiveDateFrom(), reportingPeriod.effectiveDateTo())) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+              reportingPeriod.effectiveDateFrom(),
+              reportingPeriod.effectiveDateTo(),
+              bookIdentity.fiscalYearStart()));
+    }
     return bookStore
         .closedThroughEffectiveDate()
         .map(closedThrough -> closedThrough.plusDays(1))

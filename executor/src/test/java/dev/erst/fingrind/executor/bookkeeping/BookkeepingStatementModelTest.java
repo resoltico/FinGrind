@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,10 +12,12 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
@@ -79,6 +82,15 @@ class BookkeepingStatementModelTest {
   @Test
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
+        AccountRole.ORDINARY,
+        new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
+                new AccountCode("3200"), AccountRole.ORDINARY)
+            .actualAccountRole());
+    assertEquals(
+        LocalDate.parse("2026-05-13"),
+        new BookkeepingAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-05-13"))
+            .attemptedEffectiveDateTo());
+    assertEquals(
         "accountCode",
         assertThrows(
                 NullPointerException.class,
@@ -110,6 +122,99 @@ class BookkeepingStatementModelTest {
                     new BookkeepingAdministrationRejection.PeriodCloseMustStartAt(
                         nullOf(LocalDate.class)))
             .getMessage());
+    assertEquals(
+        "actualAccountRole",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
+                        new AccountCode("3200"), nullOf(AccountRole.class)))
+            .getMessage());
+    assertEquals(
+        "attemptedEffectiveDateTo",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingAdministrationRejection.PeriodCloseFutureDate(
+                        nullOf(LocalDate.class)))
+            .getMessage());
+  }
+
+  @Test
+  void postingRejectionsAndAccountTotals_validateTheirMandatoryFieldsAndProjection() {
+    RegisteredAccount assetAccount =
+        new RegisteredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            true,
+            FIXED_INSTANT);
+    AccountCurrencyTotals totals =
+        new AccountCurrencyTotals(
+            assetAccount, dev.erst.fingrind.core.CurrencyUnit.of("EUR"), 10L, 4L);
+
+    assertEquals(currencyBalance("0.10", "0.04", "0.06", BalanceSide.DEBIT), totals.balance());
+    assertEquals(
+        AccountType.REVENUE,
+        new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+                new AccountCode("4000"), AccountType.REVENUE)
+            .accountType());
+    assertEquals(
+        dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+        new BookkeepingPostingRejection.BookFunctionalCurrencyMismatch(
+                dev.erst.fingrind.core.CurrencyUnit.of("USD"),
+                dev.erst.fingrind.core.CurrencyUnit.of("EUR"))
+            .attemptedCurrency());
+    assertEquals(
+        PostingKind.PERIOD_CLOSE,
+        new BookkeepingPostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)
+            .postingKind());
+
+    assertEquals(
+        "currencyUnit",
+        assertThrows(
+                NullPointerException.class,
+                () -> new AccountCurrencyTotals(assetAccount, nullOf(), 1L, 0L))
+            .getMessage());
+    assertEquals(
+        "debitTotalMinor must be non-negative.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new AccountCurrencyTotals(
+                        assetAccount, dev.erst.fingrind.core.CurrencyUnit.of("EUR"), -1L, 0L))
+            .getMessage());
+    assertEquals(
+        "creditTotalMinor must be non-negative.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new AccountCurrencyTotals(
+                        assetAccount, dev.erst.fingrind.core.CurrencyUnit.of("EUR"), 0L, -1L))
+            .getMessage());
+    assertEquals(
+        "accountType",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+                        new AccountCode("4000"), nullOf(AccountType.class)))
+            .getMessage());
+    assertEquals(
+        "attemptedCurrency",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingPostingRejection.BookFunctionalCurrencyMismatch(
+                        dev.erst.fingrind.core.CurrencyUnit.of("USD"), nullOf()))
+            .getMessage());
+    assertEquals(
+        "postingKind",
+        assertThrows(
+                NullPointerException.class,
+                () -> new BookkeepingPostingRejection.PostingKindReserved(nullOf()))
+            .getMessage());
   }
 
   @Test
@@ -124,6 +229,7 @@ class BookkeepingStatementModelTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
@@ -137,6 +243,7 @@ class BookkeepingStatementModelTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))));
@@ -146,6 +253,8 @@ class BookkeepingStatementModelTest {
                 new ChangesInEquityRowView(
                     "current-earnings",
                     "Current Earnings",
+                    Optional.empty(),
+                    Optional.empty(),
                     true,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
@@ -155,17 +264,27 @@ class BookkeepingStatementModelTest {
 
     FinancialPositionView financialPositionView =
         new FinancialPositionView(
-            Optional.of(LocalDate.parse("2026-05-12")), financialPositionSections);
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-05-12")),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-05-12")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            financialPositionSections);
     IncomeStatementView incomeStatementView =
         new IncomeStatementView(
+            bookIdentity(),
             LocalDate.parse("2026-05-01"),
             LocalDate.parse("2026-05-12"),
+            EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
             incomeSections,
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
     ChangesInEquityView changesInEquityView =
         new ChangesInEquityView(
+            bookIdentity(),
             LocalDate.parse("2026-05-01"),
             LocalDate.parse("2026-05-12"),
+            EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
+            PostingCoverage.ALL_POSTING_KINDS,
             equityRows,
             List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
@@ -212,16 +331,22 @@ class BookkeepingStatementModelTest {
         IllegalArgumentException.class,
         () ->
             new IncomeStatementView(
+                bookIdentity(),
                 LocalDate.parse("2026-05-12"),
                 LocalDate.parse("2026-05-01"),
+                EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
+                PostingCoverage.NON_CLOSING_POSTINGS,
                 List.of(),
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ChangesInEquityView(
+                bookIdentity(),
                 LocalDate.parse("2026-05-12"),
                 LocalDate.parse("2026-05-01"),
+                EffectiveDateRange.of(LocalDate.parse("2025-05-01"), LocalDate.parse("2025-05-12")),
+                PostingCoverage.ALL_POSTING_KINDS,
                 List.of(),
                 List.of(),
                 List.of(),
@@ -262,7 +387,7 @@ class BookkeepingStatementModelTest {
                 new dev.erst.fingrind.core.CausationId("cause-1"),
                 Optional.empty()),
             FIXED_INSTANT,
-            SourceChannel.CLI));
+            SourceChannel.SYSTEM));
   }
 
   private static CurrencyBalance currencyBalance(

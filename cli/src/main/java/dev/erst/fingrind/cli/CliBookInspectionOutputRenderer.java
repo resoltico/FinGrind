@@ -13,16 +13,17 @@ final class CliBookInspectionOutputRenderer {
     BookInspection.Status status = inspection.status();
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Book file", CliQueryOutputFormatter.absolutePath(bookFilePath)));
-    rows.add(List.of("State", status.wireValue()));
-    rows.add(List.of("Initialized", Boolean.toString(status.initialized())));
+    rows.add(List.of("State", displayStatus(status)));
+    rows.add(
+        List.of("Initialized", CliQueryOutputFormatter.displayBooleanLabel(status.initialized())));
     rows.add(
         List.of(
             "Compatible with current binary",
-            Boolean.toString(status.compatibleWithCurrentBinary())));
+            CliQueryOutputFormatter.displayBooleanLabel(status.compatibleWithCurrentBinary())));
     rows.add(
         List.of(
             CliOperationText.initializeWithOpenBookLabel(),
-            Boolean.toString(status.canInitializeWithOpenBook())));
+            CliQueryOutputFormatter.displayBooleanLabel(status.canInitializeWithOpenBook())));
     rows.add(
         List.of(
             "Supported book format version",
@@ -47,7 +48,23 @@ final class CliBookInspectionOutputRenderer {
               List.of(
                   "Detected book format version",
                   Integer.toString(initialized.detectedBookFormatVersion())),
+              List.of("Entity name", initialized.bookIdentity().entityName().value()),
+              List.of(
+                  "Functional currency", initialized.bookIdentity().functionalCurrency().code()),
+              List.of(
+                  "Fiscal year start", initialized.bookIdentity().fiscalYearStart().wireValue()),
               List.of("Initialized at", initialized.initializedAt().toString()));
+    };
+  }
+
+  private static String displayStatus(BookInspection.Status status) {
+    return switch (status) {
+      case MISSING -> "Missing";
+      case BLANK_SQLITE -> "Blank SQLite";
+      case FOREIGN_SQLITE -> "Foreign SQLite";
+      case UNSUPPORTED_FORMAT_VERSION -> "Unsupported format version";
+      case INCOMPLETE_FINGRIND -> "Incomplete FinGrind";
+      case INITIALIZED -> "Initialized";
     };
   }
 }

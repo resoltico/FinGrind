@@ -21,6 +21,21 @@
                 "kind": "text",
                 "name": "initializedAt",
                 "value": "2026-04-23T09:56:46.990298Z"
+              },
+              {
+                "kind": "text",
+                "name": "entityName",
+                "value": "Acme Studio"
+              },
+              {
+                "kind": "text",
+                "name": "functionalCurrency",
+                "value": "EUR"
+              },
+              {
+                "kind": "text",
+                "name": "fiscalYearStart",
+                "value": "01-01"
               }
             ]
           },

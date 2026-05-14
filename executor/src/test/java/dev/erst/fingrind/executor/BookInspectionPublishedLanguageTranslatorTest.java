@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedBookInspection;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -61,9 +63,9 @@ class BookInspectionPublishedLanguageTranslatorTest {
 
     Instant initializedAt = Instant.parse("2026-05-07T10:15:30Z");
     assertEquals(
-        new BookInspection.Initialized(9, 4, 5, initializedAt),
+        initializedBookInspection(9, 4, 5, initializedAt),
         BookInspectionPublishedLanguageTranslator.toPublished(
-            new BookLifecycleInspection.Initialized(9, 4, 5, initializedAt)));
+            initializedLifecycleInspection(9, 4, 5, initializedAt)));
   }
 
   @Test

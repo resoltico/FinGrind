@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -16,6 +17,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -71,6 +73,22 @@ class PdfValueFormatterTest {
   }
 
   @Test
+  void displayLineRoleFormatsDeclaredAndDerivedRoles() {
+    assertEquals("ORDINARY", PdfValueFormatter.displayLineRole(Optional.of(AccountRole.ORDINARY)));
+    assertEquals("(derived)", PdfValueFormatter.displayLineRole(Optional.empty()));
+  }
+
+  @Test
+  void displayPostingCoverageFormatsEveryVariant() {
+    assertEquals(
+        "All posting kinds",
+        PdfValueFormatter.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
+    assertEquals(
+        "Non-closing postings",
+        PdfValueFormatter.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
+  }
+
+  @Test
   void optionalDateFormatsNullAndConcreteDates() {
     assertEquals("(current)", PdfValueFormatter.optionalDate(null));
     assertEquals("2026-05-07", PdfValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
@@ -104,6 +122,20 @@ class PdfValueFormatterTest {
     assertEquals(
         "2026-05-01 to 2026-05-31",
         PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.Bounded(from, to)));
+  }
+
+  @Test
+  void comparativeRangeFormatsNoneAndBoundedComparatives() {
+    assertEquals("(none)", PdfValueFormatter.comparativeRange(EffectiveDateRange.unbounded()));
+    assertEquals(
+        "(start) to 2026-05-31",
+        PdfValueFormatter.comparativeRange(
+            new EffectiveDateRange.To(LocalDate.parse("2026-05-31"))));
+    assertEquals(
+        "2026-05-01 to 2026-05-31",
+        PdfValueFormatter.comparativeRange(
+            new EffectiveDateRange.Bounded(
+                LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-31"))));
   }
 
   @Test

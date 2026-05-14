@@ -12,12 +12,12 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
-  void accountBalance_validatesBookStateAndComputesCurrencyBuckets() throws Exception {
+  void accountBalance_validatesBookStateAndComputesFunctionalCurrencyBalances() throws Exception {
     Path missingBookPath = tempDirectory.resolve("account-balance-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
@@ -91,8 +91,8 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             LocalDate.parse("2026-04-10"),
             Instant.parse("2026-04-10T10:15:30Z"),
             List.of(
-                line("1000", JournalLine.EntrySide.DEBIT, "USD", "7.00"),
-                line("2000", JournalLine.EntrySide.CREDIT, "USD", "7.00")));
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "7.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "7.00")));
     CommittedPosting postingFive =
         postingFact(
             "posting-5",
@@ -100,8 +100,8 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             LocalDate.parse("2026-04-11"),
             Instant.parse("2026-04-11T10:15:30Z"),
             List.of(
-                line("1000", JournalLine.EntrySide.CREDIT, "USD", "7.00"),
-                line("2000", JournalLine.EntrySide.DEBIT, "USD", "7.00")));
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "7.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "7.00")));
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -122,9 +122,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.empty(),
-                  List.of(
-                      balance("EUR", "10.00", "12.00", "2.00", BalanceSide.CREDIT),
-                      balance("USD", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
+                  List.of(balance("EUR", "17.00", "19.00", "2.00", BalanceSide.CREDIT)))),
           postingFactStore
               .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null))
               .map(SqliteStoreTestIntrospectionSupport::published));
@@ -146,7 +144,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   publishedAccount(cashAccount),
                   Optional.of(LocalDate.parse("2026-04-10")),
                   Optional.of(LocalDate.parse("2026-04-11")),
-                  List.of(balance("USD", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
+                  List.of(balance("EUR", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
           postingFactStore
               .accountBalance(
                   new AccountBalanceCriteria(
@@ -199,7 +197,10 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
       assertEquals(
           new TrialBalanceReport(
+              bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-08")),
+              EffectiveDateRange.of(null, LocalDate.parse("2025-04-08")),
+              allPostingKinds(),
               List.of(
                   new TrialBalanceRow(
                       publishedAccount(cashAccount),
@@ -209,7 +210,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                       balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT)))),
           published(
               postingFactStore.trialBalance(
-                  new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));
+                  trialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));
       assertEquals(
           new PeriodSummaryReport(
               LocalDate.parse("2026-04-07"),

@@ -13,10 +13,16 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   sealed interface RejectionDetails
       permits AccountStateViolationsDetails,
           AccountTypeConflictDetails,
+          PostingKindDetails,
+          FunctionalCurrencyMismatchDetails,
+          OpeningBalanceNominalAccountDetails,
           PriorPostingDetails,
           AccountRoleConflictDetails,
           RetainedEarningsAccountDetails,
+          RetainedEarningsAccountRoleMismatchDetails,
           PeriodCloseStartDetails,
+          PeriodCloseFutureDateDetails,
+          PeriodCloseFiscalYearDetails,
           ClosedPeriodViolationDetails,
           UnknownAccountDetails,
           PostingNotFoundDetails,
@@ -65,9 +71,39 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
+  record PostingKindDetails(String postingKind) implements RejectionDetails {
+    public PostingKindDetails {
+      postingKind = requireText(postingKind, "postingKind");
+    }
+  }
+
+  record FunctionalCurrencyMismatchDetails(String functionalCurrency, String attemptedCurrency)
+      implements RejectionDetails {
+    public FunctionalCurrencyMismatchDetails {
+      functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
+      attemptedCurrency = requireText(attemptedCurrency, "attemptedCurrency");
+    }
+  }
+
+  record OpeningBalanceNominalAccountDetails(String accountCode, String accountType)
+      implements RejectionDetails {
+    public OpeningBalanceNominalAccountDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      accountType = requireText(accountType, "accountType");
+    }
+  }
+
   record RetainedEarningsAccountDetails(String accountCode) implements RejectionDetails {
     public RetainedEarningsAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
+    }
+  }
+
+  record RetainedEarningsAccountRoleMismatchDetails(String accountCode, String actualAccountRole)
+      implements RejectionDetails {
+    public RetainedEarningsAccountRoleMismatchDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      actualAccountRole = requireText(actualAccountRole, "actualAccountRole");
     }
   }
 
@@ -75,6 +111,23 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     public PeriodCloseStartDetails {
       requiredEffectiveDateFrom =
           requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
+    }
+  }
+
+  record PeriodCloseFutureDateDetails(String attemptedEffectiveDateTo) implements RejectionDetails {
+    public PeriodCloseFutureDateDetails {
+      attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+    }
+  }
+
+  record PeriodCloseFiscalYearDetails(
+      String attemptedEffectiveDateFrom, String attemptedEffectiveDateTo, String fiscalYearStart)
+      implements RejectionDetails {
+    public PeriodCloseFiscalYearDetails {
+      attemptedEffectiveDateFrom =
+          requireText(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
+      attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+      fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
     }
   }
 

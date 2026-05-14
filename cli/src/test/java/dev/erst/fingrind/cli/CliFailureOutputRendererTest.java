@@ -83,11 +83,40 @@ class CliFailureOutputRendererTest {
         "Requested account type",
         "LIABILITY");
     assertRenderedRejection(
+        new CliRejectionJsonModels.PostingKindDetails("opening-balance"),
+        "Posting kind",
+        "opening-balance");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails("EUR", "USD"),
+        "Functional currency",
+        "Attempted currency",
+        "USD");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails("4000", "REVENUE"),
+        "Account code",
+        "4000",
+        "Account type",
+        "REVENUE");
+    assertRenderedRejection(
         new CliRejectionJsonModels.RetainedEarningsAccountDetails("3200"), "Account code", "3200");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails("3200", "ORDINARY"),
+        "Actual account role",
+        "ORDINARY");
     assertRenderedRejection(
         new CliRejectionJsonModels.PeriodCloseStartDetails("2026-04-01"),
         "Required start date",
         "2026-04-01");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.PeriodCloseFutureDateDetails("2026-05-01"),
+        "Attempted end date",
+        "2026-05-01");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.PeriodCloseFiscalYearDetails(
+            "2026-12-15", "2027-01-15", "01-01"),
+        "Attempted start date",
+        "Attempted end date",
+        "Fiscal year start");
     assertRenderedRejection(
         new CliRejectionJsonModels.ClosedPeriodViolationDetails("2026-04-30", "2026-05-01"),
         "Closed through",

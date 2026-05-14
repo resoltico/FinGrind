@@ -1,4 +1,5 @@
 {
+  "postingKind" : "STANDARD",
   "effectiveDate" : "replace-before-commit-effective-date",
   "lines" : [ {
     "accountCode" : "1000",

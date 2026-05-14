@@ -27,6 +27,9 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
                 repositoryRoot().resolve("docs/USER_QUICK_START.md"), StandardCharsets.UTF_8));
     assertTrue(guide.contains("replace-before-commit-*"));
     assertTrue(guide.contains("same book is rejected"));
+    assertTrue(guide.contains("--entity-name"));
+    assertTrue(guide.contains("--functional-currency"));
+    assertTrue(guide.contains("--fiscal-year-start"));
     assertTrue(guide.contains("--request-file ./declare-account-cash.json"));
     assertTrue(guide.contains("--request-file ./declare-account-revenue.json"));
     Path workspace = tempDirectory.resolve("quick-start");
@@ -53,14 +56,11 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertEquals("ok", generatedKey.path("status").stringValue());
     assertGeneratedKeyFileIsSecure(
         bookKeyFile, generatedKey.path("payload").path("permissions").stringValue());
-    JsonNode openBook =
-        runJsonCommand(
-            "open-book",
-            "--book-file",
-            bookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString());
+    JsonNode openBook = runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     assertEquals("ok", openBook.path("status").stringValue());
+    assertEquals(
+        "Acme Studio",
+        openBook.path("payload").path("bookIdentity").path("entityName").stringValue());
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals(
         "replace-before-commit-effective-date",
@@ -110,7 +110,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             requestFile.toString());
-    assertEquals("preflight-accepted", preflight.path("status").stringValue());
+    assertEquals("ok", preflight.path("status").stringValue());
     JsonNode committed =
         runJsonCommand(
             "post-entry",
@@ -120,7 +120,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             requestFile.toString());
-    assertEquals("committed", committed.path("status").stringValue());
+    assertEquals("ok", committed.path("status").stringValue());
     String trialBalance =
         runPlainCommand(
             "trial-balance",
@@ -147,6 +147,9 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
                 repositoryRoot().resolve("docs/USER_REQUESTS.md"), StandardCharsets.UTF_8));
     assertTrue(examplesGuide.contains("replace-before-commit-*"));
     assertTrue(examplesGuide.contains("single-use per book"));
+    assertTrue(examplesGuide.contains("--entity-name"));
+    assertTrue(examplesGuide.contains("--functional-currency"));
+    assertTrue(examplesGuide.contains("--fiscal-year-start"));
     assertTrue(requestsGuide.contains("replace-before-commit-*"));
     assertTrue(requestsGuide.contains("single-use per book"));
     assertFalse(
@@ -164,8 +167,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     Path queryPlanBookFile = workspace.resolve("acme-plan-query.sqlite");
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
     runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
-    runJsonCommand(
-        "open-book", "--book-file", bookFile.toString(), "--book-key-file", bookKeyFile.toString());
+    runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(
         "declare-account",
         "--book-file",
@@ -191,7 +193,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             postingRequestFile.toString());
-    String postingId = committed.path("postingId").stringValue();
+    String postingId = committed.path("payload").path("postingId").stringValue();
     assertFalse(postingId.isBlank());
     JsonNode listing =
         runJsonCommand(
@@ -230,7 +232,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             planRequestFile.toString());
-    assertEquals("plan-committed", planResult.path("status").stringValue());
+    assertEquals("ok", planResult.path("status").stringValue());
     JsonNode queryPlanResult =
         runJsonCommand(
             "execute-plan",
@@ -240,7 +242,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             queryPlanRequestFile.toString());
-    assertEquals("plan-committed", queryPlanResult.path("status").stringValue());
+    assertEquals("ok", queryPlanResult.path("status").stringValue());
     JsonNode queryFacts =
         queryPlanResult.path("payload").path("journal").path("steps").get(4).path("facts");
     assertEquals("count", queryFacts.get(0).path("name").stringValue());

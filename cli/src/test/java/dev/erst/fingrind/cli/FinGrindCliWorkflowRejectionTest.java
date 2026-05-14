@@ -26,6 +26,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -65,7 +66,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -134,14 +135,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
                 workflow)
-            .run(
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+            .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
         2,
         cli(
@@ -234,7 +228,8 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     CliBookWorkflow workflow =
         new CliBookWorkflow() {
           @Override
-          public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+          public ContractDecision<OpenBookResult> openBook(
+              BookAccess bookAccess, OpenBookCommand command) {
             throw new AssertionError("openBook should not be called in this test");
           }
 
@@ -259,7 +254,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
           @Override
           public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
             return accepted(
-                new BookInspection.Initialized(
+                initializedBookInspection(
                     1_179_079_236, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
           }
 

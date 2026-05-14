@@ -13,9 +13,13 @@ final class IncomeStatementPdfRenderer {
     Objects.requireNonNull(report, "report");
     pageWriter.writeKeyValueTable(
         "Parameters",
-        List.of(
-            List.of("Effective date from", report.effectiveDateFrom().toString()),
-            List.of("Effective date to", report.effectiveDateTo().toString())));
+        PdfStatementMetadataRows.statementParameters(
+            report.bookIdentity(),
+            report.comparativeEffectiveDateRange(),
+            report.postingCoverage(),
+            List.of(
+                List.of("Effective date from", report.effectiveDateFrom().toString()),
+                List.of("Effective date to", report.effectiveDateTo().toString()))));
     for (var section : report.sections()) {
       String sectionTitle = PdfValueFormatter.displayAccountTypeSection(section.accountType());
       pageWriter.writeTable(
@@ -23,6 +27,7 @@ final class IncomeStatementPdfRenderer {
           List.of(
               new PdfTableColumn("Line code", 1.0f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Line name", 1.7f, PdfTableColumn.CellAlignment.LEFT),
+              new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Kind", 0.8f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
               new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
@@ -35,6 +40,7 @@ final class IncomeStatementPdfRenderer {
                       List.of(
                           row.lineCode(),
                           row.lineName(),
+                          PdfValueFormatter.displayLineRole(row.lineRole()),
                           PdfValueFormatter.displayRowKind(row.synthetic()),
                           row.movement().netAmount().currencyUnit().code(),
                           PdfValueFormatter.displayMoney(row.movement().debitTotal()),

@@ -5,7 +5,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -33,6 +37,66 @@ final class CliArgumentValueParser {
       return LocalDate.parse(rawValue);
     } catch (java.time.DateTimeException exception) {
       throw invalid(optionName, "Option must be an ISO-8601 local date: " + optionName, exception);
+    }
+  }
+
+  static CurrencyUnit parseCurrencyUnitOption(String rawValue, String optionName) {
+    try {
+      return CurrencyUnit.of(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(),
+              "Option must be one supported ISO 4217 currency code: " + optionName),
+          exception);
+    }
+  }
+
+  static BookEntityName parseBookEntityNameOption(String rawValue, String optionName) {
+    try {
+      return new BookEntityName(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(exception.getMessage(), "Invalid book entity name."),
+          exception);
+    }
+  }
+
+  static FiscalYearStart parseFiscalYearStartOption(String rawValue, String optionName) {
+    try {
+      return FiscalYearStart.parse(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(), "Option must use MM-DD for " + optionName + "."),
+          exception);
+    }
+  }
+
+  static PostingCoverage requirePostingCoverage(
+      @Nullable PostingCoverage currentPostingCoverage, ListIterator<String> argumentIterator) {
+    if (currentPostingCoverage != null) {
+      throw invalid(
+          ProtocolOptions.POSTING_COVERAGE,
+          "Duplicate argument: " + ProtocolOptions.POSTING_COVERAGE);
+    }
+    String rawValue = requireValue(argumentIterator, ProtocolOptions.POSTING_COVERAGE);
+    try {
+      return PostingCoverage.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          ProtocolOptions.POSTING_COVERAGE,
+          "Unsupported posting coverage for "
+              + ProtocolOptions.POSTING_COVERAGE
+              + ": "
+              + rawValue
+              + ". Accepted values: "
+              + String.join(", ", PostingCoverage.wireValues())
+              + ".",
+          exception);
     }
   }
 
@@ -162,11 +226,11 @@ final class CliArgumentValueParser {
   }
 
   static OutputMode resolvedOutputMode(@Nullable OutputMode outputMode) {
-    return outputMode == null ? OutputMode.JSON : outputMode;
+    return CliOutputModeDefaults.resolved(outputMode);
   }
 
   static OutputMode resolvedDiscoveryOutputMode(@Nullable OutputMode outputMode) {
-    return outputMode == null ? OutputMode.HUMAN : outputMode;
+    return resolvedOutputMode(outputMode);
   }
 
   static CliCommand.ReportOutput resolvedReportOutput(

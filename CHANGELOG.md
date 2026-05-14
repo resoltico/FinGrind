@@ -5,12 +5,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-05-14
+
+### Changed
+
+- Bumped the included Gradle build-logic compiler pin to Kotlin `2.4.0-RC` and moved the
+  Java-26-ready JaCoCo snapshot pin forward to `0.8.15-20260513.074320-106`, with the matching
+  developer-build references updated to the same live coordinates.
+- Hardened the current bookkeeping foundation around explicit book identity and reporting scope:
+  `open-book` now requires entity name, functional currency, and fiscal-year start, the same
+  identity is now returned by `open-book` and `inspect-book`, the canonical AI-agent
+  `print-plan-template` scaffold now carries the nested `openBook` shape explicitly, and the
+  command docs, quick-start guides, examples, and bundle README now match that live contract.
+- Tightened the current reporting and provenance model for close-period and statement surfaces:
+  period-close now records system-generated provenance with a non-CLI source channel, future-dated
+  closes reject explicitly, close ranges may not cross the configured fiscal-year boundary,
+  trial-balance/report contracts now expose whether closing entries are included, every statement
+  report now carries book identity plus one comparative effective-date range, and the durable
+  protected-book format is promoted to version `4` for the expanded lifecycle, identity, and
+  opening-balance model.
+- Promoted the caller-authored posting surface from one implicit journal family to one explicit
+  doctrinal choice: direct posting requests and AI plan templates now declare `postingKind`,
+  FinGrind accepts `STANDARD` and `OPENING_BALANCE` for caller-authored requests, opening-balance
+  postings may seed only asset, liability, or equity accounts, every posting must match the
+  selected book functional currency, and close-period now targets one explicit retained-earnings
+  account instead of relying on a singleton retained-earnings bucket in the schema.
+- Declared FinGrind's current accounting-standards baseline explicitly: the repo now names a
+  country-agnostic bookkeeping-core target informed by the IFRS conceptual layer and functional
+  currency doctrine, while also stating that full cash-flow, OCI, note/disclosure, and
+  multi-currency translation layers remain intentionally out of scope for the current core line.
+
 ### Fixed
 
+- Tightened the root README opening prose so the front page now explains FinGrind in direct,
+  concrete bookkeeping language instead of relying on metaphor-heavy wording.
+- Tightened the packaged CLI transport contract so every successful JSON command now uses one
+  top-level `status: "ok"` envelope instead of mixing `ok`, "preflight-accepted", "committed",
+  and "plan-committed", while the operation-specific meaning now lives consistently inside the
+  payload. The same cleanup also corrected the published request/response examples, account-ledger
+  CSV example, release-smoke verifiers, and operator docs to the live hard-break contract.
 - Repaired the operator-side public container verifier so release publication now checks the
   current human `trial-balance` surface, including the first-class `Account type` and
   `Account role` columns, and aligned the mock-backed shell regression harness to the same
   mounted-book statement contract.
+- Corrected contra nominal-account arithmetic so contra revenue and contra expense balances now
+  offset profit and loss in the right direction, period-close generated entries remain balanced
+  when contra nominal accounts are present, financial-position current-earnings projection now
+  respects the same accounting doctrine, and the direct doctrine tests now assert the corrected
+  sign rules instead of teaching the inverted behavior.
+- Realigned the Jazzer operator and replay proof floor to the current hard-break bookkeeping
+  contract: committed request fixtures now include the explicit `postingKind` field, the shared
+  replay helpers open books with matching functional currency, the round-trip/workflow coverage
+  harnesses speak the current `open-book` and trial-balance/report grammar, and the seed-audit
+  / replay tool tests now verify the live operator surface instead of retired request shapes;
+  the deterministic replay fixtures now use the required nested `openBook` payload everywhere,
+  the SQLite and replay lifecycle status mappings now share one rejection-to-status owner, and
+  the full Jazzer wrapper gate is back in sync with the current bookkeeping contract.
+- Brought the release and bundle acceptance workflow onto the same explicit book-identity contract
+  as the shipped CLI: the shared release-smoke runner now passes `--entity-name`,
+  `--functional-currency`, and `--fiscal-year-start` to `open-book`, and it verifies that
+  initialized books echo the same identity back in the public JSON response.
+- Updated the SQLite schema-document regression harness to track the live protected-book format:
+  the renderer regression now asserts the current canonical `user_version = 4` body instead of
+  the retired version-2 snapshot, so release-surface verification checks the real schema line
+  rather than failing on an obsolete alpha-era expectation.
+- Hardened the Stage 5 release-surface proof workflow itself: the canonical release-surface
+  runner now announces each subcheck before it starts, and the long Jazzer replay/seed wrapper
+  regressions now emit deterministic progress checkpoints so healthy verification runs do not get
+  killed as false stalls by the root-gate watchdog.
+- Brought the source-checkout launcher regression onto the live initialization contract: the
+  launcher and direct-Java smoke path now open books with explicit entity name, functional
+  currency, and fiscal-year start, and the regression proves that both launcher surfaces echo the
+  same `bookIdentity` back instead of only checking for a generic ok status. The same verifier now
+  requests human `help` output explicitly when it is asserting human guidance, so the regression
+  matches the shipped interactive-vs-redirected stdout contract instead of relying on a stale
+  pre-hard-break default.
 
 ## [0.35.0] - 2026-05-13
 
@@ -1624,7 +1693,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.36.0...HEAD
+[0.36.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.36.0
 [0.35.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.35.0
 [0.34.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.34.0
 [0.33.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.33.0

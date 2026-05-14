@@ -14,10 +14,12 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
+import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
@@ -25,6 +27,7 @@ import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -66,7 +69,11 @@ final class CliLedgerPlanParser {
             LedgerStepKind::fromWireValue);
     rejectUnexpectedStepFields(stepNode, kind);
     return switch (kind) {
-      case OPEN_BOOK -> new LedgerStep.OpenBook(stepId);
+      case OPEN_BOOK ->
+          new LedgerStep.OpenBook(
+              stepId,
+              readOpenBookCommand(
+                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.OPEN_BOOK)));
       case DECLARE_ACCOUNT ->
           new LedgerStep.DeclareAccount(
               stepId,
@@ -115,6 +122,13 @@ final class CliLedgerPlanParser {
     if (unexpectedFields.isEmpty()) {
       return;
     }
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.OPEN_BOOK,
+        CliJsonRequestSchemas.OPEN_BOOK_FIELDS,
+        LedgerStepKind.OPEN_BOOK);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,
@@ -176,6 +190,21 @@ final class CliLedgerPlanParser {
             + " for "
             + actualKind.wireValue()
             + " ledger plan steps.");
+  }
+
+  private static OpenBookCommand readOpenBookCommand(ObjectNode openBookNode) {
+    rejectUnexpectedFields(openBookNode, "openBook", CliJsonRequestSchemas.OPEN_BOOK_FIELDS);
+    return new OpenBookCommand(
+        new BookIdentity(
+            CliArgumentValueParser.parseBookEntityNameOption(
+                requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
+                "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
+            CliArgumentValueParser.parseCurrencyUnitOption(
+                requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
+                "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
+            CliArgumentValueParser.parseFiscalYearStartOption(
+                requiredText(openBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
+                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {

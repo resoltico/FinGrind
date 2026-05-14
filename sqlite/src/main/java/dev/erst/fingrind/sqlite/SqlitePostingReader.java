@@ -3,10 +3,13 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -71,6 +74,36 @@ final class SqlitePostingReader {
       }
     }
     return List.copyOf(postings);
+  }
+
+  List<AccountCurrencyTotals> loadAccountTotals(
+      SqliteNativeDatabase activeDatabase,
+      EffectiveDateRange effectiveDateRange,
+      PostingCoverage postingCoverage) {
+    String sql = SqlitePostingSql.loadAccountTotals(effectiveDateRange, postingCoverage);
+    List<AccountCurrencyTotals> totals = new ArrayList<>();
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
+      int bindIndex = 1;
+      if (effectiveDateRange.effectiveDateFrom().isPresent()) {
+        statement.bindText(
+            bindIndex, effectiveDateRange.effectiveDateFrom().orElseThrow().toString());
+        bindIndex++;
+      }
+      if (effectiveDateRange.effectiveDateTo().isPresent()) {
+        statement.bindText(
+            bindIndex, effectiveDateRange.effectiveDateTo().orElseThrow().toString());
+      }
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
+        totals.add(
+            new AccountCurrencyTotals(
+                SqlitePostingMapper.registeredAccount(statement),
+                SqlitePersistedMoneyCodec.readCurrencyUnit(
+                    statement, SqlitePostingSql.COL_TOTAL_CURRENCY_CODE),
+                statement.columnLong(SqlitePostingSql.COL_TOTAL_DEBIT_MINOR),
+                statement.columnLong(SqlitePostingSql.COL_TOTAL_CREDIT_MINOR)));
+      }
+    }
+    return List.copyOf(totals);
   }
 
   private CommittedPosting loadPostingRow(

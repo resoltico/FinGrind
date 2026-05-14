@@ -33,28 +33,40 @@ final class ProtocolAdministrationOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.ENTITY_NAME + " <text>",
+                ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
+                ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Initialize a new book file with the canonical schema.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s EUR %s 01-01"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE)),
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.ENTITY_NAME,
+                            ProtocolOptions.FUNCTIONAL_CURRENCY,
+                            ProtocolOptions.FISCAL_YEAR_START)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s"
+                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.ENTITY_NAME,
+                            ProtocolOptions.FUNCTIONAL_CURRENCY,
+                            ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
                 ProtocolExampleStep.command(
-                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s"
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.ENTITY_NAME,
+                            ProtocolOptions.FUNCTIONAL_CURRENCY,
+                            ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.BOOK_PASSPHRASE_STDIN)))),
         ProtocolOperationDefinitions.operation(
             OperationId.REKEY_BOOK,
@@ -127,22 +139,24 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
                 ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
+                ProtocolOptions.RETAINED_EARNINGS_ACCOUNT + " <account-code>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
-            "Close one contiguous reporting period into the declared retained-earnings account.",
+            "Close one contiguous reporting period into one selected retained-earnings account.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Declare exactly one active retained-earnings account before running close-period. Use accountType EQUITY with accountRole RETAINED_EARNINGS."),
+                    "Declare at least one active retained-earnings account before running close-period. Use accountType EQUITY with accountRole RETAINED_EARNINGS, then choose the target with --retained-earnings-account."),
                 ProtocolExampleStep.note(
-                    "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon."),
+                    "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon and remain inside one fiscal year."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s 3200"
                         .formatted(
                             OperationId.CLOSE_PERIOD.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.EFFECTIVE_DATE_FROM,
-                            ProtocolOptions.EFFECTIVE_DATE_TO)))));
+                            ProtocolOptions.EFFECTIVE_DATE_TO,
+                            ProtocolOptions.RETAINED_EARNINGS_ACCOUNT)))));
   }
 }

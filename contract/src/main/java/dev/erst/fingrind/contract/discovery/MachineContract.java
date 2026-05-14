@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingKind;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -60,6 +61,8 @@ public final class MachineContract {
     Objects.requireNonNull(environment, "environment");
     @Nullable ProtocolOperation selectedOperation =
         commandTopic == null ? null : ProtocolCatalog.operation(commandTopic);
+    ContractRequestShapes.@Nullable RequestShapesDescriptor scopedRequestShapes =
+        requestShapesFor(selectedOperation);
     return new HelpDescriptor(
         identity.application(),
         identity.version(),
@@ -68,10 +71,10 @@ public final class MachineContract {
             ? ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList()
             : List.of(selectedOperation.usage()),
         MachineContractDomainDescriptors.bookModel(),
-        MachineContractRequestShapeDescriptors.requestShapes(),
-        requestTemplate(),
-        declareAccountTemplate(),
-        planTemplate(),
+        scopedRequestShapes,
+        postingRequestTemplateFor(selectedOperation),
+        declareAccountTemplateFor(selectedOperation),
+        ledgerPlanTemplateFor(selectedOperation),
         selectedOperation == null
             ? MachineContractDomainDescriptors.commandDescriptors()
             : MachineContractDomainDescriptors.commandDescriptors().stream()
@@ -120,6 +123,7 @@ public final class MachineContract {
   /** Builds the canonical minimal posting-request template descriptor. */
   public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
+        PostingKind.STANDARD,
         ScaffoldPlaceholders.EFFECTIVE_DATE,
         List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
@@ -148,10 +152,18 @@ public final class MachineContract {
         "plan-1",
         List.of(
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-                "initialize-book", LedgerStepKind.OPEN_BOOK, null, null, null, null, null),
+                "initialize-book",
+                LedgerStepKind.OPEN_BOOK,
+                new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+                null,
+                null,
+                null,
+                null,
+                null),
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "declare-cash",
                 LedgerStepKind.DECLARE_ACCOUNT,
+                null,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
                     "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),
@@ -162,6 +174,7 @@ public final class MachineContract {
                 "declare-revenue",
                 LedgerStepKind.DECLARE_ACCOUNT,
                 null,
+                null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
                     "2000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY),
                 null,
@@ -170,6 +183,7 @@ public final class MachineContract {
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "post-journal",
                 LedgerStepKind.POST_ENTRY,
+                null,
                 requestTemplate(),
                 null,
                 null,
@@ -178,6 +192,7 @@ public final class MachineContract {
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "assert-cash-balance",
                 LedgerStepKind.ASSERT,
+                null,
                 null,
                 null,
                 null,
@@ -224,7 +239,7 @@ public final class MachineContract {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --functional-currency EUR --fiscal-year-start 01-01"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
@@ -283,6 +298,54 @@ public final class MachineContract {
                         ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE),
                         paths.bookFile(),
                         paths.bookKeyFile()))));
+  }
+
+  private static ContractRequestShapes.@Nullable RequestShapesDescriptor requestShapesFor(
+      @Nullable ProtocolOperation selectedOperation) {
+    if (selectedOperation == null) {
+      return null;
+    }
+    ContractRequestShapes.RequestShapesDescriptor canonical =
+        MachineContractRequestShapeDescriptors.requestShapes();
+    return switch (selectedOperation.id()) {
+      case POST_ENTRY, PREFLIGHT_ENTRY ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              canonical.schemaDialect(), canonical.postEntry(), null, null);
+      case DECLARE_ACCOUNT ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              canonical.schemaDialect(), null, canonical.declareAccount(), null);
+      case EXECUTE_PLAN ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              canonical.schemaDialect(), null, null, canonical.ledgerPlan());
+      default -> null;
+    };
+  }
+
+  private static ContractTemplates.@Nullable PostingRequestTemplateDescriptor
+      postingRequestTemplateFor(@Nullable ProtocolOperation selectedOperation) {
+    if (selectedOperation == null) {
+      return null;
+    }
+    return switch (selectedOperation.id()) {
+      case POST_ENTRY, PREFLIGHT_ENTRY -> requestTemplate();
+      default -> null;
+    };
+  }
+
+  private static ContractTemplates.@Nullable DeclareAccountTemplateDescriptor
+      declareAccountTemplateFor(@Nullable ProtocolOperation selectedOperation) {
+    if (selectedOperation == null) {
+      return null;
+    }
+    return selectedOperation.id() == OperationId.DECLARE_ACCOUNT ? declareAccountTemplate() : null;
+  }
+
+  private static ContractTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
+      @Nullable ProtocolOperation selectedOperation) {
+    if (selectedOperation == null) {
+      return null;
+    }
+    return selectedOperation.id() == OperationId.EXECUTE_PLAN ? planTemplate() : null;
   }
 
   private static String introNote(WorkflowSurface surface) {

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -32,13 +32,15 @@ public sealed interface PostingLineage
 
 ```java
 public record PostEntryCommand(
+    PostingKind postingKind,
     JournalEntry journalEntry,
     PostingLineage postingLineage,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
 ```
 
-- Purpose: carry the write-boundary payload after CLI parsing and request validation
+- Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
+  caller-authored posting family
 - Money policy: journal lines arrive with exact `PositiveMoney` amounts whose currency, scale, and
   minor-unit representation have already been validated by the shared-kernel money model
 
@@ -115,8 +117,10 @@ public sealed interface BookkeepingPostingRejection
 public final class BookkeepingPublishedLanguageTranslator
 ```
 
-- `PostingAcceptancePolicy`: validates initialization, account state, duplicate idempotency,
-  reversal admissibility, and related bookkeeping rules against one `PostingValidationStore`
+- `PostingAcceptancePolicy`: validates initialization, caller-authored posting family,
+  functional-currency alignment, account state, duplicate idempotency, opening-balance
+  restrictions, reversal admissibility, and related bookkeeping rules against one
+  `PostingValidationStore`
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal

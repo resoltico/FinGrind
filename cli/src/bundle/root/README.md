@@ -27,7 +27,7 @@ ${unsupportedPublicBundleTargetsMarkdown}
 Quick start:
 1. Run `${bundleLauncherCommand} help`
 2. Run `${bundleLauncherCommand} generate-book-key-file --book-key-file ./entity.book-key`
-3. Run `${bundleLauncherCommand} open-book --book-file ./entity.sqlite --book-key-file ./entity.book-key`
+3. Run `${bundleLauncherCommand} open-book --book-file ./entity.sqlite --book-key-file ./entity.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01`
 4. Run `${bundleLauncherCommand} print-request-template > ./request.json`
 5. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry ...` and `${bundleLauncherCommand} post-entry ...`
 

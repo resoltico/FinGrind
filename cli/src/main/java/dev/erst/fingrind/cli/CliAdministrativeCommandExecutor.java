@@ -2,8 +2,10 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -36,9 +38,9 @@ final class CliAdministrativeCommandExecutor {
                     failure, outputMode, responseWriter));
   }
 
-  int runOpenBookCommand(BookAccess bookAccess, OutputMode outputMode) {
+  int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.openBook(bookAccess),
+        bookWorkflow.openBook(bookAccess, command),
         outputMode,
         result -> responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode),
         CliExecutionPolicy::exitCodeFor,
@@ -68,9 +70,13 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runClosePeriodCommand(
-      BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
+      BookAccess bookAccess,
+      ReportingPeriod reportingPeriod,
+      AccountCode retainedEarningsAccountCode,
+      OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.closePeriod(bookAccess, new ClosePeriodCommand(reportingPeriod)),
+        bookWorkflow.closePeriod(
+            bookAccess, new ClosePeriodCommand(reportingPeriod, retainedEarningsAccountCode)),
         outputMode,
         result -> responseWriter.writeClosePeriodResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,

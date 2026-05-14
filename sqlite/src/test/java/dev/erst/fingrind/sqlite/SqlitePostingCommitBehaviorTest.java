@@ -28,7 +28,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("account-rejections.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(
           rejected(
               accountStateViolations(
@@ -195,7 +195,8 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+              () ->
+                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(
           NullTestSupport.messageOf(exception).contains("Failed to create SQLite book directory."));
     }

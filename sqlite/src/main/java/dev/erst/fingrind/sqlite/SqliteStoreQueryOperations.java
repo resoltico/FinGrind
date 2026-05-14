@@ -3,7 +3,9 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -177,6 +179,20 @@ final class SqliteStoreQueryOperations {
                     SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE,
                     statement -> {})
                 .map(LocalDate::parse));
+  }
+
+  List<AccountCurrencyTotals> accountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+    lifecycle.ensureOpenSession();
+    EffectiveDateRange range = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    PostingCoverage requiredPostingCoverage =
+        Objects.requireNonNull(postingCoverage, "postingCoverage");
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            context
+                .postingReader()
+                .loadAccountTotals(activeDatabase, range, requiredPostingCoverage));
   }
 
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {

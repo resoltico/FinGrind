@@ -62,6 +62,21 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
           insertJournalLineRow(
               database, "posting-mixed-currency", 1, "2000", "CREDIT", "USD", 1000);
         });
+    assertIncompleteStateAfterCorruption(
+        "book-state-missing-entity-name.sqlite",
+        database ->
+            database.executeStatement(
+                """
+                delete from book_meta
+                where key = 'entity_name'
+                """));
+    assertIncompleteStateAfterCorruption(
+        "book-state-functional-currency-mismatch.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-usd", "idem-usd");
+          insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000);
+          insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 1000);
+        });
 
     Path invalidMoneyPath = tempDirectory.resolve("book-state-invalid-money.sqlite");
     initializeBookOnDisk(invalidMoneyPath);
