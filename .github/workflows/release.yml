@@ -194,17 +194,25 @@ jobs:
             --no-daemon \
             --console=plain
           )"
+          resolve_bundle_path() {
+            local label="$1"
+            local machine_prefix="$2"
+            local legacy_prefix="$3"
+            local resolved_path
+            resolved_path="$(
+              printf '%s\n' "${task_output}" | sed -n \
+                -e "s/^${machine_prefix}=//p" \
+                -e "s/^${legacy_prefix}//p" | tail -n 1
+            )"
+            [ -n "${resolved_path}" ] || {
+              echo "::error::bundleCliArchive did not report ${label}"
+              exit 1
+            }
+            printf '%s' "${resolved_path}"
+          }
           printf '%s\n' "${task_output}"
-          archive_path="$(printf '%s\n' "${task_output}" | sed -n 's/^FINGRIND_BUNDLE_ARCHIVE=//p' | tail -n 1)"
-          checksum_path="$(printf '%s\n' "${task_output}" | sed -n 's/^FINGRIND_BUNDLE_CHECKSUM=//p' | tail -n 1)"
-          [ -n "${archive_path}" ] || {
-            echo "::error::bundleCliArchive did not report FINGRIND_BUNDLE_ARCHIVE"
-            exit 1
-          }
-          [ -n "${checksum_path}" ] || {
-            echo "::error::bundleCliArchive did not report FINGRIND_BUNDLE_CHECKSUM"
-            exit 1
-          }
+          archive_path="$(resolve_bundle_path 'bundle archive path' 'FINGRIND_BUNDLE_ARCHIVE' 'FinGrind bundle archive: ')"
+          checksum_path="$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')"
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
@@ -213,6 +221,24 @@ jobs:
         id: windows-bundle-build
         shell: pwsh
         run: |
+          function Resolve-BundlePath {
+            param(
+              [string[]]$TaskOutputLines,
+              [string]$MachinePrefix,
+              [string]$LegacyPrefix,
+              [string]$Label
+            )
+            $line = $TaskOutputLines | Where-Object {
+              $_.StartsWith($MachinePrefix) -or $_.StartsWith($LegacyPrefix)
+            } | Select-Object -Last 1
+            if (-not $line) {
+              throw "bundleCliArchive did not report $Label"
+            }
+            if ($line.StartsWith($MachinePrefix)) {
+              return $line.Substring($MachinePrefix.Length)
+            }
+            return $line.Substring($LegacyPrefix.Length)
+          }
           $taskOutput = & .\gradlew.bat :cli:bundleCliArchive `
             -PfingrindBundleClassifier=${{ matrix.classifier }} `
             --no-daemon `
@@ -223,16 +249,16 @@ jobs:
           if ($exitCode -ne 0) {
             throw "bundleCliArchive failed with exit code $exitCode"
           }
-          $archiveLine = $taskOutputLines | Where-Object { $_ -like 'FINGRIND_BUNDLE_ARCHIVE=*' } | Select-Object -Last 1
-          $checksumLine = $taskOutputLines | Where-Object { $_ -like 'FINGRIND_BUNDLE_CHECKSUM=*' } | Select-Object -Last 1
-          if (-not $archiveLine) {
-            throw "bundleCliArchive did not report FINGRIND_BUNDLE_ARCHIVE"
-          }
-          if (-not $checksumLine) {
-            throw "bundleCliArchive did not report FINGRIND_BUNDLE_CHECKSUM"
-          }
-          $archivePath = $archiveLine.Substring('FINGRIND_BUNDLE_ARCHIVE='.Length)
-          $checksumPath = $checksumLine.Substring('FINGRIND_BUNDLE_CHECKSUM='.Length)
+          $archivePath = Resolve-BundlePath `
+            -TaskOutputLines $taskOutputLines `
+            -MachinePrefix 'FINGRIND_BUNDLE_ARCHIVE=' `
+            -LegacyPrefix 'FinGrind bundle archive: ' `
+            -Label 'bundle archive path'
+          $checksumPath = Resolve-BundlePath `
+            -TaskOutputLines $taskOutputLines `
+            -MachinePrefix 'FINGRIND_BUNDLE_CHECKSUM=' `
+            -LegacyPrefix 'FinGrind bundle checksum: ' `
+            -Label 'bundle checksum path'
           Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 

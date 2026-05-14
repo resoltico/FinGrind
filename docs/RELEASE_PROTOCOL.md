@@ -402,6 +402,12 @@ workflow on `main`, merge that fix, and then use the `workflow_dispatch` rerun c
 against the existing `vX.Y.Z` tag so the rebuilt assets and container are produced from the same
 verified release commit.
 
+If the repair changes how `release.yml` parses `:cli:bundleCliArchive` output, verify that the
+rerun workflow accepts both the current `main` output contract and the immutable tag's output
+contract before dispatching it. `workflow_dispatch` executes the workflow file from `main` but
+checks out the tagged release source; those surfaces can legitimately differ after a post-tag
+publication repair.
+
 Never create a second tag or move an existing release tag just to retry CI.
 
 The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`
