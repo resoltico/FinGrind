@@ -45,6 +45,9 @@ thing. It can pass while GitHub serves different bytes under the same asset name
 These publication invariants are release-critical:
 - tag identity is immutable; fix workflow defects on `main` and rerun against the existing tag
 - publication convergence is by asset name plus digest, not by asset name alone
+- the tag-driven bundle publisher must consume the archive and checksum paths reported by
+  `:cli:bundleCliArchive`; it must not guess checkout-local `cli/build/distributions/...` paths
+  because ordinary Gradle project outputs are externalized outside the checkout by default
 - each published archive and checksum file must verify through `gh attestation verify`
 - the attested digest must match the exact asset bytes downloadable from GitHub Release
 - the container workflow must wait for the verified release asset set before treating publication

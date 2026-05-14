@@ -184,43 +184,92 @@ jobs:
 
       - name: Build Unix self-contained CLI bundle
         if: runner.os != 'Windows'
+        id: unix-bundle-build
+        shell: bash
         run: |
-          ./gradlew :cli:bundleCliArchive \
+          set -euo pipefail
+          task_output="$(
+            ./gradlew :cli:bundleCliArchive \
             -PfingrindBundleClassifier=${{ matrix.classifier }} \
             --no-daemon \
             --console=plain
+          )"
+          printf '%s\n' "${task_output}"
+          archive_path="$(printf '%s\n' "${task_output}" | sed -n 's/^FINGRIND_BUNDLE_ARCHIVE=//p' | tail -n 1)"
+          checksum_path="$(printf '%s\n' "${task_output}" | sed -n 's/^FINGRIND_BUNDLE_CHECKSUM=//p' | tail -n 1)"
+          [ -n "${archive_path}" ] || {
+            echo "::error::bundleCliArchive did not report FINGRIND_BUNDLE_ARCHIVE"
+            exit 1
+          }
+          [ -n "${checksum_path}" ] || {
+            echo "::error::bundleCliArchive did not report FINGRIND_BUNDLE_CHECKSUM"
+            exit 1
+          }
+          printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
+          printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
       - name: Build Windows self-contained CLI bundle
         if: runner.os == 'Windows'
+        id: windows-bundle-build
         shell: pwsh
         run: |
-          .\gradlew.bat :cli:bundleCliArchive `
+          $taskOutput = & .\gradlew.bat :cli:bundleCliArchive `
             -PfingrindBundleClassifier=${{ matrix.classifier }} `
             --no-daemon `
             --console=plain
+          $exitCode = $LASTEXITCODE
+          $taskOutputLines = @($taskOutput | ForEach-Object { $_.ToString() })
+          $taskOutputLines | ForEach-Object { Write-Output $_ }
+          if ($exitCode -ne 0) {
+            throw "bundleCliArchive failed with exit code $exitCode"
+          }
+          $archiveLine = $taskOutputLines | Where-Object { $_ -like 'FINGRIND_BUNDLE_ARCHIVE=*' } | Select-Object -Last 1
+          $checksumLine = $taskOutputLines | Where-Object { $_ -like 'FINGRIND_BUNDLE_CHECKSUM=*' } | Select-Object -Last 1
+          if (-not $archiveLine) {
+            throw "bundleCliArchive did not report FINGRIND_BUNDLE_ARCHIVE"
+          }
+          if (-not $checksumLine) {
+            throw "bundleCliArchive did not report FINGRIND_BUNDLE_CHECKSUM"
+          }
+          $archivePath = $archiveLine.Substring('FINGRIND_BUNDLE_ARCHIVE='.Length)
+          $checksumPath = $checksumLine.Substring('FINGRIND_BUNDLE_CHECKSUM='.Length)
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 
       - name: Smoke test the Unix self-contained CLI bundle
         if: runner.os != 'Windows'
         run: |
           ./scripts/bundle-smoke.sh \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}"
+            "${{ steps.unix-bundle-build.outputs.archive-path }}"
 
       - name: Smoke test the Windows self-contained CLI bundle
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           .\scripts\bundle-smoke.ps1 `
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}"
+            "${{ steps.windows-bundle-build.outputs.archive-path }}"
 
-      - name: Publish bundle assets to the GitHub release
+      - name: Publish Unix bundle assets to the GitHub release
+        if: runner.os != 'Windows'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
         run: |
           bash ./scripts/publish-github-release.sh \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}" \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}.sha256"
+            "${{ steps.unix-bundle-build.outputs.archive-path }}" \
+            "${{ steps.unix-bundle-build.outputs.checksum-path }}"
+
+      - name: Publish Windows bundle assets to the GitHub release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          bash ./scripts/publish-github-release.sh `
+            "${{ steps.windows-bundle-build.outputs.archive-path }}" `
+            "${{ steps.windows-bundle-build.outputs.checksum-path }}"
 
   attest-release-assets:
     name: Attest published release assets

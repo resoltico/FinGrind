@@ -138,9 +138,9 @@ if [[ "${legacy_distributions_dir}" != "${distributions_dir}" && -d "${legacy_di
         "bundleCliArchive should not leave versioned distribution artifacts behind under the legacy checkout path ${legacy_distributions_dir}"
 fi
 
-grep -Fqx "FinGrind bundle archive: ${current_archive_path}" "${task_output_path}" || die \
+grep -Fqx "FINGRIND_BUNDLE_ARCHIVE=${current_archive_path}" "${task_output_path}" || die \
     "bundleCliArchive did not report the produced host bundle archive path ${current_archive_path}"
-grep -Fqx "FinGrind bundle checksum: ${current_checksum_path}" "${task_output_path}" || die \
+grep -Fqx "FINGRIND_BUNDLE_CHECKSUM=${current_checksum_path}" "${task_output_path}" || die \
     "bundleCliArchive did not report the produced host bundle checksum path ${current_checksum_path}"
 
 printf 'bundle archive pruning regression: success\n'
