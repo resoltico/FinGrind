@@ -129,7 +129,9 @@ gh release view vX.Y.Z
 
 If those checks disagree with a green workflow badge, trust the direct verification.
 
-`verify-public-container-surface.sh` also owns part of the public statement contract. It proves
-that the published image can render the current human `trial-balance` layout for one mounted-book
-workflow. When that human report layout changes, repair the verifier and its mock-backed shell
-regression harness together before trusting the release protocol again.
+`verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
+that the published image can initialize one mounted book with the current lifecycle grammar,
+submit one current posting request, and render the current human `trial-balance` layout for that
+workflow. When that mounted-book grammar changes or that human report layout changes, repair the
+verifier and its mock-backed shell regression harness together before trusting the release
+protocol again.

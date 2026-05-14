@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Repaired the operator-side public container verifier to use the current mounted-book contract:
+  it now opens books with explicit identity fields and seeds postings with the required
+  `postingKind`, while the paired shell regression and release-publication docs now track mounted
+  lifecycle and posting-grammar changes as well as human `trial-balance` layout changes.
+
 ## [0.36.0] - 2026-05-14
 
 ### Changed

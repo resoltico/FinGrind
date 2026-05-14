@@ -134,10 +134,25 @@ TEXT
                 printf '{"status":"ok"}\n'
                 ;;
             open-book)
+                entity_name=''
+                functional_currency=''
+                fiscal_year_start=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
                             : > "$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        --entity-name)
+                            entity_name="${2}"
+                            shift 2
+                            ;;
+                        --functional-currency)
+                            functional_currency="${2}"
+                            shift 2
+                            ;;
+                        --fiscal-year-start)
+                            fiscal_year_start="${2}"
                             shift 2
                             ;;
                         *)
@@ -145,12 +160,29 @@ TEXT
                             ;;
                     esac
                 done
+                [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
+                [[ "${functional_currency}" == 'EUR' ]] || exit 1
+                [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
                 printf '{"status":"ok","payload":{"accountCode":"1000"}}\n'
                 ;;
             post-entry)
+                request_file=''
+                while [[ $# -gt 0 ]]; do
+                    case "${1}" in
+                        --request-file)
+                            request_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        *)
+                            shift
+                            ;;
+                    esac
+                done
+                [[ -n "${request_file}" ]] || exit 1
+                grep -Fq '"postingKind": "STANDARD"' "${request_file}" || exit 1
                 printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
                 ;;
             trial-balance)
@@ -180,7 +212,7 @@ Effective date to : 2026-04-08
 
 Account | Name | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
 --------+------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash | ASSET        | ORDINARY     | DEBIT          | true   | USD      |       10.00 |         0.00 |      10.00 | DEBIT
+1000    | Cash | Asset        | Ordinary     | Debit          | Yes    | USD      |       10.00 |         0.00 |      10.00 | Debit
 TEXT
                 else
                     cat <<TEXT
@@ -191,8 +223,8 @@ Effective date to : 2026-04-08
 
 Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | ASSET        | ORDINARY     | DEBIT          | true   | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
-2000    | Revenue | REVENUE      | ORDINARY     | CREDIT         | true   | EUR      |        0.00 |        10.00 |      10.00 | CREDIT
+1000    | Cash    | Asset        | Ordinary     | Debit          | Yes    | EUR      |       10.00 |         0.00 | 10.00      | Debit
+2000    | Revenue | Revenue      | Ordinary     | Credit         | Yes    | EUR      |        0.00 |        10.00 | 10.00      | Credit
 TEXT
                 fi
                 ;;
