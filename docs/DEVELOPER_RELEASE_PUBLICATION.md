@@ -120,6 +120,12 @@ compatible with the tagged source line it is about to rebuild. The rerun path ex
 workflow definition from `main` against source code from the immutable tag; those two surfaces can
 legitimately speak different bundle-output dialects after a post-tag publication repair.
 
+If the repair touches container publication, the rerun workflow on `main` must publish from the
+staged Docker context mirrored at `cli/build/docker-context`, not from the repository root. Local
+Docker acceptance already proves that staged context path; tag-rerun publication must reuse the
+same assembly boundary instead of reopening checkout-local files through repository-root
+`.dockerignore` semantics.
+
 ## Evidence Owners
 
 The main executable evidence owners for this surface are:

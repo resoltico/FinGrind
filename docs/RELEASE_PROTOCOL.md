@@ -408,6 +408,12 @@ contract before dispatching it. `workflow_dispatch` executes the workflow file f
 checks out the tagged release source; those surfaces can legitimately differ after a post-tag
 publication repair.
 
+If the repair changes container publication, verify that `container.yml` builds from the staged
+Docker context at `cli/build/docker-context` instead of the repository root before dispatching the
+rerun. The local Docker acceptance gate already proves the staged context path; the public
+container workflow must publish from that same checked assembly boundary rather than reopening the
+checkout root under repository-root `.dockerignore` rules.
+
 Never create a second tag or move an existing release tag just to retry CI.
 
 The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`

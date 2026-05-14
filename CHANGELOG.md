@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Repaired the post-tag container publication rerun seam: `container.yml` now publishes from the
+  staged Docker context mirrored at `cli/build/docker-context` instead of reopening the repository
+  root, and the container-workflow regression plus release-publication docs now guard that shared
+  staged-context assembly boundary explicitly.
 - Repaired the tag-driven release publication workflow after the repo-hygiene build-root
   externalization change: `release.yml` now uses the archive and checksum paths reported by
   `:cli:bundleCliArchive` itself instead of guessing checkout-local `cli/build/distributions/...`
