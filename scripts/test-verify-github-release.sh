@@ -63,9 +63,21 @@ if job_end < 0:
 job_text = workflow[job_start:job_end]
 if "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26" in job_text:
     raise SystemExit("build-bundles job is attesting local artifacts instead of only publishing them")
+if 'cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-' in job_text:
+    raise SystemExit("build-bundles job still assumes checkout-local cli/build/distributions bundle paths")
 required_lines = (
     "    permissions:\n",
     "      contents: write\n",
+    "        id: unix-bundle-build\n",
+    "        id: windows-bundle-build\n",
+    "          archive_path=\"$(printf '%s\\n' \"${task_output}\" | sed -n 's/^FINGRIND_BUNDLE_ARCHIVE=//p' | tail -n 1)\"\n",
+    "          checksum_path=\"$(printf '%s\\n' \"${task_output}\" | sed -n 's/^FINGRIND_BUNDLE_CHECKSUM=//p' | tail -n 1)\"\n",
+    "          Add-Content -Path $env:GITHUB_OUTPUT -Value \"archive-path=$archivePath\"\n",
+    "          Add-Content -Path $env:GITHUB_OUTPUT -Value \"checksum-path=$checksumPath\"\n",
+    '            "${{ steps.unix-bundle-build.outputs.archive-path }}"\n',
+    '            "${{ steps.windows-bundle-build.outputs.archive-path }}"\n',
+    '            "${{ steps.unix-bundle-build.outputs.checksum-path }}"\n',
+    '            "${{ steps.windows-bundle-build.outputs.checksum-path }}"\n',
 )
 missing = [line.strip() for line in required_lines if line not in job_text]
 if missing:

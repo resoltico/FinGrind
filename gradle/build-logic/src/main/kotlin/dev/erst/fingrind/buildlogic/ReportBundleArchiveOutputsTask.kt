@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.TaskAction
+import java.io.File
 
 abstract class ReportBundleArchiveOutputsTask : DefaultTask() {
     @get:InputFile
@@ -14,7 +15,9 @@ abstract class ReportBundleArchiveOutputsTask : DefaultTask() {
 
     @TaskAction
     fun reportOutputs() {
-        logger.lifecycle("FinGrind bundle archive: ${archiveFile.get().asFile}")
-        logger.lifecycle("FinGrind bundle checksum: ${checksumFile.get().asFile}")
+        val archivePath = archiveFile.get().asFile.path.replace(File.separatorChar, '/')
+        val checksumPath = checksumFile.get().asFile.path.replace(File.separatorChar, '/')
+        logger.quiet("FINGRIND_BUNDLE_ARCHIVE=$archivePath")
+        logger.quiet("FINGRIND_BUNDLE_CHECKSUM=$checksumPath")
     }
 }

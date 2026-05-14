@@ -214,8 +214,8 @@ class CliDistributionBuildContractTest {
     assertTrue(
         buildScript.contains(
             "tasks.register<ReportBundleArchiveOutputsTask>(\"bundleCliArchive\")"));
-    assertTrue(reportTask.contains("FinGrind bundle archive:"));
-    assertTrue(reportTask.contains("FinGrind bundle checksum:"));
+    assertTrue(reportTask.contains("FINGRIND_BUNDLE_ARCHIVE="));
+    assertTrue(reportTask.contains("FINGRIND_BUNDLE_CHECKSUM="));
     assertFalse(buildScript.contains("cleanBundleRoot"));
   }
 

@@ -5,6 +5,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Repaired the tag-driven release publication workflow after the repo-hygiene build-root
+  externalization change: `release.yml` now uses the archive and checksum paths reported by
+  `:cli:bundleCliArchive` itself instead of guessing checkout-local `cli/build/distributions/...`
+  paths, the bundle-output task now publishes one machine-readable path contract for both Bash and
+  PowerShell workflow owners, and the release-workflow regression and bundle-pruning proofs now
+  guard that contract so post-tag reruns can republish the existing immutable tag safely.
+
 ## [0.37.0] - 2026-05-14
 
 ### Fixed
