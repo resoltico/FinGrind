@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keep the tagged container publication workflow budget aligned with the real release path.
+# Keep the tagged container publication workflow aligned with the real release path.
 
 set -euo pipefail
 
@@ -53,7 +53,11 @@ grep -Fq './scripts/verify-github-release.sh' "${workflow_file}" || die \
     "container workflow no longer waits for the GitHub release asset handoff"
 grep -Fq './scripts/verify-container-publication.sh' "${workflow_file}" || die \
     "container workflow no longer verifies the published version and latest tags"
+grep -Fq 'context: cli/build/docker-context' "${workflow_file}" || die \
+    "container workflow no longer publishes from the staged Docker build context"
+grep -Fq 'context: .' "${workflow_file}" && die \
+    "container workflow reopened the repository root instead of the staged Docker build context"
 grep -Fq 'post-publish verification' "${developer_distribution_doc}" || die \
     "developer distribution doc no longer describes the post-publish verification budget"
 
-printf 'container workflow timeout regression: success\n'
+printf 'container workflow regression: success\n'
