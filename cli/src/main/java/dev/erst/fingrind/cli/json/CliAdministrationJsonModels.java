@@ -7,10 +7,20 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
 
-  record OpenBookPayload(String bookFile, String initializedAt) implements CliSuccessPayload {
+  record BookIdentityPayload(String entityName, String functionalCurrency, String fiscalYearStart) {
+    public BookIdentityPayload {
+      entityName = requireText(entityName, "entityName");
+      functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
+      fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
+    }
+  }
+
+  record OpenBookPayload(String bookFile, String initializedAt, BookIdentityPayload bookIdentity)
+      implements CliSuccessPayload {
     public OpenBookPayload {
       bookFile = requireText(bookFile, "bookFile");
       initializedAt = requireText(initializedAt, "initializedAt");
+      java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
   }
 
@@ -91,7 +101,8 @@ public interface CliAdministrationJsonModels {
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      String initializedAt)
+      String initializedAt,
+      BookIdentityPayload bookIdentity)
       implements CliSuccessPayload {
     public InitializedBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -99,6 +110,7 @@ public interface CliAdministrationJsonModels {
       requireNonNegative(detectedBookFormatVersion, "detectedBookFormatVersion");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
       initializedAt = requireText(initializedAt, "initializedAt");
+      java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
   }
 }

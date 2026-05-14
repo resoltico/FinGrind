@@ -40,18 +40,18 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
     )
     require_match(
         preflight_output,
-        r'"status"[[:space:]]*:[[:space:]]*"preflight-accepted"',
-        f"{config.label} preflight did not report preflight-accepted status",
+        r'"status"[[:space:]]*:[[:space:]]*"ok"',
+        f"{config.label} preflight did not report ok status",
     )
     require_match(
         commit_sale_output,
-        r'"status"[[:space:]]*:[[:space:]]*"committed"',
-        f"{config.label} sale commit did not report committed status",
+        r'"status"[[:space:]]*:[[:space:]]*"ok"',
+        f"{config.label} sale commit did not report ok status",
     )
     require_match(
         commit_adjustment_output,
-        r'"status"[[:space:]]*:[[:space:]]*"committed"',
-        f"{config.label} adjustment commit did not report committed status",
+        r'"status"[[:space:]]*:[[:space:]]*"ok"',
+        f"{config.label} adjustment commit did not report ok status",
     )
 
 

@@ -68,6 +68,8 @@ class SqliteStoreFixtureSupport {
   static void insertCanonicalInitializedBookMetadata(SqliteNativeDatabase database) {
     SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
     insertInitializedAtRow(database);
+    SqliteMutationWriter.insertBookIdentity(
+        database, SqlitePostingFactFixtureSupport.bookIdentity());
   }
 
   static void insertAccountRow(

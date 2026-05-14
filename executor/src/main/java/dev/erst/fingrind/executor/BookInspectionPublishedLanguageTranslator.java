@@ -27,7 +27,8 @@ public final class BookInspectionPublishedLanguageTranslator {
         initialized.applicationId(),
         initialized.detectedBookFormatVersion(),
         initialized.supportedBookFormatVersion(),
-        initialized.initializedAt());
+        initialized.initializedAt(),
+        initialized.bookIdentity());
   }
 
   private static BookInspection.Status toPublishedExistingStatus(

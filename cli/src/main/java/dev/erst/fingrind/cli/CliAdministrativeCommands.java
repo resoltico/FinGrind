@@ -1,7 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -23,10 +25,11 @@ record GenerateBookKeyFile(Path bookKeyFilePath, OutputMode outputMode)
 }
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record OpenBook(BookAccess bookAccess, OutputMode outputMode)
+record OpenBook(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   OpenBook {
     Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(command, "command");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -34,7 +37,7 @@ record OpenBook(BookAccess bookAccess, OutputMode outputMode)
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runOpenBookCommand(bookAccess, outputMode);
+        .runOpenBookCommand(bookAccess, command, outputMode);
   }
 }
 
@@ -76,11 +79,16 @@ record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode output
 }
 
 /** Administrative CLI command that closes one contiguous reporting period. */
-record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+record ClosePeriod(
+    BookAccess bookAccess,
+    ReportingPeriod reportingPeriod,
+    AccountCode retainedEarningsAccountCode,
+    OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   ClosePeriod {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -88,6 +96,7 @@ record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, Outpu
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runClosePeriodCommand(bookAccess, reportingPeriod, outputMode);
+        .runClosePeriodCommand(
+            bookAccess, reportingPeriod, retainedEarningsAccountCode, outputMode);
   }
 }

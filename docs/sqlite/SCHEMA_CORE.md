@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 2;
+pragma user_version = 4;
 
 create table if not exists book_meta (
     key text primary key,
@@ -33,13 +33,19 @@ create table if not exists account (
     ),
     account_name text not null check (length(trim(account_name)) > 0),
     account_type text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
-    normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
+    account_role text not null check (account_role in ('ORDINARY', 'CONTRA', 'RETAINED_EARNINGS')),
     active integer not null check (active in (0, 1)),
-    declared_at text not null
+    declared_at text not null,
+    check (
+        (account_role = 'RETAINED_EARNINGS' and account_type = 'EQUITY')
+        or
+        (account_role in ('ORDINARY', 'CONTRA'))
+    )
 ) strict;
 
 create table if not exists posting_fact (
     posting_id text primary key,
+    posting_kind text not null check (posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE')),
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null check (length(trim(actor_id)) > 0),
@@ -53,7 +59,7 @@ create table if not exists posting_fact (
     causation_id text not null check (length(trim(causation_id)) > 0),
     correlation_id text check (correlation_id is null or length(trim(correlation_id)) > 0),
     reason text,
-    source_channel text not null check (source_channel in ('CLI')),
+    source_channel text not null,
     prior_posting_id text,
     unique (idempotency_key),
     foreign key (prior_posting_id) references posting_fact(posting_id),
@@ -83,6 +89,22 @@ create table if not exists journal_line (
     foreign key (account_code) references account(account_code)
 ) strict;
 
+create table if not exists period_close (
+    period_close_order integer primary key,
+    effective_date_from text not null,
+    effective_date_to text not null,
+    closed_at text not null,
+    check (effective_date_from <= effective_date_to)
+) strict;
+
+create table if not exists period_close_posting (
+    period_close_order integer not null,
+    posting_id text not null,
+    primary key (period_close_order, posting_id),
+    foreign key (period_close_order) references period_close(period_close_order),
+    foreign key (posting_id) references posting_fact(posting_id)
+) strict;
+
 create table if not exists audit_event (
     audit_event_order integer primary key,
     recorded_at text not null check (length(trim(recorded_at)) > 0),
@@ -93,19 +115,24 @@ create table if not exists audit_event (
             'ACCOUNT_REACTIVATED',
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
-            'BOOK_REKEYED'
+            'BOOK_REKEYED',
+            'PERIOD_CLOSED'
         )
     ),
     account_code text,
     posting_id text,
+    period_close_order integer,
     foreign key (account_code) references account(account_code),
     foreign key (posting_id) references posting_fact(posting_id),
+    foreign key (period_close_order) references period_close(period_close_order),
     check (
-        (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null)
+        (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null and period_close_order is null)
         or
-        (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null)
+        (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null and period_close_order is null)
         or
-        (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null)
+        (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null and period_close_order is null)
+        or
+        (event_kind = 'PERIOD_CLOSED' and account_code is null and posting_id is null and period_close_order is not null)
     )
 ) strict;
 
@@ -120,6 +147,12 @@ create index if not exists journal_line_by_account_code
 
 create index if not exists audit_event_by_recorded_at
     on audit_event (recorded_at, audit_event_order);
+
+create index if not exists period_close_by_effective_date_to
+    on period_close (effective_date_to desc, period_close_order desc);
+
+create index if not exists period_close_posting_by_posting_id
+    on period_close_posting (posting_id, period_close_order);
 
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
@@ -160,6 +193,30 @@ before delete on audit_event
 begin
     select raise(fail, 'audit_event rows are append-only.');
 end;
+
+create trigger if not exists period_close_reject_update
+before update on period_close
+begin
+    select raise(fail, 'period_close rows are append-only.');
+end;
+
+create trigger if not exists period_close_reject_delete
+before delete on period_close
+begin
+    select raise(fail, 'period_close rows are append-only.');
+end;
+
+create trigger if not exists period_close_posting_reject_update
+before update on period_close_posting
+begin
+    select raise(fail, 'period_close_posting rows are append-only.');
+end;
+
+create trigger if not exists period_close_posting_reject_delete
+before delete on period_close_posting
+begin
+    select raise(fail, 'period_close_posting rows are append-only.');
+end;
 ```
 
 ## Durable Tables
@@ -179,17 +236,18 @@ Columns:
 - `account_code`: `text primary key check ( length(account_code) between 1 and 255 and account_code glob '[A-Za-z0-9]*' and account_code not glob '*[^A-Za-z0-9._:/-]*' )`
 - `account_name`: `text not null check (length(trim(account_name)) > 0)`
 - `account_type`: `text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'))`
-- `normal_balance`: `text not null check (normal_balance in ('DEBIT', 'CREDIT'))`
+- `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA', 'RETAINED_EARNINGS'))`
 - `active`: `integer not null check (active in (0, 1))`
 - `declared_at`: `text not null`
 
 Table-level constraints:
-- None.
+- `check ( (account_role = 'RETAINED_EARNINGS' and account_type = 'EQUITY') or (account_role in ('ORDINARY', 'CONTRA')) )`
 
 ### `posting_fact`
 
 Columns:
 - `posting_id`: `text primary key`
+- `posting_kind`: `text not null check (posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE'))`
 - `effective_date`: `text not null`
 - `recorded_at`: `text not null`
 - `actor_id`: `text not null check (length(trim(actor_id)) > 0)`
@@ -199,7 +257,7 @@ Columns:
 - `causation_id`: `text not null check (length(trim(causation_id)) > 0)`
 - `correlation_id`: `text check (correlation_id is null or length(trim(correlation_id)) > 0)`
 - `reason`: `text`
-- `source_channel`: `text not null check (source_channel in ('CLI'))`
+- `source_channel`: `text not null`
 - `prior_posting_id`: `text`
 
 Table-level constraints:
@@ -222,19 +280,43 @@ Table-level constraints:
 - `foreign key (posting_id) references posting_fact(posting_id)`
 - `foreign key (account_code) references account(account_code)`
 
+### `period_close`
+
+Columns:
+- `period_close_order`: `integer primary key`
+- `effective_date_from`: `text not null`
+- `effective_date_to`: `text not null`
+- `closed_at`: `text not null`
+
+Table-level constraints:
+- `check (effective_date_from <= effective_date_to)`
+
+### `period_close_posting`
+
+Columns:
+- `period_close_order`: `integer not null`
+- `posting_id`: `text not null`
+
+Table-level constraints:
+- `primary key (period_close_order, posting_id)`
+- `foreign key (period_close_order) references period_close(period_close_order)`
+- `foreign key (posting_id) references posting_fact(posting_id)`
+
 ### `audit_event`
 
 Columns:
 - `audit_event_order`: `integer primary key`
 - `recorded_at`: `text not null check (length(trim(recorded_at)) > 0)`
-- `event_kind`: `text not null check ( event_kind in ( 'BOOK_OPENED', 'ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'POSTING_COMMITTED', 'POSTING_REVERSED', 'BOOK_REKEYED' ) )`
+- `event_kind`: `text not null check ( event_kind in ( 'BOOK_OPENED', 'ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'POSTING_COMMITTED', 'POSTING_REVERSED', 'BOOK_REKEYED', 'PERIOD_CLOSED' ) )`
 - `account_code`: `text`
 - `posting_id`: `text`
+- `period_close_order`: `integer`
 
 Table-level constraints:
 - `foreign key (account_code) references account(account_code)`
 - `foreign key (posting_id) references posting_fact(posting_id)`
-- `check ( (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null) or (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null) or (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null) )`
+- `foreign key (period_close_order) references period_close(period_close_order)`
+- `check ( (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null and period_close_order is null) or (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null and period_close_order is null) or (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null and period_close_order is null) or (event_kind = 'PERIOD_CLOSED' and account_code is null and posting_id is null and period_close_order is not null) )`
 
 ## Durable Indexes
 
@@ -242,6 +324,8 @@ Table-level constraints:
 - `posting_fact_by_effective_recorded_posting` on `posting_fact`: `create index if not exists posting_fact_by_effective_recorded_posting on posting_fact (effective_date desc, recorded_at desc, posting_id desc);`
 - `journal_line_by_account_code` on `journal_line`: `create index if not exists journal_line_by_account_code on journal_line (account_code, posting_id, line_order);`
 - `audit_event_by_recorded_at` on `audit_event`: `create index if not exists audit_event_by_recorded_at on audit_event (recorded_at, audit_event_order);`
+- `period_close_by_effective_date_to` on `period_close`: `create index if not exists period_close_by_effective_date_to on period_close (effective_date_to desc, period_close_order desc);`
+- `period_close_posting_by_posting_id` on `period_close_posting`: `create index if not exists period_close_posting_by_posting_id on period_close_posting (posting_id, period_close_order);`
 - `posting_fact_one_reversal_per_target` on `posting_fact`: `create unique index if not exists posting_fact_one_reversal_per_target on posting_fact (prior_posting_id) where prior_posting_id is not null;`
 
 ## Runtime Integrity Semantics
@@ -253,9 +337,9 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `2`
-- Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`, `audit_event`
-- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `posting_fact_one_reversal_per_target`
+- `user_version`: `4`
+- Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`, `period_close`, `period_close_posting`, `audit_event`
+- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.
 - The current public line rejects non-matching book formats instead of upgrading them in place.

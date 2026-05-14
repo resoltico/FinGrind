@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
@@ -10,6 +11,9 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -195,6 +199,49 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
+  void renderHelpHuman_omitsGuidanceBlockWhenQuickStartHasOnlyExecutableSteps() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            helpDescriptor(
+                identity(),
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new WorkflowDescriptor(
+                        WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(
+                            WorkflowStepDescriptor.command("./bin/fingrind version"),
+                            WorkflowStepDescriptor.edit("./request.json", "{\"ok\":true}")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertFalse(rendered.contains("Guidance"));
+    assertTrue(rendered.contains("Steps"));
+    assertTrue(rendered.contains("1. Run"));
+    assertTrue(rendered.contains("2. Create ./request.json"));
+  }
+
+  @Test
   void renderHelpHuman_rendersCommandScopedHelpWithUsageAndExamples() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -281,9 +328,10 @@ class CliDiscoveryOutputRendererTest {
 
   @Test
   void renderHelpHuman_rendersDeclareAccountRequestGuidanceWithoutShortcutOrEnumVocabulary() {
-    HelpDescriptor canonical = MachineContract.help(identity(), environment());
+    HelpDescriptor canonical =
+        MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT);
     ContractRequestShapes.RequestShapesDescriptor requestShapes =
-        withoutDeclareAccountEnumVocabulary(canonical.requestShapes());
+        withoutDeclareAccountEnumVocabulary(Objects.requireNonNull(canonical.requestShapes()));
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             helpDescriptor(
@@ -323,7 +371,8 @@ class CliDiscoveryOutputRendererTest {
 
   @Test
   void renderHelpHuman_rendersExecutePlanRequestGuidanceAndVocabulary() {
-    HelpDescriptor canonical = MachineContract.help(identity(), environment());
+    HelpDescriptor canonical =
+        MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             helpDescriptor(
@@ -345,7 +394,7 @@ class CliDiscoveryOutputRendererTest {
                 List.of(new ExitCodeDescriptor(0, "ok")),
                 canonical.preflight(),
                 canonical.currencyModel(),
-                canonical.requestShapes()));
+                Objects.requireNonNull(canonical.requestShapes())));
 
     assertTrue(
         rendered.contains("Provide one ledger plan JSON object through --request-file <path|->."));
@@ -361,6 +410,194 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("open-book"));
     assertTrue(rendered.contains("declare-account"));
     assertTrue(rendered.contains("assert-account-balance"));
+  }
+
+  @Test
+  void renderHelpHuman_omitsRequestGuidanceWhenScopedMetadataIsMissing() {
+    HelpDescriptor postEntryCanonical =
+        MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
+    HelpDescriptor declareCanonical =
+        MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT);
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
+
+    String postEntryRendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                postEntryCanonical.application(),
+                postEntryCanonical.version(),
+                postEntryCanonical.description(),
+                postEntryCanonical.usage(),
+                postEntryCanonical.bookModel(),
+                postEntryCanonical.requestShapes(),
+                null,
+                postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.planTemplate(),
+                postEntryCanonical.commands(),
+                postEntryCanonical.quickStart(),
+                postEntryCanonical.exitCodes(),
+                postEntryCanonical.preflight(),
+                postEntryCanonical.currencyModel(),
+                postEntryCanonical.environment()));
+    String declareRendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                declareCanonical.application(),
+                declareCanonical.version(),
+                declareCanonical.description(),
+                declareCanonical.usage(),
+                declareCanonical.bookModel(),
+                declareCanonical.requestShapes(),
+                declareCanonical.requestTemplate(),
+                null,
+                declareCanonical.planTemplate(),
+                declareCanonical.commands(),
+                declareCanonical.quickStart(),
+                declareCanonical.exitCodes(),
+                declareCanonical.preflight(),
+                declareCanonical.currencyModel(),
+                declareCanonical.environment()));
+    String executePlanRendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                executePlanCanonical.application(),
+                executePlanCanonical.version(),
+                executePlanCanonical.description(),
+                executePlanCanonical.usage(),
+                executePlanCanonical.bookModel(),
+                executePlanCanonical.requestShapes(),
+                executePlanCanonical.requestTemplate(),
+                executePlanCanonical.declareAccountTemplate(),
+                null,
+                executePlanCanonical.commands(),
+                executePlanCanonical.quickStart(),
+                executePlanCanonical.exitCodes(),
+                executePlanCanonical.preflight(),
+                executePlanCanonical.currencyModel(),
+                executePlanCanonical.environment()));
+
+    assertFalse(postEntryRendered.contains("Request File"));
+    assertFalse(declareRendered.contains("Request File"));
+    assertFalse(executePlanRendered.contains("Request File"));
+  }
+
+  @Test
+  void renderHelpHuman_omitsRequestGuidanceWhenRequestShapesOrScopedShapeIsMissing() {
+    HelpDescriptor postEntryCanonical =
+        MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
+    HelpDescriptor declareCanonical =
+        MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT);
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
+
+    String postEntryWithoutPostShape =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                postEntryCanonical.application(),
+                postEntryCanonical.version(),
+                postEntryCanonical.description(),
+                postEntryCanonical.usage(),
+                postEntryCanonical.bookModel(),
+                new ContractRequestShapes.RequestShapesDescriptor(
+                    Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
+                    null,
+                    postEntryCanonical.requestShapes().declareAccount(),
+                    postEntryCanonical.requestShapes().ledgerPlan()),
+                postEntryCanonical.requestTemplate(),
+                postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.planTemplate(),
+                postEntryCanonical.commands(),
+                postEntryCanonical.quickStart(),
+                postEntryCanonical.exitCodes(),
+                postEntryCanonical.preflight(),
+                postEntryCanonical.currencyModel(),
+                postEntryCanonical.environment()));
+    String declareWithoutRequestShapes =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                declareCanonical.application(),
+                declareCanonical.version(),
+                declareCanonical.description(),
+                declareCanonical.usage(),
+                declareCanonical.bookModel(),
+                null,
+                declareCanonical.requestTemplate(),
+                declareCanonical.declareAccountTemplate(),
+                declareCanonical.planTemplate(),
+                declareCanonical.commands(),
+                declareCanonical.quickStart(),
+                declareCanonical.exitCodes(),
+                declareCanonical.preflight(),
+                declareCanonical.currencyModel(),
+                declareCanonical.environment()));
+    String declareWithoutDeclareShape =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                declareCanonical.application(),
+                declareCanonical.version(),
+                declareCanonical.description(),
+                declareCanonical.usage(),
+                declareCanonical.bookModel(),
+                new ContractRequestShapes.RequestShapesDescriptor(
+                    Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
+                    declareCanonical.requestShapes().postEntry(),
+                    null,
+                    declareCanonical.requestShapes().ledgerPlan()),
+                declareCanonical.requestTemplate(),
+                declareCanonical.declareAccountTemplate(),
+                declareCanonical.planTemplate(),
+                declareCanonical.commands(),
+                declareCanonical.quickStart(),
+                declareCanonical.exitCodes(),
+                declareCanonical.preflight(),
+                declareCanonical.currencyModel(),
+                declareCanonical.environment()));
+    String executePlanWithoutRequestShapes =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                executePlanCanonical.application(),
+                executePlanCanonical.version(),
+                executePlanCanonical.description(),
+                executePlanCanonical.usage(),
+                executePlanCanonical.bookModel(),
+                null,
+                executePlanCanonical.requestTemplate(),
+                executePlanCanonical.declareAccountTemplate(),
+                executePlanCanonical.planTemplate(),
+                executePlanCanonical.commands(),
+                executePlanCanonical.quickStart(),
+                executePlanCanonical.exitCodes(),
+                executePlanCanonical.preflight(),
+                executePlanCanonical.currencyModel(),
+                executePlanCanonical.environment()));
+    String executePlanWithoutLedgerShape =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                executePlanCanonical.application(),
+                executePlanCanonical.version(),
+                executePlanCanonical.description(),
+                executePlanCanonical.usage(),
+                executePlanCanonical.bookModel(),
+                new ContractRequestShapes.RequestShapesDescriptor(
+                    Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
+                    executePlanCanonical.requestShapes().postEntry(),
+                    executePlanCanonical.requestShapes().declareAccount(),
+                    null),
+                executePlanCanonical.requestTemplate(),
+                executePlanCanonical.declareAccountTemplate(),
+                executePlanCanonical.planTemplate(),
+                executePlanCanonical.commands(),
+                executePlanCanonical.quickStart(),
+                executePlanCanonical.exitCodes(),
+                executePlanCanonical.preflight(),
+                executePlanCanonical.currencyModel(),
+                executePlanCanonical.environment()));
+
+    assertFalse(postEntryWithoutPostShape.contains("Request File"));
+    assertFalse(declareWithoutRequestShapes.contains("Request File"));
+    assertFalse(declareWithoutDeclareShape.contains("Request File"));
+    assertFalse(executePlanWithoutRequestShapes.contains("Request File"));
+    assertFalse(executePlanWithoutLedgerShape.contains("Request File"));
   }
 
   @Test
@@ -423,6 +660,17 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
+  void renderQuickStartStep_rejectsUnfilteredNoteSteps() {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliDiscoveryOutputRenderer.renderQuickStartStep(
+                    1, WorkflowStepDescriptor.note("guidance")));
+    assertTrue(Objects.requireNonNull(failure.getMessage()).contains("guidance block"));
+  }
+
+  @Test
   void renderCapabilitiesHuman_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
@@ -446,7 +694,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.35.0"));
+    assertTrue(rendered.contains("0.36.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -479,8 +727,11 @@ class CliDiscoveryOutputRendererTest {
       List<ExitCodeDescriptor> exitCodes,
       ContractResponse.PreflightDescriptor preflight,
       ContractResponse.CurrencyDescriptor currencyModel,
-      ContractRequestShapes.RequestShapesDescriptor requestShapes) {
-    HelpDescriptor canonical = MachineContract.help(applicationIdentity, environment());
+      ContractRequestShapes.@org.jspecify.annotations.Nullable RequestShapesDescriptor
+          requestShapes) {
+    OperationId commandTopic = commands.size() == 1 ? commands.getFirst().name() : null;
+    HelpDescriptor canonical =
+        MachineContract.help(applicationIdentity, environment(), commandTopic);
     return new HelpDescriptor(
         applicationIdentity.application(),
         applicationIdentity.version(),
@@ -501,20 +752,20 @@ class CliDiscoveryOutputRendererTest {
 
   private static ContractRequestShapes.RequestShapesDescriptor withoutDeclareAccountEnumVocabulary(
       ContractRequestShapes.RequestShapesDescriptor requestShapes) {
+    ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccount =
+        Objects.requireNonNull(requestShapes.declareAccount());
     return new ContractRequestShapes.RequestShapesDescriptor(
         requestShapes.schemaDialect(),
         requestShapes.postEntry(),
         new ContractRequestShapes.DeclareAccountRequestShapeDescriptor(
-            requestShapes.declareAccount().topLevelFields(),
-            List.of(),
-            requestShapes.declareAccount().schema()),
+            declareAccount.topLevelFields(), List.of(), declareAccount.schema()),
         requestShapes.ledgerPlan());
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.35.0",
+        "0.36.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

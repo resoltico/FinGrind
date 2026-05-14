@@ -17,6 +17,7 @@ class SqliteRoundTripWorkflowExerciseTest {
     PostEntryCommand baseCommand = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
     PostEntryCommand command =
         new PostEntryCommand(
+            baseCommand.postingKind(),
             baseCommand.journalEntry(),
             PostingLineage.reversal(
                 new ReversalReference(new PostingId("missing-posting")),

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: USER_QUICK_START
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -67,7 +67,7 @@ owner-only as well as the key file itself.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
 ```
 
 ## 4. Declare The Accounts You Need
@@ -118,6 +118,7 @@ Replace the contents of `./request.json` with one balanced entry, for example:
 
 ```json
 {
+  "postingKind": "STANDARD",
   "effectiveDate": "2026-04-08",
   "lines": [
     {

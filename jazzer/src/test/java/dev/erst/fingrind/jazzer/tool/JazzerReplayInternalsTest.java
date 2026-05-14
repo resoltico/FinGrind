@@ -212,10 +212,25 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
+        PostingLifecycleStatus.POSTING_KIND_RESERVED,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)));
+    assertEquals(
+        PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.BookFunctionalCurrencyMismatch(
+                dev.erst.fingrind.core.CurrencyUnit.of("USD"),
+                dev.erst.fingrind.core.CurrencyUnit.of("EUR"))));
+    assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         JazzerReplayDetailsMapper.rejectionStatus(
             new PostingRejection.ClosedPeriodViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
+    assertEquals(
+        PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.OpeningBalanceTouchesNominalAccount(
+                accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
         PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
         JazzerReplayDetailsMapper.rejectionStatus(

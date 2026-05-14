@@ -114,12 +114,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
     inspectionWriter.writeBookInspection(
         Path.of("book.sqlite"),
-        new BookInspection.Initialized(1_179_079_236, 2, 2, Instant.parse("2026-04-07T10:15:30Z")));
+        initializedBookInspection(1_179_079_236, 3, 3, Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream missingInspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter missingInspectionWriter =
         new CliResponseWriter(utf8PrintStream(missingInspectionOutput));
     missingInspectionWriter.writeBookInspection(
-        Path.of("missing.sqlite"), new BookInspection.Missing(2));
+        Path.of("missing.sqlite"), new BookInspection.Missing(3));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
     getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
@@ -152,6 +152,18 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
     assertTrue(
         inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
+    assertTrue(
+        inspectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"entityName\":\"Acme Studio\""));
+    assertTrue(
+        inspectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"functionalCurrency\":\"EUR\""));
+    assertTrue(
+        inspectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"fiscalYearStart\":\"01-01\""));
     assertTrue(
         missingInspectionOutput
             .toString(StandardCharsets.UTF_8)
@@ -217,8 +229,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "effectiveDate,recordedAt,postingId,currencyCode,totalAmount,accountCodes,reversalTarget"));
-    assertTrue(postingRegisterCsv.contains("2026-04-07,2026-04-07T10:15:30Z,posting-1,EUR,10.00"));
+            "effectiveDate,recordedAt,postingId,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget"));
+    assertTrue(
+        postingRegisterCsv.contains("2026-04-07,2026-04-07T10:15:30Z,posting-1,EUR,10.00,10.00"));
     ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
         .writeAccountBalanceResult(
@@ -245,7 +258,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   void writeReportResults_supportJsonHumanAndCsvOutputModes() throws IOException {
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
+            bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
             List.of(
                 new TrialBalanceRow(
                     declaredCashAccount(),
@@ -302,7 +318,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeTrialBalanceResult(
             new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.HUMAN);
     String trialBalanceHuman = trialBalanceHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(trialBalanceHuman.contains("Effective date to : 2026-04-30"));
+    assertTrue(trialBalanceHuman.contains("Effective date to"));
+    assertTrue(trialBalanceHuman.contains("2026-04-30"));
     assertTrue(trialBalanceHuman.contains("Account"));
     assertTrue(trialBalanceHuman.contains("6.00"));
     ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
@@ -436,7 +453,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "effectiveDateTo,sectionAccountType,lineCode,lineName,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,postingCoverage,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -475,7 +492,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo,postingCoverage,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -507,7 +524,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "effectiveDateFrom,effectiveDateTo,lineCode,lineName,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+                "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateTo,postingCoverage,lineCode,lineName,lineRole,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
   }
 
   @Test
@@ -517,8 +534,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeIncomeStatementResult(
             new IncomeStatementResult.Reported(
                 new dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport(
+                    bookIdentity(),
                     LocalDate.parse("2026-04-01"),
                     LocalDate.parse("2026-04-30"),
+                    EffectiveDateRange.of(
+                        LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+                    standardOnly(),
                     CliFixtureSupport.sampleIncomeStatementReport().sections(),
                     List.of())),
             OutputMode.HUMAN);
@@ -553,15 +574,31 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void writeInspection_includesBookIdentityForInitializedBooks() throws IOException {
+    JsonNode payload =
+        writeInspection(
+            initializedBookInspection(1_179_079_236, 3, 3, Instant.parse("2026-04-07T10:15:30Z")));
+
+    assertEquals("initialized", payload.path("state").stringValue());
+    assertEquals(1_179_079_236, payload.path("applicationId").asInt());
+    assertEquals(3, payload.path("detectedBookFormatVersion").asInt());
+    assertEquals(3, payload.path("supportedBookFormatVersion").asInt());
+    assertEquals("2026-04-07T10:15:30Z", payload.path("initializedAt").stringValue());
+    assertEquals("Acme Studio", payload.path("bookIdentity").path("entityName").stringValue());
+    assertEquals("EUR", payload.path("bookIdentity").path("functionalCurrency").stringValue());
+    assertEquals("01-01", payload.path("bookIdentity").path("fiscalYearStart").stringValue());
+  }
+
+  @Test
   void writeBookInspection_writesEveryExistingBookVariant() throws IOException {
     List<BookInspection> inspections =
         List.of(
-            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 1_179_079_236, 0, 2),
-            new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 1_179_079_236, 0, 2),
+            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 1_179_079_236, 0, 3),
+            new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 1_179_079_236, 0, 3),
             new BookInspection.Existing(
-                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1_179_079_236, 1, 2),
+                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1_179_079_236, 1, 3),
             new BookInspection.Existing(
-                BookInspection.Status.INCOMPLETE_FINGRIND, 1_179_079_236, 2, 2));
+                BookInspection.Status.INCOMPLETE_FINGRIND, 1_179_079_236, 2, 3));
     List<String> states =
         List.of(
             "blank-sqlite", "foreign-sqlite", "unsupported-format-version", "incomplete-fingrind");
@@ -569,7 +606,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
       JsonNode payload = writeInspection(inspections.get(index));
       assertEquals(states.get(index), payload.path("state").stringValue());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
-      assertEquals(2, payload.path("supportedBookFormatVersion").asInt());
+      assertEquals(3, payload.path("supportedBookFormatVersion").asInt());
       assertFalse(payload.has("migrationPolicy"));
       assertFalse(payload.has("initializedAt"));
     }

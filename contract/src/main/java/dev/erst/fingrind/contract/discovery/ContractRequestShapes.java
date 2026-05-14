@@ -3,9 +3,11 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /** Request-shape descriptor namespace for the public machine-readable CLI contract. */
 public final class ContractRequestShapes {
@@ -31,7 +33,11 @@ public final class ContractRequestShapes {
       String bookFileOption,
       List<String> bookPassphraseOptions,
       String requestFileOption,
+      List<String> requestFileCommands,
+      List<String> directArgumentCommands,
       String outputOption,
+      OutputMode interactiveDefaultSelectableOutputMode,
+      OutputMode redirectedDefaultSelectableOutputMode,
       List<String> outputSemantics,
       String stdinToken,
       String bookFileSemantics,
@@ -45,7 +51,17 @@ public final class ContractRequestShapes {
           ContractDescriptorValidation.copyList(bookPassphraseOptions, "bookPassphraseOptions");
       requestFileOption =
           ContractDescriptorValidation.requireText(requestFileOption, "requestFileOption");
+      requestFileCommands =
+          ContractDescriptorValidation.copyList(requestFileCommands, "requestFileCommands");
+      directArgumentCommands =
+          ContractDescriptorValidation.copyList(directArgumentCommands, "directArgumentCommands");
       outputOption = ContractDescriptorValidation.requireText(outputOption, "outputOption");
+      interactiveDefaultSelectableOutputMode =
+          ContractDescriptorValidation.requireValue(
+              interactiveDefaultSelectableOutputMode, "interactiveDefaultSelectableOutputMode");
+      redirectedDefaultSelectableOutputMode =
+          ContractDescriptorValidation.requireValue(
+              redirectedDefaultSelectableOutputMode, "redirectedDefaultSelectableOutputMode");
       outputSemantics = ContractDescriptorValidation.copyList(outputSemantics, "outputSemantics");
       stdinToken = ContractDescriptorValidation.requireText(stdinToken, "stdinToken");
       bookFileSemantics =
@@ -61,16 +77,13 @@ public final class ContractRequestShapes {
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(
       String schemaDialect,
-      PostEntryRequestShapeDescriptor postEntry,
-      DeclareAccountRequestShapeDescriptor declareAccount,
-      LedgerPlanRequestShapeDescriptor ledgerPlan)
+      @Nullable PostEntryRequestShapeDescriptor postEntry,
+      @Nullable DeclareAccountRequestShapeDescriptor declareAccount,
+      @Nullable LedgerPlanRequestShapeDescriptor ledgerPlan)
       implements RequestShapeDescriptorType {
     /** Validates one grouped request-shape descriptor payload. */
     public RequestShapesDescriptor {
       schemaDialect = ContractDescriptorValidation.requireText(schemaDialect, "schemaDialect");
-      postEntry = ContractDescriptorValidation.requireValue(postEntry, "postEntry");
-      declareAccount = ContractDescriptorValidation.requireValue(declareAccount, "declareAccount");
-      ledgerPlan = ContractDescriptorValidation.requireValue(ledgerPlan, "ledgerPlan");
     }
   }
 

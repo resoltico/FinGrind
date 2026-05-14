@@ -53,7 +53,8 @@ public final class AccountSemantics {
         matchesNormalBalance(balanceSide, normalBalance(accountType, accountRole))
             ? amountMinor
             : -amountMinor;
-    return accountType == AccountType.REVENUE ? naturalSigned : -naturalSigned;
+    long result = accountType == AccountType.REVENUE ? naturalSigned : -naturalSigned;
+    return accountRole == AccountRole.CONTRA ? Math.negateExact(result) : result;
   }
 
   private static NormalBalance ordinaryNormalBalance(AccountType accountType) {

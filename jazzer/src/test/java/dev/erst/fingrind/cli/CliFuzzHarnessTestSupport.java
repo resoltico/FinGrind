@@ -50,6 +50,7 @@ final class CliFuzzHarnessTestSupport {
   static byte[] validJpyRequestBytes() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-06-01",
           "lines": [
             {
@@ -84,6 +85,7 @@ final class CliFuzzHarnessTestSupport {
   static byte[] validBhdRequestBytes() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-06-02",
           "lines": [
             {
@@ -118,6 +120,7 @@ final class CliFuzzHarnessTestSupport {
   static byte[] invalidExponentAmountRequestBytes() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -152,6 +155,7 @@ final class CliFuzzHarnessTestSupport {
   static byte[] invalidBlankActorRequestBytes() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -186,6 +190,7 @@ final class CliFuzzHarnessTestSupport {
   static byte[] missingReversalReasonRequestBytes() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-08",
           "lines": [
             {
@@ -223,6 +228,7 @@ final class CliFuzzHarnessTestSupport {
   static String reversalTargetMissingRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-08",
           "lines": [
             {
@@ -279,7 +285,12 @@ final class CliFuzzHarnessTestSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -304,7 +315,12 @@ final class CliFuzzHarnessTestSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash-jpy",
@@ -330,6 +346,7 @@ final class CliFuzzHarnessTestSupport {
               "stepId": "post-jpy",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-06-03",
                 "lines": [
                   {
@@ -384,7 +401,12 @@ final class CliFuzzHarnessTestSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash-bhd",
@@ -410,6 +432,7 @@ final class CliFuzzHarnessTestSupport {
               "stepId": "post-bhd",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-06-04",
                 "lines": [
                   {

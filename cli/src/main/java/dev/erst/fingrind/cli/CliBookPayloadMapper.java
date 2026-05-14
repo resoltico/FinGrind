@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -47,8 +48,17 @@ final class CliBookPayloadMapper {
               initialized.applicationId(),
               initialized.detectedBookFormatVersion(),
               initialized.supportedBookFormatVersion(),
-              initialized.initializedAt().toString());
+              initialized.initializedAt().toString(),
+              bookIdentityPayload(initialized.bookIdentity()));
     };
+  }
+
+  static CliAdministrationJsonModels.BookIdentityPayload bookIdentityPayload(
+      BookIdentity bookIdentity) {
+    return new CliAdministrationJsonModels.BookIdentityPayload(
+        bookIdentity.entityName().value(),
+        bookIdentity.functionalCurrency().code(),
+        bookIdentity.fiscalYearStart().wireValue());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {

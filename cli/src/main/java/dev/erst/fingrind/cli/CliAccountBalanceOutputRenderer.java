@@ -14,10 +14,20 @@ final class CliAccountBalanceOutputRenderer {
             List.of(
                 List.of("Account", snapshot.account().accountCode().value()),
                 List.of("Name", snapshot.account().accountName().value()),
-                List.of("Account type", snapshot.account().accountType().wireValue()),
-                List.of("Account role", snapshot.account().accountRole().wireValue()),
-                List.of("Normal balance", snapshot.account().normalBalance().wireValue()),
-                List.of("Active", Boolean.toString(snapshot.account().active())),
+                List.of(
+                    "Account type",
+                    CliQueryOutputFormatter.displayLineTypeLabel(snapshot.account().accountType())),
+                List.of(
+                    "Account role",
+                    CliQueryOutputFormatter.displayAccountRoleLabel(
+                        snapshot.account().accountRole())),
+                List.of(
+                    "Normal balance",
+                    CliQueryOutputFormatter.displayNormalBalanceLabel(
+                        snapshot.account().normalBalance())),
+                List.of(
+                    "Active",
+                    CliQueryOutputFormatter.displayBooleanLabel(snapshot.account().active())),
                 List.of(
                     "Range",
                     CliQueryOutputFormatter.dateRange(
@@ -26,7 +36,7 @@ final class CliAccountBalanceOutputRenderer {
     String balances =
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
-            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceRow).toList(),
+            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceHumanRow).toList(),
             1,
             2,
             3);

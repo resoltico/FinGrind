@@ -48,7 +48,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     Path databasePath = tempDirectory.resolve("declare-accounts.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -119,7 +119,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     Path databasePath = tempDirectory.resolve("declare-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -146,7 +146,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     Path databasePath = tempDirectory.resolve("declare-account-type-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -173,7 +173,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     Path databasePath = tempDirectory.resolve("list-accounts-paginated.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),

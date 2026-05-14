@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 
@@ -16,17 +17,20 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -102,13 +106,13 @@ final class BookReadServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_INSTANT);
+    bookSession.openBook(FIXED_INSTANT, bookIdentity());
     return bookSession;
   }
 
   static CountingFindAccountBookSession initializedCountingBook() {
     CountingFindAccountBookSession bookSession = new CountingFindAccountBookSession();
-    bookSession.openBook(FIXED_INSTANT);
+    bookSession.openBook(FIXED_INSTANT, bookIdentity());
     return bookSession;
   }
 
@@ -187,8 +191,9 @@ final class BookReadServiceTestSupport {
     private int findAccountCalls;
 
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
-      return delegate.openBook(initializedAt);
+    public BookOpeningOutcome openBook(
+        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+      return delegate.openBook(initializedAt, bookIdentity);
     }
 
     @Override
@@ -276,6 +281,12 @@ final class BookReadServiceTestSupport {
     @Override
     public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
       return delegate.accountBalance(query);
+    }
+
+    @Override
+    public List<AccountCurrencyTotals> accountTotals(
+        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+      return delegate.accountTotals(effectiveDateRange, postingCoverage);
     }
 
     @Override

@@ -30,17 +30,22 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -67,7 +72,12 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.35.0", CLOCK);
+      new PdfReportService("FinGrind", "0.36.0", CLOCK);
+  private static final BookIdentity BOOK_IDENTITY =
+      new BookIdentity(
+          new BookEntityName("Acme Studio"),
+          CurrencyUnit.of("EUR"),
+          FiscalYearStart.parse("01-01"));
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -88,7 +98,10 @@ class PdfReportServiceTest {
     byte[] trialBalancePdf =
         PDF_REPORT_SERVICE.renderTrialBalance(
             new TrialBalanceReport(
+                BOOK_IDENTITY,
                 Optional.of(LocalDate.parse("2026-04-30")),
+                EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+                PostingCoverage.ALL_POSTING_KINDS,
                 List.of(
                     new TrialBalanceRow(
                         CASH_ACCOUNT,
@@ -102,6 +115,9 @@ class PdfReportServiceTest {
     assertTrue(extractedText(accountBalancePdf).contains("Per-Currency Balances"));
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
+    assertTrue(trialBalanceText.contains("Acme Studio"));
+    assertTrue(trialBalanceText.contains("All posting kinds"));
+    assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
     assertTrue(trialBalanceText.contains("Subscription Revenue from"));
     assertTrue(trialBalanceText.contains("Enterprise Customers"));
   }
@@ -141,7 +157,10 @@ class PdfReportServiceTest {
   void renderStatementsIncludeStatementSpecificTablesAndMetadata() throws IOException {
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
+            BOOK_IDENTITY,
             Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new FinancialPositionSection(
                     AccountType.ASSET,
@@ -150,13 +169,17 @@ class PdfReportServiceTest {
                             "1000",
                             "Cash and Cash Equivalents",
                             AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))));
     IncomeStatementReport incomeStatementReport =
         new IncomeStatementReport(
+            BOOK_IDENTITY,
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
             List.of(
                 new IncomeStatementSection(
                     AccountType.REVENUE,
@@ -165,18 +188,24 @@ class PdfReportServiceTest {
                             "4000",
                             "Subscription Revenue",
                             AccountType.REVENUE,
+                            Optional.of(AccountRole.ORDINARY),
                             false,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
             List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)));
     ChangesInEquityReport changesInEquityReport =
         new ChangesInEquityReport(
+            BOOK_IDENTITY,
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new ChangesInEquityRow(
                     "3000",
                     "Owner Capital",
+                    Optional.of(AccountType.EQUITY),
+                    Optional.of(AccountRole.ORDINARY),
                     false,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
@@ -193,21 +222,31 @@ class PdfReportServiceTest {
     assertPdfMetadata(financialPositionPdf, "Financial Position", false);
     assertPdfMetadata(incomeStatementPdf, "Income Statement", false);
     assertPdfMetadata(changesInEquityPdf, "Changes In Equity", false);
-    assertTrue(extractedText(financialPositionPdf).contains("Cash and Cash Equivalents"));
-    assertTrue(extractedText(financialPositionPdf).contains("Financial Position"));
-    assertTrue(extractedText(incomeStatementPdf).contains("Subscription Revenue"));
-    assertTrue(extractedText(incomeStatementPdf).contains("Income Statement"));
-    assertTrue(extractedText(changesInEquityPdf).contains("Owner Capital"));
-    assertTrue(extractedText(changesInEquityPdf).contains("Changes In Equity"));
+    String financialPositionText = extractedText(financialPositionPdf);
+    String incomeStatementText = extractedText(incomeStatementPdf);
+    String changesInEquityText = extractedText(changesInEquityPdf);
+    assertTrue(financialPositionText.contains("Cash and Cash Equivalents"));
+    assertTrue(financialPositionText.contains("Financial Position"));
+    assertTrue(financialPositionText.contains("Acme Studio"));
+    assertTrue(financialPositionText.contains("All posting kinds"));
+    assertTrue(financialPositionText.contains("ORDINARY"));
+    assertTrue(incomeStatementText.contains("Subscription Revenue"));
+    assertTrue(incomeStatementText.contains("Income Statement"));
+    assertTrue(incomeStatementText.contains("Non-closing postings"));
+    assertTrue(incomeStatementText.contains("ORDINARY"));
+    assertTrue(changesInEquityText.contains("Owner Capital"));
+    assertTrue(changesInEquityText.contains("Changes In Equity"));
+    assertTrue(changesInEquityText.contains("Acme Studio"));
+    assertTrue(changesInEquityText.contains("ORDINARY"));
   }
 
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.35.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.36.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.35.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.36.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -224,7 +263,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.35.0", information.getCreator());
+      assertEquals("FinGrind 0.36.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

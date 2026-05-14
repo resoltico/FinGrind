@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -40,7 +39,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     AccountPageCursor accountCursor = new AccountPageCursor(new AccountCode("1000"));
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -76,16 +75,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-    assertEquals(
-        0,
-        cli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+    assertEquals(0, cli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
         0,
         cli.run(
@@ -169,7 +159,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     Path replacementBookKeyFilePath = writeNamedBookKey("replacement.key", "replacement-key");
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(bookFilePath),
             new DeclareAccountResult.Declared(
                 declaredAccount(

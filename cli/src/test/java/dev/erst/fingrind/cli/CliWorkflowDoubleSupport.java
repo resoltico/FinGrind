@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -47,6 +48,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
   /** Recording workflow used to assert CLI routing without opening SQLite. */
   static final class RecordingWorkflow implements CliBookWorkflow {
     private final List<BookAccess> openBookAccesses = new ArrayList<>();
+    private final List<OpenBookCommand> openBookCommands = new ArrayList<>();
     private final List<BookAccess> rekeyBookAccesses = new ArrayList<>();
     private final List<BookAccess.PassphraseSource> rekeyReplacementPassphraseSources =
         new ArrayList<>();
@@ -80,8 +82,10 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
-    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(
+        BookAccess bookAccess, OpenBookCommand command) {
       openBookAccesses.add(bookAccess);
+      openBookCommands.add(command);
       return accepted(openBookResult);
     }
 
@@ -198,6 +202,10 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       return openBookAccesses;
     }
 
+    List<OpenBookCommand> openBookCommands() {
+      return openBookCommands;
+    }
+
     List<BookAccess> declareAccountAccesses() {
       return declareAccountAccesses;
     }
@@ -254,7 +262,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
-    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(
+        BookAccess bookAccess, OpenBookCommand command) {
       throw failure;
     }
 
@@ -362,7 +371,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
   /** Workflow stub that always throws an invalid-request style exception. */
   protected static final class IllegalArgumentWorkflow implements CliBookWorkflow {
     @Override
-    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(
+        BookAccess bookAccess, OpenBookCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -512,7 +522,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       ChangesInEquityResult changesInEquityResult) {
     return new CliBookWorkflow() {
       @Override
-      public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+      public ContractDecision<OpenBookResult> openBook(
+          BookAccess bookAccess, OpenBookCommand command) {
         throw new AssertionError("openBook should not be called in this test");
       }
 

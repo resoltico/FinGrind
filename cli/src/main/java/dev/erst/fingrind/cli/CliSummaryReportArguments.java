@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,7 +20,10 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec TRIAL_BALANCE_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_TO, ProtocolOptions.OUTPUT, ProtocolOptions.PDF_OUT),
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.POSTING_COVERAGE,
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec PERIOD_SUMMARY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
@@ -57,6 +61,7 @@ final class CliSummaryReportArguments {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, TRIAL_BALANCE_ARGUMENTS);
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable PostingCoverage postingCoverage = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -68,6 +73,11 @@ final class CliSummaryReportArguments {
                 effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
         continue;
       }
+      if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
+        postingCoverage =
+            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
+        continue;
+      }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
@@ -75,11 +85,15 @@ final class CliSummaryReportArguments {
       pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    PostingCoverage resolvedPostingCoverage =
+        postingCoverage == null ? PostingCoverage.ALL_POSTING_KINDS : postingCoverage;
     return new TrialBalance(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_TO,
-            () -> new TrialBalanceQuery(Optional.ofNullable(resolvedEffectiveDateTo))),
+            () ->
+                new TrialBalanceQuery(
+                    Optional.ofNullable(resolvedEffectiveDateTo), resolvedPostingCoverage)),
         CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 

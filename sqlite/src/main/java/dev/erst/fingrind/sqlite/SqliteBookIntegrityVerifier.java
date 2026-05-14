@@ -55,6 +55,13 @@ final class SqliteBookIntegrityVerifier {
     }
   }
 
+  static boolean hasFunctionalCurrencyAlignedJournal(SqliteNativeDatabase activeDatabase) {
+    return !SqliteStatementQueries.existsRow(
+        activeDatabase,
+        SqlitePostingSql.FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY,
+        statement -> {});
+  }
+
   static String liveSchemaFingerprint(SqliteNativeDatabase activeDatabase) {
     StringBuilder material = new StringBuilder(1024);
     int rowCount = 0;

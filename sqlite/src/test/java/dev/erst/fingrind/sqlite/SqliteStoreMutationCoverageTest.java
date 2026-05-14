@@ -36,7 +36,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("declare-runtime-rollback.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(FIXED_INSTANT);
+      postingFactStore.openBook(FIXED_INSTANT, bookIdentity());
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
       setStoreDatabase(
@@ -83,7 +83,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("declare-active-redeclare.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),

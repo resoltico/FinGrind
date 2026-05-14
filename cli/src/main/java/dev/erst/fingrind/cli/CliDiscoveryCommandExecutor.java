@@ -1,6 +1,10 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -63,16 +67,21 @@ final class CliDiscoveryCommandExecutor {
   private static HelpDescriptor launcherAwareHelp(HelpDescriptor helpDescriptor) {
     List<String> usage =
         helpDescriptor.usage().stream().map(CliInvocationText::rewriteInvocationPrefix).toList();
+    @Nullable RequestShapesDescriptor requestShapes = helpDescriptor.requestShapes();
+    @Nullable PostingRequestTemplateDescriptor requestTemplate = helpDescriptor.requestTemplate();
+    @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate =
+        helpDescriptor.declareAccountTemplate();
+    @Nullable LedgerPlanTemplateDescriptor planTemplate = helpDescriptor.planTemplate();
     return new HelpDescriptor(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
         usage,
         helpDescriptor.bookModel(),
-        helpDescriptor.requestShapes(),
-        helpDescriptor.requestTemplate(),
-        helpDescriptor.declareAccountTemplate(),
-        helpDescriptor.planTemplate(),
+        requestShapes,
+        requestTemplate,
+        declareAccountTemplate,
+        planTemplate,
         helpDescriptor.commands(),
         helpDescriptor.quickStart(),
         helpDescriptor.exitCodes(),

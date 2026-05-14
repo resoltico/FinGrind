@@ -188,6 +188,7 @@ class SqliteFuzzAssertionsTest {
   private static String basicValidRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {

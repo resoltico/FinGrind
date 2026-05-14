@@ -13,7 +13,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.spi.BookStore;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -70,7 +69,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
+              () -> postingFactStore.trialBalance(trialBalanceCriteria(Optional.empty())));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -133,7 +132,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException trialBalanceFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
+              () -> postingFactStore.trialBalance(trialBalanceCriteria(Optional.empty())));
       assertTrue(
           NullTestSupport.messageOf(trialBalanceFailure).contains("Failed to query SQLite book."));
       IllegalStateException accountLedgerFailure =
@@ -158,7 +157,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   ((BookStore) postingFactStore)
-                      .trialBalance(new TrialBalanceCriteria(Optional.empty())));
+                      .trialBalance(trialBalanceCriteria(Optional.empty())));
       assertTrue(
           NullTestSupport.messageOf(readTrialBalanceFailure)
               .contains("Failed to query SQLite book."));

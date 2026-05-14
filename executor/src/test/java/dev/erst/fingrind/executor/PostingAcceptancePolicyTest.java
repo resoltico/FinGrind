@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -42,6 +43,16 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for shared bookkeeping posting acceptance rules. */
 class PostingAcceptancePolicyTest {
+  @Test
+  void rejectionFor_rejectsMissingBookBeforeAnyOtherChecks() {
+    RecordingValidationBook book = new RecordingValidationBook();
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(command("idem-missing"), book);
+
+    assertEquals(Optional.of(new BookkeepingPostingRejection.BookNotInitialized()), rejection);
+  }
+
   @Test
   void rejectionFor_reportsDuplicateIdempotencyBeforeAccountViolations() {
     RecordingValidationBook book = new RecordingValidationBook();
@@ -130,6 +141,209 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
+  void rejectionFor_rejectsCallerAuthoredGeneratedPostingKinds() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.PERIOD_CLOSE,
+                "idem-generated",
+                SourceChannel.CLI,
+                List.of(
+                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(new BookkeepingPostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)),
+        rejection);
+    assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
+  void rejectionFor_allowsSystemGeneratedPostingKindsFromPostingCommands() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount retainedEarnings =
+        new RegisteredAccount(
+            new AccountCode("3200"),
+            new AccountName("Retained Earnings"),
+            AccountType.EQUITY,
+            AccountRole.RETAINED_EARNINGS,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("4000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(revenue.accountCode(), revenue);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.PERIOD_CLOSE,
+                "idem-system-command",
+                SourceChannel.SYSTEM,
+                List.of(
+                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(Optional.empty(), rejection);
+  }
+
+  @Test
+  void rejectionFor_rejectsFunctionalCurrencyMismatchBeforeAccountChecks() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.STANDARD,
+                "idem-usd",
+                SourceChannel.CLI,
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "USD", "10.00"),
+                    line("2000", JournalLine.EntrySide.CREDIT, "USD", "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.BookFunctionalCurrencyMismatch(
+                dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+                dev.erst.fingrind.core.CurrencyUnit.of("USD"))),
+        rejection);
+    assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
+  void rejectionFor_rejectsOpeningBalanceRevenueAccounts() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount asset =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("4000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(asset.accountCode(), asset);
+    book.accounts.put(revenue.accountCode(), revenue);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.OPENING_BALANCE,
+                "idem-opening-revenue",
+                SourceChannel.CLI,
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("4000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+                new AccountCode("4000"), AccountType.REVENUE)),
+        rejection);
+  }
+
+  @Test
+  void rejectionFor_rejectsOpeningBalanceExpenseAccounts() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount capital =
+        registeredAccount(
+            new AccountCode("3000"),
+            new AccountName("Owner Capital"),
+            AccountType.EQUITY,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount expense =
+        registeredAccount(
+            new AccountCode("5000"),
+            new AccountName("Expense"),
+            AccountType.EXPENSE,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(capital.accountCode(), capital);
+    book.accounts.put(expense.accountCode(), expense);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.OPENING_BALANCE,
+                "idem-opening-expense",
+                SourceChannel.CLI,
+                List.of(
+                    line("5000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+                new AccountCode("5000"), AccountType.EXPENSE)),
+        rejection);
+  }
+
+  @Test
+  void rejectionFor_acceptsOpeningBalanceForBalanceSheetAccounts() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount asset =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount capital =
+        registeredAccount(
+            new AccountCode("3000"),
+            new AccountName("Owner Capital"),
+            AccountType.EQUITY,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(asset.accountCode(), asset);
+    book.accounts.put(capital.accountCode(), capital);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                PostingKind.OPENING_BALANCE,
+                "idem-opening-balance-sheet",
+                SourceChannel.CLI,
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(Optional.empty(), rejection);
+  }
+
+  @Test
   void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodClosePosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
@@ -209,7 +423,7 @@ class PostingAcceptancePolicyTest {
                     new CausationId("cause-close"),
                     Optional.of(new CorrelationId("corr-close"))),
                 Instant.parse("2026-04-07T10:15:30Z"),
-                SourceChannel.CLI));
+                SourceChannel.SYSTEM));
 
     assertEquals(Optional.empty(), PostingAcceptancePolicy.rejectionFor(closingCommand, book));
   }
@@ -244,14 +458,25 @@ class PostingAcceptancePolicyTest {
 
   private static PostingCommand command(String idempotencyKey) {
     return command(
+        PostingKind.STANDARD,
         idempotencyKey,
+        SourceChannel.CLI,
         List.of(
             line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
             line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
   }
 
   private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
+    return command(PostingKind.STANDARD, idempotencyKey, SourceChannel.CLI, lines);
+  }
+
+  private static PostingCommand command(
+      PostingKind postingKind,
+      String idempotencyKey,
+      SourceChannel sourceChannel,
+      List<JournalLine> lines) {
     return new PostingCommand(
+        postingKind,
         new JournalEntry(LocalDate.parse("2026-04-07"), lines),
         PostingLineageModel.direct(),
         new RequestProvenance(
@@ -261,7 +486,7 @@ class PostingAcceptancePolicyTest {
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
-        SourceChannel.CLI);
+        sourceChannel);
   }
 
   private static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
@@ -287,7 +512,12 @@ class PostingAcceptancePolicyTest {
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
+    return line(accountCode, side, "EUR", amount);
+  }
+
+  private static JournalLine line(
+      String accountCode, JournalLine.EntrySide side, String currencyCode, String amount) {
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse(currencyCode, amount));
   }
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */
@@ -302,8 +532,7 @@ class PostingAcceptancePolicyTest {
     @Override
     public BookLifecycleInspection inspectBook() {
       return initialized
-          ? new BookLifecycleInspection.Initialized(
-              1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"))
+          ? initializedLifecycleInspection(1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"))
           : new BookLifecycleInspection.Missing(1);
     }
 
@@ -371,8 +600,7 @@ class PostingAcceptancePolicyTest {
 
     @Override
     public BookLifecycleInspection inspectBook() {
-      return new BookLifecycleInspection.Initialized(
-          1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"));
+      return initializedLifecycleInspection(1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"));
     }
 
     @Override

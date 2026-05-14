@@ -43,6 +43,21 @@ public final class ProtocolOptions {
   /** Option selecting the inclusive upper effective-date bound. */
   public static final String EFFECTIVE_DATE_TO = "--effective-date-to";
 
+  /** Option selecting the accounting-entity name used when initializing one new book. */
+  public static final String ENTITY_NAME = "--entity-name";
+
+  /** Option selecting the functional currency code used when initializing one new book. */
+  public static final String FUNCTIONAL_CURRENCY = "--functional-currency";
+
+  /** Option selecting the {@code MM-DD} fiscal-year start used when initializing one new book. */
+  public static final String FISCAL_YEAR_START = "--fiscal-year-start";
+
+  /** Option selecting the retained-earnings account used by one close-period command. */
+  public static final String RETAINED_EARNINGS_ACCOUNT = "--retained-earnings-account";
+
+  /** Option selecting which posting kinds one report query should include. */
+  public static final String POSTING_COVERAGE = "--posting-coverage";
+
   /** Option selecting a paginated query page size. */
   public static final String LIMIT = "--limit";
 

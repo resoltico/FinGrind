@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
@@ -30,9 +32,12 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -72,7 +77,7 @@ final class LedgerPlanServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_CLOCK.instant());
+    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity());
     return bookSession;
   }
 
@@ -107,6 +112,10 @@ final class LedgerPlanServiceTestSupport {
 
   static LedgerStepId stepId(String value) {
     return new LedgerStepId(value);
+  }
+
+  static LedgerStep.OpenBook openBookStep(String value) {
+    return new LedgerStep.OpenBook(stepId(value), openBookCommand());
   }
 
   static boolean textFact(LedgerFact fact, String name, String value) {
@@ -173,6 +182,7 @@ final class LedgerPlanServiceTestSupport {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
+        PostingKind.STANDARD,
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -213,8 +223,9 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
-      return delegate.openBook(initializedAt);
+    public BookOpeningOutcome openBook(
+        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+      return delegate.openBook(initializedAt, bookIdentity);
     }
 
     @Override
@@ -255,6 +266,12 @@ final class LedgerPlanServiceTestSupport {
     @Override
     public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
       return delegate.postings(effectiveDateRange);
+    }
+
+    @Override
+    public List<AccountCurrencyTotals> accountTotals(
+        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+      return delegate.accountTotals(effectiveDateRange, postingCoverage);
     }
 
     @Override
@@ -347,7 +364,8 @@ final class LedgerPlanServiceTestSupport {
     private boolean rollbackCalled;
 
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
+    public BookOpeningOutcome openBook(
+        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
       throw new IllegalStateException("boom");
     }
 
@@ -457,7 +475,8 @@ final class LedgerPlanServiceTestSupport {
   static final class RuntimeRollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
 
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
+    public BookOpeningOutcome openBook(
+        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
       throw new IllegalStateException("boom");
     }
 

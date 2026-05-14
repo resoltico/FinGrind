@@ -20,12 +20,12 @@ final class ProtocolCatalogFacts {
               + ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
           "books must be opened explicitly before any posting or account declaration",
           "every posting line must reference a declared active account",
-          "single-currency-per-entry");
+          "single-functional-currency-per-book");
   private static final CurrencyFacts CURRENCY =
       new CurrencyFacts(
           BOOK_MODEL.currencyScope(),
           "not-supported",
-          "Every journal line inside one entry must share the same currencyCode. Mixed-currency entries are rejected and no multi-currency posting model exists yet.");
+          "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
   private static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",

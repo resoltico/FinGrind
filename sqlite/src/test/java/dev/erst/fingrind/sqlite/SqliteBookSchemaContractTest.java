@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.charset.StandardCharsets;
@@ -49,7 +48,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("identity-pragmas.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
           "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));
@@ -70,7 +69,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void schemaResource_pinsCommittedSourceChannelToCanonicalOwner() throws Exception {
+  void schemaResource_allowsMultipleCommittedSourceChannels() throws Exception {
     String schema =
         new String(
             java.util.Objects.requireNonNull(
@@ -78,10 +77,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                     "Missing schema resource.")
                 .readAllBytes(),
             StandardCharsets.UTF_8);
-    assertTrue(
-        schema.contains(
-            "source_channel text not null check (source_channel in ('%s'))"
-                .formatted(SourceChannel.CLI.wireValue())));
+    assertTrue(schema.contains("source_channel text not null,"));
+    assertFalse(schema.contains("source_channel text not null check"));
   }
 
   @Test
@@ -89,7 +86,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("secure-book.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
     }
     if (!databasePath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
       return;
@@ -195,7 +192,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException openException =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+              () ->
+                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(
           NullTestSupport.messageOf(openException)
               .contains("format version " + unsupportedVersion + " is unsupported"));
@@ -215,8 +213,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
     withStandaloneDatabase(
@@ -251,8 +249,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
     }
     withStandaloneDatabase(
         bookAccess(databasePath),
@@ -274,8 +272,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
     }
     withStandaloneDatabase(
         bookAccess(databasePath),
@@ -296,7 +294,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("connection-pragmas.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
           "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));

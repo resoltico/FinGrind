@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -36,7 +35,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -98,7 +97,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -161,7 +160,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -222,7 +221,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -280,6 +279,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             "invalid-journal-request.json",
             """
             {
+              "postingKind": "STANDARD",
               "effectiveDate": "2026-04-07",
               "lines": %s,
               "provenance": {
@@ -303,7 +303,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -381,7 +381,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -439,7 +439,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -497,7 +497,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(
@@ -530,6 +530,12 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
+              "--entity-name",
+              "Acme Studio",
+              "--functional-currency",
+              "EUR",
+              "--fiscal-year-start",
+              "01-01",
               "--output",
               "human",
               "--bogus"

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.BookIdentity;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -7,10 +8,11 @@ import java.util.Objects;
 public sealed interface OpenBookResult permits OpenBookResult.Opened, OpenBookResult.Rejected {
 
   /** Success result for a newly initialized book. */
-  record Opened(Instant initializedAt) implements OpenBookResult {
+  record Opened(Instant initializedAt, BookIdentity bookIdentity) implements OpenBookResult {
     /** Validates the initialization timestamp. */
     public Opened {
       Objects.requireNonNull(initializedAt, "initializedAt");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
   }
 

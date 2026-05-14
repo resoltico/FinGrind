@@ -63,7 +63,7 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Translates one public trial-balance query into the local bookkeeping read model. */
   public static TrialBalanceCriteria fromPublished(TrialBalanceQuery query) {
     Objects.requireNonNull(query, "query");
-    return new TrialBalanceCriteria(query.effectiveDateTo());
+    return new TrialBalanceCriteria(query.effectiveDateTo(), query.postingCoverage());
   }
 
   /** Translates one public account-ledger query into the local bookkeeping read model. */
@@ -128,7 +128,10 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   public static TrialBalanceReport toPublished(TrialBalanceView view) {
     Objects.requireNonNull(view, "view");
     return new TrialBalanceReport(
+        view.bookIdentity(),
         view.effectiveDateTo(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
         view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList());
   }
 
@@ -166,7 +169,10 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   public static FinancialPositionReport toPublished(FinancialPositionView view) {
     Objects.requireNonNull(view, "view");
     return new FinancialPositionReport(
+        view.bookIdentity(),
         view.effectiveDateTo(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
         view.sections().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList());
@@ -176,8 +182,11 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   public static IncomeStatementReport toPublished(IncomeStatementView view) {
     Objects.requireNonNull(view, "view");
     return new IncomeStatementReport(
+        view.bookIdentity(),
         view.effectiveDateFrom(),
         view.effectiveDateTo(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
         view.sections().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList(),
@@ -188,8 +197,11 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   public static ChangesInEquityReport toPublished(ChangesInEquityView view) {
     Objects.requireNonNull(view, "view");
     return new ChangesInEquityReport(
+        view.bookIdentity(),
         view.effectiveDateFrom(),
         view.effectiveDateTo(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
         view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList(),
         view.openingTotals(),
         view.movementTotals(),
@@ -264,7 +276,12 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   private static FinancialPositionRow toPublished(FinancialPositionRowView row) {
     Objects.requireNonNull(row, "row");
     return new FinancialPositionRow(
-        row.lineCode(), row.lineName(), row.lineType(), row.synthetic(), row.balance());
+        row.lineCode(),
+        row.lineName(),
+        row.lineType(),
+        row.lineRole(),
+        row.synthetic(),
+        row.balance());
   }
 
   private static IncomeStatementSection toPublished(IncomeStatementSectionView section) {
@@ -280,7 +297,12 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   private static IncomeStatementRow toPublished(IncomeStatementRowView row) {
     Objects.requireNonNull(row, "row");
     return new IncomeStatementRow(
-        row.lineCode(), row.lineName(), row.lineType(), row.synthetic(), row.movement());
+        row.lineCode(),
+        row.lineName(),
+        row.lineType(),
+        row.lineRole(),
+        row.synthetic(),
+        row.movement());
   }
 
   private static ChangesInEquityRow toPublished(ChangesInEquityRowView row) {
@@ -288,6 +310,8 @@ public final class BookkeepingReadPublishedLanguageTranslator {
     return new ChangesInEquityRow(
         row.lineCode(),
         row.lineName(),
+        row.lineType(),
+        row.lineRole(),
         row.synthetic(),
         row.openingBalance(),
         row.movement(),

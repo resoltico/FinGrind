@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -58,14 +59,18 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   }
 
   @Override
-  public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+  public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
     return withBookSession(
         bookAccess,
         SqliteBookSessionMode.READ_WRITE_CREATE,
         SqlitePassphraseIntent.NEW_SECRET,
         bookSession ->
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
-                .toPublished(new BookAdministrationService(bookSession, clock).openBook()));
+                .toPublished(
+                    new BookAdministrationService(bookSession, clock)
+                        .openBook(
+                            dev.erst.fingrind.executor.bookkeeping
+                                .BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
@@ -104,7 +109,10 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new BookAdministrationService(bookSession, clock)
-                    .closePeriod(BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+                    .closePeriod(
+                        BookkeepingPublishedLanguageTranslator.fromPublished(command),
+                        BookkeepingPublishedLanguageTranslator.retainedEarningsAccountCode(
+                            command))));
   }
 
   @Override

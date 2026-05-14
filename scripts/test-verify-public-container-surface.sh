@@ -148,10 +148,10 @@ TEXT
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
-                printf '{"status":"ok"}\n'
+                printf '{"status":"ok","payload":{"accountCode":"1000"}}\n'
                 ;;
             post-entry)
-                printf '{"status":"committed"}\n'
+                printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
                 ;;
             trial-balance)
                 pdf_out=''

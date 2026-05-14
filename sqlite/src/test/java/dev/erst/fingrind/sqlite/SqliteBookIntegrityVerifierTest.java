@@ -149,6 +149,23 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
+  void functionalCurrencyAudit_rejectsJournalLinesOutsideTheBookFunctionalCurrency() {
+    Path bookPath = tempDirectory.resolve("persisted-journal-functional-currency.sqlite");
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertTrue(SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(database));
+
+          insertPostingFactRow(database, "posting-usd", "idem-usd");
+          insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000);
+          insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 1000);
+
+          assertFalse(SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(database));
+        });
+  }
+
+  @Test
   void foreignKeyCheck_rejectsOrphanedPersistedJournalRows() {
     Path bookPath = tempDirectory.resolve("persisted-journal-orphan.sqlite");
     initializeBookOnDisk(bookPath);

@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -50,11 +51,12 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     }
   }
 
-  private record WorkflowOpenSupplier(SqliteCliBookWorkflow workflow, BookAccess bookAccess)
+  private record WorkflowOpenSupplier(
+      SqliteCliBookWorkflow workflow, BookAccess bookAccess, OpenBookCommand command)
       implements Supplier<ContractDecision<OpenBookResult>> {
     @Override
     public ContractDecision<OpenBookResult> get() {
-      return workflow.openBook(bookAccess);
+      return workflow.openBook(bookAccess, command);
     }
   }
 
@@ -88,7 +90,9 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
         SqliteRoundTripWorkflowResources.keyFileBookAccess(directoryBookPath, directoryKeyPath);
     assertNonInitializedInspection(
         new WorkflowInspectionSupplier(workflow, directoryBookAccess), directoryBookPath);
-    assertNotOpened(new WorkflowOpenSupplier(workflow, directoryBookAccess), directoryBookPath);
+    assertNotOpened(
+        new WorkflowOpenSupplier(workflow, directoryBookAccess, CliFuzzFixtures.openBookCommand()),
+        directoryBookPath);
     assertNotCommitted(
         new WorkflowCommitSupplier(
             workflow,
@@ -106,7 +110,9 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
         SqliteRoundTripWorkflowResources.keyFileBookAccess(plaintextBookPath, plaintextKeyPath);
     assertNonInitializedInspection(
         new WorkflowInspectionSupplier(workflow, plaintextBookAccess), plaintextBookPath);
-    assertNotOpened(new WorkflowOpenSupplier(workflow, plaintextBookAccess), plaintextBookPath);
+    assertNotOpened(
+        new WorkflowOpenSupplier(workflow, plaintextBookAccess, CliFuzzFixtures.openBookCommand()),
+        plaintextBookPath);
     assertNotCommitted(
         new WorkflowCommitSupplier(
             workflow,

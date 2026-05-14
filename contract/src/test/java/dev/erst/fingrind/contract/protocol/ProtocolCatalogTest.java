@@ -362,20 +362,15 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         ProtocolCatalog.requiredSqliteCompileOptions());
-    assertEquals(
-        List.of(
-            ProtocolSuccessStatus.OK,
-            ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,
-            ProtocolSuccessStatus.COMMITTED,
-            ProtocolSuccessStatus.PLAN_COMMITTED),
-        ProtocolCatalog.successStatuses());
+    assertEquals(List.of(ProtocolSuccessStatus.OK), ProtocolCatalog.successStatuses());
     assertEquals(
         List.of(
             ProtocolRejectionStatus.REJECTED,
             ProtocolRejectionStatus.PLAN_REJECTED,
             ProtocolRejectionStatus.PLAN_ASSERTION_FAILED),
         ProtocolCatalog.rejectionStatuses());
-    assertEquals("single-currency-per-entry", ProtocolCatalog.bookModel().currencyScope());
+    assertEquals(
+        "single-functional-currency-per-book", ProtocolCatalog.bookModel().currencyScope());
     assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());
     assertEquals("advisory", ProtocolCatalog.preflight().semantics());
     assertFalse(ProtocolCatalog.preflight().commitGuarantee());
@@ -420,7 +415,15 @@ class ProtocolCatalogTest {
     assertEquals(List.of("limit"), facts.hardLimitations());
     assertEquals(List.of("planId", "steps"), ProtocolLedgerPlanFields.planFields());
     assertEquals(
-        List.of("stepId", "kind", "posting", "declareAccount", "query", "assertion", "postingId"),
+        List.of(
+            "stepId",
+            "kind",
+            "openBook",
+            "posting",
+            "declareAccount",
+            "query",
+            "assertion",
+            "postingId"),
         ProtocolLedgerPlanFields.stepFields());
     assertEquals(
         List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "cursor"),
@@ -439,6 +442,7 @@ class ProtocolCatalogTest {
     assertEquals("steps", ProtocolLedgerPlanFields.Plan.STEPS);
     assertEquals("stepId", ProtocolLedgerPlanFields.Step.STEP_ID);
     assertEquals("kind", ProtocolLedgerPlanFields.Step.KIND);
+    assertEquals("openBook", ProtocolLedgerPlanFields.Step.OPEN_BOOK);
     assertEquals("posting", ProtocolLedgerPlanFields.Step.POSTING);
     assertEquals("declareAccount", ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT);
     assertEquals("query", ProtocolLedgerPlanFields.Step.QUERY);
@@ -457,7 +461,7 @@ class ProtocolCatalogTest {
     assertEquals("netAmount", ProtocolLedgerPlanFields.Assertion.NET_AMOUNT);
     assertEquals("balanceSide", ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE);
     assertEquals(
-        List.of("effectiveDate", "lines", "provenance", "reversal"),
+        List.of("postingKind", "effectiveDate", "lines", "provenance", "reversal"),
         ProtocolPostEntryFields.topLevelFields());
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());

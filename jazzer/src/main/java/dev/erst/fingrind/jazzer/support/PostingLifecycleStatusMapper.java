@@ -1,0 +1,53 @@
+package dev.erst.fingrind.jazzer.support;
+
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
+import java.util.Objects;
+
+/** Shared deterministic mapping from posting rejections to replay lifecycle status snapshots. */
+public final class PostingLifecycleStatusMapper {
+  private PostingLifecycleStatusMapper() {}
+
+  /** Resolves the stable replay lifecycle status for one posting rejection family. */
+  public static PostingLifecycleStatus forRejection(PostingRejection rejection) {
+    return switch (Objects.requireNonNull(rejection, "rejection")) {
+      case PostingRejection.BookNotInitialized _ -> PostingLifecycleStatus.BOOK_NOT_INITIALIZED;
+      case PostingRejection.AccountStateViolations violations ->
+          accountStateViolationStatus(violations);
+      case PostingRejection.DuplicateIdempotencyKey _ ->
+          PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.PostingKindReserved _ -> PostingLifecycleStatus.POSTING_KIND_RESERVED;
+      case PostingRejection.BookFunctionalCurrencyMismatch _ ->
+          PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
+      case PostingRejection.ClosedPeriodViolation _ ->
+          PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
+          PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
+      case PostingRejection.RetainedEarningsAccountReserved _ ->
+          PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED;
+      case PostingRejection.ReversalTargetNotFound _ ->
+          PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
+      case PostingRejection.ReversalAlreadyExists _ ->
+          PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS;
+      case PostingRejection.ReversalDoesNotNegateTarget _ ->
+          PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET;
+    };
+  }
+
+  private static PostingLifecycleStatus accountStateViolationStatus(
+      PostingRejection.AccountStateViolations accountStateViolations) {
+    boolean allUnknown =
+        accountStateViolations.violations().stream()
+            .allMatch(PostingRejection.UnknownAccount.class::isInstance);
+    if (allUnknown) {
+      return PostingLifecycleStatus.UNKNOWN_ACCOUNT;
+    }
+    boolean allInactive =
+        accountStateViolations.violations().stream()
+            .allMatch(PostingRejection.InactiveAccount.class::isInstance);
+    if (allInactive) {
+      return PostingLifecycleStatus.INACTIVE_ACCOUNT;
+    }
+    return PostingLifecycleStatus.ACCOUNT_STATE_VIOLATIONS;
+  }
+}

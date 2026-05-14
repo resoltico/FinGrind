@@ -18,6 +18,7 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import java.time.Instant;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for machine-contract ledger-plan template publication. */
@@ -25,6 +26,8 @@ class MachineContractPlanTemplateTest {
   @Test
   void planTemplatePublishesCanonicalAgentWorkflowMetadata() {
     ContractTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
+    ContractTemplates.LedgerPlanStepTemplateDescriptor initializeBook = template.steps().get(0);
+    ContractTemplates.OpenBookTemplateDescriptor initializeBookTemplate = initializeBook.openBook();
     ContractTemplates.LedgerPlanStepTemplateDescriptor declareCash = template.steps().get(1);
     ContractTemplates.DeclareAccountTemplateDescriptor declareCashTemplate =
         declareCash.declareAccount();
@@ -36,14 +39,18 @@ class MachineContractPlanTemplateTest {
     ContractTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance = template.steps().get(4);
     ContractTemplates.LedgerAssertionTemplateDescriptor assertCashBalanceTemplate =
         assertCashBalance.assertion();
+    assertNotNull(initializeBookTemplate);
     assertNotNull(declareCashTemplate);
     assertNotNull(declareRevenueTemplate);
     assertNotNull(postJournalTemplate);
     assertNotNull(assertCashBalanceTemplate);
     assertEquals("plan-1", template.planId());
     assertEquals(5, template.steps().size());
-    assertEquals("initialize-book", template.steps().get(0).stepId());
-    assertEquals(LedgerStepKind.OPEN_BOOK, template.steps().get(0).kind());
+    assertEquals("initialize-book", initializeBook.stepId());
+    assertEquals(LedgerStepKind.OPEN_BOOK, initializeBook.kind());
+    assertEquals("Acme Studio", initializeBookTemplate.entityName());
+    assertEquals("EUR", initializeBookTemplate.functionalCurrency());
+    assertEquals("01-01", initializeBookTemplate.fiscalYearStart());
     assertEquals("declare-cash", declareCash.stepId());
     assertEquals(LedgerStepKind.DECLARE_ACCOUNT, declareCash.kind());
     assertEquals("1000", declareCashTemplate.accountCode());
@@ -67,18 +74,17 @@ class MachineContractPlanTemplateTest {
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.35.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.36.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());
-    assertTrue(
-        capabilities
-            .requestShapes()
-            .ledgerPlan()
-            .assertionKinds()
-            .contains(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
-    assertEquals(LedgerStepKind.ASSERT, capabilities.requestShapes().ledgerPlan().assertStepKind());
+    assertNotNull(capabilities.requestShapes());
+    var requestShapes = Objects.requireNonNull(capabilities.requestShapes());
+    assertNotNull(requestShapes.ledgerPlan());
+    var ledgerPlan = Objects.requireNonNull(requestShapes.ledgerPlan());
+    assertTrue(ledgerPlan.assertionKinds().contains(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
+    assertEquals(LedgerStepKind.ASSERT, ledgerPlan.assertStepKind());
   }
 }

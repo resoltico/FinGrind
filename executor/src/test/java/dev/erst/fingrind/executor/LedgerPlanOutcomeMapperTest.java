@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,7 +63,8 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsBlank() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    LedgerStep step =
+        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
@@ -75,7 +77,8 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsNull() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    LedgerStep step =
+        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
@@ -88,7 +91,8 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_includesNonBlankDetail() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    LedgerStep step =
+        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
@@ -104,7 +108,10 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_recordsPhaseCleanupAndPriorFailureFacts() {
-    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
+    BookWorkflowStep step =
+        workflowStep(
+            new LedgerStep.OpenBook(
+                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
@@ -158,7 +165,10 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsBlank() {
-    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
+    BookWorkflowStep step =
+        workflowStep(
+            new LedgerStep.OpenBook(
+                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
@@ -178,7 +188,10 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsNull() {
-    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
+    BookWorkflowStep step =
+        workflowStep(
+            new LedgerStep.OpenBook(
+                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
@@ -438,7 +451,8 @@ class LedgerPlanOutcomeMapperTest {
   void missingBookCode_usesTheBoundaryOwnedRejectionFamilyForEachWorkflowStep() {
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(new BookWorkflowStep.OpenBook("open")));
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.OpenBook("open", bookIdentity())));
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
@@ -508,6 +522,7 @@ class LedgerPlanOutcomeMapperTest {
 
   private static PostingCommand postingCommand(String idempotencyKey) {
     return new PostingCommand(
+        PostingKind.STANDARD,
         new JournalEntry(
             LocalDate.parse("2026-05-05"),
             List.of(

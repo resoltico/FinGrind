@@ -1,8 +1,14 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -12,11 +18,18 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses lifecycle-style mutation commands such as key generation, open-book, and rekey-book. */
 final class CliLifecycleMutationArguments {
-  private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec OPEN_BOOK_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.ENTITY_NAME,
+              ProtocolOptions.FUNCTIONAL_CURRENCY,
+              ProtocolOptions.FISCAL_YEAR_START,
+              ProtocolOptions.OUTPUT),
+          List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec CLOSE_PERIOD_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
+              ProtocolOptions.RETAINED_EARNINGS_ACCOUNT,
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               ProtocolOptions.EFFECTIVE_DATE_TO,
               ProtocolOptions.OUTPUT),
@@ -62,19 +75,62 @@ final class CliLifecycleMutationArguments {
 
   static CliCommand parseOpenBookCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, OPEN_BOOK_ARGUMENTS);
+    BookEntityName entityName = null;
+    CurrencyUnit functionalCurrency = null;
+    FiscalYearStart fiscalYearStart = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
-      argumentIterator.next();
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.ENTITY_NAME.equals(argument)) {
+        entityName =
+            CliArgumentValueParser.parseBookEntityNameOption(
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ENTITY_NAME),
+                ProtocolOptions.ENTITY_NAME);
+        continue;
+      }
+      if (ProtocolOptions.FUNCTIONAL_CURRENCY.equals(argument)) {
+        functionalCurrency =
+            CliArgumentValueParser.parseCurrencyUnitOption(
+                CliArgumentValueParser.requireValue(
+                    argumentIterator, ProtocolOptions.FUNCTIONAL_CURRENCY),
+                ProtocolOptions.FUNCTIONAL_CURRENCY);
+        continue;
+      }
+      if (ProtocolOptions.FISCAL_YEAR_START.equals(argument)) {
+        fiscalYearStart =
+            CliArgumentValueParser.parseFiscalYearStartOption(
+                CliArgumentValueParser.requireValue(
+                    argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
+                ProtocolOptions.FISCAL_YEAR_START);
+        continue;
+      }
       outputMode =
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
+    if (entityName == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ENTITY_NAME,
+          "A " + ProtocolOptions.ENTITY_NAME + " argument is required.");
+    }
+    if (functionalCurrency == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FUNCTIONAL_CURRENCY,
+          "A " + ProtocolOptions.FUNCTIONAL_CURRENCY + " argument is required.");
+    }
+    if (fiscalYearStart == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FISCAL_YEAR_START,
+          "A " + ProtocolOptions.FISCAL_YEAR_START + " argument is required.");
+    }
     return new OpenBook(
-        parsedArguments.bookAccess(), CliArgumentValueParser.resolvedOutputMode(outputMode));
+        parsedArguments.bookAccess(),
+        new OpenBookCommand(new BookIdentity(entityName, functionalCurrency, fiscalYearStart)),
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseRekeyBookCommand(List<String> arguments) {
@@ -196,10 +252,22 @@ final class CliLifecycleMutationArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, CLOSE_PERIOD_ARGUMENTS);
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
+    String retainedEarningsAccountCodeValue = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
+      if (ProtocolOptions.RETAINED_EARNINGS_ACCOUNT.equals(argument)) {
+        if (retainedEarningsAccountCodeValue != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.RETAINED_EARNINGS_ACCOUNT,
+              "Duplicate argument: " + ProtocolOptions.RETAINED_EARNINGS_ACCOUNT);
+        }
+        retainedEarningsAccountCodeValue =
+            CliArgumentValueParser.requireValue(
+                argumentIterator, ProtocolOptions.RETAINED_EARNINGS_ACCOUNT);
+        continue;
+      }
       if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
         effectiveDateFrom =
             CliReportArguments.requireDateOption(
@@ -228,8 +296,14 @@ final class CliLifecycleMutationArguments {
           ProtocolOptions.EFFECTIVE_DATE_TO,
           "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
     }
+    if (retainedEarningsAccountCodeValue == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.RETAINED_EARNINGS_ACCOUNT,
+          "A " + ProtocolOptions.RETAINED_EARNINGS_ACCOUNT + " argument is required.");
+    }
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    String resolvedRetainedEarningsAccountCodeValue = retainedEarningsAccountCodeValue;
     CliArgumentValueParser.requireOrderedDateRange(
         resolvedEffectiveDateFrom,
         resolvedEffectiveDateTo,
@@ -237,9 +311,14 @@ final class CliLifecycleMutationArguments {
         ProtocolOptions.EFFECTIVE_DATE_TO);
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo);
+    AccountCode retainedEarningsAccountCode =
+        CliArgumentValueParser.requireValidArgument(
+            ProtocolOptions.RETAINED_EARNINGS_ACCOUNT,
+            () -> new AccountCode(resolvedRetainedEarningsAccountCodeValue));
     return new ClosePeriod(
         parsedArguments.bookAccess(),
         reportingPeriod,
+        retainedEarningsAccountCode,
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 }

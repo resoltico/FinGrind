@@ -2,6 +2,8 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
@@ -59,7 +61,7 @@ class MachineContractTest {
     assertEquals(
         ContractResponse.CommitGuarantee.NOT_GUARANTEED,
         capabilities.preflight().commitGuarantee());
-    assertEquals("single-currency-per-entry", capabilities.currencyModel().scope());
+    assertEquals("single-functional-currency-per-book", capabilities.currencyModel().scope());
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
@@ -89,31 +91,36 @@ class MachineContractTest {
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
         ((EnvironmentSqliteDescriptor.ReadyRuntime) capabilities.environment().sqlite().runtime())
             .runtimeTrustBasis());
+    assertNotNull(capabilities.requestShapes());
+    ContractRequestShapes.RequestShapesDescriptor requestShapes =
+        Objects.requireNonNull(capabilities.requestShapes());
+    assertNotNull(requestShapes.postEntry());
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntry =
+        Objects.requireNonNull(requestShapes.postEntry());
+    assertNotNull(requestShapes.declareAccount());
+    ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccount =
+        Objects.requireNonNull(requestShapes.declareAccount());
+    assertNotNull(requestShapes.ledgerPlan());
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
+        Objects.requireNonNull(requestShapes.ledgerPlan());
 
     assertEquals(
         enumValues(JournalLine.EntrySide.values()),
-        vocabularyValues(capabilities.requestShapes().postEntry().enumVocabularies(), "lineSide"));
+        vocabularyValues(postEntry.enumVocabularies(), "lineSide"));
     assertEquals(
         enumValues(ActorType.values()),
-        vocabularyValues(capabilities.requestShapes().postEntry().enumVocabularies(), "actorType"));
+        vocabularyValues(postEntry.enumVocabularies(), "actorType"));
     assertEquals(
         enumValues(AccountRole.values()),
-        vocabularyValues(
-            capabilities.requestShapes().declareAccount().enumVocabularies(), "accountRole"));
+        vocabularyValues(declareAccount.enumVocabularies(), "accountRole"));
+    assertEquals("https://json-schema.org/draft/2020-12/schema", requestShapes.schemaDialect());
+    assertEquals("object", postEntry.schema().get("type"));
+    assertEquals("object", declareAccount.schema().get("type"));
+    assertEquals("array", nestedSchemaProperty(ledgerPlan.schema(), "steps", "type"));
     assertEquals(
-        "https://json-schema.org/draft/2020-12/schema",
-        capabilities.requestShapes().schemaDialect());
-    assertEquals("object", capabilities.requestShapes().postEntry().schema().get("type"));
-    assertEquals("object", capabilities.requestShapes().declareAccount().schema().get("type"));
+        RequestFieldPresence.CONDITIONAL, fieldPresence(ledgerPlan.stepFields(), "posting"));
     assertEquals(
-        "array",
-        nestedSchemaProperty(capabilities.requestShapes().ledgerPlan().schema(), "steps", "type"));
-    assertEquals(
-        RequestFieldPresence.CONDITIONAL,
-        fieldPresence(capabilities.requestShapes().ledgerPlan().stepFields(), "posting"));
-    assertEquals(
-        RequestFieldPresence.CONDITIONAL,
-        fieldPresence(capabilities.requestShapes().ledgerPlan().queryFields(), "accountCode"));
+        RequestFieldPresence.CONDITIONAL, fieldPresence(ledgerPlan.queryFields(), "accountCode"));
 
     List<String> rejectionCodes =
         capabilities.responseModel().rejections().stream()
@@ -174,7 +181,7 @@ class MachineContractTest {
         new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal");
 
     assertEquals("FinGrind", help.application());
-    assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
+    assertEquals("single-functional-currency-per-book", help.bookModel().currencyScope());
     assertEquals(ProtocolCatalog.operations().size(), help.commands().size());
     assertEquals(
         OperationId.GENERATE_BOOK_KEY_FILE,
@@ -297,6 +304,7 @@ class MachineContractTest {
         environment.distribution().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliBundleTargets());
     assertEquals(ScaffoldPlaceholders.EFFECTIVE_DATE, template.effectiveDate());
+    assertEquals(dev.erst.fingrind.core.PostingKind.STANDARD, template.postingKind());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals(ScaffoldPlaceholders.ACTOR_ID, template.provenance().actorId());
     assertEquals(ActorType.AGENT, template.provenance().actorType());
@@ -366,6 +374,69 @@ class MachineContractTest {
         help.usage());
     assertEquals(1, help.commands().size());
     assertEquals(OperationId.POST_ENTRY, help.commands().getFirst().name());
+    assertTrue(help.quickStart().isEmpty());
+  }
+
+  @Test
+  void help_scopedToDeclareAccountPublishesOnlyDeclareAccountShapesAndTemplate() {
+    ApplicationIdentity identity =
+        new ApplicationIdentity("FinGrind", "0.9.0", "Finance-grade bookkeeping kernel");
+    EnvironmentDescriptor environment = ContractFixtures.environmentDescriptor();
+
+    HelpDescriptor help = MachineContract.help(identity, environment, OperationId.DECLARE_ACCOUNT);
+
+    assertEquals(1, help.commands().size());
+    assertEquals(OperationId.DECLARE_ACCOUNT, help.commands().getFirst().name());
+    assertNotNull(help.requestShapes());
+    assertEquals(
+        "https://json-schema.org/draft/2020-12/schema",
+        Objects.requireNonNull(help.requestShapes()).schemaDialect());
+    assertNull(help.requestShapes().postEntry());
+    assertNotNull(help.requestShapes().declareAccount());
+    assertNull(help.requestShapes().ledgerPlan());
+    assertNull(help.requestTemplate());
+    assertNotNull(help.declareAccountTemplate());
+    assertEquals("1000", Objects.requireNonNull(help.declareAccountTemplate()).accountCode());
+    assertEquals(AccountRole.ORDINARY, help.declareAccountTemplate().accountRole());
+    assertNull(help.planTemplate());
+    assertTrue(help.quickStart().isEmpty());
+  }
+
+  @Test
+  void help_scopedToExecutePlanPublishesOnlyLedgerPlanShapesAndTemplate() {
+    ApplicationIdentity identity =
+        new ApplicationIdentity("FinGrind", "0.9.0", "Finance-grade bookkeeping kernel");
+    EnvironmentDescriptor environment = ContractFixtures.environmentDescriptor();
+
+    HelpDescriptor help = MachineContract.help(identity, environment, OperationId.EXECUTE_PLAN);
+
+    assertEquals(1, help.commands().size());
+    assertEquals(OperationId.EXECUTE_PLAN, help.commands().getFirst().name());
+    assertNotNull(help.requestShapes());
+    assertNull(Objects.requireNonNull(help.requestShapes()).postEntry());
+    assertNull(help.requestShapes().declareAccount());
+    assertNotNull(help.requestShapes().ledgerPlan());
+    assertNull(help.requestTemplate());
+    assertNull(help.declareAccountTemplate());
+    assertNotNull(help.planTemplate());
+    assertEquals("plan-1", Objects.requireNonNull(help.planTemplate()).planId());
+    assertTrue(help.quickStart().isEmpty());
+  }
+
+  @Test
+  void help_scopedToNonRequestCommandPublishesNoRequestShapesOrTemplates() {
+    ApplicationIdentity identity =
+        new ApplicationIdentity("FinGrind", "0.9.0", "Finance-grade bookkeeping kernel");
+    EnvironmentDescriptor environment = ContractFixtures.environmentDescriptor();
+
+    HelpDescriptor help = MachineContract.help(identity, environment, OperationId.CLOSE_PERIOD);
+
+    assertEquals(1, help.commands().size());
+    assertEquals(OperationId.CLOSE_PERIOD, help.commands().getFirst().name());
+    assertNull(help.requestShapes());
+    assertNull(help.requestTemplate());
+    assertNull(help.declareAccountTemplate());
+    assertNull(help.planTemplate());
     assertTrue(help.quickStart().isEmpty());
   }
 

@@ -30,7 +30,9 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.time.Instant;
@@ -46,7 +48,12 @@ class StatementAndCloseContractTypesTest {
   void statementAndCloseContractTypes_preserveCanonicalPayloads() {
     FinancialPositionRow financialPositionRow =
         new FinancialPositionRow(
-            "1000", "Cash", AccountType.ASSET, false, balance("EUR", "15.00", "0.00"));
+            "1000",
+            "Cash",
+            AccountType.ASSET,
+            Optional.of(AccountRole.ORDINARY),
+            false,
+            balance("EUR", "15.00", "0.00"));
     FinancialPositionSection financialPositionSection =
         new FinancialPositionSection(
             AccountType.ASSET,
@@ -54,7 +61,10 @@ class StatementAndCloseContractTypesTest {
             new ArrayList<>(List.of(balance("EUR", "15.00", "0.00"))));
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
+            ContractFixtures.bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             new ArrayList<>(List.of(financialPositionSection)));
     FinancialPositionResult.Reported reportedFinancialPosition =
         new FinancialPositionResult.Reported(financialPositionReport);
@@ -65,7 +75,12 @@ class StatementAndCloseContractTypesTest {
 
     IncomeStatementRow incomeStatementRow =
         new IncomeStatementRow(
-            "4000", "Revenue", AccountType.REVENUE, false, balance("EUR", "0.00", "10.00"));
+            "4000",
+            "Revenue",
+            AccountType.REVENUE,
+            Optional.of(AccountRole.ORDINARY),
+            false,
+            balance("EUR", "0.00", "10.00"));
     IncomeStatementSection incomeStatementSection =
         new IncomeStatementSection(
             AccountType.REVENUE,
@@ -73,8 +88,11 @@ class StatementAndCloseContractTypesTest {
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))));
     IncomeStatementReport incomeStatementReport =
         new IncomeStatementReport(
+            ContractFixtures.bookIdentity(),
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
             new ArrayList<>(List.of(incomeStatementSection)),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))));
     IncomeStatementResult.Reported reportedIncomeStatement =
@@ -88,14 +106,19 @@ class StatementAndCloseContractTypesTest {
         new ChangesInEquityRow(
             "3000",
             "Owner Capital",
+            Optional.of(AccountType.EQUITY),
+            Optional.of(AccountRole.ORDINARY),
             false,
             balance("EUR", "0.00", "100.00"),
             balance("EUR", "0.00", "10.00"),
             balance("EUR", "0.00", "110.00"));
     ChangesInEquityReport changesReport =
         new ChangesInEquityReport(
+            ContractFixtures.bookIdentity(),
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
             new ArrayList<>(List.of(changesRow)),
             new ArrayList<>(List.of(balance("EUR", "0.00", "100.00"))),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
@@ -109,7 +132,8 @@ class StatementAndCloseContractTypesTest {
 
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
-    ClosePeriodCommand closePeriodCommand = new ClosePeriodCommand(reportingPeriod);
+    ClosePeriodCommand closePeriodCommand =
+        new ClosePeriodCommand(reportingPeriod, new AccountCode("3000"));
     ClosedPeriod closedPeriod =
         new ClosedPeriod(
             1,
@@ -153,6 +177,7 @@ class StatementAndCloseContractTypesTest {
     assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
     assertEquals(reportingPeriod, closePeriodCommand.reportingPeriod());
+    assertEquals(new AccountCode("3000"), closePeriodCommand.retainedEarningsAccountCode());
     assertSame(closedPeriod, closePeriodClosed.closedPeriod());
     assertSame(closePeriodRejection, closePeriodRejected.rejection());
     assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
@@ -162,7 +187,14 @@ class StatementAndCloseContractTypesTest {
   void statementAndCloseContractTypes_rejectInvalidInputs() {
     assertThrows(NullPointerException.class, () -> new FinancialPositionQuery(nullOf()));
     assertThrows(
-        NullPointerException.class, () -> new FinancialPositionReport(Optional.empty(), nullOf()));
+        NullPointerException.class,
+        () ->
+            new FinancialPositionReport(
+                ContractFixtures.bookIdentity(),
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> new FinancialPositionSection(nullOf(), List.of(), List.of()));
@@ -170,7 +202,12 @@ class StatementAndCloseContractTypesTest {
         NullPointerException.class,
         () ->
             new FinancialPositionRow(
-                nullOf(), "Cash", AccountType.ASSET, false, balance("EUR", "1.00", "0.00")));
+                nullOf(),
+                "Cash",
+                AccountType.ASSET,
+                Optional.of(AccountRole.ORDINARY),
+                false,
+                balance("EUR", "1.00", "0.00")));
     assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Rejected(nullOf()));
 
@@ -182,8 +219,11 @@ class StatementAndCloseContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new IncomeStatementReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-30"),
                 LocalDate.parse("2026-04-01"),
+                EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+                PostingCoverage.NON_CLOSING_POSTINGS,
                 List.of(),
                 List.of()));
     assertThrows(
@@ -193,7 +233,12 @@ class StatementAndCloseContractTypesTest {
         NullPointerException.class,
         () ->
             new IncomeStatementRow(
-                "4000", nullOf(), AccountType.REVENUE, false, balance("EUR", "0.00", "1.00")));
+                "4000",
+                nullOf(),
+                AccountType.REVENUE,
+                Optional.of(AccountRole.ORDINARY),
+                false,
+                balance("EUR", "0.00", "1.00")));
     assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Rejected(nullOf()));
 
@@ -205,8 +250,11 @@ class StatementAndCloseContractTypesTest {
         IllegalArgumentException.class,
         () ->
             new ChangesInEquityReport(
+                ContractFixtures.bookIdentity(),
                 LocalDate.parse("2026-04-30"),
                 LocalDate.parse("2026-04-01"),
+                EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+                PostingCoverage.ALL_POSTING_KINDS,
                 List.of(),
                 List.of(),
                 List.of(),
@@ -217,6 +265,8 @@ class StatementAndCloseContractTypesTest {
             new ChangesInEquityRow(
                 "3000",
                 "Capital",
+                Optional.of(AccountType.EQUITY),
+                Optional.of(AccountRole.ORDINARY),
                 false,
                 nullOf(),
                 balance("EUR", "0.00", "1.00"),
@@ -224,7 +274,15 @@ class StatementAndCloseContractTypesTest {
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Rejected(nullOf()));
 
-    assertThrows(NullPointerException.class, () -> new ClosePeriodCommand(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new ClosePeriodCommand(nullOf(), new AccountCode("3000")));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ClosePeriodCommand(
+                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () ->

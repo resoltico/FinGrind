@@ -30,7 +30,11 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                     () ->
                         ContractDecision.accepted(
                             new BookInspection.Initialized(
-                                1, 1, 1, CliFuzzFixtures.fixedClock().instant())),
+                                1,
+                                1,
+                                1,
+                                CliFuzzFixtures.fixedClock().instant(),
+                                CliFuzzFixtures.bookIdentity())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         initializedInspection, "unexpectedly inspected as initialized");
@@ -65,7 +69,9 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                 SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotOpened(
                     () ->
                         ContractDecision.accepted(
-                            new OpenBookResult.Opened(CliFuzzFixtures.fixedClock().instant())),
+                            new OpenBookResult.Opened(
+                                CliFuzzFixtures.fixedClock().instant(),
+                                CliFuzzFixtures.bookIdentity())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         openedBook, "unexpectedly opened as a valid book");

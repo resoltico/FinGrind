@@ -17,6 +17,9 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 
 /** Maps report-domain payloads into CLI JSON report models. */
 final class CliReportPayloadMapper {
@@ -25,6 +28,10 @@ final class CliReportPayloadMapper {
   static CliReportJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
     return new CliReportJsonModels.TrialBalancePayload(
         report.effectiveDateTo().map(Object::toString).orElse(null),
+        statementContextPayload(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            report.comparativeEffectiveDateRange()),
         report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList());
   }
 
@@ -65,6 +72,10 @@ final class CliReportPayloadMapper {
       FinancialPositionReport report) {
     return new CliReportJsonModels.FinancialPositionPayload(
         report.effectiveDateTo().map(Object::toString).orElse(null),
+        statementContextPayload(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            report.comparativeEffectiveDateRange()),
         report.sections().stream()
             .map(CliReportPayloadMapper::financialPositionSectionPayload)
             .toList());
@@ -75,6 +86,10 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.IncomeStatementPayload(
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
+        statementContextPayload(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            report.comparativeEffectiveDateRange()),
         report.sections().stream()
             .map(CliReportPayloadMapper::incomeStatementSectionPayload)
             .toList(),
@@ -86,6 +101,10 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.ChangesInEquityPayload(
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
+        statementContextPayload(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            report.comparativeEffectiveDateRange()),
         report.rows().stream().map(CliReportPayloadMapper::changesInEquityRowPayload).toList(),
         report.openingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
         report.movementTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
@@ -151,6 +170,7 @@ final class CliReportPayloadMapper {
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
+        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.synthetic(),
         CliPayloadAssembler.balancePayload(row.balance()));
   }
@@ -169,6 +189,7 @@ final class CliReportPayloadMapper {
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
+        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.synthetic(),
         CliPayloadAssembler.balancePayload(row.movement()));
   }
@@ -178,9 +199,22 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.ChangesInEquityRowPayload(
         row.lineCode(),
         row.lineName(),
+        row.lineType().map(dev.erst.fingrind.core.AccountType::wireValue).orElse(null),
+        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.synthetic(),
         CliPayloadAssembler.balancePayload(row.openingBalance()),
         CliPayloadAssembler.balancePayload(row.movement()),
         CliPayloadAssembler.balancePayload(row.closingBalance()));
+  }
+
+  private static CliReportJsonModels.StatementContextPayload statementContextPayload(
+      BookIdentity bookIdentity,
+      PostingCoverage postingCoverage,
+      EffectiveDateRange comparativeEffectiveDateRange) {
+    return new CliReportJsonModels.StatementContextPayload(
+        CliBookPayloadMapper.bookIdentityPayload(bookIdentity),
+        postingCoverage.wireValue(),
+        comparativeEffectiveDateRange.effectiveDateFrom().map(Object::toString).orElse(null),
+        comparativeEffectiveDateRange.effectiveDateTo().map(Object::toString).orElse(null));
   }
 }

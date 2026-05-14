@@ -45,30 +45,6 @@ public interface CliEnvelopeJsonModels {
     }
   }
 
-  record PreflightAcceptedEnvelope(
-      ProtocolSuccessStatus status, String idempotencyKey, String effectiveDate) {
-    public PreflightAcceptedEnvelope {
-      status = requireValue(status, "status");
-      idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
-      effectiveDate = requireText(effectiveDate, "effectiveDate");
-    }
-  }
-
-  record CommittedEnvelope(
-      ProtocolSuccessStatus status,
-      String postingId,
-      String idempotencyKey,
-      String effectiveDate,
-      String recordedAt) {
-    public CommittedEnvelope {
-      status = requireValue(status, "status");
-      postingId = requireText(postingId, "postingId");
-      idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
-      effectiveDate = requireText(effectiveDate, "effectiveDate");
-      recordedAt = requireText(recordedAt, "recordedAt");
-    }
-  }
-
   record RejectedEnvelope(
       ProtocolRejectionStatus status,
       String code,

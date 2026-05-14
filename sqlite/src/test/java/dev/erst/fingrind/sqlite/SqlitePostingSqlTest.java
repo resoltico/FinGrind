@@ -5,12 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -76,10 +77,12 @@ class SqlitePostingSqlTest {
   @Test
   void loadTrialBalanceLines_andAccountLedgerQueries_includeOnlyRequestedFilters() {
     String unfilteredTrialBalance =
-        SqlitePostingSql.loadTrialBalanceLines(new TrialBalanceCriteria(Optional.empty()));
+        SqlitePostingSql.loadTrialBalanceLines(
+            SqliteStoreTestIntrospectionSupport.trialBalanceCriteria(Optional.empty()));
     String filteredTrialBalance =
         SqlitePostingSql.loadTrialBalanceLines(
-            new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-30"))));
+            SqliteStoreTestIntrospectionSupport.trialBalanceCriteria(
+                Optional.of(LocalDate.parse("2026-04-30"))));
     String unboundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerCriteria(new AccountCode("1000"), null, null));
@@ -109,6 +112,55 @@ class SqlitePostingSqlTest {
     assertTrue(upperBoundLedger.contains(" and effective_date <= ?"));
     assertTrue(boundedLedger.contains(" and effective_date >= ?"));
     assertTrue(boundedLedger.contains(" and effective_date <= ?"));
+  }
+
+  @Test
+  void loadTrialBalanceLines_excludesClosingPostingsOnlyWhenRequested() {
+    String allPostingKinds =
+        SqlitePostingSql.loadTrialBalanceLines(
+            new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
+                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS));
+    String nonClosingOnly =
+        SqlitePostingSql.loadTrialBalanceLines(
+            new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
+                Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS));
+
+    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertTrue(nonClosingOnly.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertTrue(nonClosingOnly.contains(" and posting_fact.effective_date <= ?"));
+  }
+
+  @Test
+  void loadAccountTotals_includesRequestedCoverageAndDateBounds() {
+    String unboundedAllPostingKinds =
+        SqlitePostingSql.loadAccountTotals(
+            EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS);
+    String toOnlyNonClosing =
+        SqlitePostingSql.loadAccountTotals(
+            new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
+                Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS));
+    String fromOnlyAllPostingKinds =
+        SqlitePostingSql.loadAccountTotals(
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null),
+            PostingCoverage.ALL_POSTING_KINDS);
+    String boundedAllPostingKinds =
+        SqlitePostingSql.loadAccountTotals(
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS);
+
+    assertFalse(unboundedAllPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
+    assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
+
+    assertTrue(toOnlyNonClosing.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertFalse(toOnlyNonClosing.contains("posting_fact.effective_date >= ?"));
+    assertTrue(toOnlyNonClosing.contains("posting_fact.effective_date <= ?"));
+
+    assertTrue(fromOnlyAllPostingKinds.contains("posting_fact.effective_date >= ?"));
+    assertFalse(fromOnlyAllPostingKinds.contains("posting_fact.effective_date <= ?"));
+
+    assertTrue(boundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
+    assertTrue(boundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
   }
 
   @Test

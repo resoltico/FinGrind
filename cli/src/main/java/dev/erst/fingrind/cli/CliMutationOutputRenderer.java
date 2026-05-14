@@ -31,6 +31,9 @@ final class CliMutationOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Book file", absolutePath(bookFilePath)),
+                List.of("Entity name", opened.bookIdentity().entityName().value()),
+                List.of("Functional currency", opened.bookIdentity().functionalCurrency().code()),
+                List.of("Fiscal year start", opened.bookIdentity().fiscalYearStart().wireValue()),
                 List.of("Initialized at", opened.initializedAt().toString()))));
   }
 

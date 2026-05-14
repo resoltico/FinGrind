@@ -211,6 +211,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         second_page_command_id="bridge-sale",
         actor_prefix="bridge",
         open_book_mode="book-key-file",
+        entity_name="Acme Studio",
+        functional_currency="EUR",
+        fiscal_year_start="01-01",
     )
     unicode_argument = str(temp_path / "workspace odd" / "Rīga büro" / "key.key")
     output, exit_code = run_cli_allow_failure(
@@ -267,6 +270,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         second_page_command_id="bridge-sale",
         actor_prefix="bridge",
         open_book_mode="book-key-file",
+        entity_name="Acme Studio",
+        functional_currency="EUR",
+        fiscal_year_start="01-01",
     )
     report_stdout = "Trial Balance\nAccount  : 1000\nNet      : 6.00\n"
     report_stderr = (
@@ -345,6 +351,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         second_page_command_id="bridge-sale",
         actor_prefix="bridge",
         open_book_mode="book-key-file",
+        entity_name="Acme Studio",
+        functional_currency="EUR",
+        fiscal_year_start="01-01",
     )
     assert_operator_queries_and_reports(
         docker_config,

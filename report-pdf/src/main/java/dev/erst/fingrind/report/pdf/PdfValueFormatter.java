@@ -1,11 +1,14 @@
 package dev.erst.fingrind.report.pdf;
 
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
@@ -38,6 +41,17 @@ final class PdfValueFormatter {
     return synthetic ? "Synthetic" : "Account";
   }
 
+  static String displayLineRole(Optional<AccountRole> lineRole) {
+    return lineRole.map(AccountRole::wireValue).orElse("(derived)");
+  }
+
+  static String displayPostingCoverage(PostingCoverage postingCoverage) {
+    return switch (postingCoverage) {
+      case ALL_POSTING_KINDS -> "All posting kinds";
+      case NON_CLOSING_POSTINGS -> "Non-closing postings";
+    };
+  }
+
   static String optionalDate(@Nullable LocalDate date) {
     return date == null ? "(current)" : date.toString();
   }
@@ -51,6 +65,12 @@ final class PdfValueFormatter {
   static String effectiveDateRange(EffectiveDateRange range) {
     return optionalDateRange(
         range.effectiveDateFrom().orElse(null), range.effectiveDateTo().orElse(null));
+  }
+
+  static String comparativeRange(EffectiveDateRange range) {
+    return range.effectiveDateFrom().isEmpty() && range.effectiveDateTo().isEmpty()
+        ? "(none)"
+        : effectiveDateRange(range);
   }
 
   static String reversalTarget(PostingFact postingFact) {

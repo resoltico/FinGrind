@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
@@ -35,8 +34,8 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       assertEquals(
-          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          openedBook(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -93,7 +92,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       assertThrows(IllegalStateException.class, postingFactStore::commitLedgerPlanTransaction);
       postingFactStore.beginLedgerPlanTransaction();
       assertThrows(IllegalStateException.class, postingFactStore::beginLedgerPlanTransaction);
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -254,7 +253,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
       assertFalse(Files.exists(parentDirectory));
@@ -270,7 +269,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
     }
     assertFalse(Files.exists(databasePath));
     assertFalse(Files.exists(parentDirectory));
@@ -340,7 +339,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       Files.writeString(siblingFile, "preserve parent");
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
@@ -360,7 +359,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       try (SqliteNativeDatabase openedDatabase = requireStoreDatabase(postingFactStore)) {
         assertNotNull(openedDatabase);
         setStoreDatabase(postingFactStore, new IllegalStateClosingSqliteNativeDatabase());

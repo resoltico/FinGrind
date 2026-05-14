@@ -3,7 +3,12 @@
   "steps": [
     {
       "stepId": "open-bhd",
-      "kind": "open-book"
+      "kind": "open-book",
+      "openBook": {
+        "entityName": "Plan Seed BHD",
+        "functionalCurrency": "BHD",
+        "fiscalYearStart": "01-01"
+      }
     },
     {
       "stepId": "declare-cash-bhd",
@@ -29,6 +34,7 @@
       "stepId": "post-bhd",
       "kind": "post-entry",
       "posting": {
+        "postingKind": "STANDARD",
         "effectiveDate": "2026-06-17",
         "lines": [
           {

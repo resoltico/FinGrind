@@ -45,22 +45,31 @@ class ContractTemplatesValidationTest {
     assertDoesNotThrow(
         () -> {
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-              "open", LedgerStepKind.OPEN_BOOK, null, null, null, null, null);
+              "open",
+              LedgerStepKind.OPEN_BOOK,
+              new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+              null,
+              null,
+              null,
+              null,
+              null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null);
+              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
               "preflight",
               LedgerStepKind.PREFLIGHT_ENTRY,
+              null,
               postingTemplate(),
               null,
               null,
               null,
               null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-              "post", LedgerStepKind.POST_ENTRY, postingTemplate(), null, null, null, null);
+              "post", LedgerStepKind.POST_ENTRY, null, postingTemplate(), null, null, null, null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
               "declare",
               LedgerStepKind.DECLARE_ACCOUNT,
+              null,
               null,
               new ContractTemplates.DeclareAccountTemplateDescriptor(
                   "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),
@@ -68,10 +77,11 @@ class ContractTemplatesValidationTest {
               null,
               null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-              "list-accounts", LedgerStepKind.LIST_ACCOUNTS, null, null, null, null, null);
+              "list-accounts", LedgerStepKind.LIST_ACCOUNTS, null, null, null, null, null, null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
               "list-postings",
               LedgerStepKind.LIST_POSTINGS,
+              null,
               null,
               null,
               new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -83,15 +93,17 @@ class ContractTemplatesValidationTest {
               LedgerStepKind.ACCOUNT_BALANCE,
               null,
               null,
+              null,
               new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
                   "1000", null, null, null, null),
               null,
               null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-              "get-posting", LedgerStepKind.GET_POSTING, null, null, null, null, "posting-1");
+              "get-posting", LedgerStepKind.GET_POSTING, null, null, null, null, null, "posting-1");
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
               "assert",
               LedgerStepKind.ASSERT,
+              null,
               null,
               null,
               null,
@@ -117,6 +129,7 @@ class ContractTemplatesValidationTest {
                 LedgerStepKind.ACCOUNT_BALANCE,
                 null,
                 null,
+                null,
                 new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
                     null, null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, null),
                 null,
@@ -125,7 +138,14 @@ class ContractTemplatesValidationTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-                "missing-posting-id", LedgerStepKind.GET_POSTING, null, null, null, null, null));
+                "missing-posting-id",
+                LedgerStepKind.GET_POSTING,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null));
     IllegalArgumentException zeroAmount =
         assertThrows(
             IllegalArgumentException.class,
@@ -180,6 +200,7 @@ class ContractTemplatesValidationTest {
                     java.util.Map.of(
                         LedgerStepKind.OPEN_BOOK,
                         new ContractTemplateStepShapeRequirements(
+                            ContractTemplateFieldPresence.REQUIRED,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
@@ -213,6 +234,7 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
+        dev.erst.fingrind.core.PostingKind.STANDARD,
         "2026-04-25",
         java.util.List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(

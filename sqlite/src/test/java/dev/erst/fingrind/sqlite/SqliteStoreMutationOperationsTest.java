@@ -108,6 +108,8 @@ class SqliteStoreMutationOperationsTest {
       SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
       SqliteMutationWriter.insertInitializedAt(
           lifecycle.database(), Instant.parse("2026-04-29T10:15:30Z"));
+      SqliteMutationWriter.insertBookIdentity(
+          lifecycle.database(), SqlitePostingFactFixtureSupport.bookIdentity());
       SqliteAuditEventWriter.insertAuditEvent(
           lifecycle.database(),
           dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(
@@ -157,6 +159,8 @@ class SqliteStoreMutationOperationsTest {
       SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
       SqliteMutationWriter.insertInitializedAt(
           lifecycle.database(), Instant.parse("2026-04-29T10:15:30Z"));
+      SqliteMutationWriter.insertBookIdentity(
+          lifecycle.database(), SqlitePostingFactFixtureSupport.bookIdentity());
       SqliteAuditEventWriter.insertAuditEvent(
           lifecycle.database(),
           dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(

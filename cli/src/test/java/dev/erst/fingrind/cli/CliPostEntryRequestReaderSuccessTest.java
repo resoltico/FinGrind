@@ -51,6 +51,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {
@@ -89,6 +90,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(
                 """
                 {
+                  "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {

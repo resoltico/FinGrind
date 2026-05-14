@@ -66,7 +66,9 @@ final class CliMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
                           new CliAdministrationJsonModels.OpenBookPayload(
-                              absolutePath(bookFilePath), opened.initializedAt().toString()))),
+                              absolutePath(bookFilePath),
+                              opened.initializedAt().toString(),
+                              CliBookPayloadMapper.bookIdentityPayload(opened.bookIdentity())))),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderOpenBookHuman(bookFilePath, opened)),

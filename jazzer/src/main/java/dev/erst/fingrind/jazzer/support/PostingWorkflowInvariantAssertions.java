@@ -98,7 +98,7 @@ public final class PostingWorkflowInvariantAssertions {
     if (!postingFact.provenance().recordedAt().equals(CliFuzzFixtures.fixedClock().instant())) {
       throw new IllegalStateException("Stored recorded-at differs from the deterministic clock.");
     }
-    if (!postingFact.provenance().sourceChannel().equals(command.sourceChannel())) {
+    if (postingFact.provenance().sourceChannel() != command.sourceChannel()) {
       throw new IllegalStateException("Stored source channel differs from the parsed command.");
     }
   }

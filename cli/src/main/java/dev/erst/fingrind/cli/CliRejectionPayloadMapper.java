@@ -70,8 +70,16 @@ final class CliRejectionPayloadMapper {
           "Declare or reactivate every account named in details.violations, then rerun the request with a fresh provenance.idempotencyKey.";
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
+      case PostingRejection.PostingKindReserved _ ->
+          "Use postingKind STANDARD or OPENING_BALANCE on direct posting requests; let "
+              + CLOSE_PERIOD_OPERATION
+              + " generate PERIOD_CLOSE entries.";
+      case PostingRejection.BookFunctionalCurrencyMismatch _ ->
+          "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
       case PostingRejection.ClosedPeriodViolation _ ->
           "Use an effective date after the closed-through horizon, or close the next contiguous reporting period before posting into later dates.";
+      case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
+          "Opening-balance postings may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
       case PostingRejection.RetainedEarningsAccountReserved _ ->
           "Post directly to ordinary accounts only; let "
               + CLOSE_PERIOD_OPERATION
@@ -112,18 +120,33 @@ final class CliRejectionPayloadMapper {
       return "Keep the existing account identity as declared, or choose a different accountCode for a differently classified account.";
     }
     if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountMissing) {
-      return "Declare exactly one active retained-earnings account first, using accountType EQUITY and accountRole RETAINED_EARNINGS.";
+      return "Declare the selected retained-earnings account first, using accountType EQUITY and accountRole RETAINED_EARNINGS, then rerun "
+          + CLOSE_PERIOD_OPERATION
+          + " with --retained-earnings-account set to that code.";
+    }
+    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountRoleMismatch) {
+      return "Choose an account whose declared accountRole is RETAINED_EARNINGS, or redeclare the selected account with the correct doctrine before rerunning "
+          + CLOSE_PERIOD_OPERATION
+          + ".";
     }
     if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountInactive) {
       return "Redeclare the retained-earnings account to reactivate it, or declare the correct retained-earnings account before rerunning "
           + CLOSE_PERIOD_OPERATION
           + ".";
     }
-    BookAdministrationRejection.PeriodCloseMustStartAt ignored =
-        (BookAdministrationRejection.PeriodCloseMustStartAt) rejection;
-    return "Rerun "
+    if (rejection instanceof BookAdministrationRejection.PeriodCloseMustStartAt) {
+      return "Rerun "
+          + CLOSE_PERIOD_OPERATION
+          + " with the required --effective-date-from value and the next contiguous unclosed end date.";
+    }
+    if (rejection instanceof BookAdministrationRejection.PeriodCloseFutureDate) {
+      return "Choose an --effective-date-to on or before the current UTC date, then rerun "
+          + CLOSE_PERIOD_OPERATION
+          + ".";
+    }
+    return "Choose --effective-date-from and --effective-date-to that remain inside one fiscal year for this book, then rerun "
         + CLOSE_PERIOD_OPERATION
-        + " with the required --effective-date-from value and the next contiguous unclosed end date.";
+        + ".";
   }
 
   private static String queryRejectionHint(BookQueryRejection rejection) {
@@ -155,10 +178,21 @@ final class CliRejectionPayloadMapper {
                   .map(CliRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
       case PostingRejection.DuplicateIdempotencyKey _ -> null;
+      case PostingRejection.PostingKindReserved rejectionPostingKind ->
+          new CliRejectionJsonModels.PostingKindDetails(
+              rejectionPostingKind.postingKind().wireValue());
+      case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
+          new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
+              rejectionCurrencyMismatch.functionalCurrency().code(),
+              rejectionCurrencyMismatch.attemptedCurrency().code());
       case PostingRejection.ClosedPeriodViolation violation ->
           new CliRejectionJsonModels.ClosedPeriodViolationDetails(
               violation.closedThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
+      case PostingRejection.OpeningBalanceTouchesNominalAccount rejectionOpeningBalance ->
+          new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails(
+              rejectionOpeningBalance.accountCode().value(),
+              rejectionOpeningBalance.accountType().wireValue());
       case PostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
           new CliRejectionJsonModels.RetainedEarningsAccountDetails(
               rejectionReserved.accountCode().value());
@@ -202,12 +236,24 @@ final class CliRejectionPayloadMapper {
               conflict.accountCode().value(),
               conflict.existingAccountRole().wireValue(),
               conflict.requestedAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountMissing _ -> null;
+      case BookAdministrationRejection.RetainedEarningsAccountMissing conflict ->
+          new CliRejectionJsonModels.RetainedEarningsAccountDetails(conflict.accountCode().value());
+      case BookAdministrationRejection.RetainedEarningsAccountRoleMismatch conflict ->
+          new CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails(
+              conflict.accountCode().value(), conflict.actualAccountRole().wireValue());
       case BookAdministrationRejection.RetainedEarningsAccountInactive conflict ->
           new CliRejectionJsonModels.RetainedEarningsAccountDetails(conflict.accountCode().value());
       case BookAdministrationRejection.PeriodCloseMustStartAt conflict ->
           new CliRejectionJsonModels.PeriodCloseStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
+      case BookAdministrationRejection.PeriodCloseFutureDate conflict ->
+          new CliRejectionJsonModels.PeriodCloseFutureDateDetails(
+              conflict.attemptedEffectiveDateTo().toString());
+      case BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary conflict ->
+          new CliRejectionJsonModels.PeriodCloseFiscalYearDetails(
+              conflict.attemptedEffectiveDateFrom().toString(),
+              conflict.attemptedEffectiveDateTo().toString(),
+              conflict.fiscalYearStart().wireValue());
     };
   }
 

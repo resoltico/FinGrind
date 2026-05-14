@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -23,6 +24,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
 
   static PostEntryCommand syntheticDirectCommand(PostEntryCommand command, String scenario) {
     return new PostEntryCommand(
+        PostingKind.STANDARD,
         command.journalEntry(),
         PostingLineage.direct(),
         derivedRequestProvenance(command.requestProvenance(), scenario),
@@ -32,6 +34,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand derivedExactReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     return new PostEntryCommand(
+        command.postingKind(),
         new JournalEntry(
             command.journalEntry().effectiveDate().plusDays(1),
             exactReversalLines(command.journalEntry().lines())),
@@ -44,6 +47,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand derivedNearMissReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     return new PostEntryCommand(
+        command.postingKind(),
         new JournalEntry(
             command.journalEntry().effectiveDate().plusDays(1),
             nonNegatingReversalLines(command.journalEntry().lines())),

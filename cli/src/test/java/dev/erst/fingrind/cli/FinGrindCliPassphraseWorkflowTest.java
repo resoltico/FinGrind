@@ -30,12 +30,11 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             fixedClock());
     assertEquals(
         0,
-        openCli.run(
-            new String[] {
-              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
-            }),
+        openCli.run(openBookStandardInputArguments(bookFilePath)),
         openOutput.toString(StandardCharsets.UTF_8));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
+    assertTrue(
+        openOutput.toString(StandardCharsets.UTF_8).contains("\"entityName\":\"Acme Studio\""));
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
         cli(
@@ -58,11 +57,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode =
-        cli.run(
-            new String[] {
-              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
-            });
+    int exitCode = cli.run(openBookPromptArguments(bookFilePath));
     assertEquals(2, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
@@ -92,12 +87,11 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             terminal);
     assertEquals(
         0,
-        openCli.run(
-            new String[] {
-              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
-            }),
+        openCli.run(openBookPromptArguments(bookFilePath)),
         openOutput.toString(StandardCharsets.UTF_8));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
+    assertTrue(
+        openOutput.toString(StandardCharsets.UTF_8).contains("\"entityName\":\"Acme Studio\""));
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
         cli(
@@ -121,16 +115,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(
-        0,
-        openCli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     String wrongSecret = "wrong-stdin-secret";
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
@@ -160,16 +145,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(
-        0,
-        openCli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     String wrongSecret = "wrong-stdin-secret";
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
@@ -217,12 +193,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             },
             utf8PrintStream(outputStream),
             fixedClock());
-    assertEquals(
-        2,
-        cli.run(
-            new String[] {
-              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
-            }));
+    assertEquals(2, cli.run(openBookStandardInputArguments(bookFilePath)));
     String outputText = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(

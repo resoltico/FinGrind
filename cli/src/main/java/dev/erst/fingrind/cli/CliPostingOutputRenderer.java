@@ -17,7 +17,9 @@ final class CliPostingOutputRenderer {
     header.add(List.of("Actor id", postingFact.provenance().requestProvenance().actorId().value()));
     header.add(
         List.of(
-            "Actor type", postingFact.provenance().requestProvenance().actorType().wireValue()));
+            "Actor type",
+            displayWireLabel(
+                postingFact.provenance().requestProvenance().actorType().wireValue())));
     header.add(
         List.of("Command id", postingFact.provenance().requestProvenance().commandId().value()));
     header.add(
@@ -36,7 +38,10 @@ final class CliPostingOutputRenderer {
                 .correlationId()
                 .map(value -> value.value())
                 .orElse("(none)")));
-    header.add(List.of("Source channel", postingFact.provenance().sourceChannel().wireValue()));
+    header.add(
+        List.of(
+            "Source channel",
+            displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
     header.add(
         List.of(
             "Reversal target",
@@ -56,7 +61,7 @@ final class CliPostingOutputRenderer {
                     line ->
                         List.of(
                             line.accountCode().value(),
-                            line.side().wireValue(),
+                            displayWireLabel(line.side().wireValue()),
                             line.amount().currencyUnit().code(),
                             CliTextFormat.displayMoney(line.amount().money())))
                 .toList(),
@@ -85,10 +90,11 @@ final class CliPostingOutputRenderer {
                 "Recorded at",
                 "Posting id",
                 "Currency",
-                "Total amount",
+                "Debit total",
+                "Credit total",
                 "Accounts",
                 "Reversal target"),
-            page.postings().stream().map(CliQueryOutputFormatter::postingRegisterRow).toList(),
+            page.postings().stream().map(CliQueryOutputFormatter::postingRegisterHumanRow).toList(),
             4);
     return CliTextFormat.renderTitledBlock(
         "Postings", summary + System.lineSeparator() + System.lineSeparator() + table);
@@ -101,9 +107,22 @@ final class CliPostingOutputRenderer {
             "recordedAt",
             "postingId",
             "currencyCode",
-            "totalAmount",
+            "debitTotal",
+            "creditTotal",
             "accountCodes",
             "reversalTarget"),
-        page.postings().stream().map(CliQueryOutputFormatter::postingRegisterRow).toList());
+        page.postings().stream().map(CliQueryOutputFormatter::postingRegisterCsvRow).toList());
+  }
+
+  static String displayWireLabel(String wireValue) {
+    return switch (wireValue) {
+      case "DEBIT" -> "Debit";
+      case "CREDIT" -> "Credit";
+      case "AGENT" -> "Agent";
+      case "SYSTEM" -> "System";
+      case "CLI" -> "CLI";
+      case "INTERNAL" -> "Internal";
+      default -> wireValue.replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
+    };
   }
 }

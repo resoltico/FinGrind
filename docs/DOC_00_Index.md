@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.35.0"
+version: "0.36.0"
 domain: INDEX
-updated: "2026-05-13"
+updated: "2026-05-14"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -29,6 +29,9 @@ route:
   use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary
   and the future split between money, rates, percentages, exchange rates, and other decimal
   factors.
+- Accounting baseline and current standards scope:
+  use [ADR_ACCOUNTING_BASELINE.md](./ADR_ACCOUNTING_BASELINE.md) for the named country-agnostic
+  bookkeeping baseline, standards references, and intentional exclusions.
 - Local bookkeeping context:
   use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md) for executor-owned
   sessions plus local bookkeeping read/write models that cross those seams.
@@ -63,6 +66,8 @@ route:
 | `AccountCodePolicy.Meaning` | `DOC_01_Core.md` | `AccountCodePolicy.Meaning` |
 | `AccountCodePolicy.ChartStructure` | `DOC_01_Core.md` | `AccountCodePolicy.ChartStructure` |
 | `AccountName` | `DOC_01_Core.md` | `AccountName` |
+| `BookEntityName` | `DOC_01_Core.md` | `BookEntityName` |
+| `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountRole` | `DOC_01_Core.md` | `AccountRole` |
 | `AccountSemantics` | `DOC_01_Core.md` | `AccountSemantics` |
@@ -75,6 +80,7 @@ route:
 | `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
 | `CurrencyUnit` | `DOC_01_Core.md` | `CurrencyUnit` |
+| `FiscalYearStart` | `DOC_01_Core.md` | `FiscalYearStart` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
 | `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
 | `JournalEntryValidationException` | `DOC_01_Core.md` | `JournalEntryValidationException` |
@@ -84,6 +90,7 @@ route:
 | `PositiveMoney` | `DOC_01_Core.md` | `PositiveMoney` |
 | `NormalBalance` | `DOC_01_Core.md` | `NormalBalance` |
 | `PostingKind` | `DOC_01_Core.md` | `PostingKind` |
+| `PostingCoverage` | `DOC_01_Core.md` | `PostingCoverage` |
 | `PostingId` | `DOC_01_Core.md` | `PostingId` |
 | `ReportingPeriod` | `DOC_01_Core.md` | `ReportingPeriod` |
 | `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
@@ -138,17 +145,18 @@ route:
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
 | `ProtocolSharedRequestFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSharedRequestFields` |
 | `ProtocolMoneyFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolMoneyFields` |
-| `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields.JournalLine` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields.Provenance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields.Reversal` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolLedgerPlanFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolLedgerPlanFields.Plan` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolLedgerPlanFields.Step` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolLedgerPlanFields.Query` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolLedgerPlanFields.Assertion` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolOpenBookFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.JournalLine` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.Provenance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.Reversal` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolLedgerPlanFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolLedgerPlanFields.Plan` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolLedgerPlanFields.Step` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolLedgerPlanFields.Query` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolLedgerPlanFields.Assertion` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ScaffoldPlaceholders` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `MachineContract` | `DOC_02_ProtocolAndDiscovery.md` | `MachineContract` |
 | `ContractDiscovery` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -203,6 +211,7 @@ route:
 | `ContractResponse.CurrencyDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.OpenBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.JournalLineTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -227,6 +236,7 @@ route:
 | `ClosePeriodCommand` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
 | `ClosePeriodResult` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
 | `ClosedPeriod` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
+| `OpenBookCommand` | `DOC_02_AdministrationAndReports.md` | `OpenBookCommand` |
 | `OpenBookResult` | `DOC_02_AdministrationAndReports.md` | `OpenBookResult` |
 | `DeclareAccountResult` | `DOC_02_AdministrationAndReports.md` | `DeclareAccountResult` |
 | `RekeyBookResult` | `DOC_02_AdministrationAndReports.md` | `RekeyBookResult` |
@@ -328,6 +338,7 @@ route:
 | `AccountDeclarationOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `BookAuditEvent` | `DOC_03_BookSessionsAndAdapters.md` | `BookAuditEvent` And `BookAuditEventKind` |
 | `BookAuditEventKind` | `DOC_03_BookSessionsAndAdapters.md` | `BookAuditEvent` And `BookAuditEventKind` |
+| `AccountCurrencyTotals` | `DOC_03_BookSessionsAndAdapters.md` | `AccountCurrencyTotals` |
 | `BookOpeningOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `RegisteredAccount` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `BookStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookStore` |

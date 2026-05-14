@@ -29,14 +29,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
-            .run(
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+            .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
         0,
         cli(
@@ -86,6 +79,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     String postingId =
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
+            .path("payload")
             .path("postingId")
             .stringValue();
     ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();

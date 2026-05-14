@@ -34,14 +34,29 @@ public final class RejectionNarrative {
                   accountRoleConflict.accountCode().value(),
                   accountRoleConflict.existingAccountRole().wireValue(),
                   accountRoleConflict.requestedAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountMissing _ ->
-          "Close period requires one declared retained-earnings account.";
+      case BookAdministrationRejection.RetainedEarningsAccountMissing rejectionMissing ->
+          "Retained-earnings account '%s' is not declared in this book."
+              .formatted(rejectionMissing.accountCode().value());
+      case BookAdministrationRejection.RetainedEarningsAccountRoleMismatch rejectionRoleMismatch ->
+          "Account '%s' has account role '%s' and cannot receive period-close earnings."
+              .formatted(
+                  rejectionRoleMismatch.accountCode().value(),
+                  rejectionRoleMismatch.actualAccountRole().wireValue());
       case BookAdministrationRejection.RetainedEarningsAccountInactive rejectionInactive ->
           "Retained-earnings account '%s' is inactive and cannot receive closing entries."
               .formatted(rejectionInactive.accountCode().value());
       case BookAdministrationRejection.PeriodCloseMustStartAt rejectionStartAt ->
           "Close period must start at '%s' to preserve one contiguous close horizon."
               .formatted(rejectionStartAt.requiredEffectiveDateFrom());
+      case BookAdministrationRejection.PeriodCloseFutureDate rejectionFutureDate ->
+          "Close period cannot end after the current UTC date; requested '%s'."
+              .formatted(rejectionFutureDate.attemptedEffectiveDateTo());
+      case BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary rejectionBoundary ->
+          "Close period '%s' through '%s' crosses this book's fiscal-year boundary '%s'."
+              .formatted(
+                  rejectionBoundary.attemptedEffectiveDateFrom(),
+                  rejectionBoundary.attemptedEffectiveDateTo(),
+                  rejectionBoundary.fiscalYearStart().wireValue());
     };
   }
 
@@ -75,11 +90,24 @@ public final class RejectionNarrative {
               + violations.violations().size();
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
+      case PostingRejection.PostingKindReserved postingKindReserved ->
+          "Posting kind '%s' is reserved for generated FinGrind workflows and cannot be submitted directly."
+              .formatted(postingKindReserved.postingKind().wireValue());
+      case PostingRejection.BookFunctionalCurrencyMismatch functionalCurrencyMismatch ->
+          "Posting currency '%s' does not match this book's functional currency '%s'."
+              .formatted(
+                  functionalCurrencyMismatch.attemptedCurrency().code(),
+                  functionalCurrencyMismatch.functionalCurrency().code());
       case PostingRejection.ClosedPeriodViolation rejectionClosedPeriod ->
           "Posting effective date '%s' falls inside the closed-through horizon ending '%s'."
               .formatted(
                   rejectionClosedPeriod.attemptedEffectiveDate(),
                   rejectionClosedPeriod.closedThroughEffectiveDate());
+      case PostingRejection.OpeningBalanceTouchesNominalAccount openingBalanceNominal ->
+          "Opening-balance postings may seed only asset, liability, or equity accounts; '%s' is '%s'."
+              .formatted(
+                  openingBalanceNominal.accountCode().value(),
+                  openingBalanceNominal.accountType().wireValue());
       case PostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
           "Retained-earnings account '%s' is reserved for generated period-close postings."
               .formatted(rejectionReserved.accountCode().value());

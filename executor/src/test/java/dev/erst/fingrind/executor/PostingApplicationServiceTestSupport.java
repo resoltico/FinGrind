@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -21,6 +23,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -29,6 +32,7 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -67,7 +71,7 @@ final class PostingApplicationServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_CLOCK.instant());
+    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity());
     return bookSession;
   }
 
@@ -118,6 +122,7 @@ final class PostingApplicationServiceTestSupport {
       Optional<ReversalReason> reason,
       JournalEntry journalEntry) {
     return new PostingCommand(
+        PostingKind.STANDARD,
         journalEntry,
         postingLineage(reversalReference, reason),
         requestProvenance(idempotencyKey),
@@ -192,7 +197,7 @@ final class PostingApplicationServiceTestSupport {
     return new DelegatingPostingBookSession() {
       @Override
       public BookLifecycleInspection inspectBook() {
-        return new BookLifecycleInspection.Initialized(1001, 1, 1, FIXED_CLOCK.instant());
+        return initializedLifecycleInspection(1001, 1, 1, FIXED_CLOCK.instant());
       }
 
       @Override
@@ -251,7 +256,7 @@ final class PostingApplicationServiceTestSupport {
   abstract static class DelegatingPostingBookSession implements BookStore {
     @Override
     public dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
-        Instant initializedAt) {
+        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
       throw new AssertionError("openBook should not be called in this test");
     }
 
@@ -297,6 +302,12 @@ final class PostingApplicationServiceTestSupport {
 
     @Override
     public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      return List.of();
+    }
+
+    @Override
+    public List<AccountCurrencyTotals> accountTotals(
+        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
       return List.of();
     }
 

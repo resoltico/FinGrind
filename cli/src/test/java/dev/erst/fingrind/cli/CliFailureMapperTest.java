@@ -128,7 +128,9 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals(
         OutputMode.HUMAN,
         new GenerateBookKeyFile(Path.of("book.key"), OutputMode.HUMAN).failureOutputMode());
-    assertEquals(OutputMode.HUMAN, new OpenBook(bookAccess, OutputMode.HUMAN).failureOutputMode());
+    assertEquals(
+        OutputMode.HUMAN,
+        new OpenBook(bookAccess, openBookCommand(), OutputMode.HUMAN).failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
         new RekeyBook(
@@ -166,7 +168,8 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
-        new TrialBalance(bookAccess, new TrialBalanceQuery(Optional.empty()), humanReport)
+        new TrialBalance(
+                bookAccess, new TrialBalanceQuery(Optional.empty(), allPostingKinds()), humanReport)
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
@@ -193,6 +196,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals(OutputMode.JSON, new PrintPlanTemplate().failureOutputMode());
     assertEquals(
         OutputMode.JSON, new ExecutePlan(bookAccess, Path.of("plan.json")).failureOutputMode());
+    assertEquals(OutputMode.HUMAN, CliExecutionPolicy.inferredFailureOutputMode(new String[0]));
     assertEquals(
         OutputMode.HUMAN,
         CliExecutionPolicy.inferredFailureOutputMode(

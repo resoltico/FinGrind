@@ -176,7 +176,7 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static TrialBalanceCriteria trialBalanceCriteria(Optional<LocalDate> effectiveDateTo) {
-    return new TrialBalanceCriteria(effectiveDateTo);
+    return new TrialBalanceCriteria(effectiveDateTo, allPostingKinds());
   }
 
   static AccountLedgerCriteria accountLedgerCriteria(

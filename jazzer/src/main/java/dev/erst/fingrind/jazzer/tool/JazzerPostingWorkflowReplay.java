@@ -73,7 +73,7 @@ final class JazzerPostingWorkflowReplay {
                       CliFuzzFixtures.commit(applicationService, command))
                   .rejection());
 
-      CliFuzzFixtures.openBook(administrationService);
+      CliFuzzFixtures.openBook(administrationService, command.journalEntry().currencyUnit());
 
       state.undeclaredPreflightStatus =
           JazzerReplayDetailsMapper.rejectionStatus(

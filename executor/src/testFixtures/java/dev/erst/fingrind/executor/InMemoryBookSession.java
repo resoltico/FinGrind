@@ -5,15 +5,20 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
@@ -71,6 +76,11 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   private @Nullable Snapshot transactionSnapshot;
   private boolean initialized;
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
+  private BookIdentity bookIdentity =
+      new BookIdentity(
+          new BookEntityName("FinGrind Test Entity"),
+          CurrencyUnit.of("USD"),
+          new FiscalYearStart(1, 1));
 
   @Override
   public BookLifecycleInspection inspectBook() {
@@ -83,12 +93,13 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
               BookFormatContract.APPLICATION_ID,
               BookFormatContract.FORMAT_VERSION,
               BookFormatContract.FORMAT_VERSION,
-              initializedAt);
+              initializedAt,
+              bookIdentity);
         });
   }
 
   @Override
-  public BookOpeningOutcome openBook(Instant initializedAt) {
+  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
     return withLock(
         () -> {
           if (initialized) {
@@ -97,7 +108,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           }
           initialized = true;
           this.initializedAt = initializedAt;
-          return new BookOpeningOutcome.Opened(initializedAt);
+          this.bookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
+          return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
         });
   }
 
@@ -382,11 +394,57 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   }
 
   @Override
+  public List<AccountCurrencyTotals> accountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+    Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    Objects.requireNonNull(postingCoverage, "postingCoverage");
+    return withLock(
+        () -> {
+          Map<AccountCode, Map<CurrencyUnit, Totals>> totalsByAccount = mutableMap();
+          postingsByPostingId.values().stream()
+              .filter(posting -> postingCoverage.includes(posting.postingKind()))
+              .filter(
+                  posting ->
+                      matchesDateRange(
+                          posting,
+                          effectiveDateRange.effectiveDateFrom(),
+                          effectiveDateRange.effectiveDateTo()))
+              .flatMap(posting -> posting.journalEntry().lines().stream())
+              .forEach(
+                  line ->
+                      accumulate(
+                          totalsByAccount.computeIfAbsent(
+                              line.accountCode(), ignored -> mutableMap()),
+                          line));
+          return totalsByAccount.entrySet().stream()
+              .sorted(Map.Entry.comparingByKey(Comparator.comparing(AccountCode::value)))
+              .flatMap(
+                  accountEntry ->
+                      accountEntry.getValue().entrySet().stream()
+                          .sorted(
+                              Map.Entry.comparingByKey(Comparator.comparing(CurrencyUnit::code)))
+                          .map(
+                              currencyEntry ->
+                                  new AccountCurrencyTotals(
+                                      Objects.requireNonNull(
+                                          accountsByCode.get(accountEntry.getKey()), "account"),
+                                      currencyEntry.getKey(),
+                                      currencyEntry.getValue().debit,
+                                      currencyEntry.getValue().credit)))
+              .toList();
+        });
+  }
+
+  @Override
   public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     return withLock(
         () ->
             new TrialBalanceView(
+                bookIdentity,
                 query.effectiveDateTo(),
+                dev.erst.fingrind.core.EffectiveDateRange.of(
+                    null, query.effectiveDateTo().map(date -> date.minusYears(1)).orElse(null)),
+                query.postingCoverage(),
                 accountsByCode.values().stream()
                     .sorted(Comparator.comparing(account -> account.accountCode().value()))
                     .flatMap(
@@ -394,6 +452,11 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                             balancesFor(
                                     account,
                                     postingsByPostingId.values().stream()
+                                        .filter(
+                                            posting ->
+                                                query
+                                                    .postingCoverage()
+                                                    .includes(posting.postingKind()))
                                         .filter(
                                             posting ->
                                                 query.effectiveDateTo().stream()
@@ -554,6 +617,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
               new Snapshot(
                   initialized,
                   initializedAt,
+                  bookIdentity,
                   Map.copyOf(accountsByCode),
                   Map.copyOf(postingsByIdempotencyKey),
                   Map.copyOf(postingsByPostingId),
@@ -751,6 +815,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
     return new Snapshot(
         initialized,
         initializedAt,
+        bookIdentity,
         Map.copyOf(accountsByCode),
         Map.copyOf(postingsByIdempotencyKey),
         Map.copyOf(postingsByPostingId),
@@ -761,6 +826,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   private void restoreSnapshot(Snapshot snapshot) {
     initialized = snapshot.initialized();
     initializedAt = snapshot.initializedAt();
+    bookIdentity = snapshot.bookIdentity();
     accountsByCode.clear();
     accountsByCode.putAll(snapshot.accountsByCode());
     postingsByIdempotencyKey.clear();
@@ -782,6 +848,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   private record Snapshot(
       boolean initialized,
       Instant initializedAt,
+      BookIdentity bookIdentity,
       Map<AccountCode, RegisteredAccount> accountsByCode,
       Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey,
       Map<PostingId, CommittedPosting> postingsByPostingId,

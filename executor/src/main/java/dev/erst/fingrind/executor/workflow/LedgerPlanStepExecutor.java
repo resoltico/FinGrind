@@ -46,7 +46,7 @@ final class LedgerPlanStepExecutor {
     Instant startedAt = Instant.now(clock);
     LedgerPlanStepOutcome outcome =
         switch (step) {
-          case BookWorkflowStep.OpenBook _ -> openBookOutcome();
+          case BookWorkflowStep.OpenBook openBook -> openBookOutcome(openBook.bookIdentity());
           case BookWorkflowStep.DeclareAccount declareAccount ->
               declareAccountOutcome(declareAccount.command());
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
@@ -100,11 +100,16 @@ final class LedgerPlanStepExecutor {
             List.of()));
   }
 
-  private LedgerPlanStepOutcome openBookOutcome() {
-    return switch (bookAdministrationService.openBook()) {
+  private LedgerPlanStepOutcome openBookOutcome(dev.erst.fingrind.core.BookIdentity bookIdentity) {
+    return switch (bookAdministrationService.openBook(bookIdentity)) {
       case BookOpeningOutcome.Opened opened ->
           LedgerPlanOutcomeMapper.stepSucceeded(
-              BookWorkflowFact.text("initializedAt", opened.initializedAt().toString()));
+              BookWorkflowFact.text("initializedAt", opened.initializedAt().toString()),
+              BookWorkflowFact.text("entityName", opened.bookIdentity().entityName().value()),
+              BookWorkflowFact.text(
+                  "functionalCurrency", opened.bookIdentity().functionalCurrency().code()),
+              BookWorkflowFact.text(
+                  "fiscalYearStart", opened.bookIdentity().fiscalYearStart().wireValue()));
       case BookOpeningOutcome.Rejected rejected ->
           LedgerPlanOutcomeMapper.administrationRejection(rejected.rejection());
     };

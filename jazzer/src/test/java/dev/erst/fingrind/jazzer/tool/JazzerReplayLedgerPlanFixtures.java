@@ -10,7 +10,12 @@ final class JazzerReplayLedgerPlanFixtures {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -36,6 +41,7 @@ final class JazzerReplayLedgerPlanFixtures {
               "stepId": "post-sale",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {
@@ -89,7 +95,12 @@ final class JazzerReplayLedgerPlanFixtures {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book"
+              "kind": "open-book",
+              "openBook": {
+                "entityName": "Acme Studio",
+                "functionalCurrency": "EUR",
+                "fiscalYearStart": "01-01"
+              }
             },
             {
               "stepId": "declare-cash",
@@ -115,6 +126,7 @@ final class JazzerReplayLedgerPlanFixtures {
               "stepId": "post-sale",
               "kind": "post-entry",
               "posting": {
+                "postingKind": "STANDARD",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {

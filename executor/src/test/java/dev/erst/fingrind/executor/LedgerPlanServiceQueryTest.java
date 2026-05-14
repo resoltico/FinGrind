@@ -9,6 +9,7 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.flagFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.openBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
@@ -247,7 +248,7 @@ class LedgerPlanServiceQueryTest {
                   new LedgerPlan(
                       planId("plan-list-accounts"),
                       List.of(
-                          new LedgerStep.OpenBook(stepId("open")),
+                          openBookStep("open"),
                           new LedgerStep.ListAccounts(
                               stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))));
 

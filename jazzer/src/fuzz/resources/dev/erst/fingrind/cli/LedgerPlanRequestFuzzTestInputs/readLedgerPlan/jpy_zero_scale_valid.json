@@ -3,7 +3,12 @@
   "steps": [
     {
       "stepId": "open-jpy",
-      "kind": "open-book"
+      "kind": "open-book",
+      "openBook": {
+        "entityName": "Plan Seed JPY",
+        "functionalCurrency": "JPY",
+        "fiscalYearStart": "01-01"
+      }
     },
     {
       "stepId": "declare-cash-jpy",
@@ -29,6 +34,7 @@
       "stepId": "post-jpy",
       "kind": "post-entry",
       "posting": {
+        "postingKind": "STANDARD",
         "effectiveDate": "2026-06-16",
         "lines": [
           {

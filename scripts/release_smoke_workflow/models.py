@@ -39,6 +39,9 @@ class ReleaseSmokeConfig:
     second_page_command_id: str
     actor_prefix: str
     open_book_mode: str
+    entity_name: str
+    functional_currency: str
+    fiscal_year_start: str
 
 
 @dataclass(frozen=True)
@@ -56,6 +59,9 @@ class ReleaseSmokeScenario:
     trial_balance_pdf_stderr_path: Path
     second_page_command_id: str
     actor_prefix: str
+    entity_name: str
+    functional_currency: str
+    fiscal_year_start: str
 
 
 class ReleaseSmokeFailure(RuntimeError):

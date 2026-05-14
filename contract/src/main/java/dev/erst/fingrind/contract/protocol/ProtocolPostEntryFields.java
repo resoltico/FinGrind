@@ -8,7 +8,12 @@ public final class ProtocolPostEntryFields {
 
   /** Returns top-level posting request fields in stable wire order. */
   public static List<String> topLevelFields() {
-    return List.of(TopLevel.EFFECTIVE_DATE, TopLevel.LINES, TopLevel.PROVENANCE, TopLevel.REVERSAL);
+    return List.of(
+        TopLevel.POSTING_KIND,
+        TopLevel.EFFECTIVE_DATE,
+        TopLevel.LINES,
+        TopLevel.PROVENANCE,
+        TopLevel.REVERSAL);
   }
 
   /** Returns journal-line request fields in stable wire order. */
@@ -34,6 +39,7 @@ public final class ProtocolPostEntryFields {
 
   /** Top-level posting request fields. */
   public static final class TopLevel {
+    public static final String POSTING_KIND = "postingKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
     public static final String LINES = "lines";
     public static final String PROVENANCE = "provenance";

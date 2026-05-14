@@ -53,6 +53,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -80,10 +81,14 @@ class ReportingContractTypesTest {
   @Test
   void reportingQueriesReportsAndResults_preserveCanonicalState() {
     TrialBalanceQuery trialBalanceQuery =
-        new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30")));
+        new TrialBalanceQuery(
+            Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.ALL_POSTING_KINDS);
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
+            ContractFixtures.bookIdentity(),
             trialBalanceQuery.effectiveDateTo(),
+            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+            trialBalanceQuery.postingCoverage(),
             List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)));
     TrialBalanceResult.Reported reportedTrialBalance =
         new TrialBalanceResult.Reported(trialBalanceReport);
@@ -147,6 +152,7 @@ class ReportingContractTypesTest {
     AccountBalanceResult.Rejected rejectedBalance =
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateTo());
+    assertEquals(PostingCoverage.ALL_POSTING_KINDS, trialBalanceQuery.postingCoverage());
     assertEquals(
         List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)), trialBalanceReport.rows());
     assertSame(trialBalanceReport, reportedTrialBalance.report());
@@ -192,12 +198,20 @@ class ReportingContractTypesTest {
 
   @Test
   void reportingValueTypes_rejectInvalidInputs() {
-    assertThrows(NullPointerException.class, () -> new TrialBalanceQuery(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new TrialBalanceQuery(nullOf(), PostingCoverage.ALL_POSTING_KINDS));
     assertEquals(
         "rows must not be null.",
         assertThrows(
                 NullPointerException.class,
-                () -> new TrialBalanceReport(Optional.empty(), nullOf()))
+                () ->
+                    new TrialBalanceReport(
+                        ContractFixtures.bookIdentity(),
+                        Optional.empty(),
+                        EffectiveDateRange.unbounded(),
+                        PostingCoverage.ALL_POSTING_KINDS,
+                        nullOf()))
             .getMessage());
     assertThrows(
         NullPointerException.class, () -> new TrialBalanceRow(nullOf(), EUR_DEBIT_BALANCE));

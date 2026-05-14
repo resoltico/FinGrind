@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.cli.json.CliMutationJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
@@ -49,22 +50,21 @@ final class CliResponsePayloadMapper {
         details);
   }
 
-  static CliEnvelopeJsonModels.PreflightAcceptedEnvelope preflightEnvelope(
+  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> preflightEnvelope(
       PostEntryResult.PreflightAccepted accepted) {
-    return new CliEnvelopeJsonModels.PreflightAcceptedEnvelope(
-        ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,
-        accepted.idempotencyKey().value(),
-        accepted.effectiveDate().toString());
+    return successEnvelope(
+        new CliMutationJsonModels.PreflightAcceptedPayload(
+            accepted.idempotencyKey().value(), accepted.effectiveDate().toString()));
   }
 
-  static CliEnvelopeJsonModels.CommittedEnvelope committedEnvelope(
+  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> committedEnvelope(
       PostEntryResult.Committed committed) {
-    return new CliEnvelopeJsonModels.CommittedEnvelope(
-        ProtocolSuccessStatus.COMMITTED,
-        committed.postingId().value(),
-        committed.idempotencyKey().value(),
-        committed.effectiveDate().toString(),
-        committed.recordedAt().toString());
+    return successEnvelope(
+        new CliMutationJsonModels.CommittedPostingPayload(
+            committed.postingId().value(),
+            committed.idempotencyKey().value(),
+            committed.effectiveDate().toString(),
+            committed.recordedAt().toString()));
   }
 
   static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(

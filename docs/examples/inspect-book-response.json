@@ -6,8 +6,13 @@
     "compatibleWithCurrentBinary": true,
     "canInitializeWithOpenBook": false,
     "applicationId": 1179079236,
-    "detectedBookFormatVersion": 2,
-    "supportedBookFormatVersion": 2,
-    "initializedAt": "2026-04-13T11:58:35.532739Z"
+    "detectedBookFormatVersion": 3,
+    "supportedBookFormatVersion": 3,
+    "initializedAt": "2026-04-13T11:58:35.532739Z",
+    "bookIdentity": {
+      "entityName": "Acme Studio",
+      "functionalCurrency": "EUR",
+      "fiscalYearStart": "01-01"
+    }
   }
 }

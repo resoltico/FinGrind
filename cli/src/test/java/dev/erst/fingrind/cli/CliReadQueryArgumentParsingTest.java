@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -291,7 +292,8 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
     assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
     assertEquals(
-        new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30"))), trialBalance.query());
+        new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30")), allPostingKinds()),
+        trialBalance.query());
     assertEquals(OutputMode.CSV, trialBalance.output().outputMode());
     assertEquals(Path.of("reports/trial-balance.pdf"), trialBalance.output().pdfOutPath());
     assertEquals(
@@ -305,6 +307,30 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
         periodSummary.query());
     assertEquals(OutputMode.CSV, periodSummary.output().outputMode());
     assertEquals(Path.of("reports/april-summary.pdf"), periodSummary.output().pdfOutPath());
+  }
+
+  @Test
+  void parse_trialBalanceAcceptsExplicitPostingCoverage() {
+    TrialBalance command =
+        assertInstanceOf(
+            TrialBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "trial-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--posting-coverage",
+                  "non-closing-postings"
+                }));
+
+    assertEquals(
+        new TrialBalanceQuery(
+            Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS),
+        command.query());
   }
 
   @Test

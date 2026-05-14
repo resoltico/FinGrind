@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.runtime;
 
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.util.List;
@@ -128,13 +129,15 @@ public sealed interface BookInspection
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      Instant initializedAt)
+      Instant initializedAt,
+      BookIdentity bookIdentity)
       implements BookInspection {
     /** Validates one initialized-book inspection snapshot. */
     public Initialized {
       requireDetectedBookMetadata(
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
       Objects.requireNonNull(initializedAt, "initializedAt");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
 
     @Override

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -23,8 +24,9 @@ public final class BookAdministrationService {
   }
 
   /** Explicitly initializes a new book. */
-  public BookOpeningOutcome openBook() {
-    return bookStore.openBook(clock.instant());
+  public BookOpeningOutcome openBook(BookIdentity bookIdentity) {
+    return bookStore.openBook(
+        clock.instant(), Objects.requireNonNull(bookIdentity, "bookIdentity"));
   }
 
   /** Declares or reactivates one account in the selected book. */
@@ -39,8 +41,11 @@ public final class BookAdministrationService {
   }
 
   /** Closes one contiguous reporting period into the retained-earnings account. */
-  public PeriodCloseOutcome closePeriod(dev.erst.fingrind.core.ReportingPeriod reportingPeriod) {
+  public PeriodCloseOutcome closePeriod(
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      dev.erst.fingrind.core.AccountCode retainedEarningsAccountCode) {
     return periodCloseService.closePeriod(
-        Objects.requireNonNull(reportingPeriod, "reportingPeriod"));
+        Objects.requireNonNull(reportingPeriod, "reportingPeriod"),
+        Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode"));
   }
 }

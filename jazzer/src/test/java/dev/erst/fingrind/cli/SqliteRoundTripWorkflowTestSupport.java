@@ -16,13 +16,16 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -94,6 +97,7 @@ final class SqliteRoundTripWorkflowTestSupport {
   static String basicValidRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -238,11 +242,11 @@ final class SqliteRoundTripWorkflowTestSupport {
     @Override
     public BookLifecycleInspection inspectBook() {
       return new BookLifecycleInspection.Initialized(
-          7, 1, 1, CliFuzzFixtures.fixedClock().instant());
+          7, 1, 1, CliFuzzFixtures.fixedClock().instant(), CliFuzzFixtures.bookIdentity());
     }
 
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt) {
+    public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
       throw new UnsupportedOperationException();
     }
 
@@ -308,6 +312,12 @@ final class SqliteRoundTripWorkflowTestSupport {
 
     @Override
     public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public java.util.List<AccountCurrencyTotals> accountTotals(
+        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
       throw new UnsupportedOperationException();
     }
 

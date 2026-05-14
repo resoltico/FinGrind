@@ -105,6 +105,7 @@ class JazzerRegressionRunnerTest {
           "basic_valid.json",
           """
           {
+            "postingKind": "STANDARD",
             "effectiveDate": "2026-04-07",
             "lines": [
               {
@@ -129,9 +130,7 @@ class JazzerRegressionRunnerTest {
               "actorType": "AGENT",
               "commandId": "command-1",
               "idempotencyKey": "idem-1",
-              "causationId": "cause-1",
-              "recordedAt": "2026-04-07T10:15:30Z",
-              "sourceChannel": "CLI"
+              "causationId": "cause-1"
             }
           }
           """);
@@ -171,6 +170,7 @@ class JazzerRegressionRunnerTest {
           "invalid_missing_provenance.json",
           """
           {
+            "postingKind": "STANDARD",
             "effectiveDate": "2026-04-07",
             "lines": [
               {

@@ -4,14 +4,15 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionSectionView;
@@ -28,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,17 +39,17 @@ import org.jspecify.annotations.Nullable;
  * Computes financial statements from the canonical posting stream and declared account registry.
  */
 final class BookkeepingStatementService {
-  private static final Comparator<CurrencyBalance> BALANCE_ORDER =
+  static final Comparator<CurrencyBalance> BALANCE_ORDER =
       Comparator.comparing(balance -> balance.netAmount().currencyUnit().code());
-  private static final Comparator<FinancialPositionRowView> FINANCIAL_POSITION_ROW_ORDER =
+  static final Comparator<FinancialPositionRowView> FINANCIAL_POSITION_ROW_ORDER =
       Comparator.comparing(FinancialPositionRowView::synthetic)
           .thenComparing(FinancialPositionRowView::lineCode)
           .thenComparing(row -> row.balance().netAmount().currencyUnit().code());
-  private static final Comparator<IncomeStatementRowView> INCOME_STATEMENT_ROW_ORDER =
+  static final Comparator<IncomeStatementRowView> INCOME_STATEMENT_ROW_ORDER =
       Comparator.comparing(IncomeStatementRowView::synthetic)
           .thenComparing(IncomeStatementRowView::lineCode)
           .thenComparing(row -> row.movement().netAmount().currencyUnit().code());
-  private static final Comparator<ChangesInEquityRowView> CHANGES_IN_EQUITY_ROW_ORDER =
+  static final Comparator<ChangesInEquityRowView> CHANGES_IN_EQUITY_ROW_ORDER =
       Comparator.comparing(ChangesInEquityRowView::synthetic)
           .thenComparing(ChangesInEquityRowView::lineCode)
           .thenComparing(row -> row.closingBalance().netAmount().currencyUnit().code());
@@ -60,56 +62,59 @@ final class BookkeepingStatementService {
 
   FinancialPositionView financialPosition(FinancialPositionCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria");
-    EffectiveDateRange range = EffectiveDateRange.of(null, criteria.effectiveDateTo().orElse(null));
-    List<CommittedPosting> postings = bookStore.postings(range);
-    List<RegisteredAccount> accounts = bookStore.allAccounts();
+    PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
+    List<AccountCurrencyTotals> accountTotals =
+        bookStore.accountTotals(
+            EffectiveDateRange.of(null, criteria.effectiveDateTo().orElse(null)), postingCoverage);
     FinancialPositionRows rowsByType = new FinancialPositionRows();
-    for (RegisteredAccount account : accounts) {
-      if (!isFinancialPositionAccount(account.accountType())) {
+    for (AccountCurrencyTotals accountTotal : accountTotals) {
+      if (!isFinancialPositionAccount(accountTotal.account().accountType())) {
         continue;
       }
-      balanceMapForAccount(postings, account)
-          .forEach(
-              (currencyUnit, totals) ->
-                  rowsByType.add(
-                      account.accountType(), financialPositionRow(account, currencyUnit, totals)));
+      rowsByType.add(accountTotal.account().accountType(), financialPositionRow(accountTotal));
     }
-    profitAndLossContributionMap(postings)
+    profitAndLossContributionMap(accountTotals)
         .forEach(
             (currencyUnit, signedMinorUnits) ->
                 rowsByType.add(
                     AccountType.EQUITY,
                     currentEarningsFinancialPositionRow(currencyUnit, signedMinorUnits)));
+    List<FinancialPositionSectionView> sections =
+        rowsByType.sections(List.of(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY));
+    assertAccountingEquation(sections);
     return new FinancialPositionView(
+        bookIdentity(),
         criteria.effectiveDateTo(),
-        rowsByType.sections(List.of(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY)));
+        comparativeRangeForAsOf(criteria.effectiveDateTo()),
+        postingCoverage,
+        sections);
   }
 
   IncomeStatementView incomeStatement(IncomeStatementCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria");
-    EffectiveDateRange range =
-        EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo());
-    List<CommittedPosting> postings = standardPostings(bookStore.postings(range));
-    List<RegisteredAccount> accounts = bookStore.allAccounts();
+    PostingCoverage postingCoverage = PostingCoverage.NON_CLOSING_POSTINGS;
+    List<AccountCurrencyTotals> accountTotals =
+        bookStore.accountTotals(
+            EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+            postingCoverage);
     IncomeStatementRows rowsByType = new IncomeStatementRows();
-    for (RegisteredAccount account : accounts) {
-      if (!AccountSemantics.closesIntoRetainedEarnings(account.accountType())) {
+    for (AccountCurrencyTotals accountTotal : accountTotals) {
+      if (!AccountSemantics.closesIntoRetainedEarnings(accountTotal.account().accountType())) {
         continue;
       }
-      balanceMapForAccount(postings, account)
-          .forEach(
-              (currencyUnit, totals) ->
-                  rowsByType.add(
-                      account.accountType(), incomeStatementRow(account, currencyUnit, totals)));
+      rowsByType.add(accountTotal.account().accountType(), incomeStatementRow(accountTotal));
     }
     List<CurrencyBalance> netIncomeTotals =
-        profitAndLossContributionMap(postings).entrySet().stream()
+        profitAndLossContributionMap(accountTotals).entrySet().stream()
             .map(entry -> signedBalance(entry.getKey(), entry.getValue()))
             .sorted(BALANCE_ORDER)
             .toList();
     return new IncomeStatementView(
+        bookIdentity(),
         criteria.effectiveDateFrom(),
         criteria.effectiveDateTo(),
+        comparativeRangeForPeriod(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+        postingCoverage,
         rowsByType.sections(List.of(AccountType.REVENUE, AccountType.EXPENSE)),
         netIncomeTotals);
   }
@@ -117,47 +122,52 @@ final class BookkeepingStatementService {
   ChangesInEquityView changesInEquity(ChangesInEquityCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria");
     LocalDate dayBefore = criteria.effectiveDateFrom().minusDays(1);
-    List<RegisteredAccount> accounts = bookStore.allAccounts();
-    List<CommittedPosting> openingPostings =
-        bookStore.postings(EffectiveDateRange.of(null, dayBefore));
-    List<CommittedPosting> periodPostings =
-        bookStore.postings(
-            EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()));
-    List<CommittedPosting> closingPostings =
-        bookStore.postings(EffectiveDateRange.of(null, criteria.effectiveDateTo()));
+    PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
+    List<AccountCurrencyTotals> openingTotals =
+        bookStore.accountTotals(EffectiveDateRange.of(null, dayBefore), postingCoverage);
+    List<AccountCurrencyTotals> movementTotals =
+        bookStore.accountTotals(
+            EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+            postingCoverage);
+    List<AccountCurrencyTotals> closingTotals =
+        bookStore.accountTotals(
+            EffectiveDateRange.of(null, criteria.effectiveDateTo()), postingCoverage);
+    Map<AccountCurrencyKey, AccountCurrencyTotals> openingTotalsByKey =
+        indexAccountTotals(openingTotals);
+    Map<AccountCurrencyKey, AccountCurrencyTotals> movementTotalsByKey =
+        indexAccountTotals(movementTotals);
+    Map<AccountCurrencyKey, AccountCurrencyTotals> closingTotalsByKey =
+        indexAccountTotals(closingTotals);
 
     List<ChangesInEquityRowView> rows = new ArrayList<>();
-    for (RegisteredAccount account : accounts) {
+    for (AccountCurrencyKey key :
+        orderedKeys(openingTotalsByKey, movementTotalsByKey, closingTotalsByKey)) {
+      AccountCurrencyTotals closingTotal = closingTotalsByKey.get(key);
+      AccountCurrencyTotals movementTotal = movementTotalsByKey.get(key);
+      AccountCurrencyTotals openingTotal = openingTotalsByKey.get(key);
+      RegisteredAccount account =
+          closingTotal != null
+              ? closingTotal.account()
+              : movementTotal != null
+                  ? movementTotal.account()
+                  : Objects.requireNonNull(openingTotal).account();
       if (account.accountType() != AccountType.EQUITY) {
         continue;
       }
-      Map<CurrencyUnit, SignedDebitCreditTotals> openingTotals =
-          balanceMapForAccount(openingPostings, account);
-      Map<CurrencyUnit, SignedDebitCreditTotals> movementTotals =
-          balanceMapForAccount(periodPostings, account);
-      Map<CurrencyUnit, SignedDebitCreditTotals> closingTotals =
-          balanceMapForAccount(closingPostings, account);
-      currencyUnits(openingTotals, movementTotals, closingTotals)
-          .forEach(
-              currencyUnit ->
-                  rows.add(
-                      new ChangesInEquityRowView(
-                          account.accountCode().value(),
-                          account.accountName().value(),
-                          false,
-                          openingTotals
-                              .getOrDefault(currencyUnit, SignedDebitCreditTotals.ZERO)
-                              .balance(currencyUnit),
-                          movementTotals
-                              .getOrDefault(currencyUnit, SignedDebitCreditTotals.ZERO)
-                              .balance(currencyUnit),
-                          closingTotals
-                              .getOrDefault(currencyUnit, SignedDebitCreditTotals.ZERO)
-                              .balance(currencyUnit))));
+      rows.add(
+          new ChangesInEquityRowView(
+              account.accountCode().value(),
+              account.accountName().value(),
+              Optional.of(account.accountType()),
+              Optional.of(account.accountRole()),
+              false,
+              balanceOrZero(openingTotal, key.currencyUnit()),
+              balanceOrZero(movementTotal, key.currencyUnit()),
+              balanceOrZero(closingTotal, key.currencyUnit())));
     }
 
-    Map<CurrencyUnit, Long> openingCurrentEarnings = profitAndLossContributionMap(openingPostings);
-    Map<CurrencyUnit, Long> closingCurrentEarnings = profitAndLossContributionMap(closingPostings);
+    Map<CurrencyUnit, Long> openingCurrentEarnings = profitAndLossContributionMap(openingTotals);
+    Map<CurrencyUnit, Long> closingCurrentEarnings = profitAndLossContributionMap(closingTotals);
     currencyUnits(openingCurrentEarnings, closingCurrentEarnings)
         .forEach(
             currencyUnit -> {
@@ -167,6 +177,8 @@ final class BookkeepingStatementService {
                   new ChangesInEquityRowView(
                       "current-earnings",
                       "Current Earnings",
+                      Optional.empty(),
+                      Optional.empty(),
                       true,
                       signedBalance(currencyUnit, opening),
                       signedBalance(currencyUnit, Math.subtractExact(closing, opening)),
@@ -175,12 +187,36 @@ final class BookkeepingStatementService {
 
     rows.sort(CHANGES_IN_EQUITY_ROW_ORDER);
     return new ChangesInEquityView(
+        bookIdentity(),
         criteria.effectiveDateFrom(),
         criteria.effectiveDateTo(),
+        comparativeRangeForPeriod(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
+        postingCoverage,
         rows,
         aggregateOpeningTotals(rows),
         aggregateMovementTotals(rows),
         aggregateClosingTotals(rows));
+  }
+
+  private BookIdentity bookIdentity() {
+    return switch (bookStore.inspectBook()) {
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized ->
+          initialized.bookIdentity();
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing _ ->
+          throw new IllegalStateException("Statement computation requires one initialized book.");
+      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Existing _ ->
+          throw new IllegalStateException("Statement computation requires one initialized book.");
+    };
+  }
+
+  private static EffectiveDateRange comparativeRangeForAsOf(Optional<LocalDate> effectiveDateTo) {
+    return EffectiveDateRange.of(
+        null, effectiveDateTo.map(date -> date.minusYears(1)).orElse(null));
+  }
+
+  private static EffectiveDateRange comparativeRangeForPeriod(
+      LocalDate effectiveDateFrom, LocalDate effectiveDateTo) {
+    return EffectiveDateRange.of(effectiveDateFrom.minusYears(1), effectiveDateTo.minusYears(1));
   }
 
   private static FinancialPositionSectionView toFinancialPositionSection(
@@ -210,18 +246,14 @@ final class BookkeepingStatementService {
     };
   }
 
-  private static List<CommittedPosting> standardPostings(List<CommittedPosting> postings) {
-    return postings.stream().filter(posting -> posting.postingKind().isStandard()).toList();
-  }
-
-  private static FinancialPositionRowView financialPositionRow(
-      RegisteredAccount account, CurrencyUnit currencyUnit, SignedDebitCreditTotals totals) {
+  private static FinancialPositionRowView financialPositionRow(AccountCurrencyTotals accountTotal) {
     return new FinancialPositionRowView(
-        account.accountCode().value(),
-        account.accountName().value(),
-        account.accountType(),
+        accountTotal.account().accountCode().value(),
+        accountTotal.account().accountName().value(),
+        accountTotal.account().accountType(),
+        Optional.of(accountTotal.account().accountRole()),
         false,
-        totals.balance(currencyUnit));
+        accountTotal.balance());
   }
 
   private static FinancialPositionRowView currentEarningsFinancialPositionRow(
@@ -230,57 +262,40 @@ final class BookkeepingStatementService {
         "current-earnings",
         "Current Earnings",
         AccountType.EQUITY,
+        Optional.empty(),
         true,
         signedBalance(currencyUnit, signedMinorUnits));
   }
 
-  private static IncomeStatementRowView incomeStatementRow(
-      RegisteredAccount account, CurrencyUnit currencyUnit, SignedDebitCreditTotals totals) {
+  private static IncomeStatementRowView incomeStatementRow(AccountCurrencyTotals accountTotal) {
     return new IncomeStatementRowView(
-        account.accountCode().value(),
-        account.accountName().value(),
-        account.accountType(),
+        accountTotal.account().accountCode().value(),
+        accountTotal.account().accountName().value(),
+        accountTotal.account().accountType(),
+        Optional.of(accountTotal.account().accountRole()),
         false,
-        totals.balance(currencyUnit));
-  }
-
-  private static Map<CurrencyUnit, SignedDebitCreditTotals> balanceMapForAccount(
-      List<CommittedPosting> postings, RegisteredAccount account) {
-    AccountBalanceAccumulator totalsByCurrency = new AccountBalanceAccumulator();
-    for (CommittedPosting posting : postings) {
-      for (JournalLine line : posting.journalEntry().lines()) {
-        if (!line.accountCode().equals(account.accountCode())) {
-          continue;
-        }
-        totalsByCurrency.record(line);
-      }
-    }
-    return totalsByCurrency.snapshot();
-  }
-
-  private Map<CurrencyUnit, Long> profitAndLossContributionMap(List<CommittedPosting> postings) {
-    AccountIndex accountsByCode = AccountIndex.of(bookStore.allAccounts());
-    return profitAndLossContributionMap(postings, accountsByCode);
+        accountTotal.balance());
   }
 
   private static Map<CurrencyUnit, Long> profitAndLossContributionMap(
-      List<CommittedPosting> postings, AccountIndex accountsByCode) {
+      List<AccountCurrencyTotals> accountTotals) {
     CurrencyContributionAccumulator contributions = new CurrencyContributionAccumulator();
-    for (CommittedPosting posting : postings) {
-      for (JournalLine line : posting.journalEntry().lines()) {
-        @Nullable RegisteredAccount account = accountsByCode.find(line.accountCode());
-        if (account == null
-            || !AccountSemantics.closesIntoRetainedEarnings(account.accountType())) {
-          continue;
-        }
-        long signedContribution =
-            AccountSemantics.profitAndLossContributionMinorUnits(
-                account.accountType(),
-                account.accountRole(),
-                line.side() == JournalLine.EntrySide.DEBIT ? BalanceSide.DEBIT : BalanceSide.CREDIT,
-                line.amount().minorUnits());
-        contributions.record(line.amount().currencyUnit(), signedContribution);
+    for (AccountCurrencyTotals accountTotal : accountTotals) {
+      RegisteredAccount account = accountTotal.account();
+      if (!AccountSemantics.closesIntoRetainedEarnings(account.accountType())) {
+        continue;
       }
+      CurrencyBalance balance = accountTotal.balance();
+      if (balance.balanceSide() == BalanceSide.ZERO) {
+        continue;
+      }
+      contributions.record(
+          accountTotal.currencyUnit(),
+          AccountSemantics.profitAndLossContributionMinorUnits(
+              account.accountType(),
+              account.accountRole(),
+              balance.balanceSide(),
+              balance.netAmount().minorUnits()));
     }
     return contributions.snapshot();
   }
@@ -320,19 +335,89 @@ final class BookkeepingStatementService {
     return List.copyOf(ordered);
   }
 
+  @SafeVarargs
+  private static List<AccountCurrencyKey> orderedKeys(Map<AccountCurrencyKey, ?>... maps) {
+    SortedSet<AccountCurrencyKey> ordered =
+        new TreeSet<>(
+            Comparator.comparing((AccountCurrencyKey key) -> key.accountCode().value())
+                .thenComparing(key -> key.currencyUnit().code()));
+    for (Map<AccountCurrencyKey, ?> map : maps) {
+      ordered.addAll(map.keySet());
+    }
+    return List.copyOf(ordered);
+  }
+
+  private static Map<AccountCurrencyKey, AccountCurrencyTotals> indexAccountTotals(
+      List<AccountCurrencyTotals> accountTotals) {
+    Map<AccountCurrencyKey, AccountCurrencyTotals> indexed = new ConcurrentHashMap<>();
+    accountTotals.forEach(
+        accountTotal ->
+            indexed.put(
+                new AccountCurrencyKey(
+                    accountTotal.account().accountCode(), accountTotal.currencyUnit()),
+                accountTotal));
+    return Map.copyOf(indexed);
+  }
+
+  private static CurrencyBalance balanceOrZero(
+      @Nullable AccountCurrencyTotals accountTotal, CurrencyUnit currencyUnit) {
+    return accountTotal == null
+        ? BalanceMath.currencyBalance(currencyUnit, 0L, 0L)
+        : accountTotal.balance();
+  }
+
+  static void assertAccountingEquation(List<FinancialPositionSectionView> sections) {
+    Map<CurrencyUnit, Long> assetTotals = signedSectionTotals(section(sections, AccountType.ASSET));
+    Map<CurrencyUnit, Long> liabilityTotals =
+        signedSectionTotals(section(sections, AccountType.LIABILITY));
+    Map<CurrencyUnit, Long> equityTotals =
+        signedSectionTotals(section(sections, AccountType.EQUITY));
+    for (CurrencyUnit currencyUnit : currencyUnits(assetTotals, liabilityTotals, equityTotals)) {
+      long signedTotal =
+          Math.addExact(
+              assetTotals.getOrDefault(currencyUnit, 0L),
+              Math.addExact(
+                  liabilityTotals.getOrDefault(currencyUnit, 0L),
+                  equityTotals.getOrDefault(currencyUnit, 0L)));
+      if (signedTotal != 0L) {
+        throw new IllegalStateException(
+            "Financial position violates the accounting equation for currency "
+                + currencyUnit.code()
+                + ".");
+      }
+    }
+  }
+
+  private static FinancialPositionSectionView section(
+      List<FinancialPositionSectionView> sections, AccountType accountType) {
+    return sections.stream()
+        .filter(section -> section.accountType() == accountType)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Missing statement-of-financial-position section: " + accountType));
+  }
+
+  private static Map<CurrencyUnit, Long> signedSectionTotals(FinancialPositionSectionView section) {
+    Map<CurrencyUnit, Long> totals = new ConcurrentHashMap<>();
+    section
+        .totals()
+        .forEach(
+            balance -> totals.put(balance.netAmount().currencyUnit(), signedMinorUnits(balance)));
+    return Map.copyOf(totals);
+  }
+
+  static long signedMinorUnits(CurrencyBalance balance) {
+    return switch (balance.balanceSide()) {
+      case DEBIT -> balance.netAmount().minorUnits();
+      case CREDIT -> Math.negateExact(balance.netAmount().minorUnits());
+      case ZERO -> 0L;
+    };
+  }
+
   private record SignedDebitCreditTotals(long debitTotalMinor, long creditTotalMinor) {
     private static final SignedDebitCreditTotals ZERO = new SignedDebitCreditTotals(0L, 0L);
-
-    SignedDebitCreditTotals plus(JournalLine.EntrySide side, long amountMinor) {
-      return switch (Objects.requireNonNull(side, "side")) {
-        case DEBIT ->
-            new SignedDebitCreditTotals(
-                Math.addExact(debitTotalMinor, amountMinor), creditTotalMinor);
-        case CREDIT ->
-            new SignedDebitCreditTotals(
-                debitTotalMinor, Math.addExact(creditTotalMinor, amountMinor));
-      };
-    }
 
     SignedDebitCreditTotals plus(long debitMinor, long creditMinor) {
       return new SignedDebitCreditTotals(
@@ -389,14 +474,6 @@ final class BookkeepingStatementService {
     private final Map<CurrencyUnit, SignedDebitCreditTotals> totalsByCurrency =
         new ConcurrentHashMap<>();
 
-    void record(JournalLine line) {
-      totalsByCurrency.compute(
-          line.amount().currencyUnit(),
-          (ignored, existing) ->
-              (existing == null ? SignedDebitCreditTotals.ZERO : existing)
-                  .plus(line.side(), line.amount().minorUnits()));
-    }
-
     void record(CurrencyBalance balance) {
       totalsByCurrency.compute(
           balance.netAmount().currencyUnit(),
@@ -417,21 +494,6 @@ final class BookkeepingStatementService {
     }
   }
 
-  /** Indexes declared accounts by account code for statement derivation. */
-  private static final class AccountIndex {
-    private final Map<String, RegisteredAccount> accountsByCode = new ConcurrentHashMap<>();
-
-    static AccountIndex of(List<RegisteredAccount> accounts) {
-      AccountIndex index = new AccountIndex();
-      accounts.forEach(account -> index.accountsByCode.put(account.accountCode().value(), account));
-      return index;
-    }
-
-    @Nullable RegisteredAccount find(dev.erst.fingrind.core.AccountCode accountCode) {
-      return accountsByCode.get(accountCode.value());
-    }
-  }
-
   /** Accumulates signed profit-and-loss contributions per currency. */
   private static final class CurrencyContributionAccumulator {
     private final Map<CurrencyUnit, Long> contributions = new ConcurrentHashMap<>();
@@ -442,6 +504,15 @@ final class BookkeepingStatementService {
 
     Map<CurrencyUnit, Long> snapshot() {
       return Map.copyOf(contributions);
+    }
+  }
+
+  /** Stable composite key for one declared account and one currency bucket. */
+  private record AccountCurrencyKey(
+      dev.erst.fingrind.core.AccountCode accountCode, CurrencyUnit currencyUnit) {
+    private AccountCurrencyKey {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(currencyUnit, "currencyUnit");
     }
   }
 }

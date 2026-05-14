@@ -83,11 +83,27 @@ def verify_book_key_generation(
 
 def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> None:
     print(f"{config.label}: verifying explicit book initialization")
-    open_output = open_book(config, operation_ids)
-    require_match(
-        open_output,
-        r'"status"[[:space:]]*:[[:space:]]*"ok"',
+    open_payload = parse_json_output(
+        open_book(config, operation_ids),
+        f"{config.label} open-book output was not valid JSON",
+    )
+    require(
+        open_payload.get("status") == "ok",
         f"{config.label} open-book did not report ok status",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "entityName") == config.entity_name,
+        f"{config.label} open-book did not echo the expected entity name",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "functionalCurrency")
+        == config.functional_currency,
+        f"{config.label} open-book did not echo the expected functional currency",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "fiscalYearStart")
+        == config.fiscal_year_start,
+        f"{config.label} open-book did not echo the expected fiscal year start",
     )
 
 
@@ -155,6 +171,12 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             operation_ids["openBook"],
             "--book-file",
             config.book.argument,
+            "--entity-name",
+            config.entity_name,
+            "--functional-currency",
+            config.functional_currency,
+            "--fiscal-year-start",
+            config.fiscal_year_start,
             "--book-passphrase-stdin",
             stdin_text=generated_passphrase,
         )
@@ -164,6 +186,12 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             operation_ids["openBook"],
             "--book-file",
             config.book.argument,
+            "--entity-name",
+            config.entity_name,
+            "--functional-currency",
+            config.functional_currency,
+            "--fiscal-year-start",
+            config.fiscal_year_start,
             "--book-key-file",
             config.book_key.argument,
         )

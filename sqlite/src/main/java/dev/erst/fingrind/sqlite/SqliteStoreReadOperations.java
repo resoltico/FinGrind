@@ -3,9 +3,11 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -88,6 +90,11 @@ final class SqliteStoreReadOperations {
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     return reportOperations.accountBalance(query);
+  }
+
+  List<AccountCurrencyTotals> accountTotals(
+      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+    return queryOperations.accountTotals(effectiveDateRange, postingCoverage);
   }
 
   TrialBalanceView trialBalance(TrialBalanceCriteria query) {

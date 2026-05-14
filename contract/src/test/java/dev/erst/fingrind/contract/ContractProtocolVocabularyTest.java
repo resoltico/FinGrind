@@ -61,7 +61,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(2, BookFormatContract.FORMAT_VERSION);
+    assertEquals(4, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -182,6 +182,7 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.ReversalTemplateDescriptor.class,
             ContractTemplates.LedgerPlanTemplateDescriptor.class,
             ContractTemplates.LedgerPlanStepTemplateDescriptor.class,
+            ContractTemplates.OpenBookTemplateDescriptor.class,
             ContractTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
             ContractTemplates.LedgerAssertionTemplateDescriptor.class),
@@ -208,6 +209,7 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
+                dev.erst.fingrind.core.PostingKind.STANDARD,
                 "2026-04-25",
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
@@ -218,9 +220,24 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
+            new ContractTemplates.PostingRequestTemplateDescriptor(
+                dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE,
+                "2026-04-25",
+                List.of(
+                    new ContractTemplates.JournalLineTemplateDescriptor(
+                        "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
+                    new ContractTemplates.JournalLineTemplateDescriptor(
+                        "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
+                new ContractTemplates.ProvenanceTemplateDescriptor(
+                    "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "open",
                 LedgerStepKind.OPEN_BOOK,
+                null,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
                     "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),

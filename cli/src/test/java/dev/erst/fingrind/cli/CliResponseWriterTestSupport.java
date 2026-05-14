@@ -56,7 +56,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Shared payload fixtures and JSON helpers for split CLI response writer tests. */
-class CliResponseWriterTestSupport {
+class CliResponseWriterTestSupport extends CliIoFixtureSupport {
   protected CliResponseWriterTestSupport() {}
 
   static PostingFact postingFact() {
@@ -113,7 +113,7 @@ class CliResponseWriterTestSupport {
     return Money.parse(currencyCode, amount);
   }
 
-  static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {
+  protected static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {
     return new PrintStream(outputStream, false, StandardCharsets.UTF_8);
   }
 
@@ -208,7 +208,7 @@ class CliResponseWriterTestSupport {
     return readJson(outputStream).path("payload");
   }
 
-  static List<String> readTextArray(JsonNode node) {
+  protected static List<String> readTextArray(JsonNode node) {
     List<String> values = new java.util.ArrayList<>();
     node.forEach(element -> values.add(element.stringValue()));
     return List.copyOf(values);

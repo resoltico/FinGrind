@@ -20,7 +20,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.jazzer.support.PostingWorkflowInvariantAssertions;
-import java.lang.reflect.Constructor;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -403,14 +402,6 @@ class PostingWorkflowInvariantAssertionsTest {
   }
 
   private static SourceChannel alternateSourceChannel() {
-    try {
-      Constructor<SourceChannel> constructor =
-          SourceChannel.class.getDeclaredConstructor(String.class);
-      constructor.setAccessible(true);
-      return constructor.newInstance("REPLAY");
-    } catch (ReflectiveOperationException exception) {
-      throw new LinkageError(
-          "Unable to construct alternate source channel for coverage.", exception);
-    }
+    return SourceChannel.SYSTEM;
   }
 }

@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
@@ -43,11 +42,11 @@ import tools.jackson.databind.ObjectMapper;
 /** Unit tests for {@link FinGrindCli}. */
 class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   @Test
-  void run_returnsHelpWhenArgumentsAreEmpty() {
+  void run_rendersHumanHelpWhenExplicitlyRequested() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[0]);
+    int exitCode = cli.run(new String[] {"help", "--output", "human"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("FinGrind Help"));
@@ -59,17 +58,18 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             CliInvocationText.commandExample(OperationId.GENERATE_BOOK_KEY_FILE)
                 + " --book-key-file "
                 + currentExamplePath("secrets", "acme.book-key")));
-    assertTrue(help.contains("Write: " + currentExamplePath("declare-account-cash.json")));
+    assertTrue(help.contains("Create " + currentExamplePath("declare-account-cash.json")));
     assertTrue(help.contains("\"accountCode\": \"1000\""));
     assertTrue(help.contains("--request-file " + currentExamplePath("declare-account-cash.json")));
-    assertTrue(help.contains("Write: " + currentExamplePath("declare-account-revenue.json")));
+    assertTrue(help.contains("Create " + currentExamplePath("declare-account-revenue.json")));
     assertTrue(help.contains("\"accountCode\": \"2000\""));
     assertTrue(
         help.contains("--request-file " + currentExamplePath("declare-account-revenue.json")));
     assertFalse(help.contains("--request-file ./cash.json"));
     assertFalse(help.contains("--request-file ./revenue.json"));
-    assertTrue(help.contains("Note: Replace scaffold placeholders such as effectiveDate"));
-    assertTrue(help.contains("Note: Use a fresh provenance.idempotencyKey"));
+    assertTrue(help.contains("Guidance"));
+    assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
+    assertTrue(help.contains("Use a fresh provenance.idempotencyKey"));
   }
 
   @Test
@@ -77,7 +77,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[] {"help", "post-entry"});
+    int exitCode = cli.run(new String[] {"help", "post-entry", "--output", "human"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("Command"));
@@ -94,7 +94,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[] {"post-entry", "--help"});
+    int exitCode = cli.run(new String[] {"post-entry", "--help", "--output", "human"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
@@ -251,8 +251,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               new ByteArrayInputStream(new byte[0]),
               utf8PrintStream(failureOutputStream),
               fixedClock());
-      int helpExitCode = helpCli.run(new String[0]);
-      int commandHelpExitCode = commandHelpCli.run(new String[] {"help", "open-book"});
+      int helpExitCode = helpCli.run(new String[] {"help", "--output", "human"});
+      int commandHelpExitCode =
+          commandHelpCli.run(new String[] {"help", "open-book", "--output", "human"});
       int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
       assertEquals(0, helpExitCode);
       assertEquals(0, commandHelpExitCode);
@@ -261,8 +262,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       String commandHelp = commandHelpOutputStream.toString(StandardCharsets.UTF_8);
       assertTrue(help.contains(expectedQuickStartTitle), help);
       assertTrue(help.contains(expectedLauncher), help);
-      assertTrue(commandHelp.contains("| " + expectedLauncher + " open-book"), commandHelp);
-      assertFalse(commandHelp.contains("| fingrind open-book"), commandHelp);
+      assertTrue(commandHelp.contains(expectedLauncher + " open-book"), commandHelp);
+      assertFalse(commandHelp.contains("fingrind open-book"), commandHelp);
       String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);
       assertTrue(failureText.contains("Error"), failureText);
       assertTrue(
@@ -346,12 +347,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals("advisory", payload.path("preflight").path("semantics").stringValue());
     assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").stringValue());
     assertEquals(
-        "single-currency-per-entry", payload.path("currencyModel").path("scope").stringValue());
+        "single-functional-currency-per-book",
+        payload.path("currencyModel").path("scope").stringValue());
     assertEquals(
         "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").stringValue());
     assertTrue(payload.path("requestShapes").path("postEntry").path("topLevelFields").isArray());
     assertEquals(
-        "effectiveDate",
+        "postingKind",
         payload
             .path("requestShapes")
             .path("postEntry")
@@ -765,7 +767,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   void run_doesNotTouchWorkflowForDiscoveryCommands() {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
-            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 declaredAccount(

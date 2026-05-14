@@ -132,10 +132,31 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Existing account type", details.existingAccountType()));
         rows.add(List.of("Requested account type", details.requestedAccountType()));
       }
+      case CliRejectionJsonModels.PostingKindDetails details ->
+          rows.add(List.of("Posting kind", details.postingKind()));
+      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
+        rows.add(List.of("Functional currency", details.functionalCurrency()));
+        rows.add(List.of("Attempted currency", details.attemptedCurrency()));
+      }
+      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Account type", details.accountType()));
+      }
       case CliRejectionJsonModels.RetainedEarningsAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
+      case CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Actual account role", details.actualAccountRole()));
+      }
       case CliRejectionJsonModels.PeriodCloseStartDetails details ->
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
+      case CliRejectionJsonModels.PeriodCloseFutureDateDetails details ->
+          rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
+      case CliRejectionJsonModels.PeriodCloseFiscalYearDetails details -> {
+        rows.add(List.of("Attempted start date", details.attemptedEffectiveDateFrom()));
+        rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
+        rows.add(List.of("Fiscal year start", details.fiscalYearStart()));
+      }
       case CliRejectionJsonModels.ClosedPeriodViolationDetails details -> {
         rows.add(List.of("Closed through", details.closedThroughEffectiveDate()));
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));

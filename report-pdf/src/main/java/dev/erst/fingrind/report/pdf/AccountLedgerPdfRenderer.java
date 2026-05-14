@@ -15,6 +15,8 @@ final class AccountLedgerPdfRenderer {
         List.of(
             List.of("Account", report.account().accountCode().value()),
             List.of("Name", report.account().accountName().value()),
+            List.of("Account type", report.account().accountType().wireValue()),
+            List.of("Account role", report.account().accountRole().wireValue()),
             List.of("Normal balance", report.account().normalBalance().wireValue()),
             List.of("Active", Boolean.toString(report.account().active())),
             List.of(

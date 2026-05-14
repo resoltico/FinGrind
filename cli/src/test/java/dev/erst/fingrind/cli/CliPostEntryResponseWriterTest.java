@@ -24,10 +24,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")));
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"status\":\"preflight-accepted\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
   }
 
   @Test
@@ -40,7 +37,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z")));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"committed\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
   }
 
   @Test

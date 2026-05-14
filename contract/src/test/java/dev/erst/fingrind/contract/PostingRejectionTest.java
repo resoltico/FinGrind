@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +21,10 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
+            "posting-kind-reserved",
+            "book-functional-currency-mismatch",
             "closed-period-violation",
+            "opening-balance-touches-nominal-account",
             "retained-earnings-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
@@ -30,9 +36,17 @@ class PostingRejectionTest {
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.DuplicateIdempotencyKey()),
             PostingRejection.wireCode(
+                new PostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)),
+            PostingRejection.wireCode(
+                new PostingRejection.BookFunctionalCurrencyMismatch(
+                    CurrencyUnit.of("EUR"), CurrencyUnit.of("USD"))),
+            PostingRejection.wireCode(
                 new PostingRejection.ClosedPeriodViolation(
                     java.time.LocalDate.parse("2026-04-30"),
                     java.time.LocalDate.parse("2026-05-01"))),
+            PostingRejection.wireCode(
+                new PostingRejection.OpeningBalanceTouchesNominalAccount(
+                    new AccountCode("4000"), AccountType.REVENUE)),
             PostingRejection.wireCode(
                 new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3000"))),
             PostingRejection.wireCode(
@@ -60,7 +74,10 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
+            "posting-kind-reserved",
+            "book-functional-currency-mismatch",
             "closed-period-violation",
+            "opening-balance-touches-nominal-account",
             "retained-earnings-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",

@@ -13,6 +13,7 @@ final class ContractTemplateShapeRules {
         Map.entry(
             LedgerStepKind.OPEN_BOOK,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -27,10 +28,12 @@ final class ContractTemplateShapeRules {
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
+                ContractTemplateFieldPresence.FORBIDDEN,
                 false)),
         Map.entry(
             LedgerStepKind.DECLARE_ACCOUNT,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -40,6 +43,7 @@ final class ContractTemplateShapeRules {
         Map.entry(
             LedgerStepKind.PREFLIGHT_ENTRY,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -49,6 +53,7 @@ final class ContractTemplateShapeRules {
         Map.entry(
             LedgerStepKind.POST_ENTRY,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -60,6 +65,7 @@ final class ContractTemplateShapeRules {
             new ContractTemplateStepShapeRequirements(
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.OPTIONAL,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -69,6 +75,7 @@ final class ContractTemplateShapeRules {
             new ContractTemplateStepShapeRequirements(
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.OPTIONAL,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -76,6 +83,7 @@ final class ContractTemplateShapeRules {
         Map.entry(
             LedgerStepKind.ACCOUNT_BALANCE,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED,
@@ -89,11 +97,13 @@ final class ContractTemplateShapeRules {
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED,
                 false)),
         Map.entry(
             LedgerStepKind.ASSERT,
             new ContractTemplateStepShapeRequirements(
+                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,

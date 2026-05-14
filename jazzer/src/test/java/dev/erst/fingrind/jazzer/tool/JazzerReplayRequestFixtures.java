@@ -6,6 +6,7 @@ final class JazzerReplayRequestFixtures {
   static String basicValidRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -39,6 +40,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenRecordedAtRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -73,6 +75,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidMissingProvenanceRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -99,6 +102,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidExponentAmountRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -132,6 +136,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidDuplicateIdempotencyKeyRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -166,6 +171,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidUnexpectedTopLevelFieldRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -200,6 +206,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenSourceChannelRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -234,6 +241,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidBlankActorRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -267,6 +275,7 @@ final class JazzerReplayRequestFixtures {
   static String reversalTargetMissingRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-08",
           "lines": [
             {
@@ -304,6 +313,7 @@ final class JazzerReplayRequestFixtures {
   static String missingReversalReasonRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": "2026-04-08",
           "lines": [
             {
@@ -340,6 +350,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidWrongTypeRequest() {
     return """
         {
+          "postingKind": "STANDARD",
           "effectiveDate": 1,
           "lines": [],
           "provenance": {}

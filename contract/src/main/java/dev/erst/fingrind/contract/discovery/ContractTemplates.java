@@ -9,9 +9,13 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingKind;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -32,12 +36,14 @@ public final class ContractTemplates {
           ReversalTemplateDescriptor,
           LedgerPlanTemplateDescriptor,
           LedgerPlanStepTemplateDescriptor,
+          OpenBookTemplateDescriptor,
           LedgerPlanQueryTemplateDescriptor,
           DeclareAccountTemplateDescriptor,
           LedgerAssertionTemplateDescriptor {}
 
   /** Canonical request-template document for print-request-template. */
   public record PostingRequestTemplateDescriptor(
+      PostingKind postingKind,
       String effectiveDate,
       List<JournalLineTemplateDescriptor> lines,
       ProvenanceTemplateDescriptor provenance,
@@ -45,6 +51,11 @@ public final class ContractTemplates {
       implements TemplateDescriptorType {
     /** Validates one posting-request template descriptor payload. */
     public PostingRequestTemplateDescriptor {
+      postingKind = ContractDescriptorValidation.requireValue(postingKind, "postingKind");
+      if (!postingKind.isCallerSelectable()) {
+        throw new IllegalArgumentException(
+            "postingKind must belong to the caller-authored posting surface.");
+      }
       effectiveDate = ContractDescriptorValidation.requireText(effectiveDate, "effectiveDate");
       lines = ContractDescriptorValidation.copyList(lines, "lines");
       if (lines.size() < 2) {
@@ -120,6 +131,7 @@ public final class ContractTemplates {
   public record LedgerPlanStepTemplateDescriptor(
       String stepId,
       LedgerStepKind kind,
+      @Nullable OpenBookTemplateDescriptor openBook,
       @Nullable PostingRequestTemplateDescriptor posting,
       @Nullable DeclareAccountTemplateDescriptor declareAccount,
       @Nullable LedgerPlanQueryTemplateDescriptor query,
@@ -132,7 +144,24 @@ public final class ContractTemplates {
       kind = ContractDescriptorValidation.requireValue(kind, "kind");
       postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
       ContractTemplateShapeValidator.validateStepShape(
-          kind, posting, declareAccount, query, assertion, postingId);
+          kind, openBook, posting, declareAccount, query, assertion, postingId);
+    }
+  }
+
+  /** Canonical open-book template nested inside a ledger plan. */
+  public record OpenBookTemplateDescriptor(
+      String entityName, String functionalCurrency, String fiscalYearStart)
+      implements TemplateDescriptorType {
+    /** Validates one open-book template descriptor payload. */
+    public OpenBookTemplateDescriptor {
+      entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
+      new BookEntityName(entityName);
+      functionalCurrency =
+          ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
+      CurrencyUnit.of(functionalCurrency);
+      fiscalYearStart =
+          ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
+      FiscalYearStart.parse(fiscalYearStart);
     }
   }
 

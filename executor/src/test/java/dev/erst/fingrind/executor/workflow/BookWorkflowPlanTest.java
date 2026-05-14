@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -68,13 +69,14 @@ class BookWorkflowPlanTest {
                 "plan-1",
                 List.of(
                     new BookWorkflowStep.InspectBook("inspect"),
-                    new BookWorkflowStep.OpenBook("open"))));
+                    new BookWorkflowStep.OpenBook("open", bookIdentity()))));
   }
 
   @Test
   void bookWorkflowPlan_reportsWhetherTheFirstStepOpensTheBook() {
     BookWorkflowPlan openBookPlan =
-        new BookWorkflowPlan("plan-1", List.of(new BookWorkflowStep.OpenBook("open")));
+        new BookWorkflowPlan(
+            "plan-1", List.of(new BookWorkflowStep.OpenBook("open", bookIdentity())));
     BookWorkflowPlan inspectionPlan =
         new BookWorkflowPlan("plan-2", List.of(new BookWorkflowStep.InspectBook("inspect")));
     assertTrue(openBookPlan.beginsWithOpenBook());

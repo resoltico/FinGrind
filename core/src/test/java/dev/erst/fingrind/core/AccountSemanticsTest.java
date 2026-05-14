@@ -65,7 +65,7 @@ class AccountSemanticsTest {
         AccountSemantics.profitAndLossContributionMinorUnits(
             AccountType.REVENUE, AccountRole.ORDINARY, BalanceSide.DEBIT, 100L));
     assertEquals(
-        100L,
+        -100L,
         AccountSemantics.profitAndLossContributionMinorUnits(
             AccountType.REVENUE, AccountRole.CONTRA, BalanceSide.DEBIT, 100L));
     assertEquals(
@@ -77,7 +77,7 @@ class AccountSemanticsTest {
         AccountSemantics.profitAndLossContributionMinorUnits(
             AccountType.EXPENSE, AccountRole.ORDINARY, BalanceSide.CREDIT, 40L));
     assertEquals(
-        -25L,
+        25L,
         AccountSemantics.profitAndLossContributionMinorUnits(
             AccountType.EXPENSE, AccountRole.CONTRA, BalanceSide.CREDIT, 25L));
     assertEquals(

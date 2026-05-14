@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -18,6 +19,21 @@ final class SqliteMutationWriter {
   static void insertInitializedAt(SqliteNativeDatabase activeDatabase, Instant initializedAt) {
     insertBookMetaValue(
         activeDatabase, SqlitePostingSql.INITIALIZED_AT_META_KEY, initializedAt.toString());
+  }
+
+  static void insertBookIdentity(SqliteNativeDatabase activeDatabase, BookIdentity bookIdentity) {
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY,
+        bookIdentity.entityName().value());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY,
+        bookIdentity.functionalCurrency().code());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY,
+        bookIdentity.fiscalYearStart().wireValue());
   }
 
   static void insertBookMetaValue(SqliteNativeDatabase activeDatabase, String key, String value) {

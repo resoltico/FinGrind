@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
@@ -37,6 +39,17 @@ final class SqliteTrialBalanceReader {
     totalsByAccount
         .values()
         .forEach(accountTotals -> rows.addAll(accountTotals.trialBalanceRows()));
-    return new TrialBalanceView(query.effectiveDateTo(), rows);
+    BookIdentity bookIdentity =
+        SqliteStatementQueries.loadBookIdentity(activeDatabase)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException("Initialized SQLite book is missing book identity."));
+    return new TrialBalanceView(
+        bookIdentity,
+        query.effectiveDateTo(),
+        EffectiveDateRange.of(
+            null, query.effectiveDateTo().map(date -> date.minusYears(1)).orElse(null)),
+        query.postingCoverage(),
+        rows);
   }
 }
