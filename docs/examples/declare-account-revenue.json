@@ -2,5 +2,6 @@
   "accountCode": "2000",
   "accountName": "Revenue",
   "accountType": "REVENUE",
-  "accountRole": "ORDINARY"
+  "accountRole": "ORDINARY",
+  "profitAndLossLineClassification": "OPERATING_REVENUE"
 }

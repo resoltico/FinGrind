@@ -3,7 +3,19 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.OwnerModel;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -119,5 +131,34 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
             assertEquals(
                 Optional.of(SqlitePostingFactFixtureSupport.bookIdentity()),
                 SqliteStatementQueries.loadBookIdentity(database)));
+  }
+
+  @Test
+  void loadBookIdentity_roundTripsEncodedBusinessActivityTags() {
+    Path bookPath = tempDirectory.resolve("book-identity-business-activity-tags.sqlite");
+    BookIdentity bookIdentity =
+        new BookIdentity(
+            new EntityProfile(
+                new BookEntityName("Acme Studio"),
+                EntityForm.COMPANY,
+                OwnerModel.MULTI_OWNER,
+                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+                TaxRegistrationStatus.UNSPECIFIED,
+                List.of(
+                    new BusinessActivityTag("translation,localization"),
+                    new BusinessActivityTag("cafe services"))),
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"),
+            AccountingBasis.ACCRUAL);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertInitializedAtRow(database);
+          SqliteMutationWriter.insertBookIdentity(database, bookIdentity);
+
+          assertEquals(
+              Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+        });
   }
 }

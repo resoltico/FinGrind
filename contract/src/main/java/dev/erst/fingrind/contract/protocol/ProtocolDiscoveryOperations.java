@@ -61,7 +61,7 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "Edit request.json and replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value before submission."))),
+                    "Edit the emitted JSON before submission. Posting templates include effectiveDate and replace-before-commit-* provenance placeholders; declare-account templates do not."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,

@@ -47,6 +47,7 @@ public interface CliPlanJsonModels {
       int stepCount,
       int succeededStepCount,
       int failedStepCount,
+      List<LedgerStepDigestPayload> steps,
       @Nullable String failedStepId,
       @Nullable String failureCode,
       @Nullable String failureMessage) {
@@ -62,7 +63,30 @@ public interface CliPlanJsonModels {
       if (failedStepCount < 0) {
         throw new IllegalArgumentException("failedStepCount must be non-negative.");
       }
+      steps = copyList(steps, "steps");
+      if (steps.isEmpty()) {
+        throw new IllegalArgumentException("steps must not be empty.");
+      }
       failedStepId = requireOptionalText(failedStepId, "failedStepId");
+      failureCode = requireOptionalText(failureCode, "failureCode");
+      failureMessage = requireOptionalText(failureMessage, "failureMessage");
+    }
+  }
+
+  record LedgerStepDigestPayload(
+      String stepId,
+      LedgerJournalKind kind,
+      @Nullable LedgerAssertionKind detailKind,
+      @Nullable LedgerBoundaryPhase boundaryPhase,
+      LedgerStepStatus status,
+      List<String> facts,
+      @Nullable String failureCode,
+      @Nullable String failureMessage) {
+    public LedgerStepDigestPayload {
+      stepId = requireText(stepId, "stepId");
+      kind = requireValue(kind, "kind");
+      status = requireValue(status, "status");
+      facts = copyList(facts, "facts");
       failureCode = requireOptionalText(failureCode, "failureCode");
       failureMessage = requireOptionalText(failureMessage, "failureMessage");
     }

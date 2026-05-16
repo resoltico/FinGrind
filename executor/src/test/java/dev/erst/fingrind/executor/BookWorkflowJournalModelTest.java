@@ -14,6 +14,7 @@ import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalEntry;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
+import dev.erst.fingrind.executor.workflow.BookWorkflowStepId;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +48,7 @@ class BookWorkflowJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowJournalEntry.AssertionFailed(
-                "assert-balance",
+                stepId("assert-balance"),
                 inspectDescriptor("inspect"),
                 STARTED_AT,
                 FINISHED_AT,
@@ -57,7 +58,7 @@ class BookWorkflowJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowJournalEntry.AssertionFailed(
-                "assert-balance",
+                stepId("assert-balance"),
                 new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryPhase.COMMIT),
                 STARTED_AT,
                 FINISHED_AT,
@@ -67,7 +68,7 @@ class BookWorkflowJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowJournalEntry.Rejected(
-                "   ",
+                new BookWorkflowStepId("   "),
                 inspectDescriptor("inspect"),
                 STARTED_AT,
                 FINISHED_AT,
@@ -77,7 +78,7 @@ class BookWorkflowJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowJournalEntry.Rejected(
-                "reject",
+                stepId("reject"),
                 inspectDescriptor("inspect"),
                 FINISHED_AT,
                 STARTED_AT,
@@ -156,24 +157,32 @@ class BookWorkflowJournalModelTest {
             .getMessage());
   }
 
-  private static BookWorkflowJournalEntry.Succeeded succeeded(String stepId) {
+  private static BookWorkflowJournalEntry.Succeeded succeeded(String stepIdValue) {
+    BookWorkflowStepId stepId = stepId(stepIdValue);
     return new BookWorkflowJournalEntry.Succeeded(
         stepId,
-        inspectDescriptor(stepId),
+        inspectDescriptor(stepIdValue),
         STARTED_AT,
         FINISHED_AT,
         List.of(BookWorkflowFact.flag("ok", true)));
   }
 
-  private static BookWorkflowJournalEntry.Rejected rejected(String stepId) {
+  private static BookWorkflowJournalEntry.Rejected rejected(String stepIdValue) {
+    BookWorkflowStepId stepId = stepId(stepIdValue);
     return new BookWorkflowJournalEntry.Rejected(
-        stepId, inspectDescriptor(stepId), STARTED_AT, FINISHED_AT, List.of(), failure("rejected"));
+        stepId,
+        inspectDescriptor(stepIdValue),
+        STARTED_AT,
+        FINISHED_AT,
+        List.of(),
+        failure("rejected"));
   }
 
-  private static BookWorkflowJournalEntry.AssertionFailed assertionFailed(String stepId) {
+  private static BookWorkflowJournalEntry.AssertionFailed assertionFailed(String stepIdValue) {
+    BookWorkflowStepId stepId = stepId(stepIdValue);
     return new BookWorkflowJournalEntry.AssertionFailed(
         stepId,
-        assertionDescriptor(stepId),
+        assertionDescriptor(stepIdValue),
         STARTED_AT,
         FINISHED_AT,
         List.of(),
@@ -186,12 +195,16 @@ class BookWorkflowJournalModelTest {
   }
 
   private static BookWorkflowJournalDescriptor.Step inspectDescriptor(String stepId) {
-    return new BookWorkflowJournalDescriptor.Step(new BookWorkflowStep.InspectBook(stepId));
+    return new BookWorkflowJournalDescriptor.Step(new BookWorkflowStep.InspectBook(stepId(stepId)));
   }
 
   private static BookWorkflowJournalDescriptor.Step assertionDescriptor(String stepId) {
     return new BookWorkflowJournalDescriptor.Step(
         new BookWorkflowStep.Assert(
-            stepId, new BookWorkflowAssertion.AccountDeclared(CASH_ACCOUNT.accountCode())));
+            stepId(stepId), new BookWorkflowAssertion.AccountDeclared(CASH_ACCOUNT.accountCode())));
+  }
+
+  private static BookWorkflowStepId stepId(String value) {
+    return new BookWorkflowStepId(value);
   }
 }

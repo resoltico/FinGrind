@@ -201,4 +201,45 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertionStep.detailKind());
     assertNull(assertionStep.boundaryPhase());
   }
+
+  @Test
+  void ledgerPlanPayload_summary_includesConciseFactDigestsForEveryFactKind() {
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Succeeded summaryEntry =
+        new LedgerJournalEntry.Succeeded(
+            stepId("summary"),
+            LedgerJournalStep.standard(LedgerStepKind.ACCOUNT_BALANCE),
+            startedAt,
+            finishedAt,
+            List.of(
+                LedgerFact.text("accountCode", "1000"),
+                LedgerFact.flag("active", true),
+                LedgerFact.count("bucketCount", 2),
+                LedgerFact.money("netAmount", new MonetaryAmount("EUR", "1000")),
+                LedgerFact.group(
+                    "balance",
+                    List.of(
+                        LedgerFact.money("netAmount", new MonetaryAmount("EUR", "1000")),
+                        LedgerFact.text("balanceSide", "DEBIT")))));
+
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliResponsePayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Succeeded(
+                planId("plan-1"),
+                new LedgerExecutionJournal(startedAt, finishedAt, List.of(summaryEntry))),
+            PlanResultDetail.SUMMARY);
+
+    CliPlanJsonModels.LedgerStepDigestPayload step = payload.summary().steps().getFirst();
+    assertEquals(
+        List.of(
+            "accountCode=1000",
+            "active=true",
+            "bucketCount=2",
+            "netAmount=EUR 10.00",
+            "balance.netAmount=EUR 10.00",
+            "balance.balanceSide=DEBIT"),
+        step.facts());
+    assertNull(payload.journal());
+  }
 }

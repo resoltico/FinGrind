@@ -197,7 +197,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
             .failureOutputMode());
     assertEquals(OutputMode.HUMAN, CliExecutionPolicy.inferredFailureOutputMode(new String[0]));
     assertEquals(
-        OutputMode.HUMAN,
+        OutputMode.JSON,
         CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {
               "open-book",

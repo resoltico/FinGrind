@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
@@ -109,5 +111,80 @@ class ContractDescriptorValidationTest {
 
     assertEquals("field must not contain a null key.", nullKey.getMessage());
     assertEquals("field[alpha] must not contain a null value.", nullValue.getMessage());
+  }
+
+  @Test
+  void copySchemaMap_deepFreezesNestedMapsAndLists() {
+    List<Object> required = new ArrayList<>(List.of("effectiveDate"));
+    Map<String, Object> nestedProperties =
+        new ConcurrentHashMap<>(Map.of("required", required, "type", "object"));
+    Map<String, Object> schema =
+        new ConcurrentHashMap<>(Map.of("properties", nestedProperties, "type", "object"));
+
+    Map<String, Object> copied = ContractDescriptorValidation.copySchemaMap(schema, "schema");
+    Map<String, Object> copiedProperties =
+        castMap(Objects.requireNonNull(copied.get("properties"), "properties"));
+    List<Object> copiedRequired =
+        castList(Objects.requireNonNull(copiedProperties.get("required"), "required"));
+
+    nestedProperties.clear();
+    required.clear();
+
+    assertEquals("object", copied.get("type"));
+    assertEquals("object", copiedProperties.get("type"));
+    assertEquals(List.of("effectiveDate"), copiedRequired);
+    assertThrows(UnsupportedOperationException.class, () -> copied.put("items", Map.of()));
+    assertThrows(
+        UnsupportedOperationException.class, () -> copiedProperties.put("items", Map.of()));
+    assertThrows(UnsupportedOperationException.class, () -> copiedRequired.add("posting"));
+  }
+
+  @Test
+  void copySchemaMap_rejectsUnsupportedNestedValueTypes() {
+    Map<String, Object> schema =
+        new ConcurrentHashMap<>(Map.of("properties", new StringBuilder("invalid")));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ContractDescriptorValidation.copySchemaMap(schema, "schema"));
+
+    assertEquals(
+        "schema[properties] contains unsupported schema value type: java.lang.StringBuilder.",
+        exception.getMessage());
+  }
+
+  @Test
+  void copySchemaMap_preservesEnumValuesAsScalarSchemaLeaves() {
+    Map<String, Object> schema =
+        new ConcurrentHashMap<>(Map.of("operationId", OperationId.POST_ENTRY));
+
+    Map<String, Object> copied = ContractDescriptorValidation.copySchemaMap(schema, "schema");
+
+    assertEquals(OperationId.POST_ENTRY, copied.get("operationId"));
+  }
+
+  @Test
+  void copySchemaMap_rejectsNonStringNestedMapKeys() {
+    Map<Object, Object> nestedProperties = new ConcurrentHashMap<>(Map.of(1, "invalid"));
+    Map<String, Object> schema = new ConcurrentHashMap<>(Map.of("properties", nestedProperties));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ContractDescriptorValidation.copySchemaMap(schema, "schema"));
+
+    assertEquals(
+        "schema[properties] must contain only string-keyed schema maps.", exception.getMessage());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> castMap(Object value) {
+    return (Map<String, Object>) value;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<Object> castList(Object value) {
+    return (List<Object>) value;
   }
 }

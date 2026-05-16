@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
@@ -25,7 +24,6 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
-import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
@@ -37,7 +35,6 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
@@ -68,9 +65,9 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for reporting contract value types and deterministic CLI error descriptors. */
 class ReportingContractTypesTest {
   private static final DeclaredAccount CASH_ACCOUNT =
-      new DeclaredAccount(
-          new AccountCode("1000"),
-          new AccountName("Cash"),
+      ContractFixtures.declaredAccount(
+          "1000",
+          "Cash",
           AccountType.ASSET,
           AccountRole.ORDINARY,
           true,
@@ -138,16 +135,23 @@ class ReportingContractTypesTest {
     PeriodSummaryResult.Rejected rejectedPeriodSummary =
         new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListAccountsResult.Listed listedAccounts =
-        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
+        new ListAccountsResult.Listed(
+            ContractFixtures.accountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     ListAccountsResult.Rejected rejectedAccounts =
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized());
     GetPostingResult.Found foundPosting =
-        new GetPostingResult.Found(postingFact("posting-3", "idem-3"));
+        new GetPostingResult.Found(
+            ContractFixtures.bookIdentity(), postingFact("posting-3", "idem-3"));
     GetPostingResult.Rejected rejectedPosting =
         new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListPostingsResult.Listed listedPostings =
         new ListPostingsResult.Listed(
-            new PostingPage(List.of(postingFact("posting-4", "idem-4")), 10, Optional.empty()));
+            ContractFixtures.postingPage(
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                List.of(postingFact("posting-4", "idem-4")),
+                10,
+                Optional.empty()));
     ListPostingsResult.Rejected rejectedPostings =
         new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized());
     AccountBalanceResult.Reported reportedBalance =
@@ -335,7 +339,8 @@ class ReportingContractTypesTest {
                 .fold(ignored -> "reported", nullOf()));
     AtomicInteger foldCounter = new AtomicInteger();
     ListAccountsResult.Listed listedAccounts =
-        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
+        new ListAccountsResult.Listed(
+            ContractFixtures.accountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     listedAccounts.fold(
         ignored -> {
           foldCounter.incrementAndGet();

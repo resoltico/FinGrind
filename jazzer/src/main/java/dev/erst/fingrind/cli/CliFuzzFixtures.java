@@ -16,20 +16,35 @@ import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
+import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -79,9 +94,16 @@ public final class CliFuzzFixtures {
   /** Returns the canonical book identity used by Jazzer lifecycle setup for one currency. */
   public static BookIdentity bookIdentity(CurrencyUnit functionalCurrency) {
     return new BookIdentity(
-        new BookEntityName("Acme Studio"),
+        new EntityProfile(
+            new BookEntityName("Acme Studio"),
+            EntityForm.COMPANY,
+            OwnerModel.MULTI_OWNER,
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+            TaxRegistrationStatus.UNSPECIFIED,
+            List.of()),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        AccountingBasis.ACCRUAL);
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */
@@ -95,9 +117,45 @@ public final class CliFuzzFixtures {
   }
 
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */
-  public static BookAdministrationService administrationService(BookStore bookStore) {
+  public static BookAdministrationService administrationService(BookAdministrationStore bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
     return new BookAdministrationService(bookStore, fixedClock());
+  }
+
+  /** Creates the fixed-clock posting service used by workflow fuzz harnesses and replay. */
+  public static PostingApplicationService postingApplicationService(
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(validationStore, "validationStore must not be null");
+    Objects.requireNonNull(commitStore, "commitStore must not be null");
+    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator must not be null");
+    return new PostingApplicationService(
+        validationStore, commitStore, postingIdGenerator, fixedClock());
+  }
+
+  /** Creates the fixed-clock ledger-plan service used by plan fuzz harnesses and replay. */
+  public static LedgerPlanService ledgerPlanService(
+      LedgerPlanTransaction transactionStore,
+      BookAdministrationStore administrationStore,
+      BookkeepingReadStore readStore,
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(transactionStore, "transactionStore must not be null");
+    Objects.requireNonNull(administrationStore, "administrationStore must not be null");
+    Objects.requireNonNull(readStore, "readStore must not be null");
+    Objects.requireNonNull(validationStore, "validationStore must not be null");
+    Objects.requireNonNull(commitStore, "commitStore must not be null");
+    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator must not be null");
+    return new LedgerPlanService(
+        transactionStore,
+        administrationStore,
+        readStore,
+        validationStore,
+        commitStore,
+        postingIdGenerator,
+        fixedClock());
   }
 
   /** Opens one book and fails fast if lifecycle setup drifts unexpectedly. */
@@ -165,7 +223,8 @@ public final class CliFuzzFixtures {
                 account.accountCode(),
                 new AccountName(account.accountName().value() + " restored"),
                 account.accountType(),
-                account.accountRole()));
+                account.accountRole(),
+                account.accountTaxonomy()));
     DeclaredAccount restoredAccount = requireDeclaredAccount(result);
     if (!restoredAccount.active()) {
       throw new IllegalStateException("Account reactivation did not restore the active flag.");
@@ -207,14 +266,14 @@ public final class CliFuzzFixtures {
    * Loads one stored posting from a posting session and translates it into the public fact shape.
    */
   public static Optional<PostingFact> publishedStoredPosting(
-      BookStore bookStore, dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+      PostingLookupStore bookStore, dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
     Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
     return publishedStoredPosting(bookStore.findExistingPosting(idempotencyKey));
   }
 
   /** Lists accounts and fails fast if the registry surface is not in the expected state. */
-  public static List<DeclaredAccount> listAccounts(BookStore bookStore) {
+  public static List<DeclaredAccount> listAccounts(BookkeepingReadStore bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
     BookReadService readService = new BookReadService(bookStore);
@@ -262,12 +321,14 @@ public final class CliFuzzFixtures {
   }
 
   private static DeclareAccountCommand syntheticDeclareAccountCommand(AccountCode accountCode) {
+    AccountType accountType = syntheticAccountType(accountCode);
     AccountRole accountRole = syntheticAccountRole(accountCode);
     return new DeclareAccountCommand(
         accountCode,
         syntheticAccountName(accountCode),
-        syntheticAccountType(accountCode),
-        accountRole);
+        accountType,
+        accountRole,
+        syntheticAccountTaxonomy(accountType));
   }
 
   private static AccountRole syntheticAccountRole(AccountCode accountCode) {
@@ -285,6 +346,36 @@ public final class CliFuzzFixtures {
       case 2 -> AccountType.EQUITY;
       case 3 -> AccountType.REVENUE;
       default -> AccountType.EXPENSE;
+    };
+  }
+
+  private static AccountTaxonomy syntheticAccountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
     };
   }
 }

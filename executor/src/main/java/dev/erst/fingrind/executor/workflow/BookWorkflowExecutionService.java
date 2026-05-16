@@ -1,6 +1,10 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
 import java.time.Instant;
@@ -13,12 +17,12 @@ import org.jspecify.annotations.Nullable;
 public final class BookWorkflowExecutionService {
   /** Immutable context for one plan-boundary failure that must produce a terminal journal entry. */
   private record BoundaryFailureContext(
-      String planId,
+      BookWorkflowPlanId planId,
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
       BookWorkflowBoundaryPhase phase,
       Instant phaseStartedAt,
-      @Nullable String triggerStepId,
+      @Nullable BookWorkflowStepId triggerStepId,
       @Nullable BookWorkflowJournalDescriptor triggerDescriptor) {
     private BoundaryFailureContext {
       Objects.requireNonNull(planId, "planId");
@@ -29,7 +33,7 @@ public final class BookWorkflowExecutionService {
     }
 
     private static BoundaryFailureContext begin(
-        String planId, Instant planStartedAt, List<BookWorkflowJournalEntry> entries) {
+        BookWorkflowPlanId planId, Instant planStartedAt, List<BookWorkflowJournalEntry> entries) {
       return new BoundaryFailureContext(
           planId,
           planStartedAt,
@@ -41,7 +45,7 @@ public final class BookWorkflowExecutionService {
     }
 
     private static BoundaryFailureContext beforeStep(
-        String planId,
+        BookWorkflowPlanId planId,
         Instant planStartedAt,
         List<BookWorkflowJournalEntry> entries,
         BookWorkflowBoundaryPhase phase,
@@ -59,7 +63,7 @@ public final class BookWorkflowExecutionService {
     }
 
     private static BoundaryFailureContext afterJournalEntry(
-        String planId,
+        BookWorkflowPlanId planId,
         Instant planStartedAt,
         List<BookWorkflowJournalEntry> entries,
         BookWorkflowBoundaryPhase phase,
@@ -77,17 +81,29 @@ public final class BookWorkflowExecutionService {
     }
   }
 
-  private final AtomicBookStore bookStore;
+  private final LedgerPlanTransaction transactionStore;
   private final Clock clock;
   private final LedgerPlanStepExecutor stepExecutor;
 
   /** Creates one local workflow execution service. */
   public BookWorkflowExecutionService(
-      AtomicBookStore bookStore, PostingIdGenerator postingIdGenerator, Clock clock) {
-    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+      LedgerPlanTransaction transactionStore,
+      BookAdministrationStore administrationStore,
+      BookkeepingReadStore readStore,
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock) {
+    this.transactionStore = Objects.requireNonNull(transactionStore, "transactionStore");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.stepExecutor =
-        new LedgerPlanStepExecutor(bookStore, postingIdGenerator, Objects.requireNonNull(clock));
+        new LedgerPlanStepExecutor(
+            Objects.requireNonNull(administrationStore, "administrationStore"),
+            Objects.requireNonNull(readStore, "readStore"),
+            Objects.requireNonNull(validationStore, "validationStore"),
+            Objects.requireNonNull(commitStore, "commitStore"),
+            postingIdGenerator,
+            Objects.requireNonNull(clock));
   }
 
   /** Executes one local workflow plan atomically. */
@@ -99,7 +115,7 @@ public final class BookWorkflowExecutionService {
     BookWorkflowStep firstStep = steps.getFirst();
 
     try {
-      bookStore.beginLedgerPlanTransaction();
+      transactionStore.beginLedgerPlanTransaction();
     } catch (RuntimeException exception) {
       return boundaryFailureResult(
           BoundaryFailureContext.begin(plan.planId(), startedAt, entries), exception, null, null);
@@ -181,7 +197,7 @@ public final class BookWorkflowExecutionService {
     Objects.requireNonNull(pendingSuccessfulStep, "pendingSuccessfulStep");
     Instant commitStartedAt = Instant.now(clock);
     try {
-      bookStore.commitLedgerPlanTransaction();
+      transactionStore.commitLedgerPlanTransaction();
     } catch (RuntimeException exception) {
       return boundaryFailureAfterRollback(
           BoundaryFailureContext.afterJournalEntry(
@@ -199,7 +215,7 @@ public final class BookWorkflowExecutionService {
   }
 
   private BookWorkflowExecutionResult failedResultWithRollback(
-      String planId,
+      BookWorkflowPlanId planId,
       Instant startedAt,
       List<BookWorkflowJournalEntry> entries,
       BookWorkflowJournalEntry.Failed failed) {
@@ -255,7 +271,7 @@ public final class BookWorkflowExecutionService {
 
   private @Nullable RuntimeException rollbackFailure() {
     try {
-      bookStore.rollbackLedgerPlanTransaction();
+      transactionStore.rollbackLedgerPlanTransaction();
       return null;
     } catch (RuntimeException exception) {
       return exception;
@@ -271,7 +287,7 @@ public final class BookWorkflowExecutionService {
   }
 
   private BookWorkflowExecutionResult result(
-      String planId,
+      BookWorkflowPlanId planId,
       BookWorkflowExecutionStatus status,
       Instant startedAt,
       List<BookWorkflowJournalEntry> entries) {

@@ -212,8 +212,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
+        entity_form="COMPANY",
         functional_currency="EUR",
         fiscal_year_start="01-01",
+        accounting_basis="ACCRUAL",
     )
     unicode_argument = str(temp_path / "workspace odd" / "Rīga büro" / "key.key")
     output, exit_code = run_cli_allow_failure(
@@ -271,8 +273,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
+        entity_form="COMPANY",
         functional_currency="EUR",
         fiscal_year_start="01-01",
+        accounting_basis="ACCRUAL",
     )
     report_stdout = "Trial Balance\nAccount  : 1000\nNet      : 6.00\n"
     report_stderr = (
@@ -291,11 +295,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=report_stderr,
         account_ledger_csv_output=(
-            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
-            "opening-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
-            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-sale,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
-            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-adjustment,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
-            "closing-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
+            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts\n"
+            "opening-balance,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
+            "ledger-entry,EUR,,,,,019e2ae5-5f56-7025-8449-984160a327f3,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
+            "ledger-entry,EUR,,,,,019e2ae5-6557-7410-8611-f55876f12ca5,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
+            "closing-balance,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
         ),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )
@@ -353,8 +357,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
+        entity_form="COMPANY",
         functional_currency="EUR",
         fiscal_year_start="01-01",
+        accounting_basis="ACCRUAL",
     )
     assert_operator_queries_and_reports(
         docker_config,
@@ -365,11 +371,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=docker_report_stderr,
         account_ledger_csv_output=(
-            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
-            "opening-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
-            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-sale,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
-            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,bridge-adjustment,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
-            "closing-balance,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
+            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts\n"
+            "opening-balance,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
+            "ledger-entry,EUR,,,,,019e2ae5-5f56-7025-8449-984160a327f3,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
+            "ledger-entry,EUR,,,,,019e2ae5-6557-7410-8611-f55876f12ca5,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
+            "closing-balance,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
         ),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )

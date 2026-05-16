@@ -11,6 +11,10 @@ final class CliOutputModeDefaults {
     return resolved(explicitOutputMode, interactiveConsoleAvailable());
   }
 
+  static OutputMode resolvedDiscovery(@Nullable OutputMode explicitOutputMode) {
+    return explicitOutputMode == null ? OutputMode.HUMAN : explicitOutputMode;
+  }
+
   static OutputMode defaultSelectableOutputMode() {
     return defaultSelectableOutputMode(interactiveConsoleAvailable());
   }
@@ -24,6 +28,10 @@ final class CliOutputModeDefaults {
 
   static OutputMode defaultSelectableOutputMode(boolean interactiveConsoleAvailable) {
     return interactiveConsoleAvailable ? OutputMode.HUMAN : OutputMode.JSON;
+  }
+
+  static OutputMode defaultDiscoveryOutputMode() {
+    return OutputMode.HUMAN;
   }
 
   private static boolean interactiveConsoleAvailable() {

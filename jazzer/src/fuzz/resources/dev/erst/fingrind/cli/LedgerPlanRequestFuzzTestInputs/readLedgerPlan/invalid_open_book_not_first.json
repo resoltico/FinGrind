@@ -10,8 +10,10 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Late Open Seed",
+        "entityForm": "COMPANY",
         "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
+        "fiscalYearStart": "01-01",
+        "accountingBasis": "ACCRUAL"
       }
     }
   ]

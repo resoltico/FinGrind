@@ -9,51 +9,46 @@ import java.util.Objects;
 public final class App {
   private final CliFactory cliFactory;
   private final ExitHandler exitHandler;
-  private final ClockFactory clockFactory;
-  private final PrintStream errorStream;
   private final LaunchArgumentsResolver launchArgumentsResolver;
 
   /** Creates the production App wired to the default CLI factory and {@code System::exit}. */
   public App() {
     this(
-        (inputStream, outputStream, clock) ->
-            FinGrindCli.standard(inputStream, outputStream, System.err, clock)::run,
+        FinGrindCli::standardRunner,
         System::exit,
-        Clock::systemUTC,
-        System.err,
         LauncherInvocationArguments::resolveForCurrentProcess);
   }
 
   App(
       CliFactory cliFactory,
       ExitHandler exitHandler,
-      ClockFactory clockFactory,
-      PrintStream errorStream,
       LaunchArgumentsResolver launchArgumentsResolver) {
     this.cliFactory = Objects.requireNonNull(cliFactory, "cliFactory must not be null");
     this.exitHandler = Objects.requireNonNull(exitHandler, "exitHandler must not be null");
-    this.clockFactory = Objects.requireNonNull(clockFactory, "clockFactory must not be null");
-    this.errorStream = Objects.requireNonNull(errorStream, "errorStream must not be null");
     this.launchArgumentsResolver =
         Objects.requireNonNull(launchArgumentsResolver, "launchArgumentsResolver must not be null");
   }
 
   /** Runs the FinGrind CLI and exits with its process status code. */
   public static void main(String[] args) {
-    new App().run(args);
+    new App().run(args, CliRuntimeEnvironment.process());
   }
 
   void run(String[] args) {
+    run(args, CliRuntimeEnvironment.process());
+  }
+
+  void run(String[] args, CliRuntimeEnvironment runtimeEnvironment) {
+    Objects.requireNonNull(runtimeEnvironment, "runtimeEnvironment must not be null");
     String[] resolvedArguments;
     try {
       resolvedArguments = launchArgumentsResolver.resolve(args);
     } catch (LauncherInvocationArgumentsException exception) {
-      errorStream.println("error: " + exception.getMessage());
+      runtimeEnvironment.errorStream().println("error: " + exception.getMessage());
       exitHandler.exit(1);
       return;
     }
-    int exitCode =
-        cliFactory.create(System.in, System.out, clockFactory.create()).run(resolvedArguments);
+    int exitCode = cliFactory.create(runtimeEnvironment).run(resolvedArguments);
     if (exitCode != 0) {
       exitHandler.exit(exitCode);
     }
@@ -70,7 +65,7 @@ public final class App {
   @FunctionalInterface
   interface CliFactory {
     /** Creates one CLI runner bound to the supplied process streams and clock. */
-    CliRunner create(InputStream inputStream, PrintStream outputStream, Clock clock);
+    CliRunner create(CliRuntimeEnvironment runtimeEnvironment);
   }
 
   /** Functional interface for terminating the process with an exit code. */
@@ -80,17 +75,25 @@ public final class App {
     void exit(int exitCode);
   }
 
-  /** Functional interface for supplying the runtime clock. */
-  @FunctionalInterface
-  interface ClockFactory {
-    /** Creates the clock that should back this process invocation. */
-    Clock create();
-  }
-
   /** Functional interface for resolving the process argument vector before CLI parsing. */
   @FunctionalInterface
   interface LaunchArgumentsResolver {
     /** Resolves the CLI arguments that should be presented to the FinGrind parser. */
     String[] resolve(String[] processArguments);
+  }
+
+  /** Runtime-owned console and clock inputs for one CLI process invocation. */
+  record CliRuntimeEnvironment(
+      InputStream inputStream, PrintStream outputStream, PrintStream errorStream, Clock clock) {
+    CliRuntimeEnvironment {
+      Objects.requireNonNull(inputStream, "inputStream");
+      Objects.requireNonNull(outputStream, "outputStream");
+      Objects.requireNonNull(errorStream, "errorStream");
+      Objects.requireNonNull(clock, "clock");
+    }
+
+    static CliRuntimeEnvironment process() {
+      return new CliRuntimeEnvironment(System.in, System.out, System.err, Clock.systemUTC());
+    }
   }
 }

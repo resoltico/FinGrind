@@ -60,6 +60,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                         new AccountName("Cash"),
                         AccountType.ASSET,
                         AccountRole.ORDINARY,
+                        accountTaxonomy(AccountType.ASSET),
                         FIXED_INSTANT));
         assertEquals("forced account audit failure", failure.getMessage());
         assertEquals(0, queryInt(realDatabase.get(), "select count(*) from account"));

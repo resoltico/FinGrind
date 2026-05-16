@@ -237,9 +237,9 @@ class JazzerReplayInternalsTest {
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
-        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
         JazzerReplayDetailsMapper.rejectionStatus(
-            new PostingRejection.RetainedEarningsAccountReserved(accountCode)));
+            new PostingRejection.ClosingEquityAccountReserved(accountCode)));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayDetailsMapper.rejectionStatus(
@@ -451,7 +451,7 @@ class JazzerReplayInternalsTest {
     assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("opening-balance-window-closed"));
-    assertTrue(PostingLifecycleStatus.wireValues().contains("retained-earnings-account-reserved"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("closing-equity-account-reserved"));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         PostingLifecycleStatus.fromWireValue("duplicate-idempotency-key"));
@@ -462,8 +462,8 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
         PostingLifecycleStatus.fromWireValue("opening-balance-window-closed"));
     assertEquals(
-        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
-        PostingLifecycleStatus.fromWireValue("retained-earnings-account-reserved"));
+        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.fromWireValue("closing-equity-account-reserved"));
     assertEquals(
         Path.of("/tmp/project/src/fuzz/resources/example.json"),
         metadata.inputPath(Path.of("/tmp/project")));

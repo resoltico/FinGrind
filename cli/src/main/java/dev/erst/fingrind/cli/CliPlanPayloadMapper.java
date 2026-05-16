@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
+import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -46,6 +47,7 @@ final class CliPlanPayloadMapper {
                 .filter(step -> step.status() == LedgerStepStatus.SUCCEEDED)
                 .count(),
         failure == null ? 0 : 1,
+        journal.steps().stream().map(CliPlanPayloadMapper::ledgerStepDigestPayload).toList(),
         failure == null ? null : terminalStep.stepId().value(),
         failure == null ? null : failure.code(),
         failure == null ? null : failure.message());
@@ -79,6 +81,21 @@ final class CliPlanPayloadMapper {
         failurePayload);
   }
 
+  private static CliPlanJsonModels.LedgerStepDigestPayload ledgerStepDigestPayload(
+      LedgerJournalEntry entry) {
+    @Nullable LedgerStepFailure failure =
+        entry instanceof LedgerJournalEntry.Failed failed ? failed.requiredFailure() : null;
+    return new CliPlanJsonModels.LedgerStepDigestPayload(
+        entry.stepId().value(),
+        entry.kind(),
+        detailKind(entry.journalStep()),
+        boundaryPhase(entry.journalStep()),
+        entry.status(),
+        factSummaryPayloads(entry.facts()),
+        failure == null ? null : failure.code(),
+        failure == null ? null : failure.message());
+  }
+
   private static @Nullable LedgerAssertionKind detailKind(LedgerJournalStep journalStep) {
     return journalStep.detailKind();
   }
@@ -95,6 +112,41 @@ final class CliPlanPayloadMapper {
 
   private static List<CliPlanJsonModels.LedgerFactPayload> factPayloads(List<LedgerFact> facts) {
     return facts.stream().map(CliPlanPayloadMapper::ledgerFactPayload).toList();
+  }
+
+  private static List<String> factSummaryPayloads(List<LedgerFact> facts) {
+    List<String> summaries = new ArrayList<>();
+    facts.forEach(fact -> appendFactSummaries(summaries, "", fact));
+    return List.copyOf(summaries);
+  }
+
+  private static void appendFactSummaries(List<String> summaries, String prefix, LedgerFact fact) {
+    switch (fact) {
+      case LedgerFact.Text text ->
+          summaries.add(prefixedFactName(prefix, text.name()) + "=" + text.value());
+      case LedgerFact.Flag flag ->
+          summaries.add(prefixedFactName(prefix, flag.name()) + "=" + flag.value());
+      case LedgerFact.Count count ->
+          summaries.add(prefixedFactName(prefix, count.name()) + "=" + count.value());
+      case LedgerFact.Money money ->
+          summaries.add(
+              prefixedFactName(prefix, money.name())
+                  + "="
+                  + money.value().currencyCode()
+                  + " "
+                  + money.value().canonicalDecimal());
+      case LedgerFact.Group group ->
+          group
+              .facts()
+              .forEach(
+                  nestedFact ->
+                      appendFactSummaries(
+                          summaries, prefixedFactName(prefix, group.name()), nestedFact));
+    }
+  }
+
+  private static String prefixedFactName(String prefix, String name) {
+    return prefix.isBlank() ? name : prefix + "." + name;
   }
 
   private static CliPlanJsonModels.LedgerFactPayload ledgerFactPayload(LedgerFact fact) {

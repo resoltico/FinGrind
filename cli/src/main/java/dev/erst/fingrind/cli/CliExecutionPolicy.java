@@ -17,9 +17,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import java.util.Locale;
 import java.util.Optional;
 
 /** Shared CLI execution policy for failure-mode inference and typed exit-code mapping. */
@@ -30,7 +32,7 @@ final class CliExecutionPolicy {
     if (args.length == 0) {
       return OutputMode.HUMAN;
     }
-    OutputMode inferred = OutputMode.HUMAN;
+    OutputMode inferred = defaultFailureOutputMode(args[0]);
     int index = 1;
     while (index + 1 < args.length) {
       if (!ProtocolOptions.OUTPUT.equals(args[index])) {
@@ -44,6 +46,18 @@ final class CliExecutionPolicy {
       index += 2;
     }
     return inferred == OutputMode.HUMAN ? OutputMode.HUMAN : OutputMode.JSON;
+  }
+
+  private static OutputMode defaultFailureOutputMode(String commandToken) {
+    String normalized = commandToken.toLowerCase(Locale.ROOT);
+    if (OperationId.PRINT_REQUEST_TEMPLATE.wireName().equals(normalized)
+        || OperationId.PRINT_PLAN_TEMPLATE.wireName().equals(normalized)) {
+      return OutputMode.JSON;
+    }
+    return switch (normalized) {
+      case "help", "version", "capabilities" -> CliOutputModeDefaults.defaultDiscoveryOutputMode();
+      default -> CliOutputModeDefaults.defaultSelectableOutputMode();
+    };
   }
 
   private static Optional<OutputMode> parseRecognizedOutputMode(String rawOutputMode) {

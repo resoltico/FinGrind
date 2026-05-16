@@ -144,17 +144,20 @@ final class SqliteNativeConnections {
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     SqliteNativeApi sqliteApi = database.sqliteApi();
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
-      int resultCode =
-          SqliteNativeInvocation.invokeSqlite(
-              "Failed to rekey the FinGrind SQLite book with passphrase material from "
-                  + bookPassphrase.sourceDescription()
-                  + ".",
-              () ->
-                  SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3Rekey())
-                      .invoke(database.handle(), keyPointer, bookPassphrase.byteLength()));
-      if (resultCode != SqliteNativeResultCodes.OK) {
-        throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+      try (SqliteNativeSecretBuffer keyBuffer =
+          SqliteNativeSecretBuffer.cString(bookPassphrase, arena)) {
+        int resultCode =
+            SqliteNativeInvocation.invokeSqlite(
+                "Failed to rekey the FinGrind SQLite book with passphrase material from "
+                    + bookPassphrase.sourceDescription()
+                    + ".",
+                () ->
+                    SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3Rekey())
+                        .invoke(
+                            database.handle(), keyBuffer.pointer(), bookPassphrase.byteLength()));
+        if (resultCode != SqliteNativeResultCodes.OK) {
+          throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+        }
       }
       validateConfiguredKey(database.handle(), sqliteApi);
     }
@@ -275,11 +278,13 @@ final class SqliteNativeConnections {
             + bookPassphrase.sourceDescription()
             + ".",
         () -> {
-          MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
-          int resultCode =
-              SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3Key())
-                  .invoke(databaseHandle, keyPointer, bookPassphrase.byteLength());
-          requireOpenConfigurationSuccess(resultCode, sqliteApi);
+          try (SqliteNativeSecretBuffer keyBuffer =
+              SqliteNativeSecretBuffer.cString(bookPassphrase, arena)) {
+            int resultCode =
+                SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3Key())
+                    .invoke(databaseHandle, keyBuffer.pointer(), bookPassphrase.byteLength());
+            requireOpenConfigurationSuccess(resultCode, sqliteApi);
+          }
         });
   }
 

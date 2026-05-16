@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,6 +50,7 @@ import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
+import dev.erst.fingrind.executor.workflow.BookWorkflowStepId;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
 import dev.erst.fingrind.executor.workflow.LedgerPlanOutcomeMapper;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
@@ -252,7 +254,7 @@ class LedgerPlanOutcomeMapperTest {
             BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
-            "@plan-boundary:commit",
+            internalStepId("@plan-boundary:commit"),
             new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryPhase.COMMIT),
             new IllegalStateException("rollback boom"),
             null,
@@ -442,7 +444,7 @@ class LedgerPlanOutcomeMapperTest {
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanOutcomeMapper.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .RetainedEarningsAccountReserved(new AccountCode("3200")));
+                    .ClosingEquityAccountReserved(new AccountCode("3200")));
 
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals("duplicate-idempotency-key", duplicateIdempotencyKey.failure().code());
@@ -455,7 +457,7 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("opening-balance-window-closed", openingBalanceWindowClosed.failure().code());
     assertEquals(
         "opening-balance-touches-nominal-account", openingBalanceNominalAccount.failure().code());
-    assertEquals("retained-earnings-account-reserved", retainedEarningsReserved.failure().code());
+    assertEquals("closing-equity-account-reserved", retainedEarningsReserved.failure().code());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
         reversalTargetNotFound.failure().facts());
@@ -521,43 +523,46 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.OpenBook("open", bookIdentity())));
+            new BookWorkflowStep.OpenBook(internalStepId("open"), bookIdentity())));
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.DeclareAccount("declare", accountDeclaration())));
+            new BookWorkflowStep.DeclareAccount(internalStepId("declare"), accountDeclaration())));
     assertEquals(
         PostingRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.PreflightEntry("preflight", postingCommand("idem-1"))));
+            new BookWorkflowStep.PreflightEntry(
+                internalStepId("preflight"), postingCommand("idem-1"))));
     assertEquals(
         PostingRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.PostEntry("post", postingCommand("idem-2"))));
+            new BookWorkflowStep.PostEntry(internalStepId("post"), postingCommand("idem-2"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(new BookWorkflowStep.InspectBook("inspect")));
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.InspectBook(internalStepId("inspect"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.ListAccounts(
-                "accounts", new AccountRegistryQuery(1, Optional.empty()))));
+                internalStepId("accounts"), new AccountRegistryQuery(1, Optional.empty()))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.GetPosting("posting", new PostingId("posting-1"))));
+            new BookWorkflowStep.GetPosting(
+                internalStepId("posting"), new PostingId("posting-1"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.ListPostings(
-                "postings",
+                internalStepId("postings"),
                 new PostingHistoryQuery(
                     Optional.empty(), EffectiveDateRange.unbounded(), 1, Optional.empty()))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.AccountBalance(
-                "balance",
+                internalStepId("balance"),
                 new AccountBalanceCriteria(
                     new AccountCode("1000"),
                     EffectiveDateRange.unbounded(),
@@ -566,7 +571,7 @@ class LedgerPlanOutcomeMapperTest {
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.Assert(
-                "assert",
+                internalStepId("assert"),
                 new BookWorkflowAssertion.AccountBalanceEquals(
                     new AccountCode("1000"),
                     null,
@@ -583,12 +588,17 @@ class LedgerPlanOutcomeMapperTest {
     return plan.steps().getFirst();
   }
 
+  private static BookWorkflowStepId internalStepId(String value) {
+    return new BookWorkflowStepId(value);
+  }
+
   private static AccountDeclaration accountDeclaration() {
     return new AccountDeclaration(
         new AccountCode("1000"),
         new AccountName("Cash"),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT));
+        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+        accountTaxonomy(AccountType.ASSET));
   }
 
   private static PostingCommand postingCommand(String idempotencyKey) {

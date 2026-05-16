@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
@@ -96,6 +97,7 @@ class InMemoryBookSessionTest {
               new AccountName("Cash"),
               AccountType.ASSET,
               accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+              accountTaxonomy(AccountType.ASSET),
               FIXED_INSTANT));
     }
   }
@@ -111,6 +113,7 @@ class InMemoryBookSessionTest {
               new AccountName("Cash"),
               AccountType.ASSET,
               accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+              accountTaxonomy(AccountType.ASSET),
               FIXED_INSTANT);
 
       assertEquals(
@@ -189,6 +192,7 @@ class InMemoryBookSessionTest {
           new AccountName("Cash"),
           AccountType.ASSET,
           accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          accountTaxonomy(AccountType.ASSET),
           FIXED_INSTANT);
       bookSession.deactivateAccount(new AccountCode("1000"));
 
@@ -198,6 +202,7 @@ class InMemoryBookSessionTest {
               new AccountName("Cash main"),
               AccountType.ASSET,
               accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+              accountTaxonomy(AccountType.ASSET),
               Instant.parse("2026-04-08T11:00:00Z"));
 
       assertEquals(
@@ -222,6 +227,7 @@ class InMemoryBookSessionTest {
           new AccountName("Cash"),
           AccountType.ASSET,
           accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          accountTaxonomy(AccountType.ASSET),
           FIXED_INSTANT);
 
       AccountDeclarationOutcome result =
@@ -230,6 +236,7 @@ class InMemoryBookSessionTest {
               new AccountName("Cash"),
               AccountType.ASSET,
               accountRole(AccountType.ASSET, NormalBalance.CREDIT),
+              accountTaxonomy(AccountType.ASSET),
               FIXED_INSTANT);
 
       assertEquals(
@@ -580,12 +587,14 @@ class InMemoryBookSessionTest {
         new AccountName("Cash"),
         AccountType.ASSET,
         accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+        accountTaxonomy(AccountType.ASSET),
         FIXED_INSTANT);
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
         accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
+        accountTaxonomy(AccountType.REVENUE),
         FIXED_INSTANT);
   }
 
@@ -595,16 +604,18 @@ class InMemoryBookSessionTest {
       AccountName accountName,
       AccountType accountType,
       NormalBalance normalBalance) {
-    return switch (bookSession.declareAccount(
-        accountCode,
-        accountName,
-        accountType,
-        accountRole(accountType, normalBalance),
-        FIXED_INSTANT)) {
-      case AccountDeclarationOutcome.Declared declared -> declared.account();
-      case AccountDeclarationOutcome.Rejected rejected ->
-          throw new AssertionError("Unexpected declaration rejection: " + rejected.rejection());
-    };
+    AccountDeclarationOutcome outcome =
+        bookSession.declareAccount(
+            accountCode,
+            accountName,
+            accountType,
+            accountRole(accountType, normalBalance),
+            accountTaxonomy(accountType),
+            FIXED_INSTANT);
+    if (outcome instanceof AccountDeclarationOutcome.Declared declared) {
+      return declared.account();
+    }
+    throw new AssertionError("Expected declared account outcome.");
   }
 
   private static CommittedPosting postingFact(String idempotencyKey) {

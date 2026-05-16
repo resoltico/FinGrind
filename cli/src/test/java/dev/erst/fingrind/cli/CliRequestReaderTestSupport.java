@@ -114,8 +114,14 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "open-book",
               "openBook": {
                 "entityName": "Acme Studio",
+                "entityForm": "COMPANY",
+                "ownerModel": "MULTI_OWNER",
+                "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+                "taxRegistrationStatus": "UNSPECIFIED",
+                "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
+                "fiscalYearStart": "01-01",
+                "accountingBasis": "ACCRUAL"
               }
             },
             {
@@ -125,7 +131,8 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "accountCode": "1000",
                 "accountName": "Cash",
                 "accountType": "ASSET",
-                "accountRole": "ORDINARY"
+                "accountRole": "ORDINARY",
+                "financialPositionLineClassification": "CURRENT_ASSET"
               }
             },
             {

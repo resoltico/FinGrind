@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
 import java.io.IOException;
@@ -97,6 +100,7 @@ class SqliteStoreFixtureSupport {
       String normalBalance,
       int active,
       String declaredAt) {
+    AccountTaxonomy accountTaxonomy = impliedAccountTaxonomy(accountType);
     database.executeStatement(
         """
         insert into account (
@@ -104,6 +108,9 @@ class SqliteStoreFixtureSupport {
             account_name,
             account_type,
             account_role,
+            parent_account_code,
+            financial_position_line_classification,
+            profit_and_loss_line_classification,
             active,
             declared_at
         ) values (
@@ -111,6 +118,9 @@ class SqliteStoreFixtureSupport {
             '%s',
             '%s',
             '%s',
+            null,
+            %s,
+            %s,
             %d,
             '%s'
         )
@@ -120,6 +130,16 @@ class SqliteStoreFixtureSupport {
                 accountName,
                 accountType,
                 impliedAccountRole(accountType, normalBalance),
+                accountTaxonomy
+                    .financialPositionLineClassification()
+                    .map(FinancialPositionLineClassification::wireValue)
+                    .map(SqliteStoreFixtureSupport::quotedSqlStringLiteral)
+                    .orElse("null"),
+                accountTaxonomy
+                    .profitAndLossLineClassification()
+                    .map(ProfitAndLossLineClassification::wireValue)
+                    .map(SqliteStoreFixtureSupport::quotedSqlStringLiteral)
+                    .orElse("null"),
                 active,
                 declaredAt));
   }
@@ -145,6 +165,14 @@ class SqliteStoreFixtureSupport {
     throw new IllegalArgumentException(
         "Unsupported fixture account semantics for %s/%s."
             .formatted(parsedAccountType.wireValue(), parsedNormalBalance.name()));
+  }
+
+  private static AccountTaxonomy impliedAccountTaxonomy(String accountType) {
+    return SqlitePostingFactFixtureSupport.accountTaxonomy(AccountType.fromWireValue(accountType));
+  }
+
+  private static String quotedSqlStringLiteral(String value) {
+    return "'" + value + "'";
   }
 
   static void insertJournalLineRow(

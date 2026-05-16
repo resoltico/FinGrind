@@ -99,11 +99,6 @@ class PostingValidationStoreTest {
     }
 
     @Override
-    public List<RegisteredAccount> allAccounts() {
-      return List.of();
-    }
-
-    @Override
     public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
       return postings;
     }

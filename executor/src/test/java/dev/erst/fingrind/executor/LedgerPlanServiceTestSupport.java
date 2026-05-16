@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,6 +21,7 @@ import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -45,9 +47,15 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
-import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.AccountCatalogStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.PeriodCloseStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
@@ -88,22 +96,36 @@ final class LedgerPlanServiceTestSupport {
         new AccountName("Cash"),
         AccountType.ASSET,
         accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+        accountTaxonomy(AccountType.ASSET),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
         accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
+        accountTaxonomy(AccountType.REVENUE),
         FIXED_CLOCK.instant());
     PostEntryResult committed =
-        new PostingApplicationService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
+        new PostingApplicationService(
+                bookSession, bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
             .commit(postingCommand("idem-setup"));
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;
   }
 
-  static LedgerPlanService service(AtomicBookStore bookSession) {
-    return new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+  static <
+          T extends
+              LedgerPlanTransaction & BookAdministrationStore & BookkeepingReadStore
+                  & PostingValidationStore & PostingCommitStore>
+      LedgerPlanService service(T bookSession) {
+    return new LedgerPlanService(
+        bookSession,
+        bookSession,
+        bookSession,
+        bookSession,
+        bookSession,
+        () -> new PostingId("posting-1"),
+        FIXED_CLOCK);
   }
 
   static LedgerPlanId planId(String value) {
@@ -177,7 +199,8 @@ final class LedgerPlanServiceTestSupport {
         new AccountCode(accountCode),
         new AccountName(accountName),
         accountType,
-        accountRole(accountType, normalBalance));
+        accountRole(accountType, normalBalance),
+        accountTaxonomy(accountType));
   }
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
@@ -213,8 +236,21 @@ final class LedgerPlanServiceTestSupport {
     return MonetaryAmount.of(Money.parse(currencyCode, amountText));
   }
 
-  /** Shared delegating atomic store so failure fixtures only override the behavior under test. */
-  abstract static class DelegatingAtomicBookStore implements AtomicBookStore, AutoCloseable {
+  /** Composite workflow session shape used only by ledger-plan executor tests. */
+  interface LedgerPlanSession
+      extends LedgerPlanTransaction,
+          BookAdministrationStore,
+          BookkeepingReadStore,
+          PostingValidationStore,
+          PostingCommitStore,
+          PeriodCloseStore,
+          AccountCatalogStore,
+          AutoCloseable {}
+
+  /**
+   * Shared delegating workflow session so failure fixtures only override the behavior under test.
+   */
+  abstract static class DelegatingAtomicBookStore implements LedgerPlanSession {
     protected final InMemoryBookSession delegate = new InMemoryBookSession();
 
     @Override
@@ -234,9 +270,10 @@ final class LedgerPlanServiceTestSupport {
         AccountName accountName,
         AccountType accountType,
         AccountRole accountRole,
+        AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       return delegate.declareAccount(
-          accountCode, accountName, accountType, accountRole, declaredAt);
+          accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
     }
 
     @Override
@@ -390,6 +427,7 @@ final class LedgerPlanServiceTestSupport {
         AccountName accountName,
         AccountType accountType,
         AccountRole accountRole,
+        AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       throw new IllegalStateException("declare boom");
     }

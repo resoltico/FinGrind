@@ -9,6 +9,7 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.plugins.quality.PmdExtension
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
@@ -16,6 +17,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.named
+import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
@@ -61,6 +63,29 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 extensions.configure<JavaPluginExtension> {
                     toolchain.languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
                     withSourcesJar()
+                }
+                val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
+                sourceSets.configureEach {
+                    val sourceSet = this
+                    val compileTaskProvider = tasks.named<JavaCompile>(sourceSet.compileJavaTaskName)
+                    val pruneTaskName =
+                        "prune${sourceSet.name.replaceFirstChar(Char::titlecase)}StaleJavaClassOutputs"
+                    val pruneTask =
+                        tasks.register<PruneStaleJavaClassOutputsTask>(pruneTaskName) {
+                            description =
+                                "Prunes stale Java class outputs owned by ${sourceSet.name} sources."
+                            sourceDirectories.from(sourceSet.allJava.srcDirs)
+                            classesDirectory.set(compileTaskProvider.flatMap { it.destinationDirectory })
+                            sourceOwnerManifest.set(
+                                layout.buildDirectory.file(
+                                    "intermediates/stale-java-class-owners/${sourceSet.name}.manifest",
+                                ),
+                            )
+                            rerunTasksRequested.set(gradle.startParameter.isRerunTasks)
+                        }
+                    compileTaskProvider.configure {
+                        dependsOn(pruneTask)
+                    }
                 }
                 dependencies.add(
                     "testImplementation",
@@ -122,25 +147,6 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 options.errorprone.error(*enforcedErrorProneChecks.toTypedArray())
             }
 
-            val compileJava = tasks.named<JavaCompile>("compileJava")
-            val pruneCompileJavaOutputs =
-                tasks.register("pruneMainCompileJavaOutputs") {
-                    val destinationDirectory = compileJava.flatMap { it.destinationDirectory }
-                    outputs.dir(destinationDirectory)
-                    outputs.upToDateWhen { false }
-                    doLast {
-                        val outputDirectory = destinationDirectory.get().asFile
-                        outputDirectory.deleteRecursively()
-                        outputDirectory.mkdirs()
-                    }
-                }
-
-            compileJava.configure {
-                options.isIncremental = false
-                outputs.upToDateWhen { false }
-                dependsOn(pruneCompileJavaOutputs)
-            }
-
             tasks.withType<Pmd>().configureEach {
                 reports {
                     xml.required.set(true)
@@ -155,7 +161,6 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
 
             tasks.withType<Test>().configureEach {
                 useJUnitPlatform()
-                enableNativeAccess()
                 val jacocoDestinationFile =
                     FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
                 extensions.configure(JacocoTaskExtension::class.java) {
@@ -199,10 +204,6 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                         testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
                     }
                 }
-
-            tasks.withType<JavaExec>().configureEach {
-                enableNativeAccess()
-            }
 
             extensions.configure<JacocoPluginExtension> {
                 toolVersion = libs.findVersion("jacoco").get().requiredVersion

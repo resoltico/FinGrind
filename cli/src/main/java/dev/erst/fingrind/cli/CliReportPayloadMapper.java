@@ -205,7 +205,8 @@ final class CliReportPayloadMapper {
         row.lineName(),
         row.lineType().wireValue(),
         row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
-        row.synthetic(),
+        row.lineClassification().wireValue(),
+        row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.balance()));
   }
 
@@ -224,7 +225,8 @@ final class CliReportPayloadMapper {
         row.lineName(),
         row.lineType().wireValue(),
         row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
-        row.synthetic(),
+        row.lineClassification().wireValue(),
+        row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.movement()));
   }
 
@@ -235,7 +237,8 @@ final class CliReportPayloadMapper {
         row.lineName(),
         row.lineType().map(dev.erst.fingrind.core.AccountType::wireValue).orElse(null),
         row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
-        row.synthetic(),
+        row.lineClassification().wireValue(),
+        row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.openingBalance()),
         CliPayloadAssembler.balancePayload(row.movement()),
         CliPayloadAssembler.balancePayload(row.closingBalance()));

@@ -39,8 +39,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   void resultRecordsExposePayloadsAcrossAdministrationAndQuerySurfaces() {
     DeclaredAccount declaredAccount = declaredAccount("1000");
     PostingFact postingFact = postingFact("posting-1", "idem-1");
-    AccountPage accountPage = new AccountPage(List.of(declaredAccount), 50, Optional.empty());
-    PostingPage postingPage = new PostingPage(List.of(postingFact), 50, Optional.empty());
+    AccountPage accountPage = accountPage(List.of(declaredAccount), 50, Optional.empty());
+    PostingPage postingPage = postingPage(List.of(postingFact), 50, Optional.empty());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             bookIdentity(),
@@ -66,7 +66,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
-    assertEquals(postingFact, new GetPostingResult.Found(postingFact).postingFact());
+    assertEquals(postingFact, foundPosting(postingFact).postingFact());
     assertEquals(
         new BookQueryRejection.PostingNotFound(new PostingId("posting-2")),
         new GetPostingResult.Rejected(

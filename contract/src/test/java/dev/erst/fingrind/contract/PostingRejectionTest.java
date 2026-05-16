@@ -26,7 +26,7 @@ class PostingRejectionTest {
             "closed-period-violation",
             "opening-balance-window-closed",
             "opening-balance-touches-nominal-account",
-            "retained-earnings-account-reserved",
+            "closing-equity-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
@@ -52,7 +52,7 @@ class PostingRejectionTest {
                 new PostingRejection.OpeningBalanceTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE)),
             PostingRejection.wireCode(
-                new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3000"))),
+                new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3000"))),
             PostingRejection.wireCode(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
             PostingRejection.wireCode(
@@ -83,7 +83,7 @@ class PostingRejectionTest {
             "closed-period-violation",
             "opening-balance-window-closed",
             "opening-balance-touches-nominal-account",
-            "retained-earnings-account-reserved",
+            "closing-equity-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),

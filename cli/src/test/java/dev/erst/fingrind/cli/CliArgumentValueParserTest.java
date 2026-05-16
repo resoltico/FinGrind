@@ -6,10 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
@@ -67,6 +73,75 @@ class CliArgumentValueParserTest {
                 () ->
                     CliArgumentValueParser.parseFiscalYearStartOption(
                         "13-40", "--fiscal-year-start"))
+            .argument());
+  }
+
+  @Test
+  void parseStructuredOpenBookValueOptions_acceptValidValuesAndRejectInvalidOnes() {
+    assertEquals(
+        EntityForm.COMPANY,
+        CliArgumentValueParser.parseEntityFormOption("COMPANY", "--entity-form"));
+    assertEquals(
+        OwnerModel.MULTI_OWNER,
+        CliArgumentValueParser.parseOwnerModelOption("MULTI_OWNER", "--owner-model"));
+    assertEquals(
+        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+        CliArgumentValueParser.parseReportingObligationStatusOption(
+            "INTERNAL_MANAGEMENT_ONLY", "--reporting-obligation-status"));
+    assertEquals(
+        TaxRegistrationStatus.UNSPECIFIED,
+        CliArgumentValueParser.parseTaxRegistrationStatusOption(
+            "UNSPECIFIED", "--tax-registration-status"));
+    assertEquals(
+        AccountingBasis.ACCRUAL,
+        CliArgumentValueParser.parseAccountingBasisOption("ACCRUAL", "--accounting-basis"));
+    assertEquals(
+        new BusinessActivityTag("translation,localization"),
+        CliArgumentValueParser.parseBusinessActivityTagOption(
+            "translation,localization", "--business-activity-tag"));
+
+    assertEquals(
+        "--entity-form",
+        assertThrows(
+                CliArgumentsException.class,
+                () -> CliArgumentValueParser.parseEntityFormOption("NOPE", "--entity-form"))
+            .argument());
+    assertEquals(
+        "--owner-model",
+        assertThrows(
+                CliArgumentsException.class,
+                () -> CliArgumentValueParser.parseOwnerModelOption("NOPE", "--owner-model"))
+            .argument());
+    assertEquals(
+        "--reporting-obligation-status",
+        assertThrows(
+                CliArgumentsException.class,
+                () ->
+                    CliArgumentValueParser.parseReportingObligationStatusOption(
+                        "NOPE", "--reporting-obligation-status"))
+            .argument());
+    assertEquals(
+        "--tax-registration-status",
+        assertThrows(
+                CliArgumentsException.class,
+                () ->
+                    CliArgumentValueParser.parseTaxRegistrationStatusOption(
+                        "NOPE", "--tax-registration-status"))
+            .argument());
+    assertEquals(
+        "--accounting-basis",
+        assertThrows(
+                CliArgumentsException.class,
+                () ->
+                    CliArgumentValueParser.parseAccountingBasisOption("NOPE", "--accounting-basis"))
+            .argument());
+    assertEquals(
+        "--business-activity-tag",
+        assertThrows(
+                CliArgumentsException.class,
+                () ->
+                    CliArgumentValueParser.parseBusinessActivityTagOption(
+                        " ", "--business-activity-tag"))
             .argument());
   }
 

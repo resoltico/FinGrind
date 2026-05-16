@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,6 +15,7 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -171,7 +173,8 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.RETAINED_EARNINGS,
+            AccountRole.ORDINARY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -404,7 +407,8 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.RETAINED_EARNINGS,
+            AccountRole.ORDINARY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount balancingAccount =
@@ -429,7 +433,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.RetainedEarningsAccountReserved(
+            new BookkeepingPostingRejection.ClosingEquityAccountReserved(
                 retainedEarnings.accountCode())),
         rejection);
   }
@@ -443,7 +447,8 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.RETAINED_EARNINGS,
+            AccountRole.ORDINARY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -625,11 +630,6 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
-    public List<RegisteredAccount> allAccounts() {
-      return List.copyOf(accounts.values());
-    }
-
-    @Override
     public List<CommittedPosting> postings(
         dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
       return postings;
@@ -678,11 +678,6 @@ class PostingAcceptancePolicyTest {
     @Override
     public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return Optional.empty();
-    }
-
-    @Override
-    public List<RegisteredAccount> allAccounts() {
-      return List.copyOf(accounts.values());
     }
 
     @Override

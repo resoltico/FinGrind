@@ -3,13 +3,18 @@ package dev.erst.fingrind.cli;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
-final class CliFuzzHarnessTestSupport {
+public final class CliFuzzHarnessTestSupport {
   private CliFuzzHarnessTestSupport() {}
 
   static FuzzedDataProvider fuzzedBytes(byte[] input) {
@@ -286,25 +291,17 @@ final class CliFuzzHarnessTestSupport {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            }
+            %s
           ]
         }
         """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading())
         .getBytes(UTF_8);
   }
 
@@ -316,32 +313,10 @@ final class CliFuzzHarnessTestSupport {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash-jpy",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1100",
-                "accountName": "Cash JPY",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
-            {
-              "stepId": "declare-sales-jpy",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "2100",
-                "accountName": "Sales JPY",
-                "accountType": "REVENUE",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "post-jpy",
               "kind": "post-entry",
@@ -391,6 +366,16 @@ final class CliFuzzHarnessTestSupport {
           ]
         }
         """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson(
+                    "declare-cash-jpy", "1100", "Cash JPY", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-sales-jpy", "2100", "Sales JPY", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading())
         .getBytes(UTF_8);
   }
 
@@ -402,32 +387,10 @@ final class CliFuzzHarnessTestSupport {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash-bhd",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1200",
-                "accountName": "Cash BHD",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
-            {
-              "stepId": "declare-sales-bhd",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "2200",
-                "accountName": "Sales BHD",
-                "accountType": "REVENUE",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "post-bhd",
               "kind": "post-entry",
@@ -477,7 +440,105 @@ final class CliFuzzHarnessTestSupport {
           ]
         }
         """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson(
+                    "declare-cash-bhd", "1200", "Cash BHD", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-sales-bhd", "2200", "Sales BHD", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading())
         .getBytes(UTF_8);
+  }
+
+  public static String canonicalOpenBookJson(String functionalCurrency) {
+    return """
+        {
+          "entityName": "Acme Studio",
+          "entityForm": "COMPANY",
+          "functionalCurrency": "%s",
+          "fiscalYearStart": "01-01",
+          "accountingBasis": "ACCRUAL"
+        }
+        """
+        .formatted(functionalCurrency)
+        .indent(14)
+        .stripLeading();
+  }
+
+  public static String declareOrdinaryAccountStepJson(
+      String stepId, String accountCode, String accountName, AccountType accountType) {
+    return declareAccountStepJson(
+        stepId, accountCode, accountName, accountType, AccountRole.ORDINARY);
+  }
+
+  public static String declareAccountStepJson(
+      String stepId,
+      String accountCode,
+      String accountName,
+      AccountType accountType,
+      AccountRole accountRole) {
+    return """
+        {
+          "stepId": "%s",
+          "kind": "declare-account",
+          "declareAccount": %s
+        }
+        """
+        .formatted(
+            stepId,
+            declareAccountJson(accountCode, accountName, accountType, accountRole)
+                .indent(4)
+                .stripLeading());
+  }
+
+  public static String declareAccountJson(
+      String accountCode, String accountName, AccountType accountType, AccountRole accountRole) {
+    return """
+        {
+          "accountCode": "%s",
+          "accountName": "%s",
+          "accountType": "%s",
+          "accountRole": "%s",
+          "financialPositionLineClassification": %s,
+          "profitAndLossLineClassification": %s
+        }
+        """
+        .formatted(
+            accountCode,
+            accountName,
+            accountType.name(),
+            accountRole.name(),
+            quotedOrNull(financialPositionLineClassificationWireValue(accountType)),
+            quotedOrNull(profitAndLossLineClassificationWireValue(accountType)));
+  }
+
+  private static String quotedOrNull(@Nullable String value) {
+    if (value == null) {
+      return "null";
+    }
+    return "\"" + value + "\"";
+  }
+
+  private static @Nullable String financialPositionLineClassificationWireValue(
+      AccountType accountType) {
+    return switch (accountType) {
+      case ASSET -> FinancialPositionLineClassification.CURRENT_ASSET.name();
+      case LIABILITY -> FinancialPositionLineClassification.CURRENT_LIABILITY.name();
+      case EQUITY -> FinancialPositionLineClassification.OTHER_EQUITY.name();
+      case REVENUE, EXPENSE -> null;
+    };
+  }
+
+  private static @Nullable String profitAndLossLineClassificationWireValue(
+      AccountType accountType) {
+    return switch (accountType) {
+      case REVENUE -> ProfitAndLossLineClassification.OPERATING_REVENUE.name();
+      case EXPENSE -> ProfitAndLossLineClassification.OPERATING_EXPENSE.name();
+      case ASSET, LIABILITY, EQUITY -> null;
+    };
   }
 
   static byte[] rejectedMissingBookListPostingsLedgerPlanBytes() {

@@ -165,7 +165,7 @@ final class CliMutationResponseWriter {
                                   .effectiveDateFrom()
                                   .toString(),
                               closed.closedPeriod().reportingPeriod().effectiveDateTo().toString(),
-                              closed.closedPeriod().retainedEarningsAccountCode().value(),
+                              closed.closedPeriod().closingEquityAccountCode().value(),
                               closed.closedPeriod().closedTotals().stream()
                                   .map(CliPayloadAssembler::balancePayload)
                                   .toList(),

@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +35,6 @@ public final class ContractRequestShapes {
       List<String> requestFileCommands,
       List<String> directArgumentCommands,
       String outputOption,
-      OutputMode interactiveDefaultSelectableOutputMode,
-      OutputMode redirectedDefaultSelectableOutputMode,
       List<String> outputSemantics,
       String stdinToken,
       String bookFileSemantics,
@@ -56,12 +53,6 @@ public final class ContractRequestShapes {
       directArgumentCommands =
           ContractDescriptorValidation.copyList(directArgumentCommands, "directArgumentCommands");
       outputOption = ContractDescriptorValidation.requireText(outputOption, "outputOption");
-      interactiveDefaultSelectableOutputMode =
-          ContractDescriptorValidation.requireValue(
-              interactiveDefaultSelectableOutputMode, "interactiveDefaultSelectableOutputMode");
-      redirectedDefaultSelectableOutputMode =
-          ContractDescriptorValidation.requireValue(
-              redirectedDefaultSelectableOutputMode, "redirectedDefaultSelectableOutputMode");
       outputSemantics = ContractDescriptorValidation.copyList(outputSemantics, "outputSemantics");
       stdinToken = ContractDescriptorValidation.requireText(stdinToken, "stdinToken");
       bookFileSemantics =
@@ -105,7 +96,7 @@ public final class ContractRequestShapes {
       reversalFields = ContractDescriptorValidation.copyList(reversalFields, "reversalFields");
       enumVocabularies =
           ContractDescriptorValidation.copyList(enumVocabularies, "enumVocabularies");
-      schema = ContractDescriptorValidation.copyMap(schema, "schema");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
     }
   }
 
@@ -120,7 +111,7 @@ public final class ContractRequestShapes {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
       enumVocabularies =
           ContractDescriptorValidation.copyList(enumVocabularies, "enumVocabularies");
-      schema = ContractDescriptorValidation.copyMap(schema, "schema");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
     }
   }
 
@@ -151,7 +142,7 @@ public final class ContractRequestShapes {
       assertStepKind = ContractDescriptorValidation.requireValue(assertStepKind, "assertStepKind");
       assertionKinds = ContractDescriptorValidation.copyList(assertionKinds, "assertionKinds");
       execution = ContractDescriptorValidation.requireValue(execution, "execution");
-      schema = ContractDescriptorValidation.copyMap(schema, "schema");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
     }
   }
 

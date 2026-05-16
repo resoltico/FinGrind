@@ -55,6 +55,15 @@ application {
         )
 }
 
+tasks.withType<Test>().configureEach {
+    systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
+    systemProperty("fingrind.source-checkout.root", repositoryRootDirectory.toString())
+    systemProperty(
+        "fingrind.source-checkout.build-root",
+        sourceCheckoutBuildRootDirectory.toString(),
+    )
+}
+
 val buildMetadata = FinGrindBuildMetadata.load(project)
 val fingrindJavaVersion = buildMetadata.javaVersion
 val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)

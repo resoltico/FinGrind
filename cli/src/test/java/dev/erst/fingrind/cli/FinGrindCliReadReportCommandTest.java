@@ -139,7 +139,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
+        "accountCode,accountName,parentAccountCode,accountType,accountRole,financialPositionLineClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
     assertCommandOutputContains(
         new String[] {
           "get-posting",
@@ -189,7 +189,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
+        "reportBasis,effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -217,7 +217,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount,postingLineCount,accountsTouched");
+        "recordKind,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
   }
 
   @Test
@@ -232,7 +232,8 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     Path declareRetainedEarningsFile =
         writeNamedRequest(
             "close-declare-retained-earnings.json",
-            declareAccountJson("3200", "Retained Earnings", "EQUITY", "RETAINED_EARNINGS"));
+            declareAccountJson(
+                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "RETAINED_EARNINGS", null));
     Path bookFilePath = tempDirectory.resolve("statement-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
 
@@ -319,7 +320,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--retained-earnings-account",
+                  "--closing-equity-account",
                   "3200",
                   "--effective-date-from",
                   "2026-04-07",
@@ -357,7 +358,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
+        "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",

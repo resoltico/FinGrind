@@ -78,7 +78,7 @@ record MachineContractFieldSpec(
 
   record AcceptedFieldContract(Map<String, Object> schema) implements FieldContract {
     AcceptedFieldContract {
-      schema = ContractDescriptorValidation.copyMap(schema, "acceptedSchema");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "acceptedSchema");
     }
   }
 

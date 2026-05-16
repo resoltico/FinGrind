@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.AccountCodePolicy;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import java.util.Objects;
 
@@ -13,15 +14,17 @@ public record AccountDeclaration(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole) {
+    AccountRole accountRole,
+    AccountTaxonomy accountTaxonomy) {
   /** Validates one bookkeeping account declaration. */
   public AccountDeclaration {
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(accountName, "accountName");
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
-    AccountSemantics.validate(accountType, accountRole);
-    AccountCodePolicy.validate(accountCode, accountType, accountRole);
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
+    AccountSemantics.validate(accountType, accountRole, accountTaxonomy);
+    AccountCodePolicy.validate(accountCode, accountType, accountRole, accountTaxonomy);
   }
 
   /** Returns the doctrinal journal side that increases this account. */

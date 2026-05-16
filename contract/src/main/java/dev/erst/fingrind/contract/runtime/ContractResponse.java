@@ -3,11 +3,15 @@ package dev.erst.fingrind.contract.runtime;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
+import dev.erst.fingrind.contract.protocol.AccountingPolicyPackFacts;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.contract.protocol.PolicySeamFacts;
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.protocol.ReportCapabilityFacts;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 
@@ -112,9 +116,15 @@ public final class ContractResponse {
   /** Descriptor for the machine-readable accounting baseline. */
   public record AccountingBaselineDescriptor(
       String scope,
+      AccountingBaselineTarget currentTarget,
+      AccountingBaselineTarget nextTarget,
       List<String> doctrineSources,
       List<String> builtInStatements,
       List<String> deliberateExclusions,
+      List<String> nonClaims,
+      List<ReportCapabilityFacts> reportCapabilities,
+      List<String> requiredMissingCapabilities,
+      AccountingPolicyPackFacts defaultPolicyPack,
       String standardsPosition,
       String reportingPosition,
       String chartModelPosition,
@@ -127,11 +137,21 @@ public final class ContractResponse {
     /** Validates one accounting-baseline descriptor payload. */
     public AccountingBaselineDescriptor {
       scope = ContractDescriptorValidation.requireText(scope, "scope");
+      currentTarget = ContractDescriptorValidation.requireValue(currentTarget, "currentTarget");
+      nextTarget = ContractDescriptorValidation.requireValue(nextTarget, "nextTarget");
       doctrineSources = ContractDescriptorValidation.copyList(doctrineSources, "doctrineSources");
       builtInStatements =
           ContractDescriptorValidation.copyList(builtInStatements, "builtInStatements");
       deliberateExclusions =
           ContractDescriptorValidation.copyList(deliberateExclusions, "deliberateExclusions");
+      nonClaims = ContractDescriptorValidation.copyList(nonClaims, "nonClaims");
+      reportCapabilities =
+          ContractDescriptorValidation.copyList(reportCapabilities, "reportCapabilities");
+      requiredMissingCapabilities =
+          ContractDescriptorValidation.copyList(
+              requiredMissingCapabilities, "requiredMissingCapabilities");
+      defaultPolicyPack =
+          ContractDescriptorValidation.requireValue(defaultPolicyPack, "defaultPolicyPack");
       standardsPosition =
           ContractDescriptorValidation.requireText(standardsPosition, "standardsPosition");
       reportingPosition =
@@ -317,13 +337,21 @@ public final class ContractResponse {
 
   /** Descriptor for sanctioned implemented seams and adjacent future contexts. */
   public record ExtensionSurfaceDescriptor(
-      String model, List<String> implementedSeams, List<String> futureContexts, String description)
+      String model,
+      String defaultPolicyPackId,
+      List<String> implementedSeams,
+      List<PolicySeamFacts> policySeams,
+      List<String> futureContexts,
+      String description)
       implements ResponseDescriptorType {
     /** Validates one extension-surface descriptor payload. */
     public ExtensionSurfaceDescriptor {
       model = ContractDescriptorValidation.requireText(model, "model");
+      defaultPolicyPackId =
+          ContractDescriptorValidation.requireText(defaultPolicyPackId, "defaultPolicyPackId");
       implementedSeams =
           ContractDescriptorValidation.copyList(implementedSeams, "implementedSeams");
+      policySeams = ContractDescriptorValidation.copyList(policySeams, "policySeams");
       futureContexts = ContractDescriptorValidation.copyList(futureContexts, "futureContexts");
       description = ContractDescriptorValidation.requireText(description, "description");
     }

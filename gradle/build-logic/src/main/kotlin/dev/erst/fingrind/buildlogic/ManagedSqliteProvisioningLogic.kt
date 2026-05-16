@@ -108,10 +108,12 @@ internal object ManagedSqliteProvisioningLogic {
         project.tasks.withType<Test>().configureEach {
             dependsOn(provisioning.prepareTask)
             environment(SQLITE_LIBRARY_ENVIRONMENT, libraryAbsolutePath)
+            enableNativeAccess()
         }
         project.tasks.withType<JavaExec>().configureEach {
             dependsOn(provisioning.prepareTask)
             environment(SQLITE_LIBRARY_ENVIRONMENT, libraryAbsolutePath)
+            enableNativeAccess()
         }
     }
 

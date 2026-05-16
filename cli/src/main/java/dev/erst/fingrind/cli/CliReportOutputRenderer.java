@@ -83,16 +83,7 @@ final class CliReportOutputRenderer {
     return CliTextFormat.renderCsv(
         List.of(
             "reportBasis",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
             "effectiveDateTo",
-            "effectiveDateToMeaning",
-            "postingCoverage",
-            "comparativeReferenceEffectiveDateFrom",
-            "comparativeReferenceEffectiveDateFromMeaning",
-            "comparativeReferenceEffectiveDateTo",
-            "comparativeReferenceEffectiveDateToMeaning",
             "accountCode",
             "accountName",
             "accountType",
@@ -105,9 +96,24 @@ final class CliReportOutputRenderer {
             "netAmount",
             "balanceSide"),
         java.util.stream.Stream.concat(
-                report.rows().stream().map(row -> trialBalanceCsvRow(report, "current", row)),
+                report.rows().stream()
+                    .map(
+                        row ->
+                            trialBalanceCsvRow(
+                                "current",
+                                report.effectiveDateTo().map(LocalDate::toString).orElse(""),
+                                row)),
                 report.comparativeRows().stream()
-                    .map(row -> trialBalanceCsvRow(report, "comparative", row)))
+                    .map(
+                        row ->
+                            trialBalanceCsvRow(
+                                "comparative",
+                                report
+                                    .comparativeEffectiveDateRange()
+                                    .effectiveDateTo()
+                                    .map(LocalDate::toString)
+                                    .orElse(""),
+                                row)))
             .toList());
   }
 
@@ -176,18 +182,6 @@ final class CliReportOutputRenderer {
     return CliTextFormat.renderCsv(
         List.of(
             "recordKind",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
-            "postingCoverage",
-            "accountCode",
-            "accountName",
-            "accountType",
-            "accountRole",
-            "effectiveDateFrom",
-            "effectiveDateFromMeaning",
-            "effectiveDateTo",
-            "effectiveDateToMeaning",
             "currencyCode",
             "bucketDebitTotal",
             "bucketCreditTotal",
@@ -201,7 +195,7 @@ final class CliReportOutputRenderer {
             "recordedAt",
             "debitAmount",
             "creditAmount",
-            "runningBalance",
+            "runningNetAmount",
             "runningBalanceSide",
             "counterpartAccounts"),
         java.util.stream.Stream.concat(
@@ -211,31 +205,6 @@ final class CliReportOutputRenderer {
                             balance ->
                                 List.of(
                                     "opening-balance",
-                                    report.bookIdentity().entityName().value(),
-                                    report.bookIdentity().functionalCurrency().code(),
-                                    report.bookIdentity().fiscalYearStart().wireValue(),
-                                    report.postingCoverage().wireValue(),
-                                    report.account().accountCode().value(),
-                                    report.account().accountName().value(),
-                                    report.account().accountType().wireValue(),
-                                    report.account().accountRole().wireValue(),
-                                    report
-                                        .effectiveDateRange()
-                                        .effectiveDateFrom()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                        report
-                                            .effectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .orElse(null)),
-                                    report
-                                        .effectiveDateRange()
-                                        .effectiveDateTo()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report.effectiveDateRange().effectiveDateTo().orElse(null)),
                                     balance.netAmount().currencyUnit().code(),
                                     CliQueryOutputFormatter.displayMoney(balance.debitTotal()),
                                     CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
@@ -257,31 +226,6 @@ final class CliReportOutputRenderer {
                             entry ->
                                 List.of(
                                     "ledger-entry",
-                                    report.bookIdentity().entityName().value(),
-                                    report.bookIdentity().functionalCurrency().code(),
-                                    report.bookIdentity().fiscalYearStart().wireValue(),
-                                    report.postingCoverage().wireValue(),
-                                    report.account().accountCode().value(),
-                                    report.account().accountName().value(),
-                                    report.account().accountType().wireValue(),
-                                    report.account().accountRole().wireValue(),
-                                    report
-                                        .effectiveDateRange()
-                                        .effectiveDateFrom()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                        report
-                                            .effectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .orElse(null)),
-                                    report
-                                        .effectiveDateRange()
-                                        .effectiveDateTo()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report.effectiveDateRange().effectiveDateTo().orElse(null)),
                                     entry.movement().netAmount().currencyUnit().code(),
                                     "",
                                     "",
@@ -307,28 +251,6 @@ final class CliReportOutputRenderer {
                         balance ->
                             List.of(
                                 "closing-balance",
-                                report.bookIdentity().entityName().value(),
-                                report.bookIdentity().functionalCurrency().code(),
-                                report.bookIdentity().fiscalYearStart().wireValue(),
-                                report.postingCoverage().wireValue(),
-                                report.account().accountCode().value(),
-                                report.account().accountName().value(),
-                                report.account().accountType().wireValue(),
-                                report.account().accountRole().wireValue(),
-                                report
-                                    .effectiveDateRange()
-                                    .effectiveDateFrom()
-                                    .map(LocalDate::toString)
-                                    .orElse(""),
-                                CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                    report.effectiveDateRange().effectiveDateFrom().orElse(null)),
-                                report
-                                    .effectiveDateRange()
-                                    .effectiveDateTo()
-                                    .map(LocalDate::toString)
-                                    .orElse(""),
-                                CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                    report.effectiveDateRange().effectiveDateTo().orElse(null)),
                                 balance.netAmount().currencyUnit().code(),
                                 CliQueryOutputFormatter.displayMoney(balance.debitTotal()),
                                 CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
@@ -403,14 +325,6 @@ final class CliReportOutputRenderer {
     return CliTextFormat.renderCsv(
         List.of(
             "recordKind",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
-            "postingCoverage",
-            "effectiveDateFrom",
-            "effectiveDateFromMeaning",
-            "effectiveDateTo",
-            "effectiveDateToMeaning",
             "postingCount",
             "postingLineCount",
             "accountsTouched",
@@ -427,67 +341,71 @@ final class CliReportOutputRenderer {
             "active",
             "declaredAt"),
         java.util.stream.Stream.concat(
-                report.currencyTotals().stream()
-                    .map(
-                        summary ->
-                            List.of(
-                                "currency-total",
-                                report.bookIdentity().entityName().value(),
-                                report.bookIdentity().functionalCurrency().code(),
-                                report.bookIdentity().fiscalYearStart().wireValue(),
-                                report.postingCoverage().wireValue(),
-                                report.effectiveDateFrom().toString(),
-                                CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                    report.effectiveDateFrom()),
-                                report.effectiveDateTo().toString(),
-                                CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                    report.effectiveDateTo()),
-                                Integer.toString(report.postingCount()),
-                                Integer.toString(report.postingLineCount()),
-                                Integer.toString(report.accountsTouched()),
-                                summary.totals().netAmount().currencyUnit().code(),
-                                CliQueryOutputFormatter.displayMoney(summary.totals().debitTotal()),
-                                CliQueryOutputFormatter.displayMoney(
-                                    summary.totals().creditTotal()),
-                                CliQueryOutputFormatter.displayMoney(summary.totals().netAmount()),
-                                summary.totals().balanceSide().wireValue(),
-                                "",
-                                "",
-                                "",
-                                "",
-                                "",
-                                "",
-                                "")),
-                report.accountActivity().stream()
-                    .map(
-                        row ->
-                            List.of(
-                                "account-activity",
-                                report.bookIdentity().entityName().value(),
-                                report.bookIdentity().functionalCurrency().code(),
-                                report.bookIdentity().fiscalYearStart().wireValue(),
-                                report.postingCoverage().wireValue(),
-                                report.effectiveDateFrom().toString(),
-                                CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                    report.effectiveDateFrom()),
-                                report.effectiveDateTo().toString(),
-                                CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                    report.effectiveDateTo()),
-                                Integer.toString(report.postingCount()),
-                                Integer.toString(report.postingLineCount()),
-                                Integer.toString(report.accountsTouched()),
-                                row.movement().netAmount().currencyUnit().code(),
-                                CliQueryOutputFormatter.displayMoney(row.movement().debitTotal()),
-                                CliQueryOutputFormatter.displayMoney(row.movement().creditTotal()),
-                                CliQueryOutputFormatter.displayMoney(row.movement().netAmount()),
-                                row.movement().balanceSide().wireValue(),
-                                row.account().accountCode().value(),
-                                row.account().accountName().value(),
-                                row.account().accountType().wireValue(),
-                                row.account().accountRole().wireValue(),
-                                row.account().normalBalance().wireValue(),
-                                Boolean.toString(row.account().active()),
-                                row.account().declaredAt().toString())))
+                java.util.stream.Stream.of(
+                    List.of(
+                        "summary",
+                        Integer.toString(report.postingCount()),
+                        Integer.toString(report.postingLineCount()),
+                        Integer.toString(report.accountsTouched()),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "")),
+                java.util.stream.Stream.concat(
+                    report.currencyTotals().stream()
+                        .map(
+                            summary ->
+                                List.of(
+                                    "currency-total",
+                                    "",
+                                    "",
+                                    "",
+                                    summary.totals().netAmount().currencyUnit().code(),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        summary.totals().debitTotal()),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        summary.totals().creditTotal()),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        summary.totals().netAmount()),
+                                    summary.totals().balanceSide().wireValue(),
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "",
+                                    "")),
+                    report.accountActivity().stream()
+                        .map(
+                            row ->
+                                List.of(
+                                    "account-activity",
+                                    "",
+                                    "",
+                                    "",
+                                    row.movement().netAmount().currencyUnit().code(),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        row.movement().debitTotal()),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        row.movement().creditTotal()),
+                                    CliQueryOutputFormatter.displayMoney(
+                                        row.movement().netAmount()),
+                                    row.movement().balanceSide().wireValue(),
+                                    row.account().accountCode().value(),
+                                    row.account().accountName().value(),
+                                    row.account().accountType().wireValue(),
+                                    row.account().accountRole().wireValue(),
+                                    row.account().normalBalance().wireValue(),
+                                    Boolean.toString(row.account().active()),
+                                    row.account().declaredAt().toString()))))
             .toList());
   }
 
@@ -524,22 +442,14 @@ final class CliReportOutputRenderer {
         List.of(
             "reportBasis",
             "recordKind",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
             "effectiveDateTo",
-            "effectiveDateToMeaning",
-            "postingCoverage",
-            "comparativeReferenceEffectiveDateFrom",
-            "comparativeReferenceEffectiveDateFromMeaning",
-            "comparativeReferenceEffectiveDateTo",
-            "comparativeReferenceEffectiveDateToMeaning",
             "sectionAccountType",
             "lineCode",
             "lineName",
             "lineRole",
             "lineType",
-            "synthetic",
+            "lineClassification",
+            "lineKind",
             "currencyCode",
             "debitTotal",
             "creditTotal",
@@ -592,24 +502,15 @@ final class CliReportOutputRenderer {
         List.of(
             "reportBasis",
             "recordKind",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
             "effectiveDateFrom",
-            "effectiveDateFromMeaning",
             "effectiveDateTo",
-            "effectiveDateToMeaning",
-            "postingCoverage",
-            "comparativeReferenceEffectiveDateFrom",
-            "comparativeReferenceEffectiveDateFromMeaning",
-            "comparativeReferenceEffectiveDateTo",
-            "comparativeReferenceEffectiveDateToMeaning",
             "sectionAccountType",
             "lineCode",
             "lineName",
             "lineRole",
             "lineType",
-            "synthetic",
+            "lineClassification",
+            "lineKind",
             "currencyCode",
             "debitTotal",
             "creditTotal",
@@ -645,6 +546,7 @@ final class CliReportOutputRenderer {
                 "Line code",
                 "Line name",
                 "Role",
+                "Classification",
                 "Kind",
                 "Currency",
                 "Opening",
@@ -658,7 +560,9 @@ final class CliReportOutputRenderer {
                             row.lineCode(),
                             row.lineName(),
                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                            CliQueryOutputFormatter.displayRowKind(row.synthetic()),
+                            CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+                                row.lineClassification()),
+                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
                             row.closingBalance().netAmount().currencyUnit().code(),
                             CliQueryOutputFormatter.displayMoney(row.openingBalance().netAmount()),
                             CliQueryOutputFormatter.displayMoney(row.movement().netAmount()),
@@ -666,9 +570,9 @@ final class CliReportOutputRenderer {
                             CliQueryOutputFormatter.displayBalanceSideLabel(
                                 row.closingBalance().balanceSide())))
                 .toList(),
-            4,
             5,
-            6);
+            6,
+            7);
     String comparative =
         report.comparativeRows().isEmpty()
                 && report.comparativeOpeningTotals().isEmpty()
@@ -684,6 +588,7 @@ final class CliReportOutputRenderer {
                             "Line code",
                             "Line name",
                             "Role",
+                            "Classification",
                             "Kind",
                             "Currency",
                             "Opening",
@@ -697,7 +602,10 @@ final class CliReportOutputRenderer {
                                         row.lineCode(),
                                         row.lineName(),
                                         CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                        CliQueryOutputFormatter.displayRowKind(row.synthetic()),
+                                        CliQueryOutputFormatter
+                                            .displayFinancialPositionLineClassification(
+                                                row.lineClassification()),
+                                        CliQueryOutputFormatter.displayRowKind(row.lineKind()),
                                         row.closingBalance().netAmount().currencyUnit().code(),
                                         CliQueryOutputFormatter.displayMoney(
                                             row.openingBalance().netAmount()),
@@ -708,9 +616,9 @@ final class CliReportOutputRenderer {
                                         CliQueryOutputFormatter.displayBalanceSideLabel(
                                             row.closingBalance().balanceSide())))
                             .toList(),
-                        4,
                         5,
-                        6),
+                        6,
+                        7),
                     CliTextFormat.renderKeyValueBlock(
                         List.of(
                             List.of(
@@ -733,23 +641,14 @@ final class CliReportOutputRenderer {
         List.of(
             "reportBasis",
             "recordKind",
-            "entityName",
-            "functionalCurrency",
-            "fiscalYearStart",
             "effectiveDateFrom",
-            "effectiveDateFromMeaning",
             "effectiveDateTo",
-            "effectiveDateToMeaning",
-            "postingCoverage",
-            "comparativeReferenceEffectiveDateFrom",
-            "comparativeReferenceEffectiveDateFromMeaning",
-            "comparativeReferenceEffectiveDateTo",
-            "comparativeReferenceEffectiveDateToMeaning",
             "totalBasis",
             "lineCode",
             "lineName",
             "lineRole",
-            "synthetic",
+            "lineClassification",
+            "lineKind",
             "currencyCode",
             "openingDebitTotal",
             "openingCreditTotal",
@@ -833,10 +732,8 @@ final class CliReportOutputRenderer {
 
   private static List<List<String>> identityRows(
       BookIdentity bookIdentity, PostingCoverage postingCoverage, List<List<String>> rows) {
-    List<List<String>> identityRows = new java.util.ArrayList<>();
-    identityRows.add(List.of("Entity", bookIdentity.entityName().value()));
-    identityRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
-    identityRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    List<List<String>> identityRows =
+        new java.util.ArrayList<>(CliBookIdentityDisplay.rows(bookIdentity));
     identityRows.add(List.of("Posting coverage", displayPostingCoverage(postingCoverage)));
     identityRows.addAll(rows);
     return List.copyOf(identityRows);
@@ -871,6 +768,7 @@ final class CliReportOutputRenderer {
                                 "Line code",
                                 "Line name",
                                 "Role",
+                                "Classification",
                                 "Kind",
                                 "Currency",
                                 "Debit total",
@@ -884,7 +782,10 @@ final class CliReportOutputRenderer {
                                             row.lineCode(),
                                             row.lineName(),
                                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                            CliQueryOutputFormatter.displayRowKind(row.synthetic()),
+                                            CliQueryOutputFormatter
+                                                .displayFinancialPositionLineClassification(
+                                                    row.lineClassification()),
+                                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
                                             row.balance().netAmount().currencyUnit().code(),
                                             CliQueryOutputFormatter.displayMoney(
                                                 row.balance().debitTotal()),
@@ -895,9 +796,9 @@ final class CliReportOutputRenderer {
                                             CliQueryOutputFormatter.displayBalanceSideLabel(
                                                 row.balance().balanceSide())))
                                 .toList(),
-                            4,
                             5,
-                            6),
+                            6,
+                            7),
                         section.totals()))
             .collect(
                 java.util.stream.Collectors.joining(
@@ -908,6 +809,14 @@ final class CliReportOutputRenderer {
       FinancialPositionReport report,
       String reportBasis,
       List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> sections) {
+    String effectiveDateTo =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateTo()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateTo().map(LocalDate::toString).orElse("");
     return sections.stream()
         .flatMap(
             section ->
@@ -918,33 +827,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     reportBasis,
                                     "row",
-                                    report.bookIdentity().entityName().value(),
-                                    report.bookIdentity().functionalCurrency().code(),
-                                    report.bookIdentity().fiscalYearStart().wireValue(),
-                                    report.effectiveDateTo().map(LocalDate::toString).orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report.effectiveDateTo().orElse(null)),
-                                    report.postingCoverage().wireValue(),
-                                    report
-                                        .comparativeEffectiveDateRange()
-                                        .effectiveDateFrom()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .orElse(null)),
-                                    report
-                                        .comparativeEffectiveDateRange()
-                                        .effectiveDateTo()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateTo()
-                                            .orElse(null)),
+                                    effectiveDateTo,
                                     section.accountType().wireValue(),
                                     row.lineCode(),
                                     row.lineName(),
@@ -952,7 +835,8 @@ final class CliReportOutputRenderer {
                                         .map(dev.erst.fingrind.core.AccountRole::wireValue)
                                         .orElse(""),
                                     row.lineType().wireValue(),
-                                    Boolean.toString(row.synthetic()),
+                                    row.lineClassification().wireValue(),
+                                    row.lineKind().wireValue(),
                                     row.balance().netAmount().currencyUnit().code(),
                                     CliQueryOutputFormatter.displayMoney(
                                         row.balance().debitTotal()),
@@ -966,33 +850,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     reportBasis,
                                     "section-total",
-                                    report.bookIdentity().entityName().value(),
-                                    report.bookIdentity().functionalCurrency().code(),
-                                    report.bookIdentity().fiscalYearStart().wireValue(),
-                                    report.effectiveDateTo().map(LocalDate::toString).orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report.effectiveDateTo().orElse(null)),
-                                    report.postingCoverage().wireValue(),
-                                    report
-                                        .comparativeEffectiveDateRange()
-                                        .effectiveDateFrom()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .orElse(null)),
-                                    report
-                                        .comparativeEffectiveDateRange()
-                                        .effectiveDateTo()
-                                        .map(LocalDate::toString)
-                                        .orElse(""),
-                                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateTo()
-                                            .orElse(null)),
+                                    effectiveDateTo,
                                     section.accountType().wireValue(),
                                     "",
                                     "",
@@ -1025,6 +883,7 @@ final class CliReportOutputRenderer {
                                 "Line code",
                                 "Line name",
                                 "Role",
+                                "Classification",
                                 "Kind",
                                 "Currency",
                                 "Debit total",
@@ -1038,7 +897,10 @@ final class CliReportOutputRenderer {
                                             row.lineCode(),
                                             row.lineName(),
                                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                            CliQueryOutputFormatter.displayRowKind(row.synthetic()),
+                                            CliQueryOutputFormatter
+                                                .displayProfitAndLossLineClassification(
+                                                    row.lineClassification()),
+                                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
                                             row.movement().netAmount().currencyUnit().code(),
                                             CliQueryOutputFormatter.displayMoney(
                                                 row.movement().debitTotal()),
@@ -1049,9 +911,9 @@ final class CliReportOutputRenderer {
                                             CliQueryOutputFormatter.displayBalanceSideLabel(
                                                 row.movement().balanceSide())))
                                 .toList(),
-                            4,
                             5,
-                            6),
+                            6,
+                            7),
                         section.totals()))
             .collect(
                 java.util.stream.Collectors.joining(
@@ -1063,6 +925,22 @@ final class CliReportOutputRenderer {
       String reportBasis,
       List<dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection> sections,
       List<dev.erst.fingrind.core.CurrencyBalance> netIncomeTotals) {
+    String effectiveDateFrom =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateFrom()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateFrom().toString();
+    String effectiveDateTo =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateTo()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateTo().toString();
     java.util.stream.Stream<List<String>> sectionRows =
         sections.stream()
             .flatMap(
@@ -1074,36 +952,8 @@ final class CliReportOutputRenderer {
                                     List.of(
                                         reportBasis,
                                         "row",
-                                        report.bookIdentity().entityName().value(),
-                                        report.bookIdentity().functionalCurrency().code(),
-                                        report.bookIdentity().fiscalYearStart().wireValue(),
-                                        report.effectiveDateFrom().toString(),
-                                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                            report.effectiveDateFrom()),
-                                        report.effectiveDateTo().toString(),
-                                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                            report.effectiveDateTo()),
-                                        report.postingCoverage().wireValue(),
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .map(LocalDate::toString)
-                                            .orElse(""),
-                                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                            report
-                                                .comparativeEffectiveDateRange()
-                                                .effectiveDateFrom()
-                                                .orElse(null)),
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateTo()
-                                            .map(LocalDate::toString)
-                                            .orElse(""),
-                                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                            report
-                                                .comparativeEffectiveDateRange()
-                                                .effectiveDateTo()
-                                                .orElse(null)),
+                                        effectiveDateFrom,
+                                        effectiveDateTo,
                                         section.accountType().wireValue(),
                                         row.lineCode(),
                                         row.lineName(),
@@ -1111,7 +961,8 @@ final class CliReportOutputRenderer {
                                             .map(dev.erst.fingrind.core.AccountRole::wireValue)
                                             .orElse(""),
                                         row.lineType().wireValue(),
-                                        Boolean.toString(row.synthetic()),
+                                        row.lineClassification().wireValue(),
+                                        row.lineKind().wireValue(),
                                         row.movement().netAmount().currencyUnit().code(),
                                         CliQueryOutputFormatter.displayMoney(
                                             row.movement().debitTotal()),
@@ -1126,36 +977,8 @@ final class CliReportOutputRenderer {
                                     List.of(
                                         reportBasis,
                                         "section-total",
-                                        report.bookIdentity().entityName().value(),
-                                        report.bookIdentity().functionalCurrency().code(),
-                                        report.bookIdentity().fiscalYearStart().wireValue(),
-                                        report.effectiveDateFrom().toString(),
-                                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                            report.effectiveDateFrom()),
-                                        report.effectiveDateTo().toString(),
-                                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                            report.effectiveDateTo()),
-                                        report.postingCoverage().wireValue(),
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateFrom()
-                                            .map(LocalDate::toString)
-                                            .orElse(""),
-                                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                                            report
-                                                .comparativeEffectiveDateRange()
-                                                .effectiveDateFrom()
-                                                .orElse(null)),
-                                        report
-                                            .comparativeEffectiveDateRange()
-                                            .effectiveDateTo()
-                                            .map(LocalDate::toString)
-                                            .orElse(""),
-                                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                                            report
-                                                .comparativeEffectiveDateRange()
-                                                .effectiveDateTo()
-                                                .orElse(null)),
+                                        effectiveDateFrom,
+                                        effectiveDateTo,
                                         section.accountType().wireValue(),
                                         "",
                                         "",
@@ -1174,32 +997,8 @@ final class CliReportOutputRenderer {
                     List.of(
                         reportBasis,
                         "net-income-total",
-                        report.bookIdentity().entityName().value(),
-                        report.bookIdentity().functionalCurrency().code(),
-                        report.bookIdentity().fiscalYearStart().wireValue(),
-                        report.effectiveDateFrom().toString(),
-                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                            report.effectiveDateFrom()),
-                        report.effectiveDateTo().toString(),
-                        CliQueryOutputFormatter.upperDateBoundaryMeaning(report.effectiveDateTo()),
-                        report.postingCoverage().wireValue(),
-                        report
-                            .comparativeEffectiveDateRange()
-                            .effectiveDateFrom()
-                            .map(LocalDate::toString)
-                            .orElse(""),
-                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                            report
-                                .comparativeEffectiveDateRange()
-                                .effectiveDateFrom()
-                                .orElse(null)),
-                        report
-                            .comparativeEffectiveDateRange()
-                            .effectiveDateTo()
-                            .map(LocalDate::toString)
-                            .orElse(""),
-                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                            report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null)),
+                        effectiveDateFrom,
+                        effectiveDateTo,
                         "",
                         "",
                         "",
@@ -1221,6 +1020,22 @@ final class CliReportOutputRenderer {
       List<dev.erst.fingrind.core.CurrencyBalance> openingTotals,
       List<dev.erst.fingrind.core.CurrencyBalance> movementTotals,
       List<dev.erst.fingrind.core.CurrencyBalance> closingTotals) {
+    String effectiveDateFrom =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateFrom()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateFrom().toString();
+    String effectiveDateTo =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateTo()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateTo().toString();
     java.util.stream.Stream<List<String>> rowStream =
         rows.stream()
             .map(
@@ -1228,39 +1043,16 @@ final class CliReportOutputRenderer {
                     List.of(
                         reportBasis,
                         "row",
-                        report.bookIdentity().entityName().value(),
-                        report.bookIdentity().functionalCurrency().code(),
-                        report.bookIdentity().fiscalYearStart().wireValue(),
-                        report.effectiveDateFrom().toString(),
-                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                            report.effectiveDateFrom()),
-                        report.effectiveDateTo().toString(),
-                        CliQueryOutputFormatter.upperDateBoundaryMeaning(report.effectiveDateTo()),
-                        report.postingCoverage().wireValue(),
-                        report
-                            .comparativeEffectiveDateRange()
-                            .effectiveDateFrom()
-                            .map(LocalDate::toString)
-                            .orElse(""),
-                        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                            report
-                                .comparativeEffectiveDateRange()
-                                .effectiveDateFrom()
-                                .orElse(null)),
-                        report
-                            .comparativeEffectiveDateRange()
-                            .effectiveDateTo()
-                            .map(LocalDate::toString)
-                            .orElse(""),
-                        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                            report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null)),
+                        effectiveDateFrom,
+                        effectiveDateTo,
                         "",
                         row.lineCode(),
                         row.lineName(),
                         row.lineRole()
                             .map(dev.erst.fingrind.core.AccountRole::wireValue)
                             .orElse(""),
-                        Boolean.toString(row.synthetic()),
+                        row.lineClassification().wireValue(),
+                        row.lineKind().wireValue(),
                         row.closingBalance().netAmount().currencyUnit().code(),
                         CliQueryOutputFormatter.displayMoney(row.openingBalance().debitTotal()),
                         CliQueryOutputFormatter.displayMoney(row.openingBalance().creditTotal()),
@@ -1288,34 +1080,30 @@ final class CliReportOutputRenderer {
       String reportBasis,
       String totalBasis,
       List<dev.erst.fingrind.core.CurrencyBalance> totals) {
+    String effectiveDateFrom =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateFrom()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateFrom().toString();
+    String effectiveDateTo =
+        "comparative".equals(reportBasis)
+            ? report
+                .comparativeEffectiveDateRange()
+                .effectiveDateTo()
+                .map(LocalDate::toString)
+                .orElse("")
+            : report.effectiveDateTo().toString();
     return totals.stream()
         .map(
             total ->
                 List.of(
                     reportBasis,
                     "report-total",
-                    report.bookIdentity().entityName().value(),
-                    report.bookIdentity().functionalCurrency().code(),
-                    report.bookIdentity().fiscalYearStart().wireValue(),
-                    report.effectiveDateFrom().toString(),
-                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(report.effectiveDateFrom()),
-                    report.effectiveDateTo().toString(),
-                    CliQueryOutputFormatter.upperDateBoundaryMeaning(report.effectiveDateTo()),
-                    report.postingCoverage().wireValue(),
-                    report
-                        .comparativeEffectiveDateRange()
-                        .effectiveDateFrom()
-                        .map(LocalDate::toString)
-                        .orElse(""),
-                    CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-                        report.comparativeEffectiveDateRange().effectiveDateFrom().orElse(null)),
-                    report
-                        .comparativeEffectiveDateRange()
-                        .effectiveDateTo()
-                        .map(LocalDate::toString)
-                        .orElse(""),
-                    CliQueryOutputFormatter.upperDateBoundaryMeaning(
-                        report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null)),
+                    effectiveDateFrom,
+                    effectiveDateTo,
                     totalBasis,
                     "",
                     "",
@@ -1337,31 +1125,12 @@ final class CliReportOutputRenderer {
   }
 
   private static List<String> trialBalanceCsvRow(
-      TrialBalanceReport report,
       String reportBasis,
+      String effectiveDateTo,
       dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow row) {
     return List.of(
         reportBasis,
-        report.bookIdentity().entityName().value(),
-        report.bookIdentity().functionalCurrency().code(),
-        report.bookIdentity().fiscalYearStart().wireValue(),
-        report.effectiveDateTo().map(LocalDate::toString).orElse(""),
-        CliQueryOutputFormatter.upperDateBoundaryMeaning(report.effectiveDateTo().orElse(null)),
-        report.postingCoverage().wireValue(),
-        report
-            .comparativeEffectiveDateRange()
-            .effectiveDateFrom()
-            .map(LocalDate::toString)
-            .orElse(""),
-        CliQueryOutputFormatter.lowerDateBoundaryMeaning(
-            report.comparativeEffectiveDateRange().effectiveDateFrom().orElse(null)),
-        report
-            .comparativeEffectiveDateRange()
-            .effectiveDateTo()
-            .map(LocalDate::toString)
-            .orElse(""),
-        CliQueryOutputFormatter.upperDateBoundaryMeaning(
-            report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null)),
+        effectiveDateTo,
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),

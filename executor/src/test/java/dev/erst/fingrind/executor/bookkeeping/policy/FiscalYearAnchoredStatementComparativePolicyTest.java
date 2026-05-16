@@ -3,11 +3,17 @@ package dev.erst.fingrind.executor.bookkeeping.policy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.OwnerModel;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -16,12 +22,28 @@ import org.junit.jupiter.api.Test;
 class FiscalYearAnchoredStatementComparativePolicyTest {
   private static final BookIdentity FEBRUARY_YEAR_BOOK =
       new BookIdentity(
-          new BookEntityName("Leap Shop"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("02-29"));
+          new EntityProfile(
+              new BookEntityName("Leap Shop"),
+              EntityForm.FREELANCER,
+              OwnerModel.SOLE_OWNER,
+              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+              TaxRegistrationStatus.UNSPECIFIED,
+              java.util.List.of()),
+          CurrencyUnit.of("EUR"),
+          FiscalYearStart.parse("02-29"),
+          AccountingBasis.ACCRUAL);
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
-          new BookEntityName("Calendar Shop"),
+          new EntityProfile(
+              new BookEntityName("Calendar Shop"),
+              EntityForm.FREELANCER,
+              OwnerModel.SOLE_OWNER,
+              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+              TaxRegistrationStatus.UNSPECIFIED,
+              java.util.List.of()),
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          AccountingBasis.ACCRUAL);
 
   @Test
   void comparativePeriod_rejectsInvertedDateRange() {

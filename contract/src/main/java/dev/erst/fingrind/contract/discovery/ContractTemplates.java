@@ -7,15 +7,23 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -150,18 +158,38 @@ public final class ContractTemplates {
 
   /** Canonical open-book template nested inside a ledger plan. */
   public record OpenBookTemplateDescriptor(
-      String entityName, String functionalCurrency, String fiscalYearStart)
+      String entityName,
+      EntityForm entityForm,
+      OwnerModel ownerModel,
+      ReportingObligationStatus reportingObligationStatus,
+      TaxRegistrationStatus taxRegistrationStatus,
+      List<String> businessActivityTags,
+      String functionalCurrency,
+      String fiscalYearStart,
+      AccountingBasis accountingBasis)
       implements TemplateDescriptorType {
     /** Validates one open-book template descriptor payload. */
     public OpenBookTemplateDescriptor {
       entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
       new BookEntityName(entityName);
+      entityForm = ContractDescriptorValidation.requireValue(entityForm, "entityForm");
+      ownerModel = ContractDescriptorValidation.requireValue(ownerModel, "ownerModel");
+      reportingObligationStatus =
+          ContractDescriptorValidation.requireValue(
+              reportingObligationStatus, "reportingObligationStatus");
+      taxRegistrationStatus =
+          ContractDescriptorValidation.requireValue(taxRegistrationStatus, "taxRegistrationStatus");
+      businessActivityTags =
+          ContractDescriptorValidation.copyList(businessActivityTags, "businessActivityTags");
+      businessActivityTags.forEach(BusinessActivityTag::new);
       functionalCurrency =
           ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
       CurrencyUnit.of(functionalCurrency);
       fiscalYearStart =
           ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
       FiscalYearStart.parse(fiscalYearStart);
+      accountingBasis =
+          ContractDescriptorValidation.requireValue(accountingBasis, "accountingBasis");
     }
   }
 
@@ -196,7 +224,13 @@ public final class ContractTemplates {
 
   /** Canonical declare-account template nested inside a ledger plan. */
   public record DeclareAccountTemplateDescriptor(
-      String accountCode, String accountName, AccountType accountType, AccountRole accountRole)
+      String accountCode,
+      String accountName,
+      AccountType accountType,
+      AccountRole accountRole,
+      @Nullable String parentAccountCode,
+      @Nullable FinancialPositionLineClassification financialPositionLineClassification,
+      @Nullable ProfitAndLossLineClassification profitAndLossLineClassification)
       implements TemplateDescriptorType {
     /** Validates one declare-account template descriptor payload. */
     public DeclareAccountTemplateDescriptor {
@@ -205,6 +239,17 @@ public final class ContractTemplates {
       accountName = ContractDescriptorValidation.requireText(accountName, "accountName");
       accountType = ContractDescriptorValidation.requireValue(accountType, "accountType");
       accountRole = ContractDescriptorValidation.requireValue(accountRole, "accountRole");
+      parentAccountCode =
+          ContractDescriptorValidation.requireOptionalText(parentAccountCode, "parentAccountCode");
+      if (parentAccountCode != null) {
+        new AccountCode(parentAccountCode);
+      }
+      financialPositionLineClassification =
+          ContractDescriptorValidation.requireOptionalValue(
+              financialPositionLineClassification, "financialPositionLineClassification");
+      profitAndLossLineClassification =
+          ContractDescriptorValidation.requireOptionalValue(
+              profitAndLossLineClassification, "profitAndLossLineClassification");
     }
   }
 

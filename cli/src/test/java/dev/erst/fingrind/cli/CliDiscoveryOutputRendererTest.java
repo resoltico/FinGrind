@@ -27,13 +27,27 @@ import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
-import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliDiscoveryOutputRenderer}. */
 class CliDiscoveryOutputRendererTest {
+  @Test
+  void renderJsonTemplate_supportsShortcutAndBareTemplateModes() {
+    String bareTemplate =
+        CliDiscoveryOutputRenderer.renderJsonTemplate(Map.of("hello", "world"), null);
+    String shortcutTemplate =
+        CliDiscoveryOutputRenderer.renderJsonTemplate(
+            Map.of("hello", "world"), "fingrind print-request-template post-entry");
+
+    assertFalse(bareTemplate.contains("Shortcut:"));
+    assertTrue(bareTemplate.contains("\"hello\" : \"world\""));
+    assertTrue(shortcutTemplate.contains("Shortcut: fingrind print-request-template post-entry"));
+    assertTrue(shortcutTemplate.contains("\"hello\" : \"world\""));
+  }
+
   @Test
   void renderHelpHuman_rendersFixedAndSelectableStdoutContractsAndEmptyQuickStart() {
     String rendered =
@@ -89,7 +103,9 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("help"));
-    assertTrue(rendered.contains("json, human (via --output)"));
+    assertTrue(
+        rendered.contains(
+            "json, human (via --output; default: human interactive, human redirected)"));
     assertTrue(rendered.contains("json envelope (fixed)"));
     assertTrue(rendered.contains("raw json (fixed)"));
     assertTrue(rendered.contains("Getting Started"));
@@ -243,6 +259,57 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
+  void renderHelpHuman_requestGuidance_omitsEmptyFieldGroups() {
+    HelpDescriptor canonical =
+        MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
+        Objects.requireNonNull(
+            Objects.requireNonNull(canonical.requestShapes(), "requestShapes").ledgerPlan(),
+            "ledgerPlan");
+    HelpDescriptor helpDescriptor =
+        new HelpDescriptor(
+            canonical.application(),
+            canonical.version(),
+            canonical.description(),
+            canonical.usage(),
+            canonical.bookModel(),
+            canonical.accountingBaseline(),
+            new ContractRequestShapes.RequestShapesDescriptor(
+                canonical.requestShapes().schemaDialect(),
+                canonical.requestShapes().postEntry(),
+                canonical.requestShapes().declareAccount(),
+                new ContractRequestShapes.LedgerPlanRequestShapeDescriptor(
+                    ledgerPlan.topLevelFields(),
+                    ledgerPlan.stepFields(),
+                    ledgerPlan.queryFields(),
+                    List.of(),
+                    ledgerPlan.administrationStepKinds(),
+                    ledgerPlan.queryStepKinds(),
+                    ledgerPlan.writeStepKinds(),
+                    ledgerPlan.assertStepKind(),
+                    ledgerPlan.assertionKinds(),
+                    ledgerPlan.execution(),
+                    ledgerPlan.schema())),
+            canonical.requestTemplate(),
+            canonical.declareAccountTemplate(),
+            canonical.planTemplate(),
+            canonical.commands(),
+            canonical.quickStart(),
+            canonical.exitCodes(),
+            canonical.preflight(),
+            canonical.currencyModel(),
+            canonical.extensionSurface(),
+            canonical.environment());
+
+    String rendered = CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor);
+
+    assertTrue(rendered.contains("Generate a scaffold with:"));
+    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertFalse(rendered.contains("Required fields:"));
+    assertFalse(rendered.contains("Assertion fields:"));
+  }
+
+  @Test
   void renderHelpHuman_rendersCommandScopedHelpWithUsageAndExamples() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
@@ -283,8 +350,49 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                + " > request.json"));
+                + " "
+                + OperationId.POST_ENTRY.wireName()));
     assertTrue(rendered.contains("Replace scaffold placeholders such as effectiveDate"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersPreflightRequestGuidanceWithCommandScopedContractLookup() {
+    HelpDescriptor canonical =
+        MachineContract.help(identity(), environment(), OperationId.PREFLIGHT_ENTRY);
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            helpDescriptor(
+                identity(),
+                List.of("fingrind preflight-entry --book-file <path> --request-file <path|->"),
+                canonical.bookModel(),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.PREFLIGHT_ENTRY,
+                        List.of(),
+                        List.of("--book-file <path>", "--request-file <path|->"),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Validate one posting request")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                canonical.preflight(),
+                canonical.currencyModel(),
+                canonical.requestShapes()));
+
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.PREFLIGHT_ENTRY.wireName()));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.HELP) + " preflight-entry --output json"));
+    assertFalse(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.HELP) + " post-entry --output json"));
   }
 
   @Test
@@ -358,16 +466,17 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("Request File"));
     assertTrue(rendered.contains("Provide one JSON object through --request-file <path|->."));
-    assertTrue(rendered.contains("\"accountType\""));
-    assertTrue(rendered.contains("Top-Level Fields"));
-    assertTrue(rendered.contains("accountRole"));
-    assertTrue(rendered.contains("required"));
-    assertTrue(rendered.contains("accountType"));
-    assertTrue(rendered.contains("Template"));
-    assertTrue(rendered.contains("{"));
-    assertTrue(rendered.contains("}"));
+    assertTrue(rendered.contains("Generate a scaffold with:"));
+    assertTrue(rendered.contains("declare-account"));
+    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.HELP) + " declare-account --output json"));
+    assertFalse(rendered.contains("Top-Level Fields"));
+    assertFalse(rendered.contains("Template"));
     assertFalse(rendered.contains("Shortcut: fingrind"));
     assertFalse(rendered.contains("Enum Vocabulary"));
+    assertFalse(rendered.contains("Required fields:"));
   }
 
   @Test
@@ -401,18 +510,17 @@ class CliDiscoveryOutputRendererTest {
         rendered.contains("Provide one ledger plan JSON object through --request-file <path|->."));
     assertTrue(
         rendered.contains(
-            "Shortcut: " + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
-    assertTrue(rendered.contains("Step Fields"));
-    assertTrue(rendered.contains("Query Fields"));
-    assertTrue(rendered.contains("Assertion Fields"));
-    assertTrue(rendered.contains("administrationStepKinds"));
-    assertTrue(rendered.contains("queryStepKinds"));
-    assertTrue(rendered.contains("writeStepKinds"));
-    assertTrue(rendered.contains("assertStepKind"));
-    assertTrue(rendered.contains("assertionKinds"));
-    assertTrue(rendered.contains("open-book"));
-    assertTrue(rendered.contains("declare-account"));
-    assertTrue(rendered.contains("assert-account-balance"));
+            "Generate a scaffold with: "
+                + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
+    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.HELP) + " execute-plan --output json"));
+    assertFalse(rendered.contains("Required fields:"));
+    assertFalse(rendered.contains("Step fields:"));
+    assertFalse(rendered.contains("Query fields:"));
+    assertFalse(rendered.contains("Assertion fields:"));
+    assertFalse(rendered.contains("Enum Vocabulary"));
   }
 
   @Test
@@ -718,13 +826,13 @@ class CliDiscoveryOutputRendererTest {
                 List.of(
                     new dev.erst.fingrind.contract.discovery.WorkflowDescriptor(
                         dev.erst.fingrind.contract.discovery.WorkflowSurface.BUNDLE_POSIX_SHELL,
-                        List.of(WorkflowStepDescriptor.note("guidance")))),
+                        List.of(WorkflowStepDescriptor.note("bundle bootstrap note body")))),
                 List.of(new ExitCodeDescriptor(0, "ok")),
                 new ContractResponse.PreflightDescriptor(
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertFalse(rendered.contains("guidance"));
+    assertFalse(rendered.contains("bundle bootstrap note body"));
     assertTrue(rendered.contains("Getting Started"));
   }
 
@@ -732,8 +840,7 @@ class CliDiscoveryOutputRendererTest {
   void renderCapabilitiesHuman_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
-            MachineContract.capabilities(
-                identity(), environment(), Instant.parse("2026-04-19T08:00:00Z")));
+            MachineContract.capabilities(identity(), environment()));
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Command Groups"));
@@ -741,15 +848,19 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Request Input"));
     assertTrue(rendered.contains("Discovery"));
     assertTrue(rendered.contains("trial-balance"));
-    assertTrue(rendered.contains("json, human, csv (via --output)"));
+    assertTrue(
+        rendered.contains(
+            "json, human, csv (via --output; default: human interactive, json redirected)"));
     assertTrue(rendered.contains("Selectable stdout flag"));
+    assertTrue(rendered.contains("Targeted Retrieval"));
+    assertFalse(rendered.contains("Timestamp"));
     assertFalse(rendered.contains("Reporting position"));
     assertFalse(rendered.contains("Implemented extension seams"));
   }
 
   @Test
   void renderCapabilitiesHuman_omitsDeepBoundaryDoctrineFromHumanSurface() {
-    var canonical = MachineContract.capabilities(identity(), environment(), Instant.now());
+    var canonical = MachineContract.capabilities(identity(), environment());
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
             new dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor(
@@ -768,9 +879,15 @@ class CliDiscoveryOutputRendererTest {
                 canonical.currencyModel(),
                 new ContractResponse.AccountingBaselineDescriptor(
                     OperationId.FINANCIAL_POSITION.wireName(),
+                    canonical.accountingBaseline().currentTarget(),
+                    canonical.accountingBaseline().nextTarget(),
                     canonical.accountingBaseline().doctrineSources(),
                     canonical.accountingBaseline().builtInStatements(),
                     canonical.accountingBaseline().deliberateExclusions(),
+                    canonical.accountingBaseline().nonClaims(),
+                    canonical.accountingBaseline().reportCapabilities(),
+                    canonical.accountingBaseline().requiredMissingCapabilities(),
+                    canonical.accountingBaseline().defaultPolicyPack(),
                     canonical.accountingBaseline().standardsPosition(),
                     canonical.accountingBaseline().reportingPosition(),
                     canonical.accountingBaseline().chartModelPosition(),
@@ -781,11 +898,12 @@ class CliDiscoveryOutputRendererTest {
                     canonical.accountingBaseline().isoClarification()),
                 new ContractResponse.ExtensionSurfaceDescriptor(
                     "ifrs-ias-iso-fx-ar-ap-gaap-playbook",
+                    canonical.extensionSurface().defaultPolicyPackId(),
                     List.of("ifrs-ias-iso-fx-ar-ap-gaap-playbook", "oci"),
+                    canonical.extensionSurface().policySeams(),
                     canonical.extensionSurface().futureContexts(),
                     canonical.extensionSurface().description()),
-                canonical.environment(),
-                canonical.timestamp()));
+                canonical.environment()));
 
     assertFalse(rendered.contains("Financial position"));
     assertFalse(rendered.contains("Extension model"));
@@ -800,7 +918,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.37.0"));
+    assertTrue(rendered.contains("0.38.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -873,7 +991,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.37.0",
+        "0.38.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

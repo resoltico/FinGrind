@@ -8,9 +8,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -22,8 +19,7 @@ class CliDiscoveryCommandExecutorTest {
     CliDiscoveryCommandExecutor executor =
         new CliDiscoveryCommandExecutor(
             new CliResponseWriter(CliResponseWriterTestSupport.utf8PrintStream(outputStream)),
-            metadata(),
-            Clock.fixed(Instant.parse("2026-05-14T12:00:00Z"), ZoneOffset.UTC));
+            metadata());
 
     int exitCode = executor.writeRequestTemplate();
 
@@ -73,7 +69,7 @@ class CliDiscoveryCommandExecutorTest {
         new ByteArrayInputStream(
             """
             name=FinGrind
-            version=0.37.0
+            version=0.38.0
             description=Command-line double-entry bookkeeping
             """
                 .getBytes(StandardCharsets.UTF_8)));

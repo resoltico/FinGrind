@@ -13,7 +13,7 @@ import java.util.Objects;
 public record ClosedPeriod(
     int closeOrder,
     ReportingPeriod reportingPeriod,
-    AccountCode retainedEarningsAccountCode,
+    AccountCode closingEquityAccountCode,
     List<CurrencyBalance> closedTotals,
     Instant closedAt,
     List<PostingId> closingPostingIds) {
@@ -23,7 +23,7 @@ public record ClosedPeriod(
       throw new IllegalArgumentException("closeOrder must be at least one.");
     }
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     closedTotals = ContractDescriptorValidation.copyList(closedTotals, "closedTotals");
     Objects.requireNonNull(closedAt, "closedAt");
     closingPostingIds =

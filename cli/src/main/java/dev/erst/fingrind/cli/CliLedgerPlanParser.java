@@ -28,9 +28,14 @@ import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -197,15 +202,85 @@ final class CliLedgerPlanParser {
     rejectUnexpectedFields(openBookNode, "openBook", CliJsonRequestSchemas.OPEN_BOOK_FIELDS);
     return new OpenBookCommand(
         new BookIdentity(
-            CliArgumentValueParser.parseBookEntityNameOption(
-                requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
-                "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
+            new EntityProfile(
+                CliArgumentValueParser.parseBookEntityNameOption(
+                    requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
+                    "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
+                CliArgumentValueParser.parseEntityFormOption(
+                    requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_FORM),
+                    "openBook." + ProtocolOpenBookFields.ENTITY_FORM),
+                optionalOwnerModel(openBookNode),
+                optionalReportingObligationStatus(openBookNode),
+                optionalTaxRegistrationStatus(openBookNode),
+                businessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
             CliArgumentValueParser.parseFiscalYearStartOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
-                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
+                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
+            CliArgumentValueParser.parseAccountingBasisOption(
+                requiredText(openBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
+                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)));
+  }
+
+  private static OwnerModel optionalOwnerModel(ObjectNode openBookNode) {
+    return optionalText(openBookNode, ProtocolOpenBookFields.OWNER_MODEL)
+        .map(
+            value ->
+                CliArgumentValueParser.parseOwnerModelOption(
+                    value, "openBook." + ProtocolOpenBookFields.OWNER_MODEL))
+        .orElse(OwnerModel.UNKNOWN);
+  }
+
+  private static ReportingObligationStatus optionalReportingObligationStatus(
+      ObjectNode openBookNode) {
+    return optionalText(openBookNode, ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS)
+        .map(
+            value ->
+                CliArgumentValueParser.parseReportingObligationStatusOption(
+                    value, "openBook." + ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS))
+        .orElse(ReportingObligationStatus.UNSPECIFIED);
+  }
+
+  private static TaxRegistrationStatus optionalTaxRegistrationStatus(ObjectNode openBookNode) {
+    return optionalText(openBookNode, ProtocolOpenBookFields.TAX_REGISTRATION_STATUS)
+        .map(
+            value ->
+                CliArgumentValueParser.parseTaxRegistrationStatusOption(
+                    value, "openBook." + ProtocolOpenBookFields.TAX_REGISTRATION_STATUS))
+        .orElse(TaxRegistrationStatus.UNSPECIFIED);
+  }
+
+  private static List<BusinessActivityTag> businessActivityTags(ObjectNode openBookNode) {
+    JsonNode rawNode =
+        CliJsonFieldAccess.nullableField(
+            openBookNode, ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
+    if (rawNode == null || rawNode.isNull()) {
+      return List.of();
+    }
+    if (!rawNode.isArray()) {
+      throw new IllegalArgumentException(
+          "Field must be an array when present: " + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
+    }
+    List<BusinessActivityTag> tags = new ArrayList<>();
+    int index = 0;
+    for (JsonNode tagNode : rawNode) {
+      if (!tagNode.isString()) {
+        throw new IllegalArgumentException(
+            "Field must contain only strings: "
+                + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS
+                + "["
+                + index
+                + "]");
+      }
+      tags.add(
+          CliArgumentValueParser.parseBusinessActivityTagOption(
+              tagNode.stringValue(),
+              ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS + "[" + index + "]"));
+      index++;
+    }
+    return List.copyOf(tags);
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {

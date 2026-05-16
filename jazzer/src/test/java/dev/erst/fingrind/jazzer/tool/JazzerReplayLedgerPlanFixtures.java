@@ -1,5 +1,10 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.canonicalOpenBookJson;
+import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
+
+import dev.erst.fingrind.core.AccountType;
+
 final class JazzerReplayLedgerPlanFixtures {
   private JazzerReplayLedgerPlanFixtures() {}
 
@@ -11,32 +16,10 @@ final class JazzerReplayLedgerPlanFixtures {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
-            {
-              "stepId": "declare-revenue",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "2000",
-                "accountName": "Revenue",
-                "accountType": "REVENUE",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "post-sale",
               "kind": "post-entry",
@@ -85,7 +68,16 @@ final class JazzerReplayLedgerPlanFixtures {
             }
           ]
         }
-        """;
+        """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading());
   }
 
   static String validLedgerPlanWithQueries() {
@@ -96,32 +88,10 @@ final class JazzerReplayLedgerPlanFixtures {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
-            {
-              "stepId": "declare-revenue",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "2000",
-                "accountName": "Revenue",
-                "accountType": "REVENUE",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "post-sale",
               "kind": "post-entry",
@@ -171,7 +141,16 @@ final class JazzerReplayLedgerPlanFixtures {
             }
           ]
         }
-        """;
+        """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading());
   }
 
   static String invalidExecutionPolicyLedgerPlan() {

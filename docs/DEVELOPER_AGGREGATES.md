@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -47,10 +47,11 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 
 ## Account Registry Boundary
 
-- Invariant: one `accountCode` identifies one declared account whose `accountType` and
-  `accountRole` are immutable after first declaration; redeclaration may reactivate the account
-  and rename it, but may not rewrite classification or doctrinal role. `normalBalance` is a
-  derived fact from those two values.
+- Invariant: one `accountCode` identifies one declared account whose `accountType`,
+  `accountRole`, and declared taxonomy are immutable after first declaration; redeclaration may
+  reactivate the account and rename it, but may not rewrite classification, doctrinal role, or
+  statement-line taxonomy. `normalBalance` is a derived fact from `accountType` plus
+  `accountRole`.
 - Mutation paths: `declare-account` and `declare-account` workflow steps.
 - Immediate or derived: immediate.
 - Primary owners:
@@ -60,8 +61,8 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.RegisteredAccount`
   - `executor.BookAdministrationService`
   - `sqlite.SqliteStoreMutationOperations`
-- Notes: current FinGrind books use a flat chart. Account-code text is an opaque book-local
-  identifier, not a type-carrying numeric range.
+- Notes: current FinGrind books use explicit parent-child hierarchy and statement taxonomy while
+  keeping account-code text opaque and book-local rather than type-carrying numeric ranges.
 
 ## Posting Ledger Boundary
 

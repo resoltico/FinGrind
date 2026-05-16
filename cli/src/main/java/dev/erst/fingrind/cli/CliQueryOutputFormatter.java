@@ -9,11 +9,14 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -28,8 +31,8 @@ final class CliQueryOutputFormatter {
   static List<String> postingRegisterHumanRow(PostingFact postingFact) {
     return List.of(
         postingFact.journalEntry().effectiveDate().toString(),
-        postingFact.provenance().recordedAt().toString(),
-        postingFact.postingId().value(),
+        CliHumanDisplay.instant(postingFact.provenance().recordedAt()),
+        CliHumanDisplay.compactOpaqueIdentifier(postingFact.postingId().value()),
         displayPostingKind(postingFact.postingKind()),
         displayReversalStateHuman(postingFact),
         postingCurrency(postingFact),
@@ -104,8 +107,8 @@ final class CliQueryOutputFormatter {
   static List<String> accountLedgerHumanRow(DeclaredAccount account, AccountLedgerEntry entry) {
     return List.of(
         entry.postingFact().journalEntry().effectiveDate().toString(),
-        entry.postingFact().provenance().recordedAt().toString(),
-        entry.postingFact().postingId().value(),
+        CliHumanDisplay.instant(entry.postingFact().provenance().recordedAt()),
+        CliHumanDisplay.compactOpaqueIdentifier(entry.postingFact().postingId().value()),
         displayPostingKind(entry.postingFact().postingKind()),
         displayReversalStateHuman(entry.postingFact()),
         reversalTargetHuman(entry.postingFact()),
@@ -225,8 +228,11 @@ final class CliQueryOutputFormatter {
     };
   }
 
-  static String displayRowKind(boolean synthetic) {
-    return synthetic ? "Synthetic" : "Account";
+  static String displayRowKind(StatementLineKind lineKind) {
+    return switch (lineKind) {
+      case DECLARED_ACCOUNT -> "Account";
+      case CURRENT_PERIOD_RESULT -> "Current period result";
+    };
   }
 
   static String displayLineRole(Optional<AccountRole> lineRole) {
@@ -237,7 +243,40 @@ final class CliQueryOutputFormatter {
     return switch (accountRole) {
       case ORDINARY -> "Ordinary";
       case CONTRA -> "Contra";
+    };
+  }
+
+  static String displayFinancialPositionLineClassification(
+      FinancialPositionLineClassification lineClassification) {
+    return switch (lineClassification) {
+      case CURRENT_ASSET -> "Current asset";
+      case NONCURRENT_ASSET -> "Non-current asset";
+      case CURRENT_LIABILITY -> "Current liability";
+      case NONCURRENT_LIABILITY -> "Non-current liability";
+      case OWNER_CAPITAL -> "Owner capital";
+      case OWNER_DRAWINGS -> "Owner drawings";
+      case PARTNER_CAPITAL -> "Partner capital";
+      case PARTNER_CURRENT -> "Partner current";
+      case SHARE_CAPITAL -> "Share capital";
       case RETAINED_EARNINGS -> "Retained earnings";
+      case ACCUMULATED_SURPLUS -> "Accumulated surplus";
+      case RESERVE -> "Reserve";
+      case CURRENT_PERIOD_RESULT -> "Current period result";
+      case OTHER_EQUITY -> "Other equity";
+    };
+  }
+
+  static String displayProfitAndLossLineClassification(
+      ProfitAndLossLineClassification lineClassification) {
+    return switch (lineClassification) {
+      case OPERATING_REVENUE -> "Operating revenue";
+      case OTHER_REVENUE -> "Other revenue";
+      case FINANCE_INCOME -> "Finance income";
+      case COST_OF_SALES -> "Cost of sales";
+      case OPERATING_EXPENSE -> "Operating expense";
+      case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
+      case FINANCE_EXPENSE -> "Finance expense";
+      case TAX_EXPENSE -> "Tax expense";
     };
   }
 
@@ -274,7 +313,9 @@ final class CliQueryOutputFormatter {
   static String reversalTargetHuman(PostingFact postingFact) {
     return postingFact
         .reversalReference()
-        .map(reference -> reference.priorPostingId().value())
+        .map(
+            reference ->
+                CliHumanDisplay.compactOpaqueIdentifier(reference.priorPostingId().value()))
         .orElse("(direct)");
   }
 
@@ -286,21 +327,19 @@ final class CliQueryOutputFormatter {
   }
 
   static String lowerDateBoundaryMeaning(@Nullable LocalDate effectiveDateFrom) {
-    return effectiveDateFrom == null ? "unbounded-lower-filter" : "selected-effective-date";
+    return effectiveDateFrom == null ? "book-start" : "selected-date";
   }
 
   static String upperDateBoundaryMeaning(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null ? "current-durable-posting-horizon" : "selected-effective-date";
+    return effectiveDateTo == null ? "latest-committed-posting" : "selected-date";
   }
 
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {
-    return effectiveDateFrom == null ? "(unbounded lower filter)" : effectiveDateFrom.toString();
+    return CliHumanDisplay.lowerDateBoundary(effectiveDateFrom);
   }
 
   static String upperDateBoundaryLabel(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null
-        ? "(current durable posting horizon)"
-        : effectiveDateTo.toString();
+    return CliHumanDisplay.upperDateBoundary(effectiveDateTo);
   }
 
   static String displayBooleanLabel(boolean value) {
@@ -313,13 +352,11 @@ final class CliQueryOutputFormatter {
 
   static String dateRange(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
-    return lowerDateBoundaryLabel(effectiveDateFrom)
-        + " to "
-        + upperDateBoundaryLabel(effectiveDateTo);
+    return CliHumanDisplay.dateRange(effectiveDateFrom, effectiveDateTo);
   }
 
   static String absolutePath(Path bookFilePath) {
-    return bookFilePath.toAbsolutePath().normalize().toString();
+    return CliHumanDisplay.path(bookFilePath);
   }
 
   private static String postingAccounts(PostingFact postingFact) {

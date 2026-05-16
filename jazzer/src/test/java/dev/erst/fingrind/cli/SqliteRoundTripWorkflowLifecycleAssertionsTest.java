@@ -196,9 +196,9 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 new AccountCode("4100"), dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
-        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3200"))));
+            new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(

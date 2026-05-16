@@ -2,13 +2,16 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -22,10 +25,36 @@ final class SqliteMutationWriter {
   }
 
   static void insertBookIdentity(SqliteNativeDatabase activeDatabase, BookIdentity bookIdentity) {
+    String encodedBusinessActivityTags =
+        bookIdentity.entityProfile().businessActivityTags().stream()
+            .map(BusinessActivityTag::value)
+            .map(SqliteMutationWriter::encodeBookMetaValue)
+            .reduce((left, right) -> left + "," + right)
+            .orElse("");
     insertBookMetaValue(
         activeDatabase,
         SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY,
         bookIdentity.entityName().value());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_ENTITY_FORM_META_KEY,
+        bookIdentity.entityProfile().entityForm().wireValue());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_OWNER_MODEL_META_KEY,
+        bookIdentity.entityProfile().ownerModel().wireValue());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_REPORTING_OBLIGATION_STATUS_META_KEY,
+        bookIdentity.entityProfile().reportingObligationStatus().wireValue());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_TAX_REGISTRATION_STATUS_META_KEY,
+        bookIdentity.entityProfile().taxRegistrationStatus().wireValue());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY,
+        encodedBusinessActivityTags);
     insertBookMetaValue(
         activeDatabase,
         SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY,
@@ -34,6 +63,10 @@ final class SqliteMutationWriter {
         activeDatabase,
         SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY,
         bookIdentity.fiscalYearStart().wireValue());
+    insertBookMetaValue(
+        activeDatabase,
+        SqlitePostingSql.BOOK_ACCOUNTING_BASIS_META_KEY,
+        bookIdentity.accountingBasis().wireValue());
   }
 
   static void insertBookMetaValue(SqliteNativeDatabase activeDatabase, String key, String value) {
@@ -52,8 +85,28 @@ final class SqliteMutationWriter {
       statement.bindText(2, account.accountName().value());
       statement.bindText(3, account.accountType().wireValue());
       statement.bindText(4, account.accountRole().wireValue());
-      statement.bindInt(5, Boolean.compare(account.active(), false));
-      statement.bindText(6, account.declaredAt().toString());
+      bindOptionalText(
+          statement,
+          5,
+          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
+      bindOptionalText(
+          statement,
+          6,
+          account
+              .accountTaxonomy()
+              .financialPositionLineClassification()
+              .map(value -> value.wireValue())
+              .orElse(null));
+      bindOptionalText(
+          statement,
+          7,
+          account
+              .accountTaxonomy()
+              .profitAndLossLineClassification()
+              .map(value -> value.wireValue())
+              .orElse(null));
+      statement.bindInt(8, Boolean.compare(account.active(), false));
+      statement.bindText(9, account.declaredAt().toString());
       statement.step();
     }
   }
@@ -119,7 +172,7 @@ final class SqliteMutationWriter {
   static ClosedPeriod insertPeriodClose(
       SqliteNativeDatabase activeDatabase,
       dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
-      AccountCode retainedEarningsAccountCode,
+      AccountCode closingEquityAccountCode,
       List<CurrencyBalance> closedTotals,
       Instant closedAt,
       List<CommittedPosting> closingPostings) {
@@ -149,7 +202,7 @@ final class SqliteMutationWriter {
     return new ClosedPeriod(
         closeOrder,
         reportingPeriod,
-        retainedEarningsAccountCode,
+        closingEquityAccountCode,
         closedTotals,
         closedAt,
         closingPostings.stream().map(CommittedPosting::postingId).toList());
@@ -185,5 +238,11 @@ final class SqliteMutationWriter {
   private static void bindOptionalText(
       SqliteNativeStatement statement, int parameterIndex, @Nullable String value) {
     statement.bindText(parameterIndex, value);
+  }
+
+  private static String encodeBookMetaValue(String value) {
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 }

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -9,7 +10,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -23,36 +23,21 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
@@ -81,18 +66,21 @@ final class PostingApplicationServiceTestSupport {
         new AccountName("Cash"),
         AccountType.ASSET,
         accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+        accountTaxonomy(AccountType.ASSET),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
         accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
+        accountTaxonomy(AccountType.REVENUE),
         FIXED_CLOCK.instant());
   }
 
-  static PostingApplicationService applicationService(BookStore bookSession) {
+  static <T extends PostingValidationStore & PostingCommitStore>
+      PostingApplicationService applicationService(T bookSession) {
     return new PostingApplicationService(
-        bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+        bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
   }
 
   static PostingCommand command(String idempotencyKey) {
@@ -193,7 +181,7 @@ final class PostingApplicationServiceTestSupport {
     return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
-  static BookStore mappedOutcomeBookSession() {
+  static PostingBookSession mappedOutcomeBookSession() {
     return new DelegatingPostingBookSession() {
       @Override
       public BookLifecycleInspection inspectBook() {
@@ -253,23 +241,10 @@ final class PostingApplicationServiceTestSupport {
   }
 
   /** Minimal book-session stub whose methods fail unless a test overrides them. */
-  abstract static class DelegatingPostingBookSession implements BookStore {
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
-        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
-      throw new AssertionError("openBook should not be called in this test");
-    }
+  interface PostingBookSession extends PostingValidationStore, PostingCommitStore {}
 
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountRole accountRole,
-        Instant declaredAt) {
-      throw new AssertionError("declareAccount should not be called in this test");
-    }
-
+  /** Minimal posting-session stub whose methods fail unless a test overrides them. */
+  abstract static class DelegatingPostingBookSession implements PostingBookSession {
     @Override
     public BookLifecycleInspection inspectBook() {
       throw new AssertionError("inspectBook should not be called in this test");
@@ -296,18 +271,7 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
-    public List<RegisteredAccount> allAccounts() {
-      return List.of();
-    }
-
-    @Override
     public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-      return List.of();
-    }
-
-    @Override
-    public List<AccountCurrencyTotals> accountTotals(
-        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
       return List.of();
     }
 
@@ -322,45 +286,9 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
-    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-      throw new AssertionError("listAccounts should not be called in this test");
-    }
-
-    @Override
-    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
-      throw new AssertionError("listPostings should not be called in this test");
-    }
-
-    @Override
-    public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
-      throw new AssertionError("accountBalance should not be called in this test");
-    }
-
-    @Override
-    public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
-      throw new AssertionError("trialBalance should not be called in this test");
-    }
-
-    @Override
-    public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
-      throw new AssertionError("accountLedger should not be called in this test");
-    }
-
-    @Override
-    public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-      throw new AssertionError("periodSummary should not be called in this test");
-    }
-
-    @Override
     public PostingCommitResult commit(
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       throw new AssertionError("commit should not be called in this test");
-    }
-
-    @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      throw new AssertionError("closePeriod should not be called in this test");
     }
   }
 }

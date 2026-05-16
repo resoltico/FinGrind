@@ -85,7 +85,7 @@ final class SqliteNativeBootstrap {
         () -> {
           MemorySegment versionPointer = SqliteNativeCalls.noArgAddress(versionHandle).invoke();
           String loadedVersion = SqliteNativeErrors.cString(versionPointer, strlenHandle);
-          return loadedVersion.replace("SQLite3 Multiple Ciphers ", "").trim();
+          return loadedVersion.replace("SQLite3 Multiple Ciphers ", "").strip();
         });
   }
 

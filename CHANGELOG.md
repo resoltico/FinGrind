@@ -5,8 +5,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-05-16
+
+### Changed
+
+- Bumped the pinned Gradle wrapper distribution to `9.5.1` while preserving the repo-owned
+  wrapper launcher behavior that externalizes project cache, build-logic, JaCoCo, and ordinary
+  project-build state outside the checkout by default.
+- Upgraded Spotless to `8.5.0` and aligned the repository formatting floor, release-surface
+  regressions, and shared build logic to the same formatter baseline.
+
 ### Fixed
 
+- Tightened the accounting-foundation contract again: books now persist an explicit entity profile
+  and accounting basis instead of only a bare entity name plus currency anchor, the public
+  baseline now declares one exact current target and next target, reporting coverage and missing
+  baseline capabilities are published structurally instead of only through prose exclusions, and
+  the neutral single-entity policy pack now owns an explicit published inventory of accounting
+  policy dimensions and extension seams rather than only one comparative-reporting hook.
+- Hardened the Java and SQLite engineering boundary again: machine-contract request schemas are
+  now deeply immutable instead of only top-level frozen, SQLite native passphrase copies are
+  zeroized through an explicit native-secret owner, Java compile conventions no longer force
+  every main compile out of date, native-access JVM permissions are now scoped to the SQLite
+  foreign-function seam, and the Linux CI gate now runs the canonical `./check.sh` pipeline
+  instead of restating a parallel source of truth.
+- Tightened the internal execution and CLI seams again: the bookkeeping executor storage boundary
+  is now split into narrower lifecycle, validation, read-model, write, and ledger-plan ports;
+  workflow execution keeps typed plan and step identifiers instead of demoting them to raw
+  strings; posting requests are sealed and exercised through exhaustive policy logic; CLI command
+  option specs now reject duplicate or overlapping grammar declarations; and the application
+  bootstrap now carries one explicit runtime-environment seam for stdin, stdout, stderr, and
+  clock ownership instead of partially hardwiring process globals.
+- Tightened the shared-kernel and discovery contract surface again: request-file guidance now maps
+  explicit operation outcomes instead of hiding behind a nullable default branch, internal
+  effective-date range usage now names unbounded versus bounded state directly, `CurrencyBalance`
+  now keeps only canonical debit/credit totals while deriving net amount and balance side on
+  demand, and semantic text-boundary normalization is now applied more consistently across money,
+  identifiers, contract resources, and SQLite runtime/bootstrap inputs.
+- Repaired the remaining build-logic and regression-floor drift: aggregated JaCoCo coverage wiring
+  now stays provider-backed instead of eagerly realizing subproject tasks and files at
+  configuration time, stale nested Java class outputs are pruned by exact source-owner manifests
+  instead of deleting whole compile output trees, Jazzer workflow fixtures and replay coverage now
+  speak the new narrow executor store ports directly, and the CI release-surface regression now
+  verifies the canonical root `./check.sh` gate owner instead of a duplicated workflow-local
+  stage definition.
+- Reduced the remaining contract and SQLite god-seam load: machine-contract quick starts and
+  request templates now come from dedicated contract-catalog owners instead of one imperative
+  assembler path, and SQLite lifecycle/mutation orchestration now delegates secret buffering,
+  rekey execution, and ledger-plan transaction coordination to narrower internal services with
+  direct regression coverage.
 - Repaired the post-tag container publication rerun seam: `container.yml` now publishes from the
   staged Docker context mirrored at `cli/build/docker-context` instead of reopening the repository
   root, and the container-workflow regression plus release-publication docs now guard that shared
@@ -22,6 +69,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   immutable tagged source can emit during `workflow_dispatch`, and the release-publication docs
   plus the release-workflow regression now guard that mixed `main`-workflow versus tagged-source
   handoff explicitly.
+- Repaired the SQLite protected-book proof floor again: committed compatibility fixtures now
+  match book-format version `6` and the current schema fingerprint, direct SQLite account-row
+  test fixtures now carry the same taxonomy invariants enforced by the live schema, and the
+  explicit fixture-refresh task now stages refreshed artifacts into test runtime resources
+  without making ordinary SQLite verification rewrite committed source fixtures.
+- Repaired the remaining release-smoke and launcher-surface drift: `account-ledger` CSV
+  acceptance checks now validate the current narrow row contract semantically instead of pinning
+  an obsolete denormalized header shape, and the source-checkout, developer direct-Java, bundle,
+  and discovery help surfaces now publish launcher examples and command hints through the active
+  runtime launcher contract instead of flattening every surface to one generic token.
 
 ## [0.37.0] - 2026-05-14
 
@@ -141,7 +198,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mounted-book statement contract.
 - Corrected contra nominal-account arithmetic so contra revenue and contra expense balances now
   offset profit and loss in the right direction, period-close generated entries remain balanced
-  when contra nominal accounts are present, financial-position current-earnings projection now
+  when contra nominal accounts are present, financial-position current-period-result projection now
   respects the same accounting doctrine, and the direct doctrine tests now assert the corrected
   sign rules instead of teaching the inverted behavior.
 - Realigned the Jazzer operator and replay proof floor to the current hard-break bookkeeping
@@ -204,7 +261,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   book-open integrity, and tightened the public/user/developer references so request scaffolds,
   report shapes, format-version guidance, and schema references all match the implemented model.
 - Tightened the accounting proof floor around the new statement and close-period surfaces:
-  multi-currency statement ordering, loss-side current-earnings projection, undeclared
+  multi-currency statement ordering, loss-side current-period-result projection, undeclared
   profit-and-loss bypass resilience, period-close currency bucketing, and audit-event payload
   validation are now covered directly, while the shared JaCoCo XML verifier now reads only
   report-root coverage counters and the remaining dead close-policy/audit-validation branch
@@ -1784,7 +1841,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.37.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.38.0...HEAD
+[0.38.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.38.0
 [0.37.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.37.0
 [0.36.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.36.0
 [0.35.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.35.0

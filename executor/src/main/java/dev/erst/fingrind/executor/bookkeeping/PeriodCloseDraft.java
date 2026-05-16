@@ -11,14 +11,14 @@ import java.util.Objects;
 /** Store-ready close-period draft containing every generated durable closing posting. */
 public record PeriodCloseDraft(
     ReportingPeriod reportingPeriod,
-    AccountCode retainedEarningsAccountCode,
+    AccountCode closingEquityAccountCode,
     List<CurrencyBalance> closedTotals,
     Instant closedAt,
     List<PostingDraft> closingPostings) {
   /** Validates one close-period draft before durable persistence. */
   public PeriodCloseDraft {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     Objects.requireNonNull(closedTotals, "closedTotals");
     Objects.requireNonNull(closedAt, "closedAt");
     Objects.requireNonNull(closingPostings, "closingPostings");

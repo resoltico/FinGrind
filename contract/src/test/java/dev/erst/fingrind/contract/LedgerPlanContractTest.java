@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -77,11 +76,8 @@ class LedgerPlanContractTest {
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
                 stepId("declare"),
-                new DeclareAccountCommand(
-                    new AccountCode("1000"),
-                    new dev.erst.fingrind.core.AccountName("Cash"),
-                    AccountType.ASSET,
-                    AccountRole.ORDINARY))
+                ContractFixtures.declareAccountCommand(
+                    "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY))
             .kind());
     assertEquals(LedgerStepKind.PREFLIGHT_ENTRY, postingStep(true).kind());
     assertEquals(LedgerStepKind.POST_ENTRY, postingStep(false).kind());

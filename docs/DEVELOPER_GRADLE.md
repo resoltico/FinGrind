@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -27,7 +27,7 @@ FinGrind's machine-level setup rule is simple:
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
-The wrapper version is currently `9.5.0`, as declared in
+The wrapper version is currently `9.5.1`, as declared in
 [gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
 Treat wrapper upgrades as supply-chain-sensitive changes and keep them on the current verified
 stable `9.5.x` line.

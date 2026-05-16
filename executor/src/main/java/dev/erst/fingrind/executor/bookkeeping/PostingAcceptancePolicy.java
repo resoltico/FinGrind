@@ -1,12 +1,12 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
@@ -82,7 +82,6 @@ public final class PostingAcceptancePolicy {
     return switch (postingRequest) {
       case PostingCommand command -> command.sourceChannel() == SourceChannel.SYSTEM;
       case PostingDraft draft -> draft.provenance().sourceChannel() == SourceChannel.SYSTEM;
-      default -> false;
     };
   }
 
@@ -146,8 +145,8 @@ public final class PostingAcceptancePolicy {
     if (openingBalanceRejection.isPresent()) {
       return openingBalanceRejection;
     }
-    return retainedEarningsReservationRejection(
-        postingRequest, requestedAccounts, declaredAccounts);
+    return closingEquityReservationRejection(
+        postingRequest, initializedBookIdentity(book), requestedAccounts, declaredAccounts);
   }
 
   private static Optional<BookkeepingPostingRejection> openingBalanceNominalAccountRejection(
@@ -177,18 +176,27 @@ public final class PostingAcceptancePolicy {
                 Objects.requireNonNull(rejectedAccountType, "rejectedAccountType")));
   }
 
-  private static Optional<BookkeepingPostingRejection> retainedEarningsReservationRejection(
+  private static Optional<BookkeepingPostingRejection> closingEquityReservationRejection(
       PostingRequestModel postingRequest,
+      BookIdentity bookIdentity,
       Set<AccountCode> requestedAccounts,
       Map<AccountCode, RegisteredAccount> declaredAccounts) {
     if (postingRequest.postingKind() != PostingKind.STANDARD) {
       return Optional.empty();
     }
+    var reservedClassification =
+        CoreBookkeepingPolicyPack.current()
+            .closePolicy()
+            .closingEquityLineClassification(bookIdentity);
     AccountCode reservedAccountCode = null;
     for (AccountCode accountCode : requestedAccounts) {
       RegisteredAccount account =
           Objects.requireNonNull(declaredAccounts.get(accountCode), "account");
-      if (account.accountRole() == AccountRole.RETAINED_EARNINGS) {
+      if (account
+          .accountTaxonomy()
+          .financialPositionLineClassification()
+          .filter(classification -> classification == reservedClassification)
+          .isPresent()) {
         reservedAccountCode = accountCode;
         break;
       }
@@ -196,6 +204,6 @@ public final class PostingAcceptancePolicy {
     return reservedAccountCode == null
         ? Optional.empty()
         : Optional.of(
-            new BookkeepingPostingRejection.RetainedEarningsAccountReserved(reservedAccountCode));
+            new BookkeepingPostingRejection.ClosingEquityAccountReserved(reservedAccountCode));
   }
 }

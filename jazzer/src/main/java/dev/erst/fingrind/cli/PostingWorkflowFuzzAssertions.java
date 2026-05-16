@@ -29,8 +29,8 @@ final class PostingWorkflowFuzzAssertions {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
-          new PostingApplicationService(
-              bookSession, CliFuzzFixtures.postingIdGenerator(input), CliFuzzFixtures.fixedClock());
+          CliFuzzFixtures.postingApplicationService(
+              bookSession, bookSession, CliFuzzFixtures.postingIdGenerator(input));
 
       driveLifecycleToReadyBook(command, bookSession, administrationService, applicationService);
 

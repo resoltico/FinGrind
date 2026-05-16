@@ -42,6 +42,7 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -49,11 +50,13 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -283,23 +286,23 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             new FinancialPositionSection(
                 AccountType.ASSET,
                 List.of(
-                    new FinancialPositionRow(
+                    financialPositionRow(
                         "1000",
                         "Cash",
                         AccountType.ASSET,
-                        Optional.of(AccountRole.ORDINARY),
-                        false,
+                        AccountRole.ORDINARY,
+                        FinancialPositionLineClassification.CURRENT_ASSET,
                         CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
             new FinancialPositionSection(
                 AccountType.EQUITY,
                 List.of(
-                    new FinancialPositionRow(
+                    financialPositionRow(
                         "3200",
                         "Retained Earnings",
                         AccountType.EQUITY,
-                        Optional.of(AccountRole.RETAINED_EARNINGS),
-                        false,
+                        AccountRole.ORDINARY,
+                        FinancialPositionLineClassification.RETAINED_EARNINGS,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))));
     return new FinancialPositionReport(
@@ -319,12 +322,12 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             new IncomeStatementSection(
                 AccountType.REVENUE,
                 List.of(
-                    new IncomeStatementRow(
+                    incomeStatementRow(
                         "2000",
                         "Revenue",
                         AccountType.REVENUE,
-                        Optional.of(AccountRole.ORDINARY),
-                        false,
+                        AccountRole.ORDINARY,
+                        ProfitAndLossLineClassification.OPERATING_REVENUE,
                         revenueMovement)),
                 List.of(revenueMovement)));
     return new IncomeStatementReport(
@@ -348,12 +351,11 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
     List<ChangesInEquityRow> rows =
         List.of(
-            new ChangesInEquityRow(
+            changesInEquityRow(
                 "3200",
                 "Retained Earnings",
-                Optional.of(AccountType.EQUITY),
-                Optional.of(AccountRole.RETAINED_EARNINGS),
-                false,
+                AccountRole.ORDINARY,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
                 openingBalance,
                 movementBalance,
                 closingBalance));
@@ -381,6 +383,60 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))),
         Instant.parse("2026-04-30T12:00:00Z"),
         List.of(new PostingId("posting-close-1")));
+  }
+
+  private static FinancialPositionRow financialPositionRow(
+      String lineCode,
+      String lineName,
+      AccountType accountType,
+      AccountRole accountRole,
+      FinancialPositionLineClassification lineClassification,
+      CurrencyBalance balance) {
+    return new FinancialPositionRow(
+        lineCode,
+        lineName,
+        accountType,
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        balance);
+  }
+
+  private static IncomeStatementRow incomeStatementRow(
+      String lineCode,
+      String lineName,
+      AccountType accountType,
+      AccountRole accountRole,
+      ProfitAndLossLineClassification lineClassification,
+      CurrencyBalance movement) {
+    return new IncomeStatementRow(
+        lineCode,
+        lineName,
+        accountType,
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        movement);
+  }
+
+  private static ChangesInEquityRow changesInEquityRow(
+      String lineCode,
+      String lineName,
+      AccountRole accountRole,
+      FinancialPositionLineClassification lineClassification,
+      CurrencyBalance openingBalance,
+      CurrencyBalance movement,
+      CurrencyBalance closingBalance) {
+    return new ChangesInEquityRow(
+        lineCode,
+        lineName,
+        Optional.of(AccountType.EQUITY),
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        openingBalance,
+        movement,
+        closingBalance);
   }
 
   protected static LedgerPlanResult successfulPlanResult(LedgerPlanId planId) {

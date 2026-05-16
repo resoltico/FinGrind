@@ -9,10 +9,16 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.OwnerModel;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and invariant tests for contract-owned template descriptors. */
@@ -41,13 +47,48 @@ class ContractTemplatesValidationTest {
   }
 
   @Test
+  void declareAccountTemplateDescriptor_validatesOptionalParentAccountCodeWhenPresent() {
+    ContractTemplates.DeclareAccountTemplateDescriptor template =
+        new ContractTemplates.DeclareAccountTemplateDescriptor(
+            "1000",
+            "Cash",
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            "3000",
+            FinancialPositionLineClassification.CURRENT_ASSET,
+            null);
+
+    assertEquals("3000", template.parentAccountCode());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractTemplates.DeclareAccountTemplateDescriptor(
+                "1000",
+                "Cash",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                "cash account",
+                FinancialPositionLineClassification.CURRENT_ASSET,
+                null));
+  }
+
+  @Test
   void ledgerPlanStepTemplates_coverEveryCanonicalShape() {
     assertDoesNotThrow(
         () -> {
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
               "open",
               LedgerStepKind.OPEN_BOOK,
-              new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+              new ContractTemplates.OpenBookTemplateDescriptor(
+                  "Acme Studio",
+                  EntityForm.FREELANCER,
+                  OwnerModel.SOLE_OWNER,
+                  ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+                  TaxRegistrationStatus.UNSPECIFIED,
+                  java.util.List.of("translation-services"),
+                  "EUR",
+                  "01-01",
+                  AccountingBasis.ACCRUAL),
               null,
               null,
               null,
@@ -72,7 +113,13 @@ class ContractTemplatesValidationTest {
               null,
               null,
               new ContractTemplates.DeclareAccountTemplateDescriptor(
-                  "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),
+                  "1000",
+                  "Cash",
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  null,
+                  FinancialPositionLineClassification.CURRENT_ASSET,
+                  null),
               null,
               null,
               null);

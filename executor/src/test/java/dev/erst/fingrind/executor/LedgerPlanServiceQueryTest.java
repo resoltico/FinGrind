@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.bookWithCommittedPosting;
@@ -162,6 +163,7 @@ class LedgerPlanServiceQueryTest {
           new AccountName("Cash"),
           AccountType.ASSET,
           accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          accountTaxonomy(AccountType.ASSET),
           FIXED_CLOCK.instant());
 
       var preflightResult =

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -303,7 +303,7 @@ public sealed interface LedgerPlanResult
 public final class PostingApplicationService
 ```
 
-- Constructor: requires `BookStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
 - Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
 - Boundary: the service operates after the published `PostEntryCommand` has crossed the
   bookkeeping translator edge and become one local `PostingCommand`, then delegates local
@@ -318,7 +318,7 @@ published-language projection.
 public final class BookkeepingPostingService
 ```
 
-- Constructor: requires `BookStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
 - Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
 - Boundary: this service stays inside the bookkeeping context and returns only local admission and
   commit outcomes
@@ -331,7 +331,7 @@ public final class BookkeepingPostingService
 public final class BookWorkflowExecutionService
 ```
 
-- Constructor: requires `AtomicBookStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `LedgerPlanTransaction`, `BookAdministrationStore`, `BookkeepingReadStore`, `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
 - Surface: `execute(BookWorkflowPlan)`
 - Policy: runs the whole local plan inside one durable transaction and rolls back on the first
   rejected step or failed assertion
@@ -346,7 +346,7 @@ public final class BookWorkflowExecutionService
 public final class LedgerPlanService
 ```
 
-- Constructor: requires `AtomicBookStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `LedgerPlanTransaction`, `BookAdministrationStore`, `BookkeepingReadStore`, `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
 - Boundary: the service translates the public `LedgerPlan` into the local workflow model, delegates
   execution to `BookWorkflowExecutionService`, then projects the local execution result back into
   the public `LedgerPlanResult` surface

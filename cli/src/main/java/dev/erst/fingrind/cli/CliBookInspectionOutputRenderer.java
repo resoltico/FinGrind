@@ -42,19 +42,20 @@ final class CliBookInspectionOutputRenderer {
               List.of(
                   "Detected book format version",
                   Integer.toString(existing.detectedBookFormatVersion())));
-      case BookInspection.Initialized initialized ->
-          List.of(
-              List.of("SQLite applicationId", Integer.toString(initialized.applicationId())),
-              List.of(
-                  "Detected book format version",
-                  Integer.toString(initialized.detectedBookFormatVersion())),
-              List.of("Entity name", initialized.bookIdentity().entityName().value()),
-              List.of(
-                  "Functional currency", initialized.bookIdentity().functionalCurrency().code()),
-              List.of(
-                  "Fiscal year start", initialized.bookIdentity().fiscalYearStart().wireValue()),
-              List.of("Initialized at", initialized.initializedAt().toString()));
+      case BookInspection.Initialized initialized -> initializedDetailRows(initialized);
     };
+  }
+
+  private static List<List<String>> initializedDetailRows(BookInspection.Initialized initialized) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(List.of("SQLite applicationId", Integer.toString(initialized.applicationId())));
+    rows.add(
+        List.of(
+            "Detected book format version",
+            Integer.toString(initialized.detectedBookFormatVersion())));
+    rows.addAll(CliBookIdentityDisplay.rows(initialized.bookIdentity()));
+    rows.add(List.of("Initialized at", CliHumanDisplay.instant(initialized.initializedAt())));
+    return List.copyOf(rows);
   }
 
   private static String displayStatus(BookInspection.Status status) {

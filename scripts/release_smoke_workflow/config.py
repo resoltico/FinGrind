@@ -59,8 +59,10 @@ def load_config() -> ReleaseSmokeConfig:
         actor_prefix=scenario.actor_prefix,
         open_book_mode=require_env("FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE"),
         entity_name=scenario.entity_name,
+        entity_form=scenario.entity_form,
         functional_currency=scenario.functional_currency,
         fiscal_year_start=scenario.fiscal_year_start,
+        accounting_basis=scenario.accounting_basis,
     )
 
 

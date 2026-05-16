@@ -5,7 +5,9 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,9 +20,10 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.BookContainsSchema,
         BookAdministrationRejection.AccountTypeConflict,
         BookAdministrationRejection.AccountRoleConflict,
-        BookAdministrationRejection.RetainedEarningsAccountMissing,
-        BookAdministrationRejection.RetainedEarningsAccountRoleMismatch,
-        BookAdministrationRejection.RetainedEarningsAccountInactive,
+        BookAdministrationRejection.AccountTaxonomyConflict,
+        BookAdministrationRejection.ClosingEquityAccountMissing,
+        BookAdministrationRejection.ClosingEquityAccountClassificationMismatch,
+        BookAdministrationRejection.ClosingEquityAccountInactive,
         BookAdministrationRejection.PeriodCloseMustStartAt,
         BookAdministrationRejection.PeriodCloseFutureDate,
         BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
@@ -73,32 +76,55 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /** Rejection for period close when no retained-earnings account is declared. */
-  record RetainedEarningsAccountMissing(AccountCode accountCode)
+  /** Rejection for redeclaring an account with a different immutable taxonomy. */
+  record AccountTaxonomyConflict(
+      AccountCode accountCode,
+      AccountTaxonomy existingAccountTaxonomy,
+      AccountTaxonomy requestedAccountTaxonomy)
       implements BookAdministrationRejection {
-    public RetainedEarningsAccountMissing {
+    public AccountTaxonomyConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(existingAccountTaxonomy, "existingAccountTaxonomy");
+      Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  /* Rejection for period close when no closing-equity account is declared. */
+  record ClosingEquityAccountMissing(AccountCode accountCode)
+      implements BookAdministrationRejection {
+    public ClosingEquityAccountMissing {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }
 
-  /** Rejection for period close when the selected account is not doctrinally retained earnings. */
-  record RetainedEarningsAccountRoleMismatch(AccountCode accountCode, AccountRole actualAccountRole)
+  /*
+   * Rejection for period close when the selected account does not satisfy the active close
+   * classification policy.
+   */
+  record ClosingEquityAccountClassificationMismatch(
+      AccountCode accountCode,
+      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
+      FinancialPositionLineClassification actualFinancialPositionLineClassification)
       implements BookAdministrationRejection {
-    public RetainedEarningsAccountRoleMismatch {
+    public ClosingEquityAccountClassificationMismatch {
       Objects.requireNonNull(accountCode, "accountCode");
-      Objects.requireNonNull(actualAccountRole, "actualAccountRole");
+      Objects.requireNonNull(
+          requiredFinancialPositionLineClassification,
+          "requiredFinancialPositionLineClassification");
+      Objects.requireNonNull(
+          actualFinancialPositionLineClassification, "actualFinancialPositionLineClassification");
     }
   }
 
-  /** Rejection for period close when the retained-earnings account exists but is inactive. */
-  record RetainedEarningsAccountInactive(AccountCode accountCode)
+  /* Rejection for period close when the selected closing-equity account exists but is inactive. */
+  record ClosingEquityAccountInactive(AccountCode accountCode)
       implements BookAdministrationRejection {
-    public RetainedEarningsAccountInactive {
+    public ClosingEquityAccountInactive {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }
 
-  /** Rejection for period close when the requested period start is not the live close horizon. */
+  /* Rejection for period close when the requested period start is not the live close horizon. */
   record PeriodCloseMustStartAt(LocalDate requiredEffectiveDateFrom)
       implements BookAdministrationRejection {
     public PeriodCloseMustStartAt {
@@ -106,7 +132,7 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /** Rejection for period close when the requested period end lies in the future. */
+  /* Rejection for period close when the requested period end lies in the future. */
   record PeriodCloseFutureDate(LocalDate attemptedEffectiveDateTo)
       implements BookAdministrationRejection {
     public PeriodCloseFutureDate {
@@ -114,7 +140,7 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /** Rejection for period close when the requested range spans more than one fiscal year. */
+  /* Rejection for period close when the requested range spans more than one fiscal year. */
   record PeriodCloseCrossesFiscalYearBoundary(
       LocalDate attemptedEffectiveDateFrom,
       LocalDate attemptedEffectiveDateTo,
@@ -139,12 +165,14 @@ public sealed interface BookAdministrationRejection
       case BookAdministrationRejection.BookContainsSchema _ -> Descriptor.BOOK_CONTAINS_SCHEMA;
       case BookAdministrationRejection.AccountTypeConflict _ -> Descriptor.ACCOUNT_TYPE_CONFLICT;
       case BookAdministrationRejection.AccountRoleConflict _ -> Descriptor.ACCOUNT_ROLE_CONFLICT;
-      case BookAdministrationRejection.RetainedEarningsAccountMissing _ ->
-          Descriptor.RETAINED_EARNINGS_ACCOUNT_MISSING;
-      case BookAdministrationRejection.RetainedEarningsAccountRoleMismatch _ ->
-          Descriptor.RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH;
-      case BookAdministrationRejection.RetainedEarningsAccountInactive _ ->
-          Descriptor.RETAINED_EARNINGS_ACCOUNT_INACTIVE;
+      case BookAdministrationRejection.AccountTaxonomyConflict _ ->
+          Descriptor.ACCOUNT_TAXONOMY_CONFLICT;
+      case BookAdministrationRejection.ClosingEquityAccountMissing _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_MISSING;
+      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH;
+      case BookAdministrationRejection.ClosingEquityAccountInactive _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_INACTIVE;
       case BookAdministrationRejection.PeriodCloseMustStartAt _ ->
           Descriptor.PERIOD_CLOSE_MUST_START_AT;
       case BookAdministrationRejection.PeriodCloseFutureDate _ ->
@@ -161,9 +189,10 @@ public sealed interface BookAdministrationRejection
     BOOK_CONTAINS_SCHEMA,
     ACCOUNT_TYPE_CONFLICT,
     ACCOUNT_ROLE_CONFLICT,
-    RETAINED_EARNINGS_ACCOUNT_MISSING,
-    RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH,
-    RETAINED_EARNINGS_ACCOUNT_INACTIVE,
+    ACCOUNT_TAXONOMY_CONFLICT,
+    CLOSING_EQUITY_ACCOUNT_MISSING,
+    CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
+    CLOSING_EQUITY_ACCOUNT_INACTIVE,
     PERIOD_CLOSE_MUST_START_AT,
     PERIOD_CLOSE_FUTURE_DATE,
     PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY;
@@ -175,9 +204,11 @@ public sealed interface BookAdministrationRejection
         case BOOK_CONTAINS_SCHEMA -> "book-contains-schema";
         case ACCOUNT_TYPE_CONFLICT -> "account-type-conflict";
         case ACCOUNT_ROLE_CONFLICT -> "account-role-conflict";
-        case RETAINED_EARNINGS_ACCOUNT_MISSING -> "retained-earnings-account-missing";
-        case RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH -> "retained-earnings-account-role-mismatch";
-        case RETAINED_EARNINGS_ACCOUNT_INACTIVE -> "retained-earnings-account-inactive";
+        case ACCOUNT_TAXONOMY_CONFLICT -> "account-taxonomy-conflict";
+        case CLOSING_EQUITY_ACCOUNT_MISSING -> "closing-equity-account-missing";
+        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
+            "closing-equity-account-classification-mismatch";
+        case CLOSING_EQUITY_ACCOUNT_INACTIVE -> "closing-equity-account-inactive";
         case PERIOD_CLOSE_MUST_START_AT -> "period-close-must-start-at";
         case PERIOD_CLOSE_FUTURE_DATE -> "period-close-future-date";
         case PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY ->
@@ -199,12 +230,14 @@ public sealed interface BookAdministrationRejection
             "Account declaration refused because the requested accountType conflicts with the existing immutable value.";
         case ACCOUNT_ROLE_CONFLICT ->
             "Account declaration refused because the requested accountRole conflicts with the existing immutable value.";
-        case RETAINED_EARNINGS_ACCOUNT_MISSING ->
-            "Period close refused because the selected retained-earnings account code is not declared in the selected book.";
-        case RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH ->
-            "Period close refused because the selected account is not doctrinally retained earnings.";
-        case RETAINED_EARNINGS_ACCOUNT_INACTIVE ->
-            "Period close refused because the retained-earnings account is inactive.";
+        case ACCOUNT_TAXONOMY_CONFLICT ->
+            "Account declaration refused because the requested account taxonomy conflicts with the existing immutable value.";
+        case CLOSING_EQUITY_ACCOUNT_MISSING ->
+            "Period close refused because the selected closing-equity account code is not declared in the selected book.";
+        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
+            "Period close refused because the selected account does not satisfy the active closing-equity classification policy.";
+        case CLOSING_EQUITY_ACCOUNT_INACTIVE ->
+            "Period close refused because the selected closing-equity account is inactive.";
         case PERIOD_CLOSE_MUST_START_AT ->
             "Period close refused because the requested effectiveDateFrom does not match the live unclosed horizon.";
         case PERIOD_CLOSE_FUTURE_DATE ->
@@ -217,11 +250,11 @@ public sealed interface BookAdministrationRejection
     private List<ContractResponse.FieldDescriptor> detailFields() {
       return switch (this) {
         case BOOK_ALREADY_INITIALIZED, BOOK_NOT_INITIALIZED, BOOK_CONTAINS_SCHEMA -> List.of();
-        case RETAINED_EARNINGS_ACCOUNT_MISSING ->
+        case CLOSING_EQUITY_ACCOUNT_MISSING ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Selected retained-earnings account code that was not declared in this book."));
+                    "Selected closing-equity account code that was not declared in this book."));
         case ACCOUNT_TYPE_CONFLICT ->
             List.of(
                 detailField(
@@ -242,19 +275,32 @@ public sealed interface BookAdministrationRejection
                 detailField(
                     "requestedAccountRole",
                     "Conflicting accountRole that the caller attempted to declare."));
-        case RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH ->
+        case ACCOUNT_TAXONOMY_CONFLICT ->
+            List.of(
+                detailField(
+                    "accountCode", "Declared account code that already exists in the book."),
+                detailField(
+                    "existingAccountTaxonomy",
+                    "Immutable live taxonomy already stored for this account."),
+                detailField(
+                    "requestedAccountTaxonomy",
+                    "Conflicting taxonomy that the caller attempted to declare."));
+        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Selected account code that exists but is not doctrinally retained earnings."),
+                    "Selected account code that exists but does not satisfy the active closing-equity classification policy."),
                 detailField(
-                    "actualAccountRole",
-                    "Actual doctrinal accountRole stored for the selected account."));
-        case RETAINED_EARNINGS_ACCOUNT_INACTIVE ->
+                    "requiredFinancialPositionLineClassification",
+                    "Required financialPositionLineClassification for the selected book's active close policy."),
+                detailField(
+                    "actualFinancialPositionLineClassification",
+                    "Actual financialPositionLineClassification stored for the selected account."));
+        case CLOSING_EQUITY_ACCOUNT_INACTIVE ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Declared retained-earnings account code that exists but is inactive."));
+                    "Declared closing-equity account code that exists but is inactive."));
         case PERIOD_CLOSE_MUST_START_AT ->
             List.of(
                 detailField(
@@ -291,9 +337,10 @@ public sealed interface BookAdministrationRejection
               BOOK_CONTAINS_SCHEMA,
               ACCOUNT_TYPE_CONFLICT,
               ACCOUNT_ROLE_CONFLICT,
-              RETAINED_EARNINGS_ACCOUNT_MISSING,
-              RETAINED_EARNINGS_ACCOUNT_ROLE_MISMATCH,
-              RETAINED_EARNINGS_ACCOUNT_INACTIVE,
+              ACCOUNT_TAXONOMY_CONFLICT,
+              CLOSING_EQUITY_ACCOUNT_MISSING,
+              CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
+              CLOSING_EQUITY_ACCOUNT_INACTIVE,
               PERIOD_CLOSE_MUST_START_AT,
               PERIOD_CLOSE_FUTURE_DATE,
               PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY)

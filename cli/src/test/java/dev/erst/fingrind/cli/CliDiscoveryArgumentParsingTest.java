@@ -180,6 +180,18 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_rejectsUnknownRequestTemplateTopic() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-request-template", "wat"}));
+
+    assertEquals("invalid-request", exception.failure().code());
+    assertEquals("wat", exception.failure().argument());
+    assertEquals("Unsupported request-template topic: wat", exception.failure().message());
+  }
+
+  @Test
   void parse_rejectsAdditionalArgumentForPrintPlanTemplate() {
     CliArgumentsException exception =
         assertThrows(
@@ -200,14 +212,20 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
             "invalid-request",
             "--limit",
             "Option must be an integer: --limit",
-            "Run 'fingrind help' to inspect the supported command syntax.",
+            "Run '"
+                + CliInvocationText.commandExample(OperationId.HELP)
+                + "' to inspect the supported command syntax.",
             new NumberFormatException("boom"));
 
     CliFailure failure = exception.failure();
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--limit", exception.argument());
-    assertEquals("Run 'fingrind help' to inspect the supported command syntax.", exception.hint());
+    assertEquals(
+        "Run '"
+            + CliInvocationText.commandExample(OperationId.HELP)
+            + "' to inspect the supported command syntax.",
+        exception.hint());
     assertEquals("invalid-request", failure.code());
     assertEquals("--limit", failure.argument());
     assertEquals("Option must be an integer: --limit", failure.message());

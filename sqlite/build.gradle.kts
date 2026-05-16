@@ -1,5 +1,8 @@
 import dev.erst.fingrind.buildlogic.DistributionContractReader
+import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     `java-library`
@@ -14,6 +17,14 @@ val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRoo
 val managedSqliteDigestPath =
     rootProject.layout.buildDirectory.file(
         "managed-sqlite/${hostBundleTarget.classifier}/${hostBundleTarget.sqliteLibraryFileName}.sha256",
+    )
+val protectedBookFixturePath =
+    project.layout.projectDirectory.file(
+        "src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite",
+    )
+val protectedBookFixtureMetadataPath =
+    project.layout.projectDirectory.file(
+        "src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.metadata.json",
     )
 
 dependencies {
@@ -34,17 +45,36 @@ tasks.named<ProcessResources>("processResources") {
 tasks.register<JavaExec>("refreshProtectedBookFixture") {
     group = "verification"
     description = "Regenerates the committed protected-book compatibility fixture and metadata."
-    dependsOn(tasks.named("testClasses"))
-    classpath = sourceSets["test"].runtimeClasspath
+    classpath =
+        files(
+            sourceSets["test"].output.classesDirs,
+            sourceSets["testFixtures"].output,
+            sourceSets["main"].output,
+            configurations.testRuntimeClasspath,
+        )
     mainClass.set("dev.erst.fingrind.sqlite.SqliteProtectedBookFixtureGenerator")
     args(
-        project.layout.projectDirectory
-            .file("src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite")
-            .asFile
-            .absolutePath,
-        project.layout.projectDirectory
-            .file("src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.metadata.json")
-            .asFile
-            .absolutePath,
+        protectedBookFixturePath.asFile.absolutePath,
+        protectedBookFixtureMetadataPath.asFile.absolutePath,
     )
+}
+
+val stageRefreshedProtectedBookFixtureForTestRuntime =
+    tasks.register<Sync>("stageRefreshedProtectedBookFixtureForTestRuntime") {
+        dependsOn(tasks.named("processTestResources"))
+        mustRunAfter(tasks.named("refreshProtectedBookFixture"))
+        from(protectedBookFixturePath, protectedBookFixtureMetadataPath)
+        into(layout.buildDirectory.dir("resources/test/dev/erst/fingrind/sqlite/fixtures"))
+    }
+
+tasks.named("refreshProtectedBookFixture") {
+    finalizedBy(stageRefreshedProtectedBookFixtureForTestRuntime)
+}
+
+tasks.named<Test>("test") {
+    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
+}
+
+tasks.named<Pmd>("pmdTest") {
+    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
 }

@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
-import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.runtime.BookInspection;
@@ -29,8 +28,10 @@ final class CliQueryOutputRenderer {
     return CliAccountPageOutputRenderer.renderCsv(page);
   }
 
-  static String renderPostingHuman(PostingFact postingFact) {
-    return CliPostingOutputRenderer.renderPostingHuman(postingFact);
+  static String renderPostingHuman(
+      dev.erst.fingrind.core.BookIdentity bookIdentity,
+      dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact) {
+    return CliPostingOutputRenderer.renderPostingHuman(bookIdentity, postingFact);
   }
 
   static String renderPostingRegisterHuman(PostingPage page) {

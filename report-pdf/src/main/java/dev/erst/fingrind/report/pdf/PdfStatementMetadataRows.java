@@ -18,8 +18,29 @@ final class PdfStatementMetadataRows {
     Objects.requireNonNull(rows, "rows");
     List<List<String>> statementRows = new ArrayList<>();
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
+    statementRows.add(
+        List.of(
+            "Entity profile",
+            PdfValueFormatter.displayEntityProfile(
+                bookIdentity.entityProfile().entityForm(),
+                bookIdentity.entityProfile().ownerModel())));
+    statementRows.add(
+        List.of(
+            "Reporting profile",
+            PdfValueFormatter.displayReportingProfile(
+                bookIdentity.entityProfile().reportingObligationStatus(),
+                bookIdentity.entityProfile().taxRegistrationStatus())));
+    statementRows.add(
+        List.of(
+            "Business activity",
+            PdfValueFormatter.displayBusinessActivityTags(
+                bookIdentity.entityProfile().businessActivityTags())));
     statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    statementRows.add(
+        List.of(
+            "Accounting basis",
+            PdfValueFormatter.displayAccountingBasis(bookIdentity.accountingBasis())));
     statementRows.add(
         List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
     statementRows.addAll(rows);

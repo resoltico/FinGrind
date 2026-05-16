@@ -6,11 +6,17 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -73,6 +79,76 @@ final class CliArgumentValueParser {
           optionName,
           Objects.requireNonNullElse(
               exception.getMessage(), "Option must use MM-DD for " + optionName + "."),
+          exception);
+    }
+  }
+
+  static EntityForm parseEntityFormOption(String rawValue, String optionName) {
+    try {
+      return EntityForm.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported entity form."),
+          exception);
+    }
+  }
+
+  static OwnerModel parseOwnerModelOption(String rawValue, String optionName) {
+    try {
+      return OwnerModel.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported owner model."),
+          exception);
+    }
+  }
+
+  static ReportingObligationStatus parseReportingObligationStatusOption(
+      String rawValue, String optionName) {
+    try {
+      return ReportingObligationStatus.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(), "Unsupported reporting obligation status."),
+          exception);
+    }
+  }
+
+  static TaxRegistrationStatus parseTaxRegistrationStatusOption(
+      String rawValue, String optionName) {
+    try {
+      return TaxRegistrationStatus.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(), "Unsupported tax registration status."),
+          exception);
+    }
+  }
+
+  static AccountingBasis parseAccountingBasisOption(String rawValue, String optionName) {
+    try {
+      return AccountingBasis.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported accounting basis."),
+          exception);
+    }
+  }
+
+  static BusinessActivityTag parseBusinessActivityTagOption(String rawValue, String optionName) {
+    try {
+      return new BusinessActivityTag(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported business activity tag."),
           exception);
     }
   }
@@ -255,7 +331,7 @@ final class CliArgumentValueParser {
   }
 
   static OutputMode resolvedDiscoveryOutputMode(@Nullable OutputMode outputMode) {
-    return resolvedOutputMode(outputMode);
+    return CliOutputModeDefaults.resolvedDiscovery(outputMode);
   }
 
   static CliCommand.ReportOutput resolvedReportOutput(

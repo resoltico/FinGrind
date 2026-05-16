@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -13,7 +15,8 @@ public record ChangesInEquityRow(
     String lineName,
     Optional<AccountType> lineType,
     Optional<AccountRole> lineRole,
-    boolean synthetic,
+    FinancialPositionLineClassification lineClassification,
+    StatementLineKind lineKind,
     CurrencyBalance openingBalance,
     CurrencyBalance movement,
     CurrencyBalance closingBalance) {
@@ -23,6 +26,8 @@ public record ChangesInEquityRow(
     lineName = ContractDescriptorValidation.requireText(lineName, "lineName");
     lineType = ContractDescriptorValidation.requireValue(lineType, "lineType");
     lineRole = ContractDescriptorValidation.requireValue(lineRole, "lineRole");
+    Objects.requireNonNull(lineClassification, "lineClassification");
+    Objects.requireNonNull(lineKind, "lineKind");
     Objects.requireNonNull(openingBalance, "openingBalance");
     Objects.requireNonNull(movement, "movement");
     Objects.requireNonNull(closingBalance, "closingBalance");

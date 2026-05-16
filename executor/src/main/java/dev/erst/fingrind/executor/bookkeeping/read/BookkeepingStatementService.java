@@ -9,6 +9,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
@@ -24,7 +25,9 @@ import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.bookkeeping.policy.DerivedEquityLine;
+import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,27 +47,36 @@ final class BookkeepingStatementService {
   static final Comparator<CurrencyBalance> BALANCE_ORDER =
       Comparator.comparing(balance -> balance.netAmount().currencyUnit().code());
   static final Comparator<FinancialPositionRowView> FINANCIAL_POSITION_ROW_ORDER =
-      Comparator.comparing(FinancialPositionRowView::synthetic)
+      Comparator.comparing(FinancialPositionRowView::lineKind)
+          .thenComparing(FinancialPositionRowView::lineClassification)
           .thenComparing(FinancialPositionRowView::lineCode)
           .thenComparing(row -> row.balance().netAmount().currencyUnit().code());
   static final Comparator<IncomeStatementRowView> INCOME_STATEMENT_ROW_ORDER =
-      Comparator.comparing(IncomeStatementRowView::synthetic)
+      Comparator.comparing(IncomeStatementRowView::lineKind)
+          .thenComparing(IncomeStatementRowView::lineClassification)
           .thenComparing(IncomeStatementRowView::lineCode)
           .thenComparing(row -> row.movement().netAmount().currencyUnit().code());
   static final Comparator<ChangesInEquityRowView> CHANGES_IN_EQUITY_ROW_ORDER =
-      Comparator.comparing(ChangesInEquityRowView::synthetic)
+      Comparator.comparing(ChangesInEquityRowView::lineKind)
+          .thenComparing(ChangesInEquityRowView::lineClassification)
           .thenComparing(ChangesInEquityRowView::lineCode)
           .thenComparing(row -> row.closingBalance().netAmount().currencyUnit().code());
 
-  private final BookStore bookStore;
+  private final BookLifecycleReader lifecycleReader;
+  private final BookkeepingReportStore reportStore;
   private final BookkeepingPolicyPack policyPack;
 
-  BookkeepingStatementService(BookStore bookStore) {
-    this(bookStore, CoreBookkeepingPolicyPack.current());
+  BookkeepingStatementService(
+      BookLifecycleReader lifecycleReader, BookkeepingReportStore reportStore) {
+    this(lifecycleReader, reportStore, CoreBookkeepingPolicyPack.current());
   }
 
-  BookkeepingStatementService(BookStore bookStore, BookkeepingPolicyPack policyPack) {
-    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+  BookkeepingStatementService(
+      BookLifecycleReader lifecycleReader,
+      BookkeepingReportStore reportStore,
+      BookkeepingPolicyPack policyPack) {
+    this.lifecycleReader = Objects.requireNonNull(lifecycleReader, "lifecycleReader");
+    this.reportStore = Objects.requireNonNull(reportStore, "reportStore");
     this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
   }
 
@@ -78,14 +90,17 @@ final class BookkeepingStatementService {
             .comparativeAsOf(bookIdentity, criteria.effectiveDateTo());
     List<FinancialPositionSectionView> sections =
         financialPositionSections(
-            bookStore.accountTotals(
-                EffectiveDateRange.of(null, criteria.effectiveDateTo().orElse(null)),
+            reportStore.accountTotals(
+                criteria
+                    .effectiveDateTo()
+                    .<EffectiveDateRange>map(EffectiveDateRange::to)
+                    .orElseGet(EffectiveDateRange::unbounded),
                 postingCoverage));
     List<FinancialPositionSectionView> comparativeSections =
         comparativeRange.effectiveDateTo().isPresent()
             ? financialPositionSections(
-                bookStore.accountTotals(
-                    EffectiveDateRange.of(null, comparativeRange.effectiveDateTo().orElseThrow()),
+                reportStore.accountTotals(
+                    EffectiveDateRange.to(comparativeRange.effectiveDateTo().orElseThrow()),
                     postingCoverage))
             : List.of();
     return new FinancialPositionView(
@@ -108,11 +123,11 @@ final class BookkeepingStatementService {
                 bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
     IncomeStatementSnapshot currentSnapshot =
         incomeStatementSnapshot(
-            bookStore.accountTotals(
+            reportStore.accountTotals(
                 EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
                 postingCoverage));
     IncomeStatementSnapshot comparativeSnapshot =
-        incomeStatementSnapshot(bookStore.accountTotals(comparativeRange, postingCoverage));
+        incomeStatementSnapshot(reportStore.accountTotals(comparativeRange, postingCoverage));
     return new IncomeStatementView(
         bookIdentity,
         criteria.effectiveDateFrom(),
@@ -162,7 +177,7 @@ final class BookkeepingStatementService {
       List<AccountCurrencyTotals> accountTotals) {
     IncomeStatementRows rowsByType = new IncomeStatementRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
-      if (!AccountSemantics.closesIntoRetainedEarnings(accountTotal.account().accountType())) {
+      if (!policyPack.closePolicy().closesAccountType(accountTotal.account().accountType())) {
         continue;
       }
       rowsByType.add(accountTotal.account().accountType(), incomeStatementRow(accountTotal));
@@ -178,20 +193,23 @@ final class BookkeepingStatementService {
 
   private ChangesInEquitySnapshot changesInEquitySnapshot(
       LocalDate effectiveDateFrom, LocalDate effectiveDateTo, PostingCoverage postingCoverage) {
+    BookIdentity bookIdentity = bookIdentity();
     LocalDate dayBefore = effectiveDateFrom.minusDays(1);
     List<AccountCurrencyTotals> openingTotals =
-        bookStore.accountTotals(EffectiveDateRange.of(null, dayBefore), postingCoverage);
+        reportStore.accountTotals(EffectiveDateRange.to(dayBefore), postingCoverage);
     List<AccountCurrencyTotals> movementTotals =
-        bookStore.accountTotals(
+        reportStore.accountTotals(
             EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), postingCoverage);
     List<AccountCurrencyTotals> closingTotals =
-        bookStore.accountTotals(EffectiveDateRange.of(null, effectiveDateTo), postingCoverage);
+        reportStore.accountTotals(EffectiveDateRange.to(effectiveDateTo), postingCoverage);
     Map<AccountCurrencyKey, AccountCurrencyTotals> openingTotalsByKey =
         indexAccountTotals(openingTotals);
     Map<AccountCurrencyKey, AccountCurrencyTotals> movementTotalsByKey =
         indexAccountTotals(movementTotals);
     Map<AccountCurrencyKey, AccountCurrencyTotals> closingTotalsByKey =
         indexAccountTotals(closingTotals);
+    DerivedEquityLine currentPeriodResultLine =
+        policyPack.statementPresentationPolicy().currentPeriodResultLine(bookIdentity);
 
     List<ChangesInEquityRowView> rows = new ArrayList<>();
     for (AccountCurrencyKey key :
@@ -214,7 +232,8 @@ final class BookkeepingStatementService {
               account.accountName().value(),
               Optional.of(account.accountType()),
               Optional.of(account.accountRole()),
-              false,
+              account.accountTaxonomy().financialPositionLineClassification().orElseThrow(),
+              StatementLineKind.DECLARED_ACCOUNT,
               balanceOrZero(openingTotal, key.currencyUnit()),
               balanceOrZero(movementTotal, key.currencyUnit()),
               balanceOrZero(closingTotal, key.currencyUnit())));
@@ -229,11 +248,12 @@ final class BookkeepingStatementService {
               long closing = closingCurrentEarnings.getOrDefault(currencyUnit, 0L);
               rows.add(
                   new ChangesInEquityRowView(
-                      "current-earnings",
-                      "Current Earnings",
+                      currentPeriodResultLine.lineCode(),
+                      currentPeriodResultLine.lineName(),
                       Optional.empty(),
                       Optional.empty(),
-                      true,
+                      currentPeriodResultLine.lineClassification(),
+                      StatementLineKind.CURRENT_PERIOD_RESULT,
                       signedBalance(currencyUnit, opening),
                       signedBalance(currencyUnit, Math.subtractExact(closing, opening)),
                       signedBalance(currencyUnit, closing)));
@@ -248,7 +268,7 @@ final class BookkeepingStatementService {
   }
 
   private BookIdentity bookIdentity() {
-    return switch (bookStore.inspectBook()) {
+    return switch (lifecycleReader.inspectBook()) {
       case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized ->
           initialized.bookIdentity();
       case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing _ ->
@@ -258,8 +278,10 @@ final class BookkeepingStatementService {
     };
   }
 
-  private static List<FinancialPositionSectionView> financialPositionSections(
+  private List<FinancialPositionSectionView> financialPositionSections(
       List<AccountCurrencyTotals> accountTotals) {
+    DerivedEquityLine currentPeriodResultLine =
+        policyPack.statementPresentationPolicy().currentPeriodResultLine(bookIdentity());
     FinancialPositionRows rowsByType = new FinancialPositionRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       if (!isFinancialPositionAccount(accountTotal.account().accountType())) {
@@ -272,7 +294,8 @@ final class BookkeepingStatementService {
             (currencyUnit, signedMinorUnits) ->
                 rowsByType.add(
                     AccountType.EQUITY,
-                    currentEarningsFinancialPositionRow(currencyUnit, signedMinorUnits)));
+                    currentEarningsFinancialPositionRow(
+                        currentPeriodResultLine, currencyUnit, signedMinorUnits)));
     List<FinancialPositionSectionView> sections =
         rowsByType.sections(List.of(AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY));
     assertAccountingEquation(sections);
@@ -312,18 +335,24 @@ final class BookkeepingStatementService {
         accountTotal.account().accountName().value(),
         accountTotal.account().accountType(),
         Optional.of(accountTotal.account().accountRole()),
-        false,
+        accountTotal
+            .account()
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .orElseThrow(),
+        StatementLineKind.DECLARED_ACCOUNT,
         accountTotal.balance());
   }
 
   private static FinancialPositionRowView currentEarningsFinancialPositionRow(
-      CurrencyUnit currencyUnit, long signedMinorUnits) {
+      DerivedEquityLine currentPeriodResultLine, CurrencyUnit currencyUnit, long signedMinorUnits) {
     return new FinancialPositionRowView(
-        "current-earnings",
-        "Current Earnings",
+        currentPeriodResultLine.lineCode(),
+        currentPeriodResultLine.lineName(),
         AccountType.EQUITY,
         Optional.empty(),
-        true,
+        currentPeriodResultLine.lineClassification(),
+        StatementLineKind.CURRENT_PERIOD_RESULT,
         signedBalance(currencyUnit, signedMinorUnits));
   }
 
@@ -333,16 +362,17 @@ final class BookkeepingStatementService {
         accountTotal.account().accountName().value(),
         accountTotal.account().accountType(),
         Optional.of(accountTotal.account().accountRole()),
-        false,
+        accountTotal.account().accountTaxonomy().profitAndLossLineClassification().orElseThrow(),
+        StatementLineKind.DECLARED_ACCOUNT,
         accountTotal.balance());
   }
 
-  private static Map<CurrencyUnit, Long> profitAndLossContributionMap(
+  private Map<CurrencyUnit, Long> profitAndLossContributionMap(
       List<AccountCurrencyTotals> accountTotals) {
     CurrencyContributionAccumulator contributions = new CurrencyContributionAccumulator();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       RegisteredAccount account = accountTotal.account();
-      if (!AccountSemantics.closesIntoRetainedEarnings(account.accountType())) {
+      if (!policyPack.closePolicy().closesAccountType(account.accountType())) {
         continue;
       }
       CurrencyBalance balance = accountTotal.balance();

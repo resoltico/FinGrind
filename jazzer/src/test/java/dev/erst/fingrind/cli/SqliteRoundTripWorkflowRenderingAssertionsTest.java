@@ -15,7 +15,17 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.OwnerModel;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -23,6 +33,19 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class SqliteRoundTripWorkflowRenderingAssertionsTest {
+  private static final BookIdentity BOOK_IDENTITY =
+      new BookIdentity(
+          new EntityProfile(
+              new BookEntityName("Acme Studio"),
+              EntityForm.COMPANY,
+              OwnerModel.MULTI_OWNER,
+              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+              TaxRegistrationStatus.UNSPECIFIED,
+              List.of()),
+          CurrencyUnit.of("EUR"),
+          FiscalYearStart.parse("01-01"),
+          AccountingBasis.ACCRUAL);
+
   @Test
   void rendering_helpers_cover_blank_csv_json_and_fragment_guards() {
     assertThrows(
@@ -59,7 +82,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                 () ->
                     ContractDecision.accepted(
                         new ListAccountsResult.Listed(
-                            new AccountPage(List.of(), 50, Optional.empty()))),
+                            new AccountPage(BOOK_IDENTITY, List.of(), 50, Optional.empty()))),
                 OutputMode.JSON,
                 SqliteRoundTripWorkflowRenderingAssertions::writeListAccountsJson,
                 null));

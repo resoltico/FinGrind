@@ -9,10 +9,13 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link RejectionNarrative}. */
@@ -40,17 +43,39 @@ class RejectionNarrativeTest {
             .contains("1000"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                new BookAdministrationRejection.AccountTaxonomyConflict(
+                    new AccountCode("1000"),
+                    new AccountTaxonomy(
+                        Optional.of(new AccountCode("3000")),
+                        Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty()),
+                    new AccountTaxonomy(
+                        Optional.of(new AccountCode("3010")),
+                        Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                        Optional.empty())))
+            .contains("immutable hierarchy or statement taxonomy"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ClosingEquityAccountMissing(
                     new AccountCode("3200")))
-            .contains("Retained-earnings account"));
+            .contains("Closing-equity account"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-                    new AccountCode("3200"), AccountRole.ORDINARY))
-            .contains("ORDINARY"));
+                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+                    new AccountCode("3200"),
+                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.OTHER_EQUITY))
+            .contains("OTHER_EQUITY"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.RetainedEarningsAccountInactive(
+                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+                    new AccountCode("3200"),
+                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.OTHER_EQUITY))
+            .contains("RETAINED_EARNINGS"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ClosingEquityAccountInactive(
                     new AccountCode("3900")))
             .contains("3900"));
     assertTrue(
@@ -129,7 +154,7 @@ class RejectionNarrativeTest {
             .contains("4000"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3900")))
+                new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3900")))
             .contains("3900"));
     assertTrue(
         RejectionNarrative.message(

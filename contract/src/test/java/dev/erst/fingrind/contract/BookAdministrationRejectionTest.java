@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link BookAdministrationRejection}. */
@@ -19,9 +22,10 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-role-conflict",
-            "retained-earnings-account-missing",
-            "retained-earnings-account-role-mismatch",
-            "retained-earnings-account-inactive",
+            "account-taxonomy-conflict",
+            "closing-equity-account-missing",
+            "closing-equity-account-classification-mismatch",
+            "closing-equity-account-inactive",
             "period-close-must-start-at",
             "period-close-future-date",
             "period-close-crosses-fiscal-year-boundary"),
@@ -43,14 +47,26 @@ class BookAdministrationRejectionTest {
                     dev.erst.fingrind.core.AccountRole.ORDINARY,
                     dev.erst.fingrind.core.AccountRole.CONTRA)),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                new BookAdministrationRejection.AccountTaxonomyConflict(
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    new AccountTaxonomy(
+                        Optional.empty(),
+                        Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty()),
+                    new AccountTaxonomy(
+                        Optional.empty(),
+                        Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                        Optional.empty()))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.ClosingEquityAccountMissing(
                     new dev.erst.fingrind.core.AccountCode("3000"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
+                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
                     new dev.erst.fingrind.core.AccountCode("3000"),
-                    dev.erst.fingrind.core.AccountRole.ORDINARY)),
+                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.OTHER_EQUITY)),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.RetainedEarningsAccountInactive(
+                new BookAdministrationRejection.ClosingEquityAccountInactive(
                     new dev.erst.fingrind.core.AccountCode("3000"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.PeriodCloseMustStartAt(
@@ -74,9 +90,10 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-role-conflict",
-            "retained-earnings-account-missing",
-            "retained-earnings-account-role-mismatch",
-            "retained-earnings-account-inactive",
+            "account-taxonomy-conflict",
+            "closing-equity-account-missing",
+            "closing-equity-account-classification-mismatch",
+            "closing-equity-account-inactive",
             "period-close-must-start-at",
             "period-close-future-date",
             "period-close-crosses-fiscal-year-boundary"),

@@ -434,6 +434,136 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void readLedgerPlan_treatsMissingAndExplicitNullBusinessActivityTagsAsEmpty() {
+    CliRequestReader missingFieldReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+    CliRequestReader explicitNullReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "businessActivityTags": null,
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    LedgerPlan missingFieldPlan = missingFieldReader.readLedgerPlan(Path.of("-"));
+    LedgerPlan explicitNullPlan = explicitNullReader.readLedgerPlan(Path.of("-"));
+
+    assertTrue(
+        ((LedgerStep.OpenBook) missingFieldPlan.steps().getFirst())
+            .command()
+            .bookIdentity()
+            .entityProfile()
+            .businessActivityTags()
+            .isEmpty());
+    assertTrue(
+        ((LedgerStep.OpenBook) explicitNullPlan.steps().getFirst())
+            .command()
+            .bookIdentity()
+            .entityProfile()
+            .businessActivityTags()
+            .isEmpty());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsMalformedBusinessActivityTags() {
+    CliRequestReader nonArrayReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "businessActivityTags": "translation-services",
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+    CliRequestReader nonStringElementReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "businessActivityTags": ["translation-services", 2],
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException nonArrayException =
+        assertThrows(CliRequestException.class, () -> nonArrayReader.readLedgerPlan(Path.of("-")));
+    CliRequestException nonStringElementException =
+        assertThrows(
+            CliRequestException.class, () -> nonStringElementReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Field must be an array when present: businessActivityTags",
+        nonArrayException.getMessage());
+    assertEquals(
+        "Field must contain only strings: businessActivityTags[1]",
+        nonStringElementException.getMessage());
+  }
+
+  @Test
   void requiredInt_rejectsMissingField() throws IOException {
     var rootNode =
         CliJsonFieldAccess.requireRootObject(

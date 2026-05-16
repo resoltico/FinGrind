@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -79,7 +79,7 @@ The bookkeeping context lives across:
 This context owns:
 - account declaration and reactivation semantics
 - account classification through `AccountType`
-- the current flat-chart and opaque-account-code policy through `AccountCodePolicy`
+- the current hierarchical-chart and opaque-account-code policy through `AccountCodePolicy`
 - posting acceptance rules
 - local book lifecycle inspection snapshots and local query/commit rejection families
 - committed posting shape used inside execution and storage
@@ -102,9 +102,12 @@ Current account-registry policy:
 - `AccountType` is first-class and immutable after first declaration
 - `NormalBalance` is also immutable after first declaration
 - account codes are opaque book-local identifiers, not semantic numeric ranges
-- the chart of accounts is flat; there is no parent-child account hierarchy in the current model
-- no built-in reporting taxonomy maps accounts into current/non-current, liquidity, operational,
-  or group-reporting presentation buckets today
+- declared accounts may carry parent-child hierarchy through `AccountTaxonomy.parentAccountCode()`
+- declared accounts carry first-class statement taxonomy through
+  `financialPositionLineClassification` or `profitAndLossLineClassification`
+- built-in reporting now carries current/non-current and profit-and-loss taxonomy for the current
+  internal statement set, while richer disclosure and external presentation contexts remain
+  separate work
 
 Exact money belongs in that shared kernel. Future tax rates, exchange rates, percentages, and
 other non-money decimal factors do not. When those domains arrive, they must enter as separate

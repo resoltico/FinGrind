@@ -49,8 +49,10 @@ final class ProtocolWriteOperations {
             "Validate one posting request without committing it.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s > request.json"
-                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                    "fingrind %s %s > request.json"
+                        .formatted(
+                            OperationId.PRINT_REQUEST_TEMPLATE.wireName(),
+                            OperationId.PREFLIGHT_ENTRY.wireName())),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
                         .formatted(
@@ -75,8 +77,10 @@ final class ProtocolWriteOperations {
             "Commit one posting request into the selected SQLite book.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s > request.json"
-                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                    "fingrind %s %s > request.json"
+                        .formatted(
+                            OperationId.PRINT_REQUEST_TEMPLATE.wireName(),
+                            OperationId.POST_ENTRY.wireName())),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
                         .formatted(

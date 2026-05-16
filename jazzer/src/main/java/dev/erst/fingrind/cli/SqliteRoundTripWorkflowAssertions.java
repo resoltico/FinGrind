@@ -77,10 +77,8 @@ public final class SqliteRoundTripWorkflowAssertions {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(postingFactStore);
       PostingApplicationService applicationService =
-          new PostingApplicationService(
-              postingFactStore,
-              CliFuzzFixtures.postingIdGenerator(input),
-              CliFuzzFixtures.fixedClock());
+          CliFuzzFixtures.postingApplicationService(
+              postingFactStore, postingFactStore, CliFuzzFixtures.postingIdGenerator(input));
 
       PostingLifecycleStatus uninitializedCommitStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
@@ -156,10 +154,8 @@ public final class SqliteRoundTripWorkflowAssertions {
           postingFact, committed, command);
 
       PostingApplicationService duplicateService =
-          new PostingApplicationService(
-              reloadedStore,
-              CliFuzzFixtures.postingIdGenerator(input),
-              CliFuzzFixtures.fixedClock());
+          CliFuzzFixtures.postingApplicationService(
+              reloadedStore, reloadedStore, CliFuzzFixtures.postingIdGenerator(input));
       PostingLifecycleStatus duplicateStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.requireDuplicateRejection(
               CliFuzzFixtures.commit(duplicateService, command));

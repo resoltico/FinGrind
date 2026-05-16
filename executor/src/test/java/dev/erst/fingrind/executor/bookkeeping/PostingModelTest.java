@@ -46,27 +46,12 @@ class PostingModelTest {
     ReversalReason reversalReason = new ReversalReason("customer reversal");
     RequestProvenance requestProvenance = requestProvenance("idem-1");
     PostingRequestModel request =
-        new PostingRequestModel() {
-          @Override
-          public JournalEntry journalEntry() {
-            return testJournalEntry();
-          }
-
-          @Override
-          public PostingKind postingKind() {
-            return PostingKind.STANDARD;
-          }
-
-          @Override
-          public PostingLineageModel postingLineage() {
-            return PostingLineageModel.reversal(reversalReference, reversalReason);
-          }
-
-          @Override
-          public RequestProvenance requestProvenance() {
-            return requestProvenance;
-          }
-        };
+        new PostingCommand(
+            PostingKind.STANDARD,
+            testJournalEntry(),
+            PostingLineageModel.reversal(reversalReference, reversalReason),
+            requestProvenance,
+            dev.erst.fingrind.core.SourceChannel.CLI);
 
     assertEquals(Optional.of(reversalReference), request.reversalReference());
     assertEquals(Optional.of(reversalReason), request.reversalReason());

@@ -13,7 +13,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -156,8 +156,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  ((BookStore) postingFactStore)
-                      .trialBalance(trialBalanceCriteria(Optional.empty())));
+                  readView(postingFactStore).trialBalance(trialBalanceCriteria(Optional.empty())));
       assertTrue(
           NullTestSupport.messageOf(readTrialBalanceFailure)
               .contains("Failed to query SQLite book."));
@@ -165,7 +164,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  ((BookStore) postingFactStore)
+                  readView(postingFactStore)
                       .accountLedger(
                           AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       assertTrue(
@@ -175,7 +174,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  ((BookStore) postingFactStore)
+                  readView(postingFactStore)
                       .periodSummary(
                           new PeriodSummaryCriteria(
                               LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
@@ -331,5 +330,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       assertTrue(NullTestSupport.messageOf(exception).contains("Failed to query SQLite book."));
       setStoreDatabase(postingFactStore, null);
     }
+  }
+
+  private static BookkeepingReadStore readView(SqlitePostingFactStore postingFactStore) {
+    return postingFactStore;
   }
 }

@@ -25,20 +25,20 @@ public final class BookWorkflowPublishedLanguageTranslator {
   public static BookWorkflowPlan fromPublished(LedgerPlan plan) {
     Objects.requireNonNull(plan, "plan");
     return new BookWorkflowPlan(
-        plan.planId().value(),
+        fromPublished(plan.planId()),
         plan.steps().stream().map(BookWorkflowPublishedLanguageTranslator::fromPublished).toList());
   }
 
   /** Translates one workflow plan identifier into the public contract wrapper. */
-  public static LedgerPlanId toPublishedPlanId(String planId) {
+  public static LedgerPlanId toPublishedPlanId(BookWorkflowPlanId planId) {
     Objects.requireNonNull(planId, "planId");
-    return new LedgerPlanId(planId);
+    return new LedgerPlanId(planId.value());
   }
 
   /** Translates one internal workflow step identifier into the public contract wrapper. */
-  public static LedgerStepId toPublishedStepId(String stepId) {
+  public static LedgerStepId toPublishedStepId(BookWorkflowStepId stepId) {
     Objects.requireNonNull(stepId, "stepId");
-    return new LedgerStepId(stepId);
+    return new LedgerStepId(stepId.value());
   }
 
   /** Projects one internal workflow journal descriptor into the public journal-step identity. */
@@ -162,40 +162,51 @@ public final class BookWorkflowPublishedLanguageTranslator {
     return switch (step) {
       case LedgerStep.OpenBook openBook ->
           new BookWorkflowStep.OpenBook(
-              openBook.stepId().value(),
+              fromPublished(openBook.stepId()),
               BookkeepingPublishedLanguageTranslator.fromPublished(openBook.command()));
       case LedgerStep.DeclareAccount declareAccount ->
           new BookWorkflowStep.DeclareAccount(
-              declareAccount.stepId().value(),
+              fromPublished(declareAccount.stepId()),
               BookkeepingPublishedLanguageTranslator.fromPublished(declareAccount.command()));
       case LedgerStep.PreflightEntry preflightEntry ->
           new BookWorkflowStep.PreflightEntry(
-              preflightEntry.stepId().value(),
+              fromPublished(preflightEntry.stepId()),
               BookkeepingPublishedLanguageTranslator.fromPublished(preflightEntry.command()));
       case LedgerStep.PostEntry postEntry ->
           new BookWorkflowStep.PostEntry(
-              postEntry.stepId().value(),
+              fromPublished(postEntry.stepId()),
               BookkeepingPublishedLanguageTranslator.fromPublished(postEntry.command()));
       case LedgerStep.InspectBook inspectBook ->
-          new BookWorkflowStep.InspectBook(inspectBook.stepId().value());
+          new BookWorkflowStep.InspectBook(fromPublished(inspectBook.stepId()));
       case LedgerStep.ListAccounts listAccounts ->
           new BookWorkflowStep.ListAccounts(
-              listAccounts.stepId().value(),
+              fromPublished(listAccounts.stepId()),
               BookkeepingReadPublishedLanguageTranslator.fromPublished(listAccounts.query()));
       case LedgerStep.GetPosting getPosting ->
-          new BookWorkflowStep.GetPosting(getPosting.stepId().value(), getPosting.postingId());
+          new BookWorkflowStep.GetPosting(
+              fromPublished(getPosting.stepId()), getPosting.postingId());
       case LedgerStep.ListPostings listPostings ->
           new BookWorkflowStep.ListPostings(
-              listPostings.stepId().value(),
+              fromPublished(listPostings.stepId()),
               BookkeepingReadPublishedLanguageTranslator.fromPublished(listPostings.query()));
       case LedgerStep.AccountBalance accountBalance ->
           new BookWorkflowStep.AccountBalance(
-              accountBalance.stepId().value(),
+              fromPublished(accountBalance.stepId()),
               BookkeepingReadPublishedLanguageTranslator.fromPublished(accountBalance.query()));
       case LedgerStep.Assert assertion ->
           new BookWorkflowStep.Assert(
-              assertion.stepId().value(), fromPublished(assertion.assertion()));
+              fromPublished(assertion.stepId()), fromPublished(assertion.assertion()));
     };
+  }
+
+  private static BookWorkflowPlanId fromPublished(LedgerPlanId planId) {
+    Objects.requireNonNull(planId, "planId");
+    return new BookWorkflowPlanId(planId.value());
+  }
+
+  private static BookWorkflowStepId fromPublished(LedgerStepId stepId) {
+    Objects.requireNonNull(stepId, "stepId");
+    return new BookWorkflowStepId(stepId.value());
   }
 
   private static BookWorkflowAssertion fromPublished(LedgerAssertion assertion) {

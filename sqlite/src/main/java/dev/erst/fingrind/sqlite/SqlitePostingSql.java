@@ -14,8 +14,14 @@ import java.util.List;
 final class SqlitePostingSql {
   static final String INITIALIZED_AT_META_KEY = "initialized_at";
   static final String BOOK_ENTITY_NAME_META_KEY = "entity_name";
+  static final String BOOK_ENTITY_FORM_META_KEY = "entity_form";
+  static final String BOOK_OWNER_MODEL_META_KEY = "owner_model";
+  static final String BOOK_REPORTING_OBLIGATION_STATUS_META_KEY = "reporting_obligation_status";
+  static final String BOOK_TAX_REGISTRATION_STATUS_META_KEY = "tax_registration_status";
+  static final String BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY = "business_activity_tags";
   static final String BOOK_FUNCTIONAL_CURRENCY_META_KEY = "functional_currency_code";
   static final String BOOK_FISCAL_YEAR_START_META_KEY = "fiscal_year_start";
+  static final String BOOK_ACCOUNTING_BASIS_META_KEY = "accounting_basis";
   static final String SCHEMA_FINGERPRINT_META_KEY = "schema_fingerprint_sha256";
 
   static final int COL_POSTING_ID = 0;
@@ -41,15 +47,18 @@ final class SqlitePostingSql {
   static final int COL_ACCOUNT_NAME = 1;
   static final int COL_ACCOUNT_TYPE = 2;
   static final int COL_ACCOUNT_ROLE = 3;
-  static final int COL_ACCOUNT_ACTIVE = 4;
-  static final int COL_ACCOUNT_DECLARED_AT = 5;
-  static final int COL_REPORT_POSTING_ID = 6;
-  static final int COL_REPORT_ENTRY_SIDE = 7;
-  static final int COL_REPORT_CURRENCY_CODE = 8;
-  static final int COL_REPORT_AMOUNT_MINOR = 9;
-  static final int COL_TOTAL_CURRENCY_CODE = 6;
-  static final int COL_TOTAL_DEBIT_MINOR = 7;
-  static final int COL_TOTAL_CREDIT_MINOR = 8;
+  static final int COL_ACCOUNT_PARENT_ACCOUNT_CODE = 4;
+  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION = 5;
+  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION = 6;
+  static final int COL_ACCOUNT_ACTIVE = 7;
+  static final int COL_ACCOUNT_DECLARED_AT = 8;
+  static final int COL_REPORT_POSTING_ID = 9;
+  static final int COL_REPORT_ENTRY_SIDE = 10;
+  static final int COL_REPORT_CURRENCY_CODE = 11;
+  static final int COL_REPORT_AMOUNT_MINOR = 12;
+  static final int COL_TOTAL_CURRENCY_CODE = 9;
+  static final int COL_TOTAL_DEBIT_MINOR = 10;
+  static final int COL_TOTAL_CREDIT_MINOR = 11;
 
   private static final String BASE_POSTING_SELECT =
       """
@@ -77,6 +86,9 @@ final class SqlitePostingSql {
           account_name,
           account_type,
           account_role,
+          parent_account_code,
+          financial_position_line_classification,
+          profit_and_loss_line_classification,
           active,
           declared_at
       from account
@@ -211,6 +223,9 @@ final class SqlitePostingSql {
           account.account_name,
           account.account_type,
           account.account_role,
+          account.parent_account_code,
+          account.financial_position_line_classification,
+          account.profit_and_loss_line_classification,
           account.active,
           account.declared_at,
           posting_fact.posting_id,
@@ -421,9 +436,12 @@ final class SqlitePostingSql {
           account_name,
           account_type,
           account_role,
+          parent_account_code,
+          financial_position_line_classification,
+          profit_and_loss_line_classification,
           active,
           declared_at
-      ) values (?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
           active = excluded.active,
@@ -519,8 +537,8 @@ final class SqlitePostingSql {
     return loadAccountTotals(
         query
             .effectiveDateTo()
-            .map(date -> EffectiveDateRange.of(null, date))
-            .orElseGet(() -> EffectiveDateRange.of(null, null)),
+            .map(EffectiveDateRange::to)
+            .orElseGet(EffectiveDateRange::unbounded),
         query.postingCoverage());
   }
 
@@ -535,6 +553,9 @@ final class SqlitePostingSql {
                     account.account_name,
                     account.account_type,
                     account.account_role,
+                    account.parent_account_code,
+                    account.financial_position_line_classification,
+                    account.profit_and_loss_line_classification,
                     account.active,
                     account.declared_at,
                     journal_line.currency_code,
@@ -561,6 +582,9 @@ final class SqlitePostingSql {
              account.account_name,
              account.account_type,
              account.account_role,
+             account.parent_account_code,
+             account.financial_position_line_classification,
+             account.profit_and_loss_line_classification,
              account.active,
              account.declared_at,
              journal_line.currency_code

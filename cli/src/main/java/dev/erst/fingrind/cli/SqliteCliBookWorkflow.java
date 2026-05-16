@@ -37,6 +37,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
+import dev.erst.fingrind.executor.PeriodCloseService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -108,11 +109,16 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, clock)
+                new PeriodCloseService(
+                        bookSession,
+                        bookSession,
+                        bookSession,
+                        bookSession,
+                        new UuidV7PostingIdGenerator(),
+                        clock)
                     .closePeriod(
                         BookkeepingPublishedLanguageTranslator.fromPublished(command),
-                        BookkeepingPublishedLanguageTranslator.retainedEarningsAccountCode(
-                            command))));
+                        BookkeepingPublishedLanguageTranslator.closingEquityAccountCode(command))));
   }
 
   @Override
@@ -234,7 +240,14 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             ? SqlitePassphraseIntent.NEW_SECRET
             : SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
+            new LedgerPlanService(
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    new UuidV7PostingIdGenerator(),
+                    clock)
                 .execute(plan));
   }
 
@@ -302,6 +315,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
 
   private static PostingApplicationService postingApplicationService(
       SqliteBookSession bookSession, Clock clock) {
-    return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
+    return new PostingApplicationService(
+        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock);
   }
 }

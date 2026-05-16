@@ -17,7 +17,6 @@ import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
-import java.time.Instant;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -74,9 +73,8 @@ class MachineContractPlanTemplateTest {
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.37.0", "test"),
-            ContractFixtures.environmentDescriptor(),
-            Instant.parse("2026-04-17T09:10:11Z"));
+            new ApplicationIdentity("FinGrind", "0.38.0", "test"),
+            ContractFixtures.environmentDescriptor());
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

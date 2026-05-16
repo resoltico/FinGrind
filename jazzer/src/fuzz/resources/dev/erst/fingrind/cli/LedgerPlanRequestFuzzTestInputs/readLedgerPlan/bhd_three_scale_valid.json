@@ -6,8 +6,10 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Plan Seed BHD",
+        "entityForm": "COMPANY",
         "functionalCurrency": "BHD",
-        "fiscalYearStart": "01-01"
+        "fiscalYearStart": "01-01",
+        "accountingBasis": "ACCRUAL"
       }
     },
     {
@@ -17,7 +19,9 @@
         "accountCode": "7120",
         "accountName": "Cash BHD Seed",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": "CURRENT_ASSET",
+        "profitAndLossLineClassification": null
       }
     },
     {
@@ -27,7 +31,9 @@
         "accountCode": "8120",
         "accountName": "Sales BHD Seed",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": null,
+        "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
     },
     {

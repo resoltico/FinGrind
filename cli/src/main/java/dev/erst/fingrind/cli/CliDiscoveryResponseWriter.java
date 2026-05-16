@@ -18,7 +18,9 @@ final class CliDiscoveryResponseWriter {
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
     outputMode.run(
         () ->
-            outputChannel.writePrettySuccess(CliDiscoveryPayloadMapper.helpPayload(helpDescriptor)),
+            outputChannel.writeEnvelope(
+                CliResponsePayloadMapper.successEnvelope(
+                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor))),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -28,7 +30,9 @@ final class CliDiscoveryResponseWriter {
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writePrettySuccess(capabilitiesDescriptor),
+        () ->
+            outputChannel.writeEnvelope(
+                CliResponsePayloadMapper.successEnvelope(capabilitiesDescriptor)),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderCapabilitiesHuman(capabilitiesDescriptor)),
@@ -40,7 +44,9 @@ final class CliDiscoveryResponseWriter {
 
   void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writePrettySuccess(versionDescriptor),
+        () ->
+            outputChannel.writeEnvelope(
+                CliResponsePayloadMapper.successEnvelope(versionDescriptor)),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderVersionHuman(versionDescriptor)),

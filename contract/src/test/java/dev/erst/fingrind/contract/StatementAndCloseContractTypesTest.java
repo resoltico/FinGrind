@@ -26,15 +26,17 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,12 +49,13 @@ class StatementAndCloseContractTypesTest {
   @Test
   void statementAndCloseContractTypes_preserveCanonicalPayloads() {
     FinancialPositionRow financialPositionRow =
-        new FinancialPositionRow(
+        ContractFixtures.financialPositionRow(
             "1000",
             "Cash",
             AccountType.ASSET,
             Optional.of(AccountRole.ORDINARY),
-            false,
+            FinancialPositionLineClassification.CURRENT_ASSET,
+            StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "15.00", "0.00"));
     FinancialPositionSection financialPositionSection =
         new FinancialPositionSection(
@@ -75,12 +78,13 @@ class StatementAndCloseContractTypesTest {
         new FinancialPositionResult.Rejected(financialPositionRejection);
 
     IncomeStatementRow incomeStatementRow =
-        new IncomeStatementRow(
+        ContractFixtures.incomeStatementRow(
             "4000",
             "Revenue",
             AccountType.REVENUE,
             Optional.of(AccountRole.ORDINARY),
-            false,
+            ProfitAndLossLineClassification.OPERATING_REVENUE,
+            StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "0.00", "10.00"));
     IncomeStatementSection incomeStatementSection =
         new IncomeStatementSection(
@@ -106,12 +110,13 @@ class StatementAndCloseContractTypesTest {
         new IncomeStatementResult.Rejected(incomeStatementRejection);
 
     ChangesInEquityRow changesRow =
-        new ChangesInEquityRow(
+        ContractFixtures.changesInEquityRow(
             "3000",
             "Owner Capital",
             Optional.of(AccountType.EQUITY),
             Optional.of(AccountRole.ORDINARY),
-            false,
+            FinancialPositionLineClassification.OWNER_CAPITAL,
+            StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "0.00", "100.00"),
             balance("EUR", "0.00", "10.00"),
             balance("EUR", "0.00", "110.00"));
@@ -156,9 +161,9 @@ class StatementAndCloseContractTypesTest {
         new ClosePeriodResult.Rejected(closePeriodRejection);
 
     DeclaredAccount declaredAccount =
-        new DeclaredAccount(
-            new AccountCode("1090"),
-            new AccountName("Accumulated Depreciation"),
+        ContractFixtures.declaredAccount(
+            "1090",
+            "Accumulated Depreciation",
             AccountType.ASSET,
             AccountRole.CONTRA,
             true,
@@ -184,7 +189,7 @@ class StatementAndCloseContractTypesTest {
     assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
     assertEquals(reportingPeriod, closePeriodCommand.reportingPeriod());
-    assertEquals(new AccountCode("3000"), closePeriodCommand.retainedEarningsAccountCode());
+    assertEquals(new AccountCode("3000"), closePeriodCommand.closingEquityAccountCode());
     assertSame(closedPeriod, closePeriodClosed.closedPeriod());
     assertSame(closePeriodRejection, closePeriodRejected.rejection());
     assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
@@ -214,7 +219,8 @@ class StatementAndCloseContractTypesTest {
                 "Cash",
                 AccountType.ASSET,
                 Optional.of(AccountRole.ORDINARY),
-                false,
+                FinancialPositionLineClassification.CURRENT_ASSET,
+                StatementLineKind.DECLARED_ACCOUNT,
                 balance("EUR", "1.00", "0.00")));
     assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Rejected(nullOf()));
@@ -247,7 +253,8 @@ class StatementAndCloseContractTypesTest {
                 nullOf(),
                 AccountType.REVENUE,
                 Optional.of(AccountRole.ORDINARY),
-                false,
+                ProfitAndLossLineClassification.OPERATING_REVENUE,
+                StatementLineKind.DECLARED_ACCOUNT,
                 balance("EUR", "0.00", "1.00")));
     assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Rejected(nullOf()));
@@ -281,7 +288,8 @@ class StatementAndCloseContractTypesTest {
                 "Capital",
                 Optional.of(AccountType.EQUITY),
                 Optional.of(AccountRole.ORDINARY),
-                false,
+                FinancialPositionLineClassification.OWNER_CAPITAL,
+                StatementLineKind.DECLARED_ACCOUNT,
                 nullOf(),
                 balance("EUR", "0.00", "1.00"),
                 balance("EUR", "0.00", "1.00")));

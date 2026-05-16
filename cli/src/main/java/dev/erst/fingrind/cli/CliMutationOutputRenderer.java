@@ -26,15 +26,12 @@ final class CliMutationOutputRenderer {
   }
 
   static String renderOpenBookHuman(Path bookFilePath, OpenBookResult.Opened opened) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book file", absolutePath(bookFilePath)));
+    rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
+    rows.add(List.of("Initialized at", CliHumanDisplay.instant(opened.initializedAt())));
     return CliTextFormat.renderTitledBlock(
-        "Book Initialized",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Book file", absolutePath(bookFilePath)),
-                List.of("Entity name", opened.bookIdentity().entityName().value()),
-                List.of("Functional currency", opened.bookIdentity().functionalCurrency().code()),
-                List.of("Fiscal year start", opened.bookIdentity().fiscalYearStart().wireValue()),
-                List.of("Initialized at", opened.initializedAt().toString()))));
+        "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderRekeyBookHuman(RekeyBookResult.Rekeyed rekeyed) {
@@ -55,7 +52,7 @@ final class CliMutationOutputRenderer {
                 List.of("Account role", account.accountRole().wireValue()),
                 List.of("Normal balance", account.normalBalance().wireValue()),
                 List.of("Active", Boolean.toString(account.active())),
-                List.of("Declared at", account.declaredAt().toString()))));
+                List.of("Declared at", CliHumanDisplay.instant(account.declaredAt())))));
   }
 
   static String renderClosedPeriodHuman(ClosedPeriod closedPeriod) {
@@ -69,17 +66,16 @@ final class CliMutationOutputRenderer {
                     closedPeriod.reportingPeriod().effectiveDateFrom()
                         + " to "
                         + closedPeriod.reportingPeriod().effectiveDateTo()),
-                List.of(
-                    "Retained earnings account",
-                    closedPeriod.retainedEarningsAccountCode().value()),
+                List.of("Closing equity account", closedPeriod.closingEquityAccountCode().value()),
                 List.of(
                     "Closed totals",
                     CliQueryOutputFormatter.joinedBalances(closedPeriod.closedTotals())),
-                List.of("Closed at", closedPeriod.closedAt().toString()),
+                List.of("Closed at", CliHumanDisplay.instant(closedPeriod.closedAt())),
                 List.of(
                     "Closing postings",
                     closedPeriod.closingPostingIds().stream()
                         .map(dev.erst.fingrind.core.PostingId::value)
+                        .map(CliHumanDisplay::compactOpaqueIdentifier)
                         .collect(java.util.stream.Collectors.joining(", "))))));
   }
 
@@ -97,13 +93,17 @@ final class CliMutationOutputRenderer {
         "Entry Committed",
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Posting id", committed.postingId().value()),
-                List.of("Idempotency key", committed.idempotencyKey().value()),
+                List.of(
+                    "Posting id",
+                    CliHumanDisplay.compactOpaqueIdentifier(committed.postingId().value())),
+                List.of(
+                    "Idempotency key",
+                    CliHumanDisplay.compactOpaqueIdentifier(committed.idempotencyKey().value())),
                 List.of("Effective date", committed.effectiveDate().toString()),
-                List.of("Recorded at", committed.recordedAt().toString()))));
+                List.of("Recorded at", CliHumanDisplay.instant(committed.recordedAt())))));
   }
 
   private static String absolutePath(Path path) {
-    return path.toAbsolutePath().normalize().toString();
+    return CliHumanDisplay.path(path);
   }
 }

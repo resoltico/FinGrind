@@ -22,8 +22,7 @@ public record CapabilitiesDescriptor(
     ContractResponse.CurrencyDescriptor currencyModel,
     ContractResponse.AccountingBaselineDescriptor accountingBaseline,
     ContractResponse.ExtensionSurfaceDescriptor extensionSurface,
-    EnvironmentDescriptor environment,
-    String timestamp)
+    EnvironmentDescriptor environment)
     implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */
   public CapabilitiesDescriptor {
@@ -45,6 +44,5 @@ public record CapabilitiesDescriptor(
     extensionSurface =
         ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
     environment = ContractDescriptorValidation.requireValue(environment, "environment");
-    timestamp = ContractDescriptorValidation.requireText(timestamp, "timestamp");
   }
 }

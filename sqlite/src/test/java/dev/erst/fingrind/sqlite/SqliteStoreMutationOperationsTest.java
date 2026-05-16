@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Objects;
@@ -15,17 +16,17 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Unit tests for isolated recovery helpers inside {@link SqliteStoreMutationOperations}. */
+/** Unit tests for isolated recovery helpers inside {@link SqliteRekeyService}. */
 class SqliteStoreMutationOperationsTest {
   @TempDir Path tempDirectory;
 
   @Test
   void captureBestEffortRuntimeFailure_returnsNullOnSuccessAndReturnsRuntimeFailure() {
-    assertNull(SqliteStoreMutationOperations.captureBestEffortRuntimeFailure(() -> {}));
+    assertNull(SqliteRekeyService.captureBestEffortRuntimeFailure(() -> {}));
     RuntimeException failure = new IllegalStateException("close failed");
     assertSame(
         failure,
-        SqliteStoreMutationOperations.captureBestEffortRuntimeFailure(
+        SqliteRekeyService.captureBestEffortRuntimeFailure(
             () -> {
               throw failure;
             }));
@@ -37,14 +38,14 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException restoreFailure = new IllegalStateException("restore failed");
     RuntimeException closeFailure = new IllegalStateException("close failed");
     IllegalStateException failure =
-        SqliteStoreMutationOperations.catastrophicRekeyRestoreFailure(
+        SqliteRekeyService.catastrophicRekeyRestoreFailure(
             verificationFailure, restoreFailure, closeFailure);
     assertSame(verificationFailure, failure.getCause());
     assertEquals(2, failure.getSuppressed().length);
     assertSame(restoreFailure, failure.getSuppressed()[0]);
     assertSame(closeFailure, failure.getSuppressed()[1]);
     IllegalStateException withoutCloseFailure =
-        SqliteStoreMutationOperations.catastrophicRekeyRestoreFailure(
+        SqliteRekeyService.catastrophicRekeyRestoreFailure(
             verificationFailure, restoreFailure, null);
     assertEquals(1, withoutCloseFailure.getSuppressed().length);
     assertSame(restoreFailure, withoutCloseFailure.getSuppressed()[0]);
@@ -55,14 +56,13 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException verificationFailure = new IllegalStateException("verify failed");
     RuntimeException closeFailure = new IllegalStateException("close failed");
     IllegalStateException withCloseFailure =
-        SqliteStoreMutationOperations.restoredOriginalBookFailure(
-            verificationFailure, closeFailure);
+        SqliteRekeyService.restoredOriginalBookFailure(verificationFailure, closeFailure);
     assertSame(verificationFailure, withCloseFailure.getCause());
     assertEquals(1, verificationFailure.getSuppressed().length);
     assertSame(closeFailure, verificationFailure.getSuppressed()[0]);
     RuntimeException cleanVerificationFailure = new IllegalStateException("verify failed cleanly");
     IllegalStateException withoutCloseFailure =
-        SqliteStoreMutationOperations.restoredOriginalBookFailure(cleanVerificationFailure, null);
+        SqliteRekeyService.restoredOriginalBookFailure(cleanVerificationFailure, null);
     assertSame(cleanVerificationFailure, withoutCloseFailure.getCause());
     assertEquals(0, cleanVerificationFailure.getSuppressed().length);
   }
@@ -74,7 +74,7 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException closeFailure = new IllegalStateException("close failed");
     AtomicInteger deleteCalls = new AtomicInteger();
     IllegalStateException catastrophic =
-        SqliteStoreMutationOperations.finalizeFailedRekey(
+        SqliteRekeyService.finalizeFailedRekey(
             verificationFailure, restoreFailure, closeFailure, deleteCalls::incrementAndGet);
     assertSame(verificationFailure, catastrophic.getCause());
     assertEquals(2, catastrophic.getSuppressed().length);
@@ -82,7 +82,7 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException restoredVerificationFailure =
         new IllegalStateException("verify failed cleanly");
     IllegalStateException restored =
-        SqliteStoreMutationOperations.finalizeFailedRekey(
+        SqliteRekeyService.finalizeFailedRekey(
             restoredVerificationFailure, null, closeFailure, deleteCalls::incrementAndGet);
     assertSame(restoredVerificationFailure, restored.getCause());
     assertEquals(1, restoredVerificationFailure.getSuppressed().length);
@@ -101,8 +101,7 @@ class SqliteStoreMutationOperationsTest {
       CapturingStoreContext context =
           new CapturingStoreContext(bookPath, SqliteNativeBootstrap::api);
       CapturingStoreLifecycle lifecycle = new CapturingStoreLifecycle(context, bookPassphrase);
-      SqliteStoreMutationOperations operations =
-          new SqliteStoreMutationOperations(context, lifecycle);
+      SqliteRekeyService rekeyService = new SqliteRekeyService(context, lifecycle);
       SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
       SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
       SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
@@ -121,7 +120,7 @@ class SqliteStoreMutationOperationsTest {
             assertThrows(
                 IllegalStateException.class,
                 () ->
-                    operations.publishRekeyedDatabase(
+                    rekeyService.publishRekeyedDatabase(
                         lifecycle.database(),
                         replacementPassphrase,
                         rollbackFile,
@@ -152,8 +151,7 @@ class SqliteStoreMutationOperationsTest {
           new AuditFailingStoreContext(bookPath, SqliteNativeBootstrap::api);
       SqliteStoreLifecycle lifecycle =
           new SqliteStoreLifecycle(context, new SqliteSessionSecret(bookPassphrase));
-      SqliteStoreMutationOperations operations =
-          new SqliteStoreMutationOperations(context, lifecycle);
+      SqliteRekeyService rekeyService = new SqliteRekeyService(context, lifecycle);
       SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
       SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
       SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
@@ -172,7 +170,7 @@ class SqliteStoreMutationOperationsTest {
             assertThrows(
                 IllegalStateException.class,
                 () ->
-                    operations.publishRekeyedDatabase(
+                    rekeyService.publishRekeyedDatabase(
                         lifecycle.database(),
                         replacementPassphrase,
                         rollbackFile,
@@ -191,6 +189,52 @@ class SqliteStoreMutationOperationsTest {
       } finally {
         rollbackFile.deleteQuietly();
         assertDoesNotThrow(lifecycle::close);
+      }
+    }
+  }
+
+  @Test
+  void rekeyBook_delegatesThroughMutationOperationsAndPublishesTheReplacementKey() {
+    Path bookPath = tempDirectory.resolve("store-mutation-rekey.sqlite");
+    Instant initializedAt = Instant.parse("2026-04-29T10:15:30Z");
+    Instant rekeyedAt = Instant.parse("2026-04-30T10:15:30Z");
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "store mutation rekey original", "book-key".toCharArray());
+        SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "store mutation rekey replacement", "replacement-key".toCharArray())) {
+      SqliteStoreContext context =
+          new SqliteStoreContext(
+              bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, new SqliteSessionSecret(bookPassphrase));
+      SqliteStoreMutationOperations mutationOperations =
+          new SqliteStoreMutationOperations(context, lifecycle);
+      try {
+        SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
+        SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
+        SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
+        SqliteMutationWriter.insertInitializedAt(lifecycle.database(), initializedAt);
+        SqliteMutationWriter.insertBookIdentity(
+            lifecycle.database(), SqlitePostingFactFixtureSupport.bookIdentity());
+        SqliteAuditEventWriter.insertAuditEvent(
+            lifecycle.database(),
+            dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(initializedAt));
+
+        assertEquals(
+            new RekeyBookResult.Rekeyed(bookPath.toAbsolutePath().normalize()),
+            mutationOperations.rekeyBook(replacementPassphrase, rekeyedAt));
+        assertDoesNotThrow(lifecycle.database()::handle);
+      } finally {
+        assertDoesNotThrow(lifecycle::close);
+      }
+      try (SqliteBookPassphrase reopenedReplacementPassphrase =
+              SqliteBookPassphrase.fromCharacters(
+                  "store mutation rekey replacement reopen", "replacement-key".toCharArray());
+          SqliteNativeDatabase reopenedDatabase =
+              context.openConfiguredDatabase(reopenedReplacementPassphrase)) {
+        assertDoesNotThrow(reopenedDatabase::handle);
       }
     }
   }

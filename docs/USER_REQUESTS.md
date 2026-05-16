@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -102,23 +102,32 @@ Current posting-request rules:
   "accountCode": "1000",
   "accountName": "Cash",
   "accountType": "ASSET",
-  "accountRole": "ORDINARY"
+  "accountRole": "ORDINARY",
+  "financialPositionLineClassification": "CURRENT_ASSET"
 }
 ```
 
 Current account-declaration rules:
 - `accountCode`, `accountName`, `accountType`, and `accountRole` are required
+- `parentAccountCode` is optional and declares one explicit chart parent when this account belongs
+  under another declared account
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
   digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - `accountCode` is an opaque book-local identifier today; FinGrind does not infer account class or
   hierarchy from numeric ranges or prefixes
 - `accountName` must be a non-blank string
 - `accountType` must be one of the canonical chart classifications supported by FinGrind
-- `accountRole` must be one of `ORDINARY`, `CONTRA`, or `RETAINED_EARNINGS`
-- `RETAINED_EARNINGS` is valid only with `accountType: "EQUITY"`
+- `accountRole` must be one of `ORDINARY` or `CONTRA`
+- `ASSET`, `LIABILITY`, and `EQUITY` accounts must declare
+  `financialPositionLineClassification` and must not declare
+  `profitAndLossLineClassification`
+- `REVENUE` and `EXPENSE` accounts must declare `profitAndLossLineClassification` and must not
+  declare `financialPositionLineClassification`
 - redeclaring an existing account may update the display name and reactivate the account
 - redeclaring an existing account with a different `accountType` is rejected
 - redeclaring an existing account with a different `accountRole` is rejected
+- redeclaring an existing account with a different chart parent or statement-line taxonomy is
+  rejected
 
 ## Ledger-Plan Request Shape
 
@@ -140,8 +149,9 @@ Current ledger-plan rules:
 - `steps` must contain at least one object and every `stepId` must be unique
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `open-book` uses nested `openBook`, which requires `entityName`, `functionalCurrency`, and
-  `fiscalYearStart`
+- `open-book` uses nested `openBook`, which requires `entityName`, `entityForm`, `ownerModel`,
+  `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`,
+  `functionalCurrency`, `fiscalYearStart`, and `accountingBasis`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
@@ -179,8 +189,8 @@ Current ledger-plan rules:
 
 Human rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
 top-level `message`, optional `hint`, and any typed rejection details that identify the failing
-posting id, retained-earnings account, account-state violation set, or related deterministic
-repair data.
+posting id, closing-equity classification mismatch, account-state violation set, or related
+deterministic repair data.
 
 ## Accepted Values
 
@@ -189,7 +199,9 @@ repair data.
 | `lines[].side` | `DEBIT`, `CREDIT` |
 | `provenance.actorType` | `HUMAN`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
-| `accountRole` | `ORDINARY`, `CONTRA`, `RETAINED_EARNINGS` |
+| `accountRole` | `ORDINARY`, `CONTRA` |
+| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `OWNER_CAPITAL`, `OWNER_DRAWINGS`, `PARTNER_CAPITAL`, `PARTNER_CURRENT`, `SHARE_CAPITAL`, `RETAINED_EARNINGS`, `ACCUMULATED_SURPLUS`, `RESERVE`, `CURRENT_PERIOD_RESULT`, `OTHER_EQUITY` |
+| `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `TAX_EXPENSE` |
 
 ## CLI Output Shapes
 
@@ -204,7 +216,7 @@ repair data.
 | `error` | malformed input or runtime failure | `status`, `code`, `message`, optional `hint`, optional `argument` |
 
 Dynamic fields:
-- `capabilities.payload.timestamp` varies per invocation
+- `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
   captures of `print-request-template` and `print-plan-template`; both intentionally keep the
   scaffold placeholders `replace-before-commit-effective-date` and
@@ -212,8 +224,10 @@ Dynamic fields:
   real actor, command, idempotency, and causation values before commit
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
-- `open-book.payload.bookIdentity.entityName`, `.functionalCurrency`, and `.fiscalYearStart`
-  echo the persisted initialized-book identity
+- `open-book.payload.bookIdentity.entityName`, `.entityForm`, `.ownerModel`,
+  `.reportingObligationStatus`, `.taxRegistrationStatus`, `.businessActivityTags`,
+  `.functionalCurrency`, `.fiscalYearStart`, and `.accountingBasis` echo the persisted
+  initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
@@ -228,9 +242,13 @@ Dynamic fields:
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
   facts nest their child observations under `facts`
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
-  `fiscalYearStart`
+  `fiscalYearStart`; the persisted initialized-book identity also carries `entityForm`,
+  `ownerModel`, `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`, and
+  `accountingBasis`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
-  `accountRole`, `normalBalance`, `active`, and `declaredAt`
+  `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  `normalBalance`, `active`, and `declaredAt`
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
   `balance` buckets
 - `execute-plan` accepts at most 100 steps, so returned plan summaries and optional full journals
@@ -278,8 +296,8 @@ rendered:
   `multiCurrencyStatus: "not-supported"`
 - `accountingBaseline.reportingPosition` states explicitly that the current kernel stops at
   financial position, income statement, and changes in equity
-- `accountingBaseline.chartModelPosition` states explicitly that the chart of accounts is flat and
-  has no first-class hierarchy or report taxonomy
+- `accountingBaseline.chartModelPosition` states explicitly that declared accounts carry explicit
+  parent-child hierarchy and statement-line taxonomy while account-code text remains opaque
 - `accountingBaseline.smallEntityPosition` states explicitly that the current kernel does not yet
   claim IFRS for SMEs parity
 - `accountingBaseline.operationalPosition` states explicitly that invoicing, receivables,
@@ -288,7 +306,8 @@ rendered:
   current kernel and that tax determination/rate/filer policy is not modeled yet
 - `accountingBaseline.organizationalPosition` states explicitly that the current kernel does not
   yet claim multi-entity organizational accounting
-- `extensionSurface.implementedSeams` lists only the live extension seams currently owned in code
+- `extensionSurface.implementedSeams` lists the live executable policy seams currently owned in
+  code
 - `extensionSurface.futureContexts` lists adjacent future domains such as tax, FX, subledgers,
   and consolidation instead of misrepresenting them as already-pluggable seams
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
@@ -309,8 +328,14 @@ rendered:
 - `payload.bookFile`
 - `payload.initializedAt`
 - `payload.bookIdentity.entityName`
+- `payload.bookIdentity.entityForm`
+- `payload.bookIdentity.ownerModel`
+- `payload.bookIdentity.reportingObligationStatus`
+- `payload.bookIdentity.taxRegistrationStatus`
+- `payload.bookIdentity.businessActivityTags`
 - `payload.bookIdentity.functionalCurrency`
 - `payload.bookIdentity.fiscalYearStart`
+- `payload.bookIdentity.accountingBasis`
 
 ## Book Inspection And Query Responses
 
@@ -324,8 +349,14 @@ rendered:
 - `payload.supportedBookFormatVersion`
 - optional `payload.initializedAt`
 - optional `payload.bookIdentity.entityName`
+- optional `payload.bookIdentity.entityForm`
+- optional `payload.bookIdentity.ownerModel`
+- optional `payload.bookIdentity.reportingObligationStatus`
+- optional `payload.bookIdentity.taxRegistrationStatus`
+- optional `payload.bookIdentity.businessActivityTags`
 - optional `payload.bookIdentity.functionalCurrency`
 - optional `payload.bookIdentity.fiscalYearStart`
+- optional `payload.bookIdentity.accountingBasis`
 
 `payload.state` uses the stable lower-case vocabulary `missing`, `blank-sqlite`, `initialized`,
 `foreign-sqlite`, `unsupported-format-version`, or `incomplete-fingrind`.
@@ -339,7 +370,9 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.limit`
 - optional `payload.nextCursor`
 - `payload.accounts[]`, where each entry includes `accountCode`, `accountName`, `accountType`,
-  `accountRole`, derived `normalBalance`, `active`, and `declaredAt`
+  `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  derived `normalBalance`, `active`, and `declaredAt`
 
 `get-posting` success returns:
 - one committed posting payload with `payload.postingId`, `payload.effectiveDate`, `payload.recordedAt`, request-provenance fields, `sourceChannel`, optional `reversal`, and `lines[]`
@@ -353,11 +386,19 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 
 `account-balance` success returns:
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - declared-account identity fields: `accountCode`, `accountName`, `accountType`,
-  `accountRole`, derived `normalBalance`, `active`, `declaredAt`
+  `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  derived `normalBalance`, `active`, `declaredAt`
 - optional query filters: `effectiveDateFrom`, `effectiveDateTo`
 - `balances[]`, where each bucket includes typed `debitTotal`, `creditTotal`, `netAmount`, and
   `balanceSide`
@@ -369,24 +410,40 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 `trial-balance` success returns:
 - optional `payload.effectiveDateTo`
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - optional `payload.context.comparativeReferenceEffectiveDateFrom`
 - optional `payload.context.comparativeReferenceEffectiveDateTo`
 - `payload.rows[]`, where each row includes `accountCode`, `accountName`, `accountType`,
-  `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed `debitTotal`,
-  `creditTotal`, `netAmount`, and `balanceSide`
+  `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  derived `normalBalance`, `active`, `declaredAt`, typed `debitTotal`, `creditTotal`,
+  `netAmount`, and `balanceSide`
 - `payload.comparativeRows[]`, using the same row shape for the fiscal-year-anchored comparison
   date when one comparative as-of date exists
 
 `account-ledger` success returns:
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - declared-account identity fields: `accountCode`, `accountName`, `accountType`,
-  `accountRole`, derived `normalBalance`, `active`, `declaredAt`
+  `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  derived `normalBalance`, `active`, `declaredAt`
 - optional date filters: `effectiveDateFrom`, `effectiveDateTo`
 - `openingBalances[]` and `closingBalances[]`, where each bucket includes typed `debitTotal`,
   `creditTotal`, `netAmount`, and `balanceSide`
@@ -397,8 +454,14 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 
 `period-summary` success returns:
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - `payload.effectiveDateFrom`
 - `payload.effectiveDateTo`
@@ -408,14 +471,22 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.currencyTotals[]`, where each row includes typed `debitTotal`, `creditTotal`,
   `netAmount`, and `balanceSide`
 - `payload.accountActivity[]`, where each row includes `accountCode`, `accountName`,
-  `accountType`, `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed
-  `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+  `accountType`, `accountRole`, optional `parentAccountCode`, optional
+  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
+  derived `normalBalance`, `active`, `declaredAt`, typed `debitTotal`, `creditTotal`,
+  `netAmount`, and `balanceSide`
 
 `financial-position` success returns:
 - optional `payload.effectiveDateTo`
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - optional `payload.context.comparativeReferenceEffectiveDateFrom`
 - optional `payload.context.comparativeReferenceEffectiveDateTo`
@@ -427,8 +498,14 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.effectiveDateFrom`
 - `payload.effectiveDateTo`
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - optional `payload.context.comparativeReferenceEffectiveDateFrom`
 - optional `payload.context.comparativeReferenceEffectiveDateTo`
@@ -441,8 +518,14 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.effectiveDateFrom`
 - `payload.effectiveDateTo`
 - `payload.context.bookIdentity.entityName`
+- `payload.context.bookIdentity.entityForm`
+- `payload.context.bookIdentity.ownerModel`
+- `payload.context.bookIdentity.reportingObligationStatus`
+- `payload.context.bookIdentity.taxRegistrationStatus`
+- `payload.context.bookIdentity.businessActivityTags`
 - `payload.context.bookIdentity.functionalCurrency`
 - `payload.context.bookIdentity.fiscalYearStart`
+- `payload.context.bookIdentity.accountingBasis`
 - `payload.context.postingCoverage`
 - optional `payload.context.comparativeReferenceEffectiveDateFrom`
 - optional `payload.context.comparativeReferenceEffectiveDateTo`

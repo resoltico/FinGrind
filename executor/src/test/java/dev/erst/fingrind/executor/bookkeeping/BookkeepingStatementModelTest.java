@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,6 +14,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
@@ -20,9 +22,11 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,6 +47,7 @@ class BookkeepingStatementModelTest {
             new AccountName("Cash"),
             AccountType.ASSET,
             AccountRole.ORDINARY,
+            accountTaxonomy(AccountType.ASSET),
             true,
             FIXED_INSTANT);
     AccountDeclaration conflictDeclaration =
@@ -50,13 +55,32 @@ class BookkeepingStatementModelTest {
             existing.accountCode(),
             new AccountName("Cash"),
             AccountType.LIABILITY,
-            AccountRole.ORDINARY);
+            AccountRole.ORDINARY,
+            accountTaxonomy(AccountType.LIABILITY));
     AccountDeclaration redeclaration =
         new AccountDeclaration(
             existing.accountCode(),
             new AccountName("Cash Reserve"),
             AccountType.ASSET,
-            AccountRole.CONTRA);
+            AccountRole.CONTRA,
+            accountTaxonomy(AccountType.ASSET));
+    AccountDeclaration taxonomyConflictDeclaration =
+        new AccountDeclaration(
+            existing.accountCode(),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            new dev.erst.fingrind.core.AccountTaxonomy(
+                Optional.of(new AccountCode("1099")),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty()));
+    AccountDeclaration firstDeclaration =
+        new AccountDeclaration(
+            new AccountCode("1200"),
+            new AccountName("Receivable"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            accountTaxonomy(AccountType.ASSET));
 
     assertEquals(
         new AccountDeclarationOutcome.Rejected(
@@ -68,6 +92,24 @@ class BookkeepingStatementModelTest {
             new BookkeepingAdministrationRejection.AccountRoleConflict(
                 existing.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA)),
         RegisteredAccount.declare(existing, redeclaration, FIXED_INSTANT));
+    assertEquals(
+        new AccountDeclarationOutcome.Rejected(
+            new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+                existing.accountCode(),
+                existing.accountTaxonomy(),
+                taxonomyConflictDeclaration.accountTaxonomy())),
+        RegisteredAccount.declare(existing, taxonomyConflictDeclaration, FIXED_INSTANT));
+    assertEquals(
+        new AccountDeclarationOutcome.Declared(
+            new RegisteredAccount(
+                new AccountCode("1200"),
+                new AccountName("Receivable"),
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                accountTaxonomy(AccountType.ASSET),
+                true,
+                FIXED_INSTANT)),
+        RegisteredAccount.declare(null, firstDeclaration, FIXED_INSTANT));
     assertEquals(NormalBalance.DEBIT, existing.normalBalance());
     assertEquals(
         NormalBalance.CREDIT,
@@ -75,17 +117,27 @@ class BookkeepingStatementModelTest {
                 new AccountCode("1090"),
                 new AccountName("Accumulated Depreciation"),
                 AccountType.ASSET,
-                AccountRole.CONTRA)
+                AccountRole.CONTRA,
+                accountTaxonomy(AccountType.ASSET))
             .normalBalance());
   }
 
   @Test
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
-        AccountRole.ORDINARY,
-        new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-                new AccountCode("3200"), AccountRole.ORDINARY)
-            .actualAccountRole());
+        FinancialPositionLineClassification.RETAINED_EARNINGS,
+        new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+                new AccountCode("3200"),
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.OWNER_CAPITAL)
+            .requiredFinancialPositionLineClassification());
+    assertEquals(
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+                new AccountCode("3200"),
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.OWNER_CAPITAL)
+            .actualFinancialPositionLineClassification());
     assertEquals(
         LocalDate.parse("2026-05-13"),
         new BookkeepingAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-05-13"))
@@ -111,7 +163,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.RetainedEarningsAccountInactive(
+                    new BookkeepingAdministrationRejection.ClosingEquityAccountInactive(
                         nullOf(AccountCode.class)))
             .getMessage());
     assertEquals(
@@ -123,12 +175,46 @@ class BookkeepingStatementModelTest {
                         nullOf(LocalDate.class)))
             .getMessage());
     assertEquals(
-        "actualAccountRole",
+        "requiredFinancialPositionLineClassification",
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-                        new AccountCode("3200"), nullOf(AccountRole.class)))
+                    new BookkeepingAdministrationRejection
+                        .ClosingEquityAccountClassificationMismatch(
+                        new AccountCode("3200"),
+                        nullOf(FinancialPositionLineClassification.class),
+                        FinancialPositionLineClassification.OWNER_CAPITAL))
+            .getMessage());
+    assertEquals(
+        "actualFinancialPositionLineClassification",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingAdministrationRejection
+                        .ClosingEquityAccountClassificationMismatch(
+                        new AccountCode("3200"),
+                        FinancialPositionLineClassification.RETAINED_EARNINGS,
+                        nullOf(FinancialPositionLineClassification.class)))
+            .getMessage());
+    assertEquals(
+        "existingAccountTaxonomy",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+                        new AccountCode("3200"),
+                        nullOf(dev.erst.fingrind.core.AccountTaxonomy.class),
+                        accountTaxonomy(AccountType.EQUITY)))
+            .getMessage());
+    assertEquals(
+        "requestedAccountTaxonomy",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+                        new AccountCode("3200"),
+                        accountTaxonomy(AccountType.EQUITY),
+                        nullOf(dev.erst.fingrind.core.AccountTaxonomy.class)))
             .getMessage());
     assertEquals(
         "attemptedEffectiveDateTo",
@@ -148,6 +234,7 @@ class BookkeepingStatementModelTest {
             new AccountName("Cash"),
             AccountType.ASSET,
             AccountRole.ORDINARY,
+            accountTaxonomy(AccountType.ASSET),
             true,
             FIXED_INSTANT);
     AccountCurrencyTotals totals =
@@ -230,7 +317,8 @@ class BookkeepingStatementModelTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
     List<IncomeStatementSectionView> incomeSections =
@@ -244,18 +332,20 @@ class BookkeepingStatementModelTest {
                             "Revenue",
                             AccountType.REVENUE,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))));
     List<ChangesInEquityRowView> equityRows =
         new ArrayList<>(
             List.of(
                 new ChangesInEquityRowView(
-                    "current-earnings",
-                    "Current Earnings",
+                    "current-period-result",
+                    "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    true,
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))));

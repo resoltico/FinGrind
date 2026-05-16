@@ -104,8 +104,9 @@ final class CliResponsePayloadMapper {
     return CliBookPayloadMapper.accountPayload(account);
   }
 
-  static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
-    return CliBookPayloadMapper.postingPayload(postingFact);
+  static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
+      dev.erst.fingrind.core.BookIdentity bookIdentity, PostingFact postingFact) {
+    return CliBookPayloadMapper.postingDetailsPayload(bookIdentity, postingFact);
   }
 
   static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {

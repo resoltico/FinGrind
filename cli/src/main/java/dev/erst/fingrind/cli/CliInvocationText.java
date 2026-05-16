@@ -2,26 +2,34 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/** User-facing command-text helpers that keep hints aligned with the active launcher surface. */
+/** User-facing command-text helpers for neutral launcher examples and hints. */
 final class CliInvocationText {
+  private static final String NEUTRAL_LAUNCHER_COMMAND = "fingrind";
+  private static final Pattern COMMAND_PREFIX_PATTERN =
+      Pattern.compile(
+          "(^|\\|\\s*)(?:fingrind|\\./bin/fingrind|\\.\\\\bin\\\\fingrind\\.ps1|\\./scripts/source-checkout-cli\\.sh|\\.\\\\scripts\\\\source-checkout-cli\\.ps1|\\./scripts/direct-java-cli\\.sh|\\.\\\\scripts\\\\direct-java-cli\\.ps1)(?=\\s|$)");
+
   private CliInvocationText() {}
 
   static String commandExample(OperationId operationId) {
-    return launcherCommand() + " " + ProtocolCatalog.operationName(operationId);
+    Objects.requireNonNull(operationId, "operationId");
+    return launcherCommandForCurrentRuntime() + " " + ProtocolCatalog.operationName(operationId);
   }
 
   static String rewriteInvocationPrefix(String text) {
     Objects.requireNonNull(text, "text");
-    String launcherCommand = launcherCommand();
-    if ("fingrind".equals(launcherCommand)) {
+    Matcher matcher = COMMAND_PREFIX_PATTERN.matcher(text);
+    if (!matcher.find()) {
       return text;
     }
-    String rewritten = rewriteLauncherToken(text, "^fingrind(?=\\s)", launcherCommand);
-    return rewriteLauncherToken(rewritten, "(?<=\\|\\s)fingrind(?=\\s)", launcherCommand);
+    return matcher.replaceFirst(
+        Matcher.quoteReplacement(matcher.group(1) + launcherCommandForCurrentRuntime()));
   }
 
   static String helpSyntaxHint() {
@@ -45,37 +53,25 @@ final class CliInvocationText {
         + "' to inspect the supported commands and examples.";
   }
 
-  static String launcherCommand() {
-    return launcherCommandFor(FinGrindCli.runtimeDistribution(), System.getProperty("os.name", ""));
-  }
-
   static String launcherCommandFor(String runtimeDistribution, String osName) {
     Objects.requireNonNull(runtimeDistribution, "runtimeDistribution");
     Objects.requireNonNull(osName, "osName");
-    if (FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return isWindows(osName)
-          ? ProtocolCatalog.bundleLauncherCommand(
-              dev.erst.fingrind.contract.protocol.PublicCliBundleTarget.WINDOWS_X86_64)
-          : ProtocolCatalog.bundleLauncherCommand(
-              dev.erst.fingrind.contract.protocol.PublicCliBundleTarget.MACOS_AARCH64);
+    boolean windows = osName.toLowerCase(Locale.ROOT).contains("win");
+    RuntimeDistribution distribution;
+    try {
+      distribution = RuntimeDistribution.fromWireValue(runtimeDistribution);
+    } catch (IllegalArgumentException ignored) {
+      return NEUTRAL_LAUNCHER_COMMAND;
     }
-    if (FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return ProtocolCatalog.sourceCheckoutLauncherCommand(isWindows(osName));
-    }
-    if (FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return ProtocolCatalog.containerLauncherCommand();
-    }
-    if (FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return ProtocolCatalog.directJavaLauncherCommand(isWindows(osName));
-    }
-    return "fingrind";
+    return switch (distribution) {
+      case DIRECT_JAVA_INVOCATION -> ProtocolCatalog.directJavaLauncherCommand(windows);
+      case SOURCE_CHECKOUT_GRADLE -> ProtocolCatalog.sourceCheckoutLauncherCommand(windows);
+      case CONTAINER_IMAGE -> ProtocolCatalog.containerLauncherCommand();
+      case SELF_CONTAINED_BUNDLE -> NEUTRAL_LAUNCHER_COMMAND;
+    };
   }
 
-  private static String rewriteLauncherToken(String text, String pattern, String launcherCommand) {
-    return text.replaceAll(pattern, Matcher.quoteReplacement(launcherCommand));
-  }
-
-  private static boolean isWindows(String osName) {
-    return osName.toLowerCase(Locale.ROOT).contains("win");
+  private static String launcherCommandForCurrentRuntime() {
+    return launcherCommandFor(FinGrindCli.runtimeDistribution(), System.getProperty("os.name", ""));
   }
 }

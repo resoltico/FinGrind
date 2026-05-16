@@ -4,7 +4,6 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -24,9 +23,9 @@ class BookAdministrationModelTest {
   @Test
   void declaredAccount_holdsItsPayload() {
     DeclaredAccount account =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
+        ContractFixtures.declaredAccount(
+            "1000",
+            "Cash",
             AccountType.ASSET,
             AccountRole.ORDINARY,
             true,
@@ -40,7 +39,11 @@ class BookAdministrationModelTest {
         NullPointerException.class,
         () ->
             new DeclareAccountCommand(
-                new AccountCode("1000"), new AccountName("Cash"), AccountType.ASSET, nullOf()));
+                new AccountCode("1000"),
+                new AccountName("Cash"),
+                AccountType.ASSET,
+                nullOf(),
+                ContractFixtures.accountTaxonomy(AccountType.ASSET)));
   }
 
   @Test
@@ -65,15 +68,16 @@ class BookAdministrationModelTest {
     List<DeclaredAccount> source =
         new java.util.ArrayList<>(
             List.of(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                ContractFixtures.declaredAccount(
+                    "1000",
+                    "Cash",
                     AccountType.ASSET,
                     AccountRole.ORDINARY,
                     true,
                     Instant.parse("2026-04-07T10:15:30Z"))));
     ListAccountsResult.Listed listed =
-        new ListAccountsResult.Listed(new AccountPage(source, 50, java.util.Optional.empty()));
+        new ListAccountsResult.Listed(
+            ContractFixtures.accountPage(source, 50, java.util.Optional.empty()));
     source.clear();
     assertEquals(1, listed.page().accounts().size());
   }

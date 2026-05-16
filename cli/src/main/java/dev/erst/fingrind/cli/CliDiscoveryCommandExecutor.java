@@ -12,8 +12,6 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -22,12 +20,10 @@ import org.jspecify.annotations.Nullable;
 final class CliDiscoveryCommandExecutor {
   private final CliResponseWriter responseWriter;
   private final CliMetadata metadata;
-  private final Clock clock;
 
-  CliDiscoveryCommandExecutor(CliResponseWriter responseWriter, CliMetadata metadata, Clock clock) {
+  CliDiscoveryCommandExecutor(CliResponseWriter responseWriter, CliMetadata metadata) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
     this.metadata = Objects.requireNonNull(metadata, "metadata");
-    this.clock = Objects.requireNonNull(clock, "clock");
   }
 
   int writeHelp(@Nullable OperationId commandTopic, OutputMode outputMode) {
@@ -40,9 +36,7 @@ final class CliDiscoveryCommandExecutor {
 
   int writeCapabilities(OutputMode outputMode) {
     responseWriter.writeCapabilities(
-        MachineContract.capabilities(
-            applicationIdentity(), environmentDescriptor(), Instant.now(clock)),
-        outputMode);
+        MachineContract.capabilities(applicationIdentity(), environmentDescriptor()), outputMode);
     return 0;
   }
 

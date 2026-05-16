@@ -28,7 +28,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
@@ -189,9 +188,9 @@ class BookQueryModelTest {
   @Test
   void accountAndPostingPages_copyPayloadsAndValidateBounds() {
     List<DeclaredAccount> accounts = new ArrayList<>(List.of(declaredAccount("1000")));
-    AccountPage accountPage = new AccountPage(accounts, 50, Optional.empty());
+    AccountPage accountPage = ContractFixtures.accountPage(accounts, 50, Optional.empty());
     AccountPage nextAccountPage =
-        new AccountPage(
+        ContractFixtures.accountPage(
             List.of(declaredAccount("1000")),
             50,
             Optional.of(new AccountPageCursor(new AccountCode("1000"))));
@@ -200,16 +199,27 @@ class BookQueryModelTest {
     assertFalse(accountPage.hasMore());
     assertTrue(nextAccountPage.hasMore());
     assertThrows(
-        IllegalArgumentException.class, () -> new AccountPage(List.of(), 0, Optional.empty()));
-    assertThrows(NullPointerException.class, () -> new AccountPage(List.of(), 1, nullOf()));
+        IllegalArgumentException.class,
+        () -> ContractFixtures.accountPage(List.of(), 0, Optional.empty()));
+    assertThrows(
+        NullPointerException.class, () -> ContractFixtures.accountPage(List.of(), 1, nullOf()));
     List<PostingFact> postings = new ArrayList<>(List.of(postingFact("posting-1", "idem-1")));
-    PostingPage postingPage = new PostingPage(postings, 50, Optional.empty());
+    PostingPage postingPage =
+        ContractFixtures.postingPage(
+            Optional.empty(), EffectiveDateRange.unbounded(), postings, 50, Optional.empty());
     postings.clear();
     assertEquals(1, postingPage.postings().size());
     assertFalse(postingPage.hasMore());
     assertThrows(
-        IllegalArgumentException.class, () -> new PostingPage(List.of(), 0, Optional.empty()));
-    assertThrows(NullPointerException.class, () -> new PostingPage(List.of(), 1, nullOf()));
+        IllegalArgumentException.class,
+        () ->
+            ContractFixtures.postingPage(
+                Optional.empty(), EffectiveDateRange.unbounded(), List.of(), 0, Optional.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            ContractFixtures.postingPage(
+                Optional.empty(), EffectiveDateRange.unbounded(), List.of(), 1, nullOf()));
   }
 
   @Test
@@ -349,7 +359,9 @@ class BookQueryModelTest {
   void resultRecords_rejectNullPayloads() {
     assertThrows(NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf()));
     assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(nullOf()));
-    assertThrows(NullPointerException.class, () -> new GetPostingResult.Found(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new GetPostingResult.Found(ContractFixtures.bookIdentity(), nullOf()));
     assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(nullOf()));
@@ -426,9 +438,9 @@ class BookQueryModelTest {
   }
 
   private static DeclaredAccount declaredAccount(String accountCode) {
-    return new DeclaredAccount(
-        new AccountCode(accountCode),
-        new AccountName("Cash"),
+    return ContractFixtures.declaredAccount(
+        accountCode,
+        "Cash",
         AccountType.ASSET,
         AccountRole.ORDINARY,
         true,

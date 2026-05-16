@@ -30,7 +30,7 @@ final class CliDiscoveryArguments {
       if (commandTopic != null) {
         throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
-      commandTopic = requiredCommandTopic(argument);
+      commandTopic = requiredCommandTopic(argument, "help");
     }
     return new Help(commandTopic, CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
   }
@@ -107,17 +107,23 @@ final class CliDiscoveryArguments {
     return commandFactory.create(CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
   }
 
-  private static OperationId requiredCommandTopic(String token) {
+  private static OperationId requiredCommandTopic(String token, String surfaceName) {
     Optional<dev.erst.fingrind.contract.protocol.ProtocolOperation> operation =
         ProtocolCatalog.findByToken(token);
     if (operation.isEmpty()) {
-      throw CliArgumentValueParser.invalid(token, "Unsupported help topic: " + token);
+      throw CliArgumentValueParser.invalid(
+          token, "Unsupported " + surfaceName + " topic: " + token);
     }
     return operation.orElseThrow().id();
   }
 
   private static OperationId requiredRequestTemplateTopic(String token) {
-    OperationId topic = requiredCommandTopic(token);
+    Optional<dev.erst.fingrind.contract.protocol.ProtocolOperation> operation =
+        ProtocolCatalog.findByToken(token);
+    if (operation.isEmpty()) {
+      throw CliArgumentValueParser.invalid(token, "Unsupported request-template topic: " + token);
+    }
+    OperationId topic = operation.orElseThrow().id();
     if (topic == OperationId.POST_ENTRY
         || topic == OperationId.PREFLIGHT_ENTRY
         || topic == OperationId.DECLARE_ACCOUNT) {

@@ -36,7 +36,7 @@ public final class Money implements Comparable<Money> {
   public static Money parse(CurrencyUnit currencyUnit, String amountText) {
     Objects.requireNonNull(currencyUnit, "currencyUnit");
     Objects.requireNonNull(amountText, "amountText");
-    if (!amountText.equals(amountText.trim())) {
+    if (!amountText.equals(amountText.strip())) {
       throw new IllegalArgumentException(
           "Money amount must not contain leading or trailing space.");
     }

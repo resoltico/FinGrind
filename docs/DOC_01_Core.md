@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: CORE
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -38,9 +38,9 @@ public final class AccountCodePolicy
 - Purpose: keep account-code meaning explicit instead of letting callers infer numeric ranges,
   parent-child hierarchy, or type semantics from string prefixes
 - Current contract: `meaning() == OPAQUE_BOOK_LOCAL_IDENTIFIER` and
-  `chartStructure() == FLAT`
-- Validation: `validate(AccountCode, AccountType)` currently confirms one declared code and account
-  type pair against the current flat-chart, opaque-identifier policy
+  `chartStructure() == PARENT_CHILD_HIERARCHY`
+- Validation: `validate(AccountCode, AccountType, AccountRole, AccountTaxonomy)` confirms one
+  declared account against the current hierarchical-chart, opaque-identifier policy
 
 ## `AccountCodePolicy.Meaning`
 
@@ -55,9 +55,9 @@ text.
 
 `AccountCodePolicy.ChartStructure` names the chart topology supported by current FinGrind books.
 
-- Purpose: make the flat-chart policy part of the published model instead of leaving hierarchy
+- Purpose: make the current parent-child chart contract explicit instead of leaving hierarchy
   support to implication
-- Current contract: `FLAT`
+- Current contract: `PARENT_CHILD_HIERARCHY`
 
 ## `AccountName`
 
@@ -81,20 +81,128 @@ public record BookEntityName(String value)
 - Purpose: keep book identity explicit instead of leaving initialized books anonymous
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
+## `BusinessActivityTag`
+
+`BusinessActivityTag` is the normalized activity-domain label attached to one entity profile.
+
+```java
+public record BusinessActivityTag(String value)
+```
+
+- Purpose: keep declared business activity cues typed instead of burying them in free-form notes
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `EntityForm`
+
+`EntityForm` is the neutral entity-shape vocabulary used for policy selection.
+
+```java
+public enum EntityForm implements WireValue {
+  FREELANCER,
+  SOLE_PROPRIETORSHIP,
+  COMPANY,
+  PARTNERSHIP,
+  NONPROFIT,
+  BRANCH,
+  OTHER
+}
+```
+
+- Purpose: distinguish neutral entity forms before future jurisdiction packs or organization
+  graphs arrive
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `OwnerModel`
+
+`OwnerModel` is the neutral ownership-shape vocabulary attached to one entity profile.
+
+```java
+public enum OwnerModel implements WireValue
+```
+
+- Purpose: keep owner-shape assumptions explicit at book creation instead of leaving them implicit
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `ReportingObligationStatus`
+
+`ReportingObligationStatus` is the neutral reporting-obligation vocabulary attached to one entity
+profile.
+
+```java
+public enum ReportingObligationStatus implements WireValue
+```
+
+- Purpose: publish whether the current book is internal-only, externally reportable, or not yet
+  classified
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `TaxRegistrationStatus`
+
+`TaxRegistrationStatus` is the neutral tax-registration vocabulary attached to one entity profile.
+
+```java
+public enum TaxRegistrationStatus implements WireValue
+```
+
+- Purpose: keep tax-registration posture explicit before the dedicated tax bounded context exists
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `AccountingBasis`
+
+`AccountingBasis` is the explicit recognition premise attached to one book identity.
+
+```java
+public enum AccountingBasis implements WireValue {
+  CASH,
+  ACCRUAL
+}
+```
+
+- Purpose: make cash-versus-accrual posture explicit at the book boundary
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `EntityProfile`
+
+`EntityProfile` is the structured neutral entity descriptor embedded in one book identity.
+
+```java
+public record EntityProfile(
+    BookEntityName entityName,
+    EntityForm entityForm,
+    OwnerModel ownerModel,
+    ReportingObligationStatus reportingObligationStatus,
+    TaxRegistrationStatus taxRegistrationStatus,
+    List<BusinessActivityTag> businessActivityTags)
+```
+
+- Purpose: make entity form, ownership, reporting posture, tax posture, and activity tags explicit
+  before future policy packs and organization graphs expand
+- Validation: rejects `null` entity name, entity form, owner model, reporting status,
+  tax-registration status, and activity-tag collections
+
 ## `BookIdentity`
 
 `BookIdentity` is the structured identity metadata persisted with one book.
 
 ```java
 public record BookIdentity(
-    BookEntityName entityName,
+    EntityProfile entityProfile,
     CurrencyUnit functionalCurrency,
-    FiscalYearStart fiscalYearStart)
+    FiscalYearStart fiscalYearStart,
+    AccountingBasis accountingBasis)
 ```
 
-- Purpose: couple entity name, functional currency, and fiscal-year anchor as one typed
-  bookkeeping fact
-- Validation: rejects `null` entity name, functional currency, and fiscal-year start
+- Purpose: couple entity profile, functional currency, fiscal-year anchor, and accounting basis as
+  one typed bookkeeping fact
+- Surface: `entityName()` and `entityForm()` keep the most common neutral identity facts
+  accessible without unwrapping the full entity profile
+- Validation: rejects `null` entity profile, functional currency, fiscal-year start, and
+  accounting basis
 
 ## `AccountType`
 
@@ -117,37 +225,101 @@ public enum AccountType implements WireValue {
 
 ## `AccountRole`
 
-`AccountRole` is the doctrinal role that determines whether one account behaves ordinarily, as a
-contra account, or as the retained-earnings sink for period-close postings.
+`AccountRole` is the doctrinal role that determines whether one account behaves ordinarily or as a
+contra account.
 
 ```java
 public enum AccountRole implements WireValue {
   ORDINARY,
-  CONTRA,
-  RETAINED_EARNINGS
+  CONTRA
 }
 ```
 
-- Purpose: separate account behavior from account classification so FinGrind can model contra
-  accounts and the retained-earnings destination explicitly
+- Purpose: separate account polarity from account classification so FinGrind can model contra
+  behavior without overloading statement-line taxonomy
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `AccountTaxonomy`
+
+`AccountTaxonomy` is the canonical declaration bundle for chart hierarchy and statement taxonomy on
+one declared account.
+
+```java
+public record AccountTaxonomy(
+    Optional<AccountCode> parentAccountCode,
+    Optional<FinancialPositionLineClassification> financialPositionLineClassification,
+    Optional<ProfitAndLossLineClassification> profitAndLossLineClassification)
+```
+
+- Purpose: keep hierarchy and report taxonomy on the declared account instead of inferring it from
+  account codes, names, or renderer-local rules
+- Validation role: `AccountSemantics.validate(...)` enforces which taxonomy branch must be present
+  for each `AccountType`
+- Factory: `empty()` returns the neutral taxonomy before account-type-specific validation applies
+
+## `FinancialPositionLineClassification`
+
+`FinancialPositionLineClassification` is the canonical balance-sheet taxonomy vocabulary for
+declared accounts and derived equity lines.
+
+```java
+public enum FinancialPositionLineClassification implements WireValue
+```
+
+- Scope: classifies ASSET, LIABILITY, and EQUITY lines, including current/noncurrent buckets and
+  entity-form-sensitive equity classes such as `OWNER_CAPITAL`, `PARTNER_CURRENT`,
+  `RETAINED_EARNINGS`, and `CURRENT_PERIOD_RESULT`
+- Surface: `accountType()` maps each classification back to its owning `AccountType`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `ProfitAndLossLineClassification`
+
+`ProfitAndLossLineClassification` is the canonical income-statement taxonomy vocabulary for nominal
+accounts.
+
+```java
+public enum ProfitAndLossLineClassification implements WireValue
+```
+
+- Scope: classifies REVENUE and EXPENSE lines such as `OPERATING_REVENUE`, `COST_OF_SALES`, and
+  `TAX_EXPENSE`
+- Surface: `accountType()` maps each classification back to REVENUE or EXPENSE ownership
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `StatementLineKind`
+
+`StatementLineKind` records whether one public statement row came from a declared account or from a
+derived statement line.
+
+```java
+public enum StatementLineKind implements WireValue
+```
+
+- Purpose: prevent renderers, clients, and workflow assertions from guessing whether a row is
+  registry-owned or statement-derived
+- Built-in values: `DECLARED_ACCOUNT` and `CURRENT_PERIOD_RESULT`
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
 ## `AccountSemantics`
 
-`AccountSemantics` is the canonical doctrinal owner for account polarity, retained-earnings
-eligibility, and profit-or-loss close behavior.
+`AccountSemantics` is the canonical doctrinal owner for account polarity, taxonomy compatibility,
+closing eligibility, and profit-or-loss close behavior.
 
 ```java
 public final class AccountSemantics
 ```
 
-- Purpose: keep normal-balance derivation, contra inversion, retained-earnings validation, and
+- Purpose: keep normal-balance derivation, contra inversion, taxonomy validation, and
   nominal-account close semantics out of CLI, SQLite, and reporting adapters
-- Surface: `validate(...)`, `normalBalance(...)`, `closesIntoRetainedEarnings(...)`, and
+- Surface: `validate(...)`, `normalBalance(...)`, `closesTemporaryProfitAndLossAccountType(...)`, and
   `profitAndLossContributionMinorUnits(...)`
-- Doctrine: retained-earnings accounts must be `EQUITY`; ordinary balance polarity is derived from
-  `AccountType`, and `CONTRA` reverses that polarity deliberately
+- Doctrine: ordinary balance polarity is derived from `AccountType`, `CONTRA` reverses that
+  polarity deliberately, and built-in close destinations are selected through
+  `FinancialPositionLineClassification.RETAINED_EARNINGS` inside `AccountTaxonomy`
 
 ## `ActorId`
 

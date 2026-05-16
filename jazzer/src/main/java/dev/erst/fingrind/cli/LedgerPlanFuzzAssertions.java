@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.executor.InMemoryBookSession;
-import dev.erst.fingrind.executor.LedgerPlanService;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,10 +39,13 @@ public final class LedgerPlanFuzzAssertions {
     Objects.requireNonNull(input, "input");
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       LedgerPlanResult result =
-          new LedgerPlanService(
+          CliFuzzFixtures.ledgerPlanService(
                   bookSession,
-                  CliFuzzFixtures.postingIdGenerator(input),
-                  CliFuzzFixtures.fixedClock())
+                  bookSession,
+                  bookSession,
+                  bookSession,
+                  bookSession,
+                  CliFuzzFixtures.postingIdGenerator(input))
               .execute(plan);
       return assertPlanResult(plan, result);
     }

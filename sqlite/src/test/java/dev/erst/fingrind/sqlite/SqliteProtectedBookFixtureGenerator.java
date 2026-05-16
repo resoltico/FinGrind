@@ -123,6 +123,7 @@ public final class SqliteProtectedBookFixtureGenerator {
             accountName,
             accountType,
             SqlitePostingFactFixtureSupport.accountRole(accountType, normalBalance),
+            SqlitePostingFactFixtureSupport.accountTaxonomy(accountType),
             INITIALIZED_AT);
     AccountDeclarationOutcome expected = new AccountDeclarationOutcome.Declared(expectedAccount);
     if (!expected.equals(outcome)) {

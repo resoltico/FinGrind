@@ -21,7 +21,7 @@ public sealed interface PostingRejection
         PostingRejection.ClosedPeriodViolation,
         PostingRejection.OpeningBalanceWindowClosed,
         PostingRejection.OpeningBalanceTouchesNominalAccount,
-        PostingRejection.RetainedEarningsAccountReserved,
+        PostingRejection.ClosingEquityAccountReserved,
         PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
@@ -130,9 +130,9 @@ public sealed interface PostingRejection
     }
   }
 
-  /** Rejection for one direct posting that attempts to use the retained-earnings account. */
-  record RetainedEarningsAccountReserved(AccountCode accountCode) implements PostingRejection {
-    public RetainedEarningsAccountReserved {
+  /** Rejection for one direct posting that attempts to use the active closing-equity account. */
+  record ClosingEquityAccountReserved(AccountCode accountCode) implements PostingRejection {
+    public ClosingEquityAccountReserved {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }

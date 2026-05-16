@@ -14,12 +14,21 @@ final class CliJsonRequestSchemas {
           ProtocolDeclareAccountFields.ACCOUNT_CODE,
           ProtocolDeclareAccountFields.ACCOUNT_NAME,
           ProtocolDeclareAccountFields.ACCOUNT_TYPE,
-          ProtocolDeclareAccountFields.ACCOUNT_ROLE);
+          ProtocolDeclareAccountFields.ACCOUNT_ROLE,
+          ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
+          ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
+          ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION);
   static final Set<String> OPEN_BOOK_FIELDS =
       Set.of(
           ProtocolOpenBookFields.ENTITY_NAME,
+          ProtocolOpenBookFields.ENTITY_FORM,
+          ProtocolOpenBookFields.OWNER_MODEL,
+          ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS,
+          ProtocolOpenBookFields.TAX_REGISTRATION_STATUS,
+          ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
-          ProtocolOpenBookFields.FISCAL_YEAR_START);
+          ProtocolOpenBookFields.FISCAL_YEAR_START,
+          ProtocolOpenBookFields.ACCOUNTING_BASIS);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   static final Set<String> PROVENANCE_FIELDS =

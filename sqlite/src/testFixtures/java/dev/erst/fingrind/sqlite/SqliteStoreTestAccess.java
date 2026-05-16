@@ -1,15 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import org.jspecify.annotations.Nullable;
 
 /** Shared test-fixture access seam for store lifecycle inspection and injection. */
 public final class SqliteStoreTestAccess {
-  private static final MethodHandle CLEANUP_CREATED_MISSING_BOOK_ARTIFACTS_IF_PRESENT =
-      lifecycleHelper("cleanupCreatedMissingBookArtifactsIfPresent");
-
   private SqliteStoreTestAccess() {}
 
   /** Replaces the active native database handle held by the store lifecycle for test setup. */
@@ -72,25 +66,6 @@ public final class SqliteStoreTestAccess {
    */
   public static void invokeCleanupCreatedMissingBookArtifactsIfPresent(
       SqlitePostingFactStore store) {
-    try {
-      CLEANUP_CREATED_MISSING_BOOK_ARTIFACTS_IF_PRESENT.invoke(store.lifecycle);
-    } catch (RuntimeException runtimeException) {
-      throw runtimeException;
-    } catch (Error error) {
-      throw error;
-    } catch (Throwable throwable) {
-      throw new LinkageError("Failed to invoke lifecycle artifact cleanup helper.", throwable);
-    }
-  }
-
-  private static MethodHandle lifecycleHelper(String methodName) {
-    try {
-      MethodHandles.Lookup lifecycleLookup =
-          MethodHandles.privateLookupIn(SqliteStoreLifecycle.class, MethodHandles.lookup());
-      return lifecycleLookup.findVirtual(
-          SqliteStoreLifecycle.class, methodName, MethodType.methodType(void.class));
-    } catch (IllegalAccessException | NoSuchMethodException exception) {
-      throw new LinkageError("Failed to bind SQLite lifecycle helper: " + methodName, exception);
-    }
+    store.lifecycle.cleanupCreatedMissingBookArtifactsIfPresent();
   }
 }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,46 +11,45 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionSectionView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -68,47 +68,19 @@ class BookkeepingStatementServiceCoverageTest {
     CurrencyBalance eurDebit = balance("EUR", "1.00", "0.00");
     CurrencyBalance usdDebit = balance("USD", "1.00", "0.00");
     FinancialPositionRowView eurPositionRow =
-        new FinancialPositionRowView(
-            "1000", "Cash", AccountType.ASSET, Optional.of(AccountRole.ORDINARY), false, eurDebit);
+        financialPositionRowView("1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY, eurDebit);
     FinancialPositionRowView usdPositionRow =
-        new FinancialPositionRowView(
-            "1000", "Cash", AccountType.ASSET, Optional.of(AccountRole.ORDINARY), false, usdDebit);
+        financialPositionRowView("1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY, usdDebit);
     IncomeStatementRowView eurIncomeRow =
-        new IncomeStatementRowView(
-            "4000",
-            "Sales",
-            AccountType.REVENUE,
-            Optional.of(AccountRole.ORDINARY),
-            false,
-            eurDebit);
+        incomeStatementRowView(
+            "4000", "Sales", AccountType.REVENUE, AccountRole.ORDINARY, eurDebit);
     IncomeStatementRowView usdIncomeRow =
-        new IncomeStatementRowView(
-            "4000",
-            "Sales",
-            AccountType.REVENUE,
-            Optional.of(AccountRole.ORDINARY),
-            false,
-            usdDebit);
+        incomeStatementRowView(
+            "4000", "Sales", AccountType.REVENUE, AccountRole.ORDINARY, usdDebit);
     ChangesInEquityRowView eurEquityRow =
-        new ChangesInEquityRowView(
-            "3000",
-            "Capital",
-            Optional.of(AccountType.EQUITY),
-            Optional.of(AccountRole.ORDINARY),
-            false,
-            eurDebit,
-            eurDebit,
-            eurDebit);
+        equityRowView("3000", "Capital", AccountRole.ORDINARY, eurDebit, eurDebit, eurDebit);
     ChangesInEquityRowView usdEquityRow =
-        new ChangesInEquityRowView(
-            "3000",
-            "Capital",
-            Optional.of(AccountType.EQUITY),
-            Optional.of(AccountRole.ORDINARY),
-            false,
-            usdDebit,
-            usdDebit,
-            usdDebit);
+        equityRowView("3000", "Capital", AccountRole.ORDINARY, usdDebit, usdDebit, usdDebit);
 
     assertTrue(BookkeepingStatementService.BALANCE_ORDER.compare(eurDebit, usdDebit) < 0);
     assertTrue(
@@ -149,7 +121,7 @@ class BookkeepingStatementServiceCoverageTest {
                 List.of()));
 
     ChangesInEquityView view =
-        new BookkeepingStatementService(store)
+        new BookkeepingStatementService(store, store)
             .changesInEquity(new ChangesInEquityCriteria(PERIOD_FROM, PERIOD_TO));
 
     assertEquals(
@@ -167,9 +139,14 @@ class BookkeepingStatementServiceCoverageTest {
   void financialPosition_requiresOneInitializedBookForMissingAndExistingSnapshots() {
     BookkeepingStatementService missingService =
         new BookkeepingStatementService(
+            new CoverageBookStore(new BookLifecycleInspection.Missing(2), Map.of()),
             new CoverageBookStore(new BookLifecycleInspection.Missing(2), Map.of()));
     BookkeepingStatementService existingService =
         new BookkeepingStatementService(
+            new CoverageBookStore(
+                new BookLifecycleInspection.Existing(
+                    BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2),
+                Map.of()),
             new CoverageBookStore(
                 new BookLifecycleInspection.Existing(
                     BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2),
@@ -205,7 +182,7 @@ class BookkeepingStatementServiceCoverageTest {
                 List.of(totals(cash, "EUR", 1000L, 0L), totals(capital, "EUR", 0L, 1000L))));
 
     FinancialPositionView view =
-        new BookkeepingStatementService(store)
+        new BookkeepingStatementService(store, store)
             .financialPosition(new FinancialPositionCriteria(Optional.empty()));
 
     assertEquals(EffectiveDateRange.of(null, null), view.comparativeEffectiveDateRange());
@@ -238,15 +215,22 @@ class BookkeepingStatementServiceCoverageTest {
   void comparativeWindows_followFiscalYearAnchorInsteadOfBlindCalendarSubtraction() {
     BookIdentity fiscalYearShiftedIdentity =
         new BookIdentity(
-            new BookEntityName("Shifted Year Shop"),
+            new EntityProfile(
+                new BookEntityName("Shifted Year Shop"),
+                EntityForm.FREELANCER,
+                OwnerModel.SOLE_OWNER,
+                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+                TaxRegistrationStatus.UNSPECIFIED,
+                List.of()),
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("02-29"));
+            FiscalYearStart.parse("02-29"),
+            AccountingBasis.ACCRUAL);
     CoverageBookStore store =
         new CoverageBookStore(
             new BookLifecycleInspection.Initialized(
                 1001, 2, 2, FIXED_INSTANT, fiscalYearShiftedIdentity),
             Map.of());
-    BookkeepingStatementService service = new BookkeepingStatementService(store);
+    BookkeepingStatementService service = new BookkeepingStatementService(store, store);
 
     FinancialPositionCriteria financialPositionCriteria =
         new FinancialPositionCriteria(Optional.of(LocalDate.parse("2025-02-28")));
@@ -276,8 +260,60 @@ class BookkeepingStatementServiceCoverageTest {
         new AccountName(name),
         accountType,
         accountRole,
+        accountTaxonomy(accountType),
         true,
         FIXED_INSTANT);
+  }
+
+  private static FinancialPositionRowView financialPositionRowView(
+      String lineCode,
+      String lineName,
+      AccountType lineType,
+      AccountRole lineRole,
+      CurrencyBalance balance) {
+    return new FinancialPositionRowView(
+        lineCode,
+        lineName,
+        lineType,
+        Optional.of(lineRole),
+        FinancialPositionLineClassification.CURRENT_ASSET,
+        StatementLineKind.DECLARED_ACCOUNT,
+        balance);
+  }
+
+  private static IncomeStatementRowView incomeStatementRowView(
+      String lineCode,
+      String lineName,
+      AccountType lineType,
+      AccountRole lineRole,
+      CurrencyBalance movement) {
+    return new IncomeStatementRowView(
+        lineCode,
+        lineName,
+        lineType,
+        Optional.of(lineRole),
+        ProfitAndLossLineClassification.OPERATING_REVENUE,
+        StatementLineKind.DECLARED_ACCOUNT,
+        movement);
+  }
+
+  private static ChangesInEquityRowView equityRowView(
+      String lineCode,
+      String lineName,
+      AccountRole lineRole,
+      CurrencyBalance openingBalance,
+      CurrencyBalance movement,
+      CurrencyBalance closingBalance) {
+    return new ChangesInEquityRowView(
+        lineCode,
+        lineName,
+        Optional.of(AccountType.EQUITY),
+        Optional.of(lineRole),
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        StatementLineKind.DECLARED_ACCOUNT,
+        openingBalance,
+        movement,
+        closingBalance);
   }
 
   private static AccountCurrencyTotals totals(
@@ -303,7 +339,8 @@ class BookkeepingStatementServiceCoverageTest {
   private record QueryKey(EffectiveDateRange range, PostingCoverage postingCoverage) {}
 
   /** Minimal statement-store double for targeted statement-service coverage. */
-  private static final class CoverageBookStore implements BookStore {
+  private static final class CoverageBookStore
+      implements BookLifecycleReader, BookkeepingReportStore {
     private final BookLifecycleInspection inspection;
     private final Map<QueryKey, List<AccountCurrencyTotals>> totalsByQuery;
 
@@ -326,32 +363,6 @@ class BookkeepingStatementServiceCoverageTest {
     }
 
     @Override
-    public dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
-        Instant initializedAt, BookIdentity bookIdentity) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountRole accountRole,
-        Instant declaredAt) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
       throw new UnsupportedOperationException();
     }
@@ -369,60 +380,6 @@ class BookkeepingStatementServiceCoverageTest {
 
     @Override
     public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findExistingPosting(
-        dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findPosting(dev.erst.fingrind.core.PostingId postingId) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findReversalFor(
-        dev.erst.fingrind.core.PostingId priorPostingId) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<RegisteredAccount> allAccounts() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
       throw new UnsupportedOperationException();
     }
   }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: DEVELOPER
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -172,8 +172,8 @@ FinGrind's current public model is:
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
 - one journal entry is exactly one currency
-- declared accounts have immutable `accountType` and immutable `accountRole` once first stored,
-  while `normalBalance` is derived from those two facts
+- declared accounts have immutable `accountType`, immutable `accountRole`, and immutable declared
+  taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
 - the current supported on-disk format is `4`, owned by `BookFormatContract`
@@ -219,7 +219,7 @@ Generated-state stance:
 |:----------|:--------|
 | Java | 26 |
 | Python helper toolchain | 3.12 in CI, plus repo-owned tools from `requirements-python-tools.txt` |
-| Gradle Wrapper | 9.5.0 |
+| Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0-RC in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, generated source-checkout launchers, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` auto-discovers that managed runtime when it runs from a prepared checkout and only needs explicit `FINGRIND_SQLITE_LIBRARY` when launched outside that checkout layout |

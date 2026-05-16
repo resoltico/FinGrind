@@ -6,25 +6,29 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliBookArgumentParser}. */
 class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
 
   @Test
-  void commandArgumentSpec_copiesValueAndFlagOptions() {
-    List<String> valueOptions = new ArrayList<>(List.of("--output"));
-    List<String> flagOptions = new ArrayList<>(List.of("--verbose"));
+  void commandArgumentSpec_copiesAndFreezesOptions() {
     CliBookArgumentParser.CommandArgumentSpec spec =
-        new CliBookArgumentParser.CommandArgumentSpec(valueOptions, flagOptions);
+        new CliBookArgumentParser.CommandArgumentSpec(
+            Map.of(
+                "--output", CliBookArgumentParser.OptionArity.VALUE,
+                "--verbose", CliBookArgumentParser.OptionArity.FLAG));
 
-    valueOptions.add("--cursor");
-    flagOptions.add("--dry-run");
-
-    assertEquals(List.of("--output"), spec.valueOptions());
-    assertEquals(List.of("--verbose"), spec.flagOptions());
+    assertEquals(
+        Map.of(
+            "--output", CliBookArgumentParser.OptionArity.VALUE,
+            "--verbose", CliBookArgumentParser.OptionArity.FLAG),
+        spec.options());
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> spec.options().put("--cursor", CliBookArgumentParser.OptionArity.VALUE));
   }
 
   @Test
@@ -37,6 +41,29 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
     assertFalse(spec.supports("--missing"));
     assertTrue(spec.requiresValue("--output"));
     assertFalse(spec.requiresValue("--verbose"));
+  }
+
+  @Test
+  void commandArgumentSpec_rejects_duplicate_or_overlapping_options() {
+    IllegalArgumentException duplicateValueOption =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliBookArgumentParser.commandArgumentSpec(
+                    List.of("--output", "--output"), List.of()));
+    IllegalArgumentException overlappingOption =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliBookArgumentParser.commandArgumentSpec(
+                    List.of("--output"), List.of("--output")));
+
+    assertEquals(
+        "Command argument options must not repeat or overlap: --output",
+        duplicateValueOption.getMessage());
+    assertEquals(
+        "Command argument options must not repeat or overlap: --output",
+        overlappingOption.getMessage());
   }
 
   @Test

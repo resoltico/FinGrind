@@ -25,8 +25,8 @@ public final class PostingLifecycleStatusMapper {
           PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.RetainedEarningsAccountReserved _ ->
-          PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED;
+      case PostingRejection.ClosingEquityAccountReserved _ ->
+          PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ ->
           PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ ->
