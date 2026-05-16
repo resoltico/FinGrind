@@ -4,18 +4,25 @@ import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -42,13 +49,18 @@ import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.PeriodCloseStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Instant;
@@ -66,7 +78,14 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** In-memory book session for tests and non-durable harness composition. */
-public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable {
+public final class InMemoryBookSession
+    implements BookAdministrationStore,
+        BookkeepingReadStore,
+        PostingValidationStore,
+        PostingCommitStore,
+        PeriodCloseStore,
+        LedgerPlanTransaction,
+        AutoCloseable {
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<AccountCode, RegisteredAccount> accountsByCode = mutableMap();
   private final Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey = mutableMap();
@@ -78,9 +97,16 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
   private BookIdentity bookIdentity =
       new BookIdentity(
-          new BookEntityName("FinGrind Test Entity"),
+          new EntityProfile(
+              new BookEntityName("FinGrind Test Entity"),
+              EntityForm.COMPANY,
+              OwnerModel.MULTI_OWNER,
+              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+              TaxRegistrationStatus.UNSPECIFIED,
+              List.of()),
           CurrencyUnit.of("USD"),
-          new FiscalYearStart(1, 1));
+          new FiscalYearStart(1, 1),
+          AccountingBasis.ACCRUAL);
 
   @Override
   public BookLifecycleInspection inspectBook() {
@@ -135,6 +161,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
       AccountName accountName,
       AccountType accountType,
       AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return withLock(
         () -> {
@@ -145,7 +172,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           AccountDeclarationOutcome declarationOutcome =
               RegisteredAccount.declare(
                   accountsByCode.get(accountCode),
-                  new AccountDeclaration(accountCode, accountName, accountType, accountRole),
+                  new AccountDeclaration(
+                      accountCode, accountName, accountType, accountRole, accountTaxonomy),
                   declaredAt);
           if (declarationOutcome instanceof AccountDeclarationOutcome.Declared declared) {
             accountsByCode.put(accountCode, declared.account());
@@ -315,7 +343,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                 new ClosedPeriod(
                     closedPeriods.size() + 1,
                     periodCloseDraft.reportingPeriod(),
-                    periodCloseDraft.retainedEarningsAccountCode(),
+                    periodCloseDraft.closingEquityAccountCode(),
                     periodCloseDraft.closedTotals(),
                     periodCloseDraft.closedAt(),
                     closingPostingIds);
@@ -683,6 +711,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                   existingAccount.accountName(),
                   existingAccount.accountType(),
                   existingAccount.accountRole(),
+                  existingAccount.accountTaxonomy(),
                   false,
                   existingAccount.declaredAt()));
         });

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor.spi;
 
-/** Public atomic book-store boundary used by ledger-plan execution. */
-public interface AtomicBookStore extends BookStore {
+/** Owns one atomic ledger-plan transaction boundary. */
+public interface LedgerPlanTransaction {
   /** Begins one atomic ledger-plan transaction. */
   void beginLedgerPlanTransaction();
 

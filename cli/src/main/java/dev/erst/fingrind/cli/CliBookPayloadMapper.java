@@ -12,9 +12,12 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Maps book, account, posting, and query payloads into CLI JSON models. */
 final class CliBookPayloadMapper {
@@ -57,8 +60,16 @@ final class CliBookPayloadMapper {
       BookIdentity bookIdentity) {
     return new CliAdministrationJsonModels.BookIdentityPayload(
         bookIdentity.entityName().value(),
+        bookIdentity.entityProfile().entityForm().wireValue(),
+        bookIdentity.entityProfile().ownerModel().wireValue(),
+        bookIdentity.entityProfile().reportingObligationStatus().wireValue(),
+        bookIdentity.entityProfile().taxRegistrationStatus().wireValue(),
+        bookIdentity.entityProfile().businessActivityTags().stream()
+            .map(value -> value.value())
+            .toList(),
         bookIdentity.functionalCurrency().code(),
-        bookIdentity.fiscalYearStart().wireValue());
+        bookIdentity.fiscalYearStart().wireValue(),
+        bookIdentity.accountingBasis().wireValue());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
@@ -67,6 +78,17 @@ final class CliBookPayloadMapper {
         account.accountName().value(),
         account.accountType().wireValue(),
         account.accountRole().wireValue(),
+        account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null),
+        account
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .map(value -> value.wireValue())
+            .orElse(null),
+        account
+            .accountTaxonomy()
+            .profitAndLossLineClassification()
+            .map(value -> value.wireValue())
+            .orElse(null),
         account.normalBalance().wireValue(),
         account.active(),
         account.declaredAt().toString());
@@ -105,8 +127,41 @@ final class CliBookPayloadMapper {
             .toList());
   }
 
+  static CliBookQueryJsonModels.BookContextPayload bookContextPayload(BookIdentity bookIdentity) {
+    return new CliBookQueryJsonModels.BookContextPayload(bookIdentityPayload(bookIdentity));
+  }
+
+  static CliBookQueryJsonModels.PostingQueryContextPayload postingQueryContextPayload(
+      BookIdentity bookIdentity,
+      @Nullable AccountCode accountCodeFilter,
+      @Nullable LocalDate effectiveDateFrom,
+      @Nullable LocalDate effectiveDateTo) {
+    return new CliBookQueryJsonModels.PostingQueryContextPayload(
+        bookIdentityPayload(bookIdentity),
+        accountCodeFilter == null ? null : accountCodeFilter.value(),
+        effectiveDateFrom == null ? null : effectiveDateFrom.toString(),
+        effectiveDateFrom == null
+            ? CliQueryOutputFormatter.lowerDateBoundaryMeaning(null)
+            : CliQueryOutputFormatter.lowerDateBoundaryMeaning(effectiveDateFrom),
+        effectiveDateTo == null ? null : effectiveDateTo.toString(),
+        effectiveDateTo == null
+            ? CliQueryOutputFormatter.upperDateBoundaryMeaning(null)
+            : CliQueryOutputFormatter.upperDateBoundaryMeaning(effectiveDateTo));
+  }
+
+  static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
+      BookIdentity bookIdentity, PostingFact postingFact) {
+    return new CliBookQueryJsonModels.PostingDetailsPayload(
+        bookContextPayload(bookIdentity), postingPayload(postingFact));
+  }
+
   static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
     return new CliBookQueryJsonModels.PostingListPayload(
+        postingQueryContextPayload(
+            page.bookIdentity(),
+            page.accountCodeFilter().orElse(null),
+            page.effectiveDateRange().effectiveDateFrom().orElse(null),
+            page.effectiveDateRange().effectiveDateTo().orElse(null)),
         page.limit(),
         page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
         page.postings().stream().map(CliBookPayloadMapper::postingPayload).toList());
@@ -114,6 +169,7 @@ final class CliBookPayloadMapper {
 
   static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
     return new CliBookQueryJsonModels.AccountListPayload(
+        bookContextPayload(page.bookIdentity()),
         page.limit(),
         page.nextCursor().map(AccountPageCursor::wireValue).orElse(null),
         page.accounts().stream().map(CliBookPayloadMapper::accountPayload).toList());

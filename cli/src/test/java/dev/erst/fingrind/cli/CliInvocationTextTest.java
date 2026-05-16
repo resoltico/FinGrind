@@ -9,37 +9,37 @@ import org.junit.jupiter.api.Test;
 class CliInvocationTextTest {
 
   @Test
-  void launcherCommandFor_returnsPublishedBundleLaunchersPerSurface() {
+  void launcherCommandFor_returnsRuntimeAwareLauncherCommandsAcrossSurfaces() {
     assertEquals(
-        "./bin/fingrind",
+        "fingrind",
         CliInvocationText.launcherCommandFor(FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Mac OS X"));
     assertEquals(
-        ".\\bin\\fingrind.ps1",
+        "fingrind",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        ProtocolCatalog.sourceCheckoutLauncherCommand(false),
+        "./scripts/source-checkout-cli.sh",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Mac OS X"));
     assertEquals(
-        ProtocolCatalog.sourceCheckoutLauncherCommand(true),
+        ".\\scripts\\source-checkout-cli.ps1",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        ProtocolCatalog.directJavaLauncherCommand(false),
+        "./scripts/direct-java-cli.sh",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Linux"));
     assertEquals(
-        ProtocolCatalog.directJavaLauncherCommand(true),
+        ".\\scripts\\direct-java-cli.ps1",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>",
+        ProtocolCatalog.containerLauncherCommand(),
         CliInvocationText.launcherCommandFor(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION, "Linux"));
   }
 
   @Test
-  void rewriteInvocationPrefix_preservesNonCommandTextOutsideSourceCheckout() {
+  void rewriteInvocationPrefix_rewritesCommandExamplesToTheCurrentRuntimeSurface() {
     String originalDistribution =
         System.getProperty(
             FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY,
@@ -47,17 +47,27 @@ class CliInvocationTextTest {
     System.setProperty(
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
     try {
-      String expectedBundleLauncher =
-          CliInvocationText.launcherCommandFor(
-              FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
       assertEquals("Usage", CliInvocationText.rewriteInvocationPrefix("Usage"));
+      assertEquals("fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
       assertEquals(
-          expectedBundleLauncher + " help",
+          "fingrind help",
+          CliInvocationText.rewriteInvocationPrefix("./scripts/direct-java-cli.sh help"));
+      assertEquals(
+          "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+          CliInvocationText.rewriteInvocationPrefix(
+              "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin"));
+    } finally {
+      System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
+    }
+
+    System.setProperty(
+        FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
+    try {
+      assertEquals(
+          "./scripts/direct-java-cli.sh help",
           CliInvocationText.rewriteInvocationPrefix("fingrind help"));
       assertEquals(
-          "cat ./secrets/acme.book-key | "
-              + expectedBundleLauncher
-              + " open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+          "cat ./secrets/acme.book-key | ./scripts/direct-java-cli.sh open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
           CliInvocationText.rewriteInvocationPrefix(
               "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin"));
     } finally {

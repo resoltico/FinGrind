@@ -458,9 +458,7 @@ class CliBookPassphraseResolverTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                CliBookPassphraseResolver.PromptStyle.SINGLE.confirmationPrompt(
-                    Path.of("book.sqlite")));
+            () -> CliBookPassphraseResolver.PromptStyle.SINGLE.confirmationPrompt("book.sqlite"));
 
     assertEquals("This prompt style does not support confirmation.", exception.getMessage());
   }

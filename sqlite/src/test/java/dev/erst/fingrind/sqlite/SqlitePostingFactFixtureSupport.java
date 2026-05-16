@@ -7,7 +7,9 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookEntityName;
@@ -17,19 +19,26 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -47,7 +56,16 @@ import java.util.Optional;
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
+        new EntityProfile(
+            new BookEntityName("Acme Studio"),
+            EntityForm.COMPANY,
+            OwnerModel.MULTI_OWNER,
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+            TaxRegistrationStatus.UNSPECIFIED,
+            List.of()),
+        CurrencyUnit.of("EUR"),
+        FiscalYearStart.parse("01-01"),
+        AccountingBasis.ACCRUAL);
   }
 
   static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
@@ -141,6 +159,41 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         : AccountRole.CONTRA;
   }
 
+  static AccountTaxonomy accountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    };
+  }
+
+  static AccountTaxonomy financialPositionTaxonomy(
+      FinancialPositionLineClassification lineClassification) {
+    return new AccountTaxonomy(Optional.empty(), Optional.of(lineClassification), Optional.empty());
+  }
+
   static RegisteredAccount registeredAccount(
       AccountCode accountCode,
       AccountName accountName,
@@ -148,13 +201,26 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       NormalBalance normalBalance,
       boolean active,
       Instant declaredAt) {
-    return new RegisteredAccount(
+    return registeredAccount(
         accountCode,
         accountName,
         accountType,
         accountRole(accountType, normalBalance),
+        accountTaxonomy(accountType),
         active,
         declaredAt);
+  }
+
+  static RegisteredAccount registeredAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy,
+      boolean active,
+      Instant declaredAt) {
+    return new RegisteredAccount(
+        accountCode, accountName, accountType, accountRole, accountTaxonomy, active, declaredAt);
   }
 
   static DeclaredAccount declaredAccount(
@@ -176,8 +242,26 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       AccountType accountType,
       NormalBalance normalBalance,
       Instant declaredAt) {
+    return declareAccount(
+        postingFactStore,
+        accountCode,
+        accountName,
+        accountType,
+        accountRole(accountType, normalBalance),
+        accountTaxonomy(accountType),
+        declaredAt);
+  }
+
+  static AccountDeclarationOutcome declareAccount(
+      SqlitePostingFactStore postingFactStore,
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy,
+      Instant declaredAt) {
     return postingFactStore.declareAccount(
-        accountCode, accountName, accountType, accountRole(accountType, normalBalance), declaredAt);
+        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
   }
 
   static void initializeBookWithDefaultAccounts(SqlitePostingFactStore postingFactStore) {

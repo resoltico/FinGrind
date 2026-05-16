@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -250,10 +251,11 @@ class SqlitePostingFactStore implements SqliteBookSession {
       AccountName accountName,
       AccountType accountType,
       AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     threadOwner.requireOwnerThread();
     return mutationOperations.declareAccount(
-        accountCode, accountName, accountType, accountRole, declaredAt);
+        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
   }
 
   @Override

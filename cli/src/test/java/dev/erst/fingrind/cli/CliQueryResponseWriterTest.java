@@ -20,7 +20,6 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
-import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
@@ -124,7 +123,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         Path.of("missing.sqlite"), new BookInspection.Missing(3));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
-    getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
+    getPostingWriter.writeGetPostingResult(foundPosting(postingFact));
     ByteArrayOutputStream getPostingRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingRejectionWriter =
         new CliResponseWriter(utf8PrintStream(getPostingRejectionOutput));
@@ -136,7 +135,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         new CliResponseWriter(utf8PrintStream(listPostingsOutput));
     listPostingsWriter.writeListPostingsResult(
         new ListPostingsResult.Listed(
-            new PostingPage(List.of(postingFact), 10, java.util.Optional.empty())));
+            postingPage(List.of(postingFact), 10, java.util.Optional.empty())));
     ByteArrayOutputStream listPostingsRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listPostingsRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsRejectionOutput));
@@ -217,8 +216,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(
-                new PostingPage(List.of(postingFact), 10, Optional.empty())),
+            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.HUMAN);
     String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
     assertTrue(postingRegisterHuman.contains("Posting id"));
@@ -227,8 +225,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(
-                new PostingPage(List.of(postingFact), 10, Optional.empty())),
+            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.CSV);
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
@@ -256,10 +253,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
     assertTrue(
         balanceCsv.contains(
-            "Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,EUR,10.00,4.00,6.00,DEBIT"));
+            "1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
   }
 
   @Test
@@ -394,10 +391,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
+            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts"));
     assertTrue(
         accountLedgerCsv.contains(
-            "ledger-entry,Acme Studio,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
+            "ledger-entry,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
     ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
         .writePeriodSummaryResult(
@@ -436,10 +433,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         periodSummaryCsv.startsWith(
-            "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt"));
+            "recordKind,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt"));
     assertTrue(
         periodSummaryCsv.contains(
-            "account-activity,Acme Studio,EUR,01-01,all-posting-kinds,2026-04-01,selected-effective-date,2026-04-30,selected-effective-date,1,2,2,EUR,10.00,4.00,6.00,DEBIT,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-07T10:15:30Z"));
+            "account-activity,,,,EUR,10.00,4.00,6.00,DEBIT,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-07T10:15:30Z"));
   }
 
   @Test
@@ -519,7 +516,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -558,7 +555,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,sectionAccountType,lineCode,lineName,lineRole,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -590,7 +587,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,entityName,functionalCurrency,fiscalYearStart,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCoverage,comparativeReferenceEffectiveDateFrom,comparativeReferenceEffectiveDateFromMeaning,comparativeReferenceEffectiveDateTo,comparativeReferenceEffectiveDateToMeaning,totalBasis,lineCode,lineName,lineRole,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,totalBasis,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
   }
 
   @Test

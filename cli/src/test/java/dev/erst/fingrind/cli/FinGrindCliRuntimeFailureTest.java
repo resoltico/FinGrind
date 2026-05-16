@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,11 +27,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(new String[] {"open-book"});
     assertEquals(1, exitCode);
-    String outputText = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(outputText.contains("Error"));
-    assertTrue(outputText.contains("Argument"));
-    assertTrue(outputText.contains("--book-file"));
-    assertFalse(outputText.contains("\"status\""));
+    JsonNode failurePayload =
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
+    assertEquals("error", failurePayload.path("status").stringValue());
+    assertEquals("--book-file", failurePayload.path("argument").stringValue());
+    assertEquals(
+        "A --book-file argument is required.", failurePayload.path("message").stringValue());
   }
 
   @Test

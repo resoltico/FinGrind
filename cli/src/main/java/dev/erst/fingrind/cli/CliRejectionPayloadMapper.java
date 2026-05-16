@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.core.AccountTaxonomy;
 
 /** Maps deterministic rejection families into the CLI JSON envelope model. */
 final class CliRejectionPayloadMapper {
@@ -86,10 +87,10 @@ final class CliRejectionPayloadMapper {
               + "; create a new book if the opening statement was not seeded completely.";
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           "Opening-balance postings may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
-      case PostingRejection.RetainedEarningsAccountReserved _ ->
+      case PostingRejection.ClosingEquityAccountReserved _ ->
           "Post directly to ordinary accounts only; let "
               + CLOSE_PERIOD_OPERATION
-              + " generate retained-earnings postings automatically.";
+              + " generate closing-equity postings automatically.";
       case PostingRejection.ReversalTargetNotFound _ ->
           "Use "
               + GET_POSTING_OPERATION
@@ -125,18 +126,25 @@ final class CliRejectionPayloadMapper {
         || rejection instanceof BookAdministrationRejection.AccountRoleConflict) {
       return "Keep the existing account identity as declared, or choose a different accountCode for a differently classified account.";
     }
-    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountMissing) {
-      return "Declare the selected retained-earnings account first, using accountType EQUITY and accountRole RETAINED_EARNINGS, then rerun "
-          + CLOSE_PERIOD_OPERATION
-          + " with --retained-earnings-account set to that code.";
+    if (rejection instanceof BookAdministrationRejection.AccountTaxonomyConflict) {
+      return "Keep the existing taxonomy for this account, or choose a different accountCode for an account with different hierarchy or statement classification.";
     }
-    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountRoleMismatch) {
-      return "Choose an account whose declared accountRole is RETAINED_EARNINGS, or redeclare the selected account with the correct doctrine before rerunning "
+    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountMissing) {
+      return "Declare the selected closing equity account first, using accountType EQUITY and the built-in financial position classification required for this book's entity form, then rerun "
+          + CLOSE_PERIOD_OPERATION
+          + " with --closing-equity-account set to that code.";
+    }
+    if (rejection
+        instanceof
+        BookAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict) {
+      return "Choose an account whose declared financialPositionLineClassification matches the built-in closing classification "
+          + conflict.requiredFinancialPositionLineClassification().wireValue()
+          + ", or redeclare the selected account with the correct policy-owned classification before rerunning "
           + CLOSE_PERIOD_OPERATION
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountInactive) {
-      return "Redeclare the retained-earnings account to reactivate it, or declare the correct retained-earnings account before rerunning "
+    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountInactive) {
+      return "Redeclare the closing equity account to reactivate it, or declare the correct closing equity account before rerunning "
           + CLOSE_PERIOD_OPERATION
           + ".";
     }
@@ -203,8 +211,8 @@ final class CliRejectionPayloadMapper {
           new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails(
               rejectionOpeningBalance.accountCode().value(),
               rejectionOpeningBalance.accountType().wireValue());
-      case PostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
-          new CliRejectionJsonModels.RetainedEarningsAccountDetails(
+      case PostingRejection.ClosingEquityAccountReserved rejectionReserved ->
+          new CliRejectionJsonModels.ClosingEquityAccountDetails(
               rejectionReserved.accountCode().value());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           new CliRejectionJsonModels.PriorPostingDetails(
@@ -246,13 +254,20 @@ final class CliRejectionPayloadMapper {
               conflict.accountCode().value(),
               conflict.existingAccountRole().wireValue(),
               conflict.requestedAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountMissing conflict ->
-          new CliRejectionJsonModels.RetainedEarningsAccountDetails(conflict.accountCode().value());
-      case BookAdministrationRejection.RetainedEarningsAccountRoleMismatch conflict ->
-          new CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails(
-              conflict.accountCode().value(), conflict.actualAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountInactive conflict ->
-          new CliRejectionJsonModels.RetainedEarningsAccountDetails(conflict.accountCode().value());
+      case BookAdministrationRejection.AccountTaxonomyConflict conflict ->
+          new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
+              conflict.accountCode().value(),
+              taxonomyDetails(conflict.existingAccountTaxonomy()),
+              taxonomyDetails(conflict.requestedAccountTaxonomy()));
+      case BookAdministrationRejection.ClosingEquityAccountMissing conflict ->
+          new CliRejectionJsonModels.ClosingEquityAccountDetails(conflict.accountCode().value());
+      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->
+          new CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails(
+              conflict.accountCode().value(),
+              conflict.requiredFinancialPositionLineClassification().wireValue(),
+              conflict.actualFinancialPositionLineClassification().wireValue());
+      case BookAdministrationRejection.ClosingEquityAccountInactive conflict ->
+          new CliRejectionJsonModels.ClosingEquityAccountDetails(conflict.accountCode().value());
       case BookAdministrationRejection.PeriodCloseMustStartAt conflict ->
           new CliRejectionJsonModels.PeriodCloseStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
@@ -276,5 +291,19 @@ final class CliRejectionPayloadMapper {
       case BookQueryRejection.PostingNotFound postingNotFound ->
           new CliRejectionJsonModels.PostingNotFoundDetails(postingNotFound.postingId().value());
     };
+  }
+
+  private static CliRejectionJsonModels.AccountTaxonomyDetails taxonomyDetails(
+      AccountTaxonomy accountTaxonomy) {
+    return new CliRejectionJsonModels.AccountTaxonomyDetails(
+        accountTaxonomy.parentAccountCode().map(accountCode -> accountCode.value()).orElse(null),
+        accountTaxonomy
+            .financialPositionLineClassification()
+            .map(classification -> classification.wireValue())
+            .orElse(null),
+        accountTaxonomy
+            .profitAndLossLineClassification()
+            .map(classification -> classification.wireValue())
+            .orElse(null));
   }
 }

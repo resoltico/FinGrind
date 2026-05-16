@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
 import java.util.Map;
 
@@ -13,11 +15,21 @@ final class MachineContractDeclareAccountSchemas {
   private MachineContractDeclareAccountSchemas() {}
 
   static Map<String, Object> declareAccountSchema() {
-    return MachineContractSchemaSupport.rootObjectSchema(
-        "Canonical "
-            + MachineContractSchemaSupport.operation(OperationId.DECLARE_ACCOUNT)
-            + " request JSON document.",
-        topLevelFields());
+    Map<String, Object> rootSchema =
+        MachineContractSchemaSupport.rootObjectSchema(
+            "Canonical "
+                + MachineContractSchemaSupport.operation(OperationId.DECLARE_ACCOUNT)
+                + " request JSON document.",
+            topLevelFields());
+    return MachineContractSchemaSupport.orderedMapFromEntries(
+        java.util.stream.Stream.concat(
+                rootSchema.entrySet().stream()
+                    .map(entry -> Map.entry(entry.getKey(), (Object) entry.getValue())),
+                java.util.stream.Stream.of(
+                    Map.<String, Object>entry(
+                        "oneOf",
+                        List.of(balanceSheetTaxonomyBranch(), profitAndLossTaxonomyBranch()))))
+            .toList());
   }
 
   static Map<String, Object> declareAccountSchemaWithoutDialect() {
@@ -31,7 +43,12 @@ final class MachineContractDeclareAccountSchemas {
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "accountType", AccountType.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                "accountRole", AccountRole.wireValues())),
+                "accountRole", AccountRole.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "financialPositionLineClassification",
+                FinancialPositionLineClassification.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "profitAndLossLineClassification", ProfitAndLossLineClassification.wireValues())),
         declareAccountSchema());
   }
 
@@ -57,9 +74,74 @@ final class MachineContractDeclareAccountSchemas {
                 AccountType.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_ROLE,
-            "Canonical doctrinal role for the declared account, including contra and retained-earnings handling.",
+            "Canonical doctrinal role for the declared account, including ordinary and contra polarity.",
             MachineContractSchemaSupport.enumStringSchema(
-                "Canonical doctrinal role for the declared account, including contra and retained-earnings handling.",
-                AccountRole.wireValues())));
+                "Canonical doctrinal role for the declared account, including ordinary and contra polarity.",
+                AccountRole.wireValues())),
+        MachineContractFieldSpec.optional(
+            ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
+            "Optional parent account code that places this account inside the declared chart hierarchy.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Optional parent account code that places this account inside the declared chart hierarchy.",
+                AccountCode.pattern(),
+                AccountCode.maxLength())),
+        MachineContractFieldSpec.conditional(
+            ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
+            "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
+                FinancialPositionLineClassification.wireValues())),
+        MachineContractFieldSpec.conditional(
+            ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
+            "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
+                ProfitAndLossLineClassification.wireValues())));
+  }
+
+  private static Map<String, Object> balanceSheetTaxonomyBranch() {
+    return MachineContractSchemaSupport.orderedMap(
+        "description",
+        "ASSET, LIABILITY, and EQUITY accounts must declare financialPositionLineClassification and must not declare profitAndLossLineClassification.",
+        "properties",
+        MachineContractSchemaSupport.orderedMap(
+            ProtocolDeclareAccountFields.ACCOUNT_TYPE,
+            MachineContractSchemaSupport.enumStringSchema(
+                "Balance-sheet account types.",
+                List.of(
+                    AccountType.ASSET.wireValue(),
+                    AccountType.LIABILITY.wireValue(),
+                    AccountType.EQUITY.wireValue())),
+            ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
+            MachineContractSchemaSupport.enumStringSchema(
+                "Required financial position taxonomy for balance-sheet accounts.",
+                FinancialPositionLineClassification.wireValues())),
+        "required",
+        List.of(ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION),
+        "not",
+        MachineContractSchemaSupport.orderedMap(
+            "required", List.of(ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION)));
+  }
+
+  private static Map<String, Object> profitAndLossTaxonomyBranch() {
+    return MachineContractSchemaSupport.orderedMap(
+        "description",
+        "REVENUE and EXPENSE accounts must declare profitAndLossLineClassification and must not declare financialPositionLineClassification.",
+        "properties",
+        MachineContractSchemaSupport.orderedMap(
+            ProtocolDeclareAccountFields.ACCOUNT_TYPE,
+            MachineContractSchemaSupport.enumStringSchema(
+                "Nominal account types.",
+                List.of(AccountType.REVENUE.wireValue(), AccountType.EXPENSE.wireValue())),
+            ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
+            MachineContractSchemaSupport.enumStringSchema(
+                "Required profit-and-loss taxonomy for nominal accounts.",
+                ProfitAndLossLineClassification.wireValues())),
+        "required",
+        List.of(ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION),
+        "not",
+        MachineContractSchemaSupport.orderedMap(
+            "required",
+            List.of(ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION)));
   }
 }

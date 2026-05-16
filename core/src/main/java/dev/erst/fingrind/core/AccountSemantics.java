@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /** Canonical doctrinal owner for account polarity, temporary-account behavior, and close policy. */
 public final class AccountSemantics {
@@ -10,23 +11,57 @@ public final class AccountSemantics {
   public static void validate(AccountType accountType, AccountRole accountRole) {
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
-    if (accountRole == AccountRole.RETAINED_EARNINGS && accountType != AccountType.EQUITY) {
-      throw new IllegalArgumentException("RETAINED_EARNINGS accounts must use accountType EQUITY.");
+  }
+
+  /** Validates one declared account role plus taxonomy for the selected classification. */
+  public static void validate(
+      AccountType accountType, AccountRole accountRole, AccountTaxonomy accountTaxonomy) {
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(accountRole, "accountRole");
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
+    Optional<FinancialPositionLineClassification> financialPositionLineClassification =
+        accountTaxonomy.financialPositionLineClassification();
+    Optional<ProfitAndLossLineClassification> profitAndLossLineClassification =
+        accountTaxonomy.profitAndLossLineClassification();
+    if (!closesTemporaryProfitAndLossAccountType(accountType)) {
+      if (financialPositionLineClassification.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Financial-position classification is required for balance-sheet accounts.");
+      }
+      if (profitAndLossLineClassification.isPresent()) {
+        throw new IllegalArgumentException(
+            "Profit-and-loss classification must be absent for balance-sheet accounts.");
+      }
+      if (financialPositionLineClassification.orElseThrow().accountType() != accountType) {
+        throw new IllegalArgumentException(
+            "Financial-position classification must match the declared accountType.");
+      }
+      return;
+    }
+    if (profitAndLossLineClassification.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Profit-and-loss classification is required for nominal accounts.");
+    }
+    if (financialPositionLineClassification.isPresent()) {
+      throw new IllegalArgumentException(
+          "Financial-position classification must be absent for nominal accounts.");
+    }
+    if (profitAndLossLineClassification.orElseThrow().accountType() != accountType) {
+      throw new IllegalArgumentException(
+          "Profit-and-loss classification must match the declared accountType.");
     }
   }
 
   /** Returns the canonical journal side that increases this account. */
   public static NormalBalance normalBalance(AccountType accountType, AccountRole accountRole) {
-    validate(accountType, accountRole);
     return switch (accountRole) {
       case ORDINARY -> ordinaryNormalBalance(accountType);
       case CONTRA -> opposite(ordinaryNormalBalance(accountType));
-      case RETAINED_EARNINGS -> NormalBalance.CREDIT;
     };
   }
 
-  /** Returns whether the account participates in period-close temporary-balance clearing. */
-  public static boolean closesIntoRetainedEarnings(AccountType accountType) {
+  /** Returns whether the account type participates in temporary profit-or-loss close clearing. */
+  public static boolean closesTemporaryProfitAndLossAccountType(AccountType accountType) {
     return switch (Objects.requireNonNull(accountType, "accountType")) {
       case REVENUE, EXPENSE -> true;
       case ASSET, LIABILITY, EQUITY -> false;
@@ -42,15 +77,22 @@ public final class AccountSemantics {
       AccountType accountType, AccountRole accountRole, BalanceSide balanceSide, long amountMinor) {
     validate(accountType, accountRole);
     Objects.requireNonNull(balanceSide, "balanceSide");
-    if (!closesIntoRetainedEarnings(accountType)) {
+    if (!closesTemporaryProfitAndLossAccountType(accountType)) {
       throw new IllegalArgumentException(
           "Only REVENUE and EXPENSE accounts contribute to current-period profit or loss.");
     }
     if (amountMinor < 0) {
       throw new IllegalArgumentException("amountMinor must not be negative.");
     }
+    if (balanceSide == BalanceSide.ZERO) {
+      if (amountMinor == 0L) {
+        return 0L;
+      }
+      throw new IllegalArgumentException("ZERO balanceSide requires amountMinor to be zero.");
+    }
     long naturalSigned =
-        matchesNormalBalance(balanceSide, normalBalance(accountType, accountRole))
+        (balanceSide == BalanceSide.DEBIT)
+                == (normalBalance(accountType, accountRole) == NormalBalance.DEBIT)
             ? amountMinor
             : -amountMinor;
     long result = accountType == AccountType.REVENUE ? naturalSigned : -naturalSigned;
@@ -68,15 +110,6 @@ public final class AccountSemantics {
     return switch (Objects.requireNonNull(normalBalance, "normalBalance")) {
       case DEBIT -> NormalBalance.CREDIT;
       case CREDIT -> NormalBalance.DEBIT;
-    };
-  }
-
-  private static boolean matchesNormalBalance(
-      BalanceSide balanceSide, NormalBalance normalBalance) {
-    return switch (Objects.requireNonNull(balanceSide, "balanceSide")) {
-      case DEBIT -> normalBalance == NormalBalance.DEBIT;
-      case CREDIT -> normalBalance == NormalBalance.CREDIT;
-      case ZERO -> false;
     };
   }
 }

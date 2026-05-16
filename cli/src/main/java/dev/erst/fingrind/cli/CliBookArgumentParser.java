@@ -4,8 +4,10 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -132,7 +134,10 @@ final class CliBookArgumentParser {
 
   static CommandArgumentSpec commandArgumentSpec(
       List<String> valueOptions, List<String> flagOptions) {
-    return new CommandArgumentSpec(valueOptions, flagOptions);
+    var options = new LinkedHashMap<String, OptionArity>();
+    registerOptions(options, valueOptions, OptionArity.VALUE);
+    registerOptions(options, flagOptions, OptionArity.FLAG);
+    return new CommandArgumentSpec(options);
   }
 
   /** Parsed path arguments shared by commands that address one book file. */
@@ -149,19 +154,38 @@ final class CliBookArgumentParser {
   }
 
   /** Allowed command-specific tail arguments for book-addressed commands. */
-  record CommandArgumentSpec(List<String> valueOptions, List<String> flagOptions) {
+  record CommandArgumentSpec(Map<String, OptionArity> options) {
     CommandArgumentSpec {
-      valueOptions = List.copyOf(Objects.requireNonNull(valueOptions, "valueOptions"));
-      flagOptions = List.copyOf(Objects.requireNonNull(flagOptions, "flagOptions"));
+      options = Map.copyOf(Objects.requireNonNull(options, "options"));
     }
 
     boolean supports(String argument) {
-      return valueOptions.contains(argument) || flagOptions.contains(argument);
+      return options.containsKey(argument);
     }
 
     boolean requiresValue(String argument) {
-      return valueOptions.contains(argument);
+      return options.get(argument) == OptionArity.VALUE;
     }
+  }
+
+  private static void registerOptions(
+      Map<String, OptionArity> options, List<String> optionNames, OptionArity arity) {
+    Objects.requireNonNull(options, "options");
+    List<String> normalizedOptionNames =
+        List.copyOf(Objects.requireNonNull(optionNames, "optionNames"));
+    for (String optionName : normalizedOptionNames) {
+      String normalized = Objects.requireNonNull(optionName, "optionNames must not contain nulls.");
+      if (options.putIfAbsent(normalized, arity) != null) {
+        throw new IllegalArgumentException(
+            "Command argument options must not repeat or overlap: " + normalized);
+      }
+    }
+  }
+
+  /** Declares whether one CLI option is a bare flag or requires one following value token. */
+  enum OptionArity {
+    FLAG,
+    VALUE
   }
 
   /** Supported parser shapes for commands that address one selected book file. */

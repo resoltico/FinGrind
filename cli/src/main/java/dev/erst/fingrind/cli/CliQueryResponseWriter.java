@@ -68,10 +68,12 @@ final class CliQueryResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.postingPayload(found.postingFact()))),
+                          CliResponsePayloadMapper.postingDetailsPayload(
+                              found.bookIdentity(), found.postingFact()))),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderPostingHuman(found.postingFact())),
+                      CliQueryOutputRenderer.renderPostingHuman(
+                          found.bookIdentity(), found.postingFact())),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.GET_POSTING));

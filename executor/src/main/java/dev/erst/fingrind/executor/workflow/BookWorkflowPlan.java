@@ -5,13 +5,10 @@ import java.util.List;
 import java.util.Objects;
 
 /** Internal workflow plan translated from the public execute-plan schema. */
-public record BookWorkflowPlan(String planId, List<BookWorkflowStep> steps) {
+public record BookWorkflowPlan(BookWorkflowPlanId planId, List<BookWorkflowStep> steps) {
   /** Validates one translated workflow plan. */
   public BookWorkflowPlan {
     Objects.requireNonNull(planId, "planId");
-    if (planId.isBlank()) {
-      throw new IllegalArgumentException("Workflow planId must not be blank.");
-    }
     steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Workflow plan must contain at least one step.");

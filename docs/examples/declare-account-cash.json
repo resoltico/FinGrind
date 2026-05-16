@@ -2,5 +2,6 @@
   "accountCode": "1000",
   "accountName": "Cash",
   "accountType": "ASSET",
-  "accountRole": "ORDINARY"
+  "accountRole": "ORDINARY",
+  "financialPositionLineClassification": "CURRENT_ASSET"
 }

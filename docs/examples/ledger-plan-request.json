@@ -6,8 +6,14 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Acme Studio",
+        "entityForm": "FREELANCER",
+        "ownerModel": "SOLE_OWNER",
+        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+        "taxRegistrationStatus": "UNSPECIFIED",
+        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
+        "fiscalYearStart": "01-01",
+        "accountingBasis": "ACCRUAL"
       }
     },
     {
@@ -17,7 +23,8 @@
         "accountCode": "1000",
         "accountName": "Cash",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": "CURRENT_ASSET"
       }
     },
     {
@@ -27,7 +34,8 @@
         "accountCode": "2000",
         "accountName": "Revenue",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
     },
     {

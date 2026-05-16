@@ -6,24 +6,33 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -67,9 +76,11 @@ class PdfValueFormatterTest {
   }
 
   @Test
-  void displayRowKindFormatsAccountAndSyntheticRows() {
-    assertEquals("Account", PdfValueFormatter.displayRowKind(false));
-    assertEquals("Synthetic", PdfValueFormatter.displayRowKind(true));
+  void displayRowKindFormatsDeclaredAndDerivedRows() {
+    assertEquals("Account", PdfValueFormatter.displayRowKind(StatementLineKind.DECLARED_ACCOUNT));
+    assertEquals(
+        "Current period result",
+        PdfValueFormatter.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
   }
 
   @Test
@@ -99,8 +110,125 @@ class PdfValueFormatterTest {
   void displayAccountRoleFormatsEveryVariant() {
     assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
     assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.CONTRA));
+  }
+
+  @Test
+  void classificationAndPostingHelpers_coverAllRemainingDisplayVariants() {
     assertEquals(
-        "Retained earnings", PdfValueFormatter.displayAccountRole(AccountRole.RETAINED_EARNINGS));
+        "Current asset",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.CURRENT_ASSET));
+    assertEquals(
+        "Non-current asset",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.NONCURRENT_ASSET));
+    assertEquals(
+        "Current liability",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.CURRENT_LIABILITY));
+    assertEquals(
+        "Non-current liability",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.NONCURRENT_LIABILITY));
+    assertEquals(
+        "Owner capital",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.OWNER_CAPITAL));
+    assertEquals(
+        "Owner drawings",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.OWNER_DRAWINGS));
+    assertEquals(
+        "Partner capital",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.PARTNER_CAPITAL));
+    assertEquals(
+        "Partner current",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.PARTNER_CURRENT));
+    assertEquals(
+        "Share capital",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.SHARE_CAPITAL));
+    assertEquals(
+        "Retained earnings",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.RETAINED_EARNINGS));
+    assertEquals(
+        "Accumulated surplus",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.ACCUMULATED_SURPLUS));
+    assertEquals(
+        "Reserve",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.RESERVE));
+    assertEquals(
+        "Current period result",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT));
+    assertEquals(
+        "Other equity",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.OTHER_EQUITY));
+    assertEquals(
+        "Operating revenue",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.OPERATING_REVENUE));
+    assertEquals(
+        "Other revenue",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.OTHER_REVENUE));
+    assertEquals(
+        "Finance income",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.FINANCE_INCOME));
+    assertEquals(
+        "Cost of sales",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.COST_OF_SALES));
+    assertEquals(
+        "Operating expense",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    assertEquals(
+        "Depreciation and amortization",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION));
+    assertEquals(
+        "Finance expense",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.FINANCE_EXPENSE));
+    assertEquals(
+        "Tax expense",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.TAX_EXPENSE));
+    assertEquals(
+        "Direct",
+        PdfValueFormatter.reversalState(
+            postingFact("posting-1", "idem-1", PostingLineage.direct())));
+    assertEquals(
+        "Reversal",
+        PdfValueFormatter.reversalState(
+            new PostingFact(
+                new PostingId("posting-2"),
+                journalEntry(),
+                PostingLineage.reversal(
+                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReason("undo test posting")),
+                PostingKind.STANDARD,
+                new CommittedProvenance(
+                    new RequestProvenance(
+                        new ActorId("actor-1"),
+                        ActorType.AGENT,
+                        new CommandId("command-1"),
+                        new IdempotencyKey("idem-2"),
+                        new CausationId("cause-1"),
+                        Optional.empty()),
+                    Instant.parse("2026-04-07T10:15:30Z"),
+                    SourceChannel.CLI))));
+    assertEquals(
+        "Other / Multi Owner",
+        PdfValueFormatter.displayEntityProfile(EntityForm.OTHER, OwnerModel.MULTI_OWNER));
   }
 
   @Test
@@ -130,6 +258,25 @@ class PdfValueFormatterTest {
   }
 
   @Test
+  void displayIdentityProfileValuesFormatsEntityReportingAndActivityFacts() {
+    assertEquals(
+        "Company / Multi Owner",
+        PdfValueFormatter.displayEntityProfile(EntityForm.COMPANY, OwnerModel.MULTI_OWNER));
+    assertEquals(
+        "Internal Management Only / Unspecified",
+        PdfValueFormatter.displayReportingProfile(
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY, TaxRegistrationStatus.UNSPECIFIED));
+    assertEquals(
+        "translation-services, advisory",
+        PdfValueFormatter.displayBusinessActivityTags(
+            List.of(
+                new BusinessActivityTag("translation-services"),
+                new BusinessActivityTag("advisory"))));
+    assertEquals("(none)", PdfValueFormatter.displayBusinessActivityTags(List.of()));
+    assertEquals("Accrual", PdfValueFormatter.displayAccountingBasis(AccountingBasis.ACCRUAL));
+  }
+
+  @Test
   void displayPostingKindFormatsEveryVariant() {
     assertEquals("Standard", PdfValueFormatter.displayPostingKind(PostingKind.STANDARD));
     assertEquals("Period close", PdfValueFormatter.displayPostingKind(PostingKind.PERIOD_CLOSE));
@@ -139,7 +286,7 @@ class PdfValueFormatterTest {
 
   @Test
   void optionalDateFormatsNullAndConcreteDates() {
-    assertEquals("(current durable posting horizon)", PdfValueFormatter.optionalDate(null));
+    assertEquals("latest committed posting date", PdfValueFormatter.optionalDate(null));
     assertEquals("2026-05-07", PdfValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
   }
 
@@ -149,13 +296,12 @@ class PdfValueFormatterTest {
     LocalDate to = LocalDate.parse("2026-05-31");
 
     assertEquals(
-        "(unbounded lower filter) to (current durable posting horizon)",
+        "book start to latest committed posting date",
         PdfValueFormatter.optionalDateRange(null, null));
     assertEquals(
-        "2026-05-01 to (current durable posting horizon)",
+        "2026-05-01 to latest committed posting date",
         PdfValueFormatter.optionalDateRange(from, null));
-    assertEquals(
-        "(unbounded lower filter) to 2026-05-31", PdfValueFormatter.optionalDateRange(null, to));
+    assertEquals("book start to 2026-05-31", PdfValueFormatter.optionalDateRange(null, to));
     assertEquals("2026-05-01 to 2026-05-31", PdfValueFormatter.optionalDateRange(from, to));
   }
 
@@ -165,13 +311,13 @@ class PdfValueFormatterTest {
     LocalDate to = LocalDate.parse("2026-05-31");
 
     assertEquals(
-        "(unbounded lower filter) to (current durable posting horizon)",
+        "book start to latest committed posting date",
         PdfValueFormatter.effectiveDateRange(EffectiveDateRange.unbounded()));
     assertEquals(
-        "2026-05-01 to (current durable posting horizon)",
+        "2026-05-01 to latest committed posting date",
         PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.From(from)));
     assertEquals(
-        "(unbounded lower filter) to 2026-05-31",
+        "book start to 2026-05-31",
         PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.To(to)));
     assertEquals(
         "2026-05-01 to 2026-05-31",
@@ -182,7 +328,7 @@ class PdfValueFormatterTest {
   void comparativeRangeFormatsNoneAndBoundedComparatives() {
     assertEquals("(none)", PdfValueFormatter.comparativeRange(EffectiveDateRange.unbounded()));
     assertEquals(
-        "(unbounded lower filter) to 2026-05-31",
+        "book start to 2026-05-31",
         PdfValueFormatter.comparativeRange(
             new EffectiveDateRange.To(LocalDate.parse("2026-05-31"))));
     assertEquals(

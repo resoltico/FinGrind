@@ -22,6 +22,8 @@ import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepKind;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
+import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
+import dev.erst.fingrind.contract.protocol.CapabilityStatus;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -39,7 +41,6 @@ import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -53,26 +54,58 @@ class MachineContractTest {
   void capabilities_areDerivedFromLiveEnumsAndRejectionCatalogs() {
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.9.0", "desc"),
-            readyEnvironmentDescriptor(),
-            Instant.parse("2026-04-13T12:00:00Z"));
+            new ApplicationIdentity("FinGrind", "0.9.0", "desc"), readyEnvironmentDescriptor());
 
+    assertPreflightAndCurrencyCapabilities(capabilities);
+    assertAccountingBaselineCapabilities(capabilities);
+    assertExtensionSurfaceCapabilities(capabilities);
+    assertRequestInputCapabilities(capabilities);
+    assertCommandOutputModes(capabilities);
+    assertRequestShapes(capabilities);
+    assertResponseModelCatalog(capabilities);
+  }
+
+  private static void assertPreflightAndCurrencyCapabilities(CapabilitiesDescriptor capabilities) {
     assertEquals("advisory", capabilities.preflight().semantics());
     assertEquals(
         ContractResponse.CommitGuarantee.NOT_GUARANTEED,
         capabilities.preflight().commitGuarantee());
     assertEquals("single-functional-currency-per-book", capabilities.currencyModel().scope());
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
+    assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        ((EnvironmentSqliteDescriptor.ReadyRuntime) capabilities.environment().sqlite().runtime())
+            .runtimeTrustBasis());
+  }
+
+  private static void assertAccountingBaselineCapabilities(CapabilitiesDescriptor capabilities) {
+    assertEquals(
+        AccountingBaselineTarget.INTERNAL_MANAGEMENT_STATEMENTS,
+        capabilities.accountingBaseline().currentTarget());
+    assertEquals(
+        AccountingBaselineTarget.BASIC_STANDARD_REPORTING_FOUNDATION,
+        capabilities.accountingBaseline().nextTarget());
     assertTrue(
         capabilities
             .accountingBaseline()
             .reportingPosition()
             .contains("Built-in reporting stops at financial position"));
+    assertTrue(capabilities.accountingBaseline().nonClaims().contains("IFRS for SMEs parity"));
+    assertEquals(
+        "neutral-single-entity-policy-pack",
+        capabilities.accountingBaseline().defaultPolicyPack().policyPackId());
+    assertTrue(
+        capabilities.accountingBaseline().reportCapabilities().stream()
+            .anyMatch(
+                capability ->
+                    "statement-of-cash-flows".equals(capability.statementId())
+                        && capability.status() == CapabilityStatus.PLANNED
+                        && capability.requiredForTargetBaseline()));
     assertTrue(
         capabilities
             .accountingBaseline()
             .chartModelPosition()
-            .contains("chart of accounts is flat"));
+            .contains("supports explicit parent-child hierarchy"));
     assertTrue(
         capabilities
             .accountingBaseline()
@@ -93,9 +126,19 @@ class MachineContractTest {
             .accountingBaseline()
             .organizationalPosition()
             .contains("does not yet claim multi-entity organizational accounting"));
+  }
+
+  private static void assertExtensionSurfaceCapabilities(CapabilitiesDescriptor capabilities) {
     assertEquals(
-        List.of("statement-comparative-policy"),
+        List.of(
+            "accounting-basis-policy",
+            "statement-comparative-policy",
+            "chart-policy",
+            "close-policy",
+            "statement-presentation-policy"),
         capabilities.extensionSurface().implementedSeams());
+    assertEquals(
+        "neutral-single-entity-policy-pack", capabilities.extensionSurface().defaultPolicyPackId());
     assertTrue(
         capabilities.extensionSurface().futureContexts().contains("tax-determination-and-filing"));
     assertTrue(
@@ -103,6 +146,15 @@ class MachineContractTest {
             .extensionSurface()
             .futureContexts()
             .contains("group-reporting-and-consolidation"));
+    assertTrue(
+        capabilities.extensionSurface().policySeams().stream()
+            .anyMatch(
+                seam ->
+                    "close-policy".equals(seam.seamId())
+                        && seam.status() == CapabilityStatus.IMPLEMENTED));
+  }
+
+  private static void assertRequestInputCapabilities(CapabilitiesDescriptor capabilities) {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
@@ -127,20 +179,29 @@ class MachineContractTest {
             .requestInput()
             .requestDocumentSemantics()
             .contains("duplicate JSON object keys are rejected"));
-    assertEquals(
-        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-        ((EnvironmentSqliteDescriptor.ReadyRuntime) capabilities.environment().sqlite().runtime())
-            .runtimeTrustBasis());
+  }
+
+  private static void assertCommandOutputModes(CapabilitiesDescriptor capabilities) {
     assertNotNull(capabilities.requestShapes());
+    assertEquals("--output", capabilities.requestInput().outputOption());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN),
+        command(capabilities.commands().discovery(), OperationId.VERSION).outputModes());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        command(capabilities.commands().query(), OperationId.TRIAL_BALANCE).outputModes());
+    assertEquals(
+        List.of(),
+        command(capabilities.commands().write(), OperationId.EXECUTE_PLAN).outputModes());
+  }
+
+  private static void assertRequestShapes(CapabilitiesDescriptor capabilities) {
     ContractRequestShapes.RequestShapesDescriptor requestShapes =
         Objects.requireNonNull(capabilities.requestShapes());
-    assertNotNull(requestShapes.postEntry());
     ContractRequestShapes.PostEntryRequestShapeDescriptor postEntry =
         Objects.requireNonNull(requestShapes.postEntry());
-    assertNotNull(requestShapes.declareAccount());
     ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccount =
         Objects.requireNonNull(requestShapes.declareAccount());
-    assertNotNull(requestShapes.ledgerPlan());
     ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
         Objects.requireNonNull(requestShapes.ledgerPlan());
 
@@ -161,7 +222,9 @@ class MachineContractTest {
         RequestFieldPresence.CONDITIONAL, fieldPresence(ledgerPlan.stepFields(), "posting"));
     assertEquals(
         RequestFieldPresence.CONDITIONAL, fieldPresence(ledgerPlan.queryFields(), "accountCode"));
+  }
 
+  private static void assertResponseModelCatalog(CapabilitiesDescriptor capabilities) {
     List<String> rejectionCodes =
         capabilities.responseModel().rejections().stream()
             .map(ContractResponse.RejectionDescriptor::code)
@@ -217,6 +280,8 @@ class MachineContractTest {
     HelpDescriptor help = MachineContract.help(identity, environment);
     VersionDescriptor version = MachineContract.version(identity);
     ContractTemplates.PostingRequestTemplateDescriptor template = MachineContract.requestTemplate();
+    ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate =
+        MachineContract.declareAccountTemplate();
     ContractTemplates.ReversalTemplateDescriptor reversalTemplate =
         new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal");
 
@@ -349,6 +414,8 @@ class MachineContractTest {
     assertEquals(ScaffoldPlaceholders.ACTOR_ID, template.provenance().actorId());
     assertEquals(ActorType.AGENT, template.provenance().actorType());
     assertEquals(ScaffoldPlaceholders.IDEMPOTENCY_KEY, template.provenance().idempotencyKey());
+    assertEquals("1000", declareAccountTemplate.accountCode());
+    assertEquals(AccountRole.ORDINARY, declareAccountTemplate.accountRole());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
   }
 

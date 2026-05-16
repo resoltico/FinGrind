@@ -23,7 +23,11 @@ public final class BookkeepingPublishedLanguageTranslator {
   public static AccountDeclaration fromPublished(DeclareAccountCommand command) {
     Objects.requireNonNull(command, "command");
     return new AccountDeclaration(
-        command.accountCode(), command.accountName(), command.accountType(), command.accountRole());
+        command.accountCode(),
+        command.accountName(),
+        command.accountType(),
+        command.accountRole(),
+        command.accountTaxonomy());
   }
 
   /** Translates one public close-period request into the local bookkeeping model. */
@@ -32,11 +36,11 @@ public final class BookkeepingPublishedLanguageTranslator {
     return command.reportingPeriod();
   }
 
-  /** Returns the retained-earnings target selected for one public close-period command. */
-  public static dev.erst.fingrind.core.AccountCode retainedEarningsAccountCode(
+  /** Returns the selected closing-equity target for one public close-period command. */
+  public static dev.erst.fingrind.core.AccountCode closingEquityAccountCode(
       ClosePeriodCommand command) {
     Objects.requireNonNull(command, "command");
-    return command.retainedEarningsAccountCode();
+    return command.closingEquityAccountCode();
   }
 
   /** Translates one public open-book request into the local identity model. */
@@ -85,6 +89,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         account.accountName(),
         account.accountType(),
         account.accountRole(),
+        account.accountTaxonomy(),
         account.active(),
         account.declaredAt());
   }
@@ -154,13 +159,20 @@ public final class BookkeepingPublishedLanguageTranslator {
               conflict.accountCode(),
               conflict.existingAccountRole(),
               conflict.requestedAccountRole());
-      case BookkeepingAdministrationRejection.RetainedEarningsAccountMissing conflict ->
-          new BookAdministrationRejection.RetainedEarningsAccountMissing(conflict.accountCode());
-      case BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch conflict ->
-          new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-              conflict.accountCode(), conflict.actualAccountRole());
-      case BookkeepingAdministrationRejection.RetainedEarningsAccountInactive conflict ->
-          new BookAdministrationRejection.RetainedEarningsAccountInactive(conflict.accountCode());
+      case BookkeepingAdministrationRejection.AccountTaxonomyConflict conflict ->
+          new BookAdministrationRejection.AccountTaxonomyConflict(
+              conflict.accountCode(),
+              conflict.existingAccountTaxonomy(),
+              conflict.requestedAccountTaxonomy());
+      case BookkeepingAdministrationRejection.ClosingEquityAccountMissing conflict ->
+          new BookAdministrationRejection.ClosingEquityAccountMissing(conflict.accountCode());
+      case BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->
+          new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+              conflict.accountCode(),
+              conflict.requiredFinancialPositionLineClassification(),
+              conflict.actualFinancialPositionLineClassification());
+      case BookkeepingAdministrationRejection.ClosingEquityAccountInactive conflict ->
+          new BookAdministrationRejection.ClosingEquityAccountInactive(conflict.accountCode());
       case BookkeepingAdministrationRejection.PeriodCloseMustStartAt conflict ->
           new BookAdministrationRejection.PeriodCloseMustStartAt(
               conflict.requiredEffectiveDateFrom());
@@ -204,8 +216,8 @@ public final class BookkeepingPublishedLanguageTranslator {
       case BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount rejectionNominal ->
           new PostingRejection.OpeningBalanceTouchesNominalAccount(
               rejectionNominal.accountCode(), rejectionNominal.accountType());
-      case BookkeepingPostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
-          new PostingRejection.RetainedEarningsAccountReserved(rejectionReserved.accountCode());
+      case BookkeepingPostingRejection.ClosingEquityAccountReserved rejectionReserved ->
+          new PostingRejection.ClosingEquityAccountReserved(rejectionReserved.accountCode());
       case BookkeepingPostingRejection.ReversalTargetNotFound rejectionTarget ->
           new PostingRejection.ReversalTargetNotFound(rejectionTarget.priorPostingId());
       case BookkeepingPostingRejection.ReversalAlreadyExists rejectionExists ->
@@ -243,7 +255,7 @@ public final class BookkeepingPublishedLanguageTranslator {
     return new ClosedPeriod(
         closedPeriod.closeOrder(),
         closedPeriod.reportingPeriod(),
-        closedPeriod.retainedEarningsAccountCode(),
+        closedPeriod.closingEquityAccountCode(),
         closedPeriod.closedTotals(),
         closedPeriod.closedAt(),
         closedPeriod.closingPostingIds());

@@ -1,16 +1,32 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /** One stable ordered page of committed postings. */
 public record PostingPage(
-    List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
+    BookIdentity bookIdentity,
+    Optional<AccountCode> accountCodeFilter,
+    EffectiveDateRange effectiveDateRange,
+    List<PostingFact> postings,
+    int limit,
+    Optional<PostingPageCursor> nextCursor) {
   /** Validates one committed-posting page. */
   public PostingPage(
-      List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
+      BookIdentity bookIdentity,
+      Optional<AccountCode> accountCodeFilter,
+      EffectiveDateRange effectiveDateRange,
+      List<PostingFact> postings,
+      int limit,
+      Optional<PostingPageCursor> nextCursor) {
+    this.bookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
+    this.accountCodeFilter = Objects.requireNonNull(accountCodeFilter, "accountCodeFilter");
+    this.effectiveDateRange = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
     this.postings = ContractDescriptorValidation.copyList(postings, "postings");
     this.limit = limit;
     this.nextCursor = Objects.requireNonNull(nextCursor, "nextCursor");

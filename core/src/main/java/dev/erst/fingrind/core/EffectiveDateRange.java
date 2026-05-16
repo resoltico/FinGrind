@@ -22,13 +22,13 @@ public sealed interface EffectiveDateRange
   static EffectiveDateRange of(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
     if (effectiveDateFrom != null && effectiveDateTo != null) {
-      return new Bounded(effectiveDateFrom, effectiveDateTo);
+      return bounded(effectiveDateFrom, effectiveDateTo);
     }
     if (effectiveDateFrom != null) {
-      return new From(effectiveDateFrom);
+      return from(effectiveDateFrom);
     }
     if (effectiveDateTo != null) {
-      return new To(effectiveDateTo);
+      return to(effectiveDateTo);
     }
     return Unbounded.INSTANCE;
   }
@@ -36,6 +36,21 @@ public sealed interface EffectiveDateRange
   /** Returns one unbounded range with no lower or upper effective-date filter. */
   static EffectiveDateRange unbounded() {
     return Unbounded.INSTANCE;
+  }
+
+  /** Returns one range bounded only by a lower effective date. */
+  static EffectiveDateRange from(LocalDate lowerBound) {
+    return new From(lowerBound);
+  }
+
+  /** Returns one range bounded only by an upper effective date. */
+  static EffectiveDateRange to(LocalDate upperBound) {
+    return new To(upperBound);
+  }
+
+  /** Returns one range bounded by both lower and upper effective dates. */
+  static EffectiveDateRange bounded(LocalDate lowerBound, LocalDate upperBound) {
+    return new Bounded(lowerBound, upperBound);
   }
 
   /** Returns whether this range admits the supplied effective date. */

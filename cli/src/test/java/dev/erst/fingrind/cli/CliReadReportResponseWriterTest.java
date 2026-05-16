@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
@@ -20,7 +19,6 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
-import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
@@ -62,54 +60,52 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
         writer ->
             writer.writeListAccountsResult(
                 new ListAccountsResult.Listed(
-                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
+                    accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"accountCode\":\"1000\"");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
                 new ListAccountsResult.Listed(
-                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
+                    accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
         "Cash");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
                 new ListAccountsResult.Listed(
-                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
+                    accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
+        "accountCode,accountName,parentAccountCode,accountType,accountRole,financialPositionLineClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
-                new GetPostingResult.Found(postingFact),
-                dev.erst.fingrind.contract.protocol.OutputMode.JSON),
+                foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"postingId\":\"posting-1\"");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
-                new GetPostingResult.Found(postingFact),
+                foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+        "Posting id");
+    assertWriterOutput(
+        writer ->
+            writer.writeListPostingsResult(
+                new ListPostingsResult.Listed(
+                    postingPage(List.of(postingFact), 10, Optional.empty())),
+                dev.erst.fingrind.contract.protocol.OutputMode.JSON),
+        "\"postingId\":\"posting-1\"");
+    assertWriterOutput(
+        writer ->
+            writer.writeListPostingsResult(
+                new ListPostingsResult.Listed(
+                    postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
         "Posting id");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
                 new ListPostingsResult.Listed(
-                    new PostingPage(List.of(postingFact), 10, Optional.empty())),
-                dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"postingId\":\"posting-1\"");
-    assertWriterOutput(
-        writer ->
-            writer.writeListPostingsResult(
-                new ListPostingsResult.Listed(
-                    new PostingPage(List.of(postingFact), 10, Optional.empty())),
-                dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "Posting id");
-    assertWriterOutput(
-        writer ->
-            writer.writeListPostingsResult(
-                new ListPostingsResult.Listed(
-                    new PostingPage(List.of(postingFact), 10, Optional.empty())),
+                    postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
   }
@@ -176,7 +172,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -194,7 +190,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "entityName,functionalCurrency,fiscalYearStart,effectiveDateTo,effectiveDateToMeaning,postingCoverage");
+        "reportBasis,effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
@@ -212,7 +208,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts");
+        "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
@@ -230,7 +226,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,postingCount");
+        "recordKind,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
   }
 
   @Test
@@ -291,8 +287,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeGetPostingResult(
-                    new GetPostingResult.Found(postingFact),
-                    dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+                    foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.CSV));
     assertThrows(
         NullPointerException.class,
         () ->

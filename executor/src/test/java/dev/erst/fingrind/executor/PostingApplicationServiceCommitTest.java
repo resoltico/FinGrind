@@ -26,7 +26,6 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.time.LocalDate;
 import java.util.List;
@@ -58,6 +57,7 @@ class PostingApplicationServiceCommitTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       PostingApplicationService applicationService =
           new PostingApplicationService(
+              bookSession,
               bookSession,
               () -> {
                 throw new AssertionError("postingIdGenerator should not be called");
@@ -99,7 +99,8 @@ class PostingApplicationServiceCommitTest {
 
   @Test
   void commit_mapsOrdinaryBookSessionOutcomes() {
-    BookStore bookSession = mappedOutcomeBookSession();
+    PostingApplicationServiceTestSupport.PostingBookSession bookSession =
+        mappedOutcomeBookSession();
     PostingApplicationService applicationService = applicationService(bookSession);
 
     assertEquals(
@@ -137,7 +138,7 @@ class PostingApplicationServiceCommitTest {
 
   @Test
   void commit_propagatesUnexpectedBookSessionFailure() {
-    BookStore bookSession =
+    PostingApplicationServiceTestSupport.PostingBookSession bookSession =
         new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
           @Override
           public BookLifecycleInspection inspectBook() {

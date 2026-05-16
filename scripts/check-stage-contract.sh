@@ -41,6 +41,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-gradle-wrapper-support.sh
     scripts/test-jazzer-stale-class-pruning.sh
     scripts/test-jazzer-stale-resource-pruning.sh
+    scripts/test-check-monitor-common.sh
     scripts/test-check-process-support.sh
     scripts/test-check-stage-contract.sh
     scripts/test-operator-help-surfaces.sh

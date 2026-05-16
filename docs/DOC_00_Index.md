@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: INDEX
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -67,9 +67,20 @@ route:
 | `AccountCodePolicy.ChartStructure` | `DOC_01_Core.md` | `AccountCodePolicy.ChartStructure` |
 | `AccountName` | `DOC_01_Core.md` | `AccountName` |
 | `BookEntityName` | `DOC_01_Core.md` | `BookEntityName` |
+| `BusinessActivityTag` | `DOC_01_Core.md` | `BusinessActivityTag` |
+| `EntityForm` | `DOC_01_Core.md` | `EntityForm` |
+| `OwnerModel` | `DOC_01_Core.md` | `OwnerModel` |
+| `ReportingObligationStatus` | `DOC_01_Core.md` | `ReportingObligationStatus` |
+| `TaxRegistrationStatus` | `DOC_01_Core.md` | `TaxRegistrationStatus` |
+| `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
+| `EntityProfile` | `DOC_01_Core.md` | `EntityProfile` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountRole` | `DOC_01_Core.md` | `AccountRole` |
+| `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
+| `FinancialPositionLineClassification` | `DOC_01_Core.md` | `FinancialPositionLineClassification` |
+| `ProfitAndLossLineClassification` | `DOC_01_Core.md` | `ProfitAndLossLineClassification` |
+| `StatementLineKind` | `DOC_01_Core.md` | `StatementLineKind` |
 | `AccountSemantics` | `DOC_01_Core.md` | `AccountSemantics` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
 | `ActorType` | `DOC_01_Core.md` | `ActorType` |
@@ -132,19 +143,25 @@ route:
 | `SqliteRuntimeTrustBasis` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeStatus` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeStateValidator` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
-| `BookModelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookBoundaryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookEntityScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookFilesystemFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookCredentialFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookInitializationFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookAccountRegistryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `BookCurrencyScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `AccountingBaselineFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `ExtensionSurfaceFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `PlanExecutionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookModelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookBoundaryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookEntityScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookFilesystemFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookCredentialFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookInitializationFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookAccountRegistryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `BookCurrencyScopeFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `AccountingBaselineFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `AccountingBaselineTarget` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `ReportCapabilityFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `AccountingPolicyPackFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PolicyDimensionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `ExtensionSurfaceFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PolicySeamFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `CapabilityStatus` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `PlanExecutionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
 | `ProtocolSharedRequestFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSharedRequestFields` |
 | `ProtocolMoneyFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolMoneyFields` |
@@ -176,6 +193,7 @@ route:
 | `VersionDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ArtifactOutputDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `CommandDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `SelectableOutputDefaultsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ExitCodeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `EnvironmentDistributionDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `EnvironmentStorageDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -346,9 +364,19 @@ route:
 | `AccountCurrencyTotals` | `DOC_03_BookSessionsAndAdapters.md` | `AccountCurrencyTotals` |
 | `BookOpeningOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `RegisteredAccount` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
-| `BookStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookStore` |
+| `BookLifecycleReader` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `BookAdministrationStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `AccountLookupStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `AccountCatalogStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `PostingLookupStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `PostingHistoryStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `PostingRangeStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `BookkeepingReportStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `BookkeepingReadStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
 | `PostingValidationStore` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationStore` |
-| `AtomicBookStore` | `DOC_03_BookSessionsAndAdapters.md` | `AtomicBookStore` |
+| `PostingCommitStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `PeriodCloseStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
+| `LedgerPlanTransaction` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction` |
 | `BookLifecycleInspection` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleInspection` And `BookInspectionPublishedLanguageTranslator` |
 | `BookInspectionPublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleInspection` And `BookInspectionPublishedLanguageTranslator` |
 | `BookkeepingQueryRejection` | `DOC_03_BookSessionsAndAdapters.md` | `BookkeepingQueryRejection` |

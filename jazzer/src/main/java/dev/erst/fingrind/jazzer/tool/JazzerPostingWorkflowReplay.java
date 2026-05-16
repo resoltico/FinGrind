@@ -59,8 +59,8 @@ final class JazzerPostingWorkflowReplay {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
-          new PostingApplicationService(
-              bookSession, CliFuzzFixtures.postingIdGenerator(input), CliFuzzFixtures.fixedClock());
+          CliFuzzFixtures.postingApplicationService(
+              bookSession, bookSession, CliFuzzFixtures.postingIdGenerator(input));
 
       state.uninitializedPreflightStatus =
           JazzerReplayDetailsMapper.rejectionStatus(

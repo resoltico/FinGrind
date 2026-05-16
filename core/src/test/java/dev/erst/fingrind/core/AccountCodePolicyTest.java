@@ -13,7 +13,9 @@ class AccountCodePolicyTest {
   void accountCodePolicy_exposesCurrentMeaningAndChartStructure() {
     assertEquals(
         AccountCodePolicy.Meaning.OPAQUE_BOOK_LOCAL_IDENTIFIER, AccountCodePolicy.meaning());
-    assertEquals(AccountCodePolicy.ChartStructure.FLAT, AccountCodePolicy.chartStructure());
+    assertEquals(
+        AccountCodePolicy.ChartStructure.PARENT_CHILD_HIERARCHY,
+        AccountCodePolicy.chartStructure());
   }
 
   @Test
@@ -23,23 +25,55 @@ class AccountCodePolicyTest {
         NullPointerException.class,
         () ->
             AccountCodePolicy.validate(
-                nullOf(AccountCode.class), AccountType.ASSET, AccountRole.ORDINARY));
+                nullOf(AccountCode.class),
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                AccountTaxonomy.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
             AccountCodePolicy.validate(
-                accountCode, nullOf(AccountType.class), AccountRole.ORDINARY));
+                accountCode,
+                nullOf(AccountType.class),
+                AccountRole.ORDINARY,
+                AccountTaxonomy.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
-            AccountCodePolicy.validate(accountCode, AccountType.ASSET, nullOf(AccountRole.class)));
-    assertDoesNotThrow(
-        () -> AccountCodePolicy.validate(accountCode, AccountType.ASSET, AccountRole.ORDINARY));
-    assertDoesNotThrow(
-        () -> AccountCodePolicy.validate(accountCode, AccountType.ASSET, AccountRole.CONTRA));
+            AccountCodePolicy.validate(
+                accountCode,
+                AccountType.ASSET,
+                nullOf(AccountRole.class),
+                AccountTaxonomy.empty()));
     assertDoesNotThrow(
         () ->
             AccountCodePolicy.validate(
-                accountCode, AccountType.EQUITY, AccountRole.RETAINED_EARNINGS));
+                accountCode,
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                new AccountTaxonomy(
+                    java.util.Optional.empty(),
+                    java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    java.util.Optional.empty())));
+    assertDoesNotThrow(
+        () ->
+            AccountCodePolicy.validate(
+                accountCode,
+                AccountType.ASSET,
+                AccountRole.CONTRA,
+                new AccountTaxonomy(
+                    java.util.Optional.empty(),
+                    java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    java.util.Optional.empty())));
+    assertDoesNotThrow(
+        () ->
+            AccountCodePolicy.validate(
+                accountCode,
+                AccountType.EQUITY,
+                AccountRole.ORDINARY,
+                new AccountTaxonomy(
+                    java.util.Optional.empty(),
+                    java.util.Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                    java.util.Optional.empty())));
   }
 }

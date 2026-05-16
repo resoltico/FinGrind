@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -10,11 +11,13 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -40,6 +43,15 @@ final class SqlitePostingMapper {
         new AccountName(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NAME)),
         AccountType.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_TYPE)),
         AccountRole.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_ROLE)),
+        new AccountTaxonomy(
+            optionalText(accountRow, SqlitePostingSql.COL_ACCOUNT_PARENT_ACCOUNT_CODE)
+                .map(AccountCode::new),
+            optionalText(
+                    accountRow, SqlitePostingSql.COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION)
+                .map(FinancialPositionLineClassification::fromWireValue),
+            optionalText(
+                    accountRow, SqlitePostingSql.COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION)
+                .map(ProfitAndLossLineClassification::fromWireValue)),
         requiredInt(accountRow, SqlitePostingSql.COL_ACCOUNT_ACTIVE) == 1,
         Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
   }

@@ -132,6 +132,11 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Existing account type", details.existingAccountType()));
         rows.add(List.of("Requested account type", details.requestedAccountType()));
       }
+      case CliRejectionJsonModels.AccountTaxonomyConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        appendTaxonomyRows(rows, "Existing", details.existingAccountTaxonomy());
+        appendTaxonomyRows(rows, "Requested", details.requestedAccountTaxonomy());
+      }
       case CliRejectionJsonModels.PostingKindDetails details ->
           rows.add(List.of("Posting kind", details.postingKind()));
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
@@ -146,11 +151,18 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));
       }
-      case CliRejectionJsonModels.RetainedEarningsAccountDetails details ->
+      case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
-      case CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails details -> {
+      case CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
-        rows.add(List.of("Actual account role", details.actualAccountRole()));
+        rows.add(
+            List.of(
+                "Required financial position classification",
+                details.requiredFinancialPositionLineClassification()));
+        rows.add(
+            List.of(
+                "Actual financial position classification",
+                details.actualFinancialPositionLineClassification()));
       }
       case CliRejectionJsonModels.PeriodCloseStartDetails details ->
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
@@ -172,5 +184,27 @@ final class CliFailureOutputRenderer {
       case CliRejectionJsonModels.PlanRejectionDetails details ->
           rows.add(List.of("Plan id", details.plan().planId()));
     }
+  }
+
+  private static void appendTaxonomyRows(
+      List<List<String>> rows,
+      String labelPrefix,
+      CliRejectionJsonModels.AccountTaxonomyDetails details) {
+    rows.add(
+        List.of(
+            labelPrefix + " parent account",
+            details.parentAccountCode() == null ? "(none)" : details.parentAccountCode()));
+    rows.add(
+        List.of(
+            labelPrefix + " financial position classification",
+            details.financialPositionLineClassification() == null
+                ? "(none)"
+                : details.financialPositionLineClassification()));
+    rows.add(
+        List.of(
+            labelPrefix + " profit-and-loss classification",
+            details.profitAndLossLineClassification() == null
+                ? "(none)"
+                : details.profitAndLossLineClassification()));
   }
 }

@@ -17,8 +17,11 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
+import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
+import dev.erst.fingrind.contract.protocol.CapabilityStatus;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -42,6 +45,7 @@ import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -61,7 +65,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(4, BookFormatContract.FORMAT_VERSION);
+    assertEquals(6, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -84,6 +88,21 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         RequestFieldPresence.CONDITIONAL, RequestFieldPresence.fromWireValue("conditional"));
     assertEquals("conditional", RequestFieldPresence.CONDITIONAL.toString());
+    assertEquals(
+        AccountingBaselineTarget.INTERNAL_MANAGEMENT_STATEMENTS,
+        AccountingBaselineTarget.fromWireValue("internal-management-statements"));
+    assertEquals(CapabilityStatus.FUTURE_CONTEXT, CapabilityStatus.fromWireValue("future-context"));
+    assertEquals(
+        List.of(
+            "bookkeeping-kernel-only",
+            "internal-management-statements",
+            "basic-standard-reporting-foundation",
+            "ifrs-for-smes-parity",
+            "full-local-gaap-or-statutory-pack"),
+        AccountingBaselineTarget.wireValues());
+    assertEquals(
+        List.of("implemented", "planned", "future-context", "deliberately-excluded", "unsupported"),
+        CapabilityStatus.wireValues());
     assertEquals(
         RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
         RuntimeDistribution.fromWireValue("source-checkout-gradle"));
@@ -144,6 +163,7 @@ class ContractProtocolVocabularyTest {
             VersionDescriptor.class,
             ArtifactOutputDescriptor.class,
             CommandDescriptor.class,
+            SelectableOutputDefaultsDescriptor.class,
             ExitCodeDescriptor.class,
             EnvironmentDistributionDescriptor.class,
             EnvironmentStorageDescriptor.class,
@@ -242,7 +262,13 @@ class ContractProtocolVocabularyTest {
                 null,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),
+                    "1000",
+                    "Cash",
+                    AccountType.ASSET,
+                    AccountRole.ORDINARY,
+                    null,
+                    FinancialPositionLineClassification.CURRENT_ASSET,
+                    null),
                 null,
                 null,
                 null));

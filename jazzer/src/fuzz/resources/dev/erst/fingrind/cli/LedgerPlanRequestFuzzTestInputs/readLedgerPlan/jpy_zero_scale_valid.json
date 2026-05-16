@@ -6,8 +6,10 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Plan Seed JPY",
+        "entityForm": "COMPANY",
         "functionalCurrency": "JPY",
-        "fiscalYearStart": "01-01"
+        "fiscalYearStart": "01-01",
+        "accountingBasis": "ACCRUAL"
       }
     },
     {
@@ -17,7 +19,9 @@
         "accountCode": "7110",
         "accountName": "Cash JPY Seed",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": "CURRENT_ASSET",
+        "profitAndLossLineClassification": null
       }
     },
     {
@@ -27,7 +31,9 @@
         "accountCode": "8110",
         "accountName": "Sales JPY Seed",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": null,
+        "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
     },
     {

@@ -1,7 +1,9 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,6 +12,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -53,7 +56,8 @@ class BookAdministrationServiceTest {
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   AccountType.ASSET,
-                  accountRole(AccountType.ASSET, NormalBalance.DEBIT)));
+                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+                  accountTaxonomy(AccountType.ASSET)));
       org.junit.jupiter.api.Assertions.assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -77,25 +81,29 @@ class BookAdministrationServiceTest {
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              AccountRole.ORDINARY));
+              AccountRole.ORDINARY,
+              accountTaxonomy(AccountType.ASSET)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("3000"),
               new AccountName("Capital"),
               AccountType.EQUITY,
-              AccountRole.ORDINARY));
+              AccountRole.ORDINARY,
+              accountTaxonomy(AccountType.EQUITY)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("3200"),
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
-              AccountRole.RETAINED_EARNINGS));
+              AccountRole.ORDINARY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("4000"),
               new AccountName("Revenue"),
               AccountType.REVENUE,
-              AccountRole.ORDINARY));
+              AccountRole.ORDINARY,
+              accountTaxonomy(AccountType.REVENUE)));
 
       bookSession.commit(
           new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
@@ -151,9 +159,16 @@ class BookAdministrationServiceTest {
                   dev.erst.fingrind.core.SourceChannel.CLI)));
 
       PeriodCloseOutcome outcome =
-          service.closePeriod(
-              new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
-              new AccountCode("3200"));
+          new PeriodCloseService(
+                  bookSession,
+                  bookSession,
+                  bookSession,
+                  bookSession,
+                  () -> new dev.erst.fingrind.core.PostingId("period-close-1"),
+                  FIXED_CLOCK)
+              .closePeriod(
+                  new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
+                  new AccountCode("3200"));
 
       org.junit.jupiter.api.Assertions.assertEquals(
           1,

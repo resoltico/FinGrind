@@ -143,7 +143,7 @@ final class SqliteManagedLibraryIdentity {
     Objects.requireNonNull(expectedFileName, "expectedFileName");
     String checksumLine =
         checksumLines.stream()
-            .map(String::trim)
+            .map(String::strip)
             .filter(line -> !line.isEmpty())
             .findFirst()
             .orElseThrow(
@@ -154,7 +154,7 @@ final class SqliteManagedLibraryIdentity {
     if (!matcher.matches()) {
       throw new IllegalStateException(capitalize(checksumSourceDescription) + " is malformed.");
     }
-    String declaredFileName = matcher.group(2).trim();
+    String declaredFileName = matcher.group(2).strip();
     if (!expectedFileName.equals(declaredFileName)) {
       throw new IllegalStateException(
           capitalize(checksumSourceDescription)

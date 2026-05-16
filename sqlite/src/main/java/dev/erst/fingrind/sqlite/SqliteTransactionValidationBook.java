@@ -52,16 +52,6 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
   }
 
   @Override
-  public List<RegisteredAccount> allAccounts() {
-    try {
-      return SqliteStatementQueries.loadAllAccounts(
-          activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
-  }
-
-  @Override
   public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,

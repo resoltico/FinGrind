@@ -43,8 +43,8 @@ final class PostingRejectionDescriptors {
           Descriptor.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           Descriptor.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.RetainedEarningsAccountReserved _ ->
-          Descriptor.RETAINED_EARNINGS_ACCOUNT_RESERVED;
+      case PostingRejection.ClosingEquityAccountReserved _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ -> Descriptor.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ -> Descriptor.REVERSAL_ALREADY_EXISTS;
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
@@ -70,7 +70,7 @@ final class PostingRejectionDescriptors {
     CLOSED_PERIOD_VIOLATION,
     OPENING_BALANCE_WINDOW_CLOSED,
     OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-    RETAINED_EARNINGS_ACCOUNT_RESERVED,
+    CLOSING_EQUITY_ACCOUNT_RESERVED,
     REVERSAL_TARGET_NOT_FOUND,
     REVERSAL_ALREADY_EXISTS,
     REVERSAL_DOES_NOT_NEGATE_TARGET;
@@ -85,7 +85,7 @@ final class PostingRejectionDescriptors {
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
         case OPENING_BALANCE_WINDOW_CLOSED -> "opening-balance-window-closed";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT -> "opening-balance-touches-nominal-account";
-        case RETAINED_EARNINGS_ACCOUNT_RESERVED -> "retained-earnings-account-reserved";
+        case CLOSING_EQUITY_ACCOUNT_RESERVED -> "closing-equity-account-reserved";
         case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
         case REVERSAL_ALREADY_EXISTS -> "reversal-already-exists";
         case REVERSAL_DOES_NOT_NEGATE_TARGET -> "reversal-does-not-negate-target";
@@ -112,8 +112,8 @@ final class PostingRejectionDescriptors {
             "Posting refused because opening-balance entries are allowed only before the first committed posting in the selected book.";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
             "Posting refused because opening-balance entries may seed only asset, liability, or equity accounts.";
-        case RETAINED_EARNINGS_ACCOUNT_RESERVED ->
-            "Posting refused because the retained-earnings account is reserved for generated period-close postings.";
+        case CLOSING_EQUITY_ACCOUNT_RESERVED ->
+            "Posting refused because the closing-equity account is reserved for generated period-close postings.";
         case REVERSAL_TARGET_NOT_FOUND ->
             "Posting refused because reversal.priorPostingId does not identify a committed posting in this book.";
         case REVERSAL_ALREADY_EXISTS ->
@@ -166,11 +166,11 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "accountType",
                     "Nominal accountType that opening-balance postings are not allowed to touch."));
-        case RETAINED_EARNINGS_ACCOUNT_RESERVED ->
+        case CLOSING_EQUITY_ACCOUNT_RESERVED ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Retained-earnings accountCode reserved for generated period-close postings."));
+                    "Closing-equity accountCode reserved for generated period-close postings."));
         case REVERSAL_TARGET_NOT_FOUND ->
             List.of(
                 detailField(
@@ -199,7 +199,7 @@ final class PostingRejectionDescriptors {
             CLOSED_PERIOD_VIOLATION,
             OPENING_BALANCE_WINDOW_CLOSED,
             OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-            RETAINED_EARNINGS_ACCOUNT_RESERVED,
+            CLOSING_EQUITY_ACCOUNT_RESERVED,
             REVERSAL_TARGET_NOT_FOUND,
             REVERSAL_ALREADY_EXISTS,
             REVERSAL_DOES_NOT_NEGATE_TARGET ->
@@ -222,7 +222,7 @@ final class PostingRejectionDescriptors {
               CLOSED_PERIOD_VIOLATION,
               OPENING_BALANCE_WINDOW_CLOSED,
               OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-              RETAINED_EARNINGS_ACCOUNT_RESERVED,
+              CLOSING_EQUITY_ACCOUNT_RESERVED,
               REVERSAL_TARGET_NOT_FOUND,
               REVERSAL_ALREADY_EXISTS,
               REVERSAL_DOES_NOT_NEGATE_TARGET)

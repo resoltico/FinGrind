@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: ADAPTERS
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -73,7 +73,8 @@ public record AccountDeclaration(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole)
+    AccountRole accountRole,
+    AccountTaxonomy accountTaxonomy)
 public sealed interface AccountDeclarationOutcome
 public sealed interface BookOpeningOutcome
 public record RegisteredAccount(...)
@@ -84,8 +85,8 @@ public record RegisteredAccount(...)
 - `AccountDeclarationOutcome`: closed family of accepted-versus-rejected declaration outcomes
 - `BookOpeningOutcome`: closed family of accepted-versus-rejected initialization outcomes
 - `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
-  preserves declared-at time while keeping `accountType` and `accountRole` immutable after the
-  first declaration while deriving `normalBalance()` from `AccountSemantics`
+  preserves declared-at time while keeping `accountType`, `accountRole`, and `accountTaxonomy`
+  immutable after the first declaration while deriving `normalBalance()` from `AccountSemantics`
 
 ## `BookAuditEvent` And `BookAuditEventKind`
 
@@ -105,22 +106,44 @@ public enum BookAuditEventKind implements WireValue
 - Storage boundary: SQLite persists these rows in `audit_event` and rejects direct update/delete
   mutation through append-only triggers
 
-## `BookStore`
+## `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodCloseStore`, And `LedgerPlanTransaction`
 
-`BookStore` is the executor-owned public application seam for one selected book boundary.
+These exported `executor.spi` interfaces are the explicit store-port set for one selected book
+boundary.
 
 ```java
-public interface BookStore extends PostingValidationStore
+public interface BookLifecycleReader
+public interface BookAdministrationStore
+public interface AccountLookupStore
+public interface AccountCatalogStore
+public interface PostingLookupStore
+public interface PostingHistoryStore
+public interface PostingRangeStore
+public interface BookkeepingReportStore
+public interface BookkeepingReadStore
+public interface PostingCommitStore
+public interface PeriodCloseStore
+public interface LedgerPlanTransaction
 ```
 
-- Surface: `inspectBook()`, `openBook(...)`, `declareAccount(...)`, `listAccounts(...)`,
-  `listPostings(...)`, `accountBalance(...)`, `accountTotals(...)`, `trialBalance(...)`,
-  `accountLedger(...)`, `periodSummary(...)`, and durable `commit(PostingDraft, PostingIdGenerator)`
-- Purpose: keep initialization, administration, read/report, lookup, and ordinary posting commit
-  on one explicit selected-book seam instead of fragmenting them into parallel narrow interfaces
-- Lifecycle: the outer workflow or adapter owns `close()`, not this executor seam
-- Initialization fact: `openBook(...)` takes both the initialization instant and one
-  `BookIdentity`
+- `BookLifecycleReader`: local lifecycle inspection without mutation
+- `BookAdministrationStore`: book opening plus account-registry declaration/reactivation writes
+- `AccountLookupStore`: one-account and batched account lookup by semantic account code
+- `AccountCatalogStore`: full ordered registry reads plus paginated account-catalog views
+- `PostingLookupStore`: idempotency, posting-id, and reversal lookup for committed facts
+- `PostingHistoryStore`: paginated posting-history reads
+- `PostingRangeStore`: effective-date posting streams plus earliest-posting and close-horizon facts
+- `BookkeepingReportStore`: grouped totals plus account-balance, trial-balance, account-ledger,
+  and period-summary local report views
+- `BookkeepingReadStore`: the composite read-side seam that combines lifecycle, lookup, history,
+  and report ports for application read services
+- `PostingCommitStore`: durable posting commit boundary
+- `PeriodCloseStore`: durable generated close-period commit boundary
+- `LedgerPlanTransaction`: explicit begin/commit/rollback boundary for atomic ledger-plan
+  execution
+- Purpose: keep lifecycle, administration, lookup, history, reporting, durable commit, and
+  transaction ownership on auditable narrow seams instead of one god-port
+- Lifecycle: the outer workflow or adapter owns `close()`, not these executor seams
 
 ## `AccountCurrencyTotals`
 
@@ -134,8 +157,9 @@ public record AccountCurrencyTotals(
     CurrencyBalance balance)
 ```
 
-- Purpose: move per-account, per-currency exact totals across the `BookStore.accountTotals(...)`
-  seam without materializing full posting streams for statement computation
+- Purpose: move per-account, per-currency exact totals across the
+  `BookkeepingReportStore.accountTotals(...)` seam without materializing full posting streams for
+  statement computation
 - Boundary: stores compute these totals; statement and close services consume them as local
   aggregate truth
 
@@ -148,23 +172,10 @@ transactional commit validation.
 public interface PostingValidationStore
 ```
 
-- Surface: `inspectBook()`, `findAccount(...)`, `findExistingPosting(...)`, `findPosting(...)`,
-  and `findReversalFor(...)`
+- Composition: `BookLifecycleReader`, `AccountLookupStore`, `PostingLookupStore`, and
+  `PostingRangeStore`
 - Purpose: let application preflight and commit-time validation reuse one authoritative
   initialized-book lookup contract
-
-## `AtomicBookStore`
-
-`AtomicBookStore` extends `BookStore` with the ledger-plan transaction boundary.
-
-```java
-public interface AtomicBookStore extends BookStore
-```
-
-- Surface: `beginLedgerPlanTransaction()`, `commitLedgerPlanTransaction()`,
-  `rollbackLedgerPlanTransaction()`
-- Purpose: keep atomic plan execution explicit without leaking transaction control into ordinary
-  administration or reporting workflows
 
 ## `BookLifecycleInspection` And `BookInspectionPublishedLanguageTranslator`
 
@@ -216,8 +227,8 @@ public sealed interface BookkeepingQueryRejection
 ## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
 
 These exported `executor.bookkeeping` types are the local bookkeeping read model used by
-`BookStore`, `BookkeepingReadService`, SQLite read helpers, and workflow/query execution before any
-public report DTOs are projected.
+`BookkeepingReadStore`, `BookkeepingReadService`, SQLite read helpers, and workflow/query
+execution before any public report DTOs are projected.
 
 ```java
 public record AccountRegistryCursor(...)
@@ -368,7 +379,7 @@ public final class SqliteStorageFailureException extends IllegalStateException
 and `SqliteBookSessions` owns session creation.
 
 ```java
-public interface SqliteBookSession extends AtomicBookStore, AutoCloseable
+public interface SqliteBookSession extends AutoCloseable
 public enum SqliteBookSessionMode
 public enum SqlitePassphraseIntent
 public interface SqlitePassphraseResolver
@@ -392,17 +403,21 @@ public final class SqliteBookSessions
   and transfers ownership only after that priming succeeds; missing books may still resolve lazily
   for read-only or existing-only flows that intentionally defer opening, while create and plan
   modes resolve secrets eagerly so initialization and rekey prompts can enforce new-secret policy
-- Session shape: `SqliteBookSession` keeps the administration, posting, read, and ledger-plan
-  seams on one boundary while still exposing direct `findAccount(...)`, `findExistingPosting(...)`,
-  and `rekeyBook(...)` helpers needed by CLI/tooling flows; rekeying now consumes a
-  `BookAccess.PassphraseSource` plus `SqlitePassphraseResolver` so the same safe source-resolution
-  policy applies to both open and rotate flows
+- Session shape: `SqliteBookSession` composes `BookAdministrationStore`, `BookkeepingReadStore`,
+  `PostingValidationStore`, `PostingCommitStore`, `PeriodCloseStore`, `LedgerPlanTransaction`,
+  and `AccountCatalogStore` on one public session boundary while still exposing direct
+  `findAccount(...)`, `findExistingPosting(...)`, and `rekeyBook(...)` helpers needed by
+  CLI/tooling flows; rekeying now consumes a `BookAccess.PassphraseSource` plus
+  `SqlitePassphraseResolver` so the same safe source-resolution policy applies to both open and
+  rotate flows
 - Internal split: `SqlitePostingFactStore` is now a thin session wrapper over one immutable
   `SqliteStoreContext` dependency bundle plus one mutable `SqliteStoreLifecycle` state owner;
-  `SqliteSessionSecret` owns the reusable session secret, `SqliteBookLifecycleInspectionMapper`
-  owns local lifecycle projection, `SqliteTransactionValidationBook` owns focused validation
-  lookups, `SqliteStoreReadOperations` delegates query/report reads through focused readers, and
-  `SqliteStoreMutationOperations` owns durable mutation and rekey flows behind the public session
+  `SqliteSessionSecret` owns the reusable session secret, `SqliteLedgerPlanTransactionCoordinator`
+  owns ledger-plan transaction state plus missing-book cleanup policy, `SqliteRekeyService` owns
+  reopen-and-rollback rekey orchestration, `SqliteBookLifecycleInspectionMapper` owns local
+  lifecycle projection, `SqliteTransactionValidationBook` owns focused validation lookups,
+  `SqliteStoreReadOperations` delegates query/report reads through focused readers, and
+  `SqliteStoreMutationOperations` owns only ordinary durable mutations behind the public session
   API
 
 ## Protection Boundary

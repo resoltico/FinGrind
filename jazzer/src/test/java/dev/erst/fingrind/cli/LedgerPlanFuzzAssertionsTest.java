@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,6 +20,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
+import dev.erst.fingrind.core.AccountType;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -40,32 +42,10 @@ class LedgerPlanFuzzAssertionsTest {
                 {
                   "stepId": "open",
                   "kind": "open-book",
-                  "openBook": {
-                    "entityName": "Acme Studio",
-                    "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
-                  }
+                  "openBook": %s
                 },
-                {
-                  "stepId": "declare-cash",
-                  "kind": "declare-account",
-                  "declareAccount": {
-                    "accountCode": "1000",
-                    "accountName": "Cash",
-                    "accountType": "ASSET",
-                    "accountRole": "ORDINARY"
-                  }
-                },
-                {
-                  "stepId": "declare-revenue",
-                  "kind": "declare-account",
-                  "declareAccount": {
-                    "accountCode": "2000",
-                    "accountName": "Revenue",
-                    "accountType": "REVENUE",
-                    "accountRole": "ORDINARY"
-                  }
-                },
+                %s,
+                %s,
                 {
                   "stepId": "post-sale",
                   "kind": "post-entry",
@@ -115,6 +95,16 @@ class LedgerPlanFuzzAssertionsTest {
               ]
             }
             """
+                .formatted(
+                    canonicalOpenBookJson("EUR"),
+                    declareOrdinaryAccountStepJson(
+                            "declare-cash", "1000", "Cash", AccountType.ASSET)
+                        .indent(16)
+                        .stripLeading(),
+                    declareOrdinaryAccountStepJson(
+                            "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
+                        .indent(16)
+                        .stripLeading())
                 .getBytes(UTF_8));
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot successSnapshot =
@@ -385,6 +375,7 @@ class LedgerPlanFuzzAssertionsTest {
                 List.of(
                     succeededEntry("open", LedgerStepKind.OPEN_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
+                    succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
                     succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
                     succeededEntry("inspect-book", LedgerStepKind.INSPECT_BOOK, List.of()),
@@ -593,25 +584,17 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            }
+            %s
           ]
         }
-        """;
+        """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading());
   }
 
   private static String validLedgerPlanWithQueries() {
@@ -622,32 +605,10 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
-            {
-              "stepId": "declare-revenue",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "2000",
-                "accountName": "Revenue",
-                "accountType": "REVENUE",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "post-sale",
               "kind": "post-entry",
@@ -697,7 +658,16 @@ class LedgerPlanFuzzAssertionsTest {
             }
           ]
         }
-        """;
+        """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading());
   }
 
   private static String fullSpectrumLedgerPlan() {
@@ -708,22 +678,10 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             },
-            {
-              "stepId": "declare-cash",
-              "kind": "declare-account",
-              "declareAccount": {
-                "accountCode": "1000",
-                "accountName": "Cash",
-                "accountType": "ASSET",
-                "accountRole": "ORDINARY"
-              }
-            },
+            %s,
+            %s,
             {
               "stepId": "preflight-sale",
               "kind": "preflight-entry",
@@ -839,7 +797,16 @@ class LedgerPlanFuzzAssertionsTest {
             }
           ]
         }
-        """;
+        """
+        .formatted(
+            canonicalOpenBookJson("EUR"),
+            declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
+                .indent(12)
+                .stripLeading(),
+            declareOrdinaryAccountStepJson(
+                    "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
+                .indent(12)
+                .stripLeading());
   }
 
   private static String rejectedMissingBookListPostingsLedgerPlan() {
@@ -854,5 +821,20 @@ class LedgerPlanFuzzAssertionsTest {
           ]
         }
         """;
+  }
+
+  private static String canonicalOpenBookJson(String functionalCurrency) {
+    return """
+        {
+          "entityName": "Acme Studio",
+          "entityForm": "COMPANY",
+          "functionalCurrency": "%s",
+          "fiscalYearStart": "01-01",
+          "accountingBasis": "ACCRUAL"
+        }
+        """
+        .formatted(functionalCurrency)
+        .indent(16)
+        .stripLeading();
   }
 }

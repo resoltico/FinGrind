@@ -5,8 +5,7 @@ import java.util.List;
 /** Canonical doctrinal role for one declared account inside the current FinGrind chart. */
 public enum AccountRole implements WireValue {
   ORDINARY,
-  CONTRA,
-  RETAINED_EARNINGS;
+  CONTRA;
 
   /** Returns the stable public wire value for this account role. */
   @Override
@@ -14,7 +13,6 @@ public enum AccountRole implements WireValue {
     return switch (this) {
       case ORDINARY -> "ORDINARY";
       case CONTRA -> "CONTRA";
-      case RETAINED_EARNINGS -> "RETAINED_EARNINGS";
     };
   }
 

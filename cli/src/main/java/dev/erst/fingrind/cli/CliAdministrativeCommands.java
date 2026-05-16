@@ -82,13 +82,13 @@ record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode output
 record ClosePeriod(
     BookAccess bookAccess,
     ReportingPeriod reportingPeriod,
-    AccountCode retainedEarningsAccountCode,
+    AccountCode closingEquityAccountCode,
     OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   ClosePeriod {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -96,7 +96,6 @@ record ClosePeriod(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runClosePeriodCommand(
-            bookAccess, reportingPeriod, retainedEarningsAccountCode, outputMode);
+        .runClosePeriodCommand(bookAccess, reportingPeriod, closingEquityAccountCode, outputMode);
   }
 }

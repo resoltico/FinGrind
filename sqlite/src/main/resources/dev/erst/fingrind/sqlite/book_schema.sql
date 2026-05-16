@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 4;
+pragma user_version = 6;
 
 create table if not exists book_meta (
     key text primary key,
@@ -14,13 +14,93 @@ create table if not exists account (
     ),
     account_name text not null check (length(trim(account_name)) > 0),
     account_type text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
-    account_role text not null check (account_role in ('ORDINARY', 'CONTRA', 'RETAINED_EARNINGS')),
+    account_role text not null check (account_role in ('ORDINARY', 'CONTRA')),
+    parent_account_code text references account(account_code),
+    financial_position_line_classification text check (
+        financial_position_line_classification is null or financial_position_line_classification in (
+            'CURRENT_ASSET',
+            'NONCURRENT_ASSET',
+            'CURRENT_LIABILITY',
+            'NONCURRENT_LIABILITY',
+            'OWNER_CAPITAL',
+            'OWNER_DRAWINGS',
+            'PARTNER_CAPITAL',
+            'PARTNER_CURRENT',
+            'SHARE_CAPITAL',
+            'RETAINED_EARNINGS',
+            'ACCUMULATED_SURPLUS',
+            'RESERVE',
+            'CURRENT_PERIOD_RESULT',
+            'OTHER_EQUITY'
+        )
+    ),
+    profit_and_loss_line_classification text check (
+        profit_and_loss_line_classification is null or profit_and_loss_line_classification in (
+            'OPERATING_REVENUE',
+            'OTHER_REVENUE',
+            'FINANCE_INCOME',
+            'COST_OF_SALES',
+            'OPERATING_EXPENSE',
+            'DEPRECIATION_AND_AMORTIZATION',
+            'FINANCE_EXPENSE',
+            'TAX_EXPENSE'
+        )
+    ),
     active integer not null check (active in (0, 1)),
     declared_at text not null,
     check (
-        (account_role = 'RETAINED_EARNINGS' and account_type = 'EQUITY')
+        parent_account_code is null or parent_account_code <> account_code
+    ),
+    check (
+        (
+            account_type = 'ASSET'
+            and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET')
+            and profit_and_loss_line_classification is null
+        )
         or
-        (account_role in ('ORDINARY', 'CONTRA'))
+        (
+            account_type = 'LIABILITY'
+            and financial_position_line_classification in ('CURRENT_LIABILITY', 'NONCURRENT_LIABILITY')
+            and profit_and_loss_line_classification is null
+        )
+        or
+        (
+            account_type = 'EQUITY'
+            and financial_position_line_classification in (
+                'OWNER_CAPITAL',
+                'OWNER_DRAWINGS',
+                'PARTNER_CAPITAL',
+                'PARTNER_CURRENT',
+                'SHARE_CAPITAL',
+                'RETAINED_EARNINGS',
+                'ACCUMULATED_SURPLUS',
+                'RESERVE',
+                'OTHER_EQUITY'
+            )
+            and profit_and_loss_line_classification is null
+        )
+        or
+        (
+            account_type = 'REVENUE'
+            and financial_position_line_classification is null
+            and profit_and_loss_line_classification in (
+                'OPERATING_REVENUE',
+                'OTHER_REVENUE',
+                'FINANCE_INCOME'
+            )
+        )
+        or
+        (
+            account_type = 'EXPENSE'
+            and financial_position_line_classification is null
+            and profit_and_loss_line_classification in (
+                'COST_OF_SALES',
+                'OPERATING_EXPENSE',
+                'DEPRECIATION_AND_AMORTIZATION',
+                'FINANCE_EXPENSE',
+                'TAX_EXPENSE'
+            )
+        )
     )
 ) strict;
 

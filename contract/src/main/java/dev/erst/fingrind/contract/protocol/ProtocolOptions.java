@@ -46,14 +46,32 @@ public final class ProtocolOptions {
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
 
+  /** Option selecting the entity form used when initializing one new book. */
+  public static final String ENTITY_FORM = "--entity-form";
+
+  /** Option selecting the owner model used when initializing one new book. */
+  public static final String OWNER_MODEL = "--owner-model";
+
+  /** Option selecting the reporting-obligation status used when initializing one new book. */
+  public static final String REPORTING_OBLIGATION_STATUS = "--reporting-obligation-status";
+
+  /** Option selecting the tax-registration status used when initializing one new book. */
+  public static final String TAX_REGISTRATION_STATUS = "--tax-registration-status";
+
+  /** Option selecting one business-activity tag used when initializing one new book. */
+  public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
+
   /** Option selecting the functional currency code used when initializing one new book. */
   public static final String FUNCTIONAL_CURRENCY = "--functional-currency";
 
   /** Option selecting the {@code MM-DD} fiscal-year start used when initializing one new book. */
   public static final String FISCAL_YEAR_START = "--fiscal-year-start";
 
-  /** Option selecting the retained-earnings account used by one close-period command. */
-  public static final String RETAINED_EARNINGS_ACCOUNT = "--retained-earnings-account";
+  /** Option selecting the accounting basis used when initializing one new book. */
+  public static final String ACCOUNTING_BASIS = "--accounting-basis";
+
+  /** Option selecting the closing equity account used by one close-period command. */
+  public static final String CLOSING_EQUITY_ACCOUNT = "--closing-equity-account";
 
   /** Option selecting which posting kinds one report query should include. */
   public static final String POSTING_COVERAGE = "--posting-coverage";

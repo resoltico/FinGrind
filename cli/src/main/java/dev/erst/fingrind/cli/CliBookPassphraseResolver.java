@@ -98,8 +98,9 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private ContractDecision<SqliteBookPassphrase> readFromInteractivePrompt(
       Path bookFilePath, PromptStyle promptStyle) {
     Path normalizedPath = bookFilePath.toAbsolutePath().normalize();
+    String displayPath = CliHumanDisplay.path(normalizedPath);
     ContractDecision<char[]> passwordDecision =
-        terminal.readPassword(promptStyle.primaryPrompt(normalizedPath));
+        terminal.readPassword(promptStyle.primaryPrompt(displayPath));
     char[] password;
     switch (passwordDecision) {
       case ContractDecision.Accepted<char[]>(char[] acceptedPassword) ->
@@ -113,7 +114,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
           "interactive prompt for " + normalizedPath, password);
     }
     ContractDecision<char[]> confirmationDecision =
-        terminal.readPassword(promptStyle.confirmationPrompt(normalizedPath));
+        terminal.readPassword(promptStyle.confirmationPrompt(displayPath));
     char[] confirmation;
     switch (confirmationDecision) {
       case ContractDecision.Accepted<char[]>(char[] acceptedConfirmation) ->
@@ -313,19 +314,18 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     SINGLE,
     CONFIRMED_NEW_SECRET;
 
-    String primaryPrompt(Path normalizedPath) {
+    String primaryPrompt(String displayPath) {
       return switch (this) {
-        case SINGLE -> "FinGrind book passphrase for %s: ".formatted(normalizedPath);
-        case CONFIRMED_NEW_SECRET ->
-            "New FinGrind book passphrase for %s: ".formatted(normalizedPath);
+        case SINGLE -> "FinGrind book passphrase for %s: ".formatted(displayPath);
+        case CONFIRMED_NEW_SECRET -> "New FinGrind book passphrase for %s: ".formatted(displayPath);
       };
     }
 
-    String confirmationPrompt(Path normalizedPath) {
+    String confirmationPrompt(String displayPath) {
       if (this != CONFIRMED_NEW_SECRET) {
         throw new IllegalStateException("This prompt style does not support confirmation.");
       }
-      return "Confirm new FinGrind book passphrase for %s: ".formatted(normalizedPath);
+      return "Confirm new FinGrind book passphrase for %s: ".formatted(displayPath);
     }
   }
 }

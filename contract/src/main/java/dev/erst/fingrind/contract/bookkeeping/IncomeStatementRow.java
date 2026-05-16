@@ -3,6 +3,8 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -12,7 +14,8 @@ public record IncomeStatementRow(
     String lineName,
     AccountType lineType,
     Optional<AccountRole> lineRole,
-    boolean synthetic,
+    ProfitAndLossLineClassification lineClassification,
+    StatementLineKind lineKind,
     CurrencyBalance movement) {
   /** Validates one income-statement row. */
   public IncomeStatementRow {
@@ -26,6 +29,8 @@ public record IncomeStatementRow(
     lineRole =
         dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireValue(
             lineRole, "lineRole");
+    Objects.requireNonNull(lineClassification, "lineClassification");
+    Objects.requireNonNull(lineKind, "lineKind");
     Objects.requireNonNull(movement, "movement");
   }
 }

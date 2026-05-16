@@ -2,6 +2,7 @@ package dev.erst.fingrind.report.pdf;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -57,32 +58,27 @@ final class AccountLedgerPdfRenderer {
     pageWriter.writeTable(
         "Ledger Entries",
         List.of(
-            new PdfTableColumn("Effective date", 0.9f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Posting id", 1.25f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Posting kind", 0.95f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Reversal state", 0.95f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Reversal target", 1.25f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Credit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Movement", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Running net", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Side", 0.8f, PdfTableColumn.CellAlignment.LEFT)),
+            new PdfTableColumn("Effective date", 0.95f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Posting id", 1.0f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Entry", 1.35f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Debit", 0.8f, PdfTableColumn.CellAlignment.RIGHT),
+            new PdfTableColumn("Credit", 0.8f, PdfTableColumn.CellAlignment.RIGHT),
+            new PdfTableColumn("Running net", 0.95f, PdfTableColumn.CellAlignment.RIGHT),
+            new PdfTableColumn("Side", 0.65f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Counterpart accounts", 1.15f, PdfTableColumn.CellAlignment.LEFT)),
         report.entries().stream()
             .map(
                 entry ->
                     List.of(
                         entry.postingFact().journalEntry().effectiveDate().toString(),
-                        entry.postingFact().postingId().value(),
-                        PdfValueFormatter.displayPostingKind(entry.postingFact().postingKind()),
-                        PdfValueFormatter.reversalState(entry.postingFact()),
-                        PdfValueFormatter.reversalTarget(entry.postingFact()),
-                        entry.movement().netAmount().currencyUnit().code(),
+                        PdfValueFormatter.compactOpaqueIdentifier(
+                            entry.postingFact().postingId().value()),
+                        postingEntrySummary(entry.postingFact()),
                         PdfValueFormatter.displayMoney(entry.movement().debitTotal()),
                         PdfValueFormatter.displayMoney(entry.movement().creditTotal()),
-                        PdfValueFormatter.displayMoney(entry.movement().netAmount()),
                         PdfValueFormatter.displayMoney(entry.runningNetAmount()),
-                        PdfValueFormatter.displayBalanceSide(entry.runningBalanceSide())))
+                        PdfValueFormatter.displayBalanceSide(entry.runningBalanceSide()),
+                        counterpartAccounts(report.account().accountCode(), entry.postingFact())))
             .toList());
     pageWriter.writeTable(
         "Closing Balances",
@@ -108,5 +104,30 @@ final class AccountLedgerPdfRenderer {
       List<dev.erst.fingrind.core.CurrencyBalance> balances) {
     return balances.stream()
         .anyMatch(balance -> !balance.debitTotal().isZero() || !balance.creditTotal().isZero());
+  }
+
+  private static String postingEntrySummary(
+      dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact) {
+    String postingKind = PdfValueFormatter.displayPostingKind(postingFact.postingKind());
+    return postingFact
+        .reversalReference()
+        .map(
+            reference ->
+                postingKind
+                    + " / Reversal of "
+                    + PdfValueFormatter.compactOpaqueIdentifier(reference.priorPostingId().value()))
+        .orElse(postingKind + " / Direct");
+  }
+
+  private static String counterpartAccounts(
+      dev.erst.fingrind.core.AccountCode accountCode,
+      dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact) {
+    List<String> counterpartAccounts = new ArrayList<>();
+    postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .filter(candidate -> !candidate.equals(accountCode.value()))
+        .distinct()
+        .forEach(counterpartAccounts::add);
+    return counterpartAccounts.isEmpty() ? "(self)" : String.join(", ", counterpartAccounts);
   }
 }

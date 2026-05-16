@@ -217,8 +217,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
         .toList();
   }
 
-  static PostingPage published(PostingHistoryPage page) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(page);
+  static PostingPage published(PostingHistoryQuery query, PostingHistoryPage page) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), query, page);
   }
 
   static AccountBalanceSnapshot published(AccountBalanceView view) {

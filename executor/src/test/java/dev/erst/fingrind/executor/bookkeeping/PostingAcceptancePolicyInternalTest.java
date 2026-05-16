@@ -47,7 +47,7 @@ class PostingAcceptancePolicyInternalTest {
   }
 
   @Test
-  void isInternalSystemPosting_distinguishesSystemDraftsAndUnknownRequestShapes() {
+  void isInternalSystemPosting_distinguishes_system_and_non_system_postings() {
     assertTrue(
         PostingAcceptancePolicy.isInternalSystemPosting(
             new PostingCommand(
@@ -71,7 +71,6 @@ class PostingAcceptancePolicyInternalTest {
             draft(SourceChannel.SYSTEM, "idem-system")));
     assertFalse(
         PostingAcceptancePolicy.isInternalSystemPosting(draft(SourceChannel.CLI, "idem-cli")));
-    assertFalse(PostingAcceptancePolicy.isInternalSystemPosting(new UnknownPostingRequestModel()));
   }
 
   private static PostingDraft draft(SourceChannel sourceChannel, String idempotencyKey) {
@@ -97,39 +96,6 @@ class PostingAcceptancePolicyInternalTest {
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
     return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
-  }
-
-  /** Minimal request-model seam for the default internal-source-channel branch. */
-  private static final class UnknownPostingRequestModel implements PostingRequestModel {
-    @Override
-    public JournalEntry journalEntry() {
-      return new JournalEntry(
-          LocalDate.parse("2026-04-07"),
-          List.of(
-              line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
-              line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
-    }
-
-    @Override
-    public PostingLineageModel postingLineage() {
-      return PostingLineageModel.direct();
-    }
-
-    @Override
-    public PostingKind postingKind() {
-      return PostingKind.PERIOD_CLOSE;
-    }
-
-    @Override
-    public RequestProvenance requestProvenance() {
-      return new RequestProvenance(
-          new ActorId("actor-1"),
-          ActorType.AGENT,
-          new CommandId("command-unknown"),
-          new IdempotencyKey("idem-unknown"),
-          new CausationId("cause-unknown"),
-          Optional.of(new CorrelationId("corr-unknown")));
-    }
   }
 
   /** Validation-book double whose inspection reports one missing-book lifecycle snapshot. */

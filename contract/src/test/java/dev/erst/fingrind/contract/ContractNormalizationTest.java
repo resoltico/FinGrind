@@ -17,8 +17,6 @@ import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -34,9 +32,9 @@ import org.junit.jupiter.api.Test;
 /** Covers shared collection validation paths across public contract records. */
 class ContractNormalizationTest {
   private static final DeclaredAccount CASH_ACCOUNT =
-      new DeclaredAccount(
-          new AccountCode("1000"),
-          new AccountName("Cash"),
+      ContractFixtures.declaredAccount(
+          "1000",
+          "Cash",
           AccountType.ASSET,
           AccountRole.ORDINARY,
           true,
@@ -134,12 +132,23 @@ class ContractNormalizationTest {
     assertEquals(
         "accounts must not be null.",
         assertThrows(
-                NullPointerException.class, () -> new AccountPage(nullOf(), 50, Optional.empty()))
+                NullPointerException.class,
+                () ->
+                    new AccountPage(
+                        ContractFixtures.bookIdentity(), nullOf(), 50, Optional.empty()))
             .getMessage());
     assertEquals(
         "postings must not be null.",
         assertThrows(
-                NullPointerException.class, () -> new PostingPage(nullOf(), 10, Optional.empty()))
+                NullPointerException.class,
+                () ->
+                    new PostingPage(
+                        ContractFixtures.bookIdentity(),
+                        Optional.empty(),
+                        EffectiveDateRange.unbounded(),
+                        nullOf(),
+                        10,
+                        Optional.empty()))
             .getMessage());
     assertEquals(
         "facts must not be null.",

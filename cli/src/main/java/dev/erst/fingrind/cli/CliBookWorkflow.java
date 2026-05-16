@@ -48,7 +48,7 @@ interface CliBookWorkflow {
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
 
-  /** Closes one contiguous reporting period into the retained-earnings account. */
+  /** Closes one contiguous reporting period into the selected closing equity account. */
   ContractDecision<ClosePeriodResult> closePeriod(
       BookAccess bookAccess, ClosePeriodCommand command);
 

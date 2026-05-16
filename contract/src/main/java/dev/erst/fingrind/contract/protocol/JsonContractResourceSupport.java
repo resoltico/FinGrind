@@ -78,7 +78,7 @@ final class JsonContractResourceSupport {
   static String requireText(JsonNode document, String key) {
     @Nullable JsonNode value = nullableField(document, key);
     String normalized =
-        value == null || value.isNull() || !value.isString() ? "" : value.stringValue().trim();
+        value == null || value.isNull() || !value.isString() ? "" : value.stringValue().strip();
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException(key + " must be a non-blank JSON string.");
     }
@@ -123,7 +123,7 @@ final class JsonContractResourceSupport {
     }
     List<String> values = new ArrayList<>();
     for (JsonNode element : value) {
-      String normalized = element.isString() ? element.stringValue().trim() : "";
+      String normalized = element.isString() ? element.stringValue().strip() : "";
       if (normalized.isEmpty()) {
         throw new IllegalArgumentException(key + " must be a JSON array of strings.");
       }

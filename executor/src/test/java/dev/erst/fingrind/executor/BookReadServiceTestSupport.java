@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -50,7 +52,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -138,12 +140,14 @@ final class BookReadServiceTestSupport {
         CASH_ACCOUNT.accountName(),
         CASH_ACCOUNT.accountType(),
         accountRole(CASH_ACCOUNT.accountType(), CASH_ACCOUNT.normalBalance()),
+        accountTaxonomy(CASH_ACCOUNT.accountType()),
         FIXED_INSTANT);
     bookSession.declareAccount(
         REVENUE_ACCOUNT.accountCode(),
         REVENUE_ACCOUNT.accountName(),
         REVENUE_ACCOUNT.accountType(),
         accountRole(REVENUE_ACCOUNT.accountType(), REVENUE_ACCOUNT.normalBalance()),
+        accountTaxonomy(REVENUE_ACCOUNT.accountType()),
         FIXED_INSTANT);
   }
 
@@ -186,30 +190,27 @@ final class BookReadServiceTestSupport {
   }
 
   /** Counts account lookups so account-balance tests can assert the read seam stays single-read. */
-  static final class CountingFindAccountBookSession implements BookStore {
+  static final class CountingFindAccountBookSession implements BookkeepingReadStore {
     private final InMemoryBookSession delegate = new InMemoryBookSession();
     private int findAccountCalls;
 
-    @Override
-    public BookOpeningOutcome openBook(
+    BookOpeningOutcome openBook(
         Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
       return delegate.openBook(initializedAt, bookIdentity);
     }
 
-    @Override
-    public AccountDeclarationOutcome declareAccount(
+    AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
         AccountType accountType,
         AccountRole accountRole,
+        AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       return delegate.declareAccount(
-          accountCode, accountName, accountType, accountRole, declaredAt);
+          accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
     }
 
-    @Override
-    public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+    PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       return delegate.commit(postingDraft, postingIdGenerator);
     }
 
@@ -257,20 +258,8 @@ final class BookReadServiceTestSupport {
       return delegate.allAccounts();
     }
 
-    @Override
-    public List<CommittedPosting> postings(
-        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+    List<CommittedPosting> postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
       return delegate.postings(effectiveDateRange);
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      return delegate.earliestPostingEffectiveDate();
-    }
-
-    @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
-      return delegate.closedThroughEffectiveDate();
     }
 
     @Override
@@ -304,8 +293,7 @@ final class BookReadServiceTestSupport {
       return delegate.periodSummary(query);
     }
 
-    @Override
-    public PeriodCloseOutcome closePeriod(
+    PeriodCloseOutcome closePeriod(
         PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
       return delegate.closePeriod(periodCloseDraft, postingIdGenerator);
     }

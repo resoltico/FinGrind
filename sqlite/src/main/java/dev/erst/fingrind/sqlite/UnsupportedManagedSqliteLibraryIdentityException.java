@@ -58,7 +58,7 @@ public final class UnsupportedManagedSqliteLibraryIdentityException extends Ille
 
   private static String requireIdentitySource(String identitySource) {
     Objects.requireNonNull(identitySource, "identitySource");
-    String normalized = identitySource.trim();
+    String normalized = identitySource.strip();
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException("identitySource must not be blank.");
     }
@@ -67,7 +67,7 @@ public final class UnsupportedManagedSqliteLibraryIdentityException extends Ille
 
   private static String requireSha256(String sha256, String fieldName) {
     Objects.requireNonNull(sha256, fieldName);
-    String normalized = sha256.trim().toLowerCase(Locale.ROOT);
+    String normalized = sha256.strip().toLowerCase(Locale.ROOT);
     if (!normalized.matches("[0-9a-f]{64}")) {
       throw new IllegalArgumentException(
           fieldName + " must be one 64-character lowercase SHA-256 digest.");

@@ -23,7 +23,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
               "accountCode": "1000",
               "accountName": "Cash",
               "accountType": "ASSET",
-              "accountRole": "ORDINARY"
+              "accountRole": "ORDINARY",
+              "financialPositionLineClassification": "CURRENT_ASSET",
+              "profitAndLossLineClassification": null
             }
             """);
     CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
@@ -45,7 +47,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 {
                   "accountCode": "1000",
                   "accountType": "ASSET",
-                  "accountRole": "ORDINARY"
+                  "accountRole": "ORDINARY",
+                  "financialPositionLineClassification": "CURRENT_ASSET",
+                  "profitAndLossLineClassification": null
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
@@ -68,7 +72,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountCode": "1000",
                   "accountName": "Cash",
                   "accountType": "ASSET",
-                  "accountRole": "SIDEWAYS"
+                  "accountRole": "SIDEWAYS",
+                  "financialPositionLineClassification": "CURRENT_ASSET",
+                  "profitAndLossLineClassification": null
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
@@ -78,7 +84,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, CONTRA, RETAINED_EARNINGS.",
+        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, CONTRA.",
         exception.getMessage());
   }
 
@@ -93,6 +99,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Cash",
                   "accountType": "ASSET",
                   "accountRole": "ORDINARY",
+                  "financialPositionLineClassification": "CURRENT_ASSET",
+                  "profitAndLossLineClassification": null,
                   "ignored": true
                 }
                 """
@@ -116,6 +124,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Cash",
                   "accountType": "ASSET",
                   "accountRole": "ORDINARY",
+                  "financialPositionLineClassification": "CURRENT_ASSET",
+                  "profitAndLossLineClassification": null,
                   "ignored": true,
                   "alsoIgnored": true
                 }
@@ -140,7 +150,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY"
+                    "accountRole": "ORDINARY",
+                    "financialPositionLineClassification": "CURRENT_ASSET",
+                    "profitAndLossLineClassification": null
                   }
                 ]
                 """
@@ -164,7 +176,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY"
+                    "accountRole": "ORDINARY",
+                    "financialPositionLineClassification": "CURRENT_ASSET",
+                    "profitAndLossLineClassification": null
                   }
                 }
                 """

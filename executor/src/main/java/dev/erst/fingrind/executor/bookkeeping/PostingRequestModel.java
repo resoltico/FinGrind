@@ -7,7 +7,8 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 
 /** Minimal bookkeeping posting shape shared by preflight commands and commit drafts. */
-public interface PostingRequestModel {
+public sealed interface PostingRequestModel
+    permits PostingCommand, dev.erst.fingrind.executor.spi.PostingDraft {
   /** Returns the journal entry carried by this posting attempt. */
   JournalEntry journalEntry();
 

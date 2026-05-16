@@ -3,8 +3,8 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
@@ -44,8 +44,12 @@ final class CliDiscoveryOutputRenderer {
         String.join(
             System.lineSeparator(),
             List.of(
-                "Run 'fingrind help <command>' for command-specific usage, request grammar, and examples.",
-                "Run 'fingrind capabilities --output json' for the full machine-readable contract."));
+                "Run '"
+                    + CliInvocationText.commandExample(OperationId.HELP)
+                    + " <command>' for command-specific usage, request-file guidance, and examples.",
+                "Run '"
+                    + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                    + " --output json' for the full machine-readable contract."));
     String exitCodes =
         CliTextFormat.renderTable(
             List.of("Code", "Meaning"),
@@ -127,8 +131,8 @@ final class CliDiscoveryOutputRenderer {
                 List.of(
                     "Storage",
                     String.join(
-                        ", ", storageDescriptor.engines().stream().map(Object::toString).toList())),
-                List.of("Timestamp", capabilitiesDescriptor.timestamp())));
+                        ", ",
+                        storageDescriptor.engines().stream().map(Object::toString).toList()))));
     String commands =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -138,13 +142,14 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Write", joinCommandNames(commandCatalog.write()))));
     String commandContracts =
         CliTextFormat.renderTable(
-            List.of("Command", "Stdout", "Artifacts"),
+            List.of("Command", "Stdout", "Defaults", "Artifacts"),
             commandCatalog.allCommands().stream()
                 .map(
                     command ->
                         List.of(
                             command.name().wireName(),
                             command.stdoutContractSummary(),
+                            selectableDefaultsSummary(command.selectableOutputDefaults()),
                             artifactSummary(command)))
                 .toList());
     String requestInput =
@@ -152,18 +157,6 @@ final class CliDiscoveryOutputRenderer {
             List.of(
                 List.of(
                     "Selectable stdout flag", capabilitiesDescriptor.requestInput().outputOption()),
-                List.of(
-                    "Default selectable stdout (interactive terminal)",
-                    capabilitiesDescriptor
-                        .requestInput()
-                        .interactiveDefaultSelectableOutputMode()
-                        .wireValue()),
-                List.of(
-                    "Default selectable stdout (redirected)",
-                    capabilitiesDescriptor
-                        .requestInput()
-                        .redirectedDefaultSelectableOutputMode()
-                        .wireValue()),
                 List.of("Book file flag", capabilitiesDescriptor.requestInput().bookFileOption()),
                 List.of(
                     "Request document flag",
@@ -176,13 +169,24 @@ final class CliDiscoveryOutputRenderer {
                     String.join(
                         ", ", capabilitiesDescriptor.requestInput().directArgumentCommands())),
                 List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics())));
+    String targetedRetrieval =
+        String.join(
+            System.lineSeparator(),
+            List.of(
+                "Use '"
+                    + CliInvocationText.commandExample(OperationId.HELP)
+                    + " <command> --output json' when you only need one command contract.",
+                "Use '"
+                    + CliInvocationText.commandExample(OperationId.VERSION)
+                    + " --output json' for a minimal application identity response."));
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         joinSections(
             header,
             section("Command Groups", commands),
             section("Command Contracts", commandContracts),
-            section("Request Input", requestInput)));
+            section("Request Input", requestInput),
+            section("Targeted Retrieval", targetedRetrieval)));
   }
 
   static String renderVersionHuman(VersionDescriptor versionDescriptor) {
@@ -261,35 +265,28 @@ final class CliDiscoveryOutputRenderer {
   private static String renderRequestGuidance(
       HelpDescriptor helpDescriptor, OperationId operationId) {
     return switch (operationId) {
-      case POST_ENTRY, PREFLIGHT_ENTRY -> renderPostingRequestGuidance(helpDescriptor);
+      case POST_ENTRY, PREFLIGHT_ENTRY -> renderPostingRequestGuidance(helpDescriptor, operationId);
       case DECLARE_ACCOUNT -> renderDeclareAccountRequestGuidance(helpDescriptor);
       case EXECUTE_PLAN -> renderLedgerPlanRequestGuidance(helpDescriptor);
       default -> "";
     };
   }
 
-  private static String renderPostingRequestGuidance(HelpDescriptor helpDescriptor) {
+  private static String renderPostingRequestGuidance(
+      HelpDescriptor helpDescriptor, OperationId operationId) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().postEntry() == null
         || helpDescriptor.requestTemplate() == null) {
       return "";
     }
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntry =
-        helpDescriptor.requestShapes().postEntry();
     return section(
         "Request File",
-        joinSections(
+        conciseRequestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
-            section(
-                "Template",
-                renderJsonTemplate(
-                    helpDescriptor.requestTemplate(),
-                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE))),
-            renderFieldGroup("Top-Level Fields", postEntry.topLevelFields()),
-            renderFieldGroup("Journal Line Fields", postEntry.lineFields()),
-            renderFieldGroup("Provenance Fields", postEntry.provenanceFields()),
-            renderFieldGroup("Reversal Fields", postEntry.reversalFields()),
-            renderEnumVocabularyBlock(postEntry.enumVocabularies())));
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + operationId.wireName(),
+            operationId));
   }
 
   private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -298,21 +295,14 @@ final class CliDiscoveryOutputRenderer {
         || helpDescriptor.declareAccountTemplate() == null) {
       return "";
     }
-    ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccount =
-        helpDescriptor.requestShapes().declareAccount();
     return section(
         "Request File",
-        joinSections(
+        conciseRequestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
-            section(
-                "Template",
-                renderJsonTemplate(
-                    helpDescriptor.declareAccountTemplate(),
-                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                        + " "
-                        + OperationId.DECLARE_ACCOUNT.wireName())),
-            renderFieldGroup("Top-Level Fields", declareAccount.topLevelFields()),
-            renderEnumVocabularyBlock(declareAccount.enumVocabularies())));
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.DECLARE_ACCOUNT.wireName(),
+            OperationId.DECLARE_ACCOUNT));
   }
 
   private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -321,22 +311,12 @@ final class CliDiscoveryOutputRenderer {
         || helpDescriptor.planTemplate() == null) {
       return "";
     }
-    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
-        helpDescriptor.requestShapes().ledgerPlan();
     return section(
         "Request File",
-        joinSections(
+        conciseRequestFileGuidance(
             "Provide one ledger plan JSON object through --request-file <path|->.",
-            section(
-                "Template",
-                renderJsonTemplate(
-                    helpDescriptor.planTemplate(),
-                    CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE))),
-            renderFieldGroup("Top-Level Fields", ledgerPlan.topLevelFields()),
-            renderFieldGroup("Step Fields", ledgerPlan.stepFields()),
-            renderFieldGroup("Query Fields", ledgerPlan.queryFields()),
-            renderFieldGroup("Assertion Fields", ledgerPlan.assertionFields()),
-            renderLedgerPlanVocabularies(ledgerPlan)));
+            CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
+            OperationId.EXECUTE_PLAN));
   }
 
   static String renderJsonTemplate(
@@ -358,52 +338,31 @@ final class CliDiscoveryOutputRenderer {
     }
   }
 
-  private static String renderFieldGroup(
-      String title, List<ContractRequestShapes.RequestFieldDescriptor> fields) {
-    return section(
-        title,
-        CliTextFormat.renderTable(
-            List.of("Field", "Presence", "Description"),
-            fields.stream()
-                .map(
-                    field ->
-                        List.of(field.name(), field.presence().wireValue(), field.description()))
-                .toList()));
+  private static String conciseRequestFileGuidance(
+      String introduction, String shortcutCommand, OperationId operationId) {
+    return String.join(
+        System.lineSeparator(),
+        List.of(
+            introduction,
+            "Generate a scaffold with: " + shortcutCommand,
+            "Inspect the machine-readable contract with: "
+                + CliInvocationText.commandExample(OperationId.HELP)
+                + " "
+                + ProtocolCatalog.operationName(operationId)
+                + " --output json"));
   }
 
-  private static String renderEnumVocabularyBlock(
-      List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies) {
-    if (enumVocabularies.isEmpty()) {
-      return "";
+  private static String selectableDefaultsSummary(
+      @org.jspecify.annotations.Nullable SelectableOutputDefaultsDescriptor defaults) {
+    if (defaults == null) {
+      return "(fixed)";
     }
-    return section(
-        "Enum Vocabulary",
-        CliTextFormat.renderKeyValueBlock(
-            enumVocabularies.stream()
-                .map(
-                    vocabulary ->
-                        List.of(vocabulary.name(), String.join(", ", vocabulary.values())))
-                .toList()));
-  }
-
-  private static String renderLedgerPlanVocabularies(
-      ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan) {
-    return section(
-        "Enum Vocabulary",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "administrationStepKinds",
-                    joinWireValues(ledgerPlan.administrationStepKinds())),
-                List.of("queryStepKinds", joinWireValues(ledgerPlan.queryStepKinds())),
-                List.of("writeStepKinds", joinWireValues(ledgerPlan.writeStepKinds())),
-                List.of("assertStepKind", ledgerPlan.assertStepKind().wireValue()),
-                List.of("assertionKinds", joinWireValues(ledgerPlan.assertionKinds())))));
-  }
-
-  private static String joinWireValues(List<? extends dev.erst.fingrind.core.WireValue> values) {
-    return values.stream()
-        .map(dev.erst.fingrind.core.WireValue::wireValue)
-        .collect(java.util.stream.Collectors.joining(", "));
+    if (defaults.interactiveTerminal() == defaults.redirectedStdout()) {
+      return defaults.interactiveTerminal().wireValue();
+    }
+    return defaults.interactiveTerminal().wireValue()
+        + " interactive / "
+        + defaults.redirectedStdout().wireValue()
+        + " redirected";
   }
 }

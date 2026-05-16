@@ -12,12 +12,16 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -35,22 +39,37 @@ class CliRejectionPayloadMapperTest {
         CliRejectionJsonModels.AccountTypeConflictDetails.class);
     assertHint(
         new BookAdministrationRejection.AccountRoleConflict(
-            new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.RETAINED_EARNINGS),
+            new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.CONTRA),
         "existing account identity",
         CliRejectionJsonModels.AccountRoleConflictDetails.class);
     assertHint(
-        new BookAdministrationRejection.RetainedEarningsAccountMissing(new AccountCode("3200")),
-        "--retained-earnings-account",
-        CliRejectionJsonModels.RetainedEarningsAccountDetails.class);
+        new BookAdministrationRejection.AccountTaxonomyConflict(
+            new AccountCode("3200"),
+            new AccountTaxonomy(
+                Optional.empty(),
+                Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                Optional.empty()),
+            new AccountTaxonomy(
+                Optional.empty(),
+                Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                Optional.empty())),
+        "existing taxonomy",
+        CliRejectionJsonModels.AccountTaxonomyConflictDetails.class);
     assertHint(
-        new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-            new AccountCode("3200"), AccountRole.ORDINARY),
-        "accountRole is RETAINED_EARNINGS",
-        CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails.class);
+        new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200")),
+        "--closing-equity-account",
+        CliRejectionJsonModels.ClosingEquityAccountDetails.class);
     assertHint(
-        new BookAdministrationRejection.RetainedEarningsAccountInactive(new AccountCode("3200")),
-        "Redeclare the retained-earnings account",
-        CliRejectionJsonModels.RetainedEarningsAccountDetails.class);
+        new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+            new AccountCode("3200"),
+            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            FinancialPositionLineClassification.OTHER_EQUITY),
+        "closing classification RETAINED_EARNINGS",
+        CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ClosingEquityAccountInactive(new AccountCode("3200")),
+        "Redeclare the closing equity account",
+        CliRejectionJsonModels.ClosingEquityAccountDetails.class);
     assertHint(
         new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-01")),
         "--effective-date-from",
@@ -77,15 +96,28 @@ class CliRejectionPayloadMapperTest {
     var roleConflictEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
             new BookAdministrationRejection.AccountRoleConflict(
-                new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.RETAINED_EARNINGS));
+                new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.CONTRA));
+    var taxonomyConflictEnvelope =
+        CliRejectionPayloadMapper.administrationRejectedEnvelope(
+            new BookAdministrationRejection.AccountTaxonomyConflict(
+                new AccountCode("3200"),
+                new AccountTaxonomy(
+                    Optional.empty(),
+                    Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                    Optional.empty()),
+                new AccountTaxonomy(
+                    Optional.empty(),
+                    Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                    Optional.empty())));
     var retainedEarningsMissingEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
-            new BookAdministrationRejection.RetainedEarningsAccountMissing(
-                new AccountCode("3200")));
-    var retainedEarningsRoleMismatchEnvelope =
+            new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200")));
+    var retainedEarningsClassificationMismatchEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
-            new BookAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-                new AccountCode("3200"), AccountRole.ORDINARY));
+            new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+                new AccountCode("3200"),
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.OTHER_EQUITY));
 
     CliRejectionJsonModels.AccountTypeConflictDetails typeDetails =
         assertInstanceOf(
@@ -95,25 +127,77 @@ class CliRejectionPayloadMapperTest {
         assertInstanceOf(
             CliRejectionJsonModels.AccountRoleConflictDetails.class,
             roleConflictEnvelope.details());
-    CliRejectionJsonModels.RetainedEarningsAccountDetails retainedEarningsMissingDetails =
+    CliRejectionJsonModels.AccountTaxonomyConflictDetails taxonomyDetails =
         assertInstanceOf(
-            CliRejectionJsonModels.RetainedEarningsAccountDetails.class,
+            CliRejectionJsonModels.AccountTaxonomyConflictDetails.class,
+            taxonomyConflictEnvelope.details());
+    CliRejectionJsonModels.ClosingEquityAccountDetails retainedEarningsMissingDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.ClosingEquityAccountDetails.class,
             retainedEarningsMissingEnvelope.details());
-    CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails
-        retainedEarningsRoleMismatchDetails =
+    CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails
+        retainedEarningsClassificationMismatchDetails =
             assertInstanceOf(
-                CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails.class,
-                retainedEarningsRoleMismatchEnvelope.details());
+                CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails.class,
+                retainedEarningsClassificationMismatchEnvelope.details());
 
     assertEquals("3200", typeDetails.accountCode());
     assertEquals("EQUITY", typeDetails.existingAccountType());
     assertEquals("LIABILITY", typeDetails.requestedAccountType());
     assertEquals("3200", roleDetails.accountCode());
     assertEquals("ORDINARY", roleDetails.existingAccountRole());
-    assertEquals("RETAINED_EARNINGS", roleDetails.requestedAccountRole());
+    assertEquals("CONTRA", roleDetails.requestedAccountRole());
+    assertEquals("3200", taxonomyDetails.accountCode());
+    assertEquals(
+        "OTHER_EQUITY",
+        taxonomyDetails.existingAccountTaxonomy().financialPositionLineClassification());
+    assertEquals(null, taxonomyDetails.existingAccountTaxonomy().parentAccountCode());
+    assertEquals(null, taxonomyDetails.existingAccountTaxonomy().profitAndLossLineClassification());
+    assertEquals(
+        "RETAINED_EARNINGS",
+        taxonomyDetails.requestedAccountTaxonomy().financialPositionLineClassification());
+    assertEquals(null, taxonomyDetails.requestedAccountTaxonomy().parentAccountCode());
+    assertEquals(
+        null, taxonomyDetails.requestedAccountTaxonomy().profitAndLossLineClassification());
     assertEquals("3200", retainedEarningsMissingDetails.accountCode());
-    assertEquals("3200", retainedEarningsRoleMismatchDetails.accountCode());
-    assertEquals("ORDINARY", retainedEarningsRoleMismatchDetails.actualAccountRole());
+    assertEquals("3200", retainedEarningsClassificationMismatchDetails.accountCode());
+    assertEquals(
+        "RETAINED_EARNINGS",
+        retainedEarningsClassificationMismatchDetails
+            .requiredFinancialPositionLineClassification());
+    assertEquals(
+        "OTHER_EQUITY",
+        retainedEarningsClassificationMismatchDetails.actualFinancialPositionLineClassification());
+  }
+
+  @Test
+  void administrationRejectedEnvelope_mapsParentAndProfitAndLossTaxonomyValuesWhenPresent() {
+    var taxonomyConflictEnvelope =
+        CliRejectionPayloadMapper.administrationRejectedEnvelope(
+            new BookAdministrationRejection.AccountTaxonomyConflict(
+                new AccountCode("4100"),
+                new AccountTaxonomy(
+                    Optional.of(new AccountCode("4000")),
+                    Optional.empty(),
+                    Optional.of(ProfitAndLossLineClassification.COST_OF_SALES)),
+                new AccountTaxonomy(
+                    Optional.of(new AccountCode("4050")),
+                    Optional.empty(),
+                    Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE))));
+
+    CliRejectionJsonModels.AccountTaxonomyConflictDetails taxonomyDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.AccountTaxonomyConflictDetails.class,
+            taxonomyConflictEnvelope.details());
+
+    assertEquals("4000", taxonomyDetails.existingAccountTaxonomy().parentAccountCode());
+    assertEquals(
+        "COST_OF_SALES",
+        taxonomyDetails.existingAccountTaxonomy().profitAndLossLineClassification());
+    assertEquals("4050", taxonomyDetails.requestedAccountTaxonomy().parentAccountCode());
+    assertEquals(
+        "OPERATING_EXPENSE",
+        taxonomyDetails.requestedAccountTaxonomy().profitAndLossLineClassification());
   }
 
   @Test

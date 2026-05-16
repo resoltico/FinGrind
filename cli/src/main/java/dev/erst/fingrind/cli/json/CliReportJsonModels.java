@@ -208,13 +208,16 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineName,
       String lineType,
       @Nullable String lineRole,
-      boolean synthetic,
+      String lineClassification,
+      String lineKind,
       BalanceBucketPayload balance) {
     public FinancialPositionRowPayload {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
       lineRole = requireOptionalText(lineRole, "lineRole");
+      lineClassification = requireText(lineClassification, "lineClassification");
+      lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(balance, "balance");
     }
   }
@@ -254,13 +257,16 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineName,
       String lineType,
       @Nullable String lineRole,
-      boolean synthetic,
+      String lineClassification,
+      String lineKind,
       BalanceBucketPayload movement) {
     public IncomeStatementRowPayload {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
       lineRole = requireOptionalText(lineRole, "lineRole");
+      lineClassification = requireText(lineClassification, "lineClassification");
+      lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(movement, "movement");
     }
   }
@@ -298,7 +304,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineName,
       @Nullable String lineType,
       @Nullable String lineRole,
-      boolean synthetic,
+      String lineClassification,
+      String lineKind,
       BalanceBucketPayload openingBalance,
       BalanceBucketPayload movement,
       BalanceBucketPayload closingBalance) {
@@ -307,6 +314,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       lineName = requireText(lineName, "lineName");
       lineType = requireOptionalText(lineType, "lineType");
       lineRole = requireOptionalText(lineRole, "lineRole");
+      lineClassification = requireText(lineClassification, "lineClassification");
+      lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(openingBalance, "openingBalance");
       Objects.requireNonNull(movement, "movement");
       Objects.requireNonNull(closingBalance, "closingBalance");

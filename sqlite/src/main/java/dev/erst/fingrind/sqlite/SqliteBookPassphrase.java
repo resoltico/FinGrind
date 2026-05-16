@@ -152,7 +152,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
 
   static String normalizeSourceDescription(String sourceDescription) {
     Objects.requireNonNull(sourceDescription, "sourceDescription");
-    String normalized = sourceDescription.trim();
+    String normalized = sourceDescription.strip();
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException("sourceDescription must not be blank.");
     }

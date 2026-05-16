@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -306,7 +306,7 @@ public final class SqliteRuntimeStateValidator
   consume the same protocol-owned runtime-surface contract instead of carrying private copies of
   those wire values
 
-## `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `ExtensionSurfaceFacts`, `PreflightFacts`, And `PlanExecutionFacts`
+## `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts`
 
 These typed records publish FinGrind's hard public model facts.
 
@@ -314,7 +314,13 @@ These typed records publish FinGrind's hard public model facts.
 public record BookModelFacts(...)
 public record CurrencyFacts(...)
 public record AccountingBaselineFacts(...)
+public enum AccountingBaselineTarget ...
+public record ReportCapabilityFacts(...)
+public record AccountingPolicyPackFacts(...)
+public record PolicyDimensionFacts(...)
 public record ExtensionSurfaceFacts(...)
+public record PolicySeamFacts(...)
+public enum CapabilityStatus ...
 public record PreflightFacts(...)
 public record PlanExecutionFacts(...)
 ```
@@ -325,13 +331,26 @@ public record PlanExecutionFacts(...)
 - Related types: `BookBoundaryFact`, `BookEntityScopeFact`, `BookFilesystemFact`,
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
   and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
-- `AccountingBaselineFacts`: publishes the declared standards posture, doctrine sources, built-in
-  statement inventory, deliberate exclusions, small-entity position, organizational position, and
-  the ISO-vs-IFRS clarification as typed machine facts instead of burying that scope only in prose
-  documentation
-- `ExtensionSurfaceFacts`: publishes the currently implemented extension seams plus the adjacent
-  future contexts that are intentionally outside today's bookkeeping kernel, so machine consumers
-  do not mistake roadmap domains for already-pluggable seams
+- `AccountingBaselineTarget`: publishes the current and next declared accounting-foundation target
+  so the protocol can distinguish bookkeeping-kernel scope from broader reporting ambitions
+- `ReportCapabilityFacts`: publishes the current status, target-baseline relevance, bounded-context
+  owner, and blocking model gaps for each statement/reporting capability
+- `AccountingPolicyPackFacts`: publishes the built-in neutral policy-pack identity, supported
+  entity forms, and policy-dimension coverage
+- `PolicyDimensionFacts`: publishes one structured status row for chart, close, tax, FX, evidence,
+  comparatives, and related policy dimensions
+- `CapabilityStatus`: publishes the shared lifecycle vocabulary for implemented, planned,
+  future-context, deliberately-excluded, and unsupported capability states
+- `AccountingBaselineFacts`: publishes the declared standards posture, explicit non-claims,
+  current/next baseline targets, built-in statement inventory, report-capability inventory,
+  required missing capabilities, default policy pack, small-entity position, organizational
+  position, and the ISO-vs-IFRS clarification as typed machine facts instead of burying that scope
+  only in prose documentation
+- `PolicySeamFacts`: publishes the structured inventory of executable and planned policy seams
+- `ExtensionSurfaceFacts`: publishes the current policy-pack model, the default pack id, the
+  implemented extension seams, the structured seam inventory, plus the adjacent future contexts
+  that are intentionally outside today's bookkeeping kernel so machine consumers do not mistake
+  roadmap domains for already-pluggable seams
 
 ## `MonetaryAmount`
 
@@ -568,7 +587,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 4`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 6`
 
 ## `ProtectedBookFormatContract`
 

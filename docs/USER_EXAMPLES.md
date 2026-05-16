@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: USER_EXAMPLES
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -44,8 +44,10 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
+  --entity-form COMPANY \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
+  --accounting-basis ACCRUAL \
   --book-passphrase-prompt
 ```
 
@@ -80,15 +82,17 @@ cat ./secrets/acme.book-key | \
     open-book \
     --book-file ./books/acme.sqlite \
     --entity-name "Acme Studio" \
+    --entity-form COMPANY \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
+    --accounting-basis ACCRUAL \
     --book-passphrase-stdin
 ```
 
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -98,15 +102,17 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
+  --entity-form COMPANY \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
+  --accounting-basis ACCRUAL \
   --book-key-file ./secrets/acme.book-key
 ```
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite","initializedAt":"2026-04-13T11:58:35.532739Z","bookIdentity":{"entityName":"Acme Studio","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite","initializedAt":"2026-04-13T11:58:35.532739Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"UNKNOWN","reportingObligationStatus":"UNSPECIFIED","taxRegistrationStatus":"UNSPECIFIED","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -601,8 +607,10 @@ fingrind \
   open-book \
   --book-file ./prompt.sqlite \
   --entity-name "Acme Studio" \
+  --entity-form COMPANY \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
+  --accounting-basis ACCRUAL \
   --book-passphrase-prompt
 ```
 

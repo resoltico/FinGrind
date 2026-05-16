@@ -20,17 +20,20 @@ import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -136,7 +139,27 @@ final class CliPostingRequestParser {
             requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_ROLE),
             ProtocolDeclareAccountFields.ACCOUNT_ROLE,
             AccountRole.wireValues(),
-            AccountRole::fromWireValue));
+            AccountRole::fromWireValue),
+        new AccountTaxonomy(
+            optionalText(rootNode, ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE)
+                .map(AccountCode::new),
+            optionalText(
+                    rootNode, ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION)
+                .map(
+                    value ->
+                        parseWireValue(
+                            value,
+                            ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
+                            FinancialPositionLineClassification.wireValues(),
+                            FinancialPositionLineClassification::fromWireValue)),
+            optionalText(rootNode, ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION)
+                .map(
+                    value ->
+                        parseWireValue(
+                            value,
+                            ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
+                            ProfitAndLossLineClassification.wireValues(),
+                            ProfitAndLossLineClassification::fromWireValue))));
   }
 
   private static List<JournalLine> readLines(JsonNode linesNode) {

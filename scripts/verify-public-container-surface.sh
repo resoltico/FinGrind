@@ -21,8 +21,10 @@ readonly expected_version="${2:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
 readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
 readonly fixture_entity_name='Release Protocol Fixture'
+readonly fixture_entity_form='COMPANY'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
+readonly fixture_accounting_basis='ACCRUAL'
 docker_config_dir=''
 report_root=''
 
@@ -69,11 +71,11 @@ verify_ref() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-cash.json" <<'JSON'
-{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY"}
+{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
-{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY"}
+{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","financialPositionLineClassification":null,"profitAndLossLineClassification":"OPERATING_REVENUE"}
 JSON
 
 cat > "${report_root}/posting.json" <<'JSON'
@@ -132,8 +134,10 @@ verify_mounted_book_surface() {
         --book-file /work/book.sqlite \
         --book-key-file /work/book.key \
         --entity-name "${fixture_entity_name}" \
+        --entity-form "${fixture_entity_form}" \
         --functional-currency "${fixture_functional_currency}" \
-        --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
+        --fiscal-year-start "${fixture_fiscal_year_start}" \
+        --accounting-basis "${fixture_accounting_basis}" >/dev/null
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
     anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \

@@ -1,15 +1,21 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -17,6 +23,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -47,6 +54,10 @@ class ContractTestSupport {
         new AccountName("Cash"),
         AccountType.ASSET,
         AccountRole.ORDINARY,
+        new AccountTaxonomy(
+            Optional.empty(),
+            Optional.of(dev.erst.fingrind.core.FinancialPositionLineClassification.CURRENT_ASSET),
+            Optional.empty()),
         true,
         Instant.parse("2026-04-07T10:15:30Z"));
   }
@@ -96,5 +107,30 @@ class ContractTestSupport {
 
   protected PostingCoverage postingCoverage() {
     return ContractFixtures.postingCoverage();
+  }
+
+  protected AccountPage accountPage(
+      List<DeclaredAccount> accounts, int limit, Optional<AccountPageCursor> nextCursor) {
+    return ContractFixtures.accountPage(accounts, limit, nextCursor);
+  }
+
+  protected PostingPage postingPage(
+      List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
+    return ContractFixtures.postingPage(
+        Optional.empty(), EffectiveDateRange.unbounded(), postings, limit, nextCursor);
+  }
+
+  protected PostingPage postingPage(
+      Optional<AccountCode> accountCodeFilter,
+      EffectiveDateRange effectiveDateRange,
+      List<PostingFact> postings,
+      int limit,
+      Optional<PostingPageCursor> nextCursor) {
+    return ContractFixtures.postingPage(
+        accountCodeFilter, effectiveDateRange, postings, limit, nextCursor);
+  }
+
+  protected GetPostingResult.Found foundPosting(PostingFact postingFact) {
+    return new GetPostingResult.Found(bookIdentity(), postingFact);
   }
 }

@@ -8,6 +8,8 @@ final class CliAccountPageOutputRenderer {
   private CliAccountPageOutputRenderer() {}
 
   static String renderHuman(AccountPage page) {
+    String header =
+        CliTextFormat.renderKeyValueBlock(CliBookIdentityDisplay.rows(page.bookIdentity()));
     String nextCursor =
         page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
     String summary =
@@ -21,8 +23,11 @@ final class CliAccountPageOutputRenderer {
             List.of(
                 "Account",
                 "Name",
+                "Parent account",
                 "Account type",
                 "Account role",
+                "Financial-position line",
+                "Profit-and-loss line",
                 "Normal balance",
                 "Active",
                 "Declared at"),
@@ -32,15 +37,40 @@ final class CliAccountPageOutputRenderer {
                         List.of(
                             account.accountCode().value(),
                             account.accountName().value(),
+                            account
+                                .accountTaxonomy()
+                                .parentAccountCode()
+                                .map(parent -> parent.value())
+                                .orElse("(none)"),
                             CliQueryOutputFormatter.displayLineTypeLabel(account.accountType()),
                             CliQueryOutputFormatter.displayAccountRoleLabel(account.accountRole()),
+                            account
+                                .accountTaxonomy()
+                                .financialPositionLineClassification()
+                                .map(
+                                    CliQueryOutputFormatter
+                                        ::displayFinancialPositionLineClassification)
+                                .orElse("(none)"),
+                            account
+                                .accountTaxonomy()
+                                .profitAndLossLineClassification()
+                                .map(
+                                    CliQueryOutputFormatter::displayProfitAndLossLineClassification)
+                                .orElse("(none)"),
                             CliQueryOutputFormatter.displayNormalBalanceLabel(
                                 account.normalBalance()),
                             CliQueryOutputFormatter.displayBooleanLabel(account.active()),
-                            account.declaredAt().toString()))
+                            CliHumanDisplay.instant(account.declaredAt())))
                 .toList());
     return CliTextFormat.renderTitledBlock(
-        "Accounts", summary + System.lineSeparator() + System.lineSeparator() + table);
+        "Accounts",
+        header
+            + System.lineSeparator()
+            + System.lineSeparator()
+            + summary
+            + System.lineSeparator()
+            + System.lineSeparator()
+            + table);
   }
 
   static String renderCsv(AccountPage page) {
@@ -48,8 +78,11 @@ final class CliAccountPageOutputRenderer {
         List.of(
             "accountCode",
             "accountName",
+            "parentAccountCode",
             "accountType",
             "accountRole",
+            "financialPositionLineClassification",
+            "profitAndLossLineClassification",
             "normalBalance",
             "active",
             "declaredAt"),
@@ -59,8 +92,23 @@ final class CliAccountPageOutputRenderer {
                     List.of(
                         account.accountCode().value(),
                         account.accountName().value(),
+                        account
+                            .accountTaxonomy()
+                            .parentAccountCode()
+                            .map(parent -> parent.value())
+                            .orElse(""),
                         account.accountType().wireValue(),
                         account.accountRole().wireValue(),
+                        account
+                            .accountTaxonomy()
+                            .financialPositionLineClassification()
+                            .map(classification -> classification.wireValue())
+                            .orElse(""),
+                        account
+                            .accountTaxonomy()
+                            .profitAndLossLineClassification()
+                            .map(classification -> classification.wireValue())
+                            .orElse(""),
                         account.normalBalance().wireValue(),
                         Boolean.toString(account.active()),
                         account.declaredAt().toString()))

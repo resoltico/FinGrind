@@ -26,7 +26,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -34,22 +34,23 @@ import java.util.function.Supplier;
 
 /** Local bookkeeping read/query service used before any public published-language projection. */
 public final class BookkeepingReadService {
-  private final BookStore bookStore;
+  private final BookkeepingReadStore bookStore;
   private final BookkeepingPolicyPack policyPack;
   private final BookkeepingStatementService statementService;
 
   /** Creates the local bookkeeping read service over one selected-book store seam. */
-  public BookkeepingReadService(BookStore bookStore) {
+  public BookkeepingReadService(BookkeepingReadStore bookStore) {
     this(bookStore, CoreBookkeepingPolicyPack.current());
   }
 
   /**
    * Creates the local bookkeeping read service over one selected-book store seam and policy pack.
    */
-  BookkeepingReadService(BookStore bookStore, BookkeepingPolicyPack policyPack) {
+  BookkeepingReadService(BookkeepingReadStore bookStore, BookkeepingPolicyPack policyPack) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
     this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
-    this.statementService = new BookkeepingStatementService(this.bookStore, this.policyPack);
+    this.statementService =
+        new BookkeepingStatementService(this.bookStore, this.bookStore, this.policyPack);
   }
 
   /** Returns the local lifecycle snapshot before public contract projection. */

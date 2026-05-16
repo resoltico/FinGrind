@@ -18,14 +18,18 @@ class BookWorkflowPlanTest {
   void bookWorkflowPlan_rejectsBlankPlanId() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new BookWorkflowPlan("   ", List.of(new BookWorkflowStep.InspectBook("inspect"))));
+        () ->
+            new BookWorkflowPlan(
+                new BookWorkflowPlanId("   "),
+                List.of(new BookWorkflowStep.InspectBook(stepId("inspect")))));
   }
 
   @Test
   void bookWorkflowPlan_rejectsMissingSteps() {
     assertEquals(
         "steps",
-        assertThrows(NullPointerException.class, () -> new BookWorkflowPlan("plan-1", nullOf()))
+        assertThrows(
+                NullPointerException.class, () -> new BookWorkflowPlan(planId("plan-1"), nullOf()))
             .getMessage());
   }
 
@@ -34,7 +38,8 @@ class BookWorkflowPlanTest {
     assertEquals(
         "Workflow plan must contain at least one step.",
         assertThrows(
-                IllegalArgumentException.class, () -> new BookWorkflowPlan("plan-1", List.of()))
+                IllegalArgumentException.class,
+                () -> new BookWorkflowPlan(planId("plan-1"), List.of()))
             .getMessage());
   }
 
@@ -42,10 +47,12 @@ class BookWorkflowPlanTest {
   void bookWorkflowPlan_rejectsOversizedStepCollections() {
     List<BookWorkflowStep> oversizedSteps =
         IntStream.range(0, InteractionLimits.LEDGER_PLAN_STEP_MAX + 1)
-            .<BookWorkflowStep>mapToObj(index -> new BookWorkflowStep.InspectBook("step-" + index))
+            .<BookWorkflowStep>mapToObj(
+                index -> new BookWorkflowStep.InspectBook(stepId("step-" + index)))
             .toList();
     assertThrows(
-        IllegalArgumentException.class, () -> new BookWorkflowPlan("plan-1", oversizedSteps));
+        IllegalArgumentException.class,
+        () -> new BookWorkflowPlan(planId("plan-1"), oversizedSteps));
   }
 
   @Test
@@ -54,10 +61,10 @@ class BookWorkflowPlanTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowPlan(
-                "plan-1",
+                planId("plan-1"),
                 List.of(
-                    new BookWorkflowStep.InspectBook("duplicate"),
-                    new BookWorkflowStep.InspectBook("duplicate"))));
+                    new BookWorkflowStep.InspectBook(stepId("duplicate")),
+                    new BookWorkflowStep.InspectBook(stepId("duplicate")))));
   }
 
   @Test
@@ -66,25 +73,37 @@ class BookWorkflowPlanTest {
         IllegalArgumentException.class,
         () ->
             new BookWorkflowPlan(
-                "plan-1",
+                planId("plan-1"),
                 List.of(
-                    new BookWorkflowStep.InspectBook("inspect"),
-                    new BookWorkflowStep.OpenBook("open", bookIdentity()))));
+                    new BookWorkflowStep.InspectBook(stepId("inspect")),
+                    new BookWorkflowStep.OpenBook(stepId("open"), bookIdentity()))));
   }
 
   @Test
   void bookWorkflowPlan_reportsWhetherTheFirstStepOpensTheBook() {
     BookWorkflowPlan openBookPlan =
         new BookWorkflowPlan(
-            "plan-1", List.of(new BookWorkflowStep.OpenBook("open", bookIdentity())));
+            planId("plan-1"),
+            List.of(new BookWorkflowStep.OpenBook(stepId("open"), bookIdentity())));
     BookWorkflowPlan inspectionPlan =
-        new BookWorkflowPlan("plan-2", List.of(new BookWorkflowStep.InspectBook("inspect")));
+        new BookWorkflowPlan(
+            planId("plan-2"), List.of(new BookWorkflowStep.InspectBook(stepId("inspect"))));
     assertTrue(openBookPlan.beginsWithOpenBook());
     assertFalse(inspectionPlan.beginsWithOpenBook());
   }
 
   @Test
   void bookWorkflowStep_rejectsBlankStepIds() {
-    assertThrows(IllegalArgumentException.class, () -> new BookWorkflowStep.InspectBook(" \t "));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new BookWorkflowStep.InspectBook(new BookWorkflowStepId(" \t ")));
+  }
+
+  private static BookWorkflowPlanId planId(String value) {
+    return new BookWorkflowPlanId(value);
+  }
+
+  private static BookWorkflowStepId stepId(String value) {
+    return new BookWorkflowStepId(value);
   }
 }

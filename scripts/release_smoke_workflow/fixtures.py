@@ -97,6 +97,8 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             "accountName": "Cash",
             "accountType": "ASSET",
             "accountRole": "ORDINARY",
+            "financialPositionLineClassification": "CURRENT_ASSET",
+            "profitAndLossLineClassification": None,
             "nonsenseOne": "unexpected",
             "nonsenseTwo": "unexpected",
         },
@@ -108,6 +110,8 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             "accountName": "Cash",
             "accountType": "ASSET",
             "accountRole": "ORDINARY",
+            "financialPositionLineClassification": "CURRENT_ASSET",
+            "profitAndLossLineClassification": None,
         },
     )
     write_json(
@@ -117,6 +121,8 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             "accountName": "Revenue",
             "accountType": "REVENUE",
             "accountRole": "ORDINARY",
+            "financialPositionLineClassification": None,
+            "profitAndLossLineClassification": "OPERATING_REVENUE",
         },
     )
 

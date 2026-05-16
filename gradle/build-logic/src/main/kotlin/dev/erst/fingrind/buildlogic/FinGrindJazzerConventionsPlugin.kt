@@ -97,25 +97,6 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 }
             }
 
-            val compileJava = tasks.named<JavaCompile>("compileJava")
-            val pruneCompileJavaOutputs =
-                tasks.register("pruneJazzerCompileJavaOutputs") {
-                    val destinationDirectory = compileJava.flatMap { it.destinationDirectory }
-                    outputs.dir(destinationDirectory)
-                    outputs.upToDateWhen { false }
-                    doLast {
-                        val outputDirectory = destinationDirectory.get().asFile
-                        outputDirectory.deleteRecursively()
-                        outputDirectory.mkdirs()
-                    }
-                }
-
-            compileJava.configure {
-                options.isIncremental = false
-                outputs.upToDateWhen { false }
-                dependsOn(pruneCompileJavaOutputs)
-            }
-
             val sourceSets = extensions.getByType<SourceSetContainer>()
             val mainSourceSet = sourceSets.getByName("main")
             val testSourceSet = sourceSets.getByName("test")

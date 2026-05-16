@@ -29,7 +29,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.Objects;
 
 /** Application service that owns every read-only book workflow behind one unified seam. */
@@ -37,7 +37,7 @@ public final class BookReadService {
   private final BookkeepingReadService bookkeepingReadService;
 
   /** Creates the read service with its application-owned inspection, query, and report seam. */
-  public BookReadService(BookStore bookStore) {
+  public BookReadService(BookkeepingReadStore bookStore) {
     this.bookkeepingReadService =
         new BookkeepingReadService(Objects.requireNonNull(bookStore, "bookStore"));
   }
@@ -54,7 +54,8 @@ public final class BookReadService {
         BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
       case BookkeepingReadOutcome.Reported<AccountRegistryPage> reported ->
           new ListAccountsResult.Listed(
-              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+              BookkeepingReadPublishedLanguageTranslator.toPublished(
+                  currentBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<AccountRegistryPage> rejected ->
           new ListAccountsResult.Rejected(
               BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -66,6 +67,7 @@ public final class BookReadService {
     BookkeepingReadOutcome<CommittedPosting> outcome = bookkeepingReadService.getPosting(postingId);
     if (outcome instanceof BookkeepingReadOutcome.Reported<CommittedPosting> reported) {
       return new GetPostingResult.Found(
+          currentBookIdentity(),
           BookkeepingPublishedLanguageTranslator.toPublished(reported.value()));
     }
     BookkeepingReadOutcome.Rejected<CommittedPosting> rejected =
@@ -76,11 +78,12 @@ public final class BookReadService {
 
   /** Returns one filtered page of committed postings. */
   public ListPostingsResult listPostings(ListPostingsQuery query) {
-    return switch (bookkeepingReadService.listPostings(
-        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+    var publishedQuery = BookkeepingReadPublishedLanguageTranslator.fromPublished(query);
+    return switch (bookkeepingReadService.listPostings(publishedQuery)) {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
           new ListPostingsResult.Listed(
-              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+              BookkeepingReadPublishedLanguageTranslator.toPublished(
+                  currentBookIdentity(), publishedQuery, reported.value()));
       case BookkeepingReadOutcome.Rejected<PostingHistoryPage> rejected ->
           new ListPostingsResult.Rejected(
               BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));

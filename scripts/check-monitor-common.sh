@@ -28,7 +28,15 @@ file_size_bytes() {
         printf '0'
         return
     fi
-    stat -f '%z' "${file_path}"
+    if stat -f '%z' "${file_path}" >/dev/null 2>&1; then
+        stat -f '%z' "${file_path}"
+        return
+    fi
+    if stat -c '%s' "${file_path}" >/dev/null 2>&1; then
+        stat -c '%s' "${file_path}"
+        return
+    fi
+    wc -c < "${file_path}" | tr -d '[:space:]'
 }
 
 latest_nonempty_line() {

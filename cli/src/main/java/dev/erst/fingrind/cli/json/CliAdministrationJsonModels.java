@@ -7,11 +7,28 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
 
-  record BookIdentityPayload(String entityName, String functionalCurrency, String fiscalYearStart) {
+  record BookIdentityPayload(
+      String entityName,
+      String entityForm,
+      String ownerModel,
+      String reportingObligationStatus,
+      String taxRegistrationStatus,
+      java.util.List<String> businessActivityTags,
+      String functionalCurrency,
+      String fiscalYearStart,
+      String accountingBasis) {
     public BookIdentityPayload {
       entityName = requireText(entityName, "entityName");
+      entityForm = requireText(entityForm, "entityForm");
+      ownerModel = requireText(ownerModel, "ownerModel");
+      reportingObligationStatus =
+          requireText(reportingObligationStatus, "reportingObligationStatus");
+      taxRegistrationStatus = requireText(taxRegistrationStatus, "taxRegistrationStatus");
+      businessActivityTags =
+          CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
+      accountingBasis = requireText(accountingBasis, "accountingBasis");
     }
   }
 
@@ -45,7 +62,7 @@ public interface CliAdministrationJsonModels {
       int closeOrder,
       String effectiveDateFrom,
       String effectiveDateTo,
-      String retainedEarningsAccountCode,
+      String closingEquityAccountCode,
       java.util.List<CliBookQueryJsonModels.BalanceBucketPayload> closedTotals,
       String closedAt,
       java.util.List<String> closingPostingIds)
@@ -54,8 +71,7 @@ public interface CliAdministrationJsonModels {
       requirePositive(closeOrder, "closeOrder");
       effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
-      retainedEarningsAccountCode =
-          requireText(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+      closingEquityAccountCode = requireText(closingEquityAccountCode, "closingEquityAccountCode");
       closedTotals = CliJsonModelValidation.copyList(closedTotals, "closedTotals");
       closedAt = requireText(closedAt, "closedAt");
       closingPostingIds = CliJsonModelValidation.copyList(closingPostingIds, "closingPostingIds");

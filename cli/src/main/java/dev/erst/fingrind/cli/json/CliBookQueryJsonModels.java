@@ -18,6 +18,9 @@ public interface CliBookQueryJsonModels {
       String accountName,
       String accountType,
       String accountRole,
+      @Nullable String parentAccountCode,
+      @Nullable String financialPositionLineClassification,
+      @Nullable String profitAndLossLineClassification,
       String normalBalance,
       boolean active,
       String declaredAt)
@@ -27,6 +30,12 @@ public interface CliBookQueryJsonModels {
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
       accountRole = requireText(accountRole, "accountRole");
+      parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
+      financialPositionLineClassification =
+          requireOptionalText(
+              financialPositionLineClassification, "financialPositionLineClassification");
+      profitAndLossLineClassification =
+          requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
     }
@@ -80,9 +89,47 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record PostingListPayload(int limit, @Nullable String nextCursor, List<PostingPayload> postings)
+  record BookContextPayload(CliAdministrationJsonModels.BookIdentityPayload bookIdentity) {
+    public BookContextPayload {
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+    }
+  }
+
+  record PostingQueryContextPayload(
+      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      @Nullable String accountCodeFilter,
+      @Nullable String effectiveDateFrom,
+      @Nullable String effectiveDateFromMeaning,
+      @Nullable String effectiveDateTo,
+      @Nullable String effectiveDateToMeaning) {
+    public PostingQueryContextPayload {
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      accountCodeFilter = requireOptionalText(accountCodeFilter, "accountCodeFilter");
+      effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateFromMeaning =
+          requireOptionalText(effectiveDateFromMeaning, "effectiveDateFromMeaning");
+      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      effectiveDateToMeaning =
+          requireOptionalText(effectiveDateToMeaning, "effectiveDateToMeaning");
+    }
+  }
+
+  record PostingDetailsPayload(BookContextPayload context, PostingPayload posting)
+      implements CliSuccessPayload {
+    public PostingDetailsPayload {
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(posting, "posting");
+    }
+  }
+
+  record PostingListPayload(
+      PostingQueryContextPayload context,
+      int limit,
+      @Nullable String nextCursor,
+      List<PostingPayload> postings)
       implements CliSuccessPayload {
     public PostingListPayload {
+      Objects.requireNonNull(context, "context");
       requirePositive(limit, "limit");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
       postings = copyList(postings, "postings");
@@ -90,9 +137,13 @@ public interface CliBookQueryJsonModels {
   }
 
   record AccountListPayload(
-      int limit, @Nullable String nextCursor, List<DeclaredAccountPayload> accounts)
+      BookContextPayload context,
+      int limit,
+      @Nullable String nextCursor,
+      List<DeclaredAccountPayload> accounts)
       implements CliSuccessPayload {
     public AccountListPayload {
+      Objects.requireNonNull(context, "context");
       requirePositive(limit, "limit");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
       accounts = copyList(accounts, "accounts");

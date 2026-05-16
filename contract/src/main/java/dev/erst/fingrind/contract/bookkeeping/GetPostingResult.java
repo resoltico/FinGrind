@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.BookIdentity;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -10,9 +11,10 @@ public sealed interface GetPostingResult permits GetPostingResult.Found, GetPost
   <T> T fold(Function<Found, T> foundMapper, Function<Rejected, T> rejectedMapper);
 
   /** Success result carrying the matching committed posting. */
-  record Found(PostingFact postingFact) implements GetPostingResult {
+  record Found(BookIdentity bookIdentity, PostingFact postingFact) implements GetPostingResult {
     /** Validates the committed-posting payload. */
     public Found {
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(postingFact, "postingFact");
     }
 

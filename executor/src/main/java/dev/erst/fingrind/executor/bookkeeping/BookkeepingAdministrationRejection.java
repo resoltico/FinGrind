@@ -2,7 +2,9 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -14,9 +16,10 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.BookContainsSchema,
         BookkeepingAdministrationRejection.AccountTypeConflict,
         BookkeepingAdministrationRejection.AccountRoleConflict,
-        BookkeepingAdministrationRejection.RetainedEarningsAccountMissing,
-        BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch,
-        BookkeepingAdministrationRejection.RetainedEarningsAccountInactive,
+        BookkeepingAdministrationRejection.AccountTaxonomyConflict,
+        BookkeepingAdministrationRejection.ClosingEquityAccountMissing,
+        BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch,
+        BookkeepingAdministrationRejection.ClosingEquityAccountInactive,
         BookkeepingAdministrationRejection.PeriodCloseMustStartAt,
         BookkeepingAdministrationRejection.PeriodCloseFutureDate,
         BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
@@ -52,27 +55,50 @@ public sealed interface BookkeepingAdministrationRejection
     }
   }
 
-  /** Refusal for period close when no retained-earnings account has been declared. */
-  record RetainedEarningsAccountMissing(AccountCode accountCode)
+  /** Refusal for redeclaring an account with a conflicting immutable taxonomy. */
+  record AccountTaxonomyConflict(
+      AccountCode accountCode,
+      AccountTaxonomy existingAccountTaxonomy,
+      AccountTaxonomy requestedAccountTaxonomy)
       implements BookkeepingAdministrationRejection {
-    public RetainedEarningsAccountMissing {
+    public AccountTaxonomyConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(existingAccountTaxonomy, "existingAccountTaxonomy");
+      Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  /** Refusal for period close when no closing-equity account has been declared. */
+  record ClosingEquityAccountMissing(AccountCode accountCode)
+      implements BookkeepingAdministrationRejection {
+    public ClosingEquityAccountMissing {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }
 
-  /** Refusal for period close when the selected account is not doctrinally retained earnings. */
-  record RetainedEarningsAccountRoleMismatch(AccountCode accountCode, AccountRole actualAccountRole)
+  /**
+   * Refusal for period close when the selected account does not satisfy the active close
+   * classification policy.
+   */
+  record ClosingEquityAccountClassificationMismatch(
+      AccountCode accountCode,
+      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
+      FinancialPositionLineClassification actualFinancialPositionLineClassification)
       implements BookkeepingAdministrationRejection {
-    public RetainedEarningsAccountRoleMismatch {
+    public ClosingEquityAccountClassificationMismatch {
       Objects.requireNonNull(accountCode, "accountCode");
-      Objects.requireNonNull(actualAccountRole, "actualAccountRole");
+      Objects.requireNonNull(
+          requiredFinancialPositionLineClassification,
+          "requiredFinancialPositionLineClassification");
+      Objects.requireNonNull(
+          actualFinancialPositionLineClassification, "actualFinancialPositionLineClassification");
     }
   }
 
-  /** Refusal for period close when the retained-earnings account exists but is inactive. */
-  record RetainedEarningsAccountInactive(AccountCode accountCode)
+  /** Refusal for period close when the closing-equity account exists but is inactive. */
+  record ClosingEquityAccountInactive(AccountCode accountCode)
       implements BookkeepingAdministrationRejection {
-    public RetainedEarningsAccountInactive {
+    public ClosingEquityAccountInactive {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }

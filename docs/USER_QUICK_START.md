@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: USER_QUICK_START
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -67,7 +67,7 @@ owner-only as well as the key file itself.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL
 ```
 
 ## 4. Declare The Accounts You Need
@@ -79,7 +79,8 @@ Create `./declare-account-cash.json` with:
   "accountCode": "1000",
   "accountName": "Cash",
   "accountType": "ASSET",
-  "accountRole": "ORDINARY"
+  "accountRole": "ORDINARY",
+  "financialPositionLineClassification": "CURRENT_ASSET"
 }
 ```
 
@@ -90,7 +91,8 @@ Create `./declare-account-revenue.json` with:
   "accountCode": "2000",
   "accountName": "Revenue",
   "accountType": "REVENUE",
-  "accountRole": "ORDINARY"
+  "accountRole": "ORDINARY",
+  "profitAndLossLineClassification": "OPERATING_REVENUE"
 }
 ```
 

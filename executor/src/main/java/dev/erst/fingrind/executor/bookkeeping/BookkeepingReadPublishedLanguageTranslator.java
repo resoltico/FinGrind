@@ -105,18 +105,26 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   }
 
   /** Projects one local account-registry page back into the public published language. */
-  public static AccountPage toPublished(AccountRegistryPage page) {
+  public static AccountPage toPublished(BookIdentity bookIdentity, AccountRegistryPage page) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(page, "page");
     return new AccountPage(
+        bookIdentity,
         page.accounts().stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
         page.limit(),
         page.nextCursor().map(BookkeepingReadPublishedLanguageTranslator::toPublished));
   }
 
   /** Projects one local posting-history page back into the public published language. */
-  public static PostingPage toPublished(PostingHistoryPage page) {
+  public static PostingPage toPublished(
+      BookIdentity bookIdentity, PostingHistoryQuery query, PostingHistoryPage page) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(query, "query");
     Objects.requireNonNull(page, "page");
     return new PostingPage(
+        bookIdentity,
+        query.accountCode(),
+        query.effectiveDateRange(),
         page.postings().stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
         page.limit(),
         page.nextCursor().map(BookkeepingReadPublishedLanguageTranslator::toPublished));
@@ -341,7 +349,8 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         row.lineName(),
         row.lineType(),
         row.lineRole(),
-        row.synthetic(),
+        row.lineClassification(),
+        row.lineKind(),
         row.balance());
   }
 
@@ -362,7 +371,8 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         row.lineName(),
         row.lineType(),
         row.lineRole(),
-        row.synthetic(),
+        row.lineClassification(),
+        row.lineKind(),
         row.movement());
   }
 
@@ -373,7 +383,8 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         row.lineName(),
         row.lineType(),
         row.lineRole(),
-        row.synthetic(),
+        row.lineClassification(),
+        row.lineKind(),
         row.openingBalance(),
         row.movement(),
         row.closingBalance());

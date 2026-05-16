@@ -27,9 +27,13 @@ ${unsupportedPublicBundleTargetsMarkdown}
 Quick start:
 1. Run `${bundleLauncherCommand} help`
 2. Run `${bundleLauncherCommand} generate-book-key-file --book-key-file ./entity.book-key`
-3. Run `${bundleLauncherCommand} open-book --book-file ./entity.sqlite --book-key-file ./entity.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01`
-4. Run `${bundleLauncherCommand} print-request-template > ./request.json`
-5. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry ...` and `${bundleLauncherCommand} post-entry ...`
+3. Run `${bundleLauncherCommand} open-book --book-file ./entity.sqlite --book-key-file ./entity.book-key --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL`
+4. Create `./declare-cash.json` with `{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","financialPositionLineClassification":"CURRENT_ASSET"}`
+5. Create `./declare-revenue.json` with `{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","profitAndLossLineClassification":"OPERATING_REVENUE"}`
+6. Run `${bundleLauncherCommand} declare-account --book-file ./entity.sqlite --book-key-file ./entity.book-key --request-file ./declare-cash.json`
+7. Run `${bundleLauncherCommand} declare-account --book-file ./entity.sqlite --book-key-file ./entity.book-key --request-file ./declare-revenue.json`
+8. Run `${bundleLauncherCommand} print-request-template > ./request.json`
+9. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry --book-file ./entity.sqlite --book-key-file ./entity.book-key --request-file ./request.json` and `${bundleLauncherCommand} post-entry --book-file ./entity.sqlite --book-key-file ./entity.book-key --request-file ./request.json`
 
 The best machine-readable contract after startup is:
 - `${bundleLauncherCommand} capabilities`

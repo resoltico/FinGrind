@@ -9,7 +9,7 @@ import java.util.Optional;
 public sealed interface BookWorkflowJournalEntry
     permits BookWorkflowJournalEntry.Succeeded, BookWorkflowJournalEntry.Failed {
   /** Returns the local step identifier or synthetic boundary identifier. */
-  String stepId();
+  BookWorkflowStepId stepId();
 
   /** Returns the internal journal descriptor. */
   BookWorkflowJournalDescriptor descriptor();
@@ -41,7 +41,7 @@ public sealed interface BookWorkflowJournalEntry
 
   /** Successful entry with facts and no failure payload. */
   record Succeeded(
-      String stepId,
+      BookWorkflowStepId stepId,
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
@@ -59,7 +59,7 @@ public sealed interface BookWorkflowJournalEntry
 
   /** Rejected entry with a required failure payload. */
   record Rejected(
-      String stepId,
+      BookWorkflowStepId stepId,
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
@@ -75,7 +75,7 @@ public sealed interface BookWorkflowJournalEntry
 
   /** Assertion-failed entry with a required failure payload. */
   record AssertionFailed(
-      String stepId,
+      BookWorkflowStepId stepId,
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
@@ -95,7 +95,7 @@ public sealed interface BookWorkflowJournalEntry
   }
 
   private static void requireCommon(
-      String stepId,
+      BookWorkflowStepId stepId,
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
@@ -105,9 +105,6 @@ public sealed interface BookWorkflowJournalEntry
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
     Objects.requireNonNull(facts, "facts");
-    if (stepId.isBlank()) {
-      throw new IllegalArgumentException("Workflow journal stepId must not be blank.");
-    }
     if (finishedAt.isBefore(startedAt)) {
       throw new IllegalArgumentException(
           "Workflow journal entry finishedAt must not precede startedAt.");

@@ -244,7 +244,11 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
       assertTrue(
           NullTestSupport.messageOf(postingFailure).contains("Failed to query SQLite book."));
       IllegalStateException accountsFailure =
-          assertThrows(IllegalStateException.class, validationBook::allAccounts);
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  validationBook.findAccounts(
+                      java.util.Set.of(new AccountCode("1000"), new AccountCode("2000"))));
       assertTrue(
           NullTestSupport.messageOf(accountsFailure).contains("Failed to query SQLite book."));
       IllegalStateException postingsFailure =

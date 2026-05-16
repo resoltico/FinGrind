@@ -12,16 +12,24 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,7 +58,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.37.0",
+                "0.38.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -66,7 +74,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.37.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.38.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -167,7 +175,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.37.0");
+    return new PdfDocumentFactory("FinGrind", "0.38.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -177,6 +185,10 @@ class PdfReportCoverageTest {
             new AccountName("Cash"),
             AccountType.ASSET,
             AccountRole.ORDINARY,
+            new AccountTaxonomy(
+                Optional.empty(),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty()),
             true,
             Instant.parse("2026-04-01T08:00:00Z"));
     return new TrialBalanceReport(
@@ -192,7 +204,16 @@ class PdfReportCoverageTest {
 
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
+        new EntityProfile(
+            new BookEntityName("Acme Studio"),
+            EntityForm.COMPANY,
+            OwnerModel.MULTI_OWNER,
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+            TaxRegistrationStatus.UNSPECIFIED,
+            List.of()),
+        CurrencyUnit.of("EUR"),
+        FiscalYearStart.parse("01-01"),
+        AccountingBasis.ACCRUAL);
   }
 
   private static List<List<String>> paginatedKeyValueRows() {

@@ -46,7 +46,7 @@ final class SqliteTrialBalanceReader {
     return new TrialBalanceView(
         bookIdentity,
         query.effectiveDateTo(),
-        dev.erst.fingrind.core.EffectiveDateRange.of(null, null),
+        dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
         query.postingCoverage(),
         rows,
         List.of());

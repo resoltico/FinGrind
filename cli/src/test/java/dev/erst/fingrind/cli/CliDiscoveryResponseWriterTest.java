@@ -19,7 +19,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
@@ -184,8 +183,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "unavailable",
                 nullOf(),
                 nullOf(),
-                "system sqlite unavailable"),
-            Instant.parse("2026-04-13T12:00:00Z")));
+                "system sqlite unavailable")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
     JsonNode environment = payload.path("environment");
@@ -229,8 +227,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "ready",
                 "3.53.1",
                 "2.3.4",
-                nullOf()),
-            Instant.parse("2026-04-13T12:00:00Z"));
+                nullOf()));
     ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
     CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
     humanWriter.writeCapabilities(capabilities, OutputMode.HUMAN);

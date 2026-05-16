@@ -4,22 +4,38 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
@@ -41,6 +57,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -138,7 +155,16 @@ class CliIoFixtureSupport {
 
   protected static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new BookEntityName("Acme Studio"), CurrencyUnit.of("EUR"), FiscalYearStart.parse("01-01"));
+        new EntityProfile(
+            new BookEntityName("Acme Studio"),
+            EntityForm.COMPANY,
+            OwnerModel.MULTI_OWNER,
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+            TaxRegistrationStatus.UNSPECIFIED,
+            List.of()),
+        CurrencyUnit.of("EUR"),
+        FiscalYearStart.parse("01-01"),
+        AccountingBasis.ACCRUAL);
   }
 
   protected static OpenBookCommand openBookCommand() {
@@ -154,10 +180,20 @@ class CliIoFixtureSupport {
       bookKeyFilePath.toString(),
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.ENTITY_FORM,
+      bookIdentity().entityProfile().entityForm().wireValue(),
+      ProtocolOptions.OWNER_MODEL,
+      bookIdentity().entityProfile().ownerModel().wireValue(),
+      ProtocolOptions.REPORTING_OBLIGATION_STATUS,
+      bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.TAX_REGISTRATION_STATUS,
+      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().accountingBasis().wireValue()
     };
   }
 
@@ -169,10 +205,20 @@ class CliIoFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_STDIN,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.ENTITY_FORM,
+      bookIdentity().entityProfile().entityForm().wireValue(),
+      ProtocolOptions.OWNER_MODEL,
+      bookIdentity().entityProfile().ownerModel().wireValue(),
+      ProtocolOptions.REPORTING_OBLIGATION_STATUS,
+      bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.TAX_REGISTRATION_STATUS,
+      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().accountingBasis().wireValue()
     };
   }
 
@@ -184,10 +230,20 @@ class CliIoFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.ENTITY_FORM,
+      bookIdentity().entityProfile().entityForm().wireValue(),
+      ProtocolOptions.OWNER_MODEL,
+      bookIdentity().entityProfile().ownerModel().wireValue(),
+      ProtocolOptions.REPORTING_OBLIGATION_STATUS,
+      bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.TAX_REGISTRATION_STATUS,
+      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().accountingBasis().wireValue()
     };
   }
 
@@ -214,6 +270,31 @@ class CliIoFixtureSupport {
 
   protected static PostingCoverage standardOnly() {
     return PostingCoverage.NON_CLOSING_POSTINGS;
+  }
+
+  protected static AccountPage accountPage(
+      List<DeclaredAccount> accounts, int limit, Optional<AccountPageCursor> nextCursor) {
+    return new AccountPage(bookIdentity(), accounts, limit, nextCursor);
+  }
+
+  protected static PostingPage postingPage(
+      List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
+    return postingPage(
+        Optional.empty(), EffectiveDateRange.unbounded(), postings, limit, nextCursor);
+  }
+
+  protected static PostingPage postingPage(
+      Optional<AccountCode> accountCodeFilter,
+      EffectiveDateRange effectiveDateRange,
+      List<PostingFact> postings,
+      int limit,
+      Optional<PostingPageCursor> nextCursor) {
+    return new PostingPage(
+        bookIdentity(), accountCodeFilter, effectiveDateRange, postings, limit, nextCursor);
+  }
+
+  protected static GetPostingResult.Found foundPosting(PostingFact postingFact) {
+    return new GetPostingResult.Found(bookIdentity(), postingFact);
   }
 
   protected static List<String> readTextArray(JsonNode node) {
@@ -268,7 +349,8 @@ class CliIoFixtureSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY"
+                    "accountRole": "ORDINARY",
+                    "financialPositionLineClassification": "CURRENT_ASSET"
                   }
                 }
               ]
@@ -286,8 +368,14 @@ class CliIoFixtureSupport {
                   "kind": "open-book",
                   "openBook": {
                     "entityName": "Acme Studio",
+                    "entityForm": "COMPANY",
+                    "ownerModel": "MULTI_OWNER",
+                    "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+                    "taxRegistrationStatus": "UNSPECIFIED",
+                    "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
+                    "fiscalYearStart": "01-01",
+                    "accountingBasis": "ACCRUAL"
                   }
                 }
               ]
@@ -324,15 +412,39 @@ class CliIoFixtureSupport {
 
   protected static String declareAccountJson(
       String accountCode, String accountName, String accountType, String accountRole) {
+    return declareAccountJson(
+        accountCode,
+        accountName,
+        accountType,
+        accountRole,
+        fixtureFinancialPositionLineClassificationWireValue(accountType),
+        fixtureProfitAndLossLineClassificationWireValue(accountType));
+  }
+
+  protected static String declareAccountJson(
+      String accountCode,
+      String accountName,
+      String accountType,
+      String accountRole,
+      @org.jspecify.annotations.Nullable String financialPositionLineClassification,
+      @org.jspecify.annotations.Nullable String profitAndLossLineClassification) {
     return """
             {
               "accountCode": "%s",
               "accountName": "%s",
               "accountType": "%s",
-              "accountRole": "%s"
+              "accountRole": "%s",
+              "financialPositionLineClassification": %s,
+              "profitAndLossLineClassification": %s
             }
             """
-        .formatted(accountCode, accountName, accountType, accountRole);
+        .formatted(
+            accountCode,
+            accountName,
+            accountType,
+            accountRole,
+            quotedOrNull(financialPositionLineClassification),
+            quotedOrNull(profitAndLossLineClassification));
   }
 
   private static String fixtureAccountTypeWireValue(String normalBalance) {
@@ -341,6 +453,33 @@ class CliIoFixtureSupport {
       case "CREDIT" -> "REVENUE";
       default -> "ASSET";
     };
+  }
+
+  private static @org.jspecify.annotations.Nullable String
+      fixtureFinancialPositionLineClassificationWireValue(String accountType) {
+    return switch (accountType) {
+      case "ASSET" -> "CURRENT_ASSET";
+      case "LIABILITY" -> "CURRENT_LIABILITY";
+      case "EQUITY" -> "OTHER_EQUITY";
+      case "REVENUE", "EXPENSE" -> null;
+      default ->
+          throw new IllegalArgumentException("Unsupported fixture accountType: " + accountType);
+    };
+  }
+
+  private static @org.jspecify.annotations.Nullable String
+      fixtureProfitAndLossLineClassificationWireValue(String accountType) {
+    return switch (accountType) {
+      case "REVENUE" -> "OPERATING_REVENUE";
+      case "EXPENSE" -> "OPERATING_EXPENSE";
+      case "ASSET", "LIABILITY", "EQUITY" -> null;
+      default ->
+          throw new IllegalArgumentException("Unsupported fixture accountType: " + accountType);
+    };
+  }
+
+  private static String quotedOrNull(@org.jspecify.annotations.Nullable String value) {
+    return value == null ? "null" : "\"" + value + "\"";
   }
 
   protected static AccountRole fixtureAccountRole(
@@ -367,8 +506,39 @@ class CliIoFixtureSupport {
         new AccountName(accountName),
         accountType,
         fixtureAccountRole(accountType, normalBalance),
+        fixtureAccountTaxonomy(accountType),
         active,
         declaredAt);
+  }
+
+  protected static AccountTaxonomy fixtureAccountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    };
   }
 
   private static String fixtureAccountRoleWireValue(String normalBalance) {

@@ -36,7 +36,7 @@ final class LauncherInvocationArguments {
 
   String[] resolve(String[] processArguments) {
     Objects.requireNonNull(processArguments, "processArguments");
-    String argumentsFile = environment.getOrDefault(ARGUMENTS_FILE_ENV, "").trim();
+    String argumentsFile = environment.getOrDefault(ARGUMENTS_FILE_ENV, "").strip();
     if (argumentsFile.isEmpty()) {
       return processArguments.clone();
     }

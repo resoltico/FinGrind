@@ -7,13 +7,16 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
-import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
 import java.time.Instant;
@@ -28,14 +31,22 @@ final class LedgerPlanStepExecutor {
   private final BookkeepingPostingService bookkeepingPostingService;
 
   LedgerPlanStepExecutor(
-      AtomicBookStore bookStore, PostingIdGenerator postingIdGenerator, Clock clock) {
-    Objects.requireNonNull(bookStore, "bookStore");
+      BookAdministrationStore administrationStore,
+      BookkeepingReadStore readStore,
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock) {
+    Objects.requireNonNull(administrationStore, "administrationStore");
+    Objects.requireNonNull(readStore, "readStore");
+    Objects.requireNonNull(validationStore, "validationStore");
+    Objects.requireNonNull(commitStore, "commitStore");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
-    this.bookAdministrationService = new BookAdministrationService(bookStore, clock);
-    this.bookkeepingReadService = new BookkeepingReadService(bookStore);
+    this.bookAdministrationService = new BookAdministrationService(administrationStore, clock);
+    this.bookkeepingReadService = new BookkeepingReadService(readStore);
     this.bookkeepingPostingService =
-        new BookkeepingPostingService(bookStore, postingIdGenerator, clock);
+        new BookkeepingPostingService(validationStore, commitStore, postingIdGenerator, clock);
   }
 
   BookLifecycleInspection inspectBook() {

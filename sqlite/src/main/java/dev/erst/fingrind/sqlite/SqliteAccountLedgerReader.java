@@ -69,7 +69,7 @@ final class SqliteAccountLedgerReader {
             activeDatabase,
             new AccountBalanceCriteria(
                 account.accountCode(),
-                EffectiveDateRange.of(null, lowerBound.minusDays(1)),
+                EffectiveDateRange.to(lowerBound.minusDays(1)),
                 query.postingCoverage()),
             account)
         .balances();
@@ -82,8 +82,11 @@ final class SqliteAccountLedgerReader {
             activeDatabase,
             new AccountBalanceCriteria(
                 account.accountCode(),
-                EffectiveDateRange.of(
-                    null, query.effectiveDateRange().effectiveDateTo().orElse(null)),
+                query
+                    .effectiveDateRange()
+                    .effectiveDateTo()
+                    .<EffectiveDateRange>map(EffectiveDateRange::to)
+                    .orElseGet(EffectiveDateRange::unbounded),
                 query.postingCoverage()),
             account)
         .balances();

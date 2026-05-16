@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
@@ -239,6 +240,7 @@ class LedgerPlanServiceWorkflowTest {
           new AccountName("Cash"),
           AccountType.ASSET,
           accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          accountTaxonomy(AccountType.ASSET),
           FIXED_CLOCK.instant());
 
       var redeclareResult =

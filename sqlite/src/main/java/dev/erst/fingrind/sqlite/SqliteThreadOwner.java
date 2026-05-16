@@ -32,10 +32,10 @@ final class SqliteThreadOwner {
 
   private static String requireNonBlank(String value, String fieldName) {
     Objects.requireNonNull(value, fieldName + " must not be null");
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
+    String normalized = value.strip();
+    if (normalized.isEmpty()) {
       throw new IllegalArgumentException(fieldName + " must not be blank");
     }
-    return trimmed;
+    return normalized;
   }
 }

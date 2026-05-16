@@ -291,7 +291,7 @@ public final class SqliteRuntime {
       if (value == null) {
         return null;
       }
-      String normalized = value.trim();
+      String normalized = value.strip();
       return normalized.isEmpty() ? null : normalized;
     }
 

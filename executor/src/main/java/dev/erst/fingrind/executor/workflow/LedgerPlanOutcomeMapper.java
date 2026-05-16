@@ -97,7 +97,7 @@ public final class LedgerPlanOutcomeMapper {
       BookWorkflowBoundaryPhase phase,
       Instant startedAt,
       Instant finishedAt,
-      @Nullable String triggerStepId,
+      @Nullable BookWorkflowStepId triggerStepId,
       @Nullable BookWorkflowJournalDescriptor triggerDescriptor,
       RuntimeException failure,
       @Nullable RuntimeException cleanupFailure,
@@ -106,7 +106,7 @@ public final class LedgerPlanOutcomeMapper {
     failureFacts.add(BookWorkflowFact.text("phase", phase.wireValue()));
     failureFacts.add(BookWorkflowFact.text("exceptionType", failure.getClass().getName()));
     if (triggerStepId != null) {
-      failureFacts.add(BookWorkflowFact.text("triggerStepId", triggerStepId));
+      failureFacts.add(BookWorkflowFact.text("triggerStepId", triggerStepId.value()));
     }
     if (triggerDescriptor != null) {
       appendTriggerDescriptorFacts(failureFacts, triggerDescriptor);
@@ -272,9 +272,9 @@ public final class LedgerPlanOutcomeMapper {
               BookWorkflowFact.text("accountCode", openingBalanceNominal.accountCode().value()),
               BookWorkflowFact.text(
                   "accountType", openingBalanceNominal.accountType().wireValue()));
-      case PostingRejection.RetainedEarningsAccountReserved retainedEarningsReserved ->
+      case PostingRejection.ClosingEquityAccountReserved closingEquityReserved ->
           List.of(
-              BookWorkflowFact.text("accountCode", retainedEarningsReserved.accountCode().value()));
+              BookWorkflowFact.text("accountCode", closingEquityReserved.accountCode().value()));
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           priorPostingFacts(reversalTargetNotFound.priorPostingId());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
@@ -314,14 +314,17 @@ public final class LedgerPlanOutcomeMapper {
       BookWorkflowStep step, RuntimeException failure) {
     String detail = String.valueOf(failure.getMessage()).strip();
     if (detail.isEmpty() || "null".equals(detail)) {
-      return "Ledger plan execution failed unexpectedly during step '%s'.".formatted(step.stepId());
+      return "Ledger plan execution failed unexpectedly during step '%s'."
+          .formatted(step.stepId().value());
     }
     return "Ledger plan execution failed unexpectedly during step '%s': %s"
-        .formatted(step.stepId(), detail);
+        .formatted(step.stepId().value(), detail);
   }
 
   private static String unexpectedPlanFailureMessage(
-      BookWorkflowBoundaryPhase phase, @Nullable String triggerStepId, RuntimeException failure) {
+      BookWorkflowBoundaryPhase phase,
+      @Nullable BookWorkflowStepId triggerStepId,
+      RuntimeException failure) {
     String detail = String.valueOf(failure.getMessage()).strip();
     String phaseContext;
     if (phase == BookWorkflowBoundaryPhase.BEGIN) {
@@ -330,17 +333,17 @@ public final class LedgerPlanOutcomeMapper {
       phaseContext =
           triggerStepId == null
               ? "during initialization-check"
-              : "during initialization-check before step '%s'".formatted(triggerStepId);
+              : "during initialization-check before step '%s'".formatted(triggerStepId.value());
     } else if (phase == BookWorkflowBoundaryPhase.COMMIT) {
       phaseContext =
           triggerStepId == null
               ? "during commit"
-              : "during commit after step '%s'".formatted(triggerStepId);
+              : "during commit after step '%s'".formatted(triggerStepId.value());
     } else {
       phaseContext =
           triggerStepId == null
               ? "during rollback"
-              : "during rollback after step '%s'".formatted(triggerStepId);
+              : "during rollback after step '%s'".formatted(triggerStepId.value());
     }
     if (detail.isEmpty() || "null".equals(detail)) {
       return "Ledger plan execution failed unexpectedly %s.".formatted(phaseContext);
@@ -360,7 +363,7 @@ public final class LedgerPlanOutcomeMapper {
     }
   }
 
-  private static String boundaryStepId(BookWorkflowBoundaryPhase phase) {
-    return "@plan-boundary:" + phase.wireValue();
+  private static BookWorkflowStepId boundaryStepId(BookWorkflowBoundaryPhase phase) {
+    return new BookWorkflowStepId("@plan-boundary:" + phase.wireValue());
   }
 }

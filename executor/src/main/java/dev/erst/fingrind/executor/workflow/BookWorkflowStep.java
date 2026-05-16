@@ -22,10 +22,11 @@ public sealed interface BookWorkflowStep
         BookWorkflowStep.AccountBalance,
         BookWorkflowStep.Assert {
   /** Stable caller-supplied step identifier. */
-  String stepId();
+  BookWorkflowStepId stepId();
 
   /** Initializes the selected book inside the workflow transaction. */
-  record OpenBook(String stepId, BookIdentity bookIdentity) implements BookWorkflowStep {
+  record OpenBook(BookWorkflowStepId stepId, BookIdentity bookIdentity)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public OpenBook {
       requireStepId(stepId);
@@ -34,7 +35,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Declares or reactivates one account. */
-  record DeclareAccount(String stepId, AccountDeclaration command) implements BookWorkflowStep {
+  record DeclareAccount(BookWorkflowStepId stepId, AccountDeclaration command)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public DeclareAccount {
       requireStepId(stepId);
@@ -43,7 +45,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Validates one posting request without committing it. */
-  record PreflightEntry(String stepId, PostingCommand command) implements BookWorkflowStep {
+  record PreflightEntry(BookWorkflowStepId stepId, PostingCommand command)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public PreflightEntry {
       requireStepId(stepId);
@@ -52,7 +55,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Commits one posting request. */
-  record PostEntry(String stepId, PostingCommand command) implements BookWorkflowStep {
+  record PostEntry(BookWorkflowStepId stepId, PostingCommand command) implements BookWorkflowStep {
     /** Validates the step. */
     public PostEntry {
       requireStepId(stepId);
@@ -61,7 +64,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Inspects the selected book. */
-  record InspectBook(String stepId) implements BookWorkflowStep {
+  record InspectBook(BookWorkflowStepId stepId) implements BookWorkflowStep {
     /** Validates the step. */
     public InspectBook {
       requireStepId(stepId);
@@ -69,7 +72,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Lists declared accounts. */
-  record ListAccounts(String stepId, AccountRegistryQuery query) implements BookWorkflowStep {
+  record ListAccounts(BookWorkflowStepId stepId, AccountRegistryQuery query)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public ListAccounts {
       requireStepId(stepId);
@@ -78,7 +82,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Gets one committed posting. */
-  record GetPosting(String stepId, PostingId postingId) implements BookWorkflowStep {
+  record GetPosting(BookWorkflowStepId stepId, PostingId postingId) implements BookWorkflowStep {
     /** Validates the step. */
     public GetPosting {
       requireStepId(stepId);
@@ -87,7 +91,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Lists committed postings. */
-  record ListPostings(String stepId, PostingHistoryQuery query) implements BookWorkflowStep {
+  record ListPostings(BookWorkflowStepId stepId, PostingHistoryQuery query)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public ListPostings {
       requireStepId(stepId);
@@ -96,7 +101,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Computes one account balance. */
-  record AccountBalance(String stepId, AccountBalanceCriteria query) implements BookWorkflowStep {
+  record AccountBalance(BookWorkflowStepId stepId, AccountBalanceCriteria query)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public AccountBalance {
       requireStepId(stepId);
@@ -105,7 +111,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Evaluates one workflow assertion. */
-  record Assert(String stepId, BookWorkflowAssertion assertion) implements BookWorkflowStep {
+  record Assert(BookWorkflowStepId stepId, BookWorkflowAssertion assertion)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public Assert {
       requireStepId(stepId);
@@ -113,10 +120,7 @@ public sealed interface BookWorkflowStep
     }
   }
 
-  private static void requireStepId(String stepId) {
+  private static void requireStepId(BookWorkflowStepId stepId) {
     Objects.requireNonNull(stepId, "stepId");
-    if (stepId.isBlank()) {
-      throw new IllegalArgumentException("Workflow stepId must not be blank.");
-    }
   }
 }

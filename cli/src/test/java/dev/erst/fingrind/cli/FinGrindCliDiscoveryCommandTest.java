@@ -5,12 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
@@ -32,7 +32,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -56,8 +55,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("Getting Started"));
     assertTrue(
         help.contains(
-            "Run 'fingrind help <command>' for command-specific usage, request grammar, and examples."));
-    assertTrue(help.contains("Run 'fingrind capabilities --output json'"));
+            "Run '"
+                + CliInvocationText.commandExample(OperationId.HELP)
+                + " <command>' for command-specific usage, request-file guidance, and examples."));
+    assertTrue(
+        help.contains(
+            "Run '"
+                + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                + " --output json'"));
     assertFalse(help.contains("Guidance"));
     assertFalse(help.contains("declare-account-cash.json"));
     assertFalse(help.contains("provenance.idempotencyKey"));
@@ -94,6 +99,20 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_returnsTemplateHelpWithTemplateFamilySpecificOperatorNote() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+    int exitCode = cli.run(new String[] {"help", "print-request-template", "--output", "human"});
+    assertEquals(0, exitCode);
+    String help = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(help.contains("declare-account"));
+    assertTrue(
+        help.contains(
+            "Posting templates include effectiveDate and replace-before-commit-* provenance placeholders; declare-account templates do not."));
+  }
+
+  @Test
   void run_rewritesBundleHelpUsageAndHintsToTheBundleLauncher() {
     String priorDistribution =
         System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
@@ -124,14 +143,21 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               .readTree(helpOutputStream.toString(StandardCharsets.UTF_8))
               .path("payload");
       assertTrue(containsText(helpPayload, bundleLauncher + " post-entry"));
-      String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(failureText.contains("Error"));
-      assertTrue(failureText.contains("Unsupported argument: --bogus"));
+      JsonNode failurePayload =
+          assertDoesNotThrow(
+              () ->
+                  new ObjectMapper()
+                      .readTree(failureOutputStream.toString(StandardCharsets.UTF_8)));
+      assertEquals("error", failurePayload.path("status").stringValue());
+      assertEquals("Unsupported argument: --bogus", failurePayload.path("message").stringValue());
       assertTrue(
-          failureText.contains(
-              "Run '"
-                  + bundleLauncher
-                  + " help post-entry' to inspect the supported command syntax."));
+          failurePayload
+              .path("hint")
+              .stringValue()
+              .contains(
+                  "Run '"
+                      + bundleLauncher
+                      + " help post-entry' to inspect the supported command syntax."));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
@@ -143,24 +169,17 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
 
   @Test
   void run_rewritesSourceCheckoutHelpToTheGeneratedLauncherSurface() {
-    assertRuntimeSpecificHelpSurface(
-        FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION,
-        CliInvocationText.launcherCommandFor(
-            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, System.getProperty("os.name", "")));
+    assertRuntimeSpecificHelpSurface(FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
   }
 
   @Test
   void run_rewritesDirectJavaHelpToTheDeveloperJarSurface() {
-    assertRuntimeSpecificHelpSurface(
-        FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
-        ProtocolCatalog.directJavaLauncherCommand(isWindowsHost()));
+    assertRuntimeSpecificHelpSurface(FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
   }
 
   @Test
   void run_rewritesContainerHelpToTheDockerSurface() {
-    assertRuntimeSpecificHelpSurface(
-        FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
-        "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>");
+    assertRuntimeSpecificHelpSurface(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION);
   }
 
   @Test
@@ -206,12 +225,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     return false;
   }
 
-  private static boolean isWindowsHost() {
-    return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
-  }
-
-  private void assertRuntimeSpecificHelpSurface(
-      String runtimeDistribution, String expectedLauncher) {
+  private void assertRuntimeSpecificHelpSurface(String runtimeDistribution) {
     String priorDistribution =
         System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
     try {
@@ -243,21 +257,30 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       assertEquals(1, failureExitCode);
       String help = helpOutputStream.toString(StandardCharsets.UTF_8);
       String commandHelp = commandHelpOutputStream.toString(StandardCharsets.UTF_8);
+      String launcher =
+          CliInvocationText.launcherCommandFor(
+              runtimeDistribution, System.getProperty("os.name", ""));
       assertTrue(help.contains("Getting Started"), help);
-      assertFalse(help.contains(expectedLauncher), help);
+      assertTrue(help.contains(launcher + " help <command>"), help);
       assertFalse(help.contains("Source Checkout Launcher"), help);
       assertFalse(help.contains("Developer Raw JAR"), help);
       assertFalse(help.contains("Container Image"), help);
-      assertTrue(commandHelp.contains(expectedLauncher + " open-book"), commandHelp);
-      assertFalse(commandHelp.contains("fingrind open-book"), commandHelp);
-      String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(failureText.contains("Error"), failureText);
+      assertTrue(commandHelp.contains(launcher + " open-book"), commandHelp);
+      JsonNode failurePayload =
+          assertDoesNotThrow(
+              () ->
+                  new ObjectMapper()
+                      .readTree(failureOutputStream.toString(StandardCharsets.UTF_8)));
+      assertEquals("error", failurePayload.path("status").stringValue());
       assertTrue(
-          failureText.contains(
-              "Run '"
-                  + expectedLauncher
-                  + " help post-entry' to inspect the supported command syntax."),
-          failureText);
+          failurePayload
+              .path("hint")
+              .stringValue()
+              .contains(
+                  "Run '"
+                      + launcher
+                      + " help post-entry' to inspect the supported command syntax."),
+          failurePayload.toPrettyString());
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
@@ -433,7 +456,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("publicCliDistribution")
             .stringValue());
     assertEquals(
-        FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
+        FinGrindCli.runtimeDistribution(),
         payload.path("environment").path("distribution").path("runtimeDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets().stream()
@@ -763,7 +786,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
+            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(

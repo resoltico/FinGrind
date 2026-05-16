@@ -9,6 +9,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 /** Shared text measurement and wrapping helpers for PDF tables and mastheads. */
 final class PdfTextWrapper {
   private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+  private static final String BREAKABLE_DELIMITERS = "-_/";
 
   private PdfTextWrapper() {}
 
@@ -49,6 +50,66 @@ final class PdfTextWrapper {
   }
 
   private static void appendBrokenWord(
+      List<String> wrappedLines, String word, PDFont font, float fontSize, float maxWidth)
+      throws IOException {
+    List<String> breakableFragments = breakableFragments(word);
+    if (breakableFragments.size() > 1) {
+      appendBreakableFragments(wrappedLines, breakableFragments, font, fontSize, maxWidth);
+      return;
+    }
+    appendCharacterFragments(wrappedLines, word, font, fontSize, maxWidth);
+  }
+
+  private static List<String> breakableFragments(String word) {
+    List<String> fragments = new ArrayList<>();
+    StringBuilder fragment = new StringBuilder();
+    for (int index = 0; index < word.length(); index++) {
+      char character = word.charAt(index);
+      fragment.append(character);
+      if (BREAKABLE_DELIMITERS.indexOf(character) >= 0) {
+        fragments.add(fragment.toString());
+        fragment.setLength(0);
+      }
+    }
+    if (!fragment.isEmpty()) {
+      fragments.add(fragment.toString());
+    }
+    return List.copyOf(fragments);
+  }
+
+  private static void appendBreakableFragments(
+      List<String> wrappedLines,
+      List<String> fragments,
+      PDFont font,
+      float fontSize,
+      float maxWidth)
+      throws IOException {
+    StringBuilder line = new StringBuilder();
+    for (String fragment : fragments) {
+      String candidate = line.toString() + fragment;
+      if (stringWidth(candidate, font, fontSize) <= maxWidth || line.isEmpty()) {
+        line.setLength(0);
+        line.append(candidate);
+        if (stringWidth(line.toString(), font, fontSize) > maxWidth) {
+          appendCharacterFragments(wrappedLines, line.toString(), font, fontSize, maxWidth);
+          line.setLength(0);
+        }
+      } else {
+        wrappedLines.add(line.toString());
+        line.setLength(0);
+        if (stringWidth(fragment, font, fontSize) <= maxWidth) {
+          line.append(fragment);
+        } else {
+          appendCharacterFragments(wrappedLines, fragment, font, fontSize, maxWidth);
+        }
+      }
+    }
+    if (!line.isEmpty()) {
+      wrappedLines.add(line.toString());
+    }
+  }
+
+  private static void appendCharacterFragments(
       List<String> wrappedLines, String word, PDFont font, float fontSize, float maxWidth)
       throws IOException {
     StringBuilder fragment = new StringBuilder();

@@ -6,8 +6,10 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Plan Seed Basic",
+        "entityForm": "COMPANY",
         "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
+        "fiscalYearStart": "01-01",
+        "accountingBasis": "ACCRUAL"
       }
     },
     {
@@ -17,7 +19,9 @@
         "accountCode": "1000",
         "accountName": "Cash",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": "CURRENT_ASSET",
+        "profitAndLossLineClassification": null
       }
     },
     {
@@ -27,7 +31,9 @@
         "accountCode": "2000",
         "accountName": "Revenue",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY"
+        "accountRole": "ORDINARY",
+        "financialPositionLineClassification": null,
+        "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
     },
     {

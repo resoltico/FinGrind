@@ -3,7 +3,11 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionResult;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionService;
@@ -17,10 +21,20 @@ public final class LedgerPlanService {
 
   /** Creates a ledger-plan executor. */
   public LedgerPlanService(
-      AtomicBookStore bookStore, PostingIdGenerator postingIdGenerator, Clock clock) {
+      LedgerPlanTransaction transactionStore,
+      BookAdministrationStore administrationStore,
+      BookkeepingReadStore readStore,
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock) {
     this.workflowExecutionService =
         new BookWorkflowExecutionService(
-            Objects.requireNonNull(bookStore, "bookStore"),
+            Objects.requireNonNull(transactionStore, "transactionStore"),
+            Objects.requireNonNull(administrationStore, "administrationStore"),
+            Objects.requireNonNull(readStore, "readStore"),
+            Objects.requireNonNull(validationStore, "validationStore"),
+            Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
             Objects.requireNonNull(clock, "clock"));
   }

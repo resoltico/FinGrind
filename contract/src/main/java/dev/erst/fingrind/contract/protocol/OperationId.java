@@ -23,7 +23,7 @@ public enum OperationId implements WireValue {
   REKEY_BOOK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
-  /** Closes one contiguous reporting period into retained earnings. */
+  /** Closes one contiguous reporting period into the selected closing equity account. */
   CLOSE_PERIOD,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,

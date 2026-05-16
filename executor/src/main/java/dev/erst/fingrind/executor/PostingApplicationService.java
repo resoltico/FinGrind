@@ -7,10 +7,11 @@ import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
-import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.util.Objects;
 
@@ -20,10 +21,14 @@ public final class PostingApplicationService {
 
   /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
-      BookStore bookStore, PostingIdGenerator postingIdGenerator, java.time.Clock clock) {
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      java.time.Clock clock) {
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
-            Objects.requireNonNull(bookStore, "bookStore"),
+            Objects.requireNonNull(validationStore, "validationStore"),
+            Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
             Objects.requireNonNull(clock, "clock"));
   }

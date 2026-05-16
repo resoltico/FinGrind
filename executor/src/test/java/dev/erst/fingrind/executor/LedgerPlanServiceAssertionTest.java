@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.assertAssertionFailure;
@@ -32,7 +33,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.workflow.LedgerPlanAssertionEvaluator;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
 import java.util.List;
@@ -40,7 +41,7 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests covering assertion-specific behavior in {@link LedgerPlanService}. */
 class LedgerPlanServiceAssertionTest {
-  private static final BookStore REJECTED_LOOKUP_BOOK_STORE =
+  private static final BookkeepingReadStore REJECTED_LOOKUP_BOOK_STORE =
       new LedgerPlanServiceTestSupport.DelegatingAtomicBookStore() {
         @Override
         public BookLifecycleInspection inspectBook() {
@@ -84,6 +85,7 @@ class LedgerPlanServiceAssertionTest {
           new AccountName("Cash"),
           AccountType.ASSET,
           accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          accountTaxonomy(AccountType.ASSET),
           FIXED_CLOCK.instant());
       bookSession.deactivateAccount(new AccountCode("1000"));
 

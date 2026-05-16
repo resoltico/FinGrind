@@ -9,11 +9,12 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REGISTERED_C
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCOUNT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.currencyBalance;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountPage;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.postingPage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
@@ -28,15 +29,17 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
-import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -99,22 +102,31 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                     EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")))),
         BookkeepingReadPublishedLanguageTranslator.fromPublished(postingsQuery));
     assertEquals(
-        new AccountPage(
+        accountPage(
             List.of(CASH_ACCOUNT),
             25,
             Optional.of(new AccountPageCursor(REVENUE_ACCOUNT.accountCode()))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(
+            bookIdentity(),
             new AccountRegistryPage(
                 List.of(REGISTERED_CASH_ACCOUNT),
                 25,
                 Optional.of(new AccountRegistryCursor(REVENUE_ACCOUNT.accountCode())))));
     assertEquals(
-        new PostingPage(
+        postingPage(
+            Optional.of(CASH_ACCOUNT.accountCode()),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
             List.of(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
             20,
             Optional.of(
                 new PostingPageCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(
+            bookIdentity(),
+            new PostingHistoryQuery(
+                Optional.of(CASH_ACCOUNT.accountCode()),
+                EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                20,
+                Optional.of(PostingHistoryCursor.fromPosting(postingFact))),
             new PostingHistoryPage(
                 List.of(postingFact),
                 20,
@@ -411,7 +423,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))),
             List.of(
@@ -423,7 +436,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
     IncomeStatementView incomeStatementView =
@@ -442,7 +456,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Revenue",
                             AccountType.REVENUE,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
@@ -455,7 +470,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Revenue",
                             AccountType.REVENUE,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
@@ -468,11 +484,12 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new ChangesInEquityRowView(
-                    "current-earnings",
-                    "Current Earnings",
+                    "current-period-result",
+                    "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    true,
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -481,11 +498,12 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(
                 new ChangesInEquityRowView(
-                    "current-earnings",
-                    "Current Earnings",
+                    "current-period-result",
+                    "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    true,
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -517,7 +535,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))),
             List.of(
@@ -529,7 +548,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))))),
         BookkeepingReadPublishedLanguageTranslator.toPublished(financialPositionView));
@@ -549,7 +569,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Revenue",
                             AccountType.REVENUE,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
@@ -562,7 +583,8 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                             "Revenue",
                             AccountType.REVENUE,
                             Optional.of(AccountRole.ORDINARY),
-                            false,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
                     List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -576,11 +598,12 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(
                 new ChangesInEquityRow(
-                    "current-earnings",
-                    "Current Earnings",
+                    "current-period-result",
+                    "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    true,
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -589,11 +612,12 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(
                 new ChangesInEquityRow(
-                    "current-earnings",
-                    "Current Earnings",
+                    "current-period-result",
+                    "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    true,
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),

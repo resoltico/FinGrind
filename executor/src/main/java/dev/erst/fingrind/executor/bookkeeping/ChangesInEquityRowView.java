@@ -3,6 +3,8 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.StatementLineKind;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -12,7 +14,8 @@ public record ChangesInEquityRowView(
     String lineName,
     Optional<AccountType> lineType,
     Optional<AccountRole> lineRole,
-    boolean synthetic,
+    FinancialPositionLineClassification lineClassification,
+    StatementLineKind lineKind,
     CurrencyBalance openingBalance,
     CurrencyBalance movement,
     CurrencyBalance closingBalance) {
@@ -21,6 +24,8 @@ public record ChangesInEquityRowView(
     Objects.requireNonNull(lineName, "lineName");
     Objects.requireNonNull(lineType, "lineType");
     Objects.requireNonNull(lineRole, "lineRole");
+    Objects.requireNonNull(lineClassification, "lineClassification");
+    Objects.requireNonNull(lineKind, "lineKind");
     Objects.requireNonNull(openingBalance, "openingBalance");
     Objects.requireNonNull(movement, "movement");
     Objects.requireNonNull(closingBalance, "closingBalance");

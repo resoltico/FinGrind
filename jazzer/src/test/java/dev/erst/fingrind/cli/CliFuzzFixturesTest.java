@@ -10,10 +10,13 @@ import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -27,8 +30,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -36,13 +37,10 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -105,14 +103,15 @@ class CliFuzzFixturesTest {
   }
 
   @Test
-  void synthetic_posting_account_commands_never_reserve_retained_earnings() {
+  void synthetic_posting_account_commands_never_require_removed_account_roles() {
     var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
 
     assertTrue(
         CliFuzzFixtures.declarePostingAccountCommands(command).stream()
             .noneMatch(
                 declareAccountCommand ->
-                    declareAccountCommand.accountRole() == AccountRole.RETAINED_EARNINGS));
+                    declareAccountCommand.accountRole() != AccountRole.ORDINARY
+                        && declareAccountCommand.accountRole() != AccountRole.CONTRA));
   }
 
   @Test
@@ -122,13 +121,7 @@ class CliFuzzFixturesTest {
           CliFuzzFixtures.administrationService(bookSession);
       var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
       DeclaredAccount account =
-          new DeclaredAccount(
-              new AccountCode("1000"),
-              new AccountName("Cash"),
-              AccountType.ASSET,
-              AccountRole.ORDINARY,
-              false,
-              CliFuzzFixtures.fixedClock().instant());
+          declaredAccount(new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, false);
 
       assertThrows(
           IllegalStateException.class,
@@ -143,17 +136,11 @@ class CliFuzzFixturesTest {
   @Test
   void lifecycle_helpers_reject_drifted_openBook_and_reactivateAccount_shapes() {
     DeclaredAccount account =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
-            AccountType.ASSET,
-            AccountRole.ORDINARY,
-            false,
-            CliFuzzFixtures.fixedClock().instant());
+        declaredAccount(new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, false);
 
     BookAdministrationService driftedOpenBookService =
         new BookAdministrationService(
-            new AbstractBookStoreStub() {
+            new AbstractBookAdministrationStoreStub() {
               @Override
               public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
                 return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
@@ -162,29 +149,14 @@ class CliFuzzFixturesTest {
             CliFuzzFixtures.fixedClock());
     BookAdministrationService inactiveReactivationService =
         new BookAdministrationService(
-            new AbstractBookStoreStub() {
+            new AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
                   AccountType accountType,
                   AccountRole accountRole,
-                  Instant declaredAt) {
-                return new AccountDeclarationOutcome.Declared(
-                    new RegisteredAccount(
-                        accountCode, accountName, accountType, accountRole, false, declaredAt));
-              }
-            },
-            CliFuzzFixtures.fixedClock());
-    BookAdministrationService changedDeclaredAtService =
-        new BookAdministrationService(
-            new AbstractBookStoreStub() {
-              @Override
-              public AccountDeclarationOutcome declareAccount(
-                  AccountCode accountCode,
-                  AccountName accountName,
-                  AccountType accountType,
-                  AccountRole accountRole,
+                  AccountTaxonomy accountTaxonomy,
                   Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
@@ -192,6 +164,30 @@ class CliFuzzFixturesTest {
                         accountName,
                         accountType,
                         accountRole,
+                        accountTaxonomy,
+                        false,
+                        declaredAt));
+              }
+            },
+            CliFuzzFixtures.fixedClock());
+    BookAdministrationService changedDeclaredAtService =
+        new BookAdministrationService(
+            new AbstractBookAdministrationStoreStub() {
+              @Override
+              public AccountDeclarationOutcome declareAccount(
+                  AccountCode accountCode,
+                  AccountName accountName,
+                  AccountType accountType,
+                  AccountRole accountRole,
+                  AccountTaxonomy accountTaxonomy,
+                  Instant declaredAt) {
+                return new AccountDeclarationOutcome.Declared(
+                    new RegisteredAccount(
+                        accountCode,
+                        accountName,
+                        accountType,
+                        accountRole,
+                        accountTaxonomy,
                         true,
                         declaredAt.plusSeconds(1)));
               }
@@ -211,26 +207,14 @@ class CliFuzzFixturesTest {
   @Test
   void listAccounts_follows_pagination_until_cursor_is_exhausted() {
     DeclaredAccount firstAccount =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
-            AccountType.ASSET,
-            AccountRole.ORDINARY,
-            true,
-            CliFuzzFixtures.fixedClock().instant());
+        declaredAccount(new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, true);
     DeclaredAccount secondAccount =
-        new DeclaredAccount(
-            new AccountCode("2000"),
-            new AccountName("Revenue"),
-            AccountType.REVENUE,
-            AccountRole.ORDINARY,
-            true,
-            CliFuzzFixtures.fixedClock().instant());
+        declaredAccount(new AccountCode("2000"), AccountType.REVENUE, AccountRole.ORDINARY, true);
     AccountRegistryCursor nextCursor = new AccountRegistryCursor(firstAccount.accountCode());
     AtomicInteger pageCalls = new AtomicInteger();
     List<Optional<AccountRegistryCursor>> cursors = new ArrayList<>();
-    BookStore pagedStore =
-        new AbstractBookStoreStub() {
+    BookkeepingReadStore pagedStore =
+        new AbstractBookkeepingReadStoreStub() {
           @Override
           public BookLifecycleInspection inspectBook() {
             return new BookLifecycleInspection.Initialized(
@@ -255,7 +239,8 @@ class CliFuzzFixturesTest {
     assertEquals(List.of(Optional.empty(), Optional.of(nextCursor)), cursors);
   }
 
-  private abstract static class AbstractBookStoreStub implements BookStore {
+  private abstract static class AbstractBookAdministrationStoreStub
+      implements BookAdministrationStore {
     @Override
     public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
       throw new UnsupportedOperationException("not used");
@@ -267,10 +252,13 @@ class CliFuzzFixturesTest {
         AccountName accountName,
         AccountType accountType,
         AccountRole accountRole,
+        AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       throw new UnsupportedOperationException("not used");
     }
+  }
 
+  private abstract static class AbstractBookkeepingReadStoreStub implements BookkeepingReadStore {
     @Override
     public BookLifecycleInspection inspectBook() {
       throw new UnsupportedOperationException("not used");
@@ -300,21 +288,6 @@ class CliFuzzFixturesTest {
 
     @Override
     public List<RegisteredAccount> allAccounts() {
-      throw new UnsupportedOperationException("not used");
-    }
-
-    @Override
-    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-      throw new UnsupportedOperationException("not used");
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      throw new UnsupportedOperationException("not used");
-    }
-
-    @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
       throw new UnsupportedOperationException("not used");
     }
 
@@ -353,18 +326,6 @@ class CliFuzzFixturesTest {
     public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
       throw new UnsupportedOperationException("not used");
     }
-
-    @Override
-    public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException("not used");
-    }
-
-    @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException("not used");
-    }
   }
 
   private static RegisteredAccount toRegisteredAccount(DeclaredAccount account) {
@@ -373,8 +334,51 @@ class CliFuzzFixturesTest {
         account.accountName(),
         account.accountType(),
         account.accountRole(),
+        account.accountTaxonomy(),
         account.active(),
         account.declaredAt());
+  }
+
+  private static DeclaredAccount declaredAccount(
+      AccountCode accountCode, AccountType accountType, AccountRole accountRole, boolean active) {
+    return new DeclaredAccount(
+        accountCode,
+        new AccountName(accountType == AccountType.REVENUE ? "Revenue" : "Cash"),
+        accountType,
+        accountRole,
+        accountTaxonomy(accountType),
+        active,
+        CliFuzzFixtures.fixedClock().instant());
+  }
+
+  private static AccountTaxonomy accountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    };
   }
 
   private static String basicValidRequest() {
@@ -419,15 +423,27 @@ class CliFuzzFixturesTest {
             {
               "stepId": "open",
               "kind": "open-book",
-              "openBook": {
-                "entityName": "Acme Studio",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
+              "openBook": %s
             }
           ]
         }
-        """;
+        """
+        .formatted(canonicalOpenBookJson("EUR"));
+  }
+
+  private static String canonicalOpenBookJson(String functionalCurrency) {
+    return """
+        {
+          "entityName": "Acme Studio",
+          "entityForm": "COMPANY",
+          "functionalCurrency": "%s",
+          "fiscalYearStart": "01-01",
+          "accountingBasis": "ACCRUAL"
+        }
+        """
+        .formatted(functionalCurrency)
+        .indent(14)
+        .stripLeading();
   }
 
   @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})

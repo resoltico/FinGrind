@@ -27,7 +27,9 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -40,6 +42,9 @@ import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -47,13 +52,18 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.JournalLine.EntrySide;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -74,12 +84,19 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.37.0", CLOCK);
+      new PdfReportService("FinGrind", "0.38.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
-          new BookEntityName("Acme Studio"),
+          new EntityProfile(
+              new BookEntityName("Acme Studio"),
+              EntityForm.COMPANY,
+              OwnerModel.MULTI_OWNER,
+              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+              TaxRegistrationStatus.UNSPECIFIED,
+              List.of()),
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          AccountingBasis.ACCRUAL);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -124,6 +141,9 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
+    assertTrue(trialBalanceText.contains("Company / Multi Owner"));
+    assertTrue(trialBalanceText.contains("Internal Management Only / Unspecified"));
+    assertTrue(trialBalanceText.contains("Accrual"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
@@ -230,8 +250,8 @@ class PdfReportServiceTest {
 
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("250.00"));
-    assertTrue(accountLedgerText.contains("Reversal state"));
-    assertTrue(accountLedgerText.contains("Reversal target"));
+    assertTrue(accountLedgerText.contains("Entry"));
+    assertTrue(accountLedgerText.contains("Counterpart accounts"));
   }
 
   @Test
@@ -255,6 +275,53 @@ class PdfReportServiceTest {
   }
 
   @Test
+  void renderAccountLedgerPublishesSelfCounterpartWhenPostingTouchesOnlyTheSelectedAccount()
+      throws IOException {
+    PostingFact selfPosting =
+        new PostingFact(
+            new PostingId("019e26ff-0000-7000-8000-000000000009"),
+            new JournalEntry(
+                LocalDate.parse("2026-04-03"),
+                List.of(
+                    new JournalLine(
+                        CASH_ACCOUNT.accountCode(), EntrySide.DEBIT, money("EUR", "10.00")),
+                    new JournalLine(
+                        CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "10.00")))),
+            PostingLineage.direct(),
+            PostingKind.STANDARD,
+            new CommittedProvenance(
+                new RequestProvenance(
+                    new ActorId("office-worker"),
+                    ActorType.HUMAN,
+                    new CommandId("command-self"),
+                    new IdempotencyKey("idem-self"),
+                    new CausationId("cause-self"),
+                    Optional.empty()),
+                Instant.parse("2026-04-19T10:15:45Z"),
+                SourceChannel.CLI));
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            BOOK_IDENTITY,
+            CASH_ACCOUNT,
+            new EffectiveDateRange.Bounded(
+                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(),
+            List.of(
+                new AccountLedgerEntry(
+                    selfPosting,
+                    balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO),
+                    money("EUR", "0.00"),
+                    BalanceSide.ZERO)),
+            List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)));
+
+    String accountLedgerText =
+        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+
+    assertTrue(accountLedgerText.contains("(self)"));
+  }
+
+  @Test
   void renderStatementsIncludeStatementSpecificTablesAndMetadata() throws IOException {
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
@@ -266,24 +333,24 @@ class PdfReportServiceTest {
                 new FinancialPositionSection(
                     AccountType.ASSET,
                     List.of(
-                        new FinancialPositionRow(
+                        financialPositionRow(
                             "1000",
                             "Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
             List.of(
                 new FinancialPositionSection(
                     AccountType.ASSET,
                     List.of(
-                        new FinancialPositionRow(
+                        financialPositionRow(
                             "1000",
                             "Prior Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT)))));
     IncomeStatementReport incomeStatementReport =
@@ -297,12 +364,12 @@ class PdfReportServiceTest {
                 new IncomeStatementSection(
                     AccountType.REVENUE,
                     List.of(
-                        new IncomeStatementRow(
+                        incomeStatementRow(
                             "4000",
                             "Subscription Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
             List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)),
@@ -310,12 +377,12 @@ class PdfReportServiceTest {
                 new IncomeStatementSection(
                     AccountType.REVENUE,
                     List.of(
-                        new IncomeStatementRow(
+                        incomeStatementRow(
                             "4000",
                             "Prior Subscription Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT)))),
             List.of(balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT)));
@@ -327,12 +394,11 @@ class PdfReportServiceTest {
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(
-                new ChangesInEquityRow(
+                changesInEquityRow(
                     "3000",
                     "Owner Capital",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.of(AccountRole.ORDINARY),
-                    false,
+                    AccountRole.ORDINARY,
+                    FinancialPositionLineClassification.OWNER_CAPITAL,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -340,12 +406,11 @@ class PdfReportServiceTest {
             List.of(balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT)),
             List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)),
             List.of(
-                new ChangesInEquityRow(
+                changesInEquityRow(
                     "3000",
                     "Prior Owner Capital",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.of(AccountRole.ORDINARY),
-                    false,
+                    AccountRole.ORDINARY,
+                    FinancialPositionLineClassification.OWNER_CAPITAL,
                     balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT))),
@@ -370,7 +435,8 @@ class PdfReportServiceTest {
     assertTrue(financialPositionText.contains("All posting kinds"));
     assertTrue(financialPositionText.contains("Ordinary"));
     assertTrue(financialPositionText.contains("Comparative Assets"));
-    assertTrue(financialPositionText.contains("Prior Cash and Cash Equivalents"));
+    assertTrue(financialPositionText.contains("Prior Cash and Cash"));
+    assertTrue(financialPositionText.contains("Equivalents"));
     assertTrue(incomeStatementText.contains("Subscription Revenue"));
     assertTrue(incomeStatementText.contains("Income Statement"));
     assertTrue(incomeStatementText.contains("Non-closing postings"));
@@ -411,12 +477,12 @@ class PdfReportServiceTest {
                 new IncomeStatementSection(
                     AccountType.REVENUE,
                     List.of(
-                        new IncomeStatementRow(
+                        incomeStatementRow(
                             "4000",
                             "Subscription Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
             List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)),
@@ -440,12 +506,11 @@ class PdfReportServiceTest {
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(
-                new ChangesInEquityRow(
+                changesInEquityRow(
                     "3000",
                     "Owner Capital",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.of(AccountRole.ORDINARY),
-                    false,
+                    AccountRole.ORDINARY,
+                    FinancialPositionLineClassification.OWNER_CAPITAL,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -513,12 +578,12 @@ class PdfReportServiceTest {
                 new FinancialPositionSection(
                     AccountType.ASSET,
                     List.of(
-                        new FinancialPositionRow(
+                        financialPositionRow(
                             "1000",
                             "Cash without Totals",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of()),
                 new FinancialPositionSection(
@@ -538,12 +603,12 @@ class PdfReportServiceTest {
                 new IncomeStatementSection(
                     AccountType.REVENUE,
                     List.of(
-                        new IncomeStatementRow(
+                        incomeStatementRow(
                             "4000",
                             "Revenue without Totals",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
-                            false,
+                            AccountRole.ORDINARY,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of()),
                 new IncomeStatementSection(
@@ -574,10 +639,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.37.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.38.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.37.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.38.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -594,7 +659,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.37.0", information.getCreator());
+      assertEquals("FinGrind 0.38.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -681,13 +746,100 @@ class PdfReportServiceTest {
 
   private static DeclaredAccount declaredAccount(
       String code, String name, NormalBalance normalBalance, boolean active) {
+    AccountType accountType =
+        normalBalance == NormalBalance.DEBIT ? AccountType.ASSET : AccountType.REVENUE;
     return new DeclaredAccount(
         new AccountCode(code),
         new AccountName(name),
-        normalBalance == NormalBalance.DEBIT ? AccountType.ASSET : AccountType.REVENUE,
+        accountType,
         AccountRole.ORDINARY,
+        accountTaxonomy(accountType),
         active,
         Instant.parse("2026-04-01T08:00:00Z"));
+  }
+
+  private static FinancialPositionRow financialPositionRow(
+      String lineCode,
+      String lineName,
+      AccountType accountType,
+      AccountRole accountRole,
+      FinancialPositionLineClassification lineClassification,
+      CurrencyBalance balance) {
+    return new FinancialPositionRow(
+        lineCode,
+        lineName,
+        accountType,
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        balance);
+  }
+
+  private static IncomeStatementRow incomeStatementRow(
+      String lineCode,
+      String lineName,
+      AccountType accountType,
+      AccountRole accountRole,
+      ProfitAndLossLineClassification lineClassification,
+      CurrencyBalance movement) {
+    return new IncomeStatementRow(
+        lineCode,
+        lineName,
+        accountType,
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        movement);
+  }
+
+  private static ChangesInEquityRow changesInEquityRow(
+      String lineCode,
+      String lineName,
+      AccountRole accountRole,
+      FinancialPositionLineClassification lineClassification,
+      CurrencyBalance openingBalance,
+      CurrencyBalance movement,
+      CurrencyBalance closingBalance) {
+    return new ChangesInEquityRow(
+        lineCode,
+        lineName,
+        Optional.of(AccountType.EQUITY),
+        Optional.of(accountRole),
+        lineClassification,
+        StatementLineKind.DECLARED_ACCOUNT,
+        openingBalance,
+        movement,
+        closingBalance);
+  }
+
+  private static AccountTaxonomy accountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OWNER_CAPITAL),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    };
   }
 
   private static CurrencyBalance balance(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.37.0"
+version: "0.38.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-05-14"
+updated: "2026-05-16"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -131,7 +131,7 @@ What it asserts:
 | `cli-request` | `invalid_unbalanced.json` | unbalanced journal entry |
 | `ledger-plan-request` | `basic_valid.json` | valid plan with operation, posting, and assertion steps |
 | `ledger-plan-request` | `query_valid.json` | valid plan with successful structured list-query journal facts |
-| `ledger-plan-request` | `rejected_missing_book_list_postings.json` | parsed plan rejects as missing-book query workflow without synthetic page facts |
+| `ledger-plan-request` | `rejected_missing_book_list_postings.json` | parsed plan rejects as missing-book query workflow without fabricated pagination facts |
 | `ledger-plan-request` | `invalid_execution_policy.json` | removed execution-policy block rejection |
 | `ledger-plan-request` | `invalid_open_book_not_first.json` | open-book ordering rejection |
 | `ledger-plan-request` | `invalid_too_many_steps.json` | 100-step protocol limit rejection |

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
@@ -46,10 +45,13 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         OutputMode.HUMAN);
     String openBookHuman = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(openBookHuman.contains("Book Initialized"));
-    assertTrue(openBookHuman.contains("Entity name"));
+    assertTrue(openBookHuman.contains("Entity"));
     assertTrue(openBookHuman.contains("Acme Studio"));
+    assertTrue(openBookHuman.contains("Entity profile"));
+    assertTrue(openBookHuman.contains("Reporting profile"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
+    assertTrue(openBookHuman.contains("Accounting basis"));
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.HUMAN);
@@ -168,13 +170,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.RetainedEarningsAccountMissing(
-                new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200"))),
         OutputMode.HUMAN);
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("retained-earnings-account-missing"));
+        outputStream.toString(StandardCharsets.UTF_8).contains("closing-equity-account-missing"));
   }
 
   @Test
@@ -242,7 +241,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter listSuccessWriter = new CliResponseWriter(utf8PrintStream(listSuccessOutput));
     listSuccessWriter.writeListAccountsResult(
         new ListAccountsResult.Listed(
-            new AccountPage(java.util.List.of(declaredAccount), 50, java.util.Optional.empty())));
+            accountPage(java.util.List.of(declaredAccount), 50, java.util.Optional.empty())));
     String declareSuccessJson = declareSuccessOutput.toString(StandardCharsets.UTF_8);
     assertTrue(declareSuccessJson.contains("\"accountName\":\"Cash\""));
     assertTrue(declareSuccessJson.contains("\"declaredAt\":\"2026-04-07T10:15:30Z\""));
@@ -300,13 +299,12 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
     missingWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.RetainedEarningsAccountMissing(
-                new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200"))),
         OutputMode.JSON);
     assertTrue(
         missingOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"retained-earnings-account-missing\""));
+            .contains("\"code\":\"closing-equity-account-missing\""));
 
     ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
     CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
@@ -336,8 +334,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter inactiveWriter = new CliResponseWriter(utf8PrintStream(inactiveOutput));
     inactiveWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.RetainedEarningsAccountInactive(
-                new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountInactive(new AccountCode("3200"))),
         OutputMode.JSON);
     assertTrue(
         inactiveOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"3200\""));
@@ -345,7 +342,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         2,
         CliExecutionPolicy.exitCodeFor(
             new ClosePeriodResult.Rejected(
-                new BookAdministrationRejection.RetainedEarningsAccountMissing(
+                new BookAdministrationRejection.ClosingEquityAccountMissing(
                     new AccountCode("3200")))));
   }
 
@@ -359,7 +356,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(closedPeriodJson.contains("\"attemptedEffectiveDate\":\"2026-05-01\""));
 
     String retainedEarningsJson =
-        rejectedJson(new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3200")));
+        rejectedJson(new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")));
     assertTrue(retainedEarningsJson.contains("\"accountCode\":\"3200\""));
 
     String missingPriorPostingJson =

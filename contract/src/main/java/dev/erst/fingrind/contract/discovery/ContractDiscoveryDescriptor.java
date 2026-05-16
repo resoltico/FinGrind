@@ -19,6 +19,7 @@ public sealed interface ContractDiscoveryDescriptor extends ProtocolSuccessPaylo
         VersionDescriptor,
         ArtifactOutputDescriptor,
         CommandDescriptor,
+        SelectableOutputDefaultsDescriptor,
         ExitCodeDescriptor,
         EnvironmentDistributionDescriptor,
         EnvironmentStorageDescriptor,

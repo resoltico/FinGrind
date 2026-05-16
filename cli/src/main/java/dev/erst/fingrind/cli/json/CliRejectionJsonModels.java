@@ -1,10 +1,12 @@
 package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
+import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Rejection-detail JSON records emitted by the CLI transport layer. */
 public interface CliRejectionJsonModels extends CliPlanJsonModels {
@@ -19,8 +21,9 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           OpeningBalanceNominalAccountDetails,
           PriorPostingDetails,
           AccountRoleConflictDetails,
-          RetainedEarningsAccountDetails,
-          RetainedEarningsAccountRoleMismatchDetails,
+          AccountTaxonomyConflictDetails,
+          ClosingEquityAccountDetails,
+          ClosingEquityAccountClassificationMismatchDetails,
           PeriodCloseStartDetails,
           PeriodCloseFutureDateDetails,
           PeriodCloseFiscalYearDetails,
@@ -72,6 +75,32 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
+  record AccountTaxonomyConflictDetails(
+      String accountCode,
+      AccountTaxonomyDetails existingAccountTaxonomy,
+      AccountTaxonomyDetails requestedAccountTaxonomy)
+      implements RejectionDetails {
+    public AccountTaxonomyConflictDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      existingAccountTaxonomy = requireValue(existingAccountTaxonomy, "existingAccountTaxonomy");
+      requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  record AccountTaxonomyDetails(
+      @Nullable String parentAccountCode,
+      @Nullable String financialPositionLineClassification,
+      @Nullable String profitAndLossLineClassification) {
+    public AccountTaxonomyDetails {
+      parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
+      financialPositionLineClassification =
+          requireOptionalText(
+              financialPositionLineClassification, "financialPositionLineClassification");
+      profitAndLossLineClassification =
+          requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
+    }
+  }
+
   record PostingKindDetails(String postingKind) implements RejectionDetails {
     public PostingKindDetails {
       postingKind = requireText(postingKind, "postingKind");
@@ -104,17 +133,27 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record RetainedEarningsAccountDetails(String accountCode) implements RejectionDetails {
-    public RetainedEarningsAccountDetails {
+  record ClosingEquityAccountDetails(String accountCode) implements RejectionDetails {
+    public ClosingEquityAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
     }
   }
 
-  record RetainedEarningsAccountRoleMismatchDetails(String accountCode, String actualAccountRole)
+  record ClosingEquityAccountClassificationMismatchDetails(
+      String accountCode,
+      String requiredFinancialPositionLineClassification,
+      String actualFinancialPositionLineClassification)
       implements RejectionDetails {
-    public RetainedEarningsAccountRoleMismatchDetails {
+    public ClosingEquityAccountClassificationMismatchDetails {
       accountCode = requireText(accountCode, "accountCode");
-      actualAccountRole = requireText(actualAccountRole, "actualAccountRole");
+      requiredFinancialPositionLineClassification =
+          requireText(
+              requiredFinancialPositionLineClassification,
+              "requiredFinancialPositionLineClassification");
+      actualFinancialPositionLineClassification =
+          requireText(
+              actualFinancialPositionLineClassification,
+              "actualFinancialPositionLineClassification");
     }
   }
 

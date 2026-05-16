@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -15,6 +16,7 @@ public record DeclaredAccount(
     AccountName accountName,
     AccountType accountType,
     AccountRole accountRole,
+    AccountTaxonomy accountTaxonomy,
     boolean active,
     Instant declaredAt) {
   /** Validates one declared-account snapshot. */
@@ -23,8 +25,9 @@ public record DeclaredAccount(
     Objects.requireNonNull(accountName, "accountName");
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
     Objects.requireNonNull(declaredAt, "declaredAt");
-    AccountSemantics.validate(accountType, accountRole);
+    AccountSemantics.validate(accountType, accountRole, accountTaxonomy);
   }
 
   /** Returns the doctrinal journal side that increases this account. */

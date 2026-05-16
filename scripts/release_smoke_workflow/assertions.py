@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import csv
 import re
+from io import StringIO
 from typing import Any
 
-from .models import ReleaseSmokeConfig, SmokePath
+from .models import ReleaseSmokeConfig, ReleaseSmokeFailure, SmokePath
 from .support import (
     extract_pdf_exported_path,
     normalize_reported_path,
@@ -15,6 +17,18 @@ from .support import (
     required_list,
     required_mapping,
 )
+
+
+def parse_csv_rows(csv_output: str, surface_name: str) -> tuple[list[str], list[dict[str, str]]]:
+    try:
+        reader = csv.DictReader(StringIO(csv_output))
+        fieldnames = reader.fieldnames
+        if fieldnames is None:
+            raise ReleaseSmokeFailure(f"{surface_name} did not render a CSV header")
+        rows = list(reader)
+    except csv.Error as exc:
+        raise ReleaseSmokeFailure(f"{surface_name} was not valid CSV") from exc
+    return list(fieldnames), rows
 
 
 def assert_capabilities_payload(
@@ -305,29 +319,137 @@ def assert_operator_queries_and_reports(
         reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
         f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
     )
-    require_match(
-        account_ledger_csv_output,
-        r"^recordKind,entityName,functionalCurrency,fiscalYearStart,postingCoverage,accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateFromMeaning,effectiveDateTo,effectiveDateToMeaning,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts$",
+    account_ledger_header, account_ledger_rows = parse_csv_rows(
+        account_ledger_csv_output, f"{config.label} account-ledger CSV output"
+    )
+    expected_account_ledger_header = [
+        "recordKind",
+        "currencyCode",
+        "bucketDebitTotal",
+        "bucketCreditTotal",
+        "bucketNetAmount",
+        "bucketBalanceSide",
+        "postingId",
+        "postingKind",
+        "reversalState",
+        "reversalTarget",
+        "effectiveDate",
+        "recordedAt",
+        "debitAmount",
+        "creditAmount",
+        "runningNetAmount",
+        "runningBalanceSide",
+        "counterpartAccounts",
+    ]
+    require(
+        account_ledger_header == expected_account_ledger_header,
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
-    require_match(
-        account_ledger_csv_output,
-        r"^opening-balance,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,0\.00,0\.00,0\.00,ZERO,,,,,,,,,,,$",
+    require(
+        len(account_ledger_rows) == 4,
+        f"{config.label} account-ledger CSV output did not render the expected row count",
+    )
+    opening_balance, opening_entry, adjustment_entry, closing_balance = account_ledger_rows
+    require(
+        opening_balance
+        == {
+            "recordKind": "opening-balance",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "0.00",
+            "bucketCreditTotal": "0.00",
+            "bucketNetAmount": "0.00",
+            "bucketBalanceSide": "ZERO",
+            "postingId": "",
+            "postingKind": "",
+            "reversalState": "",
+            "reversalTarget": "",
+            "effectiveDate": "",
+            "recordedAt": "",
+            "debitAmount": "",
+            "creditAmount": "",
+            "runningNetAmount": "",
+            "runningBalanceSide": "",
+            "counterpartAccounts": "",
+        },
         f"{config.label} account-ledger CSV output did not render the opening-balance row",
     )
-    require_match(
-        account_ledger_csv_output,
-        r"^ledger-entry,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,[^,]+,STANDARD,direct,,2026-04-07,[^,]+,10\.00,0\.00,10\.00,DEBIT,2000$",
+    require(
+        opening_entry["recordKind"] == "ledger-entry"
+        and opening_entry["currencyCode"] == "EUR"
+        and opening_entry["bucketDebitTotal"] == ""
+        and opening_entry["bucketCreditTotal"] == ""
+        and opening_entry["bucketNetAmount"] == ""
+        and opening_entry["bucketBalanceSide"] == ""
+        and opening_entry["postingKind"] == "STANDARD"
+        and opening_entry["reversalState"] == "direct"
+        and opening_entry["reversalTarget"] == ""
+        and opening_entry["effectiveDate"] == "2026-04-07"
+        and opening_entry["debitAmount"] == "10.00"
+        and opening_entry["creditAmount"] == "0.00"
+        and opening_entry["runningNetAmount"] == "10.00"
+        and opening_entry["runningBalanceSide"] == "DEBIT"
+        and opening_entry["counterpartAccounts"] == "2000",
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
-        account_ledger_csv_output,
-        r"^ledger-entry,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,,,,,[^,]+,STANDARD,direct,,2026-04-08,[^,]+,0\.00,4\.00,6\.00,DEBIT,2000$",
+        opening_entry["postingId"],
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        f"{config.label} account-ledger CSV output did not render a canonical posting identifier for the opening ledger movement row",
+    )
+    require_match(
+        opening_entry["recordedAt"],
+        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$",
+        f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the opening ledger movement row",
+    )
+    require(
+        adjustment_entry["recordKind"] == "ledger-entry"
+        and adjustment_entry["currencyCode"] == "EUR"
+        and adjustment_entry["bucketDebitTotal"] == ""
+        and adjustment_entry["bucketCreditTotal"] == ""
+        and adjustment_entry["bucketNetAmount"] == ""
+        and adjustment_entry["bucketBalanceSide"] == ""
+        and adjustment_entry["postingKind"] == "STANDARD"
+        and adjustment_entry["reversalState"] == "direct"
+        and adjustment_entry["reversalTarget"] == ""
+        and adjustment_entry["effectiveDate"] == "2026-04-08"
+        and adjustment_entry["debitAmount"] == "0.00"
+        and adjustment_entry["creditAmount"] == "4.00"
+        and adjustment_entry["runningNetAmount"] == "6.00"
+        and adjustment_entry["runningBalanceSide"] == "DEBIT"
+        and adjustment_entry["counterpartAccounts"] == "2000",
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )
     require_match(
-        account_ledger_csv_output,
-        r"^closing-balance,[^,\n]+,EUR,01-01,all-posting-kinds,1000,Cash,ASSET,ORDINARY,2026-04-07,selected-effective-date,2026-04-08,selected-effective-date,EUR,10\.00,4\.00,6\.00,DEBIT,,,,,,,,,,,$",
+        adjustment_entry["postingId"],
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        f"{config.label} account-ledger CSV output did not render a canonical posting identifier for the running-balance adjustment row",
+    )
+    require_match(
+        adjustment_entry["recordedAt"],
+        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$",
+        f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the running-balance adjustment row",
+    )
+    require(
+        closing_balance
+        == {
+            "recordKind": "closing-balance",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "10.00",
+            "bucketCreditTotal": "4.00",
+            "bucketNetAmount": "6.00",
+            "bucketBalanceSide": "DEBIT",
+            "postingId": "",
+            "postingKind": "",
+            "reversalState": "",
+            "reversalTarget": "",
+            "effectiveDate": "",
+            "recordedAt": "",
+            "debitAmount": "",
+            "creditAmount": "",
+            "runningNetAmount": "",
+            "runningBalanceSide": "",
+            "counterpartAccounts": "",
+        },
         f"{config.label} account-ledger CSV output did not render the closing-balance row",
     )
     require_match(

@@ -21,7 +21,7 @@ public enum PostingLifecycleStatus implements WireValue {
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
   OPENING_BALANCE_WINDOW_CLOSED("opening-balance-window-closed"),
   OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT("opening-balance-touches-nominal-account"),
-  RETAINED_EARNINGS_ACCOUNT_RESERVED("retained-earnings-account-reserved"),
+  CLOSING_EQUITY_ACCOUNT_RESERVED("closing-equity-account-reserved"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),
   REVERSAL_ALREADY_EXISTS("reversal-already-exists"),
   REVERSAL_DOES_NOT_NEGATE_TARGET("reversal-does-not-negate-target");

@@ -34,16 +34,25 @@ public final class RejectionNarrative {
                   accountRoleConflict.accountCode().value(),
                   accountRoleConflict.existingAccountRole().wireValue(),
                   accountRoleConflict.requestedAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountMissing rejectionMissing ->
-          "Retained-earnings account '%s' is not declared in this book."
+      case BookAdministrationRejection.AccountTaxonomyConflict accountTaxonomyConflict ->
+          "Account '%s' already exists with a different immutable hierarchy or statement taxonomy."
+              .formatted(accountTaxonomyConflict.accountCode().value());
+      case BookAdministrationRejection.ClosingEquityAccountMissing rejectionMissing ->
+          "Closing-equity account '%s' is not declared in this book."
               .formatted(rejectionMissing.accountCode().value());
-      case BookAdministrationRejection.RetainedEarningsAccountRoleMismatch rejectionRoleMismatch ->
-          "Account '%s' has account role '%s' and cannot receive period-close earnings."
+      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch
+              rejectionClassificationMismatch ->
+          "Account '%s' has financial position classification '%s', but this book requires '%s' for period close."
               .formatted(
-                  rejectionRoleMismatch.accountCode().value(),
-                  rejectionRoleMismatch.actualAccountRole().wireValue());
-      case BookAdministrationRejection.RetainedEarningsAccountInactive rejectionInactive ->
-          "Retained-earnings account '%s' is inactive and cannot receive closing entries."
+                  rejectionClassificationMismatch.accountCode().value(),
+                  rejectionClassificationMismatch
+                      .actualFinancialPositionLineClassification()
+                      .wireValue(),
+                  rejectionClassificationMismatch
+                      .requiredFinancialPositionLineClassification()
+                      .wireValue());
+      case BookAdministrationRejection.ClosingEquityAccountInactive rejectionInactive ->
+          "Closing-equity account '%s' is inactive and cannot receive closing entries."
               .formatted(rejectionInactive.accountCode().value());
       case BookAdministrationRejection.PeriodCloseMustStartAt rejectionStartAt ->
           "Close period must start at '%s' to preserve one contiguous close horizon."
@@ -113,8 +122,8 @@ public final class RejectionNarrative {
               .formatted(
                   openingBalanceNominal.accountCode().value(),
                   openingBalanceNominal.accountType().wireValue());
-      case PostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
-          "Retained-earnings account '%s' is reserved for generated period-close postings."
+      case PostingRejection.ClosingEquityAccountReserved rejectionReserved ->
+          "Closing-equity account '%s' is reserved for generated period-close postings."
               .formatted(rejectionReserved.accountCode().value());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           "No committed posting exists for reversal target '%s'."

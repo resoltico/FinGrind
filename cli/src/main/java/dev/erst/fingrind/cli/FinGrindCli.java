@@ -51,6 +51,16 @@ final class FinGrindCli {
                 inputStream, CliBookPassphraseResolver.systemTerminal())));
   }
 
+  static App.CliRunner standardRunner(App.CliRuntimeEnvironment runtimeEnvironment) {
+    Objects.requireNonNull(runtimeEnvironment, "runtimeEnvironment");
+    return standard(
+            runtimeEnvironment.inputStream(),
+            runtimeEnvironment.outputStream(),
+            runtimeEnvironment.errorStream(),
+            runtimeEnvironment.clock())
+        ::run;
+  }
+
   static FinGrindCli withTerminal(
       InputStream inputStream,
       PrintStream outputStream,
@@ -85,8 +95,7 @@ final class FinGrindCli {
             new PdfReportService(metadata.applicationName(), metadata.version(), this.clock));
     this.administrativeCommandExecutor =
         new CliAdministrativeCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
-    this.discoveryCommandExecutor =
-        new CliDiscoveryCommandExecutor(responseWriter, metadata, this.clock);
+    this.discoveryCommandExecutor = new CliDiscoveryCommandExecutor(responseWriter, metadata);
     this.mutationCommandExecutor =
         new CliMutationCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
     this.queryCommandExecutor = new CliQueryCommandExecutor(responseWriter, resolvedBookWorkflow);

@@ -135,8 +135,10 @@ TEXT
                 ;;
             open-book)
                 entity_name=''
+                entity_form=''
                 functional_currency=''
                 fiscal_year_start=''
+                accounting_basis=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
@@ -147,6 +149,10 @@ TEXT
                             entity_name="${2}"
                             shift 2
                             ;;
+                        --entity-form)
+                            entity_form="${2}"
+                            shift 2
+                            ;;
                         --functional-currency)
                             functional_currency="${2}"
                             shift 2
@@ -155,14 +161,20 @@ TEXT
                             fiscal_year_start="${2}"
                             shift 2
                             ;;
+                        --accounting-basis)
+                            accounting_basis="${2}"
+                            shift 2
+                            ;;
                         *)
                             shift
                             ;;
                     esac
                 done
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
+                [[ "${entity_form}" == 'COMPANY' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
+                [[ "${accounting_basis}" == 'ACCRUAL' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)

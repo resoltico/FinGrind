@@ -1,19 +1,28 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
+import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,6 +31,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Shared SQLite statement helpers for single-row lookups and pragma reads. */
 final class SqliteStatementQueries {
@@ -179,38 +189,62 @@ final class SqliteStatementQueries {
 
   static Optional<BookIdentity> loadBookIdentity(SqliteNativeDatabase activeDatabase) {
     Optional<String> entityName =
-        loadOptionalText(
-            activeDatabase,
-            SqlitePostingSql.FIND_BOOK_META_VALUE,
-            statement -> statement.bindText(1, SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY));
+        loadBookMetaValue(activeDatabase, SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY);
     if (entityName.isEmpty()) {
       return Optional.empty();
     }
+    String requiredEntityForm =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_ENTITY_FORM_META_KEY,
+            "Initialized SQLite book is missing entity-form metadata.");
+    String requiredOwnerModel =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_OWNER_MODEL_META_KEY,
+            "Initialized SQLite book is missing owner-model metadata.");
+    String requiredReportingObligationStatus =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_REPORTING_OBLIGATION_STATUS_META_KEY,
+            "Initialized SQLite book is missing reporting-obligation metadata.");
+    String requiredTaxRegistrationStatus =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_TAX_REGISTRATION_STATUS_META_KEY,
+            "Initialized SQLite book is missing tax-registration metadata.");
+    String requiredBusinessActivityTags =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY,
+            "Initialized SQLite book is missing business-activity metadata.");
     String requiredFunctionalCurrency =
-        loadOptionalText(
-                activeDatabase,
-                SqlitePostingSql.FIND_BOOK_META_VALUE,
-                statement ->
-                    statement.bindText(1, SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY))
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Initialized SQLite book is missing functional-currency metadata."));
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY,
+            "Initialized SQLite book is missing functional-currency metadata.");
     String requiredFiscalYearStart =
-        loadOptionalText(
-                activeDatabase,
-                SqlitePostingSql.FIND_BOOK_META_VALUE,
-                statement ->
-                    statement.bindText(1, SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY))
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Initialized SQLite book is missing fiscal-year-start metadata."));
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY,
+            "Initialized SQLite book is missing fiscal-year-start metadata.");
+    String requiredAccountingBasis =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_ACCOUNTING_BASIS_META_KEY,
+            "Initialized SQLite book is missing accounting-basis metadata.");
     return Optional.of(
         new BookIdentity(
-            new BookEntityName(entityName.orElseThrow()),
+            new EntityProfile(
+                new BookEntityName(entityName.orElseThrow()),
+                EntityForm.fromWireValue(requiredEntityForm),
+                OwnerModel.fromWireValue(requiredOwnerModel),
+                ReportingObligationStatus.fromWireValue(requiredReportingObligationStatus),
+                TaxRegistrationStatus.fromWireValue(requiredTaxRegistrationStatus),
+                decodeBusinessActivityTags(requiredBusinessActivityTags)),
             CurrencyUnit.of(requiredFunctionalCurrency),
-            FiscalYearStart.parse(requiredFiscalYearStart)));
+            FiscalYearStart.parse(requiredFiscalYearStart),
+            AccountingBasis.fromWireValue(requiredAccountingBasis)));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {
@@ -279,6 +313,34 @@ final class SqliteStatementQueries {
           return new OptionalTextRow(
               Optional.ofNullable(value), statement.step() == SqliteNativeResultCodes.DONE);
         });
+  }
+
+  private static Optional<String> loadBookMetaValue(
+      SqliteNativeDatabase activeDatabase, String metaKey) {
+    return loadOptionalText(
+        activeDatabase,
+        SqlitePostingSql.FIND_BOOK_META_VALUE,
+        statement -> statement.bindText(1, metaKey));
+  }
+
+  private static String requireBookMetaValue(
+      SqliteNativeDatabase activeDatabase, String metaKey, String missingMessage) {
+    return loadBookMetaValue(activeDatabase, metaKey)
+        .orElseThrow(() -> new IllegalStateException(missingMessage));
+  }
+
+  private static List<BusinessActivityTag> decodeBusinessActivityTags(String encodedTags) {
+    if (encodedTags.isBlank()) {
+      return List.of();
+    }
+    return Stream.of(encodedTags.split(",", -1))
+        .map(SqliteStatementQueries::decodeBookMetaValue)
+        .map(BusinessActivityTag::new)
+        .toList();
+  }
+
+  private static String decodeBookMetaValue(String encodedValue) {
+    return new String(Base64.getUrlDecoder().decode(encodedValue), StandardCharsets.UTF_8);
   }
 
   private static <T> T withStatement(

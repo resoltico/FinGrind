@@ -4,8 +4,9 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
@@ -14,14 +15,19 @@ import java.util.Optional;
 
 /** Local bookkeeping posting service used before any public published-language projection. */
 public final class BookkeepingPostingService {
-  private final BookStore bookStore;
+  private final PostingValidationStore validationStore;
+  private final PostingCommitStore commitStore;
   private final PostingIdGenerator postingIdGenerator;
   private final Clock clock;
 
   /** Creates the local bookkeeping posting service with its application-owned seams. */
   public BookkeepingPostingService(
-      BookStore bookStore, PostingIdGenerator postingIdGenerator, Clock clock) {
-    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock) {
+    this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
+    this.commitStore = Objects.requireNonNull(commitStore, "commitStore");
     this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
   }
@@ -30,7 +36,7 @@ public final class BookkeepingPostingService {
   public PostingPreflightOutcome preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command, bookStore);
+        PostingAcceptancePolicy.rejectionFor(command, validationStore);
     if (rejection.isPresent()) {
       return new PostingPreflightOutcome.Rejected(rejection.orElseThrow());
     }
@@ -48,6 +54,6 @@ public final class BookkeepingPostingService {
             command.postingKind(),
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
-    return bookStore.commit(postingDraft, postingIdGenerator);
+    return commitStore.commit(postingDraft, postingIdGenerator);
   }
 }

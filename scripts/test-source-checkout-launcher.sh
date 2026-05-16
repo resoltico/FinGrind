@@ -59,7 +59,8 @@ readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
 mkdir -p "${repo_tmp_dir}"
 tmp_dir="$(mktemp -d "${repo_tmp_dir}/source-checkout-launcher.XXXXXX")"
 cleanup() {
-    rm -rf "${tmp_dir}"
+    chmod -R u+rwx "${tmp_dir}" 2>/dev/null || true
+    rm -rf "${tmp_dir}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -106,8 +107,10 @@ raw_open_stderr="${tmp_dir}/raw-open.err"
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
 readonly entity_name='Launcher Smoke Co'
+readonly entity_form='COMPANY'
 readonly functional_currency='EUR'
 readonly fiscal_year_start='01-01'
+readonly accounting_basis='ACCRUAL'
 mkdir -p "$(dirname "${book_file}")" "$(dirname "${key_file}")"
 
 "${launcher_wrapper}" help --output human >"${help_stdout}" 2>"${help_stderr}" ||
@@ -164,12 +167,14 @@ grep -Fq '"status":"ok"' "${key_stdout}" || die "source-checkout launcher key ge
     --book-file "${book_file}" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
+    --entity-form "${entity_form}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" >"${open_stdout}" 2>"${open_stderr}" ||
+    --fiscal-year-start "${fiscal_year_start}" \
+    --accounting-basis "${accounting_basis}" >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
 [[ ! -s "${open_stderr}" ]] || die "source-checkout launcher open-book wrote diagnostics"
-python3 - "${open_stdout}" "${entity_name}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
+python3 - "${open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
 import sys
@@ -181,10 +186,14 @@ if document["status"] != "ok":
     raise SystemExit("source-checkout launcher open-book did not return ok")
 if book_identity["entityName"] != sys.argv[2]:
     raise SystemExit("source-checkout launcher open-book returned the wrong entity name")
-if book_identity["functionalCurrency"] != sys.argv[3]:
+if book_identity["entityForm"] != sys.argv[3]:
+    raise SystemExit("source-checkout launcher open-book returned the wrong entity form")
+if book_identity["functionalCurrency"] != sys.argv[4]:
     raise SystemExit("source-checkout launcher open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[4]:
+if book_identity["fiscalYearStart"] != sys.argv[5]:
     raise SystemExit("source-checkout launcher open-book returned the wrong fiscal year start")
+if book_identity["accountingBasis"] != sys.argv[6]:
+    raise SystemExit("source-checkout launcher open-book returned the wrong accounting basis")
 PY
 
 [[ -f "${raw_jar}" ]] || die "missing raw developer JAR"
@@ -245,12 +254,14 @@ PY
     --book-file "${tmp_dir}/raw-jar.sqlite" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
+    --entity-form "${entity_form}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
+    --fiscal-year-start "${fiscal_year_start}" \
+    --accounting-basis "${accounting_basis}" >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer raw JAR open-book failed"
 
 [[ ! -s "${raw_open_stderr}" ]] || die "developer raw JAR open-book wrote diagnostics"
-python3 - "${raw_open_stdout}" "${entity_name}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
+python3 - "${raw_open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
 import sys
@@ -262,10 +273,14 @@ if document["status"] != "ok":
     raise SystemExit("developer raw JAR open-book did not return ok")
 if book_identity["entityName"] != sys.argv[2]:
     raise SystemExit("developer raw JAR open-book returned the wrong entity name")
-if book_identity["functionalCurrency"] != sys.argv[3]:
+if book_identity["entityForm"] != sys.argv[3]:
+    raise SystemExit("developer raw JAR open-book returned the wrong entity form")
+if book_identity["functionalCurrency"] != sys.argv[4]:
     raise SystemExit("developer raw JAR open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[4]:
+if book_identity["fiscalYearStart"] != sys.argv[5]:
     raise SystemExit("developer raw JAR open-book returned the wrong fiscal year start")
+if book_identity["accountingBasis"] != sys.argv[6]:
+    raise SystemExit("developer raw JAR open-book returned the wrong accounting basis")
 PY
 
 printf 'source-checkout launcher regression: success\n'

@@ -202,6 +202,50 @@ class ProtocolCatalogTest {
   }
 
   @Test
+  void accountingBaselineFacts_requireBuiltInStatementsToMatchImplementedCapabilities() {
+    AccountingBaselineFacts baseline = ProtocolCatalog.accountingBaseline();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountingBaselineFacts(
+                baseline.scope(),
+                baseline.currentTarget(),
+                baseline.nextTarget(),
+                baseline.doctrineSources(),
+                List.of("statement-of-cash-flows"),
+                baseline.deliberateExclusions(),
+                baseline.nonClaims(),
+                baseline.reportCapabilities(),
+                baseline.requiredMissingCapabilities(),
+                baseline.defaultPolicyPack(),
+                baseline.standardsPosition(),
+                baseline.reportingPosition(),
+                baseline.chartModelPosition(),
+                baseline.smallEntityPosition(),
+                baseline.operationalPosition(),
+                baseline.taxPosition(),
+                baseline.organizationalPosition(),
+                baseline.isoClarification()));
+  }
+
+  @Test
+  void extensionSurfaceFacts_requireImplementedSeamsToMatchImplementedPolicyInventory() {
+    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ExtensionSurfaceFacts(
+                extensionSurface.model(),
+                extensionSurface.defaultPolicyPackId(),
+                List.of("close-policy"),
+                extensionSurface.policySeams(),
+                extensionSurface.futureContexts(),
+                extensionSurface.description()));
+  }
+
+  @Test
   void operationIdContract_loadsAndRejectsMissingMappings() {
     OperationIdContract contract =
         OperationIdContract.loadFromResource(

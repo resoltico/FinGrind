@@ -11,7 +11,7 @@ public final class AccountCodePolicy {
 
   /** Current chart-of-accounts structure supported by FinGrind. */
   public enum ChartStructure {
-    FLAT
+    PARENT_CHILD_HIERARCHY
   }
 
   private AccountCodePolicy() {}
@@ -23,20 +23,24 @@ public final class AccountCodePolicy {
 
   /** Returns the canonical chart structure supported by current FinGrind books. */
   public static ChartStructure chartStructure() {
-    return ChartStructure.FLAT;
+    return ChartStructure.PARENT_CHILD_HIERARCHY;
   }
 
   /**
    * Validates one account declaration against the current policy.
    *
    * <p>Current FinGrind books intentionally treat account codes as opaque book-local identifiers
-   * rather than type-carrying ranges, so every semantic restriction remains local to account
-   * classification and role instead of being inferred from the code text.
+   * rather than type-carrying ranges, so every semantic restriction remains local to explicit
+   * taxonomy metadata instead of being inferred from the code text.
    */
   public static void validate(
-      AccountCode accountCode, AccountType accountType, AccountRole accountRole) {
+      AccountCode accountCode,
+      AccountType accountType,
+      AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy) {
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
   }
 }

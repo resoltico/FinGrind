@@ -72,11 +72,11 @@ final class CliAdministrativeCommandExecutor {
   int runClosePeriodCommand(
       BookAccess bookAccess,
       ReportingPeriod reportingPeriod,
-      AccountCode retainedEarningsAccountCode,
+      AccountCode closingEquityAccountCode,
       OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.closePeriod(
-            bookAccess, new ClosePeriodCommand(reportingPeriod, retainedEarningsAccountCode)),
+            bookAccess, new ClosePeriodCommand(reportingPeriod, closingEquityAccountCode)),
         outputMode,
         result -> responseWriter.writeClosePeriodResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,

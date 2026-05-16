@@ -227,7 +227,7 @@ final class SqliteNativeRuntimePolicy {
     if (configuredLibraryPath == null) {
       throw missingLibraryTargetFailure();
     }
-    String normalizedPath = configuredLibraryPath.trim();
+    String normalizedPath = configuredLibraryPath.strip();
     if (normalizedPath.isEmpty()) {
       throw new ManagedSqliteRuntimeUnavailableException(
           SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " must not be blank.");
@@ -240,7 +240,7 @@ final class SqliteNativeRuntimePolicy {
     if (configuredLibraryPath == null) {
       return null;
     }
-    String normalizedPath = configuredLibraryPath.trim();
+    String normalizedPath = configuredLibraryPath.strip();
     if (normalizedPath.isEmpty()) {
       return null;
     }
@@ -251,7 +251,7 @@ final class SqliteNativeRuntimePolicy {
     if (path == null) {
       return null;
     }
-    String normalizedPath = path.trim();
+    String normalizedPath = path.strip();
     if (normalizedPath.isEmpty()) {
       return null;
     }

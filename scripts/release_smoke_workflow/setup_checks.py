@@ -96,6 +96,10 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected entity name",
     )
     require(
+        payload_field(open_payload, "payload", "bookIdentity", "entityForm") == config.entity_form,
+        f"{config.label} open-book did not echo the expected entity form",
+    )
+    require(
         payload_field(open_payload, "payload", "bookIdentity", "functionalCurrency")
         == config.functional_currency,
         f"{config.label} open-book did not echo the expected functional currency",
@@ -104,6 +108,11 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         payload_field(open_payload, "payload", "bookIdentity", "fiscalYearStart")
         == config.fiscal_year_start,
         f"{config.label} open-book did not echo the expected fiscal year start",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "accountingBasis")
+        == config.accounting_basis,
+        f"{config.label} open-book did not echo the expected accounting basis",
     )
 
 
@@ -173,10 +182,14 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.book.argument,
             "--entity-name",
             config.entity_name,
+            "--entity-form",
+            config.entity_form,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
+            "--accounting-basis",
+            config.accounting_basis,
             "--book-passphrase-stdin",
             stdin_text=generated_passphrase,
         )
@@ -188,10 +201,14 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.book.argument,
             "--entity-name",
             config.entity_name,
+            "--entity-form",
+            config.entity_form,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
+            "--accounting-basis",
+            config.accounting_basis,
             "--book-key-file",
             config.book_key.argument,
         )

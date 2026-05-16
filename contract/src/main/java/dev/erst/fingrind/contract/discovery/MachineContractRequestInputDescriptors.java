@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.InteractionLimits;
@@ -43,10 +42,8 @@ final class MachineContractRequestInputDescriptors {
             operation(OperationId.PRINT_REQUEST_TEMPLATE),
             operation(OperationId.PRINT_PLAN_TEMPLATE)),
         ProtocolOptions.OUTPUT,
-        OutputMode.HUMAN,
-        OutputMode.JSON,
         List.of(
-            "commands in capabilities.commands that advertise non-empty outputModes default successful stdout to human text on an interactive terminal and to JSON when stdout is redirected or captured, unless callers select a different public value explicitly through --output",
+            "commands in capabilities.commands that advertise non-empty outputModes publish their interactive-terminal and redirected-stdout defaults on each command descriptor, unless callers select a different public value explicitly through --output",
             "commands listed in requestFileCommands accept one structured JSON request document through --request-file <path|->, while commands listed in directArgumentCommands accept typed CLI flags instead of a request document",
             "commands in capabilities.commands with empty outputModes still publish one fixed stdout contract through executionMode, so agents can distinguish fixed raw JSON from fixed JSON envelopes",
             "supported report commands also accept --pdf-out <path> and write one PDF artifact on successful execution without changing the command's selected stdout output mode; successful exports also report the normalized artifact path on the diagnostics stream",

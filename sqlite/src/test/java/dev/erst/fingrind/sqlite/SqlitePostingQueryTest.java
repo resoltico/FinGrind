@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
@@ -101,34 +102,50 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           new PostingCommitResult.Committed(postingThree),
           commitPosting(postingFactStore, postingThree));
+      PostingHistoryQuery firstPageQuery =
+          new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
       assertEquals(
           new PostingPage(
+              bookIdentity(),
+              Optional.empty(),
+              EffectiveDateRange.unbounded(),
               List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
               2,
               Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo)))),
-          published(
-              postingFactStore.listPostings(
-                  new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty()))));
+          published(firstPageQuery, postingFactStore.listPostings(firstPageQuery)));
+      PostingHistoryQuery secondPageQuery =
+          new PostingHistoryQuery(
+              Optional.empty(),
+              null,
+              null,
+              2,
+              Optional.of(PostingHistoryCursor.fromPosting(postingTwo)));
       assertEquals(
-          new PostingPage(List.of(publishedPostingFact(postingOne)), 2, Optional.empty()),
-          published(
-              postingFactStore.listPostings(
-                  new PostingHistoryQuery(
-                      Optional.empty(),
-                      null,
-                      null,
-                      2,
-                      Optional.of(PostingHistoryCursor.fromPosting(postingTwo))))));
+          new PostingPage(
+              bookIdentity(),
+              Optional.empty(),
+              EffectiveDateRange.unbounded(),
+              List.of(publishedPostingFact(postingOne)),
+              2,
+              Optional.empty()),
+          published(secondPageQuery, postingFactStore.listPostings(secondPageQuery)));
+      PostingHistoryQuery filteredQuery =
+          new PostingHistoryQuery(
+              Optional.of(new AccountCode("1000")),
+              LocalDate.parse("2026-04-07"),
+              LocalDate.parse("2026-04-08"),
+              50,
+              Optional.empty());
       assertEquals(
-          new PostingPage(List.of(publishedPostingFact(postingOne)), 50, Optional.empty()),
-          published(
-              postingFactStore.listPostings(
-                  new PostingHistoryQuery(
-                      Optional.of(new AccountCode("1000")),
-                      LocalDate.parse("2026-04-07"),
-                      LocalDate.parse("2026-04-08"),
-                      50,
-                      Optional.empty()))));
+          new PostingPage(
+              bookIdentity(),
+              Optional.of(new AccountCode("1000")),
+              new EffectiveDateRange.Bounded(
+                  LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08")),
+              List.of(publishedPostingFact(postingOne)),
+              50,
+              Optional.empty()),
+          published(filteredQuery, postingFactStore.listPostings(filteredQuery)));
     }
   }
 

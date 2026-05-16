@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -26,10 +25,15 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
+import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import dev.erst.fingrind.executor.spi.PeriodCloseStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.PostingRangeStore;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,31 +44,65 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Application service that closes one contiguous reporting period into retained earnings. */
+/**
+ * Application service that closes one contiguous reporting period into one policy-owned equity
+ * target.
+ */
 public final class PeriodCloseService {
   private static final ActorId PERIOD_CLOSE_ACTOR_ID = new ActorId("system:periodClose");
   private static final ActorType PERIOD_CLOSE_ACTOR_TYPE = ActorType.SYSTEM;
   private static final SourceChannel PERIOD_CLOSE_SOURCE_CHANNEL = SourceChannel.SYSTEM;
   private static final String PERIOD_CLOSE_REQUEST_TOKEN = "periodClose";
 
-  private final BookStore bookStore;
+  private final BookLifecycleReader lifecycleReader;
+  private final AccountCatalogStore accountCatalogStore;
+  private final PostingRangeStore postingRangeStore;
+  private final PeriodCloseStore periodCloseStore;
   private final PostingIdGenerator postingIdGenerator;
   private final Clock clock;
+  private final ClosePolicy closePolicy;
 
   /** Creates the close-period service with its application-owned seams. */
   public PeriodCloseService(
-      BookStore bookStore, PostingIdGenerator postingIdGenerator, Clock clock) {
-    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
-    this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    this.clock = Objects.requireNonNull(clock, "clock");
+      BookLifecycleReader lifecycleReader,
+      AccountCatalogStore accountCatalogStore,
+      PostingRangeStore postingRangeStore,
+      PeriodCloseStore periodCloseStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock) {
+    this(
+        lifecycleReader,
+        accountCatalogStore,
+        postingRangeStore,
+        periodCloseStore,
+        postingIdGenerator,
+        clock,
+        CoreBookkeepingPolicyPack.current().closePolicy());
   }
 
-  /** Closes one contiguous reporting period using generated retained-earnings closing postings. */
+  PeriodCloseService(
+      BookLifecycleReader lifecycleReader,
+      AccountCatalogStore accountCatalogStore,
+      PostingRangeStore postingRangeStore,
+      PeriodCloseStore periodCloseStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock,
+      ClosePolicy closePolicy) {
+    this.lifecycleReader = Objects.requireNonNull(lifecycleReader, "lifecycleReader");
+    this.accountCatalogStore = Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
+    this.postingRangeStore = Objects.requireNonNull(postingRangeStore, "postingRangeStore");
+    this.periodCloseStore = Objects.requireNonNull(periodCloseStore, "periodCloseStore");
+    this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    this.clock = Objects.requireNonNull(clock, "clock");
+    this.closePolicy = Objects.requireNonNull(closePolicy, "closePolicy");
+  }
+
+  /** Closes one contiguous reporting period using generated closing-equity postings. */
   public PeriodCloseOutcome closePeriod(
-      ReportingPeriod reportingPeriod, AccountCode retainedEarningsAccountCode) {
+      ReportingPeriod reportingPeriod, AccountCode closingEquityAccountCode) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
-    BookLifecycleInspection inspection = bookStore.inspectBook();
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
+    BookLifecycleInspection inspection = lifecycleReader.inspectBook();
     if (!inspection.allowsInitializedWorkflow()) {
       return new PeriodCloseOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
@@ -72,13 +110,14 @@ public final class PeriodCloseService {
     BookLifecycleInspection.Initialized initialized =
         (BookLifecycleInspection.Initialized) inspection;
 
-    List<RegisteredAccount> accounts = bookStore.allAccounts();
-    Optional<RegisteredAccount> retainedEarningsAccount =
-        retainedEarningsAccount(accounts, retainedEarningsAccountCode);
-    Optional<BookkeepingAdministrationRejection> retainedEarningsRejection =
-        retainedEarningsRejection(retainedEarningsAccountCode, retainedEarningsAccount);
-    if (retainedEarningsRejection.isPresent()) {
-      return new PeriodCloseOutcome.Rejected(retainedEarningsRejection.orElseThrow());
+    List<RegisteredAccount> accounts = accountCatalogStore.allAccounts();
+    Optional<RegisteredAccount> closingEquityAccount =
+        closingEquityAccount(accounts, closingEquityAccountCode);
+    Optional<BookkeepingAdministrationRejection> closingEquityRejection =
+        closingEquityRejection(
+            initialized.bookIdentity(), closingEquityAccountCode, closingEquityAccount);
+    if (closingEquityRejection.isPresent()) {
+      return new PeriodCloseOutcome.Rejected(closingEquityRejection.orElseThrow());
     }
 
     Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
@@ -88,46 +127,60 @@ public final class PeriodCloseService {
     }
 
     Instant closedAt = clock.instant();
-    RegisteredAccount requiredRetainedEarningsAccount = retainedEarningsAccount.orElseThrow();
+    RegisteredAccount requiredClosingEquityAccount = closingEquityAccount.orElseThrow();
     PeriodClosePlan closePlan =
-        closingPostings(reportingPeriod, requiredRetainedEarningsAccount, accounts, closedAt);
-    return bookStore.closePeriod(
+        closingPostings(reportingPeriod, requiredClosingEquityAccount, accounts, closedAt);
+    return periodCloseStore.closePeriod(
         new PeriodCloseDraft(
             reportingPeriod,
-            requiredRetainedEarningsAccount.accountCode(),
+            requiredClosingEquityAccount.accountCode(),
             closePlan.closedTotals(),
             closedAt,
             closePlan.closingPostings()),
         postingIdGenerator);
   }
 
-  private Optional<RegisteredAccount> retainedEarningsAccount(
-      List<RegisteredAccount> accounts, AccountCode retainedEarningsAccountCode) {
+  private Optional<RegisteredAccount> closingEquityAccount(
+      List<RegisteredAccount> accounts, AccountCode closingEquityAccountCode) {
     Objects.requireNonNull(accounts, "accounts");
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     return accounts.stream()
-        .filter(account -> account.accountCode().equals(retainedEarningsAccountCode))
+        .filter(account -> account.accountCode().equals(closingEquityAccountCode))
         .findFirst();
   }
 
-  private Optional<BookkeepingAdministrationRejection> retainedEarningsRejection(
-      AccountCode retainedEarningsAccountCode,
-      Optional<RegisteredAccount> retainedEarningsAccount) {
-    Objects.requireNonNull(retainedEarningsAccountCode, "retainedEarningsAccountCode");
-    if (retainedEarningsAccount.isEmpty()) {
+  private Optional<BookkeepingAdministrationRejection> closingEquityRejection(
+      dev.erst.fingrind.core.BookIdentity bookIdentity,
+      AccountCode closingEquityAccountCode,
+      Optional<RegisteredAccount> closingEquityAccount) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
+    if (closingEquityAccount.isEmpty()) {
       return Optional.of(
-          new BookkeepingAdministrationRejection.RetainedEarningsAccountMissing(
-              retainedEarningsAccountCode));
+          new BookkeepingAdministrationRejection.ClosingEquityAccountMissing(
+              closingEquityAccountCode));
     }
-    if (retainedEarningsAccount.orElseThrow().accountRole() != AccountRole.RETAINED_EARNINGS) {
+    var requiredClassification = closePolicy.closingEquityLineClassification(bookIdentity);
+    if (closingEquityAccount
+            .orElseThrow()
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .orElseThrow()
+        != requiredClassification) {
       return Optional.of(
-          new BookkeepingAdministrationRejection.RetainedEarningsAccountRoleMismatch(
-              retainedEarningsAccountCode, retainedEarningsAccount.orElseThrow().accountRole()));
+          new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
+              closingEquityAccountCode,
+              requiredClassification,
+              closingEquityAccount
+                  .orElseThrow()
+                  .accountTaxonomy()
+                  .financialPositionLineClassification()
+                  .orElseThrow()));
     }
-    if (!retainedEarningsAccount.orElseThrow().active()) {
+    if (!closingEquityAccount.orElseThrow().active()) {
       return Optional.of(
-          new BookkeepingAdministrationRejection.RetainedEarningsAccountInactive(
-              retainedEarningsAccount.orElseThrow().accountCode()));
+          new BookkeepingAdministrationRejection.ClosingEquityAccountInactive(
+              closingEquityAccount.orElseThrow().accountCode()));
     }
     return Optional.empty();
   }
@@ -151,7 +204,7 @@ public final class PeriodCloseService {
               reportingPeriod.effectiveDateTo(),
               bookIdentity.fiscalYearStart()));
     }
-    return bookStore
+    return postingRangeStore
         .closedThroughEffectiveDate()
         .map(closedThrough -> closedThrough.plusDays(1))
         .filter(requiredStart -> !requiredStart.equals(reportingPeriod.effectiveDateFrom()))
@@ -161,7 +214,7 @@ public final class PeriodCloseService {
 
   private PeriodClosePlan closingPostings(
       ReportingPeriod reportingPeriod,
-      RegisteredAccount retainedEarningsAccount,
+      RegisteredAccount closingEquityAccount,
       List<RegisteredAccount> accounts,
       Instant closedAt) {
     Map<AccountCode, RegisteredAccount> accountsByCode =
@@ -170,14 +223,14 @@ public final class PeriodCloseService {
                 java.util.stream.Collectors.toUnmodifiableMap(
                     RegisteredAccount::accountCode, account -> account));
     ClosingTotalsByCurrency totalsByCurrency = new ClosingTotalsByCurrency();
-    for (CommittedPosting posting : bookStore.postings(reportingPeriod.effectiveDateRange())) {
+    for (CommittedPosting posting :
+        postingRangeStore.postings(reportingPeriod.effectiveDateRange())) {
       if (posting.postingKind() != PostingKind.STANDARD) {
         continue;
       }
       for (JournalLine line : posting.journalEntry().lines()) {
         RegisteredAccount account = accountsByCode.get(line.accountCode());
-        if (account == null
-            || !AccountSemantics.closesIntoRetainedEarnings(account.accountType())) {
+        if (account == null || !closePolicy.closesAccountType(account.accountType())) {
           continue;
         }
         totalsByCurrency.record(line);
@@ -195,7 +248,7 @@ public final class PeriodCloseService {
               currencyEntry.getKey(),
               currencyEntry.getValue(),
               accountsByCode,
-              retainedEarningsAccount,
+              closingEquityAccount,
               closedAt);
       if (currencyCloseDraft.isPresent()) {
         CurrencyCloseDraft closeDraft = currencyCloseDraft.orElseThrow();
@@ -211,7 +264,7 @@ public final class PeriodCloseService {
       CurrencyUnit currencyUnit,
       Map<AccountCode, Totals> accountTotals,
       Map<AccountCode, RegisteredAccount> accountsByCode,
-      RegisteredAccount retainedEarningsAccount,
+      RegisteredAccount closingEquityAccount,
       Instant closedAt) {
     List<JournalLine> lines = new ArrayList<>();
     long netIncomeMinor = 0L;
@@ -245,7 +298,7 @@ public final class PeriodCloseService {
     if (netIncomeMinor != 0L) {
       lines.add(
           new JournalLine(
-              retainedEarningsAccount.accountCode(),
+              closingEquityAccount.accountCode(),
               netIncomeMinor > 0L ? JournalLine.EntrySide.CREDIT : JournalLine.EntrySide.DEBIT,
               Money.ofMinorUnits(currencyUnit, Math.absExact(netIncomeMinor))));
     }
@@ -255,7 +308,7 @@ public final class PeriodCloseService {
     return Optional.of(
         new CurrencyCloseDraft(
             periodCloseDraft(reportingPeriod, currencyUnit, List.copyOf(lines), closedAt),
-            retainedEarningsMovement(currencyUnit, netIncomeMinor)));
+            closingEquityMovement(currencyUnit, netIncomeMinor)));
   }
 
   private PostingDraft periodCloseDraft(
@@ -335,7 +388,7 @@ public final class PeriodCloseService {
     }
   }
 
-  /** One generated posting draft plus the retained-earnings movement it closes. */
+  /** One generated posting draft plus the closing-equity movement it closes. */
   private record CurrencyCloseDraft(
       PostingDraft postingDraft, dev.erst.fingrind.core.CurrencyBalance closedTotal) {
     private CurrencyCloseDraft {
@@ -356,7 +409,7 @@ public final class PeriodCloseService {
     }
   }
 
-  private static dev.erst.fingrind.core.CurrencyBalance retainedEarningsMovement(
+  private static dev.erst.fingrind.core.CurrencyBalance closingEquityMovement(
       CurrencyUnit currencyUnit, long netIncomeMinor) {
     long retainedEarningsDebit = netIncomeMinor < 0L ? Math.absExact(netIncomeMinor) : 0L;
     long retainedEarningsCredit = netIncomeMinor > 0L ? netIncomeMinor : 0L;

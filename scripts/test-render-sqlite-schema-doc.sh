@@ -64,8 +64,17 @@ EOF
 
 python3 "${render_script}" --repo-root "${fixture_root}" --write
 
-grep -Fq 'pragma user_version = 4;' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
-    "generated schema doc did not embed the canonical SQL body"
+python3 - <<'PY' "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql" "${fixture_root}/docs/sqlite/SCHEMA_CORE.md"
+from pathlib import Path
+import sys
+
+schema_path = Path(sys.argv[1])
+document_path = Path(sys.argv[2])
+schema_text = schema_path.read_text(encoding="utf-8").strip()
+document_text = document_path.read_text(encoding="utf-8")
+if schema_text not in document_text:
+    raise SystemExit("error: generated schema doc did not embed the canonical SQL body")
+PY
 grep -Fq '`book_meta.schema_fingerprint_sha256`' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
     "generated schema doc did not describe runtime integrity semantics"
 
@@ -73,12 +82,19 @@ python3 "${render_script}" --repo-root "${fixture_root}" --check
 
 python3 - <<'PY' "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql"
 from pathlib import Path
+import re
 import sys
 
 schema_path = Path(sys.argv[1])
 text = schema_path.read_text(encoding="utf-8")
+match = re.search(r"pragma user_version = (\d+);", text)
+if match is None:
+    raise SystemExit("error: canonical schema file is missing pragma user_version")
 schema_path.write_text(
-    text.replace("pragma user_version = 4;", "pragma user_version = 7;"),
+    text.replace(
+        f"pragma user_version = {match.group(1)};",
+        f"pragma user_version = {int(match.group(1)) + 2};",
+    ),
     encoding="utf-8",
 )
 PY

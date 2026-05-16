@@ -15,14 +15,17 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -135,6 +138,7 @@ final class SqliteRoundTripWorkflowTestSupport {
         new AccountName("Synthetic " + accountCode.value()),
         AccountType.ASSET,
         AccountRole.ORDINARY,
+        accountTaxonomy(AccountType.ASSET),
         active,
         CliFuzzFixtures.fixedClock().instant());
   }
@@ -256,6 +260,7 @@ final class SqliteRoundTripWorkflowTestSupport {
         AccountName accountName,
         AccountType accountType,
         AccountRole accountRole,
+        AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       throw new UnsupportedOperationException();
     }
@@ -383,7 +388,38 @@ final class SqliteRoundTripWorkflowTestSupport {
         account.accountName(),
         account.accountType(),
         account.accountRole(),
+        account.accountTaxonomy(),
         account.active(),
         account.declaredAt());
+  }
+
+  private static AccountTaxonomy accountTaxonomy(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+              Optional.empty());
+      case LIABILITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty());
+      case EQUITY ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty());
+      case REVENUE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+      case EXPENSE ->
+          new AccountTaxonomy(
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+    };
   }
 }

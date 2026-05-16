@@ -17,6 +17,7 @@ import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -97,7 +98,6 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               requireStoreDatabase(postingFactStore), postingFactStore.postingReader());
 
       assertInstanceOf(BookLifecycleInspection.Initialized.class, validationBook.inspectBook());
-      assertEquals(2, validationBook.allAccounts().size());
       assertEquals(
           Set.of(new AccountCode("1000"), new AccountCode("2000")),
           validationBook
@@ -125,14 +125,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountCode("3200"),
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
-                  AccountRole.RETAINED_EARNINGS,
+                  AccountRole.ORDINARY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
               new AccountCode("3200"),
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
-              AccountRole.RETAINED_EARNINGS,
+              AccountRole.ORDINARY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
               FIXED_INSTANT));
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
@@ -194,14 +196,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountCode("3200"),
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
-                  AccountRole.RETAINED_EARNINGS,
+                  AccountRole.ORDINARY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
               new AccountCode("3200"),
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
-              AccountRole.RETAINED_EARNINGS,
+              AccountRole.ORDINARY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
               FIXED_INSTANT));
 
       commitPosting(
@@ -297,14 +301,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountCode("3200"),
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
-                  AccountRole.RETAINED_EARNINGS,
+                  AccountRole.ORDINARY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
               new AccountCode("3200"),
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
-              AccountRole.RETAINED_EARNINGS,
+              AccountRole.ORDINARY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
               FIXED_INSTANT));
 
       CommittedPosting operatingPosting =

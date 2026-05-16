@@ -73,16 +73,45 @@ class CliFailureOutputRendererTest {
         "Prior posting id",
         "posting-9");
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountRoleConflictDetails(
-            "3200", "ORDINARY", "RETAINED_EARNINGS"),
+        new CliRejectionJsonModels.AccountRoleConflictDetails("3200", "ORDINARY", "CONTRA"),
         "Existing account role",
         "Requested account role",
-        "RETAINED_EARNINGS");
+        "CONTRA");
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
         "Existing account type",
         "Requested account type",
         "LIABILITY");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
+            "3200",
+            new CliRejectionJsonModels.AccountTaxonomyDetails("3000", "OTHER_EQUITY", null),
+            new CliRejectionJsonModels.AccountTaxonomyDetails("3010", "RETAINED_EARNINGS", null)),
+        "Existing parent account",
+        "3000",
+        "Existing financial position classification",
+        "OTHER_EQUITY",
+        "Requested parent account",
+        "3010",
+        "Requested financial position classification",
+        "RETAINED_EARNINGS");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
+            "4100",
+            new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES"),
+            new CliRejectionJsonModels.AccountTaxonomyDetails("4000", null, "OPERATING_EXPENSE")),
+        "Existing parent account",
+        "(none)",
+        "Existing financial position classification",
+        "(none)",
+        "Existing profit-and-loss classification",
+        "COST_OF_SALES",
+        "Requested parent account",
+        "4000",
+        "Requested financial position classification",
+        "(none)",
+        "Requested profit-and-loss classification",
+        "OPERATING_EXPENSE");
     assertRenderedRejection(
         new CliRejectionJsonModels.PostingKindDetails("opening-balance"),
         "Posting kind",
@@ -105,11 +134,14 @@ class CliFailureOutputRendererTest {
         "Account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.RetainedEarningsAccountDetails("3200"), "Account code", "3200");
+        new CliRejectionJsonModels.ClosingEquityAccountDetails("3200"), "Account code", "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.RetainedEarningsAccountRoleMismatchDetails("3200", "ORDINARY"),
-        "Actual account role",
-        "ORDINARY");
+        new CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails(
+            "3200", "RETAINED_EARNINGS", "OTHER_EQUITY"),
+        "Required financial position classification",
+        "RETAINED_EARNINGS",
+        "Actual financial position classification",
+        "OTHER_EQUITY");
     assertRenderedRejection(
         new CliRejectionJsonModels.PeriodCloseStartDetails("2026-04-01"),
         "Required start date",
@@ -164,6 +196,16 @@ class CliFailureOutputRendererTest {
             1,
             0,
             1,
+            List.of(
+                new CliPlanJsonModels.LedgerStepDigestPayload(
+                    "step-1",
+                    LedgerJournalKind.POST_ENTRY,
+                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
+                    null,
+                    LedgerStepStatus.REJECTED,
+                    List.of("result=no"),
+                    "rejected-code",
+                    "Rejected message.")),
             "step-1",
             "rejected-code",
             "Rejected message."),

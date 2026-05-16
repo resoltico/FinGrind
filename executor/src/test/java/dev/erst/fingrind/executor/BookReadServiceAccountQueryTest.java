@@ -9,7 +9,10 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedC
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.localReadService;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountPage;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.foundPosting;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.postingPage;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,14 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
-import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -73,7 +74,7 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListAccountsResult.Listed(
-              new AccountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
+              accountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
           service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
   }
@@ -125,12 +126,22 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListPostingsResult.Listed(
-              new PostingPage(List.of(publishedPostingFact), 20, Optional.empty())),
+              postingPage(
+                  Optional.empty(),
+                  dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
+                  List.of(publishedPostingFact),
+                  20,
+                  Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
       assertEquals(
           new ListPostingsResult.Listed(
-              new PostingPage(List.of(publishedPostingFact), 20, Optional.empty())),
+              postingPage(
+                  Optional.of(CASH_ACCOUNT.accountCode()),
+                  dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
+                  List.of(publishedPostingFact),
+                  20,
+                  Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(
                   Optional.of(CASH_ACCOUNT.accountCode()), null, null, 20, Optional.empty())));
@@ -147,7 +158,7 @@ class BookReadServiceAccountQueryTest {
     bookSession.resetFindAccountCalls();
     BookReadService service = readService(bookSession);
     assertEquals(
-        new GetPostingResult.Found(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
+        foundPosting(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
         service.getPosting(new PostingId("posting-1")));
     assertEquals(
         new AccountBalanceResult.Reported(

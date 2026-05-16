@@ -158,37 +158,15 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
 
             subprojects.forEach { subproject ->
                 subproject.pluginManager.withPlugin("java-base") {
-                    ManagedSqliteProvisioningLogic.configureConsumers(subproject, managedSqlite)
+                    if (subproject.requiresManagedSqliteRuntime()) {
+                        ManagedSqliteProvisioningLogic.configureConsumers(subproject, managedSqlite)
+                    }
                 }
             }
 
-            val coverageProjects = subprojects.toList()
-            val coverageTestTasks =
-                coverageProjects.flatMap { subproject ->
-                    subproject.tasks.withType(Test::class.java).toList()
-                }
-            val coverageExecutionData =
-                providers.provider<List<java.io.File>> {
-                    coverageTestTasks.mapNotNull { testTask ->
-                        testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
-                    }
-                }
-
-            tasks.register<JacocoReport>("jacocoAggregatedReport") {
+            val aggregatedCoverageReport = tasks.register<JacocoReport>("jacocoAggregatedReport") {
                 group = "verification"
                 description = "Aggregates JaCoCo coverage reports from all modules into a single report."
-
-                dependsOn(coverageTestTasks)
-
-                executionData.from(coverageExecutionData)
-                sourceDirectories.from(
-                    coverageProjects.map { it.layout.projectDirectory.dir("src/main/java").asFile }
-                )
-                classDirectories.from(
-                    coverageProjects.map {
-                        it.layout.buildDirectory.dir("classes/java/main").get().asFile
-                    }
-                )
 
                 reports {
                     xml.required.set(true)
@@ -198,13 +176,33 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 }
             }
 
-            tasks.register("coverage") {
+            val coverage = tasks.register("coverage") {
                 group = "verification"
                 description =
                     "Runs tests, enforces coverage thresholds, and generates per-module and aggregated coverage reports."
-                dependsOn(coverageProjects.map { "${it.path}:jacocoTestCoverageVerification" })
-                dependsOn(coverageProjects.map { "${it.path}:jacocoTestReport" })
-                dependsOn("jacocoAggregatedReport")
+                dependsOn(aggregatedCoverageReport)
+            }
+
+            subprojects.forEach { subproject ->
+                subproject.pluginManager.withPlugin("java-base") {
+                    val testTasks = subproject.tasks.withType(Test::class.java)
+                    aggregatedCoverageReport.configure {
+                        dependsOn(testTasks)
+                        executionData.from(
+                            subproject.provider {
+                                testTasks.mapNotNull { testTask ->
+                                    testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
+                                }
+                            },
+                        )
+                        sourceDirectories.from(subproject.layout.projectDirectory.dir("src/main/java"))
+                        classDirectories.from(subproject.layout.buildDirectory.dir("classes/java/main"))
+                    }
+                    coverage.configure {
+                        dependsOn("${subproject.path}:jacocoTestCoverageVerification")
+                        dependsOn("${subproject.path}:jacocoTestReport")
+                    }
+                }
             }
         }
     }
@@ -225,4 +223,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
         } else {
             "python3"
         }
+
+    private fun Project.requiresManagedSqliteRuntime(): Boolean =
+        path == ":sqlite" || path == ":cli"
 }

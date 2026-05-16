@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -16,6 +17,7 @@ public record RegisteredAccount(
     AccountName accountName,
     AccountType accountType,
     AccountRole accountRole,
+    AccountTaxonomy accountTaxonomy,
     boolean active,
     Instant declaredAt) {
   /** Validates one registered-account snapshot. */
@@ -24,8 +26,9 @@ public record RegisteredAccount(
     Objects.requireNonNull(accountName, "accountName");
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
     Objects.requireNonNull(declaredAt, "declaredAt");
-    AccountSemantics.validate(accountType, accountRole);
+    AccountSemantics.validate(accountType, accountRole, accountTaxonomy);
   }
 
   /** Returns the doctrinal journal side that increases this account. */
@@ -52,6 +55,7 @@ public record RegisteredAccount(
               declaration.accountName(),
               declaration.accountType(),
               declaration.accountRole(),
+              declaration.accountTaxonomy(),
               true,
               declaredAt));
     }
@@ -65,12 +69,20 @@ public record RegisteredAccount(
           new BookkeepingAdministrationRejection.AccountRoleConflict(
               declaration.accountCode(), existingAccount.accountRole(), declaration.accountRole()));
     }
+    if (!existingAccount.accountTaxonomy().equals(declaration.accountTaxonomy())) {
+      return new AccountDeclarationOutcome.Rejected(
+          new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+              declaration.accountCode(),
+              existingAccount.accountTaxonomy(),
+              declaration.accountTaxonomy()));
+    }
     return new AccountDeclarationOutcome.Declared(
         new RegisteredAccount(
             existingAccount.accountCode(),
             declaration.accountName(),
             existingAccount.accountType(),
             existingAccount.accountRole(),
+            existingAccount.accountTaxonomy(),
             true,
             declaredAt));
   }

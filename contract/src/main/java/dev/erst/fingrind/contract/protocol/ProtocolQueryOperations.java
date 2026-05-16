@@ -145,7 +145,7 @@ final class ProtocolQueryOperations {
                 ExecutionMode.JSON_ENVELOPE,
                 List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one book-wide trial balance as of the selected effective date or the current durable posting horizon when no date filter is supplied.",
+                "Compute one book-wide trial balance as of the selected effective date or the latest committed posting date when no date filter is supplied.",
                 List.of(
                     ProtocolExampleStep.command(
                         "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s human"
@@ -234,7 +234,7 @@ final class ProtocolQueryOperations {
                 ExecutionMode.JSON_ENVELOPE,
                 List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one statement of financial position as of the selected effective date or the current durable posting horizon when no date filter is supplied.",
+                "Compute one statement of financial position as of the selected effective date or the latest committed posting date when no date filter is supplied.",
                 List.of(
                     ProtocolExampleStep.command(
                         "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/financial-position.pdf %s human"

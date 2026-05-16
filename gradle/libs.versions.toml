@@ -11,7 +11,7 @@ google-java-format = "1.35.0"
 jacoco = "0.8.15-20260513.074320-106"
 pmd = "7.24.0"
 shadow = "9.4.1"
-spotless = "8.4.0"
+spotless = "8.5.0"
 foojay-resolver-convention = "1.0.0"
 
 [libraries]
