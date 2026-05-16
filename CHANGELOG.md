@@ -79,6 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an obsolete denormalized header shape, and the source-checkout, developer direct-Java, bundle,
   and discovery help surfaces now publish launcher examples and command hints through the active
   runtime launcher contract instead of flattening every surface to one generic token.
+- Repaired the root release gate on mixed operator and CI platforms: the shared `./check.sh`
+  monitor now measures log growth portably across BSD and GNU userlands instead of assuming macOS
+  `stat -f`, and the release-surface regression floor now proves that portability explicitly so a
+  green local release gate cannot hide a Linux CI failure.
 
 ## [0.37.0] - 2026-05-14
 
