@@ -31,49 +31,30 @@ abstract class ProbeManagedSqliteToolchainTask
         abstract val outputFile: RegularFileProperty
 
         @TaskAction
-        fun writeFingerprint() {
-            val compilerCommand = compiler.get().trim()
-            val compilerExecutable = resolveCompilerExecutable(compilerCommand, operatingSystemId.get())
-            val compilerVersion =
-                requireProbeOutput(
-                    "compiler version",
-                    runCommand(listOf(compilerExecutable, "--version")),
-                    runCommand(listOf(compilerExecutable, "-v")),
-                )
-            val targetTriple =
-                bestEffortProbeOutput(
-                    runCommand(listOf(compilerExecutable, "-dumpmachine")),
-                    fallback = "unavailable",
-                )
-            val linkerVersion =
-                when (operatingSystemId.get()) {
-                    "windows" ->
-                        bestEffortProbeOutput(
-                            runCommand(listOf("link")),
-                            fallback = "unavailable",
-                        )
-                    "macos" ->
-                        bestEffortProbeOutput(
-                            runCommand(listOf("ld", "-v")),
-                            runCommand(listOf("ld", "-V")),
-                            fallback = "unavailable",
-                        )
-                    else ->
-                        bestEffortProbeOutput(
-                            runCommand(listOf("ld", "-v")),
-                            runCommand(listOf("ld", "-V")),
-                            fallback = "unavailable",
-                        )
-                }
-            val sdkOrSysroot =
-                when (operatingSystemId.get()) {
-                    "macos" ->
-                        bestEffortProbeOutput(
-                            runCommand(listOf("xcrun", "--show-sdk-path")),
-                            fallback = "unavailable",
-                        )
-                    else -> "unavailable"
-                }
+    fun writeFingerprint() {
+        val compilerCommand = compiler.get().trim()
+        val compilerExecutable = resolveCompilerExecutable(compilerCommand, operatingSystemId.get())
+        val compilerVersion =
+            ManagedSqliteToolchainProbeSupport.compilerVersion(
+                operatingSystemId.get(),
+                compilerExecutable,
+                ::runCommand,
+            )
+        val targetTriple =
+            ManagedSqliteToolchainProbeSupport.targetTriple(
+                compilerExecutable,
+                ::runCommand,
+            )
+        val linkerVersion =
+            ManagedSqliteToolchainProbeSupport.linkerVersion(
+                operatingSystemId.get(),
+                ::runCommand,
+            )
+        val sdkOrSysroot =
+            ManagedSqliteToolchainProbeSupport.sdkOrSysroot(
+                operatingSystemId.get(),
+                ::runCommand,
+            )
             outputFile.get().asFile.apply {
                 parentFile.mkdirs()
                 writeText(
@@ -107,24 +88,14 @@ abstract class ProbeManagedSqliteToolchainTask
                 } else {
                     runCommand(listOf("sh", "-lc", "command -v -- \"\$1\"", "sh", compilerCommand))
                 }
-            return requireProbeOutput("compiler executable", probe)
+            return ManagedSqliteToolchainProbeSupport.compilerExecutable(probe)
                 .lineSequence()
-                .map(String::trim)
-                .firstOrNull(String::isNotEmpty)
+                .map { it.trim() }
+                .firstOrNull(String::isNotBlank)
                 ?: throw IllegalStateException(
                     "Failed to resolve the managed SQLite compiler executable for $compilerCommand.",
                 )
         }
-
-        private fun requireProbeOutput(label: String, vararg probes: CommandProbe): String =
-            probes.firstNotNullOfOrNull(CommandProbe::successfulOutput)
-                ?: throw IllegalStateException(
-                    "Failed to capture the managed SQLite $label. " +
-                        probes.joinToString(separator = " | ") { probe -> probe.describe() },
-                )
-
-        private fun bestEffortProbeOutput(vararg probes: CommandProbe, fallback: String): String =
-            probes.firstNotNullOfOrNull(CommandProbe::successfulOutput) ?: fallback
 
         private fun runCommand(commandLine: List<String>): CommandProbe {
             val stdout = ByteArrayOutputStream()
@@ -158,18 +129,136 @@ abstract class ProbeManagedSqliteToolchainTask
                 }
                 append('"')
             }
+    }
 
-        private data class CommandProbe(val exitCode: Int, val stdout: String, val stderr: String) {
-            fun successfulOutput(): String? =
-                if (exitCode == 0) {
-                    combinedOutput().takeIf(String::isNotEmpty)
-                } else {
-                    null
-                }
+internal object ManagedSqliteToolchainProbeSupport {
+    fun compilerExecutable(probe: CommandProbe): String =
+        requireProbeOutput(
+            "compiler executable",
+            { ProbeAttempt(probe) },
+        )
 
-            fun describe(): String = "exit=$exitCode output=${combinedOutput().ifEmpty { "<empty>" }}"
+    fun compilerVersion(
+        operatingSystemId: String,
+        compilerExecutable: String,
+        runCommand: (List<String>) -> CommandProbe,
+    ): String =
+        when (operatingSystemId) {
+            "windows" ->
+                requireProbeOutput(
+                    "compiler version",
+                    {
+                        ProbeAttempt(
+                        runCommand(listOf(compilerExecutable, "/Bv")),
+                        acceptOutputOnFailure = true,
+                    )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable)),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable, "/?")),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                )
+            else ->
+                requireProbeOutput(
+                    "compiler version",
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "--version"))) },
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "-v"))) },
+                )
+        }
 
-            private fun combinedOutput(): String =
-                listOf(stdout, stderr).filter(String::isNotEmpty).joinToString(separator = "\n")
+    fun targetTriple(
+        compilerExecutable: String,
+        runCommand: (List<String>) -> CommandProbe,
+    ): String =
+        bestEffortProbeOutput(
+            { ProbeAttempt(runCommand(listOf(compilerExecutable, "-dumpmachine"))) },
+            fallback = "unavailable",
+        )
+
+    fun linkerVersion(
+        operatingSystemId: String,
+        runCommand: (List<String>) -> CommandProbe,
+    ): String =
+        when (operatingSystemId) {
+            "windows" ->
+                bestEffortProbeOutput(
+                    { ProbeAttempt(runCommand(listOf("link")), acceptOutputOnFailure = true) },
+                    { ProbeAttempt(runCommand(listOf("link", "/?")), acceptOutputOnFailure = true) },
+                    fallback = "unavailable",
+                )
+            "macos" ->
+                bestEffortProbeOutput(
+                    { ProbeAttempt(runCommand(listOf("ld", "-v"))) },
+                    { ProbeAttempt(runCommand(listOf("ld", "-V"))) },
+                    fallback = "unavailable",
+                )
+            else ->
+                bestEffortProbeOutput(
+                    { ProbeAttempt(runCommand(listOf("ld", "-v"))) },
+                    { ProbeAttempt(runCommand(listOf("ld", "-V"))) },
+                    fallback = "unavailable",
+                )
+        }
+
+    fun sdkOrSysroot(
+        operatingSystemId: String,
+        runCommand: (List<String>) -> CommandProbe,
+    ): String =
+        when (operatingSystemId) {
+            "macos" ->
+                bestEffortProbeOutput(
+                    { ProbeAttempt(runCommand(listOf("xcrun", "--show-sdk-path"))) },
+                    fallback = "unavailable",
+                )
+            else -> "unavailable"
+        }
+
+    private fun requireProbeOutput(label: String, vararg probes: () -> ProbeAttempt): String {
+        val attempts = mutableListOf<ProbeAttempt>()
+        probes.forEach { probeFactory ->
+            val attempt = probeFactory()
+            attempts += attempt
+            attempt.acceptedOutput()?.let { return it }
+        }
+        throw IllegalStateException(
+            "Failed to capture the managed SQLite $label. " +
+                attempts.joinToString(separator = " | ") { probe -> probe.describe() },
+        )
+    }
+
+    private fun bestEffortProbeOutput(vararg probes: () -> ProbeAttempt, fallback: String): String {
+        probes.forEach { probeFactory ->
+            probeFactory().acceptedOutput()?.let { return it }
+        }
+        return fallback
+    }
+}
+
+internal data class ProbeAttempt(
+    val probe: CommandProbe,
+    val acceptOutputOnFailure: Boolean = false,
+) {
+    fun acceptedOutput(): String? {
+        val combinedOutput = probe.combinedOutput()
+        return when {
+            probe.exitCode == 0 -> combinedOutput.takeIf(String::isNotEmpty)
+            acceptOutputOnFailure -> combinedOutput.takeIf(String::isNotEmpty)
+            else -> null
         }
     }
+
+    fun describe(): String = "exit=${probe.exitCode} output=${probe.combinedOutput().ifEmpty { "<empty>" }}"
+}
+
+internal data class CommandProbe(val exitCode: Int, val stdout: String, val stderr: String) {
+    fun combinedOutput(): String =
+        listOf(stdout, stderr).filter(String::isNotEmpty).joinToString(separator = "\n")
+}

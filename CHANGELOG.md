@@ -48,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved the published container image off the operator override path and onto the same
   bundle-managed SQLite runtime contract as the extracted archive, so container runtime probes and
   release-surface checks now report one publisher-authenticated native-library seam.
+- Repaired the managed SQLite native-toolchain fingerprint owner on Windows: the build-logic
+  probe now captures `cl.exe` and `link.exe` version banners using platform-correct invocation
+  semantics instead of assuming Unix-style `--version` support, and the shared build-logic tests
+  now guard that Windows probe contract directly so Windows bundle smoke is no longer the first
+  detector for MSVC toolchain regressions.
 
 ## [0.38.0] - 2026-05-16
 
