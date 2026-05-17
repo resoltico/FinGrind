@@ -49,6 +49,43 @@ timeout_minutes="$(
 (( timeout_minutes >= 30 )) || die \
     "container workflow timeout must leave budget for post-publish verification; expected at least 30 minutes, got ${timeout_minutes}"
 
+read -r release_retry_count release_delay_seconds release_wait_budget_seconds <<<"$(
+    python3 - <<'PY' "${workflow_file}"
+from pathlib import Path
+import re
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(
+    r'- name: Wait for GitHub release assets before publishing the container(?P<body>.*?)(?:\n\s*-\s+name:|\Z)',
+    workflow,
+    re.S,
+)
+if match is None:
+    raise SystemExit("missing release-asset wait step")
+body = match.group("body")
+retry_match = re.search(r'FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:\s*"(\d+)"', body)
+delay_match = re.search(r'FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:\s*"(\d+)"', body)
+if retry_match is None or delay_match is None:
+    raise SystemExit("missing release-asset wait retry controls")
+retry_count = int(retry_match.group(1))
+delay_seconds = int(delay_match.group(1))
+print(retry_count, delay_seconds, retry_count * delay_seconds)
+PY
+)"
+
+[[ "${release_retry_count}" =~ ^[0-9]+$ ]] || die \
+    "container workflow release wait retry count must be an integer, got '${release_retry_count}'"
+[[ "${release_delay_seconds}" =~ ^[0-9]+$ ]] || die \
+    "container workflow release wait delay must be an integer, got '${release_delay_seconds}'"
+[[ "${release_wait_budget_seconds}" =~ ^[0-9]+$ ]] || die \
+    "container workflow release wait budget must be an integer, got '${release_wait_budget_seconds}'"
+
+(( release_wait_budget_seconds >= 20 * 60 )) || die \
+    "container workflow release wait budget must cover slow multi-platform release publication; expected at least 20 minutes, got ${release_wait_budget_seconds} seconds"
+(( timeout_minutes * 60 >= release_wait_budget_seconds + 15 * 60 )) || die \
+    "container workflow timeout must leave at least 15 minutes beyond the release wait budget for image build and post-publish verification"
+
 grep -Fq './scripts/verify-github-release.sh' "${workflow_file}" || die \
     "container workflow no longer waits for the GitHub release asset handoff"
 grep -Fq './scripts/verify-container-publication.sh' "${workflow_file}" || die \

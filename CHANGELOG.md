@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release publication now gives the public container workflow enough release-asset wait budget to
+  survive slow GitHub-hosted platform bundle builders before it starts multi-arch image
+  publication.
+
 ## [0.39.0] - 2026-05-17
 
 ### Changed
