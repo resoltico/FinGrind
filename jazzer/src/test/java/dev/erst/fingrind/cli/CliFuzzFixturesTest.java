@@ -140,15 +140,24 @@ class CliFuzzFixturesTest {
 
     BookAdministrationService driftedOpenBookService =
         new BookAdministrationService(
+            () -> new dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing(7),
             new AbstractBookAdministrationStoreStub() {
               @Override
               public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
                 return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
               }
             },
+            new AbstractBookAdministrationStoreStub() {},
             CliFuzzFixtures.fixedClock());
     BookAdministrationService inactiveReactivationService =
         new BookAdministrationService(
+            () ->
+                new dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized(
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.APPLICATION_ID,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    CliFuzzFixtures.fixedClock().instant(),
+                    CliFuzzFixtures.bookIdentity()),
             new AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
@@ -169,9 +178,17 @@ class CliFuzzFixturesTest {
                         declaredAt));
               }
             },
+            new AbstractBookAdministrationStoreStub() {},
             CliFuzzFixtures.fixedClock());
     BookAdministrationService changedDeclaredAtService =
         new BookAdministrationService(
+            () ->
+                new dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized(
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.APPLICATION_ID,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    CliFuzzFixtures.fixedClock().instant(),
+                    CliFuzzFixtures.bookIdentity()),
             new AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
@@ -192,6 +209,7 @@ class CliFuzzFixturesTest {
                         declaredAt.plusSeconds(1)));
               }
             },
+            new AbstractBookAdministrationStoreStub() {},
             CliFuzzFixtures.fixedClock());
 
     assertThrows(
@@ -240,7 +258,7 @@ class CliFuzzFixturesTest {
   }
 
   private abstract static class AbstractBookAdministrationStoreStub
-      implements BookAdministrationStore {
+      implements BookAdministrationStore, dev.erst.fingrind.executor.spi.AccountCatalogStore {
     @Override
     public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
       throw new UnsupportedOperationException("not used");
@@ -254,6 +272,16 @@ class CliFuzzFixturesTest {
         AccountRole accountRole,
         AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public List<RegisteredAccount> allAccounts() {
+      return List.of();
+    }
+
+    @Override
+    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
       throw new UnsupportedOperationException("not used");
     }
   }

@@ -17,6 +17,11 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.AccountTypeConflict,
         BookkeepingAdministrationRejection.AccountRoleConflict,
         BookkeepingAdministrationRejection.AccountTaxonomyConflict,
+        BookkeepingAdministrationRejection.ParentAccountMissing,
+        BookkeepingAdministrationRejection.ParentAccountInactive,
+        BookkeepingAdministrationRejection.ParentAccountTypeConflict,
+        BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict,
+        BookkeepingAdministrationRejection.AccountHierarchyCycle,
         BookkeepingAdministrationRejection.ClosingEquityAccountMissing,
         BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch,
         BookkeepingAdministrationRejection.ClosingEquityAccountInactive,
@@ -65,6 +70,63 @@ public sealed interface BookkeepingAdministrationRejection
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(existingAccountTaxonomy, "existingAccountTaxonomy");
       Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  /** Refusal for one child account that names a missing parent account. */
+  record ParentAccountMissing(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountMissing {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+    }
+  }
+
+  /** Refusal for one child account that names an inactive parent account. */
+  record ParentAccountInactive(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountInactive {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+    }
+  }
+
+  /** Refusal for one child account whose parent belongs to a conflicting account type. */
+  record ParentAccountTypeConflict(
+      AccountCode accountCode,
+      AccountType requestedAccountType,
+      AccountCode parentAccountCode,
+      AccountType parentAccountType)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountTypeConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountType, "requestedAccountType");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountType, "parentAccountType");
+    }
+  }
+
+  /** Refusal for one child account whose parent carries an incompatible taxonomy family. */
+  record ParentAccountTaxonomyConflict(
+      AccountCode accountCode,
+      AccountTaxonomy requestedAccountTaxonomy,
+      AccountCode parentAccountCode,
+      AccountTaxonomy parentAccountTaxonomy)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountTaxonomyConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountTaxonomy, "parentAccountTaxonomy");
+    }
+  }
+
+  /** Refusal for one declaration that would introduce a cycle into the chart hierarchy. */
+  record AccountHierarchyCycle(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookkeepingAdministrationRejection {
+    public AccountHierarchyCycle {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
     }
   }
 

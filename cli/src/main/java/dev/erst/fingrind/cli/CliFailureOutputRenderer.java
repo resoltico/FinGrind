@@ -137,6 +137,22 @@ final class CliFailureOutputRenderer {
         appendTaxonomyRows(rows, "Existing", details.existingAccountTaxonomy());
         appendTaxonomyRows(rows, "Requested", details.requestedAccountTaxonomy());
       }
+      case CliRejectionJsonModels.ParentAccountDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Parent account code", details.parentAccountCode()));
+      }
+      case CliRejectionJsonModels.ParentAccountTypeConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Requested account type", details.requestedAccountType()));
+        rows.add(List.of("Parent account code", details.parentAccountCode()));
+        rows.add(List.of("Parent account type", details.parentAccountType()));
+      }
+      case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        appendTaxonomyRows(rows, "Requested", details.requestedAccountTaxonomy());
+        rows.add(List.of("Parent account code", details.parentAccountCode()));
+        appendTaxonomyRows(rows, "Parent", details.parentAccountTaxonomy());
+      }
       case CliRejectionJsonModels.PostingKindDetails details ->
           rows.add(List.of("Posting kind", details.postingKind()));
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {

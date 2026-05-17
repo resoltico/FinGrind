@@ -16,6 +16,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.AclFileAttributeView;
@@ -23,6 +24,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
+import java.nio.file.attribute.FileStoreAttributeView;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
@@ -94,7 +96,7 @@ final class AclFixtureFileSystem extends FileSystem {
 
   @Override
   public Iterable<FileStore> getFileStores() {
-    return List.of();
+    return List.of(new FixtureFileStore(views));
   }
 
   @Override
@@ -162,6 +164,10 @@ final class AclFixtureFileSystem extends FileSystem {
         Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
         throws IOException {
       AclFixturePath testPath = testPath(path);
+      IOException newByteChannelFailure = testPath.newByteChannelFailure();
+      if (newByteChannelFailure != null) {
+        throw newByteChannelFailure;
+      }
       if (options.contains(StandardOpenOption.CREATE_NEW) && testPath.exists) {
         throw new FileAlreadyExistsException(testPath.toString());
       }
@@ -173,7 +179,12 @@ final class AclFixtureFileSystem extends FileSystem {
 
     @Override
     public DirectoryStream<Path> newDirectoryStream(
-        Path dir, DirectoryStream.Filter<? super Path> filter) {
+        Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+      AclFixturePath testPath = testPath(dir);
+      IOException newDirectoryStreamFailure = testPath.newDirectoryStreamFailure();
+      if (newDirectoryStreamFailure != null) {
+        throw newDirectoryStreamFailure;
+      }
       return new DirectoryStream<>() {
         @Override
         public Iterator<Path> iterator() {
@@ -215,8 +226,23 @@ final class AclFixtureFileSystem extends FileSystem {
     }
 
     @Override
-    public void copy(Path source, Path target, CopyOption... options) {
-      throw new UnsupportedOperationException("copy is not used by this test filesystem");
+    public void copy(Path source, Path target, CopyOption... options) throws IOException {
+      AclFixturePath sourcePath = testPath(source);
+      if (!sourcePath.exists) {
+        throw new NoSuchFileException(source.toString());
+      }
+      AclFixturePath targetPath = testPath(target);
+      boolean replaceExisting =
+          java.util.Arrays.stream(options)
+              .anyMatch(option -> option == StandardCopyOption.REPLACE_EXISTING);
+      if (targetPath.exists && !replaceExisting) {
+        throw new FileAlreadyExistsException(target.toString());
+      }
+      targetPath.exists = true;
+      targetPath.regularFile = sourcePath.regularFile;
+      targetPath.posixPermissions = sourcePath.posixPermissions;
+      targetPath.aclView = sourcePath.aclView;
+      targetPath.overrideAclView = sourcePath.overrideAclView;
     }
 
     @Override
@@ -236,7 +262,7 @@ final class AclFixtureFileSystem extends FileSystem {
 
     @Override
     public FileStore getFileStore(Path path) {
-      throw new UnsupportedOperationException("file stores are not used by this test filesystem");
+      return new FixtureFileStore(fileSystem.views);
     }
 
     @Override
@@ -251,10 +277,16 @@ final class AclFixtureFileSystem extends FileSystem {
         Path path, Class<V> type, LinkOption... options) {
       AclFixturePath fixturePath = testPath(path);
       if (type == AclFileAttributeView.class) {
-        return type.cast(fixturePath.aclView);
+        return type.cast(
+            fixturePath.overrideAclView != null
+                ? fixturePath.overrideAclView
+                : fixturePath.aclView);
       }
       if (type == FileOwnerAttributeView.class) {
-        return type.cast(fixturePath.aclView);
+        return type.cast(
+            fixturePath.overrideAclView != null
+                ? fixturePath.overrideAclView
+                : fixturePath.aclView);
       }
       if (type == PosixFileAttributeView.class) {
         return type.cast(new AclFixturePosixView(fixturePath));
@@ -264,20 +296,28 @@ final class AclFixtureFileSystem extends FileSystem {
 
     @Override
     public <A extends BasicFileAttributes> A readAttributes(
-        Path path, Class<A> type, LinkOption... options) {
+        Path path, Class<A> type, LinkOption... options) throws IOException {
+      AclFixturePath fixturePath = testPath(path);
+      if (!fixturePath.exists) {
+        throw new java.nio.file.NoSuchFileException(path.toString());
+      }
       if (type == BasicFileAttributes.class) {
-        return type.cast(new AclFixtureBasicFileAttributes(testPath(path)));
+        return type.cast(new AclFixtureBasicFileAttributes(fixturePath));
       }
       if (type == PosixFileAttributes.class) {
-        return type.cast(new AclFixturePosixFileAttributes(testPath(path)));
+        return type.cast(new AclFixturePosixFileAttributes(fixturePath));
       }
       throw new UnsupportedOperationException(
           "only basic and POSIX attributes are used by these tests");
     }
 
     @Override
-    public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
+    public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options)
+        throws IOException {
       AclFixturePath fixturePath = testPath(path);
+      if (!fixturePath.exists) {
+        throw new java.nio.file.NoSuchFileException(path.toString());
+      }
       return Map.of(
           "isRegularFile", fixturePath.regularFile, "isDirectory", !fixturePath.regularFile);
     }
@@ -302,6 +342,72 @@ final class AclFixtureFileSystem extends FileSystem {
 
     private static AclFixturePath testPath(Path path) {
       return (AclFixturePath) path;
+    }
+  }
+
+  /** Minimal file-store descriptor for capability checks against the fixture filesystem. */
+  private static final class FixtureFileStore extends FileStore {
+    private final Set<String> views;
+
+    private FixtureFileStore(Set<String> views) {
+      this.views = Set.copyOf(views);
+    }
+
+    @Override
+    public String name() {
+      return "fingrind-test-acl";
+    }
+
+    @Override
+    public String type() {
+      return "fixture";
+    }
+
+    @Override
+    public boolean isReadOnly() {
+      return false;
+    }
+
+    @Override
+    public long getTotalSpace() {
+      return 0L;
+    }
+
+    @Override
+    public long getUsableSpace() {
+      return 0L;
+    }
+
+    @Override
+    public long getUnallocatedSpace() {
+      return 0L;
+    }
+
+    @Override
+    public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type) {
+      if (type == PosixFileAttributeView.class) {
+        return views.contains("posix");
+      }
+      if (type == AclFileAttributeView.class || type == FileOwnerAttributeView.class) {
+        return views.contains("acl");
+      }
+      return false;
+    }
+
+    @Override
+    public boolean supportsFileAttributeView(String name) {
+      return views.contains(name);
+    }
+
+    @Override
+    public <V extends FileStoreAttributeView> @Nullable V getFileStoreAttributeView(Class<V> type) {
+      return null;
+    }
+
+    @Override
+    public Object getAttribute(String attribute) {
+      throw new UnsupportedOperationException(
+          "file-store attributes are not used by this test filesystem");
     }
   }
 }

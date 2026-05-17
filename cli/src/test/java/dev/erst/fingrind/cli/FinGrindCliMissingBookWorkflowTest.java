@@ -37,7 +37,7 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"administration-book-not-initialized\""));
+            .contains("administration-book-not-initialized"));
   }
 
   @Test
@@ -57,9 +57,7 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
                 });
     assertEquals(2, exitCode);
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"query-book-not-initialized\""));
+        outputStream.toString(StandardCharsets.UTF_8).contains("query-book-not-initialized"));
   }
 
   @Test
@@ -82,8 +80,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
                 });
     assertEquals(2, exitCode);
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"posting-book-not-initialized\""));
+        outputStream.toString(StandardCharsets.UTF_8).contains("posting-book-not-initialized"));
   }
 }

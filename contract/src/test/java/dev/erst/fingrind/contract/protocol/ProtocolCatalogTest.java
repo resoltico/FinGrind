@@ -268,6 +268,16 @@ class ProtocolCatalogTest {
                         .getBytes(StandardCharsets.UTF_8)),
                 "blank"));
     assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            OperationIdContract.loadFromResource(
+                new ByteArrayInputStream(
+                    """
+                    ["HELP"]
+                    """
+                        .getBytes(StandardCharsets.UTF_8)),
+                "array.json"));
+    assertThrows(
         IllegalStateException.class,
         () -> OperationIdContract.loadFromResource(nullOf(), "missing.json"));
     assertThrows(
@@ -397,6 +407,9 @@ class ProtocolCatalogTest {
     assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
     assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
+    assertEquals(
+        "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
+        ProtocolCatalog.sqliteOperatorTrustSystemProperty());
     assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
     assertEquals("3.53.1", ProtocolCatalog.requiredMinimumSqliteVersion());
     assertEquals("2.3.4", ProtocolCatalog.requiredSqlite3mcVersion());

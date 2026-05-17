@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -222,7 +222,7 @@ Generated-state stance:
 | Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0-RC in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, generated source-checkout launchers, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` auto-discovers that managed runtime when it runs from a prepared checkout and only needs explicit `FINGRIND_SQLITE_LIBRARY` when launched outside that checkout layout |
+| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, generated source-checkout launchers, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers auto-discover that managed runtime when they run from a prepared checkout and only need explicit `FINGRIND_SQLITE_LIBRARY` when launched outside that checkout layout |
 | Jackson Databind | 3.1.3 |
 | JUnit Jupiter | 6.1.0-RC1 |
 | Jazzer | 0.30.0 |
@@ -350,8 +350,8 @@ Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a
 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library from
 `third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`, inject that library through
 `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI surfaces on the same native-access/runtime
-contract. The generated source-checkout launcher and developer raw JAR then discover that prepared
-checkout runtime without requiring another manual export.
+contract. The generated source-checkout launcher and developer direct-Java wrappers then discover
+that prepared checkout runtime without requiring another manual export.
 
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on
@@ -409,8 +409,10 @@ regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
 source, compiles its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library
-from `../third_party/sqlite/`, and injects that path through `FINGRIND_SQLITE_LIBRARY` for its
-deterministic tests, regression replay, and local active fuzzing commands.
+from `../third_party/sqlite/`, writes both the local-consistency `.sha256` file and the
+publisher-trust `.trusted.sha256` sidecar for that built library, and injects that path through
+`FINGRIND_SQLITE_LIBRARY` for its deterministic tests, regression replay, and local active
+fuzzing commands.
 
 For all Jazzer operations, the supported operator surface is now `jazzer/bin/*`.
 Those wrappers serialize FinGrind verification through the shared repo lock and own the deterministic

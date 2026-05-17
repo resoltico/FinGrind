@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
@@ -132,12 +133,16 @@ final class CliResponseWriter {
     mutationWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
   }
 
-  void writeRekeyBookResult(RekeyBookResult result) {
-    writeRekeyBookResult(result, OutputMode.JSON);
+  void writeRekeyBookResult(
+      RekeyBookResult result, BookAccess.PassphraseSource replacementPassphraseSource) {
+    writeRekeyBookResult(result, replacementPassphraseSource, OutputMode.JSON);
   }
 
-  void writeRekeyBookResult(RekeyBookResult result, OutputMode outputMode) {
-    mutationWriter.writeRekeyBookResult(result, outputMode);
+  void writeRekeyBookResult(
+      RekeyBookResult result,
+      BookAccess.PassphraseSource replacementPassphraseSource,
+      OutputMode outputMode) {
+    mutationWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode);
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result) {

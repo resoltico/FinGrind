@@ -2,8 +2,14 @@ Trial Balance
 =============
 
 Entity                : Acme Studio
+Entity profile        : Company / Multi Owner
+Reporting profile     : Internal Management Only / Not Registered
+Business activity     : (none)
+Tax registrations     : (none)
+Tax code definitions  : (none)
 Functional currency   : EUR
 Fiscal year start     : 01-01
+Accounting basis      : Accrual
 Posting coverage      : All posting kinds
 Comparative reference : book start to 2025-04-08
 Effective date to     : 2026-04-08

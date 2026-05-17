@@ -484,6 +484,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("libraryEnvironmentVariable")
             .stringValue());
     assertEquals(
+        ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("operatorTrustSystemProperty")
+            .stringValue());
+    assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
         payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").stringValue());
     assertEquals(
@@ -661,6 +668,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
         environmentDescriptor.sqlite().libraryEnvironmentVariable());
     assertEquals(
+        ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
+        environmentDescriptor.sqlite().operatorTrustSystemProperty());
+    assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
         environmentDescriptor.sqlite().bundleHomeSystemProperty());
     assertEquals(
@@ -712,8 +722,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   @Test
   void run_reportsDeterministicFailureWhenGeneratedKeyFileAlreadyExists() throws IOException {
     Path keyFilePath = tempDirectory.resolve("secrets").resolve("existing.book-key");
-    Files.createDirectories(keyFilePath.getParent());
-    Files.writeString(keyFilePath, "already-present", StandardCharsets.UTF_8);
+    writeSecureKey(keyFilePath, "already-present");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());

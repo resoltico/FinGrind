@@ -17,7 +17,9 @@ they change the book.
 
 Every command reads from or writes to the same protected file. The key file is required every
 time. If the key is lost, the book cannot be opened. Keep the key outside the book directory so a
-copy of the book does not automatically include the unlocking key.
+copy of the book does not automatically include the unlocking key. If `./secrets/` or `./books/`
+does not exist, FinGrind creates it with owner-only permissions. If either directory already
+exists, keep it owner-only before you ask FinGrind to write a key or book there.
 
 The example below uses the checked-in request files under `docs/examples/`. For a bundle-first
 walkthrough that creates those files locally, use [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md).
@@ -49,8 +51,14 @@ Trial Balance
 =============
 
 Entity                : Acme Studio
+Entity profile        : Company / Unknown
+Reporting profile     : Unspecified / Unspecified
+Business activity     : (none)
+Tax registrations     : (none)
+Tax code definitions  : (none)
 Functional currency   : EUR
 Fiscal year start     : 01-01
+Accounting basis      : Accrual
 Posting coverage      : All posting kinds
 Comparative reference : book start to 2025-04-08
 Effective date to     : 2026-04-08

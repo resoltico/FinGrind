@@ -169,7 +169,7 @@ final class MachineContractDomainDescriptors {
                 "accountRole", AccountRole.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "financialPositionLineClassification",
-                FinancialPositionLineClassification.wireValues()),
+                FinancialPositionLineClassification.declaredAccountWireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "profitAndLossLineClassification", ProfitAndLossLineClassification.wireValues())));
   }

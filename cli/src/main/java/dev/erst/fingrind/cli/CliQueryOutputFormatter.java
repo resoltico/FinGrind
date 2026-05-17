@@ -32,9 +32,9 @@ final class CliQueryOutputFormatter {
     return List.of(
         postingFact.journalEntry().effectiveDate().toString(),
         CliHumanDisplay.instant(postingFact.provenance().recordedAt()),
-        CliHumanDisplay.compactOpaqueIdentifier(postingFact.postingId().value()),
+        postingFact.postingId().value(),
         displayPostingKind(postingFact.postingKind()),
-        displayReversalStateHuman(postingFact),
+        displayPostingRoleHuman(postingFact),
         postingCurrency(postingFact),
         postingDebitTotal(postingFact),
         postingCreditTotal(postingFact),
@@ -108,9 +108,9 @@ final class CliQueryOutputFormatter {
     return List.of(
         entry.postingFact().journalEntry().effectiveDate().toString(),
         CliHumanDisplay.instant(entry.postingFact().provenance().recordedAt()),
-        CliHumanDisplay.compactOpaqueIdentifier(entry.postingFact().postingId().value()),
+        entry.postingFact().postingId().value(),
         displayPostingKind(entry.postingFact().postingKind()),
-        displayReversalStateHuman(entry.postingFact()),
+        displayPostingRoleHuman(entry.postingFact()),
         reversalTargetHuman(entry.postingFact()),
         entry.movement().netAmount().currencyUnit().code(),
         displayMoney(entry.movement().debitTotal()),
@@ -235,6 +235,13 @@ final class CliQueryOutputFormatter {
     };
   }
 
+  static String displayStatementLineCode(String lineCode, StatementLineKind lineKind) {
+    return switch (lineKind) {
+      case DECLARED_ACCOUNT -> lineCode;
+      case CURRENT_PERIOD_RESULT -> "(derived)";
+    };
+  }
+
   static String displayLineRole(Optional<AccountRole> lineRole) {
     return lineRole.map(CliQueryOutputFormatter::displayAccountRoleLabel).orElse("(derived)");
   }
@@ -302,7 +309,7 @@ final class CliQueryOutputFormatter {
     };
   }
 
-  static String displayReversalStateHuman(PostingFact postingFact) {
+  static String displayPostingRoleHuman(PostingFact postingFact) {
     return postingFact.reversalReference().isPresent() ? "Reversal" : "Direct";
   }
 
@@ -313,10 +320,8 @@ final class CliQueryOutputFormatter {
   static String reversalTargetHuman(PostingFact postingFact) {
     return postingFact
         .reversalReference()
-        .map(
-            reference ->
-                CliHumanDisplay.compactOpaqueIdentifier(reference.priorPostingId().value()))
-        .orElse("(direct)");
+        .map(reference -> reference.priorPostingId().value())
+        .orElse("(not a reversal)");
   }
 
   static String reversalTargetCsv(PostingFact postingFact) {

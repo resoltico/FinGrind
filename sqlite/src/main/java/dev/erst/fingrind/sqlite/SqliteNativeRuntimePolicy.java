@@ -206,6 +206,7 @@ final class SqliteNativeRuntimePolicy {
       Supplier<@Nullable Path> sourceCheckoutBuildRootSupplier) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
+      requireOperatorTrustedEnvironmentApproval();
       return new SqliteLibraryTarget(
           SqliteRuntime.LIBRARY_MODE,
           SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
@@ -256,6 +257,19 @@ final class SqliteNativeRuntimePolicy {
       return null;
     }
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
+  }
+
+  private static void requireOperatorTrustedEnvironmentApproval() {
+    String configuredValue = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "");
+    if ("true".equalsIgnoreCase(configuredValue.strip())) {
+      return;
+    }
+    throw new ManagedSqliteRuntimeUnavailableException(
+        "Operator-configured SQLite runtime selection requires explicit trust approval. Set "
+            + SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY
+            + "=true together with "
+            + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
+            + " when intentionally loading an operator-managed library outside the publisher-authenticated bundle or source-checkout runtime.");
   }
 
   private static SqliteLibraryTarget bundledLibraryTarget(String normalizedBundleHomePath) {
@@ -443,13 +457,15 @@ final class SqliteNativeRuntimePolicy {
       @Nullable Path sourceCheckoutBuildRoot,
       ManagedLibraryFinder managedLibraryFinder) {
     String expectedFileName = supportedNativeLibraryFileName();
+    String expectedClassifier = supportedHostClassifier();
     for (Path managedSqliteRoot :
         sourceCheckoutManagedLibraryRoots(sourceCheckoutRoot, sourceCheckoutBuildRoot)) {
-      if (!Files.isDirectory(managedSqliteRoot)) {
+      Path classifierRoot = managedSqliteRoot.resolve(expectedClassifier);
+      if (!Files.isDirectory(classifierRoot)) {
         continue;
       }
       try {
-        Path managedLibraryPath = managedLibraryFinder.find(managedSqliteRoot, expectedFileName);
+        Path managedLibraryPath = managedLibraryFinder.find(classifierRoot, expectedFileName);
         if (managedLibraryPath != null) {
           return managedLibraryPath;
         }
@@ -474,15 +490,8 @@ final class SqliteNativeRuntimePolicy {
 
   private static @Nullable Path findManagedLibrary(Path managedSqliteRoot, String expectedFileName)
       throws IOException {
-    try (var pathStream =
-        Files.find(
-            managedSqliteRoot,
-            2,
-            (path, attributes) ->
-                attributes.isRegularFile()
-                    && path.getFileName().toString().equals(expectedFileName))) {
-      return pathStream.sorted().findFirst().orElse(null);
-    }
+    Path expectedLibraryPath = managedSqliteRoot.resolve(expectedFileName);
+    return Files.isRegularFile(expectedLibraryPath) ? expectedLibraryPath : null;
   }
 
   private static Manifest manifestFromJar(Path codeSourcePath) throws IOException {
@@ -509,19 +518,55 @@ final class SqliteNativeRuntimePolicy {
   }
 
   static String supportedNativeLibraryFileName() {
-    String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-    if (operatingSystem.contains("mac")) {
+    return supportedNativeLibraryFileName(
+        supportedOperatingSystemId(System.getProperty("os.name", "")),
+        System.getProperty("os.name"));
+  }
+
+  static String supportedNativeLibraryFileName(String operatingSystemId, String detectedOsName) {
+    if ("macos".equals(operatingSystemId)) {
       return "libsqlite3.dylib";
     }
-    if (operatingSystem.contains("linux")) {
+    if ("linux".equals(operatingSystemId)) {
       return "libsqlite3.so.0";
     }
-    if (operatingSystem.contains("windows")) {
+    if ("windows".equals(operatingSystemId)) {
       return "sqlite3.dll";
     }
     throw new ManagedSqliteRuntimeUnavailableException(
         "FinGrind bundles currently support managed SQLite on macOS, Linux, and Windows only. Detected: "
-            + System.getProperty("os.name"));
+            + detectedOsName);
+  }
+
+  static String supportedHostClassifier() {
+    return supportedOperatingSystemId(System.getProperty("os.name", ""))
+        + "-"
+        + supportedArchitectureId(System.getProperty("os.arch", "unknown"));
+  }
+
+  static String supportedOperatingSystemId(String operatingSystemName) {
+    String operatingSystem = operatingSystemName.toLowerCase(Locale.ROOT);
+    if (operatingSystem.contains("mac")) {
+      return "macos";
+    }
+    if (operatingSystem.contains("linux")) {
+      return "linux";
+    }
+    if (operatingSystem.contains("windows")) {
+      return "windows";
+    }
+    throw new ManagedSqliteRuntimeUnavailableException(
+        "FinGrind bundles currently support managed SQLite on macOS, Linux, and Windows only. Detected: "
+            + operatingSystemName);
+  }
+
+  static String supportedArchitectureId(String architectureName) {
+    String architecture = architectureName.toLowerCase(Locale.ROOT);
+    return switch (architecture) {
+      case "arm64", "aarch64" -> "aarch64";
+      case "amd64", "x86_64", "x64" -> "x86_64";
+      default -> architecture.replaceAll("[^a-z0-9]+", "-");
+    };
   }
 
   private static int[] parseVersionParts(String version) {

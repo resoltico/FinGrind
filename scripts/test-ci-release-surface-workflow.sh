@@ -30,5 +30,12 @@ grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
     "CI workflow no longer advertises the canonical root verification gate"
 grep -Fq './check.sh --no-daemon --console=plain' "${workflow_file}" || die \
     "CI workflow no longer runs the canonical root verification gate"
+grep -Fq 'Run root quality gates on Windows' "${workflow_file}" || die \
+    "CI workflow no longer keeps the Windows root gate as an explicit fail-fast step"
+grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
+    "CI workflow no longer keeps Windows build-logic verification as a separate step"
+if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
+    die "CI workflow still combines Windows root verification and build-logic verification in one non-fail-fast step"
+fi
 
 printf 'CI release-surface workflow regression: success\n'

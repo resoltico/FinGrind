@@ -10,6 +10,9 @@ final class CliJsonScalarParsers {
 
   static <T> T parseWireValue(
       String rawValue, String fieldName, List<String> acceptedValues, Function<String, T> parser) {
+    if (!acceptedValues.contains(rawValue)) {
+      throw unsupportedValue(fieldName, rawValue, acceptedValues, null);
+    }
     try {
       return parser.apply(rawValue);
     } catch (IllegalArgumentException exception) {

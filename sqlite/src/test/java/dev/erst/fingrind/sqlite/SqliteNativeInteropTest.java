@@ -19,6 +19,7 @@ import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,6 +28,11 @@ import org.junit.jupiter.api.io.TempDir;
 class SqliteNativeInteropTest {
   private static final String TEST_BOOK_KEY = "interop-test-book-key";
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void nullHandleCalls_mapToBridgeFailures() {
@@ -47,32 +53,46 @@ class SqliteNativeInteropTest {
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.prepareStatement(
-                  NullTestSupport.nullOf(MemorySegment.class), sqlPointer, statementPointer));
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  sqlPointer,
+                  statementPointer,
+                  SqliteNativeBootstrap.api()));
       assertBridgeFailure(
-          () -> SqliteNativeStatements.bindNull(NullTestSupport.nullOf(MemorySegment.class), 1));
+          () ->
+              SqliteNativeStatements.bindNull(
+                  NullTestSupport.nullOf(MemorySegment.class), 1, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
-          () -> SqliteNativeStatements.bindInt(NullTestSupport.nullOf(MemorySegment.class), 1, 7));
+          () ->
+              SqliteNativeStatements.bindInt(
+                  NullTestSupport.nullOf(MemorySegment.class), 1, 7, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.bindText(
-                  NullTestSupport.nullOf(MemorySegment.class), 1, textPointer, 1));
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  1,
+                  textPointer,
+                  1,
+                  SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.step(
-                  NullTestSupport.nullOf(MemorySegment.class),
-                  NullTestSupport.nullOf(MemorySegment.class)));
+                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.finalizeStatement(
-                  NullTestSupport.nullOf(MemorySegment.class)));
+                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
       assertBridgeFailure(
-          () -> SqliteNativeStatements.columnText(NullTestSupport.nullOf(MemorySegment.class), 0));
+          () ->
+              SqliteNativeStatements.columnText(
+                  NullTestSupport.nullOf(MemorySegment.class), 0, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
-          () -> SqliteNativeStatements.columnInt(NullTestSupport.nullOf(MemorySegment.class), 0));
+          () ->
+              SqliteNativeStatements.columnInt(
+                  NullTestSupport.nullOf(MemorySegment.class), 0, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.extendedErrorCode(
-                  NullTestSupport.nullOf(MemorySegment.class)));
+                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
     }
   }
 
@@ -88,7 +108,7 @@ class SqliteNativeInteropTest {
             SqliteNativeException.class,
             () ->
                 SqliteNativeStatements.prepareStatement(
-                    database.handle(), sqlPointer, statementPointer));
+                    database.handle(), sqlPointer, statementPointer, database.sqliteApi()));
       }
       try (SqliteNativeStatement statement =
           SqliteNativeStatements.prepare(database, "insert into sample (id) values (?)")) {
@@ -97,16 +117,18 @@ class SqliteNativeInteropTest {
           MemorySegment textPointer = arena.allocateFrom("x");
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeStatements.bindNull(statementHandle, 0));
+              () -> SqliteNativeStatements.bindNull(statementHandle, 0, database.sqliteApi()));
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeStatements.bindInt(statementHandle, 0, 7));
+              () -> SqliteNativeStatements.bindInt(statementHandle, 0, 7, database.sqliteApi()));
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeStatements.bindText(statementHandle, 0, textPointer, 1));
+              () ->
+                  SqliteNativeStatements.bindText(
+                      statementHandle, 0, textPointer, 1, database.sqliteApi()));
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeStatements.bindLong(statementHandle, 0, 7L));
+              () -> SqliteNativeStatements.bindLong(statementHandle, 0, 7L, database.sqliteApi()));
         }
       }
       assertThrows(
@@ -115,16 +137,14 @@ class SqliteNativeInteropTest {
           NullPointerException.class,
           () -> new SqliteNativeStatement(database, NullTestSupport.nullOf(String.class)));
       database.executeStatement("insert into sample (id) values (1)");
+      SqliteNativeException duplicateInsertFailure;
       try (SqliteNativeStatement duplicateInsert =
           SqliteNativeStatements.prepare(database, "insert into sample (id) values (1)")) {
-        SqliteNativeException exception =
-            assertThrows(
-                SqliteNativeException.class,
-                () -> SqliteNativeStatements.step(database.handle(), duplicateInsert.handle()));
+        duplicateInsertFailure = assertThrows(SqliteNativeException.class, duplicateInsert::step);
         assertEquals(
             SqliteNativeResultCodes.CONSTRAINT_PRIMARYKEY,
-            SqliteNativeStatements.extendedErrorCode(database.handle()));
-        assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", exception.resultName());
+            SqliteNativeStatements.extendedErrorCode(database.handle(), database.sqliteApi()));
+        assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", duplicateInsertFailure.resultName());
       }
     }
   }

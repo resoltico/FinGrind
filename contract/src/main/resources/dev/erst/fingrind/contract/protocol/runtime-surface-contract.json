@@ -10,5 +10,6 @@
   "defaultBookCipher": "chacha20",
   "sqliteLibraryMode": "managed-only",
   "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
+  "sqliteOperatorTrustSystemProperty": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
   "sqliteBundleHomeSystemProperty": "fingrind.bundle.home"
 }

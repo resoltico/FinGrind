@@ -150,7 +150,7 @@ final class CliPostingRequestParser {
                         parseWireValue(
                             value,
                             ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
-                            FinancialPositionLineClassification.wireValues(),
+                            FinancialPositionLineClassification.declaredAccountWireValues(),
                             FinancialPositionLineClassification::fromWireValue)),
             optionalText(rootNode, ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION)
                 .map(

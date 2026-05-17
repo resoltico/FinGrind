@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -220,8 +220,9 @@ That contract now has a few explicit rules:
   advanced contributor debugging; it does not build a native library on its own
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
   `build/managed-sqlite/`
-- local developer-only `java -jar` verification that wants the managed runtime must therefore run
-  both `:cli:shadowJar` and `prepareManagedSqlite`
+- local developer direct-Java verification uses `./scripts/direct-java-cli.sh` or
+  `.\scripts\direct-java-cli.ps1` and must therefore run both `:cli:shadowJar` and
+  `prepareManagedSqlite`
 
 ### Committed Jazzer topology
 

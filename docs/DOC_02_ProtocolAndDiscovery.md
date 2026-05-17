@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -414,6 +414,27 @@ public final class ProtocolLedgerPlanFields
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
 
+## `ProtocolOpenBookFields.TaxProfileFields`, `ProtocolOpenBookFields.TaxRegistrationFields`, And `ProtocolOpenBookFields.TaxCodeDefinitionFields`
+
+These nested protocol-owned field groups keep first-class tax-profile request grammar explicit
+inside `open-book`.
+
+```java
+public static final class ProtocolOpenBookFields.TaxProfileFields
+public static final class ProtocolOpenBookFields.TaxRegistrationFields
+public static final class ProtocolOpenBookFields.TaxCodeDefinitionFields
+```
+
+- `ProtocolOpenBookFields.TaxProfileFields`: owns the nested `registrations` and
+  `taxCodeDefinitions` field names under `taxProfile`
+- `ProtocolOpenBookFields.TaxRegistrationFields`: owns the nested jurisdiction, registration id,
+  and filing-frequency field names for one tax registration
+- `ProtocolOpenBookFields.TaxCodeDefinitionFields`: owns the nested tax-code, display-name,
+  jurisdiction, rate, pricing-mode, recoverability, and posting-account field names for one
+  declared tax code definition
+- Purpose: keep nested tax-profile request vocabulary tied to one canonical owner instead of
+  duplicating literals across parser code, machine-contract descriptors, templates, and docs
+
 ## `MachineContract`
 
 `MachineContract` is the public discovery assembler for `help`, `version`, `capabilities`,
@@ -587,7 +608,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 6`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 7`
 
 ## `ProtectedBookFormatContract`
 

@@ -97,7 +97,7 @@ final class MachineContractTemplatesCatalog {
                     EntityForm.FREELANCER,
                     OwnerModel.SOLE_OWNER,
                     ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                    TaxRegistrationStatus.UNSPECIFIED,
+                    TaxRegistrationStatus.NOT_REGISTERED,
                     List.of("translation-services"),
                     "EUR",
                     "01-01",

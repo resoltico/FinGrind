@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -183,6 +184,34 @@ class SqliteFuzzAssertionsTest {
 
     assertEquals("fingrind-jazzer-book-key", firstWrite);
     assertEquals(firstWrite, secondWrite);
+  }
+
+  @Test
+  void sqliteAssertions_prepareSecureArtifactDirectory_hardens_existing_directory_roots()
+      throws Exception {
+    Path artifactDirectory = tempDirectory.resolve("existing-artifacts");
+    Files.createDirectories(artifactDirectory);
+
+    assertDoesNotThrow(
+        () -> SqliteFuzzAssertions.prepareSecureArtifactDirectory(artifactDirectory));
+    assertDoesNotThrow(
+        () ->
+            SqliteFuzzAssertions.writeDeterministicBookKeyFile(
+                artifactDirectory.resolve("book.key")));
+  }
+
+  @Test
+  void sqliteAssertions_prepareSecureArtifactDirectory_rejects_non_directory_paths()
+      throws Exception {
+    Path plainFile = tempDirectory.resolve("not-a-directory");
+    Files.writeString(plainFile, "plain file", UTF_8);
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteFuzzAssertions.prepareSecureArtifactDirectory(plainFile));
+
+    assertTrue(String.valueOf(exception.getMessage()).contains("directory path"));
   }
 
   private static String basicValidRequest() {

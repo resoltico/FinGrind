@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 
 /** Shared SQLite-specific assertions for Jazzer harnesses. */
@@ -90,6 +91,21 @@ public final class SqliteFuzzAssertions {
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyFilePath).requireAccepted();
     }
     Files.writeString(keyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+  }
+
+  /** Creates or hardens one owner-only directory for deterministic SQLite fuzz artifacts. */
+  public static void prepareSecureArtifactDirectory(Path directoryPath) throws java.io.IOException {
+    Path normalizedDirectory = directoryPath.toAbsolutePath().normalize();
+    if (Files.exists(normalizedDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      if (!Files.isDirectory(normalizedDirectory, LinkOption.NOFOLLOW_LINKS)) {
+        throw new IllegalArgumentException(
+            "SQLite fuzz artifact directory must be one directory path: " + normalizedDirectory);
+      }
+    } else {
+      Files.createDirectories(normalizedDirectory);
+    }
+    SqliteBookFileSecurity.hardenDirectory(normalizedDirectory);
+    SqliteBookKeyFileSecurity.hardenDirectory(normalizedDirectory);
   }
 
   /** Opens one deterministic protected-book store for fuzz and replay flows. */

@@ -51,6 +51,13 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     SqliteStoreTestAccess.publishNativeDatabase(postingFactStore, database);
   }
 
+  static StoreDatabaseSwap swapStoreDatabase(
+      SqlitePostingFactStore postingFactStore, SqliteNativeDatabase replacementDatabase) {
+    SqliteNativeDatabase originalDatabase = storeDatabase(postingFactStore);
+    setStoreDatabase(postingFactStore, replacementDatabase);
+    return new StoreDatabaseSwap(postingFactStore, originalDatabase, replacementDatabase);
+  }
+
   static void clearStoreSessionSecret(SqlitePostingFactStore postingFactStore) {
     SqliteStoreTestAccess.clearSessionSecret(postingFactStore);
   }
@@ -247,5 +254,29 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   @FunctionalInterface
   interface ThrowingRunnable {
     void run() throws ReflectiveOperationException;
+  }
+
+  /** Restores one temporarily replaced published database and closes the temporary handle. */
+  static final class StoreDatabaseSwap implements AutoCloseable {
+    private final SqlitePostingFactStore postingFactStore;
+    private final @org.jspecify.annotations.Nullable SqliteNativeDatabase originalDatabase;
+    private final SqliteNativeDatabase replacementDatabase;
+
+    private StoreDatabaseSwap(
+        SqlitePostingFactStore postingFactStore,
+        @org.jspecify.annotations.Nullable SqliteNativeDatabase originalDatabase,
+        SqliteNativeDatabase replacementDatabase) {
+      this.postingFactStore = postingFactStore;
+      this.originalDatabase = originalDatabase;
+      this.replacementDatabase = replacementDatabase;
+    }
+
+    @Override
+    public void close() {
+      setStoreDatabase(postingFactStore, originalDatabase);
+      if (!Objects.equals(replacementDatabase, originalDatabase)) {
+        SqliteStoreOperations.closeReopenedDatabaseQuietly(replacementDatabase);
+      }
+    }
   }
 }

@@ -9,13 +9,18 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Thin compatibility base that now layers small SQLite fixture and introspection supports. */
 class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupport {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   void assertOpenConfigurationFailure(String driftSql, String expectedMessage) {
     Path bookPath =
@@ -41,12 +46,7 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
 
   BookAccess bookAccess(Path bookPath, String keyText) {
     try {
-      Path keyDirectory = tempDirectory.resolve("book-keys");
-      Files.createDirectories(keyDirectory);
-      Path keyPath = keyDirectory.resolve(bookPath.getFileName() + ".key");
-      if (keyPath.getParent() != null) {
-        Files.createDirectories(keyPath.getParent());
-      }
+      Path keyPath = tempDirectory.resolve("book-keys").resolve(bookPath.getFileName() + ".key");
       writeSecureKeyFile(keyPath, keyText);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {

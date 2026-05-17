@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: CLI_PDF_ADAPTERS
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, cli, app, pdf, report-pdf, adapter, entrypoint, process, pdfbox]
   questions: ["where is the public cli entrypoint in fingrind", "how does fingrind render pdf reports", "which module owns pdf export in fingrind"]

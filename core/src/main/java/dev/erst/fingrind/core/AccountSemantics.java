@@ -32,7 +32,13 @@ public final class AccountSemantics {
         throw new IllegalArgumentException(
             "Profit-and-loss classification must be absent for balance-sheet accounts.");
       }
-      if (financialPositionLineClassification.orElseThrow().accountType() != accountType) {
+      FinancialPositionLineClassification declaredClassification =
+          financialPositionLineClassification.orElseThrow();
+      if (declaredClassification == FinancialPositionLineClassification.CURRENT_PERIOD_RESULT) {
+        throw new IllegalArgumentException(
+            "CURRENT_PERIOD_RESULT is reserved for derived statement rows and must not be declared on accounts.");
+      }
+      if (declaredClassification.accountType() != accountType) {
         throw new IllegalArgumentException(
             "Financial-position classification must match the declared accountType.");
       }

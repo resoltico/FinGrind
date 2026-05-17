@@ -63,6 +63,7 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.IOException;
 import java.time.Clock;
@@ -84,7 +85,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.38.0", CLOCK);
+      new PdfReportService("FinGrind", "0.39.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(
@@ -96,7 +97,8 @@ class PdfReportServiceTest {
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
-          AccountingBasis.ACCRUAL);
+          AccountingBasis.ACCRUAL,
+          TaxProfile.empty());
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -251,7 +253,12 @@ class PdfReportServiceTest {
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("250.00"));
     assertTrue(accountLedgerText.contains("Entry"));
-    assertTrue(accountLedgerText.contains("Counterpart accounts"));
+    assertTrue(accountLedgerText.contains("Counterpart"));
+    assertTrue(accountLedgerText.contains("accounts"));
+    assertTrue(accountLedgerText.contains("019e26ff-0000-7000"));
+    assertTrue(accountLedgerText.contains("000000000001"));
+    assertTrue(accountLedgerText.contains("000000000000"));
+    assertFalse(accountLedgerText.contains("..."));
   }
 
   @Test
@@ -272,6 +279,66 @@ class PdfReportServiceTest {
 
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("25.00"));
+  }
+
+  @Test
+  void renderStatementsHideSyntheticDerivedLineCodesInPdfOutput() throws IOException {
+    CurrencyBalance creditBalance = balance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT);
+    FinancialPositionReport financialPositionReport =
+        new FinancialPositionReport(
+            BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.EQUITY,
+                    List.of(
+                        new FinancialPositionRow(
+                            "current-period-result",
+                            "Current period result",
+                            AccountType.EQUITY,
+                            Optional.empty(),
+                            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                            StatementLineKind.CURRENT_PERIOD_RESULT,
+                            creditBalance)),
+                    List.of(creditBalance))),
+            List.of());
+    ChangesInEquityReport changesInEquityReport =
+        new ChangesInEquityReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new ChangesInEquityRow(
+                    "current-period-result",
+                    "Current period result",
+                    Optional.of(AccountType.EQUITY),
+                    Optional.empty(),
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    StatementLineKind.CURRENT_PERIOD_RESULT,
+                    balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
+                    creditBalance,
+                    creditBalance)),
+            List.of(),
+            List.of(creditBalance),
+            List.of(creditBalance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String financialPositionText =
+        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport));
+    String changesInEquityText =
+        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(changesInEquityReport));
+
+    assertTrue(financialPositionText.contains("(derived)"));
+    assertFalse(financialPositionText.contains("current-period-result"));
+    assertTrue(changesInEquityText.contains("(derived)"));
+    assertFalse(changesInEquityText.contains("current-period-result"));
   }
 
   @Test
@@ -639,10 +706,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.38.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.39.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.38.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.39.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -659,7 +726,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.38.0", information.getCreator());
+      assertEquals("FinGrind 0.39.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

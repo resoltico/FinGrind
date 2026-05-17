@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
@@ -86,6 +87,60 @@ class SqliteBookKeyFileSecurityTest {
   }
 
   @Test
+  void ensureSecureParentDirectory_rejectsExistingSharedPosixDirectories() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\keys");
+      AclFixturePath keyPath = fileSystem.path("\\keys\\shared-parent.book-key");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE,
+              PosixFilePermission.GROUP_READ,
+              PosixFilePermission.GROUP_EXECUTE);
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath));
+      assertTrue(
+          NullTestSupport.messageOf(exception)
+              .contains("parent directory must use owner-only permissions"));
+    }
+  }
+
+  @Test
+  void ensureSecureParentDirectory_rejectsExistingSharedAclDirectories() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\keys");
+      AclFixturePath keyPath = fileSystem.path("\\keys\\shared-parent.book-key");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .build(),
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath));
+      assertTrue(
+          NullTestSupport.messageOf(exception)
+              .contains("parent directory ACL must grant secret-directory access only"));
+    }
+  }
+
+  @Test
   void posixFilesystemRejectsOwnerUnreadableAndGroupReadableKeyFiles() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath parentPath = fileSystem.path("\\keys");
@@ -143,13 +198,16 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      IllegalStateException exception =
+      ContractFailureException exception =
           assertThrows(
-              IllegalStateException.class,
+              ContractFailureException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
       assertTrue(
           NullTestSupport.messageOf(exception)
               .contains("parent directory must use owner-only permissions"));
+      assertTrue(
+          java.util.Objects.requireNonNull(exception.failure().hint())
+              .contains("tighten it first"));
     }
   }
 
@@ -334,7 +392,10 @@ class SqliteBookKeyFileSecurityTest {
   @Test
   void unsupportedFilesystemBranchesRejectWithoutNativeSecurityViews() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\keys");
       AclFixturePath keyPath = fileSystem.path("\\keys\\unsupported.book-key");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
       keyPath.exists = true;
       keyPath.regularFile = true;
       assertThrows(

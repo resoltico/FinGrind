@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: CORE_DECIMAL_BOUNDARIES
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, decimal, money, currency, percentage, tax-rate, exchange-rate, ratio, basis-points, boundaries]
   questions: ["can I use Money for tax rates in fingrind", "how should future exchange rates be modeled in fingrind", "what are the decimal boundaries in fingrind", "why does fingrind forbid generic BigDecimal domain seams"]
@@ -71,16 +71,18 @@ The minimum required design questions are:
 
 Do not answer those questions later with a generic `BigDecimal` field and a comment.
 
-## Recommended Future Type Split
+## Implemented And Remaining Type Split
 
-The current theory suggests the following future separation once those domains become real:
+The current repository now carries the following closed decimal-bearing types:
 
-- `Percentage`: one human-facing percentage concept such as `20%`
+- `PercentageRate`: one exact percentage stored as basis points
+- `ExchangeRate`: one exact positive plain-decimal quote used by transaction-currency evidence
+
+The next decimal-bearing concepts must arrive as separate types in their owning contexts rather
+than widening either existing type:
+
 - `TaxRate`: one tax-policy-owned rate with jurisdictional meaning and effective scope
-- `ExchangeRate`: one ordered base/quote relation plus an exact quote representation
 - `AllocationRatio`: one exact non-money ratio for pro-rating or apportionment
-
-Those names are guidance for future theory-building, not approved code to add immediately.
 
 ## Guardrail
 

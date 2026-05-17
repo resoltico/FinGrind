@@ -6,10 +6,12 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalInt;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.MissingNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Shared JSON resource loading helpers for protocol-owned contract snapshots. */
 final class JsonContractResourceSupport {
@@ -17,7 +19,7 @@ final class JsonContractResourceSupport {
 
   private JsonContractResourceSupport() {}
 
-  static JsonNode loadObject(
+  static ObjectNode loadObject(
       @Nullable InputStream resourceStream, String resourcePath, String contractLabel) {
     Objects.requireNonNull(resourcePath, "resourcePath");
     Objects.requireNonNull(contractLabel, "contractLabel");
@@ -36,7 +38,7 @@ final class JsonContractResourceSupport {
       throw new IllegalArgumentException(
           contractLabel + " resource must contain one top-level JSON object: " + resourcePath);
     }
-    return document;
+    return (ObjectNode) document;
   }
 
   private static JsonNode parseDocument(
@@ -67,12 +69,19 @@ final class JsonContractResourceSupport {
     return document.get(key);
   }
 
-  static JsonNode requireObject(JsonNode document, String key, String message) {
+  static ObjectNode requireObject(JsonNode document, String key, String message) {
     @Nullable JsonNode value = nullableField(document, key);
     if (value == null || !value.isObject()) {
       throw new IllegalArgumentException(message);
     }
-    return value;
+    return (ObjectNode) value;
+  }
+
+  static ObjectNode requireObjectNode(JsonNode value, String message) {
+    if (!value.isObject()) {
+      throw new IllegalArgumentException(message);
+    }
+    return (ObjectNode) value;
   }
 
   static String requireText(JsonNode document, String key) {
@@ -95,10 +104,12 @@ final class JsonContractResourceSupport {
 
   static int requireInt(JsonNode document, String key) {
     @Nullable JsonNode value = nullableField(document, key);
-    if (value == null || value.isNull() || !value.canConvertToInt()) {
+    OptionalInt intValue =
+        value == null || value.isNull() ? OptionalInt.empty() : value.intValueOpt();
+    if (intValue.isEmpty()) {
       throw new IllegalArgumentException(key + " must be one JSON integer.");
     }
-    return value.intValue();
+    return intValue.orElseThrow();
   }
 
   static List<String> optionalStringArray(JsonNode document, String key) {

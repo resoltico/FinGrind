@@ -174,7 +174,11 @@ class CoreTextValueObjectsTest {
 
     BookIdentity bookIdentity =
         new BookIdentity(
-            entityProfile, functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL);
+            entityProfile,
+            functionalCurrency,
+            fiscalYearStart,
+            AccountingBasis.ACCRUAL,
+            TaxProfile.empty());
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(EntityForm.COMPANY, bookIdentity.entityForm());
@@ -182,17 +186,43 @@ class CoreTextValueObjectsTest {
         NullPointerException.class,
         () ->
             new BookIdentity(
-                nullOf(), functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookIdentity(entityProfile, nullOf(), fiscalYearStart, AccountingBasis.ACCRUAL));
+                nullOf(),
+                functionalCurrency,
+                fiscalYearStart,
+                AccountingBasis.ACCRUAL,
+                TaxProfile.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookIdentity(entityProfile, functionalCurrency, nullOf(), AccountingBasis.ACCRUAL));
+            new BookIdentity(
+                entityProfile,
+                nullOf(),
+                fiscalYearStart,
+                AccountingBasis.ACCRUAL,
+                TaxProfile.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart, nullOf()));
+        () ->
+            new BookIdentity(
+                entityProfile,
+                functionalCurrency,
+                nullOf(),
+                AccountingBasis.ACCRUAL,
+                TaxProfile.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookIdentity(
+                entityProfile, functionalCurrency, fiscalYearStart, nullOf(), TaxProfile.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookIdentity(
+                entityProfile,
+                functionalCurrency,
+                fiscalYearStart,
+                AccountingBasis.ACCRUAL,
+                nullOf()));
   }
 
   @Test
@@ -302,6 +332,22 @@ class CoreTextValueObjectsTest {
             "CURRENT_PERIOD_RESULT",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.wireValues());
+    assertEquals(
+        List.of(
+            "CURRENT_ASSET",
+            "NONCURRENT_ASSET",
+            "CURRENT_LIABILITY",
+            "NONCURRENT_LIABILITY",
+            "OWNER_CAPITAL",
+            "OWNER_DRAWINGS",
+            "PARTNER_CAPITAL",
+            "PARTNER_CURRENT",
+            "SHARE_CAPITAL",
+            "RETAINED_EARNINGS",
+            "ACCUMULATED_SURPLUS",
+            "RESERVE",
+            "OTHER_EQUITY"),
+        FinancialPositionLineClassification.declaredAccountWireValues());
     for (FinancialPositionLineClassification classification :
         FinancialPositionLineClassification.values()) {
       assertEquals(

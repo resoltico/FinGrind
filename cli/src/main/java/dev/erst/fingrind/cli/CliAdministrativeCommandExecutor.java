@@ -54,7 +54,8 @@ final class CliAdministrativeCommandExecutor {
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
         outputMode,
-        result -> responseWriter.writeRekeyBookResult(result, outputMode),
+        result ->
+            responseWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }

@@ -159,8 +159,8 @@ final class CliReportOutputRenderer {
                 "Recorded at",
                 "Posting id",
                 "Posting kind",
-                "Reversal state",
-                "Reversal target",
+                "Posting role",
+                "Reverses posting",
                 "Currency",
                 "Debit",
                 "Credit",
@@ -557,7 +557,8 @@ final class CliReportOutputRenderer {
                 .map(
                     row ->
                         List.of(
-                            row.lineCode(),
+                            CliQueryOutputFormatter.displayStatementLineCode(
+                                row.lineCode(), row.lineKind()),
                             row.lineName(),
                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
                             CliQueryOutputFormatter.displayFinancialPositionLineClassification(
@@ -599,7 +600,8 @@ final class CliReportOutputRenderer {
                             .map(
                                 row ->
                                     List.of(
-                                        row.lineCode(),
+                                        CliQueryOutputFormatter.displayStatementLineCode(
+                                            row.lineCode(), row.lineKind()),
                                         row.lineName(),
                                         CliQueryOutputFormatter.displayLineRole(row.lineRole()),
                                         CliQueryOutputFormatter
@@ -779,7 +781,8 @@ final class CliReportOutputRenderer {
                                 .map(
                                     row ->
                                         List.of(
-                                            row.lineCode(),
+                                            CliQueryOutputFormatter.displayStatementLineCode(
+                                                row.lineCode(), row.lineKind()),
                                             row.lineName(),
                                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
                                             CliQueryOutputFormatter
@@ -894,7 +897,8 @@ final class CliReportOutputRenderer {
                                 .map(
                                     row ->
                                         List.of(
-                                            row.lineCode(),
+                                            CliQueryOutputFormatter.displayStatementLineCode(
+                                                row.lineCode(), row.lineKind()),
                                             row.lineName(),
                                             CliQueryOutputFormatter.displayLineRole(row.lineRole()),
                                             CliQueryOutputFormatter

@@ -63,10 +63,13 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.",
         SqliteStoreOperations.incompleteBookFailure().getMessage());
     assertEquals(
-        "The selected FinGrind book format version 7 is unsupported. Expected version "
+        "The selected FinGrind book format version "
+            + (BookFormatContract.FORMAT_VERSION + 1)
+            + " is unsupported. Expected version "
             + BookFormatContract.FORMAT_VERSION
             + ".",
-        SqliteStoreOperations.unsupportedBookVersionFailure(7, BookFormatContract.FORMAT_VERSION)
+        SqliteStoreOperations.unsupportedBookVersionFailure(
+                BookFormatContract.FORMAT_VERSION + 1, BookFormatContract.FORMAT_VERSION)
             .getMessage());
   }
 

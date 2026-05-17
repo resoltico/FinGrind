@@ -183,7 +183,8 @@ public final class ExecutorAccountingTestSupport {
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingBasis.ACCRUAL,
+        dev.erst.fingrind.core.TaxProfile.empty());
   }
 
   /**

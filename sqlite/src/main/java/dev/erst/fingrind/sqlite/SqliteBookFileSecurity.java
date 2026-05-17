@@ -55,12 +55,37 @@ final class SqliteBookFileSecurity {
           AclEntryPermission.WRITE_ACL,
           AclEntryPermission.WRITE_OWNER,
           AclEntryPermission.SYNCHRONIZE);
+  private static final Set<AclEntryPermission> ACL_DIRECTORY_REQUIRED_PERMISSIONS =
+      Set.of(
+          AclEntryPermission.LIST_DIRECTORY,
+          AclEntryPermission.ADD_FILE,
+          AclEntryPermission.EXECUTE);
+  private static final Set<AclEntryPermission> ACL_DIRECTORY_ACCESS_PERMISSIONS =
+      Set.of(
+          AclEntryPermission.LIST_DIRECTORY,
+          AclEntryPermission.ADD_FILE,
+          AclEntryPermission.ADD_SUBDIRECTORY,
+          AclEntryPermission.EXECUTE,
+          AclEntryPermission.DELETE_CHILD,
+          AclEntryPermission.READ_NAMED_ATTRS,
+          AclEntryPermission.WRITE_NAMED_ATTRS,
+          AclEntryPermission.READ_ATTRIBUTES,
+          AclEntryPermission.WRITE_ATTRIBUTES,
+          AclEntryPermission.DELETE,
+          AclEntryPermission.READ_ACL,
+          AclEntryPermission.WRITE_ACL,
+          AclEntryPermission.WRITE_OWNER,
+          AclEntryPermission.SYNCHRONIZE);
 
   private SqliteBookFileSecurity() {}
 
   static void ensureSecureParentDirectory(Path normalizedBookPath) throws IOException {
     Path parentDirectory = requireBookParentDirectory(normalizedBookPath);
     requireSupportedSecureFilesystem(parentDirectory);
+    if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      requireSecureExistingDirectory(parentDirectory);
+      return;
+    }
     if (supportsPosix(parentDirectory)) {
       Files.createDirectories(
           parentDirectory, PosixFilePermissions.asFileAttribute(POSIX_BOOK_DIRECTORY_PERMISSIONS));
@@ -74,7 +99,7 @@ final class SqliteBookFileSecurity {
     requireSupportedSecureFilesystem(normalizedBookPath);
     Path parentDirectory = requireBookParentDirectory(normalizedBookPath);
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      hardenDirectory(parentDirectory);
+      requireSecureExistingDirectory(parentDirectory);
     }
     hardenExistingFile(normalizedBookPath);
     String baseFileName =
@@ -85,13 +110,72 @@ final class SqliteBookFileSecurity {
     }
   }
 
+  private static void requireSecureExistingDirectory(Path parentDirectory) throws IOException {
+    if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      throw new IllegalArgumentException(
+          "The FinGrind SQLite book path must resolve beneath an existing directory: "
+              + parentDirectory);
+    }
+    if (supportsPosix(parentDirectory)) {
+      requireSecurePosixDirectory(parentDirectory);
+      return;
+    }
+    requireSecureAclDirectory(parentDirectory);
+  }
+
+  private static void requireSecurePosixDirectory(Path parentDirectory) throws IOException {
+    Set<PosixFilePermission> permissions =
+        Files.getPosixFilePermissions(parentDirectory, LinkOption.NOFOLLOW_LINKS);
+    if (!permissions.contains(PosixFilePermission.OWNER_WRITE)
+        || !permissions.contains(PosixFilePermission.OWNER_EXECUTE)) {
+      throw new IllegalStateException(
+          "The FinGrind SQLite book parent directory must be owner-writable and owner-searchable: "
+              + parentDirectory);
+    }
+    if (!POSIX_BOOK_DIRECTORY_PERMISSIONS.containsAll(permissions)) {
+      throw new IllegalStateException(
+          "The FinGrind SQLite book parent directory must already use owner-only permissions: "
+              + parentDirectory);
+    }
+  }
+
+  private static void requireSecureAclDirectory(Path parentDirectory) throws IOException {
+    AclFileAttributeView view = aclView(parentDirectory);
+    UserPrincipal owner = view.getOwner();
+    List<AclEntry> acl = List.copyOf(view.getAcl());
+    boolean ownerCanTraverseAndWrite =
+        acl.stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> owner.equals(entry.principal()))
+            .anyMatch(entry -> entry.permissions().containsAll(ACL_DIRECTORY_REQUIRED_PERMISSIONS));
+    if (!ownerCanTraverseAndWrite) {
+      throw new IllegalStateException(
+          "The FinGrind SQLite book parent directory ACL must grant the directory owner traversal and write access: "
+              + parentDirectory);
+    }
+    acl.stream()
+        .filter(entry -> entry.type() == AclEntryType.ALLOW)
+        .filter(entry -> !owner.equals(entry.principal()))
+        .filter(entry -> containsAny(entry.permissions(), ACL_DIRECTORY_ACCESS_PERMISSIONS))
+        .findFirst()
+        .ifPresent(
+            entry -> {
+              throw new IllegalStateException(
+                  "The FinGrind SQLite book parent directory ACL must grant book-directory access only to the directory owner: "
+                      + parentDirectory
+                      + " grants access to "
+                      + entry.principal().getName());
+            });
+  }
+
   static void requireSupportedSecureFilesystem(Path path) {
     if (!supportsPosix(path) && !supportsAcl(path)) {
       throw new IllegalStateException(unsupportedSecureFilesystemMessage(path));
     }
   }
 
-  private static void hardenDirectory(Path directoryPath) throws IOException {
+  /** Same-package seam for hardening one verified book directory during tests. */
+  static void hardenDirectory(Path directoryPath) throws IOException {
     if (!Files.isDirectory(directoryPath, LinkOption.NOFOLLOW_LINKS)) {
       return;
     }
@@ -146,6 +230,11 @@ final class SqliteBookFileSecurity {
   private static String unsupportedSecureFilesystemMessage(Path path) {
     return "The FinGrind SQLite book file must live on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs: "
         + path;
+  }
+
+  private static boolean containsAny(
+      Set<AclEntryPermission> permissions, Set<AclEntryPermission> requiredPermissions) {
+    return requiredPermissions.stream().anyMatch(permissions::contains);
   }
 
   private static Path requireBookParentDirectory(Path normalizedBookPath) {

@@ -203,6 +203,11 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteLibraryEnvironmentVariable();
   }
 
+  /** Returns the explicit operator-trust system property for environment-configured SQLite. */
+  public static String sqliteOperatorTrustSystemProperty() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteOperatorTrustSystemProperty();
+  }
+
   /** Returns the canonical bundle-home system property name. */
   public static String sqliteBundleHomeSystemProperty() {
     return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteBundleHomeSystemProperty();

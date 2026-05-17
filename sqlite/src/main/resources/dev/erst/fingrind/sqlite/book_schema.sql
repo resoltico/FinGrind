@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 6;
+pragma user_version = 7;
 
 create table if not exists book_meta (
     key text primary key,
@@ -30,7 +30,6 @@ create table if not exists account (
             'RETAINED_EARNINGS',
             'ACCUMULATED_SURPLUS',
             'RESERVE',
-            'CURRENT_PERIOD_RESULT',
             'OTHER_EQUITY'
         )
     ),

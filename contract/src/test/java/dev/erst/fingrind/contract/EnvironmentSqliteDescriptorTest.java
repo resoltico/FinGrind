@@ -237,6 +237,7 @@ class EnvironmentSqliteDescriptorTest {
                 new EnvironmentSqliteDescriptor(
                     SqliteLibraryMode.MANAGED_ONLY,
                     "FINGRIND_SQLITE_LIBRARY",
+                    "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
                     List.of("USE_URI"),
@@ -264,6 +265,7 @@ class EnvironmentSqliteDescriptorTest {
                 new EnvironmentSqliteDescriptor(
                     SqliteLibraryMode.MANAGED_ONLY,
                     "FINGRIND_SQLITE_LIBRARY",
+                    "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
                     List.of("USE_URI"),
@@ -288,6 +290,7 @@ class EnvironmentSqliteDescriptorTest {
         new EnvironmentSqliteDescriptor(
             SqliteLibraryMode.MANAGED_ONLY,
             "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
             "fingrind.sqlite.bundle.home",
             List.of("THREADSAFE=1", "SECURE_DELETE"),
             List.of("USE_URI"),
@@ -704,6 +707,7 @@ class EnvironmentSqliteDescriptorTest {
     return new EnvironmentSqliteDescriptor(
         SqliteLibraryMode.MANAGED_ONLY,
         "FINGRIND_SQLITE_LIBRARY",
+        "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
         "fingrind.sqlite.bundle.home",
         List.of("THREADSAFE=1", "SECURE_DELETE"),
         List.of("USE_URI"),

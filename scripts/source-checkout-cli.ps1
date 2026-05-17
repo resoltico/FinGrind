@@ -5,11 +5,19 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $cliBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "cli"
-$launcher = Join-Path $cliBuildDir "install/cli-shadow/bin/cli.bat"
+$rootBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "root"
+$rawJar = Join-Path $cliBuildDir "libs/fingrind.jar"
+$applicationModule = "fingrind/dev.erst.fingrind.cli.App"
 
-if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) {
-    throw "missing generated source-checkout launcher at $launcher; run .\\gradlew.bat :cli:installShadowDist prepareManagedSqlite"
+if (-not (Test-Path -LiteralPath $rawJar -PathType Leaf)) {
+    throw "missing source-checkout launcher JAR at $rawJar; run .\\gradlew.bat :cli:shadowJar prepareManagedSqlite"
 }
 
-& $launcher @args
+& java `
+    --enable-native-access=fingrind `
+    "-Dfingrind.runtime.distribution=source-checkout-gradle" `
+    "-Dfingrind.source-checkout.root=$repoRoot" `
+    "-Dfingrind.source-checkout.build-root=$rootBuildDir" `
+    --module-path $rawJar `
+    --module $applicationModule @args
 exit $LASTEXITCODE

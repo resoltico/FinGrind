@@ -220,6 +220,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             OutputMode.HUMAN);
     String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
     assertTrue(postingRegisterHuman.contains("Posting id"));
+    assertTrue(postingRegisterHuman.contains("Posting role"));
+    assertTrue(postingRegisterHuman.contains("Reverses posting"));
     assertTrue(postingRegisterHuman.contains("10.00"));
     assertTrue(postingRegisterHuman.contains("posting-1"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();

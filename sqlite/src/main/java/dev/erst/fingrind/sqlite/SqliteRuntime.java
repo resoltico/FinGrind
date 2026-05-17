@@ -11,10 +11,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 /** Public runtime metadata for the packaged SQLite adapter. */
 public final class SqliteRuntime {
+  private static final Pattern PATH_TOKEN = Pattern.compile("([A-Za-z]:\\\\[^\\s]+|/[^\\s]+)");
   public static final String STORAGE_DRIVER = ProtocolCatalog.storageDriver().wireValue();
   public static final String STORAGE_ENGINE = ProtocolCatalog.storageEngine().wireValue();
   public static final String BOOK_PROTECTION_MODE =
@@ -22,6 +25,8 @@ public final class SqliteRuntime {
   public static final String DEFAULT_BOOK_CIPHER = ProtocolCatalog.defaultBookCipher().wireValue();
   public static final String LIBRARY_ENVIRONMENT_VARIABLE =
       ProtocolCatalog.sqliteLibraryEnvironmentVariable();
+  public static final String OPERATOR_TRUST_SYSTEM_PROPERTY =
+      ProtocolCatalog.sqliteOperatorTrustSystemProperty();
   public static final String BUNDLE_HOME_SYSTEM_PROPERTY =
       ProtocolCatalog.sqliteBundleHomeSystemProperty();
   public static final String LIBRARY_MODE = ProtocolCatalog.sqliteLibraryMode().wireValue();
@@ -66,7 +71,7 @@ public final class SqliteRuntime {
 
   /** Returns the resolved absolute path for the loaded SQLite runtime artifact. */
   public static String loadedLibraryPath() {
-    return SqliteNativeBootstrap.api().loadedLibraryPath();
+    return publicLoadedLibraryPath(SqliteNativeBootstrap.api().loadedLibraryPath());
   }
 
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
@@ -80,6 +85,23 @@ public final class SqliteRuntime {
 
   static Probe probeConfiguredTarget(
       Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier) {
+    return probeConfiguredTarget(
+        configuredLibraryTargetSupplier, SqliteNativeAccessGate.runtimeModule());
+  }
+
+  static Probe probeConfiguredTarget(
+      Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier, Module nativeAccessModule) {
+    return probeConfiguredTarget(
+        configuredLibraryTargetSupplier,
+        nativeAccessModule,
+        SqliteNativeAccessGate.isEnabled(nativeAccessModule));
+  }
+
+  static Probe probeConfiguredTarget(
+      Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier,
+      Module nativeAccessModule,
+      boolean nativeAccessEnabled) {
+    Objects.requireNonNull(nativeAccessModule, "nativeAccessModule");
     SqliteLibraryTarget configuredLibraryTarget;
     try {
       configuredLibraryTarget = configuredLibraryTargetSupplier.get();
@@ -99,6 +121,22 @@ public final class SqliteRuntime {
           null,
           failureDetail(throwable));
     }
+    if (!nativeAccessEnabled) {
+      return new Probe(
+          configuredLibraryTarget.mode(),
+          REQUIRED_MINIMUM_SQLITE_VERSION,
+          REQUIRED_SQLITE3MC_VERSION,
+          REQUIRED_SQLITE_SOURCE_ID,
+          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+          Status.UNAVAILABLE,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          SqliteNativeAccessGate.failureMessage(nativeAccessModule));
+    }
     return probe(
         () -> configuredLibraryTarget.mode(),
         () -> configuredLibraryTarget.provenance(),
@@ -111,7 +149,8 @@ public final class SqliteRuntime {
 
   /** Normalizes a runtime probe failure into one stable sentence for machine-facing surfaces. */
   public static String failureDetail(Throwable throwable) {
-    return Objects.requireNonNullElse(throwable.getMessage(), throwable.getClass().getSimpleName());
+    return redactPathDetails(
+        Objects.requireNonNullElse(throwable.getMessage(), throwable.getClass().getSimpleName()));
   }
 
   static Probe probe(
@@ -133,7 +172,7 @@ public final class SqliteRuntime {
 
     String libraryMode = libraryModeSupplier.get();
     SqliteRuntimeProvenance runtimeProvenance = runtimeProvenanceSupplier.get();
-    String loadedLibraryPath = loadedLibraryPathSupplier.get();
+    String loadedLibraryPath = publicLoadedLibraryPath(loadedLibraryPathSupplier.get());
     String loadedSqliteVersion = null;
     String loadedSqlite3mcVersion = null;
     String loadedSqliteSourceId = null;
@@ -322,5 +361,51 @@ public final class SqliteRuntime {
     public String wireValue() {
       return wireValue;
     }
+  }
+
+  static String publicLoadedLibraryPath(String loadedLibraryPath) {
+    String normalized = Objects.requireNonNull(loadedLibraryPath, "loadedLibraryPath").strip();
+    if (normalized.isEmpty()) {
+      throw new IllegalArgumentException("loadedLibraryPath must not be blank.");
+    }
+    int lastSeparator = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'));
+    if (lastSeparator < 0 || lastSeparator == normalized.length() - 1) {
+      return normalized;
+    }
+    return "<redacted>/" + normalized.substring(lastSeparator + 1);
+  }
+
+  private static String redactPathDetails(String message) {
+    Matcher matcher = PATH_TOKEN.matcher(Objects.requireNonNull(message, "message"));
+    StringBuffer redactedMessage = new StringBuffer();
+    while (matcher.find()) {
+      String rawPath = matcher.group(1);
+      int pathEnd = trailingPunctuationStart(rawPath);
+      String path = rawPath.substring(0, pathEnd);
+      String trailingPunctuation = rawPath.substring(pathEnd);
+      matcher.appendReplacement(
+          redactedMessage,
+          Matcher.quoteReplacement(publicLoadedLibraryPath(path) + trailingPunctuation));
+    }
+    matcher.appendTail(redactedMessage);
+    return redactedMessage.toString();
+  }
+
+  static int trailingPunctuationStart(String rawPath) {
+    String normalized = Objects.requireNonNull(rawPath, "rawPath");
+    int end = normalized.length();
+    while (end > 0 && isTrailingPunctuation(normalized.charAt(end - 1))) {
+      end--;
+    }
+    return end;
+  }
+
+  private static boolean isTrailingPunctuation(char candidate) {
+    return candidate == '.'
+        || candidate == ','
+        || candidate == ';'
+        || candidate == ':'
+        || candidate == ')'
+        || candidate == ']';
   }
 }

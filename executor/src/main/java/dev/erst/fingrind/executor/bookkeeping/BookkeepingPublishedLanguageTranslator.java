@@ -164,6 +164,27 @@ public final class BookkeepingPublishedLanguageTranslator {
               conflict.accountCode(),
               conflict.existingAccountTaxonomy(),
               conflict.requestedAccountTaxonomy());
+      case BookkeepingAdministrationRejection.ParentAccountMissing conflict ->
+          new BookAdministrationRejection.ParentAccountMissing(
+              conflict.accountCode(), conflict.parentAccountCode());
+      case BookkeepingAdministrationRejection.ParentAccountInactive conflict ->
+          new BookAdministrationRejection.ParentAccountInactive(
+              conflict.accountCode(), conflict.parentAccountCode());
+      case BookkeepingAdministrationRejection.ParentAccountTypeConflict conflict ->
+          new BookAdministrationRejection.ParentAccountTypeConflict(
+              conflict.accountCode(),
+              conflict.requestedAccountType(),
+              conflict.parentAccountCode(),
+              conflict.parentAccountType());
+      case BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
+          new BookAdministrationRejection.ParentAccountTaxonomyConflict(
+              conflict.accountCode(),
+              conflict.requestedAccountTaxonomy(),
+              conflict.parentAccountCode(),
+              conflict.parentAccountTaxonomy());
+      case BookkeepingAdministrationRejection.AccountHierarchyCycle conflict ->
+          new BookAdministrationRejection.AccountHierarchyCycle(
+              conflict.accountCode(), conflict.parentAccountCode());
       case BookkeepingAdministrationRejection.ClosingEquityAccountMissing conflict ->
           new BookAdministrationRejection.ClosingEquityAccountMissing(conflict.accountCode());
       case BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->

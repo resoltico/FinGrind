@@ -22,6 +22,8 @@ internal object DistributionContractSchemas {
                 sqliteLibraryMode = schemaKey(document, "runtimeSurface", "sqliteLibraryMode"),
                 sqliteLibraryEnvironmentVariable =
                     schemaKey(document, "runtimeSurface", "sqliteLibraryEnvironmentVariable"),
+                sqliteOperatorTrustSystemProperty =
+                    schemaKey(document, "runtimeSurface", "sqliteOperatorTrustSystemProperty"),
                 sqliteBundleHomeSystemProperty =
                     schemaKey(document, "runtimeSurface", "sqliteBundleHomeSystemProperty"),
             ),
@@ -38,6 +40,21 @@ internal object DistributionContractSchemas {
                     schemaKey(document, "managedSqlite", "requiredSqlite3mcVersion"),
                 requiredSqliteSourceId =
                     schemaKey(document, "managedSqlite", "requiredSqliteSourceId"),
+                requiredSourcePackageId =
+                    schemaKey(document, "managedSqlite", "requiredSourcePackageId"),
+                vendoredReleaseFiles =
+                    schemaKey(document, "managedSqlite", "vendoredReleaseFiles"),
+                nativeHardening = schemaKey(document, "managedSqlite", "nativeHardening"),
+                nativeHardeningUnixCompilerFlags =
+                    schemaKey(document, "managedSqlite", "nativeHardeningUnixCompilerFlags"),
+                nativeHardeningLinuxLinkerFlags =
+                    schemaKey(document, "managedSqlite", "nativeHardeningLinuxLinkerFlags"),
+                nativeHardeningMacosLinkerFlags =
+                    schemaKey(document, "managedSqlite", "nativeHardeningMacosLinkerFlags"),
+                nativeHardeningWindowsCompilerFlags =
+                    schemaKey(document, "managedSqlite", "nativeHardeningWindowsCompilerFlags"),
+                nativeHardeningWindowsLinkerFlags =
+                    schemaKey(document, "managedSqlite", "nativeHardeningWindowsLinkerFlags"),
                 requiredCompileOptions =
                     schemaKey(document, "managedSqlite", "requiredCompileOptions"),
                 forbiddenCompileOptions =

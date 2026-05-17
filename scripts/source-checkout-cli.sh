@@ -36,9 +36,18 @@ esac
 source "${gradle_wrapper_support}"
 
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
-readonly launcher="${cli_build_dir}/install/cli-shadow/bin/cli"
+readonly root_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'root' "${is_darwin}")"
+readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
+readonly application_module='fingrind/dev.erst.fingrind.cli.App'
 
-[[ -x "${launcher}" ]] || die \
-    "missing generated source-checkout launcher at ${launcher}; run ./gradlew :cli:installShadowDist prepareManagedSqlite"
+[[ -f "${raw_jar}" ]] || die \
+    "missing source-checkout launcher JAR at ${raw_jar}; run ./gradlew :cli:shadowJar prepareManagedSqlite"
 
-exec "${launcher}" "$@"
+exec java \
+    --enable-native-access=fingrind \
+    -Dfingrind.runtime.distribution=source-checkout-gradle \
+    -Dfingrind.source-checkout.root="${repo_root}" \
+    -Dfingrind.source-checkout.build-root="${root_build_dir}" \
+    --module-path "${raw_jar}" \
+    --module "${application_module}" \
+    "$@"

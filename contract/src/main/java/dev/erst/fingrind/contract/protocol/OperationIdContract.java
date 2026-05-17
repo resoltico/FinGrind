@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
-import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Protocol-owned canonical mapping from operation enum names to public wire identifiers. */
 final class OperationIdContract {
@@ -41,11 +41,12 @@ final class OperationIdContract {
   static OperationIdContract loadFromResource(
       @Nullable InputStream resourceStream, String resourcePath) {
     Objects.requireNonNull(resourcePath, "resourcePath");
-    JsonNode document =
+    ObjectNode document =
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "operation-id contract");
     Map<String, String> operationNames =
-        document.properties().stream()
+        document
+            .propertyStream()
             .collect(
                 Collectors.toUnmodifiableMap(
                     Map.Entry::getKey,

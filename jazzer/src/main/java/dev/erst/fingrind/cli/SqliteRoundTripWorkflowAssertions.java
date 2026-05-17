@@ -56,6 +56,7 @@ public final class SqliteRoundTripWorkflowAssertions {
     Objects.requireNonNull(input, "input must not be null");
     Path scratchRoot = Files.createTempDirectory("fingrind-jazzer-book-");
     try {
+      SqliteFuzzAssertions.prepareSecureArtifactDirectory(scratchRoot);
       DirectRoundTripState primaryState =
           drivePrimaryRoundTrip(
               command, input, scratchRoot.resolve("primary").resolve("book.sqlite"));

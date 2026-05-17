@@ -64,6 +64,16 @@ public enum FinancialPositionLineClassification implements WireValue {
     return WireValue.wireValues(FinancialPositionLineClassification.class);
   }
 
+  /** Returns the public wire values that are valid for declared account taxonomy. */
+  public static List<String> declaredAccountWireValues() {
+    return wireValues().stream()
+        .filter(
+            wireValue ->
+                !wireValue.equals(
+                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT.wireValue()))
+        .toList();
+  }
+
   /** Parses one stable public wire value. */
   public static FinancialPositionLineClassification fromWireValue(String wireValue) {
     return WireValue.fromWireValue(

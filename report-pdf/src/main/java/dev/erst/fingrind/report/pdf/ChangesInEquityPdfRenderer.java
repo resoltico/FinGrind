@@ -37,7 +37,7 @@ final class ChangesInEquityPdfRenderer {
             .map(
                 row ->
                     List.of(
-                        row.lineCode(),
+                        PdfValueFormatter.displayStatementLineCode(row.lineCode(), row.lineKind()),
                         row.lineName(),
                         PdfValueFormatter.displayLineRole(row.lineRole()),
                         PdfValueFormatter.displayFinancialPositionLineClassification(
@@ -82,7 +82,8 @@ final class ChangesInEquityPdfRenderer {
               .map(
                   row ->
                       List.of(
-                          row.lineCode(),
+                          PdfValueFormatter.displayStatementLineCode(
+                              row.lineCode(), row.lineKind()),
                           row.lineName(),
                           PdfValueFormatter.displayLineRole(row.lineRole()),
                           PdfValueFormatter.displayFinancialPositionLineClassification(

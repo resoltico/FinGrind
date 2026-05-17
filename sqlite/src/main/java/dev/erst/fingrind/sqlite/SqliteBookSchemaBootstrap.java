@@ -14,17 +14,29 @@ final class SqliteBookSchemaBootstrap {
   private static final AtomicReference<@Nullable String> canonicalSchemaSql =
       new AtomicReference<>();
 
+  /** Internal seam for securing the resolved book parent directory during bootstrap tests. */
+  @FunctionalInterface
+  interface SecureParentDirectoryEnsurer {
+    /** Ensures the normalized book path resolves under one secure writable parent directory. */
+    void ensure(Path normalizedBookPath) throws IOException;
+  }
+
   private SqliteBookSchemaBootstrap() {}
 
   /** Ensures the book parent directory exists before a writable connection is opened. */
   static void ensureParentDirectory(Path bookPath) {
+    ensureParentDirectory(bookPath, SqliteBookFileSecurity::ensureSecureParentDirectory);
+  }
+
+  static void ensureParentDirectory(
+      Path bookPath, SecureParentDirectoryEnsurer secureParentDirectoryEnsurer) {
     Path parent = bookPath.toAbsolutePath().normalize().getParent();
     if (parent == null) {
       throw new IllegalArgumentException(
           "Book path must resolve against a writable parent directory.");
     }
     try {
-      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath.toAbsolutePath().normalize());
+      secureParentDirectoryEnsurer.ensure(bookPath.toAbsolutePath().normalize());
     } catch (IOException exception) {
       throw new IllegalStateException("Failed to create SQLite book directory.", exception);
     }

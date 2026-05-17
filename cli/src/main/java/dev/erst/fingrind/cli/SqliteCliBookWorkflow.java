@@ -68,7 +68,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookSession ->
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(
-                    new BookAdministrationService(bookSession, clock)
+                    new BookAdministrationService(bookSession, bookSession, bookSession, clock)
                         .openBook(
                             dev.erst.fingrind.executor.bookkeeping
                                 .BookkeepingPublishedLanguageTranslator.fromPublished(command))));
@@ -95,7 +95,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, clock)
+                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
                     .declareAccount(
                         BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
@@ -241,6 +241,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             : SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             new LedgerPlanService(
+                    bookSession,
                     bookSession,
                     bookSession,
                     bookSession,

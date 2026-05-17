@@ -35,6 +35,7 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
@@ -59,6 +60,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 
@@ -66,6 +68,11 @@ import tools.jackson.databind.JsonNode;
 class CliIoFixtureSupport {
   protected static final String TEST_BOOK_KEY = "cli-test-book-key";
   @TempDir protected Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   protected Path writeRequest(String payload) throws IOException {
     return writeNamedRequest("request.json", payload);
@@ -84,9 +91,6 @@ class CliIoFixtureSupport {
   protected Path writeBookKey(Path bookFilePath, String keyText) {
     try {
       Path bookKeyFilePath = bookFilePath.resolveSibling(bookFilePath.getFileName() + ".key");
-      if (bookKeyFilePath.getParent() != null) {
-        Files.createDirectories(bookKeyFilePath.getParent());
-      }
       writeSecureKey(bookKeyFilePath, keyText);
       return bookKeyFilePath;
     } catch (IOException exception) {
@@ -105,9 +109,6 @@ class CliIoFixtureSupport {
   }
 
   protected static void writeSecureKey(Path keyFilePath, String keyText) throws IOException {
-    if (keyFilePath.getParent() != null) {
-      Files.createDirectories(keyFilePath.getParent());
-    }
     if (Files.notExists(keyFilePath)) {
       SqliteBookKeyFileGenerator.generate(keyFilePath);
     }
@@ -164,7 +165,8 @@ class CliIoFixtureSupport {
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingBasis.ACCRUAL,
+        TaxProfile.empty());
   }
 
   protected static OpenBookCommand openBookCommand() {

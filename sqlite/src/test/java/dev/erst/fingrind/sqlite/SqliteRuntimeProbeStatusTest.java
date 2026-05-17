@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -70,6 +71,51 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   void failureDetail_prefersMessageAndFallsBackToType() {
     assertEquals("boom", SqliteRuntime.failureDetail(new IllegalStateException("boom")));
     assertEquals("RuntimeException", SqliteRuntime.failureDetail(new RuntimeException()));
+    assertEquals(
+        "Library load failed at <redacted>/libsqlite3.dylib.",
+        SqliteRuntime.failureDetail(
+            new IllegalStateException("Library load failed at /tmp/libsqlite3.dylib.")));
+  }
+
+  @Test
+  void failureDetail_redactsPathTokensWithoutDiscardingTrailingPunctuation() {
+    assertEquals(
+        "Library load failed at <redacted>/libsqlite3.dylib).",
+        SqliteRuntime.failureDetail(
+            new IllegalStateException("Library load failed at /tmp/libsqlite3.dylib).")));
+    assertEquals(
+        "Diagnostics referenced <redacted>/bundle and <redacted>/sqlite3.dll].",
+        SqliteRuntime.failureDetail(
+            new IllegalStateException(
+                "Diagnostics referenced /opt/fingrind/bundle and C:\\sqlite\\sqlite3.dll].")));
+    assertEquals(
+        "Artifacts landed at <redacted>/sqlite3.dll, <redacted>/sqlite3.dll; and <redacted>/sqlite3.dll:",
+        SqliteRuntime.failureDetail(
+            new IllegalStateException(
+                "Artifacts landed at /tmp/sqlite3.dll, /tmp/sqlite3.dll; and /tmp/sqlite3.dll:")));
+  }
+
+  @Test
+  void publicLoadedLibraryPath_redactsDirectoriesAndRejectsBlankValues() {
+    assertEquals("libsqlite3.dylib", SqliteRuntime.publicLoadedLibraryPath("libsqlite3.dylib"));
+    assertEquals("/tmp/", SqliteRuntime.publicLoadedLibraryPath("/tmp/"));
+    assertEquals(
+        "<redacted>/sqlite3.dll", SqliteRuntime.publicLoadedLibraryPath("C:\\sqlite\\sqlite3.dll"));
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class, () -> SqliteRuntime.publicLoadedLibraryPath("   "));
+    assertEquals("loadedLibraryPath must not be blank.", exception.getMessage());
+  }
+
+  @Test
+  void trailingPunctuationStart_handlesAbsentPresentAndAllPunctuationSuffixes() {
+    assertEquals(
+        "/tmp/libsqlite3.dylib".length(),
+        SqliteRuntime.trailingPunctuationStart("/tmp/libsqlite3.dylib"));
+    assertEquals(
+        "/tmp/libsqlite3.dylib".length(),
+        SqliteRuntime.trailingPunctuationStart("/tmp/libsqlite3.dylib)]."));
+    assertEquals(0, SqliteRuntime.trailingPunctuationStart("]]."));
   }
 
   @Test
@@ -86,6 +132,67 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertNull(runtimeProbe.runtimeProvenance());
     assertNull(runtimeProbe.runtimeTrustBasis());
     assertTrue(requireIssue(runtimeProbe).contains("bundle launcher misconfigured"));
+  }
+
+  @Test
+  void sqliteNativeAccessGate_allowsTheCurrentRuntimeModuleWhenNativeAccessIsEnabled() {
+    Module runtimeModule = SqliteNativeAccessGate.runtimeModule();
+
+    assertTrue(SqliteNativeAccessGate.isEnabled(runtimeModule));
+    assertDoesNotThrow(() -> SqliteNativeAccessGate.requireEnabled());
+  }
+
+  @Test
+  void sqliteNativeAccessGate_reportsNamedModuleLaunchRequirements() {
+    Module namedModule =
+        ModuleLayer.boot().modules().stream()
+            .filter(Module::isNamed)
+            .filter(module -> !SqliteNativeAccessGate.isEnabled(module))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("Expected one named module without native access"));
+
+    assertTrue(namedModule.isNamed());
+    assertFalse(SqliteNativeAccessGate.isEnabled(namedModule));
+    assertEquals(
+        "--enable-native-access=" + namedModule.getName(),
+        SqliteNativeAccessGate.requiredFlag(namedModule));
+    assertTrue(
+        SqliteNativeAccessGate.failureMessage(namedModule)
+            .contains("SQLite native access is disabled for module " + namedModule.getName()));
+
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            () -> SqliteNativeAccessGate.requireEnabled(namedModule));
+
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains("--enable-native-access=" + namedModule.getName()));
+  }
+
+  @Test
+  void sqliteRuntimeProbe_reportsUnavailableWhenNativeAccessIsDisabled() {
+    Module unnamedModule = Thread.currentThread().getContextClassLoader().getUnnamedModule();
+
+    SqliteRuntime.Probe runtimeProbe =
+        SqliteRuntime.probeConfiguredTarget(
+            () ->
+                new SqliteLibraryTarget(
+                    SqliteRuntime.LIBRARY_MODE,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib"),
+            unnamedModule,
+            false);
+
+    assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
+    assertNull(runtimeProbe.runtimeProvenance());
+    assertNull(runtimeProbe.runtimeTrustBasis());
+    assertNull(runtimeProbe.loadedLibraryPath());
+    assertTrue(requireIssue(runtimeProbe).contains("--enable-native-access=ALL-UNNAMED"));
   }
 
   @Test
@@ -111,7 +218,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
     assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
-    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
+    assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
     assertEquals("3.51.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
@@ -135,7 +242,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
     assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
-    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
+    assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
     assertNull(runtimeProbe.loadedSqliteVersion());
     assertNull(runtimeProbe.loadedSqlite3mcVersion());
     assertNull(runtimeProbe.loadedSqliteSourceId());
@@ -808,6 +915,12 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
 
   private static String requireLoadedLibraryPath(SqliteRuntime.Probe runtimeProbe) {
     return Objects.requireNonNull(runtimeProbe.loadedLibraryPath());
+  }
+
+  private static void assertRedactedLoadedLibraryPath(@Nullable String loadedLibraryPath) {
+    String normalized = Objects.requireNonNull(loadedLibraryPath);
+    assertTrue(normalized.endsWith("/libsqlite3.dylib"));
+    assertFalse(normalized.contains("/tmp/"));
   }
 
   private static String requireIssue(SqliteRuntime.Probe runtimeProbe) {

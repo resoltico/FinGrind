@@ -35,26 +35,39 @@ class CliDistributionBuildContractTest {
             "COPY source-root/scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py"));
     assertTrue(
         dockerfile.contains(
-            "COPY source-root/third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c sqlite3mc_amalgamation.c"));
+            "COPY source-root/third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/ sqlite-source/"));
+    assertTrue(dockerfile.contains("contract = json.loads(Path(\"managed-sqlite-contract.json\")"));
+    assertTrue(dockerfile.contains("expected_files = contract.get(\"vendoredReleaseFiles\")"));
+    assertTrue(dockerfile.contains("source_dir = Path(\"sqlite-source\")"));
+    assertTrue(dockerfile.contains("vendored SQLite release manifest drift"));
     assertTrue(
         dockerfile.contains(
             "python3 scripts/verify-docker-build-context.py --context-dir /build --source-root /build/source-root"));
     assertTrue(
         dockerfile.contains(
             "python3 scripts/render-managed-sqlite-compiler-flags.py /build/managed-sqlite-contract.json"));
+    assertTrue(dockerfile.contains("sqlite-source/sqlite3mc_amalgamation.c"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
     assertTrue(
         dockerfile.contains(
-            "COPY --from=builder /build/fingrind.jar /opt/fingrind/app/fingrind.jar"));
+            "COPY --from=builder /build/fingrind.jar /opt/fingrind/lib/app/fingrind.jar"));
     assertTrue(
         dockerfile.contains(
             "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
     assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
+    assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.trusted.sha256"));
     assertTrue(
         dockerfile.contains(
-            "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/libsqlite3.so.0.sha256"));
+            "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.sha256"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/libsqlite3.so.0.trusted.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.trusted.sha256"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0"));
+    assertFalse(dockerfile.contains("ENV FINGRIND_SQLITE_LIBRARY="));
     assertFalse(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
     assertFalse(dockerfile.contains("COPY gradle.properties /build/source-root/gradle.properties"));
     assertFalse(dockerfile.contains("RUN jdeps "));
@@ -85,7 +98,11 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
     assertTrue(buildScript.contains("dockerBuildContextSourceInputs"));
     assertTrue(buildScript.contains("repositoryDockerBuildContextDirectory"));
+    assertTrue(
+        buildScript.contains("\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
     assertTrue(buildScript.contains("managedSqliteLibrarySha256Path"));
+    assertTrue(buildScript.contains("managedSqliteLibraryTrustedSha256Path"));
+    assertTrue(buildScript.contains("managedSqliteToolchainFingerprintPath"));
     assertTrue(buildScript.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
     assertTrue(buildScript.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
     assertTrue(
@@ -117,7 +134,8 @@ class CliDistributionBuildContractTest {
 
     assertTrue(sqliteBuildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(sqliteBuildScript.contains("META-INF/fingrind"));
-    assertTrue(sqliteBuildScript.contains("managed-sqlite.sha256"));
+    assertTrue(sqliteBuildScript.contains("managed-sqlite-toolchain.json"));
+    assertFalse(sqliteBuildScript.contains("managed-sqlite.sha256"));
   }
 
   @Test
@@ -128,7 +146,6 @@ class CliDistributionBuildContractTest {
         buildScript.indexOf("val sourceCheckoutRuntimeDistribution =")
             < buildScript.indexOf("application {"));
     assertTrue(buildScript.contains("applicationDefaultJvmArgs"));
-    assertTrue(buildScript.contains("\"--enable-native-access=ALL-UNNAMED\""));
     assertTrue(
         buildScript.contains(
             "\"-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}\""));
@@ -142,11 +159,12 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
-  void cliBuild_stampsTheDeveloperRawJarWithNativeAccessAndCheckoutRootMetadata()
+  void cliBuild_stampsTheDeveloperJarWithAutomaticModuleNameAndCheckoutRootMetadata()
       throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
 
-    assertTrue(buildScript.contains("\"Enable-Native-Access\" to \"ALL-UNNAMED\""));
+    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"fingrind\""));
+    assertFalse(buildScript.contains("\"Enable-Native-Access\" to \"ALL-UNNAMED\""));
     assertTrue(
         buildScript.contains(
             "\"FinGrind-Source-Checkout-Root\" to repositoryRootDirectory.toString()"));

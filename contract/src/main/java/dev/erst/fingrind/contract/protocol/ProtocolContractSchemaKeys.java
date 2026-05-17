@@ -86,6 +86,7 @@ final class ProtocolContractSchemaKeys {
             requireText(runtimeSurfaceNode, "defaultBookCipher"),
             requireText(runtimeSurfaceNode, "sqliteLibraryMode"),
             requireText(runtimeSurfaceNode, "sqliteLibraryEnvironmentVariable"),
+            requireText(runtimeSurfaceNode, "sqliteOperatorTrustSystemProperty"),
             requireText(runtimeSurfaceNode, "sqliteBundleHomeSystemProperty")),
         new ProtectedBookFormat(
             requireText(protectedBookFormatNode, "cipher"),
@@ -102,6 +103,14 @@ final class ProtocolContractSchemaKeys {
             requireText(managedSqliteNode, "requiredMinimumSqliteVersion"),
             requireText(managedSqliteNode, "requiredSqlite3mcVersion"),
             requireText(managedSqliteNode, "requiredSqliteSourceId"),
+            requireText(managedSqliteNode, "requiredSourcePackageId"),
+            requireText(managedSqliteNode, "vendoredReleaseFiles"),
+            requireText(managedSqliteNode, "nativeHardening"),
+            requireText(managedSqliteNode, "nativeHardeningUnixCompilerFlags"),
+            requireText(managedSqliteNode, "nativeHardeningLinuxLinkerFlags"),
+            requireText(managedSqliteNode, "nativeHardeningMacosLinkerFlags"),
+            requireText(managedSqliteNode, "nativeHardeningWindowsCompilerFlags"),
+            requireText(managedSqliteNode, "nativeHardeningWindowsLinkerFlags"),
             requireText(managedSqliteNode, "requiredCompileOptions"),
             requireText(managedSqliteNode, "forbiddenCompileOptions"),
             requireText(managedSqliteNode, "requiresSecureMemorySupport")),
@@ -167,6 +176,7 @@ final class ProtocolContractSchemaKeys {
       String defaultBookCipher,
       String sqliteLibraryMode,
       String sqliteLibraryEnvironmentVariable,
+      String sqliteOperatorTrustSystemProperty,
       String sqliteBundleHomeSystemProperty) {}
 
   /** Canonical external field names for the protected-book-format contract resource. */
@@ -188,6 +198,14 @@ final class ProtocolContractSchemaKeys {
       String requiredMinimumSqliteVersion,
       String requiredSqlite3mcVersion,
       String requiredSqliteSourceId,
+      String requiredSourcePackageId,
+      String vendoredReleaseFiles,
+      String nativeHardening,
+      String nativeHardeningUnixCompilerFlags,
+      String nativeHardeningLinuxLinkerFlags,
+      String nativeHardeningMacosLinkerFlags,
+      String nativeHardeningWindowsCompilerFlags,
+      String nativeHardeningWindowsLinkerFlags,
       String requiredCompileOptions,
       String forbiddenCompileOptions,
       String requiresSecureMemorySupport) {}

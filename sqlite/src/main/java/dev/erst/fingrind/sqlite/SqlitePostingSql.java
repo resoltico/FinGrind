@@ -18,6 +18,7 @@ final class SqlitePostingSql {
   static final String BOOK_OWNER_MODEL_META_KEY = "owner_model";
   static final String BOOK_REPORTING_OBLIGATION_STATUS_META_KEY = "reporting_obligation_status";
   static final String BOOK_TAX_REGISTRATION_STATUS_META_KEY = "tax_registration_status";
+  static final String BOOK_TAX_PROFILE_META_KEY = "tax_profile_json";
   static final String BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY = "business_activity_tags";
   static final String BOOK_FUNCTIONAL_CURRENCY_META_KEY = "functional_currency_code";
   static final String BOOK_FISCAL_YEAR_START_META_KEY = "fiscal_year_start";

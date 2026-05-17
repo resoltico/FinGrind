@@ -111,6 +111,12 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         / "native"
         / (str(host_bundle_target["sqliteLibraryFileName"]) + ".sha256")
     )
+    native_library_trusted_checksum = (
+        bundle_root
+        / "lib"
+        / "native"
+        / (str(host_bundle_target["sqliteLibraryFileName"]) + ".trusted.sha256")
+    )
     java_command = bundled_java_command(bundle_root)
 
     required_files = [
@@ -118,6 +124,7 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         application_jar,
         native_library,
         native_library_checksum,
+        native_library_trusted_checksum,
         bundle_root / "LICENSE",
         bundle_root / "LICENSE-APACHE-2.0",
         bundle_root / "LICENSE-SIL-OFL-1.1",

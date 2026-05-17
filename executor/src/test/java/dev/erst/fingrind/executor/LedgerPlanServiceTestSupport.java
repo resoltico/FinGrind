@@ -115,10 +115,12 @@ final class LedgerPlanServiceTestSupport {
 
   static <
           T extends
-              LedgerPlanTransaction & BookAdministrationStore & BookkeepingReadStore
-                  & PostingValidationStore & PostingCommitStore>
+              LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
+                  & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
+                  & PostingCommitStore>
       LedgerPlanService service(T bookSession) {
     return new LedgerPlanService(
+        bookSession,
         bookSession,
         bookSession,
         bookSession,

@@ -129,6 +129,31 @@ final class CliRejectionPayloadMapper {
     if (rejection instanceof BookAdministrationRejection.AccountTaxonomyConflict) {
       return "Keep the existing taxonomy for this account, or choose a different accountCode for an account with different hierarchy or statement classification.";
     }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountMissing) {
+      return "Declare the requested parent account first, or remove parentAccountCode and rerun "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountInactive) {
+      return "Reactivate the requested parent account by redeclaring it, or choose an active parentAccountCode before rerunning "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountTypeConflict) {
+      return "Choose a parentAccountCode with the same accountType as the child account, or declare the child under the correct accountType before rerunning "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountTaxonomyConflict) {
+      return "Choose a parentAccountCode in the same statement-classification family as the child account, or adjust the child taxonomy before rerunning "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.AccountHierarchyCycle) {
+      return "Choose a parentAccountCode that is not the account itself and not one of its descendants, then rerun "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
     if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountMissing) {
       return "Declare the selected closing equity account first, using accountType EQUITY and the built-in financial position classification required for this book's entity form, then rerun "
           + CLOSE_PERIOD_OPERATION
@@ -259,6 +284,27 @@ final class CliRejectionPayloadMapper {
               conflict.accountCode().value(),
               taxonomyDetails(conflict.existingAccountTaxonomy()),
               taxonomyDetails(conflict.requestedAccountTaxonomy()));
+      case BookAdministrationRejection.ParentAccountMissing conflict ->
+          new CliRejectionJsonModels.ParentAccountDetails(
+              conflict.accountCode().value(), conflict.parentAccountCode().value());
+      case BookAdministrationRejection.ParentAccountInactive conflict ->
+          new CliRejectionJsonModels.ParentAccountDetails(
+              conflict.accountCode().value(), conflict.parentAccountCode().value());
+      case BookAdministrationRejection.ParentAccountTypeConflict conflict ->
+          new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
+              conflict.accountCode().value(),
+              conflict.requestedAccountType().wireValue(),
+              conflict.parentAccountCode().value(),
+              conflict.parentAccountType().wireValue());
+      case BookAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
+          new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
+              conflict.accountCode().value(),
+              taxonomyDetails(conflict.requestedAccountTaxonomy()),
+              conflict.parentAccountCode().value(),
+              taxonomyDetails(conflict.parentAccountTaxonomy()));
+      case BookAdministrationRejection.AccountHierarchyCycle conflict ->
+          new CliRejectionJsonModels.ParentAccountDetails(
+              conflict.accountCode().value(), conflict.parentAccountCode().value());
       case BookAdministrationRejection.ClosingEquityAccountMissing conflict ->
           new CliRejectionJsonModels.ClosingEquityAccountDetails(conflict.accountCode().value());
       case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->

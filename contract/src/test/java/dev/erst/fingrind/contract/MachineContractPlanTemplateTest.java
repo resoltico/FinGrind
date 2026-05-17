@@ -73,7 +73,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.38.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.39.0", "test"),
             ContractFixtures.environmentDescriptor());
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: ADAPTERS
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -366,8 +366,8 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `ManagedSqliteRuntimeUnavailableException`: managed runtime not found or unusable on this host
 - `UnsupportedManagedSqliteLibraryIdentityException`: selected managed library failed the trusted
   managed-runtime identity check before any native symbol lookup; publisher-owned runtimes are
-  checked against the embedded FinGrind digest resource and their sibling `.sha256` file, while
-  `environment-configured` runtimes are only checked against the sibling `.sha256` sidecar
+  checked against the publisher-owned `.trusted.sha256` sidecar and their sibling `.sha256` file,
+  while `environment-configured` runtimes are only checked against the sibling `.sha256` sidecar
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
@@ -434,3 +434,20 @@ public final class SqliteBookSessions
   durable session-scoped passphrase copy held by `SqliteSessionSecret`, copied backups, and
   exported reports all live outside the encrypted-page boundary and need separate operator
   controls.
+
+## `ChartOfAccounts`
+
+`ChartOfAccounts` is the executor-owned aggregate that validates parent-child chart invariants
+over one declared account registry snapshot.
+
+```java
+public final class ChartOfAccounts
+```
+
+- Purpose: keep parent existence, active-parent requirements, account-type compatibility,
+  classification-family compatibility, and cycle detection structural instead of scattering those
+  checks through CLI parsing or persistence adapters
+- Construction: `of(List<RegisteredAccount>)` takes one declared-account snapshot and rejects
+  duplicate account codes inside that aggregate view
+- Boundary: this aggregate stays local to executor bookkeeping; public callers only see the
+  resulting deterministic administration rejections

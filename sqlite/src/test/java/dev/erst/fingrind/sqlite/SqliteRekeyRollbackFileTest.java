@@ -16,12 +16,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for rollback-copy lifecycle behavior around SQLite rekey attempts. */
 class SqliteRekeyRollbackFileTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void createRestoreAndDeleteQuietly_roundTripOneRollbackCopy() throws java.io.IOException {
@@ -135,6 +141,52 @@ class SqliteRekeyRollbackFileTest {
     assertNull(reportedBookPath.get());
     assertNull(reportedArtifacts.get());
     assertNull(scanFailure.get());
+  }
+
+  @Test
+  void reportStaleRollbackArtifacts_reportsDirectoryScanFailuresWithoutHostSpecificPermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.failNewDirectoryStreamWith(new java.io.IOException("scan-boom"));
+      AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+
+      AtomicReference<Path> reportedBookPath = new AtomicReference<>();
+      AtomicReference<java.io.IOException> reportedFailure = new AtomicReference<>();
+      assertDoesNotThrow(
+          () ->
+              SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(
+                  bookPath,
+                  (normalizedBookPath, rollbackArtifacts) -> {
+                    throw new AssertionError(
+                        "unexpected stale artifact report for " + normalizedBookPath);
+                  },
+                  (normalizedBookPath, exception) -> {
+                    reportedBookPath.set(normalizedBookPath);
+                    reportedFailure.set(exception);
+                  }));
+
+      assertEquals(bookPath, reportedBookPath.get());
+      assertEquals("scan-boom", NullTestSupport.messageOf(reportedFailure.get()));
+    }
+  }
+
+  @Test
+  void reportStaleRollbackArtifacts_logsDirectoryScanFailuresWithoutThrowing() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.failNewDirectoryStreamWith(new java.io.IOException("scan-boom"));
+      AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+
+      assertDoesNotThrow(() -> SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(bookPath));
+    }
   }
 
   @Test

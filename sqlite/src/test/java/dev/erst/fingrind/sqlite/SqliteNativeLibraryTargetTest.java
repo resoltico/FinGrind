@@ -37,34 +37,65 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void configuredLibraryTarget_requiresManagedPathAndNormalizesIt() {
-    SqliteLibraryTarget libraryTarget =
-        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
-    assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(
-        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
-    assertEquals("managed-only", SqliteRuntime.LIBRARY_MODE);
-    assertTrue(libraryTarget.toString().contains("managed-only"));
-    assertEquals(
-        libraryTarget,
-        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
-    assertEquals(
-        libraryTarget.hashCode(),
-        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
-            .hashCode());
-    assertThrows(
-        IllegalStateException.class,
-        () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   "));
-    assertThrows(IllegalArgumentException.class, () -> new SqliteLibraryTarget(" ", "x"));
+    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
+    try {
+      System.setProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "true");
+      SqliteLibraryTarget libraryTarget =
+          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
+      assertEquals("managed-only", libraryTarget.mode());
+      assertTrue(
+          Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
+      assertEquals("managed-only", SqliteRuntime.LIBRARY_MODE);
+      assertTrue(libraryTarget.toString().contains("managed-only"));
+      assertEquals(
+          libraryTarget,
+          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
+      assertEquals(
+          libraryTarget.hashCode(),
+          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
+              .hashCode());
+      assertThrows(
+          IllegalStateException.class,
+          () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   "));
+      assertThrows(IllegalArgumentException.class, () -> new SqliteLibraryTarget(" ", "x"));
+    } finally {
+      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
+    }
   }
 
   @Test
   void configuredLibraryTarget_prefersExplicitEnvironmentLibraryOverBundleHome() {
-    SqliteLibraryTarget libraryTarget =
-        SqliteNativeRuntimePolicy.configuredLibraryTarget(
-            "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
-    assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(
-        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
+    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
+    try {
+      System.setProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "true");
+      SqliteLibraryTarget libraryTarget =
+          SqliteNativeRuntimePolicy.configuredLibraryTarget(
+              "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
+      assertEquals("managed-only", libraryTarget.mode());
+      assertTrue(
+          Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
+    } finally {
+      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
+    }
+  }
+
+  @Test
+  void configuredLibraryTarget_requiresExplicitOperatorTrustApproval() {
+    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
+    try {
+      System.clearProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                      "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString()));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY));
+    } finally {
+      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
+    }
   }
 
   @Test
@@ -88,7 +119,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         sourceCheckoutRoot
             .resolve("build")
             .resolve("managed-sqlite")
-            .resolve("host")
+            .resolve(expectedManagedSqliteClassifier())
             .resolve(expectedNativeLibraryFileName());
     Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
@@ -111,7 +142,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         sourceCheckoutRoot
             .resolve("build")
             .resolve("managed-sqlite")
-            .resolve("host")
+            .resolve(expectedManagedSqliteClassifier())
             .resolve(expectedNativeLibraryFileName());
     Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
@@ -140,7 +171,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Path managedLibraryPath =
         externalizedBuildRoot
             .resolve("managed-sqlite")
-            .resolve("host")
+            .resolve(expectedManagedSqliteClassifier())
             .resolve(expectedNativeLibraryFileName());
     Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
@@ -159,7 +190,10 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
       throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
     Path managedSqliteRoot =
-        sourceCheckoutRoot.resolve("build").resolve("managed-sqlite").resolve("host");
+        sourceCheckoutRoot
+            .resolve("build")
+            .resolve("managed-sqlite")
+            .resolve(expectedManagedSqliteClassifier());
     Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
     Files.createDirectories(managedSqliteRoot);
@@ -358,7 +392,10 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
       throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
     Path managedSqliteRoot =
-        sourceCheckoutRoot.resolve("build").resolve("managed-sqlite").resolve("host");
+        sourceCheckoutRoot
+            .resolve("build")
+            .resolve("managed-sqlite")
+            .resolve(expectedManagedSqliteClassifier());
     assertEquals(
         null,
         SqliteNativeRuntimePolicy.sourceCheckoutManagedLibraryPath(
@@ -397,5 +434,39 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     } finally {
       restoreSystemProperty("os.name", originalOsName);
     }
+  }
+
+  @Test
+  void supportedNativeLibraryFileName_provesWindowsAndUnsupportedBranchesIndependently() {
+    assertEquals(
+        "sqlite3.dll",
+        SqliteNativeRuntimePolicy.supportedNativeLibraryFileName("windows", "Windows Server 2025"));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeRuntimePolicy.supportedNativeLibraryFileName("solaris", "Solaris"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("Solaris"));
+  }
+
+  @Test
+  void supportedHostClassifier_normalizesKnownAndCustomArchitectures() {
+    String originalOsName = System.getProperty("os.name");
+    String originalOsArch = System.getProperty("os.arch");
+    try {
+      System.setProperty("os.name", "Windows 11");
+      System.setProperty("os.arch", "arm64");
+      assertEquals("windows-aarch64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+      System.setProperty("os.arch", "x64");
+      assertEquals("windows-x86_64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+      System.setProperty("os.arch", "POWER PC 64");
+      assertEquals("windows-power-pc-64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+    } finally {
+      restoreSystemProperty("os.name", originalOsName);
+      restoreSystemProperty("os.arch", originalOsArch);
+    }
+  }
+
+  private static String expectedManagedSqliteClassifier() {
+    return SqliteNativeRuntimePolicy.supportedHostClassifier();
   }
 }

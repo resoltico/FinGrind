@@ -1,7 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
 import java.io.Serializable
-import java.util.Properties
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
@@ -48,32 +47,27 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             registerJavaSourcePolicyTask()
             registerJacksonDependencyPolicyTask()
             val repoRootDirectory = layout.projectDirectory.dir("..")
-            val sharedGradleProperties =
-                Properties().apply {
-                    repoRootDirectory.file("gradle.properties").asFile.inputStream().use(::load)
-                }
-
-            fun sharedFingrindProperty(name: String): String =
-                sharedGradleProperties.getProperty(name)
-                    ?: throw IllegalArgumentException("Missing shared FinGrind property '$name' in ../gradle.properties.")
+            val repositoryRootPath = repoRootDirectory.asFile.toPath()
+            val managedSqlitePackageId =
+                DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootPath)
 
             val managedSqlite =
                 ManagedSqliteProvisioningLogic.register(
                     project = this,
-                    repositoryRootDirectory = repoRootDirectory.asFile.toPath(),
-                    sourceDirectory =
+                    repositoryRootDirectory = repositoryRootPath,
+                    sqliteSourceDirectory =
                         repoRootDirectory.dir(
-                            "third_party/sqlite/${sharedFingrindProperty("fingrindManagedSqlitePackageId")}",
+                            "third_party/sqlite/$managedSqlitePackageId",
                         ),
                     sqliteVersionValue =
                         DistributionContractReader.requiredMinimumSqliteVersion(
-                            repoRootDirectory.asFile.toPath(),
+                            repositoryRootPath,
                         ),
                     sqlite3mcVersionValue =
                         DistributionContractReader.requiredSqlite3mcVersion(
-                            repoRootDirectory.asFile.toPath(),
+                            repositoryRootPath,
                         ),
-                    sourceSha3 = sharedFingrindProperty("fingrindManagedSqliteSourceSha3"),
+                    sourcePackageId = managedSqlitePackageId,
                 )
             ManagedSqliteProvisioningLogic.configureConsumers(this, managedSqlite)
 

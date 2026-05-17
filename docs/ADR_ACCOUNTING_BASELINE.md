@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: ADR_ACCOUNTING_BASELINE
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, accounting baseline, ifrs, country agnostic, functional currency, scope, external reporting]
   questions: ["what accounting standards baseline does fingrind target", "is fingrind full ifrs", "what does legislation agnostic mean in fingrind", "what accounting scope is intentionally out of scope"]

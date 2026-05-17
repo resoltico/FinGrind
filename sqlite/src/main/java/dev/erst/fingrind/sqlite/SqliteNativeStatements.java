@@ -49,8 +49,10 @@ final class SqliteNativeStatements {
   }
 
   static int prepareStatement(
-      MemorySegment databaseHandle, MemorySegment sql, MemorySegment statementPointer) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+      MemorySegment databaseHandle,
+      MemorySegment sql,
+      MemorySegment statementPointer,
+      SqliteNativeApi sqliteApi) {
     try (Arena arena = Arena.ofConfined()) {
       return SqliteNativeInvocation.invokeSqlite(
           "Failed to prepare a SQLite statement.",
@@ -67,8 +69,8 @@ final class SqliteNativeStatements {
     }
   }
 
-  static void bindNull(MemorySegment statementHandle, int parameterIndex) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static void bindNull(
+      MemorySegment statementHandle, int parameterIndex, SqliteNativeApi sqliteApi) {
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite null parameter.",
         () -> {
@@ -81,8 +83,8 @@ final class SqliteNativeStatements {
         });
   }
 
-  static void bindInt(MemorySegment statementHandle, int parameterIndex, int value) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static void bindInt(
+      MemorySegment statementHandle, int parameterIndex, int value, SqliteNativeApi sqliteApi) {
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite integer parameter.",
         () -> {
@@ -96,8 +98,8 @@ final class SqliteNativeStatements {
         });
   }
 
-  static void bindLong(MemorySegment statementHandle, int parameterIndex, long value) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static void bindLong(
+      MemorySegment statementHandle, int parameterIndex, long value, SqliteNativeApi sqliteApi) {
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite integer parameter.",
         () -> {
@@ -115,8 +117,8 @@ final class SqliteNativeStatements {
       MemorySegment statementHandle,
       int parameterIndex,
       MemorySegment textPointer,
-      int byteLength) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+      int byteLength,
+      SqliteNativeApi sqliteApi) {
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite text parameter.",
         () -> {
@@ -130,8 +132,7 @@ final class SqliteNativeStatements {
         });
   }
 
-  static int step(MemorySegment databaseHandle, MemorySegment statementHandle) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static int step(MemorySegment statementHandle, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invokeSqlite(
         "Failed to step a SQLite statement.",
         () -> {
@@ -145,17 +146,20 @@ final class SqliteNativeStatements {
         });
   }
 
-  static void finalizeStatement(MemorySegment statementHandle) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static void finalizeStatement(MemorySegment statementHandle, SqliteNativeApi sqliteApi) {
     SqliteNativeInvocation.run(
         "Failed to finalize a SQLite statement.",
         () -> {
-          SqliteNativeCalls.addressToInt(sqliteApi.sqlite3Finalize()).invoke(statementHandle);
+          int resultCode =
+              SqliteNativeCalls.addressToInt(sqliteApi.sqlite3Finalize()).invoke(statementHandle);
+          if (resultCode != SqliteNativeResultCodes.OK) {
+            throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+          }
         });
   }
 
-  static @Nullable String columnText(MemorySegment statementHandle, int columnIndex) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static @Nullable String columnText(
+      MemorySegment statementHandle, int columnIndex, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invoke(
         "Failed to read a SQLite text column.",
         () -> {
@@ -172,8 +176,7 @@ final class SqliteNativeStatements {
         });
   }
 
-  static int columnInt(MemorySegment statementHandle, int columnIndex) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static int columnInt(MemorySegment statementHandle, int columnIndex, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invoke(
         "Failed to read a SQLite integer column.",
         () ->
@@ -181,8 +184,8 @@ final class SqliteNativeStatements {
                 .invoke(statementHandle, columnIndex));
   }
 
-  static long columnLong(MemorySegment statementHandle, int columnIndex) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static long columnLong(
+      MemorySegment statementHandle, int columnIndex, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invoke(
         "Failed to read a SQLite integer column.",
         () ->
@@ -190,8 +193,7 @@ final class SqliteNativeStatements {
                 .invoke(statementHandle, columnIndex));
   }
 
-  static int extendedErrorCode(MemorySegment databaseHandle) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static int extendedErrorCode(MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invoke(
         "Failed to read the SQLite extended error code.",
         () ->

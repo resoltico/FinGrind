@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
@@ -25,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliResponseWriter}. */
@@ -54,8 +56,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(openBookHuman.contains("Accounting basis"));
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
-        new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.HUMAN);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Rekeyed"));
+        new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),
+        new BookAccess.PassphraseSource.KeyFile(Path.of("keys/rotated.key")),
+        OutputMode.HUMAN);
+    String rekeyHuman = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rekeyHuman.contains("Book Rekeyed"));
+    assertTrue(rekeyHuman.contains("Replacement secret source"));
+    assertTrue(rekeyHuman.contains("Key file"));
+    assertTrue(rekeyHuman.contains("rotated.key"));
     outputStream.reset();
     responseWriter.writeDeclareAccountResult(
         new DeclareAccountResult.Declared(
@@ -90,6 +98,27 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
+  void writeClosePeriodResult_rendersExplicitEmptyClosingPostingSet() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Closed(
+            new dev.erst.fingrind.contract.bookkeeping.ClosedPeriod(
+                1,
+                new dev.erst.fingrind.core.ReportingPeriod(
+                    LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                new AccountCode("3200"),
+                List.of(),
+                Instant.parse("2026-04-30T12:00:00Z"),
+                List.of())),
+        OutputMode.HUMAN);
+
+    String human = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(human.contains("Closing postings"));
+    assertTrue(human.contains("(none)"));
+  }
+
+  @Test
   void writeAdministrativeAndWriteSuccesses_rejectCsvOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
@@ -111,7 +140,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         IllegalArgumentException.class,
         () ->
             responseWriter.writeRekeyBookResult(
-                new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.CSV));
+                new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),
+                BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -209,17 +240,67 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
     CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
     successWriter.writeRekeyBookResult(
-        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")));
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
+        new BookAccess.PassphraseSource.KeyFile(Path.of("keys").resolve("rotated.key")));
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
     assertTrue(successJson.contains("\"status\":\"ok\""));
     assertTrue(successJson.contains("\"bookFile\""));
+    assertTrue(successJson.contains("\"replacementPassphraseSource\":\"key-file\""));
+    assertTrue(successJson.contains("\"replacementBookKeyFile\""));
     ByteArrayOutputStream rejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter rejectionWriter = new CliResponseWriter(utf8PrintStream(rejectionOutput));
     rejectionWriter.writeRekeyBookResult(
-        new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()));
+        new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
     String rejectionJson = rejectionOutput.toString(StandardCharsets.UTF_8);
     assertTrue(rejectionJson.contains("\"status\":\"rejected\""));
     assertTrue(rejectionJson.contains("\"code\":\"administration-book-not-initialized\""));
+  }
+
+  @Test
+  void writeRekeyBookResult_supportsNonFileReplacementSecretSources() {
+    ByteArrayOutputStream standardInputHumanOutput = new ByteArrayOutputStream();
+    CliResponseWriter standardInputHumanWriter =
+        new CliResponseWriter(utf8PrintStream(standardInputHumanOutput));
+    standardInputHumanWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
+        BookAccess.PassphraseSource.StandardInput.INSTANCE,
+        OutputMode.HUMAN);
+    String standardInputHuman = standardInputHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(standardInputHuman.contains("Standard input"));
+    assertFalse(standardInputHuman.contains("Replacement key file"));
+
+    ByteArrayOutputStream interactivePromptHumanOutput = new ByteArrayOutputStream();
+    CliResponseWriter interactivePromptHumanWriter =
+        new CliResponseWriter(utf8PrintStream(interactivePromptHumanOutput));
+    interactivePromptHumanWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+        OutputMode.HUMAN);
+    String interactivePromptHuman = interactivePromptHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(interactivePromptHuman.contains("Interactive prompt"));
+    assertFalse(interactivePromptHuman.contains("Replacement key file"));
+
+    ByteArrayOutputStream standardInputJsonOutput = new ByteArrayOutputStream();
+    CliResponseWriter standardInputJsonWriter =
+        new CliResponseWriter(utf8PrintStream(standardInputJsonOutput));
+    standardInputJsonWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
+        BookAccess.PassphraseSource.StandardInput.INSTANCE);
+    String standardInputJson = standardInputJsonOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(standardInputJson.contains("\"replacementPassphraseSource\":\"standard-input\""));
+    assertFalse(standardInputJson.contains("\"replacementBookKeyFile\""));
+
+    ByteArrayOutputStream interactivePromptJsonOutput = new ByteArrayOutputStream();
+    CliResponseWriter interactivePromptJsonWriter =
+        new CliResponseWriter(utf8PrintStream(interactivePromptJsonOutput));
+    interactivePromptJsonWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+    String interactivePromptJson = interactivePromptJsonOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        interactivePromptJson.contains("\"replacementPassphraseSource\":\"interactive-prompt\""));
+    assertFalse(interactivePromptJson.contains("\"replacementBookKeyFile\""));
   }
 
   @Test

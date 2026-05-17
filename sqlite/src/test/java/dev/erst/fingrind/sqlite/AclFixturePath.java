@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Iterator;
 import java.util.List;
@@ -21,8 +22,11 @@ final class AclFixturePath implements Path {
   boolean exists;
   boolean regularFile;
   @Nullable AclFixtureView aclView;
+  @Nullable AclFileAttributeView overrideAclView;
   Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
+  private @Nullable IOException newByteChannelFailure;
+  private @Nullable IOException newDirectoryStreamFailure;
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
     this.fileSystem = fileSystem;
@@ -37,6 +41,24 @@ final class AclFixturePath implements Path {
 
   @Nullable IOException deleteIfExistsFailure() {
     return deleteIfExistsFailure;
+  }
+
+  AclFixturePath failNewByteChannelWith(IOException exception) {
+    newByteChannelFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException newByteChannelFailure() {
+    return newByteChannelFailure;
+  }
+
+  AclFixturePath failNewDirectoryStreamWith(IOException exception) {
+    newDirectoryStreamFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException newDirectoryStreamFailure() {
+    return newDirectoryStreamFailure;
   }
 
   @Override

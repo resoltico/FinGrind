@@ -46,7 +46,7 @@ final class MachineContractDeclareAccountSchemas {
                 "accountRole", AccountRole.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "financialPositionLineClassification",
-                FinancialPositionLineClassification.wireValues()),
+                FinancialPositionLineClassification.declaredAccountWireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "profitAndLossLineClassification", ProfitAndLossLineClassification.wireValues())),
         declareAccountSchema());
@@ -90,7 +90,7 @@ final class MachineContractDeclareAccountSchemas {
             "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
             MachineContractSchemaSupport.enumStringSchema(
                 "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
-                FinancialPositionLineClassification.wireValues())),
+                FinancialPositionLineClassification.declaredAccountWireValues())),
         MachineContractFieldSpec.conditional(
             ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
             "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
@@ -115,7 +115,7 @@ final class MachineContractDeclareAccountSchemas {
             ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
             MachineContractSchemaSupport.enumStringSchema(
                 "Required financial position taxonomy for balance-sheet accounts.",
-                FinancialPositionLineClassification.wireValues())),
+                FinancialPositionLineClassification.declaredAccountWireValues())),
         "required",
         List.of(ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION),
         "not",

@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Loads and publishes the current bundle-layout contract snapshot. */
 final class BundleLayoutContracts {
@@ -27,14 +28,16 @@ final class BundleLayoutContracts {
   static BundleLayoutContract loadFromResource(
       @Nullable InputStream resourceStream, String resourcePath) {
     Objects.requireNonNull(resourcePath, "resourcePath");
-    JsonNode document =
+    ObjectNode document =
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "bundle layout contract");
-    JsonNode bundleTargetsNode = requireObject(document, BUNDLE_TARGETS_KEY);
+    ObjectNode bundleTargetsNode =
+        JsonContractResourceSupport.requireObject(
+            document, BUNDLE_TARGETS_KEY, BUNDLE_TARGETS_KEY + " must be one JSON object.");
     List<Map.Entry<PublicCliBundleTarget, BundleLayoutContract.BundleTarget>> bundleTargetEntries =
         new ArrayList<>();
     bundleTargetsNode
-        .properties()
+        .propertyStream()
         .forEach(
             entry -> {
               String classifier = entry.getKey();
@@ -58,7 +61,9 @@ final class BundleLayoutContracts {
   }
 
   private static BundleLayoutContract.BundleTarget loadBundleTarget(JsonNode node) {
-    JsonNode document = requireObjectNode(node, BUNDLE_TARGETS_KEY + " entry");
+    ObjectNode document =
+        JsonContractResourceSupport.requireObjectNode(
+            node, BUNDLE_TARGETS_KEY + " entry must be one JSON object.");
     String operatingSystemId =
         JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.operatingSystemId());
     String architectureId =
@@ -70,18 +75,6 @@ final class BundleLayoutContracts {
         JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.launcherPath()),
         JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.launcherCommand()),
         JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.sqliteLibraryFileName()));
-  }
-
-  private static JsonNode requireObject(JsonNode document, String key) {
-    return JsonContractResourceSupport.requireObject(
-        document, key, key + " must be one JSON object.");
-  }
-
-  private static JsonNode requireObjectNode(JsonNode node, String key) {
-    if (!node.isObject()) {
-      throw new IllegalArgumentException(key + " must be one JSON object.");
-    }
-    return node;
   }
 
   private static BundleLayoutContract loadCurrent() {

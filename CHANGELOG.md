@@ -5,6 +5,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-05-17
+
+### Changed
+
+- Expanded the initialized-book identity and transport contract so books now persist a first-class
+  `taxProfile`, `open-book` accepts `--tax-profile-file` for registered books, and the durable
+  protected-book format advances to version `7` for that wider identity payload.
+
+### Fixed
+
+- Hardened the remaining Windows release-gate test seams: CLI key-file and workflow tests now
+  harden their temporary directories to the same owner-only contract as production secrets,
+  hosted Windows launcher regression coverage now asserts runtime-specific launcher examples, the
+  managed-SQLite ACL regression test now drives one deterministic ACL failure instead of a
+  POSIX-only path assumption, the interactive-console prompt bridge no longer loses coverage on
+  hosted Windows when the Unix-only PTY probe is unavailable, and stale-handle period-close
+  coverage no longer leaks one live initialized database handle during cleanup on Windows.
+- Replaced the last host-bound SQLite coverage assumptions with host-independent filesystem-fixture
+  proofs: rollback-artifact scan failures and managed-library private-snapshot permission paths
+  now execute through deterministic fixture seams instead of depending on POSIX-only host
+  behavior, so the Windows release gate proves the same SQLite coverage contract as macOS and
+  Linux.
+- Fixed the Windows managed-SQLite verification snapshot hardening seam so owner-only ACLs now
+  keep the copied `sqlite3.dll` executable by that owner, preventing Windows native-runtime loads
+  from failing after snapshot verification.
+- Split the `Windows bundle smoke` CI job's root-gate and build-logic verification into separate
+  fail-fast steps, and tightened the release-surface regression so one failed Windows Gradle run
+  cannot be masked by later PowerShell steps in the same job.
+- Aligned the SQLite test infrastructure with the Windows owner-only filesystem contract: SQLite
+  integration and key-file tests now harden their temporary book and secret directories before
+  use, and ad hoc fixture key directories no longer inherit broader Windows temp-root ACLs that
+  would make release-gate book initialization fail only on hosted Windows runners.
+- Refined the field-tested operator and AI-agent CLI surface again: posting-ledger and statement
+  views now keep full posting identities in human and PDF outputs, derived statement rows no
+  longer expose internal synthetic line codes, reversal wording now names posting lineage
+  directly, `rekey-book` success results now publish the replacement secret source, no-op period
+  closes render explicit empty generated-posting output, and the canonical checked-in examples now
+  use concrete identity/reporting/tax statuses, stable illustrative paths, and a runnable
+  reversal example that exactly negates the published basic posting request.
+- Suppressed the harmless Java 26 PDFBox direct-buffer unmapping warning during successful PDF
+  report exports, so human, bundle, and packaged CLI runs no longer emit alarming stderr noise
+  when they write valid PDF artifacts.
+- Repaired raw application-JAR usability for discovery and failure handling: help output now
+  publishes a truthful `java -jar` launcher example, `capabilities` reports the missing
+  native-access prerequisite without triggering JVM warnings, and raw JAR command failures now
+  stop cleanly before any SQLite FFM lookup begins.
+- Restored full opaque identifiers in single-record human result views and mutation confirmations
+  so operators and AI agents can copy posting, command, causation, and idempotency values
+  without truncated detail blocks.
+- Restored deterministic administration rejection ordering for missing books so
+  `declare-account` rejects as `administration-book-not-initialized` before any chart or
+  hierarchy validation runs.
+- Aligned the source-checkout launcher regression and public quick-start guidance with the
+  book-and-key directory security contract so FinGrind now consistently assumes it may create a
+  missing private parent directory itself while refusing any pre-existing non-private directory.
+- Replaced the reopened generic `BigDecimal` FX seam with one canonical `ExchangeRate`
+  plain-decimal grammar so exchange-rate evidence now owns its exact quote normalization without
+  reintroducing a shared decimal escape hatch into product Java surfaces.
+- Realigned the public docs, checked-in examples, root README output excerpt, and rendered SQLite
+  schema reference to the live `0.38.x` contract, including the widened book identity payload,
+  narrower account-ledger CSV export, live `execute-plan` summary structure, and supported book
+  format version `7`.
+- Moved the published container image off the operator override path and onto the same
+  bundle-managed SQLite runtime contract as the extracted archive, so container runtime probes and
+  release-surface checks now report one publisher-authenticated native-library seam.
+- Repaired the managed SQLite native-toolchain fingerprint owner on Windows: the build-logic
+  probe now captures `cl.exe` and `link.exe` version banners using platform-correct invocation
+  semantics instead of assuming Unix-style `--version` support, and the shared build-logic tests
+  now guard that Windows probe contract directly so Windows bundle smoke is no longer the first
+  detector for MSVC toolchain regressions.
+
 ## [0.38.0] - 2026-05-16
 
 ### Changed
@@ -12,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped the pinned Gradle wrapper distribution to `9.5.1` while preserving the repo-owned
   wrapper launcher behavior that externalizes project cache, build-logic, JaCoCo, and ordinary
   project-build state outside the checkout by default.
-- Upgraded Spotless to `8.5.0` and aligned the repository formatting floor, release-surface
+- Upgraded Spotless to `8.5.1` and aligned the repository formatting floor, release-surface
   regressions, and shared build logic to the same formatter baseline.
 
 ### Fixed
@@ -1845,7 +1916,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.38.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.39.0...HEAD
+[0.39.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.39.0
 [0.38.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.38.0
 [0.37.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.37.0
 [0.36.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.36.0

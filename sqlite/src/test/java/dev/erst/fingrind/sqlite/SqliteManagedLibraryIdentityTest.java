@@ -3,24 +3,35 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Unit tests for managed SQLite library identity enforcement. */
 class SqliteManagedLibraryIdentityTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void requireSiblingVerified_acceptsMatchingSiblingChecksumFiles() throws Exception {
@@ -48,6 +59,7 @@ class SqliteManagedLibraryIdentityTest {
   void requireVerified_acceptsMatchingBundleManagedSiblingAndTrustedDigests() throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
+    writeTrustedChecksum(libraryPath);
 
     assertDoesNotThrow(
         () ->
@@ -97,6 +109,7 @@ class SqliteManagedLibraryIdentityTest {
       throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
+    writeTrustedChecksum(libraryPath);
 
     assertDoesNotThrow(
         () ->
@@ -127,9 +140,30 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   @Test
+  void verifiedSnapshot_rejectsMissingTrustedChecksumBeforeCreatingCopy() throws Exception {
+    Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteManagedLibraryIdentity.verifiedSnapshot(
+                    new SqliteLibraryTarget(
+                        "managed-only",
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        libraryPath.toString())));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("missing the trusted FinGrind digest file"));
+  }
+
+  @Test
   void requireVerified_rejectsManagedRuntimeWhenTrustedDigestDoesNotMatch() throws Exception {
     Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "tampered-library");
     writeSiblingChecksum(libraryPath);
+    writeTrustedChecksum(libraryPath, hostManagedLibraryPath());
 
     UnsupportedManagedSqliteLibraryIdentityException exception =
         assertThrows(
@@ -147,46 +181,26 @@ class SqliteManagedLibraryIdentityTest {
   @Test
   void requireTrustedManagedLibrary_acceptsMatchingTrustedDigestText() throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
+    writeTrustedChecksum(libraryPath);
 
     assertDoesNotThrow(
-        () ->
-            SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(
-                libraryPath,
-                ignoredResourcePath ->
-                    sha256Line(libraryPath, libraryPath.getFileName().toString())));
+        () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
   }
 
   @Test
   void requireTrustedManagedLibrary_rejectsMalformedTrustedDigestText() throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
+    Files.writeString(
+        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
+        "not-a-checksum\n",
+        StandardCharsets.UTF_8);
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(
-                    libraryPath, ignoredResourcePath -> "not-a-checksum\n"));
+            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
 
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is malformed"));
-  }
-
-  @Test
-  void requireTrustedManagedLibrary_wrapsTrustedDigestReadIoFailures() throws Exception {
-    Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(
-                    libraryPath,
-                    ignoredResourcePath -> {
-                      throw new IOException("boom");
-                    }));
-
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("Failed to read the trusted FinGrind managed SQLite digest resource"));
   }
 
   @Test
@@ -196,40 +210,68 @@ class SqliteManagedLibraryIdentityTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(
-                    libraryPath, ignoredResourcePath -> null));
+            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
 
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is missing or empty"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("is missing the trusted FinGrind digest file"));
   }
 
   @Test
   void requireTrustedManagedLibrary_rejectsBlankTrustedDigestText() throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
+    Files.writeString(
+        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
+        " \n",
+        StandardCharsets.UTF_8);
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(
-                    libraryPath, ignoredResourcePath -> " \n"));
+            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
 
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is missing or empty"));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is empty"));
   }
 
   @Test
-  void trustedChecksumText_readsBundledDigestResource() throws Exception {
-    String checksumText =
-        SqliteManagedLibraryIdentity.trustedChecksumText(
-            "/META-INF/fingrind/managed-sqlite.sha256");
+  void requireTrustedManagedLibrary_wrapsTrustedDigestReadIoFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath libraryPath = fileSystem.path("\\sqlite3.dll");
+      libraryPath.exists = true;
+      libraryPath.regularFile = true;
+      AclFixturePath trustedChecksumPath =
+          (AclFixturePath) SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath);
+      trustedChecksumPath.exists = true;
+      trustedChecksumPath.regularFile = true;
+      trustedChecksumPath.failNewByteChannelWith(new IOException("trusted-read-failure"));
 
-    assertEquals(expectedTrustedChecksumText(), checksumText);
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to read the trusted FinGrind managed SQLite digest file"));
+      assertEquals(
+          "trusted-read-failure", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
+  }
+
+  @Test
+  void trustedChecksumPath_appendsTrustedDigestSuffixBesideLibrary() {
+    Path libraryPath = tempDirectory.resolve("libsqlite3.so.0");
+
+    assertEquals(
+        tempDirectory.resolve("libsqlite3.so.0.trusted.sha256"),
+        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath));
   }
 
   @Test
   void verifiedSnapshot_copiesManagedLibraryIntoPrivateVerifiedPath() throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
+    writeTrustedChecksum(libraryPath);
 
     SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot snapshot =
         SqliteManagedLibraryIdentity.verifiedSnapshot(
@@ -248,6 +290,12 @@ class SqliteManagedLibraryIdentityTest {
         Files.readString(
             SqliteManagedLibraryIdentity.checksumPath(libraryPath), StandardCharsets.UTF_8),
         Files.readString(snapshot.snapshotChecksumPath(), StandardCharsets.UTF_8));
+    assertEquals(
+        Files.readString(
+            SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath), StandardCharsets.UTF_8),
+        Files.readString(
+            Objects.requireNonNull(snapshot.snapshotTrustedChecksumPath()),
+            StandardCharsets.UTF_8));
     assertEquals(
         snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
 
@@ -272,7 +320,8 @@ class SqliteManagedLibraryIdentityTest {
                           SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                           libraryPath.toString()),
                       libraryPath,
-                      SqliteManagedLibraryIdentity.checksumPath(libraryPath)));
+                      SqliteManagedLibraryIdentity.checksumPath(libraryPath),
+                      null));
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
@@ -291,6 +340,26 @@ class SqliteManagedLibraryIdentityTest {
     assertTrue(snapshotDirectory.startsWith(tempDirectory));
     assertTrue(Files.isDirectory(snapshotDirectory));
     Files.delete(snapshotDirectory);
+  }
+
+  @Test
+  void createPrivateSnapshotDirectory_supportsPosixOwnerOnlyCreation() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath tempRoot = fileSystem.path("\\tmp");
+      tempRoot.exists = true;
+      tempRoot.regularFile = false;
+
+      Path snapshotDirectory =
+          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, true);
+
+      assertTrue(Files.isDirectory(snapshotDirectory));
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          ((AclFixturePath) snapshotDirectory).posixPermissions);
+    }
   }
 
   @Test
@@ -315,18 +384,31 @@ class SqliteManagedLibraryIdentityTest {
             IllegalArgumentException.class,
             () ->
                 new SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, outsideLibraryPath, validChecksumPath));
+                    sourceTarget, snapshotDirectory, outsideLibraryPath, validChecksumPath, null));
     IllegalArgumentException outsideChecksum =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, validLibraryPath, outsideChecksumPath));
+                    sourceTarget, snapshotDirectory, validLibraryPath, outsideChecksumPath, null));
+    IllegalArgumentException outsideTrustedChecksum =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot(
+                    sourceTarget,
+                    snapshotDirectory,
+                    validLibraryPath,
+                    validChecksumPath,
+                    outsideChecksumPath));
 
     assertEquals(
         "snapshotLibraryPath must live inside snapshotDirectory.", outsideLibrary.getMessage());
     assertEquals(
         "snapshotChecksumPath must live inside snapshotDirectory.", outsideChecksum.getMessage());
+    assertEquals(
+        "snapshotTrustedChecksumPath must live inside snapshotDirectory.",
+        outsideTrustedChecksum.getMessage());
   }
 
   @Test
@@ -344,11 +426,121 @@ class SqliteManagedLibraryIdentityTest {
                         SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                         libraryPath.toString()),
                     libraryPath,
-                    missingChecksumPath));
+                    missingChecksumPath,
+                    null));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
             .contains("Failed to create the private managed SQLite verification snapshot"));
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfCleansUpTrustedChecksumArtifactsAfterTrustedCopyFailures()
+      throws Exception {
+    Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "sqlite3mc");
+    Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
+    Path missingTrustedChecksumPath = tempDirectory.resolve("missing.trusted.sha256");
+    writeSiblingChecksum(libraryPath);
+    String originalTempRoot = System.getProperty("java.io.tmpdir");
+    System.setProperty("java.io.tmpdir", tempDirectory.toString());
+    try {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                          libraryPath.toString()),
+                      libraryPath,
+                      checksumPath,
+                      missingTrustedChecksumPath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to create the private managed SQLite verification snapshot"));
+      try (var snapshotPaths = Files.list(tempDirectory)) {
+        assertTrue(
+            snapshotPaths.noneMatch(
+                path -> path.getFileName().toString().startsWith("fingrind-managed-sqlite-")));
+      }
+    } finally {
+      System.setProperty("java.io.tmpdir", originalTempRoot);
+    }
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpAfterChecksumCopyFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
+      sourceLibraryPath.exists = true;
+      sourceLibraryPath.regularFile = true;
+      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
+      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
+      snapshotDirectory.exists = true;
+      snapshotDirectory.regularFile = false;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                          sourceLibraryPath.toString()),
+                      sourceLibraryPath,
+                      sourceChecksumPath,
+                      null,
+                      () -> snapshotDirectory));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to create the private managed SQLite verification snapshot"));
+      assertFalse(snapshotDirectory.exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
+    }
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpTrustedArtifactsOnFailure() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
+      sourceLibraryPath.exists = true;
+      sourceLibraryPath.regularFile = true;
+      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
+      sourceChecksumPath.exists = true;
+      sourceChecksumPath.regularFile = true;
+      AclFixturePath sourceTrustedChecksumPath =
+          fileSystem.path("\\source\\sqlite3.dll.trusted.sha256");
+      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
+      snapshotDirectory.exists = true;
+      snapshotDirectory.regularFile = false;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                          sourceLibraryPath.toString()),
+                      sourceLibraryPath,
+                      sourceChecksumPath,
+                      sourceTrustedChecksumPath,
+                      () -> snapshotDirectory));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to create the private managed SQLite verification snapshot"));
+      assertFalse(snapshotDirectory.exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.trusted.sha256").exists);
+    }
   }
 
   @Test
@@ -359,15 +551,138 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   @Test
-  void hardenPrivateFile_wrapsPermissionFailures() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.hardenPrivateFile(Path.of("/dev/null")));
+  void hardenPrivateDirectory_andFile_applyOwnerOnlyAclPermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath directoryPath = fileSystem.path("\\snapshots");
+      directoryPath.exists = true;
+      directoryPath.regularFile = false;
+      AclFixturePath libraryPath = fileSystem.path("\\snapshots\\sqlite3.dll");
+      libraryPath.exists = true;
+      libraryPath.regularFile = true;
 
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("Failed to apply private managed SQLite snapshot permissions"));
+      SqliteManagedLibraryIdentity.hardenPrivateDirectory(directoryPath);
+      SqliteManagedLibraryIdentity.hardenPrivateFile(libraryPath);
+
+      assertEquals(1, Objects.requireNonNull(directoryPath.aclView).getAcl().size());
+      assertEquals(1, Objects.requireNonNull(libraryPath.aclView).getAcl().size());
+      assertTrue(
+          Objects.requireNonNull(libraryPath.aclView)
+              .getAcl()
+              .getFirst()
+              .permissions()
+              .contains(AclEntryPermission.READ_DATA));
+      assertTrue(
+          Objects.requireNonNull(libraryPath.aclView)
+              .getAcl()
+              .getFirst()
+              .permissions()
+              .contains(AclEntryPermission.EXECUTE));
+    }
+  }
+
+  @Test
+  void hardenPrivateDirectory_andFile_applyOwnerOnlyPosixPermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath directoryPath = fileSystem.path("\\snapshots");
+      directoryPath.exists = true;
+      directoryPath.regularFile = false;
+      directoryPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ);
+      AclFixturePath libraryPath = fileSystem.path("\\snapshots\\sqlite3.dylib");
+      libraryPath.exists = true;
+      libraryPath.regularFile = true;
+      libraryPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ);
+
+      SqliteManagedLibraryIdentity.hardenPrivateDirectory(directoryPath);
+      SqliteManagedLibraryIdentity.hardenPrivateFile(libraryPath);
+
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          directoryPath.posixPermissions);
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          libraryPath.posixPermissions);
+    }
+  }
+
+  @Test
+  void hardenPrivateFile_rejectsMissingAclViewsWhenAclSupportIsAdvertised() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath libraryPath = fileSystem.path("\\snapshots\\sqlite3.dll");
+      libraryPath.exists = true;
+      libraryPath.regularFile = true;
+      libraryPath.aclView = null;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteManagedLibraryIdentity.hardenPrivateFile(libraryPath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Owner-only ACLs are unavailable"));
+    }
+  }
+
+  @Test
+  void hardenPrivateDirectory_wrapsAclIoFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath directoryPath = fileSystem.path("\\snapshots");
+      directoryPath.exists = true;
+      directoryPath.regularFile = false;
+      directoryPath.overrideAclView = throwingAclView("boom");
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteManagedLibraryIdentity.hardenPrivateDirectory(directoryPath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to apply private managed SQLite snapshot directory permissions"));
+      assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
+  }
+
+  @Test
+  void hardenPrivateDirectory_returnsQuietlyWhenOnlyBasicViewsAreAvailable() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath directoryPath = fileSystem.path("\\snapshots");
+      directoryPath.exists = true;
+      directoryPath.regularFile = false;
+
+      assertDoesNotThrow(() -> SqliteManagedLibraryIdentity.hardenPrivateDirectory(directoryPath));
+    }
+  }
+
+  @Test
+  void hardenPrivateFile_wrapsPermissionFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath filePath = fileSystem.path("\\sqlite3.dll");
+      filePath.exists = true;
+      filePath.regularFile = true;
+      filePath.overrideAclView = throwingAclView("boom");
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteManagedLibraryIdentity.hardenPrivateFile(filePath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to apply private managed SQLite snapshot permissions"));
+      assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
   }
 
   @Test
@@ -375,9 +690,11 @@ class SqliteManagedLibraryIdentityTest {
     Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("snapshot-cleanup"));
     Path snapshotLibraryPath = snapshotDirectory.resolve("library.dylib");
     Path snapshotChecksumPath = snapshotDirectory.resolve("library.dylib.sha256");
+    Path snapshotTrustedChecksumPath = snapshotDirectory.resolve("library.dylib.trusted.sha256");
     Path sentinel = snapshotDirectory.resolve("sentinel.txt");
     Files.writeString(snapshotLibraryPath, "library", StandardCharsets.UTF_8);
     Files.writeString(snapshotChecksumPath, "checksum", StandardCharsets.UTF_8);
+    Files.writeString(snapshotTrustedChecksumPath, "trusted", StandardCharsets.UTF_8);
     Files.writeString(sentinel, "keep", StandardCharsets.UTF_8);
     SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot snapshot =
         new SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot(
@@ -387,38 +704,15 @@ class SqliteManagedLibraryIdentityTest {
                 snapshotLibraryPath.toString()),
             snapshotDirectory,
             snapshotLibraryPath,
-            snapshotChecksumPath);
+            snapshotChecksumPath,
+            snapshotTrustedChecksumPath);
 
     assertDoesNotThrow(snapshot::deleteQuietly);
     assertTrue(Files.exists(snapshotDirectory));
     assertTrue(Files.exists(sentinel));
     assertTrue(Files.notExists(snapshotLibraryPath));
     assertTrue(Files.notExists(snapshotChecksumPath));
-  }
-
-  @Test
-  void trustedChecksumText_returnsNullForMissingResources() throws Exception {
-    assertEquals(
-        null,
-        SqliteManagedLibraryIdentity.trustedChecksumText("/META-INF/fingrind/missing.sha256"));
-  }
-
-  @Test
-  void trustedChecksumText_propagatesCloseFailuresFromProvidedStreams() {
-    InputStream failingStream =
-        new ByteArrayInputStream("digest".getBytes(StandardCharsets.UTF_8)) {
-          @Override
-          public void close() throws IOException {
-            throw new IOException("close failure");
-          }
-        };
-
-    IOException exception =
-        assertThrows(
-            IOException.class,
-            () -> SqliteManagedLibraryIdentity.trustedChecksumText(failingStream));
-
-    assertEquals("close failure", exception.getMessage());
+    assertTrue(Files.notExists(snapshotTrustedChecksumPath));
   }
 
   @Test
@@ -597,6 +891,18 @@ class SqliteManagedLibraryIdentityTest {
         StandardCharsets.UTF_8);
   }
 
+  private void writeTrustedChecksum(Path libraryPath) throws IOException {
+    writeTrustedChecksum(libraryPath, libraryPath);
+  }
+
+  private void writeTrustedChecksum(Path libraryPath, Path checksumSourceLibraryPath)
+      throws IOException {
+    Files.writeString(
+        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
+        sha256Line(checksumSourceLibraryPath, libraryPath.getFileName().toString()),
+        StandardCharsets.UTF_8);
+  }
+
   private static String sha256Line(Path libraryPath, String declaredFileName) {
     return SqliteManagedLibraryIdentity.actualSha256(libraryPath) + "  " + declaredFileName + "\n";
   }
@@ -614,8 +920,32 @@ class SqliteManagedLibraryIdentityTest {
     return Path.of(configuredLibraryPath);
   }
 
-  private static String expectedTrustedChecksumText() {
-    Path libraryPath = hostManagedLibraryPath();
-    return sha256Line(libraryPath, libraryPath.getFileName().toString());
+  private static AclFileAttributeView throwingAclView(String message) {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() {
+        return List.of();
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws IOException {
+        throw new IOException(message);
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws IOException {
+        throw new IOException(message);
+      }
+
+      @Override
+      public void setOwner(UserPrincipal ownerPrincipal) {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 }

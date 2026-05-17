@@ -48,7 +48,6 @@ application {
     mainClass = "dev.erst.fingrind.cli.App"
     applicationDefaultJvmArgs =
         listOf(
-            "--enable-native-access=ALL-UNNAMED",
             "-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}",
             "-Dfingrind.source-checkout.root=${repositoryRootDirectory}",
             "-Dfingrind.source-checkout.build-root=${sourceCheckoutBuildRootDirectory}",
@@ -76,6 +75,8 @@ val bundleRuntimeDistribution =
     DistributionContractReader.bundleRuntimeDistribution(repositoryRootDirectory)
 val publicCliDistribution =
     DistributionContractReader.publicCliDistribution(repositoryRootDirectory)
+val managedSqliteSourcePackageId =
+    DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
 val storageDriver = DistributionContractReader.storageDriver(repositoryRootDirectory)
 val storageEngine = DistributionContractReader.storageEngine(repositoryRootDirectory)
 val bookProtectionMode = DistributionContractReader.bookProtectionMode(repositoryRootDirectory)
@@ -114,6 +115,16 @@ val managedSqliteLibrarySha256Path =
             "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}.sha256"
         },
     )
+val managedSqliteLibraryTrustedSha256Path =
+    rootProject.layout.buildDirectory.file(
+        providers.provider {
+            "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}.trusted.sha256"
+        },
+    )
+val managedSqliteToolchainFingerprintPath =
+    rootProject.layout.buildDirectory.file(
+        providers.provider { "managed-sqlite/${managedSqliteHostClassifier()}/toolchain-fingerprint.json" },
+    )
 val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
 val repositoryDockerBuildContextDirectory = layout.projectDirectory.dir("build/docker-context")
 val mirrorRepositoryDockerBuildContext =
@@ -150,7 +161,7 @@ val dockerBuildContextSourceIncludePatterns =
         "scripts/verify-docker-build-context.py",
         "sqlite/build.gradle.kts",
         "sqlite/src/main/**",
-        "third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c",
+        "third_party/sqlite/$managedSqliteSourcePackageId/**",
     )
 val dockerBuildContextSourceInputs =
     objects.fileCollection().from(
@@ -240,6 +251,7 @@ if (bundleClassifierValue != hostBundleClassifier) {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.named<ShadowJar>("shadowJar") {
@@ -280,7 +292,7 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to buildMetadata.implementationVendor,
             "Implementation-License" to buildMetadata.implementationLicense,
-            "Enable-Native-Access" to "ALL-UNNAMED",
+            "Automatic-Module-Name" to "fingrind",
             "FinGrind-Source-Checkout-Root" to repositoryRootDirectory.toString(),
             "FinGrind-Source-Checkout-Build-Root" to sourceCheckoutBuildRootDirectory.toString(),
         )
@@ -372,6 +384,7 @@ val stageDockerBuildContext =
             filter<ReplaceTokens>(
                 "tokens" to
                     mapOf(
+                        "bundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
                         "containerRuntimeDistribution" to containerRuntimeDistribution,
                     ),
                 "beginToken" to "{{",
@@ -476,6 +489,12 @@ val stageCliBundle =
             into("lib/native")
         }
         from(managedSqliteLibrarySha256Path) {
+            into("lib/native")
+        }
+        from(managedSqliteLibraryTrustedSha256Path) {
+            into("lib/native")
+        }
+        from(managedSqliteToolchainFingerprintPath) {
             into("lib/native")
         }
         from(rootProject.file("LICENSE"))

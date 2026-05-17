@@ -25,10 +25,30 @@ final class CliJsonRequestSchemas {
           ProtocolOpenBookFields.OWNER_MODEL,
           ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS,
           ProtocolOpenBookFields.TAX_REGISTRATION_STATUS,
+          ProtocolOpenBookFields.TAX_PROFILE,
           ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START,
           ProtocolOpenBookFields.ACCOUNTING_BASIS);
+  static final Set<String> TAX_PROFILE_FIELDS =
+      Set.of(
+          ProtocolOpenBookFields.TaxProfileFields.REGISTRATIONS,
+          ProtocolOpenBookFields.TaxProfileFields.TAX_CODE_DEFINITIONS);
+  static final Set<String> TAX_REGISTRATION_FIELDS =
+      Set.of(
+          ProtocolOpenBookFields.TaxRegistrationFields.JURISDICTION_CODE,
+          ProtocolOpenBookFields.TaxRegistrationFields.REGISTRATION_ID,
+          ProtocolOpenBookFields.TaxRegistrationFields.FILING_FREQUENCY);
+  static final Set<String> TAX_CODE_DEFINITION_FIELDS =
+      Set.of(
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.TAX_CODE,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.DISPLAY_NAME,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.JURISDICTION_CODE,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.RATE_BASIS_POINTS,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.PRICING_MODE,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.RECOVERABILITY,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.LIABILITY_ACCOUNT_CODE,
+          ProtocolOpenBookFields.TaxCodeDefinitionFields.RECEIVABLE_ACCOUNT_CODE);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   static final Set<String> PROVENANCE_FIELDS =

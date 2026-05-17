@@ -53,6 +53,10 @@ final class SqliteMutationWriter {
         bookIdentity.entityProfile().taxRegistrationStatus().wireValue());
     insertBookMetaValue(
         activeDatabase,
+        SqlitePostingSql.BOOK_TAX_PROFILE_META_KEY,
+        SqliteTaxProfileCodec.encode(bookIdentity.taxProfile()));
+    insertBookMetaValue(
+        activeDatabase,
         SqlitePostingSql.BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY,
         encodedBusinessActivityTags);
     insertBookMetaValue(

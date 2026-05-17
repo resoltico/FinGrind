@@ -64,12 +64,39 @@ final class CliBookPayloadMapper {
         bookIdentity.entityProfile().ownerModel().wireValue(),
         bookIdentity.entityProfile().reportingObligationStatus().wireValue(),
         bookIdentity.entityProfile().taxRegistrationStatus().wireValue(),
+        taxProfilePayload(bookIdentity.taxProfile()),
         bookIdentity.entityProfile().businessActivityTags().stream()
             .map(value -> value.value())
             .toList(),
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue(),
         bookIdentity.accountingBasis().wireValue());
+  }
+
+  static CliAdministrationJsonModels.TaxProfilePayload taxProfilePayload(
+      dev.erst.fingrind.core.TaxProfile taxProfile) {
+    return new CliAdministrationJsonModels.TaxProfilePayload(
+        taxProfile.registrations().stream()
+            .map(
+                registration ->
+                    new CliAdministrationJsonModels.TaxRegistrationPayload(
+                        registration.jurisdictionCode().value(),
+                        registration.registrationId().value(),
+                        registration.filingFrequency().wireValue()))
+            .toList(),
+        taxProfile.taxCodeDefinitions().stream()
+            .map(
+                definition ->
+                    new CliAdministrationJsonModels.TaxCodeDefinitionPayload(
+                        definition.taxCode().value(),
+                        definition.displayName().value(),
+                        definition.jurisdictionCode().value(),
+                        definition.rate().basisPoints(),
+                        definition.pricingMode().wireValue(),
+                        definition.recoverability().wireValue(),
+                        definition.liabilityAccountCode().value(),
+                        definition.receivableAccountCode().map(AccountCode::value).orElse(null)))
+            .toList());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {

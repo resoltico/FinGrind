@@ -7,13 +7,17 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $cliBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "cli"
 $rootBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "root"
 $rawJar = Join-Path $cliBuildDir "libs/fingrind.jar"
+$applicationModule = "fingrind/dev.erst.fingrind.cli.App"
 
 if (-not (Test-Path -LiteralPath $rawJar -PathType Leaf)) {
     throw "missing developer raw JAR at $rawJar; run .\\gradlew.bat :cli:shadowJar prepareManagedSqlite"
 }
 
 & java `
+    --enable-native-access=fingrind `
+    "-Dfingrind.runtime.distribution=direct-java-invocation" `
     "-Dfingrind.source-checkout.root=$repoRoot" `
     "-Dfingrind.source-checkout.build-root=$rootBuildDir" `
-    -jar $rawJar @args
+    --module-path $rawJar `
+    --module $applicationModule @args
 exit $LASTEXITCODE

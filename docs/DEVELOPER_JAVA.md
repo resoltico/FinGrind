@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER_JAVA
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -64,8 +64,8 @@ FinGrind contributors using the host-native path should therefore treat:
 Reasons:
 - the wrapper pins FinGrind's actual Gradle version and downloads the official Gradle distribution
   declared by the repository
-- source-driven Gradle and the developer-only raw `java -jar` path use the ambient shell `java`,
-  not Gradle toolchains
+- source-driven Gradle and the developer direct-Java wrappers use the ambient shell `java`, not
+  Gradle toolchains
 - the public packaged CLI bundles its own Java 26 runtime instead of depending on ambient shell
   Java
 - FinGrind's SQLite adapter relies on Java 26 FFM, so shell Java and Gradle-launched Java must
@@ -257,7 +257,7 @@ Current practical result:
 ## Pitfalls
 
 Known pitfalls:
-- developer-only `java -jar` does not use Gradle toolchains
+- the developer direct-Java wrappers do not use Gradle toolchains
 - Homebrew `gradle` declares a dependency on `openjdk`, which can reintroduce Java drift during
   unrelated Brew upgrades
 - `~/.zprofile` alone is not enough for terminals that start interactive non-login shells
@@ -314,7 +314,7 @@ Run those commands from a real terminal session.
 Why:
 - local shell startup files are what make Java 26 the default `java`
 - the public packaged CLI bundles its own runtime, while source-driven Gradle and the
-  developer-only raw `java -jar` path still depend on the ambient launcher runtime
+  developer direct-Java wrappers depend on the ambient launcher runtime
 - Gradle toolchains complement the shell JDK; they do not replace it
 
 ## Maintenance Guidance

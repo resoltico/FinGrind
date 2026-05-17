@@ -21,6 +21,8 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -85,6 +87,43 @@ class CliRejectionPayloadMapperTest {
             FiscalYearStart.parse("01-01")),
         "inside one fiscal year",
         CliRejectionJsonModels.PeriodCloseFiscalYearDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ParentAccountMissing(
+            new AccountCode("4100"), new AccountCode("4000")),
+        "Declare the requested parent account first",
+        CliRejectionJsonModels.ParentAccountDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ParentAccountInactive(
+            new AccountCode("4100"), new AccountCode("4000")),
+        "Reactivate the requested parent account",
+        CliRejectionJsonModels.ParentAccountDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ParentAccountTypeConflict(
+            new AccountCode("4100"),
+            AccountType.EXPENSE,
+            new AccountCode("4000"),
+            AccountType.REVENUE),
+        "same accountType as the child account",
+        CliRejectionJsonModels.ParentAccountTypeConflictDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ParentAccountTaxonomyConflict(
+            new AccountCode("4100"),
+            new AccountTaxonomy(
+                Optional.of(new AccountCode("4050")),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
+            new AccountCode("4000"),
+            new AccountTaxonomy(
+                Optional.empty(),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.COST_OF_SALES))),
+        "same statement-classification family",
+        CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails.class);
+    assertHint(
+        new BookAdministrationRejection.AccountHierarchyCycle(
+            new AccountCode("4100"), new AccountCode("4000")),
+        "not one of its descendants",
+        CliRejectionJsonModels.ParentAccountDetails.class);
   }
 
   @Test
@@ -256,6 +295,79 @@ class CliRejectionPayloadMapperTest {
     assertTrue(reversalTargetNotFound.hint().contains("get-posting"));
     assertInstanceOf(
         CliRejectionJsonModels.PriorPostingDetails.class, reversalTargetNotFound.details());
+
+    var bookNotInitialized =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-book", new PostingRejection.BookNotInitialized());
+    var accountStateViolations =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-account",
+            new PostingRejection.AccountStateViolations(
+                List.of(
+                    new PostingRejection.UnknownAccount(new AccountCode("1000")),
+                    new PostingRejection.InactiveAccount(new AccountCode("2000")))));
+    var duplicateIdempotencyKey =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-dup", new PostingRejection.DuplicateIdempotencyKey());
+    var closedPeriodViolation =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-closed",
+            new PostingRejection.ClosedPeriodViolation(
+                LocalDate.parse("2026-04-30"), LocalDate.parse("2026-05-01")));
+    var closingEquityAccountReserved =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-close",
+            new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")));
+    var reversalAlreadyExists =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-exists", new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2")));
+    var reversalDoesNotNegateTarget =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-negate",
+            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-3")));
+
+    assertTrue(Objects.requireNonNull(bookNotInitialized.hint()).contains("open-book"));
+    assertNull(bookNotInitialized.details());
+    CliRejectionJsonModels.AccountStateViolationsDetails accountStateDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.AccountStateViolationsDetails.class,
+            accountStateViolations.details());
+    assertEquals(2, accountStateDetails.violations().size());
+    assertEquals("unknown-account", accountStateDetails.violations().get(0).code());
+    assertEquals("1000", accountStateDetails.violations().get(0).accountCode());
+    assertEquals("inactive-account", accountStateDetails.violations().get(1).code());
+    assertEquals("2000", accountStateDetails.violations().get(1).accountCode());
+    assertTrue(
+        Objects.requireNonNull(duplicateIdempotencyKey.hint())
+            .contains("fresh provenance.idempotencyKey"));
+    CliRejectionJsonModels.ClosedPeriodViolationDetails closedPeriodDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.ClosedPeriodViolationDetails.class,
+            closedPeriodViolation.details());
+    assertEquals("2026-04-30", closedPeriodDetails.closedThroughEffectiveDate());
+    assertEquals("2026-05-01", closedPeriodDetails.attemptedEffectiveDate());
+    CliRejectionJsonModels.ClosingEquityAccountDetails closingEquityDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.ClosingEquityAccountDetails.class,
+            closingEquityAccountReserved.details());
+    assertEquals("3200", closingEquityDetails.accountCode());
+    assertTrue(
+        Objects.requireNonNull(closingEquityAccountReserved.hint()).contains("close-period"));
+    assertEquals(
+        "posting-2",
+        assertInstanceOf(
+                CliRejectionJsonModels.PriorPostingDetails.class, reversalAlreadyExists.details())
+            .priorPostingId());
+    assertTrue(Objects.requireNonNull(reversalAlreadyExists.hint()).contains("existing reversal"));
+    assertEquals(
+        "posting-3",
+        assertInstanceOf(
+                CliRejectionJsonModels.PriorPostingDetails.class,
+                reversalDoesNotNegateTarget.details())
+            .priorPostingId());
+    assertTrue(
+        Objects.requireNonNull(reversalDoesNotNegateTarget.hint())
+            .contains("full negating journal entry"));
   }
 
   @Test
@@ -274,6 +386,12 @@ class CliRejectionPayloadMapperTest {
     assertTrue(postingNotFound.hint().contains("list-postings"));
     assertInstanceOf(
         CliRejectionJsonModels.PostingNotFoundDetails.class, postingNotFound.details());
+
+    var bookNotInitialized =
+        CliRejectionPayloadMapper.queryRejectedEnvelope(
+            new BookQueryRejection.BookNotInitialized());
+    assertTrue(Objects.requireNonNull(bookNotInitialized.hint()).contains("open-book"));
+    assertNull(bookNotInitialized.details());
   }
 
   private static void assertHint(

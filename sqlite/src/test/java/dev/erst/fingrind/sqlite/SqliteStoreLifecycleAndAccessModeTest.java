@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -133,6 +134,24 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
               return "loaded-late";
             }));
     assertEquals("published-first", schemaCache.get());
+  }
+
+  @Test
+  void ensureParentDirectory_wrapsDirectoryPreparationFailures() {
+    Path bookPath = tempDirectory.resolve("wrapped-parent").resolve("book.sqlite");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookSchemaBootstrap.ensureParentDirectory(
+                    bookPath,
+                    normalizedBookPath -> {
+                      throw new IOException("boom");
+                    }));
+
+    assertEquals("Failed to create SQLite book directory.", exception.getMessage());
+    assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
   }
 
   @Test

@@ -28,6 +28,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -224,7 +225,8 @@ class BookkeepingStatementServiceCoverageTest {
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("02-29"),
-            AccountingBasis.ACCRUAL);
+            AccountingBasis.ACCRUAL,
+            TaxProfile.empty());
     CoverageBookStore store =
         new CoverageBookStore(
             new BookLifecycleInspection.Initialized(

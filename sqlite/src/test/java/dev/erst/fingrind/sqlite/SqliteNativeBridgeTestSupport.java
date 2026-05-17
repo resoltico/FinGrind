@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Shared native API fixtures and handle helpers for split SQLite bridge tests. */
@@ -38,6 +39,11 @@ class SqliteNativeBridgeTestSupport {
   protected SqliteNativeBridgeTestSupport() {}
 
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   static SqliteNativeApi sqliteApi(
       MethodHandle keyHandle,
@@ -166,12 +172,7 @@ class SqliteNativeBridgeTestSupport {
 
   BookAccess bookAccess(Path bookPath, String keyText) {
     try {
-      Path keyDirectory = tempDirectory.resolve("book-keys");
-      Files.createDirectories(keyDirectory);
-      Path keyPath = keyDirectory.resolve(bookPath.getFileName() + ".key");
-      if (keyPath.getParent() != null) {
-        Files.createDirectories(keyPath.getParent());
-      }
+      Path keyPath = tempDirectory.resolve("book-keys").resolve(bookPath.getFileName() + ".key");
       writeSecureKeyFile(keyPath, keyText);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {

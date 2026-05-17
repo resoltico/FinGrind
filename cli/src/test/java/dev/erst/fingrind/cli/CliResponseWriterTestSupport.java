@@ -134,7 +134,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
             ? null
             : SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance);
     String loadedLibraryPath =
-        runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE ? null : "/tmp/libsqlite3.dylib";
+        runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE ? null : "<redacted>/libsqlite3.dylib";
     String loadedSqliteSourceId =
         runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE
             ? null
@@ -154,6 +154,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
