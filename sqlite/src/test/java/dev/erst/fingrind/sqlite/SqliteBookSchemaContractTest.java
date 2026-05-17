@@ -23,14 +23,20 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void ensureParentDirectory_acceptsBareBookFileNames() {
+    AtomicReference<Path> ensuredPath = new AtomicReference<>();
+    Path bareBookPath = Path.of("book.sqlite");
     assertDoesNotThrow(
-        () -> SqliteBookSchemaBootstrap.ensureParentDirectory(Path.of("book.sqlite")));
+        () ->
+            SqliteBookSchemaBootstrap.ensureParentDirectory(
+                bareBookPath, normalizedPath -> ensuredPath.set(normalizedPath)));
+    assertEquals(bareBookPath.toAbsolutePath().normalize(), ensuredPath.get());
   }
 
   @Test
