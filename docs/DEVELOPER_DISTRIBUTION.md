@@ -286,6 +286,9 @@ Every release must verify:
   `.github/workflows/release.yml`
 - the container workflow waits for the complete GitHub release asset set before it publishes the
   public image, so Docker publication cannot outrun an incomplete release handoff
+- the container workflow gives that release-asset wait budget enough runway to outlast the
+  slowest supported release bundle build on GitHub-hosted runners, particularly the Intel macOS
+  archive path, rather than assuming a few minutes of propagation is always enough
 - the container workflow keeps enough timeout budget for post-publish verification of both the
   versioned and `latest` public tags on real GitHub-hosted runners, so a successful registry push
   cannot still end as a red release-surface workflow

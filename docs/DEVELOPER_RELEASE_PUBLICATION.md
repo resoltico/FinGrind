@@ -56,6 +56,9 @@ These publication invariants are release-critical:
 - the attested digest must match the exact asset bytes downloadable from GitHub Release
 - the container workflow must wait for the verified release asset set before treating publication
   as complete
+- the container workflow wait budget must outlast the slowest supported release bundle build,
+  not just artifact-attestation propagation, because the release object remains incomplete until
+  the final platform publisher uploads its archive and checksum
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
   propagation
 

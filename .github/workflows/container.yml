@@ -23,11 +23,12 @@ jobs:
     name: Build and push container image
     runs-on: ubuntu-24.04
     # This job intentionally includes release-asset gating, JAR build, SQLite verification,
-    # Docker smoke, multi-arch push, and post-publish tag verification. The former 20-minute
-    # ceiling allowed public publication to succeed while canceling the final verification step on
-    # slower GitHub-hosted runners, which left the release surface red despite a correct registry
-    # state. Keep enough budget for the verifier to run after the image push finishes.
-    timeout-minutes: 45
+    # Docker smoke, multi-arch push, and post-publish tag verification. The budget must cover
+    # both the slowest release bundle publication and the post-publish container verification
+    # path. Slower Intel macOS bundle builds can legitimately delay the final release asset set
+    # past the old six-minute wait window, so the container publisher needs enough time to wait
+    # for the complete release handoff and still finish multi-arch publication afterward.
+    timeout-minutes: 60
 
     permissions:
       contents: read
@@ -93,8 +94,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
-          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
-          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
+          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "120"
+          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "15"
         run: |
           ./scripts/verify-github-release.sh \
             "fingrind-${{ steps.target-tag.outputs.version }}-linux-x86_64.tar.gz" \
