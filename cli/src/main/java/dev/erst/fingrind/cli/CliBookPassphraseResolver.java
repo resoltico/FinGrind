@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -148,11 +149,11 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   private static @Nullable PromptingConsole systemPromptingConsole() {
-    java.io.Console console = availableSystemConsole();
-    if (console == null) {
-      return null;
-    }
-    return availableSystemPromptingConsole(wrap(console::isTerminal, console::readPassword));
+    return Optional.ofNullable(availableSystemConsole())
+        .<PromptingConsole>map(
+            console ->
+                availableSystemPromptingConsole(wrap(console::isTerminal, console::readPassword)))
+        .orElse(null);
   }
 
   private static java.io.@Nullable Console availableSystemConsole() {

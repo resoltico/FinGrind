@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   harden their temporary directories to the same owner-only contract as production secrets,
   hosted Windows launcher regression coverage now asserts runtime-specific launcher examples, the
   managed-SQLite ACL regression test now drives one deterministic ACL failure instead of a
-  POSIX-only path assumption, and stale-handle period-close coverage no longer leaks one live
-  initialized database handle during cleanup on Windows.
+  POSIX-only path assumption, the interactive-console prompt bridge no longer loses coverage on
+  hosted Windows when the Unix-only PTY probe is unavailable, and stale-handle period-close
+  coverage no longer leaks one live initialized database handle during cleanup on Windows.
 - Fixed the Windows managed-SQLite verification snapshot hardening seam so owner-only ACLs now
   keep the copied `sqlite3.dll` executable by that owner, preventing Windows native-runtime loads
   from failing after snapshot verification.
