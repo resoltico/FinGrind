@@ -24,12 +24,18 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for {@link CliBookPassphraseResolver}. */
 class CliBookPassphraseResolverTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void resolve_readsUtf8PassphraseFromKeyFile() throws Exception {

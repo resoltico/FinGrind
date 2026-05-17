@@ -68,11 +68,15 @@ class CliInvocationTextTest {
     System.setProperty(
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
     try {
+      String directJavaLauncher =
+          CliInvocationText.launcherCommandFor(
+              FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
       assertEquals(
-          "./scripts/direct-java-cli.sh help",
-          CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+          directJavaLauncher + " help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
       assertEquals(
-          "cat ./secrets/acme.book-key | ./scripts/direct-java-cli.sh open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+          "cat ./secrets/acme.book-key | "
+              + directJavaLauncher
+              + " open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
           CliInvocationText.rewriteInvocationPrefix(
               "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin"));
     } finally {

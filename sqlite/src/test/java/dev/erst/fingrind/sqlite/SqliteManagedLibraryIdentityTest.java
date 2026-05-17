@@ -537,14 +537,22 @@ class SqliteManagedLibraryIdentityTest {
 
   @Test
   void hardenPrivateFile_wrapsPermissionFailures() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.hardenPrivateFile(Path.of("/dev/null")));
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath filePath = fileSystem.path("\\sqlite3.dll");
+      filePath.exists = true;
+      filePath.regularFile = true;
+      filePath.overrideAclView = throwingAclView("boom");
 
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("Failed to apply private managed SQLite snapshot permissions"));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteManagedLibraryIdentity.hardenPrivateFile(filePath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to apply private managed SQLite snapshot permissions"));
+      assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
   }
 
   @Test

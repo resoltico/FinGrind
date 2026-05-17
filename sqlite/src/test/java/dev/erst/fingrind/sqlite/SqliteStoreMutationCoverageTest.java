@@ -203,9 +203,8 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      setStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath));
-
-      try {
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath))) {
         IllegalStateException failure =
             assertThrows(
                 IllegalStateException.class,
@@ -215,8 +214,6 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
         assertTrue(
             NullTestSupport.messageOf(failure)
                 .contains("Failed to close one SQLite reporting period."));
-      } finally {
-        setStoreDatabase(postingFactStore, null);
       }
     }
   }

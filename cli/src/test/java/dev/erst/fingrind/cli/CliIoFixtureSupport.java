@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 
@@ -67,6 +68,11 @@ import tools.jackson.databind.JsonNode;
 class CliIoFixtureSupport {
   protected static final String TEST_BOOK_KEY = "cli-test-book-key";
   @TempDir protected Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   protected Path writeRequest(String payload) throws IOException {
     return writeNamedRequest("request.json", payload);
