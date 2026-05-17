@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -18,6 +19,9 @@ import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.Arena;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -569,6 +573,12 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void systemPromptingConsole_acceptsConcreteJdkConsoleInstances() throws Exception {
+    assertDoesNotThrow(
+        () -> CliBookPassphraseResolver.systemPromptingConsole(syntheticSystemConsole()));
+  }
+
+  @Test
   void wrappedSystemConsole_delegatesTerminalStateAndPromptReads() {
     CliBookPassphraseResolver.SystemPromptingConsole systemConsole =
         CliBookPassphraseResolver.wrap(
@@ -605,5 +615,15 @@ class CliBookPassphraseResolverTest {
           assertEquals("book.sqlite", prompt);
           return password.toCharArray();
         };
+  }
+
+  private static java.io.Console syntheticSystemConsole() throws ReflectiveOperationException {
+    VarHandle unsafeField =
+        MethodHandles.privateLookupIn(sun.misc.Unsafe.class, MethodHandles.lookup())
+            .findStaticVarHandle(sun.misc.Unsafe.class, "theUnsafe", sun.misc.Unsafe.class);
+    Object unsafe = unsafeField.get();
+    Class<?> unsafeClass = unsafe.getClass();
+    Method allocateInstance = unsafeClass.getMethod("allocateInstance", Class.class);
+    return (java.io.Console) allocateInstance.invoke(unsafe, java.io.Console.class);
   }
 }
