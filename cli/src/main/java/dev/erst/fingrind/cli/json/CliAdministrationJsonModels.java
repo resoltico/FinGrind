@@ -4,8 +4,52 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireNonNegati
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import org.jspecify.annotations.Nullable;
+
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
+
+  record TaxRegistrationPayload(
+      String jurisdictionCode, String registrationId, String filingFrequency) {
+    public TaxRegistrationPayload {
+      jurisdictionCode = requireText(jurisdictionCode, "jurisdictionCode");
+      registrationId = requireText(registrationId, "registrationId");
+      filingFrequency = requireText(filingFrequency, "filingFrequency");
+    }
+  }
+
+  record TaxCodeDefinitionPayload(
+      String taxCode,
+      String displayName,
+      String jurisdictionCode,
+      int rateBasisPoints,
+      String pricingMode,
+      String recoverability,
+      String liabilityAccountCode,
+      @Nullable String receivableAccountCode) {
+    public TaxCodeDefinitionPayload {
+      taxCode = requireText(taxCode, "taxCode");
+      displayName = requireText(displayName, "displayName");
+      jurisdictionCode = requireText(jurisdictionCode, "jurisdictionCode");
+      requireNonNegative(rateBasisPoints, "rateBasisPoints");
+      pricingMode = requireText(pricingMode, "pricingMode");
+      recoverability = requireText(recoverability, "recoverability");
+      liabilityAccountCode = requireText(liabilityAccountCode, "liabilityAccountCode");
+      if (receivableAccountCode != null) {
+        receivableAccountCode = requireText(receivableAccountCode, "receivableAccountCode");
+      }
+    }
+  }
+
+  record TaxProfilePayload(
+      java.util.List<TaxRegistrationPayload> registrations,
+      java.util.List<TaxCodeDefinitionPayload> taxCodeDefinitions) {
+    public TaxProfilePayload {
+      registrations = CliJsonModelValidation.copyList(registrations, "registrations");
+      taxCodeDefinitions =
+          CliJsonModelValidation.copyList(taxCodeDefinitions, "taxCodeDefinitions");
+    }
+  }
 
   record BookIdentityPayload(
       String entityName,
@@ -13,6 +57,7 @@ public interface CliAdministrationJsonModels {
       String ownerModel,
       String reportingObligationStatus,
       String taxRegistrationStatus,
+      TaxProfilePayload taxProfile,
       java.util.List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
@@ -24,6 +69,7 @@ public interface CliAdministrationJsonModels {
       reportingObligationStatus =
           requireText(reportingObligationStatus, "reportingObligationStatus");
       taxRegistrationStatus = requireText(taxRegistrationStatus, "taxRegistrationStatus");
+      java.util.Objects.requireNonNull(taxProfile, "taxProfile");
       businessActivityTags =
           CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
@@ -52,9 +98,16 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RekeyBookPayload(String bookFile) implements CliSuccessPayload {
+  record RekeyBookPayload(
+      String bookFile, String replacementPassphraseSource, @Nullable String replacementBookKeyFile)
+      implements CliSuccessPayload {
     public RekeyBookPayload {
       bookFile = requireText(bookFile, "bookFile");
+      replacementPassphraseSource =
+          requireText(replacementPassphraseSource, "replacementPassphraseSource");
+      if (replacementBookKeyFile != null) {
+        replacementBookKeyFile = requireText(replacementBookKeyFile, "replacementBookKeyFile");
+      }
     }
   }
 

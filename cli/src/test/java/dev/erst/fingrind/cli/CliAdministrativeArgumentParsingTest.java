@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.ListIterator;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -196,6 +197,149 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
+  void parse_openBook_acceptsStructuredTaxProfileFileForRegisteredBooks() throws Exception {
+    Path taxProfileFile =
+        writeRequest(
+            """
+            {
+              "registrations": [
+                {
+                  "jurisdictionCode": "LV",
+                  "registrationId": "LV123456789",
+                  "filingFrequency": "MONTHLY"
+                }
+              ],
+              "taxCodeDefinitions": [
+                {
+                  "taxCode": "VAT21",
+                  "displayName": "Standard VAT",
+                  "jurisdictionCode": "LV",
+                  "rateBasisPoints": 2100,
+                  "pricingMode": "EXCLUSIVE",
+                  "recoverability": "FULLY_RECOVERABLE",
+                  "liabilityAccountCode": "2100",
+                  "receivableAccountCode": "1300"
+                }
+              ]
+            }
+            """);
+
+    OpenBook openBook =
+        assertInstanceOf(
+            OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--entity-name",
+                  "Acme Studio",
+                  "--entity-form",
+                  "COMPANY",
+                  "--tax-registration-status",
+                  "REGISTERED",
+                  "--tax-profile-file",
+                  taxProfileFile.toString(),
+                  "--functional-currency",
+                  "EUR",
+                  "--fiscal-year-start",
+                  "01-01",
+                  "--accounting-basis",
+                  "ACCRUAL"
+                }));
+
+    assertEquals(
+        "LV",
+        openBook
+            .command()
+            .bookIdentity()
+            .taxProfile()
+            .registrations()
+            .getFirst()
+            .jurisdictionCode()
+            .value());
+    assertEquals(
+        "VAT21",
+        openBook
+            .command()
+            .bookIdentity()
+            .taxProfile()
+            .taxCodeDefinitions()
+            .getFirst()
+            .taxCode()
+            .value());
+  }
+
+  @Test
+  void parse_openBook_rejectsRegisteredTaxStatusWithoutStructuredTaxProfile() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--entity-form",
+                      "COMPANY",
+                      "--tax-registration-status",
+                      "REGISTERED",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--accounting-basis",
+                      "ACCRUAL"
+                    }));
+
+    assertEquals("--tax-registration-status", exception.argument());
+    assertEquals(
+        "Registered tax status requires --tax-profile-file <path>.", exception.getMessage());
+  }
+
+  @Test
+  void parse_openBook_rejectsDuplicateTaxProfileFileArgument() throws Exception {
+    Path taxProfileFile = writeRequest("{\"registrations\":[]}");
+
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--entity-form",
+                      "COMPANY",
+                      "--tax-profile-file",
+                      taxProfileFile.toString(),
+                      "--tax-profile-file",
+                      taxProfileFile.toString(),
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--accounting-basis",
+                      "ACCRUAL"
+                    }));
+
+    assertEquals("--tax-profile-file", exception.argument());
+    assertEquals("Duplicate argument: --tax-profile-file", exception.getMessage());
+  }
+
+  @Test
   void parse_rejectsUnsupportedExtraArgumentsForBookOnlyAndStrictRequestCommands() {
     CliArgumentsException openBookExtra =
         assertThrows(
@@ -264,6 +408,22 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals("Unsupported argument: --output", executePlanExtra.getMessage());
     assertEquals("--extra", declareAccountExtra.argument());
     assertEquals("Unsupported argument: --extra", declareAccountExtra.getMessage());
+  }
+
+  @Test
+  void openBookArgumentGuard_rejectsUnexpectedCommandArgumentsDefensively() throws Exception {
+    CliLifecycleMutationArguments.OpenBookArgumentValues argumentValues =
+        new CliLifecycleMutationArguments.OpenBookArgumentValues();
+    ListIterator<String> emptyIterator = List.<String>of().listIterator();
+
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliLifecycleMutationArguments.applyOpenBookArgument(
+                    argumentValues, "--unexpected", emptyIterator));
+    assertEquals("--unexpected", exception.argument());
+    assertEquals("Unsupported argument: --unexpected", exception.getMessage());
   }
 
   @Test

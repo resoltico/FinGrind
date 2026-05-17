@@ -1,14 +1,20 @@
 Period Summary
 ==============
 
-Entity              : Acme Studio
-Functional currency : EUR
-Fiscal year start   : 01-01
-Posting coverage    : All posting kinds
-Range               : 2026-04-07 to 2026-04-08
-Posting count       : 1
-Posting line count  : 2
-Accounts touched    : 2
+Entity               : Acme Studio
+Entity profile       : Company / Multi Owner
+Reporting profile    : Internal Management Only / Not Registered
+Business activity    : (none)
+Tax registrations    : (none)
+Tax code definitions : (none)
+Functional currency  : EUR
+Fiscal year start    : 01-01
+Accounting basis     : Accrual
+Posting coverage     : All posting kinds
+Range                : 2026-04-07 to 2026-04-08
+Posting count        : 1
+Posting line count   : 2
+Accounts touched     : 2
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------

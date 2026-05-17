@@ -8,7 +8,7 @@
       "entityForm" : "FREELANCER",
       "ownerModel" : "SOLE_OWNER",
       "reportingObligationStatus" : "INTERNAL_MANAGEMENT_ONLY",
-      "taxRegistrationStatus" : "UNSPECIFIED",
+      "taxRegistrationStatus" : "NOT_REGISTERED",
       "businessActivityTags" : [ "translation-services" ],
       "functionalCurrency" : "EUR",
       "fiscalYearStart" : "01-01",

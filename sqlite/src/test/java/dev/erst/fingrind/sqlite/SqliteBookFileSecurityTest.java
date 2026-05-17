@@ -48,6 +48,174 @@ class SqliteBookFileSecurityTest {
   }
 
   @Test
+  void posixFilesystemRejectsExistingSharedParentDirectoriesInsteadOfMutatingThem() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\shared-parent.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE,
+              PosixFilePermission.GROUP_READ,
+              PosixFilePermission.GROUP_EXECUTE);
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("must already use owner-only permissions"));
+    }
+  }
+
+  @Test
+  void posixFilesystemRejectsParentsMissingOwnerWriteOrExecutePermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\restricted-parent.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions = Set.of(PosixFilePermission.OWNER_READ);
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("owner-writable and owner-searchable"));
+
+      parentPath.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      IllegalStateException missingExecuteException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(missingExecuteException.getMessage())
+              .contains("owner-writable and owner-searchable"));
+    }
+  }
+
+  @Test
+  void aclFilesystemRejectsExistingSharedParentDirectoriesInsteadOfMutatingThem() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\shared-parent.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build(),
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("must grant book-directory access only to the directory owner"));
+    }
+  }
+
+  @Test
+  void aclFilesystemRejectsParentsMissingOwnerTraversalOrWriteAccess() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\restricted-parent.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("must grant the directory owner traversal and write access"));
+    }
+  }
+
+  @Test
+  void aclFilesystemAcceptsOwnerOnlyParentDirectories() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\owner-only.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build(),
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.DENY)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenBookArtifacts(bookPath));
+    }
+  }
+
+  @Test
+  void aclFilesystemRejectsNonAllowOwnerEntriesWhenValidatingParents() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\deny-owner.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  java.nio.file.attribute.AclEntry.newBuilder()
+                      .setType(java.nio.file.attribute.AclEntryType.DENY)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build()));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("must grant the directory owner traversal and write access"));
+    }
+  }
+
+  @Test
   void unsupportedFilesystemBranchesRejectEncryptedBookStorage() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath bookPath = fileSystem.path("\\books\\unsupported.sqlite");
@@ -84,13 +252,18 @@ class SqliteBookFileSecurityTest {
   }
 
   @Test
-  void hardenBookArtifacts_skipsNonDirectoryParentsAndRejectsMissingAclViews() throws Exception {
+  void hardenBookArtifacts_rejectsNonDirectoryParentsAndMissingAclViews() throws Exception {
     Path missingParentBookPath = tempDirectory.resolve("missing-parent").resolve("book.sqlite");
     assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenBookArtifacts(missingParentBookPath));
     Path parentFile = tempDirectory.resolve("parent-file");
     Files.writeString(parentFile, "not-a-directory");
     Path nestedBookPath = parentFile.resolve("book.sqlite");
-    assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenBookArtifacts(nestedBookPath));
+    IllegalArgumentException parentFileException =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteBookFileSecurity.hardenBookArtifacts(nestedBookPath));
+    assertTrue(
+        Objects.requireNonNull(parentFileException.getMessage()).contains("existing directory"));
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
       bookPath.exists = true;
@@ -103,6 +276,16 @@ class SqliteBookFileSecurityTest {
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
               .contains("supports POSIX owner-only permissions"));
+    }
+  }
+
+  @Test
+  void hardenDirectory_ignoresPathsThatAreNotDirectories() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath notDirectory = fileSystem.path("\\not-a-directory");
+      notDirectory.exists = true;
+      notDirectory.regularFile = true;
+      assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenDirectory(notDirectory));
     }
   }
 }

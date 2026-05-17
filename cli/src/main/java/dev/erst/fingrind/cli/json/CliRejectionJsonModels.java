@@ -22,6 +22,9 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           PriorPostingDetails,
           AccountRoleConflictDetails,
           AccountTaxonomyConflictDetails,
+          ParentAccountDetails,
+          ParentAccountTypeConflictDetails,
+          ParentAccountTaxonomyConflictDetails,
           ClosingEquityAccountDetails,
           ClosingEquityAccountClassificationMismatchDetails,
           PeriodCloseStartDetails,
@@ -84,6 +87,42 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       existingAccountTaxonomy = requireValue(existingAccountTaxonomy, "existingAccountTaxonomy");
       requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  record ParentAccountDetails(String accountCode, String parentAccountCode)
+      implements RejectionDetails {
+    public ParentAccountDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
+    }
+  }
+
+  record ParentAccountTypeConflictDetails(
+      String accountCode,
+      String requestedAccountType,
+      String parentAccountCode,
+      String parentAccountType)
+      implements RejectionDetails {
+    public ParentAccountTypeConflictDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      requestedAccountType = requireText(requestedAccountType, "requestedAccountType");
+      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
+      parentAccountType = requireText(parentAccountType, "parentAccountType");
+    }
+  }
+
+  record ParentAccountTaxonomyConflictDetails(
+      String accountCode,
+      AccountTaxonomyDetails requestedAccountTaxonomy,
+      String parentAccountCode,
+      AccountTaxonomyDetails parentAccountTaxonomy)
+      implements RejectionDetails {
+    public ParentAccountTaxonomyConflictDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
+      parentAccountTaxonomy = requireValue(parentAccountTaxonomy, "parentAccountTaxonomy");
     }
   }
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: USER_QUICK_START
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -60,7 +60,9 @@ fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 That command creates the file for you and refuses to overwrite an existing one.
 This guide keeps the key under `./secrets/` and the book under `./books/` on purpose so routine
 book copies do not automatically copy the unlocking secret too. Keep the `./secrets/` directory
-owner-only as well as the key file itself.
+owner-only as well as the key file itself. Keep `./books/` owner-only too. If `./secrets/` or
+`./books/` does not exist yet, FinGrind creates it with owner-only permissions. If either
+directory already exists, keep it owner-only before you reuse that path.
 
 ## 3. Open The Book
 

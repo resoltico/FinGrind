@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -182,22 +182,22 @@ managed-SQLite checkout lookup already baked in. The launcher also carries the a
 build directory so relocated Gradle build roots resolve the prepared managed SQLite library tree
 instead of guessing at `repo/build/...`.
 
-Developer-only raw JAR entrypoints:
+Developer direct-Java entrypoints:
 
 ```bash
 ./gradlew :cli:shadowJar prepareManagedSqlite
 ./scripts/direct-java-cli.sh help
 ```
 
-The raw JAR route remains useful for:
+The direct-Java wrapper remains useful for:
 - advanced contributor debugging
 - validating the application JAR directly during development
 
-That wrapper resolves the active CLI build directory and then runs the prepared raw JAR. The JAR
-inherits the same native-access manifest contract and managed-SQLite auto-discovery path as the
-generated source-checkout launcher. Manual `FINGRIND_SQLITE_LIBRARY` export remains the escape
-hatch only for custom direct-Java launches that have been moved away from the prepared checkout
-layout.
+That wrapper resolves the active CLI build directory and then runs the prepared application module.
+It grants native access only to the `fingrind` module and keeps the same managed-SQLite
+auto-discovery path as the generated source-checkout launcher. Manual
+`FINGRIND_SQLITE_LIBRARY` export remains the escape hatch only for custom direct-Java launches
+that have been moved away from the prepared checkout layout.
 
 The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
 one canonical Docker build-context directory under the active CLI build root, plus a mirrored
@@ -225,6 +225,12 @@ staged context, not the whole checkout. When Gradle stages into a relocated buil
 task mirrors that fresh context back into `cli/build/docker-context/` automatically so manual
 checkout-local Docker work sees the same payload Gradle assembled instead of an older leftover
 tree under the repository.
+The resulting image mirrors the bundle-owned runtime layout as well: `/opt/fingrind/` now
+contains `runtime/`, `lib/app/fingrind.jar`, and `lib/native/libsqlite3.so.0` plus its
+`.sha256` and `.trusted.sha256` sidecars, and the rendered entrypoint sets
+`fingrind.bundle.home` before launch. The published container therefore resolves SQLite through
+the same publisher-managed bundle contract as the extracted archive instead of routing through the
+operator override path.
 The Unix bundle and Docker acceptance entrypoints now also delegate their shared office-worker
 workflow through `scripts/release-smoke-support.sh`, whose Bash wrapper now delegates the shared
 command/fixture/assertion lifecycle into the single Python owner

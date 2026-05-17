@@ -91,17 +91,17 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  void generate_wrapsIoFailureBeforeKeyFileCreation() throws Exception {
+  void generate_rejectsKeyPathWhoseParentResolvesToAFile() throws Exception {
     Path blockingParent = tempDirectory.resolve("blocking-parent");
     Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
     Path nestedKeyFile = blockingParent.resolve("entity.book-key");
-    IllegalStateException exception =
+    IllegalArgumentException exception =
         assertThrows(
-            IllegalStateException.class,
+            IllegalArgumentException.class,
             () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile, deterministicRandom()));
     assertTrue(
         NullTestSupport.messageOf(exception)
-            .contains("Failed to create the FinGrind book key file"));
+            .contains("must resolve beneath an existing directory"));
     assertFalse(Files.exists(nestedKeyFile));
   }
 
@@ -125,6 +125,33 @@ class SqliteBookKeyFileGeneratorTest {
     assertEquals(
         "simulated materialization failure",
         NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecision_wrapsIoFailuresBeforeAnyKeyFileWasCreated() {
+    Path keyFile = tempDirectory.resolve("precreate-failure.book-key");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileGenerator.generateDecision(
+                        keyFile,
+                        deterministicRandom(),
+                        (normalizedPath, encodedPassphrase) -> {},
+                        normalizedPath -> {
+                          throw new IOException("parent boom");
+                        },
+                        normalizedPath ->
+                            dev.erst.fingrind.contract.runtime.ContractDecision.accepted(
+                                normalizedPath))
+                    .requireAccepted());
+
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains(keyFile.toAbsolutePath().normalize().toString()));
+    assertEquals("parent boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
     assertFalse(Files.exists(keyFile));
   }
 

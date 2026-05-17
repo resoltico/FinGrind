@@ -1,0 +1,21 @@
+{
+  "registrations": [
+    {
+      "jurisdictionCode": "LV",
+      "registrationId": "LV123456789",
+      "filingFrequency": "MONTHLY"
+    }
+  ],
+  "taxCodeDefinitions": [
+    {
+      "taxCode": "VAT21",
+      "displayName": "Standard VAT",
+      "jurisdictionCode": "LV",
+      "rateBasisPoints": 2100,
+      "pricingMode": "EXCLUSIVE",
+      "recoverability": "FULLY_RECOVERABLE",
+      "liabilityAccountCode": "2100",
+      "receivableAccountCode": "1300"
+    }
+  ]
+}

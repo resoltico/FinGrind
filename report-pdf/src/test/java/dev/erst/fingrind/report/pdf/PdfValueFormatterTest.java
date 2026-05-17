@@ -81,6 +81,13 @@ class PdfValueFormatterTest {
     assertEquals(
         "Current period result",
         PdfValueFormatter.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
+    assertEquals(
+        "(derived)",
+        PdfValueFormatter.displayStatementLineCode(
+            "current-period-result", StatementLineKind.CURRENT_PERIOD_RESULT));
+    assertEquals(
+        "3000",
+        PdfValueFormatter.displayStatementLineCode("3000", StatementLineKind.DECLARED_ACCOUNT));
   }
 
   @Test
@@ -204,11 +211,34 @@ class PdfValueFormatterTest {
             ProfitAndLossLineClassification.TAX_EXPENSE));
     assertEquals(
         "Direct",
-        PdfValueFormatter.reversalState(
-            postingFact("posting-1", "idem-1", PostingLineage.direct())));
+        PdfValueFormatter.postingRole(postingFact("posting-1", "idem-1", PostingLineage.direct())));
     assertEquals(
         "Reversal",
-        PdfValueFormatter.reversalState(
+        PdfValueFormatter.postingRole(
+            new PostingFact(
+                new PostingId("posting-2"),
+                journalEntry(),
+                PostingLineage.reversal(
+                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReason("undo test posting")),
+                PostingKind.STANDARD,
+                new CommittedProvenance(
+                    new RequestProvenance(
+                        new ActorId("actor-1"),
+                        ActorType.AGENT,
+                        new CommandId("command-1"),
+                        new IdempotencyKey("idem-2"),
+                        new CausationId("cause-1"),
+                        Optional.empty()),
+                    Instant.parse("2026-04-07T10:15:30Z"),
+                    SourceChannel.CLI))));
+    assertEquals(
+        "(not a reversal)",
+        PdfValueFormatter.reversalTarget(
+            postingFact("posting-1", "idem-1", PostingLineage.direct())));
+    assertEquals(
+        "posting-1",
+        PdfValueFormatter.reversalTarget(
             new PostingFact(
                 new PostingId("posting-2"),
                 journalEntry(),
@@ -351,7 +381,7 @@ class PdfValueFormatterTest {
             PostingKind.STANDARD,
             direct.provenance());
 
-    assertEquals("(direct)", PdfValueFormatter.reversalTarget(direct));
+    assertEquals("(not a reversal)", PdfValueFormatter.reversalTarget(direct));
     assertEquals("posting-1", PdfValueFormatter.reversalTarget(reversal));
   }
 

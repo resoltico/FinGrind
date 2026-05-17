@@ -14,9 +14,9 @@ description = "SQLite-backed FinGrind persistence adapter"
 
 val repositoryRootDirectory = rootProject.projectDir.toPath()
 val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
-val managedSqliteDigestPath =
+val managedSqliteToolchainFingerprintPath =
     rootProject.layout.buildDirectory.file(
-        "managed-sqlite/${hostBundleTarget.classifier}/${hostBundleTarget.sqliteLibraryFileName}.sha256",
+        "managed-sqlite/${hostBundleTarget.classifier}/toolchain-fingerprint.json",
     )
 val protectedBookFixturePath =
     project.layout.projectDirectory.file(
@@ -28,6 +28,7 @@ val protectedBookFixtureMetadataPath =
     )
 
 dependencies {
+    implementation(libs.jackson.databind)
     implementation(project(":contract"))
     implementation(project(":executor"))
     testImplementation(libs.jackson.databind)
@@ -36,9 +37,9 @@ dependencies {
 
 tasks.named<ProcessResources>("processResources") {
     dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
-    from(managedSqliteDigestPath) {
+    from(managedSqliteToolchainFingerprintPath) {
         into("META-INF/fingrind")
-        rename { "managed-sqlite.sha256" }
+        rename { "managed-sqlite-toolchain.json" }
     }
 }
 

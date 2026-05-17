@@ -121,6 +121,16 @@ final class SqliteBookKeyFileSecurity {
       return;
     }
     requireSupportedSecureFilesystem(parentDirectory);
+    if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+        throw new IllegalArgumentException(
+            "The FinGrind book key file must resolve beneath an existing directory: "
+                + normalizedPath);
+      }
+      requireSecureParentDirectorySecurity(parentDirectory, inspectSecurity(parentDirectory))
+          .requireAccepted();
+      return;
+    }
     if (supportsPosix(parentDirectory)) {
       Files.createDirectories(
           parentDirectory, PosixFilePermissions.asFileAttribute(POSIX_KEY_DIRECTORY_PERMISSIONS));
@@ -359,10 +369,15 @@ final class SqliteBookKeyFileSecurity {
   }
 
   private static ContractFailure invalidBookKeyFile(String message) {
-    return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
-        message,
-        "Use one regular non-symlink key file beneath an owner-only parent directory and protected by POSIX owner-only permissions or a Windows owner-only ACL, then rerun the command.",
-        null);
+    return invalidBookKeyFile(message, generalKeyFileHint());
+  }
+
+  private static ContractFailure invalidBookKeyFile(String message, String hint) {
+    return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(message, hint, null);
+  }
+
+  private static String generalKeyFileHint() {
+    return "Choose one regular non-symlink key file path beneath one private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target one missing private directory so FinGrind can create it securely, then rerun the command.";
   }
 
   private static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {

@@ -21,6 +21,7 @@ readonly check_stage_labels=(
 
 readonly check_stage5_executable_script_paths=(
     scripts/test-run-quality-gates-hygiene.sh
+    scripts/test-modular-jar-descriptor-self-heal.sh
     scripts/test-devcontainer-workflow.sh
     scripts/test-repo-verification-lock.sh
     scripts/test-ci-release-surface-workflow.sh

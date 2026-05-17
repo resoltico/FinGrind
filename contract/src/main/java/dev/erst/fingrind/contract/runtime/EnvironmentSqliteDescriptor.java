@@ -15,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 public record EnvironmentSqliteDescriptor(
     SqliteLibraryMode libraryMode,
     String libraryEnvironmentVariable,
+    String operatorTrustSystemProperty,
     String bundleHomeSystemProperty,
     List<String> requiredCompileOptions,
     List<String> forbiddenCompileOptions,
@@ -30,6 +31,9 @@ public record EnvironmentSqliteDescriptor(
     libraryEnvironmentVariable =
         ContractDescriptorValidation.requireText(
             libraryEnvironmentVariable, "libraryEnvironmentVariable");
+    operatorTrustSystemProperty =
+        ContractDescriptorValidation.requireText(
+            operatorTrustSystemProperty, "operatorTrustSystemProperty");
     bundleHomeSystemProperty =
         ContractDescriptorValidation.requireText(
             bundleHomeSystemProperty, "bundleHomeSystemProperty");

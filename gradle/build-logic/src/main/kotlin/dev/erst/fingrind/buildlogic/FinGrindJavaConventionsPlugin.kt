@@ -2,10 +2,12 @@ package dev.erst.fingrind.buildlogic
 
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.spotless.LineEnding
+import java.util.zip.ZipFile
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.RegularFile
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.plugins.quality.PmdExtension
 import org.gradle.api.plugins.JavaPluginExtension
@@ -13,6 +15,7 @@ import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
@@ -129,6 +132,19 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 inputs.property("manifestImplementationVersion", project.version.toString())
                 inputs.property("manifestImplementationVendor", implementationVendor)
                 inputs.property("manifestImplementationLicense", implementationLicense)
+                val moduleDescriptorSource =
+                    project.layout.projectDirectory.file("src/main/java/module-info.java")
+                inputs.file(moduleDescriptorSource)
+                    .optional()
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                outputs.upToDateWhen {
+                    val descriptorFile = moduleDescriptorSource.asFile
+                    if (!descriptorFile.isFile) {
+                        true
+                    } else {
+                        jarContainsModuleDescriptor(archiveFile.orNull)
+                    }
+                }
                 manifest.attributes(
                     mapOf(
                         "Implementation-Title" to project.name,
@@ -243,6 +259,16 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 dependsOn(sourcePolicyTask)
                 dependsOn(jacksonDependencyPolicyTask)
             }
+        }
+    }
+
+    private fun jarContainsModuleDescriptor(archiveFile: RegularFile?): Boolean {
+        val jarFile = archiveFile?.asFile ?: return false
+        if (!jarFile.isFile) {
+            return false
+        }
+        ZipFile(jarFile).use { zipFile ->
+            return zipFile.getEntry("module-info.class") != null
         }
     }
 }

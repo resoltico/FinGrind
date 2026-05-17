@@ -21,6 +21,11 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.AccountTypeConflict,
         BookAdministrationRejection.AccountRoleConflict,
         BookAdministrationRejection.AccountTaxonomyConflict,
+        BookAdministrationRejection.ParentAccountMissing,
+        BookAdministrationRejection.ParentAccountInactive,
+        BookAdministrationRejection.ParentAccountTypeConflict,
+        BookAdministrationRejection.ParentAccountTaxonomyConflict,
+        BookAdministrationRejection.AccountHierarchyCycle,
         BookAdministrationRejection.ClosingEquityAccountMissing,
         BookAdministrationRejection.ClosingEquityAccountClassificationMismatch,
         BookAdministrationRejection.ClosingEquityAccountInactive,
@@ -86,6 +91,63 @@ public sealed interface BookAdministrationRejection
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(existingAccountTaxonomy, "existingAccountTaxonomy");
       Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  /** Rejection for one child account whose declared parent account is missing. */
+  record ParentAccountMissing(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookAdministrationRejection {
+    public ParentAccountMissing {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+    }
+  }
+
+  /** Rejection for one child account whose declared parent account is inactive. */
+  record ParentAccountInactive(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookAdministrationRejection {
+    public ParentAccountInactive {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+    }
+  }
+
+  /** Rejection for one child account whose parent account type conflicts with the request. */
+  record ParentAccountTypeConflict(
+      AccountCode accountCode,
+      AccountType requestedAccountType,
+      AccountCode parentAccountCode,
+      AccountType parentAccountType)
+      implements BookAdministrationRejection {
+    public ParentAccountTypeConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountType, "requestedAccountType");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountType, "parentAccountType");
+    }
+  }
+
+  /** Rejection for one child account whose parent taxonomy family conflicts with the request. */
+  record ParentAccountTaxonomyConflict(
+      AccountCode accountCode,
+      AccountTaxonomy requestedAccountTaxonomy,
+      AccountCode parentAccountCode,
+      AccountTaxonomy parentAccountTaxonomy)
+      implements BookAdministrationRejection {
+    public ParentAccountTaxonomyConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountTaxonomy, "parentAccountTaxonomy");
+    }
+  }
+
+  /** Rejection for one declaration that would introduce a parent-child hierarchy cycle. */
+  record AccountHierarchyCycle(AccountCode accountCode, AccountCode parentAccountCode)
+      implements BookAdministrationRejection {
+    public AccountHierarchyCycle {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
     }
   }
 
@@ -167,6 +229,15 @@ public sealed interface BookAdministrationRejection
       case BookAdministrationRejection.AccountRoleConflict _ -> Descriptor.ACCOUNT_ROLE_CONFLICT;
       case BookAdministrationRejection.AccountTaxonomyConflict _ ->
           Descriptor.ACCOUNT_TAXONOMY_CONFLICT;
+      case BookAdministrationRejection.ParentAccountMissing _ -> Descriptor.PARENT_ACCOUNT_MISSING;
+      case BookAdministrationRejection.ParentAccountInactive _ ->
+          Descriptor.PARENT_ACCOUNT_INACTIVE;
+      case BookAdministrationRejection.ParentAccountTypeConflict _ ->
+          Descriptor.PARENT_ACCOUNT_TYPE_CONFLICT;
+      case BookAdministrationRejection.ParentAccountTaxonomyConflict _ ->
+          Descriptor.PARENT_ACCOUNT_TAXONOMY_CONFLICT;
+      case BookAdministrationRejection.AccountHierarchyCycle _ ->
+          Descriptor.ACCOUNT_HIERARCHY_CYCLE;
       case BookAdministrationRejection.ClosingEquityAccountMissing _ ->
           Descriptor.CLOSING_EQUITY_ACCOUNT_MISSING;
       case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch _ ->
@@ -190,6 +261,11 @@ public sealed interface BookAdministrationRejection
     ACCOUNT_TYPE_CONFLICT,
     ACCOUNT_ROLE_CONFLICT,
     ACCOUNT_TAXONOMY_CONFLICT,
+    PARENT_ACCOUNT_MISSING,
+    PARENT_ACCOUNT_INACTIVE,
+    PARENT_ACCOUNT_TYPE_CONFLICT,
+    PARENT_ACCOUNT_TAXONOMY_CONFLICT,
+    ACCOUNT_HIERARCHY_CYCLE,
     CLOSING_EQUITY_ACCOUNT_MISSING,
     CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
     CLOSING_EQUITY_ACCOUNT_INACTIVE,
@@ -205,6 +281,11 @@ public sealed interface BookAdministrationRejection
         case ACCOUNT_TYPE_CONFLICT -> "account-type-conflict";
         case ACCOUNT_ROLE_CONFLICT -> "account-role-conflict";
         case ACCOUNT_TAXONOMY_CONFLICT -> "account-taxonomy-conflict";
+        case PARENT_ACCOUNT_MISSING -> "parent-account-missing";
+        case PARENT_ACCOUNT_INACTIVE -> "parent-account-inactive";
+        case PARENT_ACCOUNT_TYPE_CONFLICT -> "parent-account-type-conflict";
+        case PARENT_ACCOUNT_TAXONOMY_CONFLICT -> "parent-account-taxonomy-conflict";
+        case ACCOUNT_HIERARCHY_CYCLE -> "account-hierarchy-cycle";
         case CLOSING_EQUITY_ACCOUNT_MISSING -> "closing-equity-account-missing";
         case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
             "closing-equity-account-classification-mismatch";
@@ -232,6 +313,16 @@ public sealed interface BookAdministrationRejection
             "Account declaration refused because the requested accountRole conflicts with the existing immutable value.";
         case ACCOUNT_TAXONOMY_CONFLICT ->
             "Account declaration refused because the requested account taxonomy conflicts with the existing immutable value.";
+        case PARENT_ACCOUNT_MISSING ->
+            "Account declaration refused because the requested parentAccountCode is not declared in the selected book.";
+        case PARENT_ACCOUNT_INACTIVE ->
+            "Account declaration refused because the requested parentAccountCode exists but is inactive.";
+        case PARENT_ACCOUNT_TYPE_CONFLICT ->
+            "Account declaration refused because the requested parentAccountCode belongs to a different accountType than the child declaration.";
+        case PARENT_ACCOUNT_TAXONOMY_CONFLICT ->
+            "Account declaration refused because the requested parentAccountCode belongs to a different statement-classification family than the child declaration.";
+        case ACCOUNT_HIERARCHY_CYCLE ->
+            "Account declaration refused because the requested parentAccountCode would create a cycle in the chart hierarchy.";
         case CLOSING_EQUITY_ACCOUNT_MISSING ->
             "Period close refused because the selected closing-equity account code is not declared in the selected book.";
         case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
@@ -285,6 +376,41 @@ public sealed interface BookAdministrationRejection
                 detailField(
                     "requestedAccountTaxonomy",
                     "Conflicting taxonomy that the caller attempted to declare."));
+        case PARENT_ACCOUNT_MISSING, PARENT_ACCOUNT_INACTIVE, ACCOUNT_HIERARCHY_CYCLE ->
+            List.of(
+                detailField(
+                    "accountCode", "Declared child account code that named this parent account."),
+                detailField(
+                    "parentAccountCode",
+                    "Requested parentAccountCode that caused the hierarchy refusal."));
+        case PARENT_ACCOUNT_TYPE_CONFLICT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Declared child account code whose requested accountType conflicts with the parent account."),
+                detailField(
+                    "requestedAccountType",
+                    "Requested child accountType that does not match the declared parent account type."),
+                detailField(
+                    "parentAccountCode",
+                    "Requested parentAccountCode whose declared accountType conflicts with the child."),
+                detailField(
+                    "parentAccountType",
+                    "Declared parent accountType that conflicts with the child request."));
+        case PARENT_ACCOUNT_TAXONOMY_CONFLICT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Declared child account code whose taxonomy family conflicts with the parent account."),
+                detailField(
+                    "requestedAccountTaxonomy",
+                    "Requested child taxonomy that does not share the parent's statement-classification family."),
+                detailField(
+                    "parentAccountCode",
+                    "Requested parentAccountCode whose taxonomy family conflicts with the child."),
+                detailField(
+                    "parentAccountTaxonomy",
+                    "Declared parent taxonomy that conflicts with the child request."));
         case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
             List.of(
                 detailField(
@@ -338,6 +464,11 @@ public sealed interface BookAdministrationRejection
               ACCOUNT_TYPE_CONFLICT,
               ACCOUNT_ROLE_CONFLICT,
               ACCOUNT_TAXONOMY_CONFLICT,
+              PARENT_ACCOUNT_MISSING,
+              PARENT_ACCOUNT_INACTIVE,
+              PARENT_ACCOUNT_TYPE_CONFLICT,
+              PARENT_ACCOUNT_TAXONOMY_CONFLICT,
+              ACCOUNT_HIERARCHY_CYCLE,
               CLOSING_EQUITY_ACCOUNT_MISSING,
               CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
               CLOSING_EQUITY_ACCOUNT_INACTIVE,

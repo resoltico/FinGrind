@@ -61,6 +61,50 @@ class CliJsonModelValidationTest {
   }
 
   @Test
+  void parentAccountRejectionPayloads_validateRequiredFields() {
+    CliRejectionJsonModels.ParentAccountDetails parentAccountDetails =
+        new CliRejectionJsonModels.ParentAccountDetails("4100", "4000");
+    CliRejectionJsonModels.ParentAccountTypeConflictDetails parentAccountTypeConflictDetails =
+        new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
+            "4100", "EXPENSE", "4000", "REVENUE");
+    CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails
+        parentAccountTaxonomyConflictDetails =
+            new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
+                "4100",
+                new CliRejectionJsonModels.AccountTaxonomyDetails(
+                    "4050", null, "OPERATING_EXPENSE"),
+                "4000",
+                new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES"));
+
+    assertEquals("4100", parentAccountDetails.accountCode());
+    assertEquals("4000", parentAccountDetails.parentAccountCode());
+    assertEquals("EXPENSE", parentAccountTypeConflictDetails.requestedAccountType());
+    assertEquals("REVENUE", parentAccountTypeConflictDetails.parentAccountType());
+    assertEquals(
+        "4050",
+        parentAccountTaxonomyConflictDetails.requestedAccountTaxonomy().parentAccountCode());
+    assertEquals(
+        "COST_OF_SALES",
+        parentAccountTaxonomyConflictDetails
+            .parentAccountTaxonomy()
+            .profitAndLossLineClassification());
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliRejectionJsonModels.ParentAccountDetails(" ", "4000"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
+                "4100", " ", "4000", "REVENUE"));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
+                "4100", nullOf(), "4000", nullOf()));
+  }
+
+  @Test
   void ledgerPlanPayloads_rejectInvalidResultDetailAndSummaryInvariants() {
     List<CliPlanJsonModels.LedgerStepDigestPayload> steps =
         List.of(
@@ -193,5 +237,34 @@ class CliJsonModelValidationTest {
                         nullOf(),
                         nullOf()))
             .getMessage());
+  }
+
+  @Test
+  void scalarParsers_rejectUnsupportedAndParserFailureCases() {
+    IllegalArgumentException unsupportedValue =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliJsonScalarParsers.parseWireValue(
+                    "BAD", "pricingMode", List.of("GOOD"), value -> value));
+    IllegalArgumentException parserFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliJsonScalarParsers.parseWireValue(
+                    "GOOD",
+                    "pricingMode",
+                    List.of("GOOD"),
+                    value -> {
+                      throw new IllegalArgumentException("parser failed");
+                    }));
+
+    assertEquals(
+        "Unsupported value for pricingMode: BAD. Accepted values: GOOD.",
+        unsupportedValue.getMessage());
+    assertEquals(
+        "Unsupported value for pricingMode: GOOD. Accepted values: GOOD.",
+        parserFailure.getMessage());
+    assertInstanceOf(IllegalArgumentException.class, parserFailure.getCause());
   }
 }

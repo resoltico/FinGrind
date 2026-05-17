@@ -103,6 +103,12 @@ raw_capabilities_stdout="${tmp_dir}/raw-capabilities.out"
 raw_capabilities_stderr="${tmp_dir}/raw-capabilities.err"
 raw_open_stdout="${tmp_dir}/raw-open.out"
 raw_open_stderr="${tmp_dir}/raw-open.err"
+raw_jar_help_stdout="${tmp_dir}/raw-jar-help.out"
+raw_jar_help_stderr="${tmp_dir}/raw-jar-help.err"
+raw_jar_capabilities_stdout="${tmp_dir}/raw-jar-capabilities.out"
+raw_jar_capabilities_stderr="${tmp_dir}/raw-jar-capabilities.err"
+raw_jar_open_stdout="${tmp_dir}/raw-jar-open.out"
+raw_jar_open_stderr="${tmp_dir}/raw-jar-open.err"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
@@ -111,7 +117,8 @@ readonly entity_form='COMPANY'
 readonly functional_currency='EUR'
 readonly fiscal_year_start='01-01'
 readonly accounting_basis='ACCRUAL'
-mkdir -p "$(dirname "${book_file}")" "$(dirname "${key_file}")"
+[[ ! -e "$(dirname "${book_file}")" ]] || die "source-checkout launcher book parent started pre-created"
+[[ ! -e "$(dirname "${key_file}")" ]] || die "source-checkout launcher key parent started pre-created"
 
 "${launcher_wrapper}" help --output human >"${help_stdout}" 2>"${help_stderr}" ||
     die "source-checkout launcher help failed"
@@ -161,6 +168,19 @@ PY
 
 [[ ! -s "${key_stderr}" ]] || die "source-checkout launcher key generation wrote diagnostics"
 grep -Fq '"status":"ok"' "${key_stdout}" || die "source-checkout launcher key generation did not return ok"
+python3 - "${key_file}" <<'PY'
+import os
+import pathlib
+import stat
+import sys
+
+key_path = pathlib.Path(sys.argv[1])
+parent_mode = stat.S_IMODE(os.stat(key_path.parent).st_mode)
+if parent_mode != 0o700:
+    raise SystemExit(
+        "source-checkout launcher key generation did not create an owner-only parent directory"
+    )
+PY
 
 "${launcher_wrapper}" \
     open-book \
@@ -174,6 +194,19 @@ grep -Fq '"status":"ok"' "${key_stdout}" || die "source-checkout launcher key ge
     die "source-checkout launcher open-book failed"
 
 [[ ! -s "${open_stderr}" ]] || die "source-checkout launcher open-book wrote diagnostics"
+python3 - "${book_file}" <<'PY'
+import os
+import pathlib
+import stat
+import sys
+
+book_path = pathlib.Path(sys.argv[1])
+parent_mode = stat.S_IMODE(os.stat(book_path.parent).st_mode)
+if parent_mode != 0o700:
+    raise SystemExit(
+        "source-checkout launcher open-book did not create an owner-only parent directory"
+    )
+PY
 python3 - "${open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
@@ -196,35 +229,35 @@ if book_identity["accountingBasis"] != sys.argv[6]:
     raise SystemExit("source-checkout launcher open-book returned the wrong accounting basis")
 PY
 
-[[ -f "${raw_jar}" ]] || die "missing raw developer JAR"
+[[ -f "${raw_jar}" ]] || die "missing developer application JAR"
 
-java -jar "${raw_jar}" help --output human >"${raw_help_stdout}" 2>"${raw_help_stderr}" ||
-    die "developer raw JAR help failed"
+"${raw_java_wrapper}" help --output human >"${raw_help_stdout}" 2>"${raw_help_stderr}" ||
+    die "developer direct-Java help failed"
 
-[[ ! -s "${raw_help_stderr}" ]] || die "developer raw JAR help wrote diagnostics"
+[[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
 grep -Fq 'Getting Started' "${raw_help_stdout}" ||
-    die "developer raw JAR help did not render the front-door guidance section"
+    die "developer direct-Java help did not render the front-door guidance section"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
-    die "developer raw JAR help regressed back to the retired runtime-specific quick-start block"
+    die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
 fi
 if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been called' "${raw_help_stderr}"; then
-    die "developer raw JAR help leaked the Java native-access warning"
+    die "developer direct-Java help leaked the Java native-access warning"
 fi
 
-java -jar "${raw_jar}" help open-book --output human >"${raw_command_help_stdout}" \
-    2>"${raw_command_help_stderr}" || die "developer raw JAR command help failed"
+"${raw_java_wrapper}" help open-book --output human >"${raw_command_help_stdout}" \
+    2>"${raw_command_help_stderr}" || die "developer direct-Java command help failed"
 
-[[ ! -s "${raw_command_help_stderr}" ]] || die "developer raw JAR command help wrote diagnostics"
+[[ ! -s "${raw_command_help_stderr}" ]] || die "developer direct-Java command help wrote diagnostics"
 grep -Fq './scripts/direct-java-cli.sh open-book' "${raw_command_help_stdout}" ||
-    die "developer raw JAR command help did not publish the direct Java launcher command"
+    die "developer direct-Java command help did not publish the direct Java launcher command"
 if grep -Fq 'fingrind open-book' "${raw_command_help_stdout}"; then
-    die "developer raw JAR command help leaked the generic launcher token"
+    die "developer direct-Java command help leaked the generic launcher token"
 fi
 
 "${raw_java_wrapper}" capabilities --output json >"${raw_capabilities_stdout}" 2>"${raw_capabilities_stderr}" ||
-    die "developer raw JAR capabilities failed"
+    die "developer direct-Java capabilities failed"
 
-[[ ! -s "${raw_capabilities_stderr}" ]] || die "developer raw JAR capabilities wrote diagnostics"
+[[ ! -s "${raw_capabilities_stderr}" ]] || die "developer direct-Java capabilities wrote diagnostics"
 python3 - "${raw_capabilities_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
 import json
 import pathlib
@@ -258,9 +291,9 @@ PY
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
     --accounting-basis "${accounting_basis}" >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
-    die "developer raw JAR open-book failed"
+    die "developer direct-Java open-book failed"
 
-[[ ! -s "${raw_open_stderr}" ]] || die "developer raw JAR open-book wrote diagnostics"
+[[ ! -s "${raw_open_stderr}" ]] || die "developer direct-Java open-book wrote diagnostics"
 python3 - "${raw_open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
@@ -270,17 +303,90 @@ document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 payload = document["payload"]
 book_identity = payload["bookIdentity"]
 if document["status"] != "ok":
-    raise SystemExit("developer raw JAR open-book did not return ok")
+    raise SystemExit("developer direct-Java open-book did not return ok")
 if book_identity["entityName"] != sys.argv[2]:
-    raise SystemExit("developer raw JAR open-book returned the wrong entity name")
+    raise SystemExit("developer direct-Java open-book returned the wrong entity name")
 if book_identity["entityForm"] != sys.argv[3]:
-    raise SystemExit("developer raw JAR open-book returned the wrong entity form")
+    raise SystemExit("developer direct-Java open-book returned the wrong entity form")
 if book_identity["functionalCurrency"] != sys.argv[4]:
-    raise SystemExit("developer raw JAR open-book returned the wrong functional currency")
+    raise SystemExit("developer direct-Java open-book returned the wrong functional currency")
 if book_identity["fiscalYearStart"] != sys.argv[5]:
-    raise SystemExit("developer raw JAR open-book returned the wrong fiscal year start")
+    raise SystemExit("developer direct-Java open-book returned the wrong fiscal year start")
 if book_identity["accountingBasis"] != sys.argv[6]:
-    raise SystemExit("developer raw JAR open-book returned the wrong accounting basis")
+    raise SystemExit("developer direct-Java open-book returned the wrong accounting basis")
+PY
+
+java -jar "${raw_jar}" help --output human >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
+    die "raw java -jar help failed"
+
+[[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
+grep -Fq 'java --enable-native-access=ALL-UNNAMED -jar fingrind.jar help' "${raw_jar_help_stdout}" ||
+    die "raw java -jar help did not publish the explicit native-access jar launcher"
+if grep -Fq './scripts/direct-java-cli.sh help' "${raw_jar_help_stdout}"; then
+    die "raw java -jar help leaked the source-checkout direct-Java wrapper"
+fi
+
+java -jar "${raw_jar}" capabilities --output json >"${raw_jar_capabilities_stdout}" \
+    2>"${raw_jar_capabilities_stderr}" || die "raw java -jar capabilities failed"
+
+[[ ! -s "${raw_jar_capabilities_stderr}" ]] || die "raw java -jar capabilities wrote diagnostics"
+python3 - "${raw_jar_capabilities_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
+import json
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+payload = document["payload"]
+distribution = payload["environment"]["distribution"]["runtimeDistribution"]
+runtime = payload["environment"]["sqlite"]["runtime"]
+if distribution != sys.argv[2]:
+    raise SystemExit(
+        "unexpected raw java -jar runtime distribution: "
+        + distribution
+        + " != "
+        + sys.argv[2]
+    )
+if runtime["status"] != "unavailable":
+    raise SystemExit("raw java -jar capabilities did not report an unavailable SQLite runtime")
+issue = runtime["runtimeIssue"]
+if "--enable-native-access=ALL-UNNAMED" not in issue:
+    raise SystemExit("raw java -jar capabilities did not surface the native-access repair flag")
+PY
+
+set +e
+java -jar "${raw_jar}" \
+    open-book \
+    --book-file "${tmp_dir}/raw-jar-direct.sqlite" \
+    --book-key-file "${key_file}" \
+    --entity-name "${entity_name}" \
+    --entity-form "${entity_form}" \
+    --functional-currency "${functional_currency}" \
+    --fiscal-year-start "${fiscal_year_start}" \
+    --accounting-basis "${accounting_basis}" >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
+raw_jar_open_exit=$?
+set -e
+
+[[ "${raw_jar_open_exit}" -eq 4 ]] || die \
+    "raw java -jar open-book returned ${raw_jar_open_exit}; expected runtime failure exit 4"
+[[ ! -s "${raw_jar_open_stderr}" ]] || die "raw java -jar open-book wrote diagnostics"
+[[ ! -f "${tmp_dir}/raw-jar-direct.sqlite" ]] || die \
+    "raw java -jar open-book created a book despite missing native access"
+python3 - "${raw_jar_open_stdout}" <<'PY'
+import json
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+if document["status"] != "error":
+    raise SystemExit("raw java -jar open-book did not fail with an error envelope")
+if document["code"] != "managed-runtime-failure":
+    raise SystemExit("raw java -jar open-book did not classify the failure as managed-runtime-failure")
+message = document["message"]
+hint = document.get("hint", "")
+if "--enable-native-access=ALL-UNNAMED" not in message:
+    raise SystemExit("raw java -jar open-book did not report the native-access repair flag")
+if "supported launchers" not in message and "supported launchers" not in hint:
+    raise SystemExit("raw java -jar open-book did not direct the operator toward supported launchers")
 PY
 
 printf 'source-checkout launcher regression: success\n'

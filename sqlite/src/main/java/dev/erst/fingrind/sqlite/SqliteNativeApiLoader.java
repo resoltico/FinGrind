@@ -15,6 +15,7 @@ final class SqliteNativeApiLoader {
   private SqliteNativeApiLoader() {}
 
   static SqliteNativeApi loadApi() {
+    SqliteNativeAccessGate.requireEnabled();
     return loadApi(
         SqliteNativeRuntimePolicy.configuredLibraryTarget(
             System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE),

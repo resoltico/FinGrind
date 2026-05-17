@@ -336,7 +336,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         command_env_set={},
         runtime_distribution_key="containerRuntimeDistribution",
         expect_loaded_sqlite_details=True,
-        expect_bundle_home_property=False,
+        expect_bundle_home_property=True,
         book_key_output_permissions="0600",
         request_sale=dummy,
         request_adjustment=dummy,

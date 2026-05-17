@@ -185,20 +185,20 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     Path fileParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(fileParent, "nope", StandardCharsets.UTF_8);
     Path keyPath = tempDirectory.resolve("book-keys").resolve("entity.book-key");
-    Files.createDirectories(keyPath.getParent());
     writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             new BookAccess(
                 fileParent.resolve("entity.sqlite"),
                 new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
-      IllegalStateException exception =
+      IllegalArgumentException exception =
           assertThrows(
-              IllegalStateException.class,
+              IllegalArgumentException.class,
               () ->
                   postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
       assertTrue(
-          NullTestSupport.messageOf(exception).contains("Failed to create SQLite book directory."));
+          NullTestSupport.messageOf(exception)
+              .contains("must resolve beneath an existing directory"));
     }
   }
 

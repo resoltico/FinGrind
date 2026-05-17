@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: USER_EXAMPLES
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -61,6 +61,8 @@ fingrind \
 
 Keep that key outside the book directory. The examples below use `./secrets/` for passphrase
 material and `./books/` for encrypted books so ordinary book copies do not also copy the key.
+If `./secrets/` or `./books/` does not exist yet, FinGrind creates it with owner-only
+permissions. If either directory already exists, keep it owner-only before you reuse that path.
 
 The generated key file contains one non-empty single-line UTF-8 passphrase.
 One trailing newline is tolerated and stripped when loading an existing file.
@@ -103,6 +105,9 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
+  --owner-model MULTI_OWNER \
+  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
+  --tax-registration-status NOT_REGISTERED \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --accounting-basis ACCRUAL \
@@ -112,8 +117,13 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite","initializedAt":"2026-04-13T11:58:35.532739Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"UNKNOWN","reportingObligationStatus":"UNSPECIFIED","taxRegistrationStatus":"UNSPECIFIED","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","taxRegistrationStatus":"NOT_REGISTERED","taxProfile":{"registrations":[],"taxCodeDefinitions":[]},"businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
 ```
+
+If the book is tax registered, copy
+[examples/registered-tax-profile.json](./examples/registered-tax-profile.json) into your working
+directory and add both `--tax-registration-status REGISTERED` and
+`--tax-profile-file ./registered-tax-profile.json` to the same `open-book` command.
 
 ## Inspect Compatibility Before Mutating
 
@@ -169,7 +179,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite"}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","replacementPassphraseSource":"key-file","replacementBookKeyFile":"/absolute/path/secrets/acme.rotated.book-key"}}
 ```
 
 ## Back Up And Restore One Closed Protected Book
@@ -370,7 +380,7 @@ fingrind \
   get-posting \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --posting-id 01963c70-8d65-7b56-8a64-3c92745d8f72
+  --posting-id "<postingId-from-the-commit-response>"
 
 fingrind \
   list-postings \

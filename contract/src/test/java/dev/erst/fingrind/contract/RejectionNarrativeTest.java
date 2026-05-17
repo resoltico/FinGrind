@@ -56,6 +56,43 @@ class RejectionNarrativeTest {
             .contains("immutable hierarchy or statement taxonomy"));
     assertTrue(
         RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountMissing(
+                    new AccountCode("1010"), new AccountCode("1000")))
+            .contains("parent account '1000'"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountInactive(
+                    new AccountCode("1010"), new AccountCode("1000")))
+            .contains("inactive"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountTypeConflict(
+                    new AccountCode("1010"),
+                    AccountType.ASSET,
+                    new AccountCode("2000"),
+                    AccountType.LIABILITY))
+            .contains("Parent and child must share one account type"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountTaxonomyConflict(
+                    new AccountCode("1010"),
+                    new AccountTaxonomy(
+                        Optional.of(new AccountCode("1000")),
+                        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty()),
+                    new AccountCode("1000"),
+                    new AccountTaxonomy(
+                        Optional.empty(),
+                        Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+                        Optional.empty())))
+            .contains("statement-classification family"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.AccountHierarchyCycle(
+                    new AccountCode("1000"), new AccountCode("1010")))
+            .contains("chart hierarchy cycle"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookAdministrationRejection.ClosingEquityAccountMissing(
                     new AccountCode("3200")))
             .contains("Closing-equity account"));

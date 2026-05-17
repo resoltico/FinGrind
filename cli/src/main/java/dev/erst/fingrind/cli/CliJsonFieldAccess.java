@@ -105,10 +105,12 @@ final class CliJsonFieldAccess {
     if (fieldNode == null || fieldNode.isNull()) {
       return OptionalInt.empty();
     }
-    if (!fieldNode.isInt()) {
+    OptionalInt intValue =
+        !fieldNode.isIntegralNumber() ? OptionalInt.empty() : fieldNode.intValueOpt();
+    if (intValue.isEmpty()) {
       throw new IllegalArgumentException("Field must be an integer when present: " + fieldName);
     }
-    return OptionalInt.of(fieldNode.intValue());
+    return intValue;
   }
 
   static int requiredInt(ObjectNode rootNode, String fieldName) {

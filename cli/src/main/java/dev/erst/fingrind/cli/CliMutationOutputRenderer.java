@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
@@ -34,11 +35,18 @@ final class CliMutationOutputRenderer {
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderRekeyBookHuman(RekeyBookResult.Rekeyed rekeyed) {
+  static String renderRekeyBookHuman(
+      RekeyBookResult.Rekeyed rekeyed, BookAccess.PassphraseSource replacementPassphraseSource) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book file", absolutePath(rekeyed.bookFilePath())));
+    rows.add(
+        List.of(
+            "Replacement secret source", displayPassphraseSourceKind(replacementPassphraseSource)));
+    if (replacementPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile) {
+      rows.add(List.of("Replacement key file", absolutePath(keyFile.bookKeyFilePath())));
+    }
     return CliTextFormat.renderTitledBlock(
-        "Book Rekeyed",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(List.of("Book file", absolutePath(rekeyed.bookFilePath())))));
+        "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderDeclaredAccountHuman(DeclaredAccount account) {
@@ -73,10 +81,11 @@ final class CliMutationOutputRenderer {
                 List.of("Closed at", CliHumanDisplay.instant(closedPeriod.closedAt())),
                 List.of(
                     "Closing postings",
-                    closedPeriod.closingPostingIds().stream()
-                        .map(dev.erst.fingrind.core.PostingId::value)
-                        .map(CliHumanDisplay::compactOpaqueIdentifier)
-                        .collect(java.util.stream.Collectors.joining(", "))))));
+                    closedPeriod.closingPostingIds().isEmpty()
+                        ? "(none)"
+                        : closedPeriod.closingPostingIds().stream()
+                            .map(dev.erst.fingrind.core.PostingId::value)
+                            .collect(java.util.stream.Collectors.joining(", "))))));
   }
 
   static String renderPreflightAcceptedHuman(PostEntryResult.PreflightAccepted accepted) {
@@ -93,17 +102,21 @@ final class CliMutationOutputRenderer {
         "Entry Committed",
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of(
-                    "Posting id",
-                    CliHumanDisplay.compactOpaqueIdentifier(committed.postingId().value())),
-                List.of(
-                    "Idempotency key",
-                    CliHumanDisplay.compactOpaqueIdentifier(committed.idempotencyKey().value())),
+                List.of("Posting id", committed.postingId().value()),
+                List.of("Idempotency key", committed.idempotencyKey().value()),
                 List.of("Effective date", committed.effectiveDate().toString()),
                 List.of("Recorded at", CliHumanDisplay.instant(committed.recordedAt())))));
   }
 
   private static String absolutePath(Path path) {
     return CliHumanDisplay.path(path);
+  }
+
+  private static String displayPassphraseSourceKind(BookAccess.PassphraseSource passphraseSource) {
+    return switch (passphraseSource) {
+      case BookAccess.PassphraseSource.KeyFile _ -> "Key file";
+      case BookAccess.PassphraseSource.StandardInput _ -> "Standard input";
+      case BookAccess.PassphraseSource.InteractivePrompt _ -> "Interactive prompt";
+    };
   }
 }

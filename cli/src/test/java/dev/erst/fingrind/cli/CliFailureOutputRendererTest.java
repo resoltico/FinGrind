@@ -113,6 +113,35 @@ class CliFailureOutputRendererTest {
         "Requested profit-and-loss classification",
         "OPERATING_EXPENSE");
     assertRenderedRejection(
+        new CliRejectionJsonModels.ParentAccountDetails("4100", "4000"),
+        "Account code",
+        "4100",
+        "Parent account code",
+        "4000");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
+            "4100", "EXPENSE", "4000", "REVENUE"),
+        "Requested account type",
+        "EXPENSE",
+        "Parent account type",
+        "REVENUE");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
+            "4100",
+            new CliRejectionJsonModels.AccountTaxonomyDetails("4050", null, "OPERATING_EXPENSE"),
+            "4000",
+            new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES")),
+        "Requested parent account",
+        "4050",
+        "Requested profit-and-loss classification",
+        "OPERATING_EXPENSE",
+        "Parent account code",
+        "4000",
+        "Parent parent account",
+        "(none)",
+        "Parent profit-and-loss classification",
+        "COST_OF_SALES");
+    assertRenderedRejection(
         new CliRejectionJsonModels.PostingKindDetails("opening-balance"),
         "Posting kind",
         "opening-balance");

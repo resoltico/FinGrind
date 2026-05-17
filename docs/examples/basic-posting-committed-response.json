@@ -1,9 +1,1 @@
-{
-  "status": "ok",
-  "payload": {
-    "postingId": "01963c70-8d65-7b56-8a64-3c92745d8f72",
-    "idempotencyKey": "idem-basic-1",
-    "effectiveDate": "2026-04-08",
-    "recordedAt": "2026-04-08T12:00:00Z"
-  }
-}
+{"status":"ok","payload":{"postingId":"019e33ac-e83f-7eaa-9ae3-0f4623ef44ae","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-05-17T02:03:50.154822Z"}}

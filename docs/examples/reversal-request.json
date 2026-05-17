@@ -7,7 +7,7 @@
       "side": "CREDIT",
       "amount": {
         "currencyCode": "EUR",
-        "minorUnits": "1500"
+        "minorUnits": "1000"
       }
     },
     {
@@ -15,7 +15,7 @@
       "side": "DEBIT",
       "amount": {
         "currencyCode": "EUR",
-        "minorUnits": "1500"
+        "minorUnits": "1000"
       }
     }
   ],

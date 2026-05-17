@@ -29,9 +29,39 @@ readonly contract_path="${script_dir}/../contract/src/main/resources/dev/erst/fi
     exit 1
 }
 
+render_expected_flags() {
+    python3 - "${1}" <<'PY'
+import json
+import platform
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+compile_options = document["requiredCompileOptions"]
+native_hardening = document["nativeHardening"]
+requires_secure_memory_support = document["requiresSecureMemorySupport"]
+flags = []
+for option in compile_options:
+    normalized = option.strip()
+    macro = normalized if normalized.startswith("SQLITE_") else "SQLITE_" + normalized
+    if "=" not in macro:
+        macro += "=1"
+    flags.append("-D" + macro)
+if requires_secure_memory_support:
+    flags.append("-DSQLITE3MC_SECURE_MEMORY=1")
+flags.extend(native_hardening["unixCompilerFlags"])
+platform_system = platform.system().lower()
+if "linux" in platform_system:
+    flags.extend(native_hardening["linuxLinkerFlags"])
+elif "darwin" in platform_system:
+    flags.extend(native_hardening["macosLinkerFlags"])
+print(" ".join(flags))
+PY
+}
+
 actual="$(python3 "${renderer}")"
 actual_from_explicit_contract="$(python3 "${renderer}" "${contract_path}")"
-expected='-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1 -DSQLITE3MC_SECURE_MEMORY=1'
+expected="$(render_expected_flags "${contract_path}")"
 if [[ "${actual}" != "${expected}" ]]; then
     printf 'error: managed SQLite compiler flags drifted\nexpected: %s\nactual:   %s\n' \
         "${expected}" "${actual}" >&2
@@ -58,7 +88,7 @@ document["requiresSecureMemorySupport"] = False
 target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 PY
 without_secure_memory="$(python3 "${renderer}" "${contract_without_secure_memory}")"
-expected_without_secure_memory='-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1'
+expected_without_secure_memory="$(render_expected_flags "${contract_without_secure_memory}")"
 if [[ "${without_secure_memory}" != "${expected_without_secure_memory}" ]]; then
     printf 'error: secure-memory toggle rendering drifted\nexpected: %s\nactual:   %s\n' \
         "${expected_without_secure_memory}" "${without_secure_memory}" >&2

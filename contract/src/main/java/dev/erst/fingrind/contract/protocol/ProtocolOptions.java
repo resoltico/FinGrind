@@ -58,6 +58,9 @@ public final class ProtocolOptions {
   /** Option selecting the tax-registration status used when initializing one new book. */
   public static final String TAX_REGISTRATION_STATUS = "--tax-registration-status";
 
+  /** Option selecting one structured tax-profile JSON file used when initializing one new book. */
+  public static final String TAX_PROFILE_FILE = "--tax-profile-file";
+
   /** Option selecting one business-activity tag used when initializing one new book. */
   public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
 

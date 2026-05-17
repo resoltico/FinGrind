@@ -1,8 +1,13 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.CodeSigner;
+import java.security.CodeSource;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliInvocationText}. */
@@ -89,5 +94,79 @@ class CliInvocationTextTest {
     } finally {
       System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
     }
+  }
+
+  @Test
+  void launcherCommandForCurrentRuntime_usesExplicitRawJarLauncherForUnnamedJarLaunches() {
+    Module unnamedModule = Thread.currentThread().getContextClassLoader().getUnnamedModule();
+
+    String launcherCommand =
+        CliInvocationText.launcherCommandForCurrentRuntime(
+            null, "Linux", unnamedModule, "fingrind.jar");
+
+    assertEquals("java --enable-native-access=ALL-UNNAMED -jar fingrind.jar", launcherCommand);
+    assertEquals(
+        "java --enable-native-access=ALL-UNNAMED -jar fingrind.jar help",
+        CliInvocationText.rewriteInvocationPrefix("fingrind help", launcherCommand));
+    assertEquals(
+        "cat ./secrets/acme.book-key | java --enable-native-access=ALL-UNNAMED -jar fingrind.jar open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+        CliInvocationText.rewriteInvocationPrefix(
+            "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+            launcherCommand));
+  }
+
+  @Test
+  void launcherCommandForCurrentRuntime_prefersConfiguredRuntimeAndOtherwiseFallsBackCleanly() {
+    Module unnamedModule = Thread.currentThread().getContextClassLoader().getUnnamedModule();
+
+    assertEquals(
+        "./scripts/direct-java-cli.sh",
+        CliInvocationText.launcherCommandForCurrentRuntime(
+            FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
+            "Linux",
+            Object.class.getModule(),
+            "ignored.jar"));
+    assertEquals(
+        "fingrind",
+        CliInvocationText.launcherCommandForCurrentRuntime(
+            "   ", "Linux", Object.class.getModule(), "fingrind.txt"));
+    assertEquals(
+        "fingrind",
+        CliInvocationText.launcherCommandForCurrentRuntime(
+            null, "Linux", unnamedModule, "fingrind.txt"));
+    assertEquals(
+        "fingrind",
+        CliInvocationText.launcherCommandForCurrentRuntime(
+            null, "Linux", Object.class.getModule(), "fingrind.jar"));
+  }
+
+  @Test
+  void normalizationHelpers_coverNullBlankAndNonJarCodeSourceCases() throws MalformedURLException {
+    assertNull(CliInvocationText.normalizeConfiguredRuntimeDistribution(null));
+    assertNull(CliInvocationText.normalizeConfiguredRuntimeDistribution("   "));
+    assertEquals(
+        FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
+        CliInvocationText.normalizeConfiguredRuntimeDistribution(
+            "  " + FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION + "  "));
+
+    assertNull(CliInvocationText.currentCodeSourceFileName(null));
+    assertNull(
+        CliInvocationText.currentCodeSourceFileName(new CodeSource(null, (CodeSigner[]) null)));
+    assertEquals(
+        "fingrind.jar",
+        CliInvocationText.currentCodeSourceFileName(
+            new CodeSource(new URL("file:/tmp/fingrind.jar"), (CodeSigner[]) null)));
+    assertNull(
+        CliInvocationText.currentCodeSourceFileName(
+            new CodeSource(new URL("file:/"), (CodeSigner[]) null)));
+    assertNull(
+        CliInvocationText.currentCodeSourceFileName(
+            new CodeSource(new URL("http://example.com/fingrind.jar"), (CodeSigner[]) null)));
+
+    assertNull(CliInvocationText.normalizeCodeSourceJarFileName(null));
+    assertNull(CliInvocationText.normalizeCodeSourceJarFileName("   "));
+    assertNull(CliInvocationText.normalizeCodeSourceJarFileName("fingrind.txt"));
+    assertEquals(
+        "fingrind.jar", CliInvocationText.normalizeCodeSourceJarFileName("  fingrind.jar  "));
   }
 }

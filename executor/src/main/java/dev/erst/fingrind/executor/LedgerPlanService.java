@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
@@ -23,6 +24,7 @@ public final class LedgerPlanService {
   public LedgerPlanService(
       LedgerPlanTransaction transactionStore,
       BookAdministrationStore administrationStore,
+      AccountCatalogStore accountCatalogStore,
       BookkeepingReadStore readStore,
       PostingValidationStore validationStore,
       PostingCommitStore commitStore,
@@ -32,6 +34,7 @@ public final class LedgerPlanService {
         new BookWorkflowExecutionService(
             Objects.requireNonNull(transactionStore, "transactionStore"),
             Objects.requireNonNull(administrationStore, "administrationStore"),
+            Objects.requireNonNull(accountCatalogStore, "accountCatalogStore"),
             Objects.requireNonNull(readStore, "readStore"),
             Objects.requireNonNull(validationStore, "validationStore"),
             Objects.requireNonNull(commitStore, "commitStore"),

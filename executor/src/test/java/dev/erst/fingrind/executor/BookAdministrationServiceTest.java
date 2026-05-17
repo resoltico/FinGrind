@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
@@ -33,13 +34,17 @@ class BookAdministrationServiceTest {
   @org.jspecify.annotations.NullUnmarked
   void constructor_rejectsNullBookSession() {
     assertThrows(
-        NullPointerException.class, () -> new BookAdministrationService(null, FIXED_CLOCK));
+        NullPointerException.class,
+        () ->
+            new BookAdministrationService(
+                null, new InMemoryBookSession(), new InMemoryBookSession(), FIXED_CLOCK));
   }
 
   @Test
   void openBook_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
       org.junit.jupiter.api.Assertions.assertEquals(
           openedBook(FIXED_CLOCK.instant()), service.openBook(bookIdentity()));
     }
@@ -48,7 +53,8 @@ class BookAdministrationServiceTest {
   @Test
   void declareAccount_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
       service.openBook(bookIdentity());
       AccountDeclarationOutcome result =
           service.declareAccount(
@@ -72,9 +78,56 @@ class BookAdministrationServiceTest {
   }
 
   @Test
+  void declareAccount_rejectsMissingBookBeforeChartValidation() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+      org.junit.jupiter.api.Assertions.assertEquals(
+          new AccountDeclarationOutcome.Rejected(
+              new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+                  .BookNotInitialized()),
+          service.declareAccount(
+              new AccountDeclaration(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  AccountType.ASSET,
+                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+                  accountTaxonomy(AccountType.ASSET))));
+    }
+  }
+
+  @Test
+  void declareAccount_rejectsInvalidParentHierarchyBeforeDelegatingToBookStore() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+      service.openBook(bookIdentity());
+
+      AccountDeclarationOutcome result =
+          service.declareAccount(
+              new AccountDeclaration(
+                  new AccountCode("1010"),
+                  new AccountName("Child Cash"),
+                  AccountType.ASSET,
+                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+                  new AccountTaxonomy(
+                      java.util.Optional.of(new AccountCode("9999")),
+                      java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                      java.util.Optional.empty())));
+
+      org.junit.jupiter.api.Assertions.assertEquals(
+          new AccountDeclarationOutcome.Rejected(
+              new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+                  .ParentAccountMissing(new AccountCode("1010"), new AccountCode("9999"))),
+          result);
+    }
+  }
+
+  @Test
   void closePeriod_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
       service.openBook(bookIdentity());
       service.declareAccount(
           new AccountDeclaration(

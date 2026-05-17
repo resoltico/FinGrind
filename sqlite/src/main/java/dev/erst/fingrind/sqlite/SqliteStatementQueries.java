@@ -213,6 +213,11 @@ final class SqliteStatementQueries {
             activeDatabase,
             SqlitePostingSql.BOOK_TAX_REGISTRATION_STATUS_META_KEY,
             "Initialized SQLite book is missing tax-registration metadata.");
+    String requiredTaxProfile =
+        requireBookMetaValue(
+            activeDatabase,
+            SqlitePostingSql.BOOK_TAX_PROFILE_META_KEY,
+            "Initialized SQLite book is missing tax-profile metadata.");
     String requiredBusinessActivityTags =
         requireBookMetaValue(
             activeDatabase,
@@ -244,7 +249,8 @@ final class SqliteStatementQueries {
                 decodeBusinessActivityTags(requiredBusinessActivityTags)),
             CurrencyUnit.of(requiredFunctionalCurrency),
             FiscalYearStart.parse(requiredFiscalYearStart),
-            AccountingBasis.fromWireValue(requiredAccountingBasis)));
+            AccountingBasis.fromWireValue(requiredAccountingBasis),
+            SqliteTaxProfileCodec.decode(requiredTaxProfile)));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {

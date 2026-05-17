@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -58,7 +59,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.38.0",
+                "0.39.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -74,7 +75,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.38.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.39.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -175,7 +176,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.38.0");
+    return new PdfDocumentFactory("FinGrind", "0.39.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -213,7 +214,8 @@ class PdfReportCoverageTest {
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingBasis.ACCRUAL,
+        TaxProfile.empty());
   }
 
   private static List<List<String>> paginatedKeyValueRows() {

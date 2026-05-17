@@ -200,6 +200,7 @@ final class CliLedgerPlanParser {
 
   private static OpenBookCommand readOpenBookCommand(ObjectNode openBookNode) {
     rejectUnexpectedFields(openBookNode, "openBook", CliJsonRequestSchemas.OPEN_BOOK_FIELDS);
+    TaxRegistrationStatus taxRegistrationStatus = optionalTaxRegistrationStatus(openBookNode);
     return new OpenBookCommand(
         new BookIdentity(
             new EntityProfile(
@@ -211,7 +212,7 @@ final class CliLedgerPlanParser {
                     "openBook." + ProtocolOpenBookFields.ENTITY_FORM),
                 optionalOwnerModel(openBookNode),
                 optionalReportingObligationStatus(openBookNode),
-                optionalTaxRegistrationStatus(openBookNode),
+                taxRegistrationStatus,
                 businessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
@@ -221,7 +222,8 @@ final class CliLedgerPlanParser {
                 "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
             CliArgumentValueParser.parseAccountingBasisOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
-                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)));
+                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS),
+            CliTaxProfileParser.readOpenBookTaxProfile(openBookNode, taxRegistrationStatus)));
   }
 
   private static OwnerModel optionalOwnerModel(ObjectNode openBookNode) {

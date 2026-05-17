@@ -248,6 +248,60 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 LocalDate.parse("2026-12-15"),
                 LocalDate.parse("2027-01-15"),
                 bookIdentity().fiscalYearStart())));
+    assertEquals(
+        new BookAdministrationRejection.ParentAccountMissing(
+            new AccountCode("1010"), new AccountCode("1000")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountMissing(
+                new AccountCode("1010"), new AccountCode("1000"))));
+    assertEquals(
+        new BookAdministrationRejection.ParentAccountInactive(
+            new AccountCode("1010"), new AccountCode("1000")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountInactive(
+                new AccountCode("1010"), new AccountCode("1000"))));
+    assertEquals(
+        new BookAdministrationRejection.ParentAccountTypeConflict(
+            new AccountCode("1010"),
+            AccountType.ASSET,
+            new AccountCode("2000"),
+            AccountType.LIABILITY),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountTypeConflict(
+                new AccountCode("1010"),
+                AccountType.ASSET,
+                new AccountCode("2000"),
+                AccountType.LIABILITY)));
+    assertEquals(
+        new BookAdministrationRejection.ParentAccountTaxonomyConflict(
+            new AccountCode("1010"),
+            new dev.erst.fingrind.core.AccountTaxonomy(
+                java.util.Optional.of(new AccountCode("1000")),
+                java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                java.util.Optional.empty()),
+            new AccountCode("1000"),
+            new dev.erst.fingrind.core.AccountTaxonomy(
+                java.util.Optional.of(new AccountCode("0900")),
+                java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                java.util.Optional.empty())),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict(
+                new AccountCode("1010"),
+                new dev.erst.fingrind.core.AccountTaxonomy(
+                    java.util.Optional.of(new AccountCode("1000")),
+                    java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    java.util.Optional.empty()),
+                new AccountCode("1000"),
+                new dev.erst.fingrind.core.AccountTaxonomy(
+                    java.util.Optional.of(new AccountCode("0900")),
+                    java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    java.util.Optional.empty()))));
+    assertEquals(
+        new BookAdministrationRejection.AccountHierarchyCycle(
+            new AccountCode("1010"), new AccountCode("1000")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.AccountHierarchyCycle(
+                new AccountCode("1010"), new AccountCode("1000"))));
 
     assertEquals(
         new PostingRejection.ClosedPeriodViolation(

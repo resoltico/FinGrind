@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: USER_CLI
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -16,9 +16,10 @@ No separate Java install is required for that path. For source-driven local runs
 `./gradlew :cli:run` manages SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 automatically.
 The generated source-checkout launcher from `./gradlew :cli:installShadowDist prepareManagedSqlite`
 also carries the managed native-access, source-checkout runtime-distribution, and managed-SQLite
-checkout-discovery defaults for you. The raw `java -jar` route remains developer-only, but when
-it is launched from a prepared checkout it now inherits the same native-access manifest contract
-and managed-SQLite checkout discovery automatically.
+checkout-discovery defaults for you. For direct Java execution from a prepared checkout, use
+`./scripts/direct-java-cli.sh` or `.\scripts\direct-java-cli.ps1`; those wrappers publish the
+same managed runtime-distribution, checkout roots, and module-scoped native access as the other
+developer launchers.
 
 ## Overview
 
@@ -51,6 +52,9 @@ must be replaced before submission. Idempotency keys are single-use per book onc
 commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 `open-book` explicitly initializes one new protected book.
+When `--tax-registration-status REGISTERED` is selected, `open-book` also requires
+`--tax-profile-file <path|->` so the book persists first-class tax registrations and tax code
+definitions instead of a bare registration flag.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
 pre-rekey file automatically if replacement-passphrase verification fails.
 The supported backup path today is one closed-book encrypted file copy: stop using the book,
@@ -249,17 +253,17 @@ successful run, the task prints the exact archive path and checksum path it prod
 can be inspected or passed straight to `./scripts/bundle-smoke.sh` even when the active build
 directory lives outside the checkout.
 
-The raw `java -jar` path is still available for advanced contributor work, but it is not the
-public FinGrind download contract:
+The direct-Java wrapper is the supported advanced contributor path outside Gradle, and it is not
+the public FinGrind download contract:
 
 ```bash
 ./gradlew :cli:shadowJar prepareManagedSqlite
 ./scripts/direct-java-cli.sh help
 ```
 
-That wrapper resolves the active CLI build directory and then runs the prepared raw JAR. When the
-JAR stays under the prepared checkout layout, it auto-discovers the managed SQLite library and
-reads the required native-access permission from the JAR manifest. Manual
+That wrapper resolves the active CLI build directory and then runs the prepared application module.
+When the module stays under the prepared checkout layout, it auto-discovers the managed SQLite
+library and grants native access only to the `fingrind` module. Manual
 `FINGRIND_SQLITE_LIBRARY` export remains relevant only for custom direct-Java launches outside the
 prepared checkout.
 
@@ -268,7 +272,7 @@ prepared checkout.
 Those two stdin modes cannot be combined in one invocation.
 Whether it comes from a file or standard input, one request JSON document must fit within the
 `1048576`-byte UTF-8 payload limit.
-Use the extracted bundle launcher or `java -jar` for real process exit codes;
+Use the extracted bundle launcher or the direct-Java wrapper for real process exit codes;
 `./gradlew :cli:run` wraps non-zero application exits as a Gradle task failure.
 
 ## Exit Codes
@@ -322,9 +326,12 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   commands that advertise it; otherwise invalid invocations default to human repair text.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
   extra arguments.
-- `open-book` creates missing parent directories for nested `--book-file` paths.
+- `open-book` creates missing parent directories for nested `--book-file` paths with owner-only
+  protection. When the parent already exists, FinGrind requires it to remain owner-only.
 - `generate-book-key-file` creates one new owner-only UTF-8 key file and refuses to overwrite an
-  existing path. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
+  existing path. When the selected parent directory does not exist, FinGrind creates it with
+  owner-only protection; when the parent already exists, FinGrind requires it to remain
+  owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
   Windows.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than
   4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
@@ -365,7 +372,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   SQLite3 Multiple Ciphers 2.3.4 native library.
 - `capabilities.environment.distribution.runtimeDistribution` tells you whether the current
   process is running from a self-contained bundle, container image, source-checkout Gradle launch,
-  or direct `java -jar` invocation.
+  or direct Java wrapper invocation.
 - `capabilities.environment.distribution.supportedPublicCliBundleTargets` and
   `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` expose the public
   distribution matrix directly to automation.
@@ -424,7 +431,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.sqlite.runtime.status`,
   `environment.sqlite.runtime.runtimeProvenance`,
   `environment.sqlite.runtime.runtimeTrustBasis`,
-  `environment.sqlite.runtime.loadedLibraryPath`,
+  `environment.sqlite.runtime.loadedLibraryPath` as a redacted public path hint,
   `environment.sqlite.runtime.loadedSqliteVersion`,
   `environment.sqlite.runtime.loadedSqlite3mcVersion`,
   `environment.sqlite.runtime.loadedSqliteSourceId`,
@@ -446,9 +453,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   scope without reading source code.
 - Gradle-driven local runs, the generated source-checkout launcher, and the container image use a
   managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
-- The developer-only `java -jar` path auto-discovers that managed SQLite3MC library and native
-  access when it runs from a prepared checkout. Custom direct-Java launches outside that checkout
-  shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
+- The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
+  native access when they run from a prepared checkout. Custom direct-Java launches outside that
+  checkout shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
   provenance reports `environment.sqlite.runtime.runtimeTrustBasis: "operator-trusted"` and is
   only checked for local library-plus-sidecar consistency, not publisher-authenticated bundle
   provenance.

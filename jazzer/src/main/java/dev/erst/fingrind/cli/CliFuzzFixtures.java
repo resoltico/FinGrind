@@ -39,7 +39,9 @@ import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
@@ -103,7 +105,8 @@ public final class CliFuzzFixtures {
             List.of()),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingBasis.ACCRUAL,
+        dev.erst.fingrind.core.TaxProfile.empty());
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */
@@ -117,9 +120,10 @@ public final class CliFuzzFixtures {
   }
 
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */
-  public static BookAdministrationService administrationService(BookAdministrationStore bookStore) {
+  public static <T extends BookLifecycleReader & BookAdministrationStore & AccountCatalogStore>
+      BookAdministrationService administrationService(T bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
-    return new BookAdministrationService(bookStore, fixedClock());
+    return new BookAdministrationService(bookStore, bookStore, bookStore, fixedClock());
   }
 
   /** Creates the fixed-clock posting service used by workflow fuzz harnesses and replay. */
@@ -135,13 +139,14 @@ public final class CliFuzzFixtures {
   }
 
   /** Creates the fixed-clock ledger-plan service used by plan fuzz harnesses and replay. */
-  public static LedgerPlanService ledgerPlanService(
-      LedgerPlanTransaction transactionStore,
-      BookAdministrationStore administrationStore,
-      BookkeepingReadStore readStore,
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      PostingIdGenerator postingIdGenerator) {
+  public static <T extends BookAdministrationStore & AccountCatalogStore>
+      LedgerPlanService ledgerPlanService(
+          LedgerPlanTransaction transactionStore,
+          T administrationStore,
+          BookkeepingReadStore readStore,
+          PostingValidationStore validationStore,
+          PostingCommitStore commitStore,
+          PostingIdGenerator postingIdGenerator) {
     Objects.requireNonNull(transactionStore, "transactionStore must not be null");
     Objects.requireNonNull(administrationStore, "administrationStore must not be null");
     Objects.requireNonNull(readStore, "readStore must not be null");
@@ -150,6 +155,7 @@ public final class CliFuzzFixtures {
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator must not be null");
     return new LedgerPlanService(
         transactionStore,
+        administrationStore,
         administrationStore,
         readStore,
         validationStore,

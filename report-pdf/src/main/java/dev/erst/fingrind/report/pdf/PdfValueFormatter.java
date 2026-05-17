@@ -31,8 +31,6 @@ import org.jspecify.annotations.Nullable;
 final class PdfValueFormatter {
   private static final DateTimeFormatter HUMAN_INSTANT_FORMATTER =
       DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
-  private static final int OPAQUE_IDENTIFIER_PREFIX = 12;
-  private static final int OPAQUE_IDENTIFIER_SUFFIX = 6;
 
   private PdfValueFormatter() {}
 
@@ -66,6 +64,13 @@ final class PdfValueFormatter {
     return switch (lineKind) {
       case DECLARED_ACCOUNT -> "Account";
       case CURRENT_PERIOD_RESULT -> "Current period result";
+    };
+  }
+
+  static String displayStatementLineCode(String lineCode, StatementLineKind lineKind) {
+    return switch (lineKind) {
+      case DECLARED_ACCOUNT -> lineCode;
+      case CURRENT_PERIOD_RESULT -> "(derived)";
     };
   }
 
@@ -190,11 +195,11 @@ final class PdfValueFormatter {
   static String reversalTarget(PostingFact postingFact) {
     return postingFact
         .reversalReference()
-        .map(reference -> compactOpaqueIdentifier(reference.priorPostingId().value()))
-        .orElse("(direct)");
+        .map(reference -> reference.priorPostingId().value())
+        .orElse("(not a reversal)");
   }
 
-  static String reversalState(PostingFact postingFact) {
+  static String postingRole(PostingFact postingFact) {
     return postingFact.reversalReference().isPresent() ? "Reversal" : "Direct";
   }
 
@@ -204,15 +209,6 @@ final class PdfValueFormatter {
       case PERIOD_CLOSE -> "Period close";
       case OPENING_BALANCE -> "Opening balance";
     };
-  }
-
-  static String compactOpaqueIdentifier(String value) {
-    if (value.length() <= OPAQUE_IDENTIFIER_PREFIX + OPAQUE_IDENTIFIER_SUFFIX + 3) {
-      return value;
-    }
-    return value.substring(0, OPAQUE_IDENTIFIER_PREFIX)
-        + "..."
-        + value.substring(value.length() - OPAQUE_IDENTIFIER_SUFFIX);
   }
 
   private static String wireLabel(String wireValue) {

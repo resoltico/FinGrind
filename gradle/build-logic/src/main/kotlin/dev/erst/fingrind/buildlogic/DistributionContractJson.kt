@@ -60,6 +60,30 @@ internal object DistributionContractJson {
         return values.toList()
     }
 
+    fun stringMapProperty(projectRootDirectory: Path, relativePath: String, key: String): Map<String, String> {
+        val valuesNode = loadJson(projectRootDirectory, relativePath).path(key)
+        if (!valuesNode.isObject) {
+            throw IllegalStateException("Contract property $key must be one JSON object in $relativePath.")
+        }
+        val values = linkedMapOf<String, String>()
+        valuesNode.properties().forEach { entry ->
+            val mapKey = entry.key.trim()
+            val value = if (entry.value.isString) entry.value.stringValue()?.trim().orEmpty() else ""
+            if (mapKey.isEmpty() || value.isEmpty()) {
+                throw IllegalStateException(
+                    "Contract property $key must contain only non-blank string keys and values in $relativePath.",
+                )
+            }
+            if (values.put(mapKey, value) != null) {
+                throw IllegalStateException("Duplicate contract map element $mapKey in $key from $relativePath.")
+            }
+        }
+        if (values.isEmpty()) {
+            throw IllegalStateException("Contract property $key must not be empty in $relativePath.")
+        }
+        return values.toMap()
+    }
+
     fun booleanProperty(projectRootDirectory: Path, relativePath: String, key: String): Boolean {
         val valueNode = loadJson(projectRootDirectory, relativePath).path(key)
         if (!valueNode.isBoolean) {

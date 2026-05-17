@@ -2,6 +2,37 @@
   "requiredMinimumSqliteVersion": "3.53.1",
   "requiredSqlite3mcVersion": "2.3.4",
   "requiredSqliteSourceId": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "requiredSourcePackageId": "sqlite3mc-amalgamation-2.3.4-sqlite-3530001",
+  "vendoredReleaseFiles": {
+    "readme-amalgamation.md": "77c424913c7dd3053ba1b3d79cd7df5fdca75999949a2565abc512c4fbbf4e87",
+    "shell.c": "4842c018055c99b8ed4cb3baf1deccaba33a204263cae3db15914d31643194fd",
+    "shell3mc_amalgamation.c": "84a0ceb56c2c0ef64f0c37fd0d36665d5b672861b994b6d09de047189530b325",
+    "sqlite3.c": "414432ae5719f6cdc485f3927e12c7ad107e2b8c6b434e5df2eadb5312bfabb5",
+    "sqlite3.h": "9a3f987ee5507921801343d54d67f256a4602972afc60be6566b540a8d93cfc9",
+    "sqlite3ext.h": "1b7a0ee438bb5c2896d0609c537e917d8057b3340f6ad004d2de44f03e3d3cca",
+    "sqlite3mc.def": "bebf7f51c82f061ae15b6c50c33a57603bdebd2afd60be296ecfb759925459b2",
+    "sqlite3mc_amalgamation.c": "e4d6fe92d776ccca57e50fc13dec430c64b88b46b05c4ffb97eb2265842f45c2",
+    "sqlite3mc_amalgamation.h": "d3960ebb15ee8229d119c08b6bf373e39e71803f6c282a17fb0898d44a260197"
+  },
+  "nativeHardening": {
+    "unixCompilerFlags": [
+      "-fstack-protector-strong"
+    ],
+    "linuxLinkerFlags": [
+      "-Wl,-z,relro",
+      "-Wl,-z,now",
+      "-Wl,-z,noexecstack"
+    ],
+    "macosLinkerFlags": [],
+    "windowsCompilerFlags": [
+      "/GS"
+    ],
+    "windowsLinkerFlags": [
+      "/DYNAMICBASE",
+      "/NXCOMPAT",
+      "/GUARD:CF"
+    ]
+  },
   "requiredCompileOptions": [
     "THREADSAFE=1",
     "OMIT_LOAD_EXTENSION",

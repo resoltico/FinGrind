@@ -217,7 +217,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
     return MachineContract.capabilities(
-        new ApplicationIdentity("FinGrind", "0.38.0", "desc"), readyEnvironmentDescriptor());
+        new ApplicationIdentity("FinGrind", "0.39.0", "desc"), readyEnvironmentDescriptor());
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
@@ -236,6 +236,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),

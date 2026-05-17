@@ -89,6 +89,32 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void readDeclareAccountCommand_rejectsDerivedCurrentPeriodResultClassification() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "3000",
+                  "accountName": "Derived Result Placeholder",
+                  "accountType": "EQUITY",
+                  "accountRole": "ORDINARY",
+                  "financialPositionLineClassification": "CURRENT_PERIOD_RESULT",
+                  "profitAndLossLineClassification": null
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals(
+        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY, NONCURRENT_LIABILITY, OWNER_CAPITAL, OWNER_DRAWINGS, PARTNER_CAPITAL, PARTNER_CURRENT, SHARE_CAPITAL, RETAINED_EARNINGS, ACCUMULATED_SURPLUS, RESERVE, OTHER_EQUITY.",
+        exception.getMessage());
+  }
+
+  @Test
   void readDeclareAccountCommand_rejectsUnexpectedTopLevelField() {
     CliRequestReader requestReader =
         new CliRequestReader(

@@ -53,11 +53,33 @@ abstract class PrepareManagedSqliteTask
         @get:Input
         abstract val requiresSecureMemorySupport: Property<Boolean>
 
+        @get:Input
+        abstract val unixCompilerHardeningFlags: ListProperty<String>
+
+        @get:Input
+        abstract val linuxLinkerHardeningFlags: ListProperty<String>
+
+        @get:Input
+        abstract val macosLinkerHardeningFlags: ListProperty<String>
+
+        @get:Input
+        abstract val windowsCompilerHardeningFlags: ListProperty<String>
+
+        @get:Input
+        abstract val windowsLinkerHardeningFlags: ListProperty<String>
+
+        @get:InputFile
+        @get:PathSensitive(PathSensitivity.NONE)
+        abstract val toolchainFingerprintFile: RegularFileProperty
+
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
 
         @get:OutputFile
         abstract val checksumFile: RegularFileProperty
+
+        @get:OutputFile
+        abstract val trustedChecksumFile: RegularFileProperty
 
         @TaskAction
         fun compile() {
@@ -70,6 +92,8 @@ abstract class PrepareManagedSqliteTask
                     compiler = compiler.get(),
                     sourceFilePath = sourceFile.get().asFile.absolutePath,
                     requiresSecureMemorySupport = requiresSecureMemorySupport.get(),
+                    windowsCompilerHardeningFlags = windowsCompilerHardeningFlags.get(),
+                    windowsLinkerHardeningFlags = windowsLinkerHardeningFlags.get(),
                     outputLibraryFile = outputLibraryFile,
                 )
                 return
@@ -82,18 +106,27 @@ abstract class PrepareManagedSqliteTask
                         sqliteVersion = sqliteVersion.get(),
                         requiredCompileOptions = requiredCompileOptions.get(),
                         requiresSecureMemorySupport = requiresSecureMemorySupport.get(),
+                        unixCompilerHardeningFlags = unixCompilerHardeningFlags.get(),
+                        linuxLinkerHardeningFlags = linuxLinkerHardeningFlags.get(),
+                        macosLinkerHardeningFlags = macosLinkerHardeningFlags.get(),
                         sourceFilePath = sourceFile.get().asFile.absolutePath,
                         outputFilePath = outputLibraryFile.absolutePath,
                     ),
                 )
             }
-            writeChecksumFile(outputLibraryFile, checksumFile.get().asFile)
+            writeChecksumFiles(
+                outputLibraryFile,
+                checksumFile.get().asFile,
+                trustedChecksumFile.get().asFile,
+            )
         }
 
         private fun compileWindowsLibrary(
             compiler: String,
             sourceFilePath: String,
             requiresSecureMemorySupport: Boolean,
+            windowsCompilerHardeningFlags: List<String>,
+            windowsLinkerHardeningFlags: List<String>,
             outputLibraryFile: java.io.File,
         ) {
             val buildDirectory = temporaryDir.resolve("windows-shared-library")
@@ -109,6 +142,8 @@ abstract class PrepareManagedSqliteTask
                         sourceFilePath = sourceFilePath,
                         requiredCompileOptions = requiredCompileOptions.get(),
                         requiresSecureMemorySupport = requiresSecureMemorySupport,
+                        windowsCompilerHardeningFlags = windowsCompilerHardeningFlags,
+                        windowsLinkerHardeningFlags = windowsLinkerHardeningFlags,
                         outputFilePath = compiledLibraryFile.absolutePath,
                         importLibraryFilePath = importLibraryFile.absolutePath,
                         objectFilePath = objectFile.absolutePath,
@@ -116,7 +151,11 @@ abstract class PrepareManagedSqliteTask
                 )
             }
             compiledLibraryFile.copyTo(outputLibraryFile, overwrite = true)
-            writeChecksumFile(outputLibraryFile, checksumFile.get().asFile)
+            writeChecksumFiles(
+                outputLibraryFile,
+                checksumFile.get().asFile,
+                trustedChecksumFile.get().asFile,
+            )
         }
 
         private fun buildUnixCommandLine(
@@ -125,6 +164,9 @@ abstract class PrepareManagedSqliteTask
             sqliteVersion: String,
             requiredCompileOptions: List<String>,
             requiresSecureMemorySupport: Boolean,
+            unixCompilerHardeningFlags: List<String>,
+            linuxLinkerHardeningFlags: List<String>,
+            macosLinkerHardeningFlags: List<String>,
             sourceFilePath: String,
             outputFilePath: String,
         ): List<String> =
@@ -132,6 +174,7 @@ abstract class PrepareManagedSqliteTask
                 add(compiler)
                 add("-O2")
                 add("-fPIC")
+                addAll(unixCompilerHardeningFlags)
                 addAll(unixCompilerDefines(requiredCompileOptions, requiresSecureMemorySupport))
                 if (operatingSystemId == "macos") {
                     add("-dynamiclib")
@@ -139,9 +182,11 @@ abstract class PrepareManagedSqliteTask
                     add(sqliteVersion)
                     add("-compatibility_version")
                     add(sqliteVersion)
+                    addAll(macosLinkerHardeningFlags)
                 } else {
                     add("-shared")
                     add("-Wl,-soname,libsqlite3.so.0")
+                    addAll(linuxLinkerHardeningFlags)
                 }
                 add("-o")
                 add(outputFilePath)
@@ -157,6 +202,8 @@ abstract class PrepareManagedSqliteTask
             sourceFilePath: String,
             requiredCompileOptions: List<String>,
             requiresSecureMemorySupport: Boolean,
+            windowsCompilerHardeningFlags: List<String>,
+            windowsLinkerHardeningFlags: List<String>,
             outputFilePath: String,
             importLibraryFilePath: String,
             objectFilePath: String,
@@ -165,6 +212,7 @@ abstract class PrepareManagedSqliteTask
                 compiler,
                 "/nologo",
                 "/O2",
+                *windowsCompilerHardeningFlags.toTypedArray(),
                 "/LD",
                 *windowsCompilerDefines(requiredCompileOptions, requiresSecureMemorySupport)
                     .toTypedArray(),
@@ -174,6 +222,7 @@ abstract class PrepareManagedSqliteTask
                 "/link",
                 "/NOLOGO",
                 "/INCREMENTAL:NO",
+                *windowsLinkerHardeningFlags.toTypedArray(),
                 "/OUT:\"$outputFilePath\"",
                 "/IMPLIB:\"$importLibraryFilePath\"",
             )
@@ -219,8 +268,21 @@ abstract class PrepareManagedSqliteTask
                 },
             )
 
-        private fun writeChecksumFile(outputLibraryFile: java.io.File, checksumOutputFile: java.io.File) {
+        private fun writeChecksumFiles(
+            outputLibraryFile: java.io.File,
+            checksumOutputFile: java.io.File,
+            trustedChecksumOutputFile: java.io.File,
+        ) {
             val digest = MessageDigest.getInstance("SHA-256").digest(outputLibraryFile.readBytes())
+            writeChecksumFile(outputLibraryFile, checksumOutputFile, digest)
+            writeChecksumFile(outputLibraryFile, trustedChecksumOutputFile, digest)
+        }
+
+        private fun writeChecksumFile(
+            outputLibraryFile: java.io.File,
+            checksumOutputFile: java.io.File,
+            digest: ByteArray,
+        ) {
             checksumOutputFile.parentFile.mkdirs()
             checksumOutputFile.writeText(
                 HexFormat.of().formatHex(digest) + "  " + outputLibraryFile.name + System.lineSeparator(),

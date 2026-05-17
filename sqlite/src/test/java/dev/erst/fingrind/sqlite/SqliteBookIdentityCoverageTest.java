@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -12,7 +13,18 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
+import dev.erst.fingrind.core.PercentageRate;
 import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.TaxCode;
+import dev.erst.fingrind.core.TaxCodeDefinition;
+import dev.erst.fingrind.core.TaxCodeName;
+import dev.erst.fingrind.core.TaxFilingFrequency;
+import dev.erst.fingrind.core.TaxJurisdictionCode;
+import dev.erst.fingrind.core.TaxPricingMode;
+import dev.erst.fingrind.core.TaxProfile;
+import dev.erst.fingrind.core.TaxRecoverability;
+import dev.erst.fingrind.core.TaxRegistration;
+import dev.erst.fingrind.core.TaxRegistrationId;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.util.List;
@@ -76,6 +88,27 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               "Initialized SQLite book is missing fiscal-year-start metadata.",
               exception.getMessage());
+        });
+  }
+
+  @Test
+  void loadBookIdentity_requiresTaxProfileMetadata() {
+    Path missingTaxProfilePath = tempDirectory.resolve("book-identity-missing-tax-profile.sqlite");
+    initializeBookOnDisk(missingTaxProfilePath);
+    withStandaloneDatabase(
+        bookAccess(missingTaxProfilePath),
+        database -> {
+          database.executeStatement(
+              """
+              delete from book_meta
+              where key = 'tax_profile_json'
+              """);
+          IllegalStateException exception =
+              assertThrows(
+                  IllegalStateException.class,
+                  () -> SqliteStatementQueries.loadBookIdentity(database));
+          assertEquals(
+              "Initialized SQLite book is missing tax-profile metadata.", exception.getMessage());
         });
   }
 
@@ -149,7 +182,51 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingBasis.ACCRUAL,
+            TaxProfile.empty());
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertInitializedAtRow(database);
+          SqliteMutationWriter.insertBookIdentity(database, bookIdentity);
+
+          assertEquals(
+              Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+        });
+  }
+
+  @Test
+  void loadBookIdentity_roundTripsRegisteredTaxProfile() {
+    Path bookPath = tempDirectory.resolve("book-identity-tax-profile.sqlite");
+    BookIdentity bookIdentity =
+        new BookIdentity(
+            new EntityProfile(
+                new BookEntityName("Registered Studio"),
+                EntityForm.COMPANY,
+                OwnerModel.MULTI_OWNER,
+                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
+                TaxRegistrationStatus.REGISTERED,
+                List.of(new BusinessActivityTag("translation-services"))),
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"),
+            AccountingBasis.ACCRUAL,
+            new TaxProfile(
+                List.of(
+                    new TaxRegistration(
+                        new TaxJurisdictionCode("LV"),
+                        new TaxRegistrationId("LV123456789"),
+                        TaxFilingFrequency.MONTHLY)),
+                List.of(
+                    new TaxCodeDefinition(
+                        new TaxCode("VAT21"),
+                        new TaxCodeName("Standard VAT"),
+                        new TaxJurisdictionCode("LV"),
+                        new PercentageRate(2100),
+                        TaxPricingMode.EXCLUSIVE,
+                        TaxRecoverability.FULLY_RECOVERABLE,
+                        new AccountCode("2100"),
+                        Optional.of(new AccountCode("1300"))))));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {

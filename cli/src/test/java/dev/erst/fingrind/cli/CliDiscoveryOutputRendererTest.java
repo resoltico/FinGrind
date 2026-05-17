@@ -918,7 +918,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.38.0"));
+    assertTrue(rendered.contains("0.39.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -991,7 +991,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.38.0",
+        "0.39.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -1011,6 +1011,7 @@ class CliDiscoveryOutputRendererTest {
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),
@@ -1023,7 +1024,7 @@ class CliDiscoveryOutputRendererTest {
                 SqliteRuntimeStatus.READY,
                 SqliteRuntimeProvenance.BUNDLE_MANAGED,
                 SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-                "/tmp/libsqlite3.dylib",
+                "<redacted>/libsqlite3.dylib",
                 ProtocolCatalog.requiredMinimumSqliteVersion(),
                 ProtocolCatalog.requiredSqlite3mcVersion(),
                 ProtocolCatalog.requiredSqliteSourceId(),

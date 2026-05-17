@@ -8,16 +8,14 @@ from .models import ReleaseSmokeConfig
 
 
 def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
+    # Security-sensitive book and key parents must be created by the CLI surface itself so the
+    # acceptance workflow proves the same owner-only hardening contract that real operators use.
     for path in [
         config.request_sale.local_path,
         config.request_adjustment.local_path,
         config.invalid_request.local_path,
         config.declare_cash.local_path,
         config.declare_revenue.local_path,
-        config.book.local_path,
-        config.book_key.local_path,
-        config.replacement_book_key.local_path,
-        config.prompt_failure_book.local_path,
         config.trial_balance_pdf.local_path,
         config.trial_balance_pdf_stderr_path,
     ]:

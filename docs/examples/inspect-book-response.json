@@ -1,18 +1,1 @@
-{
-  "status": "ok",
-  "payload": {
-    "bookFile": "/tmp/fingrind/books/acme/acme.sqlite",
-    "state": "initialized",
-    "compatibleWithCurrentBinary": true,
-    "canInitializeWithOpenBook": false,
-    "applicationId": 1179079236,
-    "detectedBookFormatVersion": 6,
-    "supportedBookFormatVersion": 6,
-    "initializedAt": "2026-04-13T11:58:35.532739Z",
-    "bookIdentity": {
-      "entityName": "Acme Studio",
-      "functionalCurrency": "EUR",
-      "fiscalYearStart": "01-01"
-    }
-  }
-}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","state":"initialized","compatibleWithCurrentBinary":true,"canInitializeWithOpenBook":false,"applicationId":1179079236,"detectedBookFormatVersion":7,"supportedBookFormatVersion":7,"initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","taxRegistrationStatus":"NOT_REGISTERED","taxProfile":{"registrations":[],"taxCodeDefinitions":[]},"businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}

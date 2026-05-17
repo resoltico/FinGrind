@@ -14,6 +14,7 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Executes the published quick-start and example workflows against the live CLI surface. */
 class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
@@ -148,6 +149,9 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertTrue(examplesGuide.contains("replace-before-commit-*"));
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
+    assertTrue(examplesGuide.contains("--owner-model"));
+    assertTrue(examplesGuide.contains("--reporting-obligation-status"));
+    assertTrue(examplesGuide.contains("--tax-registration-status"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
     assertTrue(requestsGuide.contains("replace-before-commit-*"));
@@ -161,6 +165,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     Path declareCashFile = copyExampleFixture("declare-account-cash.json");
     Path declareRevenueFile = copyExampleFixture("declare-account-revenue.json");
     Path postingRequestFile = copyExampleFixture("basic-posting-request.json");
+    Path reversalRequestFile = copyExampleFixture("reversal-request.json");
     Path planBookFile = workspace.resolve("acme-plan.sqlite");
     Path rawPlanTemplateFile = workspace.resolve("raw-ledger-plan-template.json");
     Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
@@ -195,6 +200,19 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             postingRequestFile.toString());
     String postingId = committed.path("payload").path("postingId").stringValue();
     assertFalse(postingId.isBlank());
+    replaceReversalPriorPostingId(reversalRequestFile, postingId);
+    JsonNode reversal =
+        runJsonCommand(
+            "post-entry",
+            "--book-file",
+            bookFile.toString(),
+            "--book-key-file",
+            bookKeyFile.toString(),
+            "--request-file",
+            reversalRequestFile.toString());
+    assertEquals("ok", reversal.path("status").stringValue());
+    String reversalPostingId = reversal.path("payload").path("postingId").stringValue();
+    assertFalse(reversalPostingId.isBlank());
     JsonNode listing =
         runJsonCommand(
             "list-postings",
@@ -204,8 +222,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--limit",
             "10");
-    assertEquals(
-        postingId, listing.path("payload").path("postings").get(0).path("postingId").stringValue());
+    assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     Files.writeString(
         rawPlanTemplateFile, rawPlanTemplate.toPrettyString(), StandardCharsets.UTF_8);
@@ -291,6 +308,36 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     Path destination = tempDirectory.resolve(fileName);
     Files.copy(source, destination);
     return destination;
+  }
+
+  private static void replaceReversalPriorPostingId(Path requestFile, String postingId)
+      throws IOException {
+    ObjectNode root =
+        (ObjectNode) OBJECT_MAPPER.readTree(Files.readString(requestFile, StandardCharsets.UTF_8));
+    ((ObjectNode) root.path("reversal")).put("priorPostingId", postingId);
+    Files.writeString(
+        requestFile,
+        OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + "\n",
+        StandardCharsets.UTF_8);
+  }
+
+  private static void assertPostingIdsContain(
+      JsonNode postings, String expectedPostingId, String expectedReversalPostingId) {
+    boolean foundPosting = false;
+    boolean foundReversalPosting = false;
+    for (JsonNode posting : postings) {
+      String postingId = posting.path("postingId").stringValue();
+      if (expectedPostingId.equals(postingId)) {
+        foundPosting = true;
+      }
+      if (expectedReversalPostingId.equals(postingId)) {
+        foundReversalPosting = true;
+      }
+    }
+    assertTrue(foundPosting, () -> "Missing posting id " + expectedPostingId + " in listing");
+    assertTrue(
+        foundReversalPosting,
+        () -> "Missing reversal posting id " + expectedReversalPostingId + " in listing");
   }
 
   private static String extractFencedBlock(String document, String marker, String language) {

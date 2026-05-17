@@ -11,6 +11,7 @@
     "defaultBookCipher": "defaultBookCipher",
     "sqliteLibraryMode": "sqliteLibraryMode",
     "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
+    "sqliteOperatorTrustSystemProperty": "sqliteOperatorTrustSystemProperty",
     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
   },
   "protectedBookFormat": {
@@ -30,6 +31,14 @@
     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
     "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
     "requiredSqliteSourceId": "requiredSqliteSourceId",
+    "requiredSourcePackageId": "requiredSourcePackageId",
+    "vendoredReleaseFiles": "vendoredReleaseFiles",
+    "nativeHardening": "nativeHardening",
+    "nativeHardeningUnixCompilerFlags": "unixCompilerFlags",
+    "nativeHardeningLinuxLinkerFlags": "linuxLinkerFlags",
+    "nativeHardeningMacosLinkerFlags": "macosLinkerFlags",
+    "nativeHardeningWindowsCompilerFlags": "windowsCompilerFlags",
+    "nativeHardeningWindowsLinkerFlags": "windowsLinkerFlags",
     "requiredCompileOptions": "requiredCompileOptions",
     "forbiddenCompileOptions": "forbiddenCompileOptions",
     "requiresSecureMemorySupport": "requiresSecureMemorySupport"

@@ -3,11 +3,16 @@ package dev.erst.fingrind.report.pdf;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InaccessibleObjectException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Filter;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -43,6 +48,7 @@ final class PdfDocumentFactory {
     Objects.requireNonNull(reportTitle, "reportTitle");
     Objects.requireNonNull(generatedAt, "generatedAt");
     Objects.requireNonNull(orientation, "orientation");
+    PdfboxRuntimeNoiseFilter.install();
     PDDocument document = new PDDocument();
     try {
       configureInformation(document, reportTitle, generatedAt);
@@ -174,5 +180,36 @@ final class PdfDocumentFactory {
   interface DocumentSaver {
     /** Saves one open PDF document into the supplied byte sink. */
     void save(ByteArrayOutputStream outputStream) throws IOException;
+  }
+
+  /** Suppresses one known harmless PDFBox Java 26 unmapping warning during successful exports. */
+  static final class PdfboxRuntimeNoiseFilter {
+    private static final String PDFBOX_IOUTILS_LOGGER = "org.apache.pdfbox.io.IOUtils";
+    private static final String UNMAPPING_NOT_SUPPORTED = "Unmapping is not supported.";
+    private static final AtomicBoolean INSTALLED = new AtomicBoolean();
+
+    private PdfboxRuntimeNoiseFilter() {}
+
+    static void install() {
+      if (!INSTALLED.compareAndSet(false, true)) {
+        return;
+      }
+      Logger logger = Logger.getLogger(PDFBOX_IOUTILS_LOGGER);
+      logger.setFilter(composeFilter(logger.getFilter()));
+    }
+
+    static Filter composeFilter(@Nullable Filter existingFilter) {
+      return record ->
+          !shouldSuppress(record) && (existingFilter == null || existingFilter.isLoggable(record));
+    }
+
+    static boolean shouldSuppress(@Nullable LogRecord record) {
+      if (record == null) {
+        return false;
+      }
+      return PDFBOX_IOUTILS_LOGGER.equals(record.getLoggerName())
+          && UNMAPPING_NOT_SUPPORTED.equals(record.getMessage())
+          && record.getThrown() instanceof InaccessibleObjectException;
+    }
   }
 }

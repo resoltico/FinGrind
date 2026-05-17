@@ -30,6 +30,7 @@ class DistributionContractReaderTest {
                     "defaultBookCipher": "cipher",
                     "sqliteLibraryMode": "libraryMode",
                     "sqliteLibraryEnvironmentVariable": "libraryEnv",
+                    "sqliteOperatorTrustSystemProperty": "operatorTrust",
                     "sqliteBundleHomeSystemProperty": "bundleHome"
                   },
                   "publicDistribution": {
@@ -40,6 +41,14 @@ class DistributionContractReaderTest {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
                     "requiredSqlite3mcVersion": "sqlite3mcVersion",
                     "requiredSqliteSourceId": "sqliteSourceId",
+                    "requiredSourcePackageId": "sourcePackageId",
+                    "vendoredReleaseFiles": "vendoredReleaseFiles",
+                    "nativeHardening": "nativeHardening",
+                    "nativeHardeningUnixCompilerFlags": "unixCompilerFlags",
+                    "nativeHardeningLinuxLinkerFlags": "linuxLinkerFlags",
+                    "nativeHardeningMacosLinkerFlags": "macosLinkerFlags",
+                    "nativeHardeningWindowsCompilerFlags": "windowsCompilerFlags",
+                    "nativeHardeningWindowsLinkerFlags": "windowsLinkerFlags",
                     "requiredCompileOptions": "compileOptions",
                     "forbiddenCompileOptions": "forbiddenCompileOptions",
                     "requiresSecureMemorySupport": "requiresSecureMemorySupport"
@@ -78,6 +87,7 @@ class DistributionContractReaderTest {
                   "cipher": "chacha20",
                   "libraryMode": "managed-only",
                   "libraryEnv": "FINGRIND_SQLITE_LIBRARY",
+                  "operatorTrust": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                   "bundleHome": "fingrind.bundle.home"
                 }
                 """.trimIndent(),
@@ -100,6 +110,17 @@ class DistributionContractReaderTest {
                   "minimumSqliteVersion": "3.53.1",
                   "sqlite3mcVersion": "2.3.4",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
+                  "sourcePackageId": "sqlite3mc-amalgamation-test",
+                  "vendoredReleaseFiles": {
+                    "sqlite3mc_amalgamation.c": "sha3-a"
+                  },
+                  "nativeHardening": {
+                    "unixCompilerFlags": ["-fstack-protector-strong"],
+                    "linuxLinkerFlags": ["-Wl,-z,relro"],
+                    "macosLinkerFlags": [],
+                    "windowsCompilerFlags": ["/GS"],
+                    "windowsLinkerFlags": ["/NXCOMPAT"]
+                  },
                   "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"],
                   "forbiddenCompileOptions": ["USE_URI"],
                   "requiresSecureMemorySupport": true
@@ -201,6 +222,14 @@ class DistributionContractReaderTest {
                 DistributionContractReader.requiredSqliteSourceId(repositoryRoot),
             )
             assertEquals(
+                "sqlite3mc-amalgamation-test",
+                DistributionContractReader.requiredSqliteSourcePackageId(repositoryRoot),
+            )
+            assertEquals(
+                mapOf("sqlite3mc_amalgamation.c" to "sha3-a"),
+                DistributionContractReader.vendoredSqliteReleaseFiles(repositoryRoot),
+            )
+            assertEquals(
                 listOf("THREADSAFE=1", "SECURE_DELETE"),
                 DistributionContractReader.requiredSqliteCompileOptions(repositoryRoot),
             )
@@ -211,6 +240,26 @@ class DistributionContractReaderTest {
             assertEquals(
                 true,
                 DistributionContractReader.requiresSecureMemorySupport(repositoryRoot),
+            )
+            assertEquals(
+                listOf("-fstack-protector-strong"),
+                DistributionContractReader.unixCompilerHardeningFlags(repositoryRoot),
+            )
+            assertEquals(
+                listOf("-Wl,-z,relro"),
+                DistributionContractReader.linuxLinkerHardeningFlags(repositoryRoot),
+            )
+            assertEquals(
+                emptyList(),
+                DistributionContractReader.macosLinkerHardeningFlags(repositoryRoot),
+            )
+            assertEquals(
+                listOf("/GS"),
+                DistributionContractReader.windowsCompilerHardeningFlags(repositoryRoot),
+            )
+            assertEquals(
+                listOf("/NXCOMPAT"),
+                DistributionContractReader.windowsLinkerHardeningFlags(repositoryRoot),
             )
             assertEquals(
                 DistributionContractReader.BundleTargetContract(
@@ -281,6 +330,7 @@ class DistributionContractReaderTest {
                     "defaultBookCipher": "defaultBookCipher",
                     "sqliteLibraryMode": "sqliteLibraryMode",
                     "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
+                    "sqliteOperatorTrustSystemProperty": "sqliteOperatorTrustSystemProperty",
                     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
                   },
                   "publicDistribution": {
@@ -291,6 +341,14 @@ class DistributionContractReaderTest {
                     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
                     "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
                     "requiredSqliteSourceId": "requiredSqliteSourceId",
+                    "requiredSourcePackageId": "requiredSourcePackageId",
+                    "vendoredReleaseFiles": "vendoredReleaseFiles",
+                    "nativeHardening": "nativeHardening",
+                    "nativeHardeningUnixCompilerFlags": "unixCompilerFlags",
+                    "nativeHardeningLinuxLinkerFlags": "linuxLinkerFlags",
+                    "nativeHardeningMacosLinkerFlags": "macosLinkerFlags",
+                    "nativeHardeningWindowsCompilerFlags": "windowsCompilerFlags",
+                    "nativeHardeningWindowsLinkerFlags": "windowsLinkerFlags",
                     "requiredCompileOptions": "requiredCompileOptions",
                     "forbiddenCompileOptions": "forbiddenCompileOptions",
                     "requiresSecureMemorySupport": "requiresSecureMemorySupport"

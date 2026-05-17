@@ -20,6 +20,16 @@ object DistributionContractReader {
     fun requiredSqliteSourceId(projectRootDirectory: Path): String =
         managedSqliteProperty(projectRootDirectory) { it.requiredSqliteSourceId }
 
+    fun requiredSqliteSourcePackageId(projectRootDirectory: Path): String =
+        managedSqliteProperty(projectRootDirectory) { it.requiredSourcePackageId }
+
+    fun vendoredSqliteReleaseFiles(projectRootDirectory: Path): Map<String, String> =
+        DistributionContractJson.stringMapProperty(
+            projectRootDirectory,
+            DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            loadContractSchema(projectRootDirectory).managedSqlite.vendoredReleaseFiles,
+        )
+
     fun requiredSqliteCompileOptions(projectRootDirectory: Path): List<String> =
         DistributionContractJson.listProperty(
             projectRootDirectory,
@@ -40,6 +50,21 @@ object DistributionContractReader {
             DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
             loadContractSchema(projectRootDirectory).managedSqlite.requiresSecureMemorySupport,
         )
+
+    fun unixCompilerHardeningFlags(projectRootDirectory: Path): List<String> =
+        managedSqliteHardeningList(projectRootDirectory) { it.nativeHardeningUnixCompilerFlags }
+
+    fun linuxLinkerHardeningFlags(projectRootDirectory: Path): List<String> =
+        managedSqliteHardeningList(projectRootDirectory) { it.nativeHardeningLinuxLinkerFlags }
+
+    fun macosLinkerHardeningFlags(projectRootDirectory: Path): List<String> =
+        managedSqliteHardeningList(projectRootDirectory) { it.nativeHardeningMacosLinkerFlags }
+
+    fun windowsCompilerHardeningFlags(projectRootDirectory: Path): List<String> =
+        managedSqliteHardeningList(projectRootDirectory) { it.nativeHardeningWindowsCompilerFlags }
+
+    fun windowsLinkerHardeningFlags(projectRootDirectory: Path): List<String> =
+        managedSqliteHardeningList(projectRootDirectory) { it.nativeHardeningWindowsLinkerFlags }
 
     fun sourceCheckoutRuntimeDistribution(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sourceCheckoutRuntimeDistribution }
@@ -67,6 +92,9 @@ object DistributionContractReader {
 
     fun sqliteLibraryMode(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sqliteLibraryMode }
+
+    fun sqliteOperatorTrustSystemProperty(projectRootDirectory: Path): String =
+        runtimeSurfaceProperty(projectRootDirectory) { it.sqliteOperatorTrustSystemProperty }
 
     fun sqliteBundleHomeSystemProperty(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sqliteBundleHomeSystemProperty }
@@ -148,6 +176,45 @@ object DistributionContractReader {
             key(loadContractSchema(projectRootDirectory).managedSqlite),
         )
 
+    private fun managedSqliteHardeningList(
+        projectRootDirectory: Path,
+        key: (ManagedSqliteSchema) -> String,
+    ): List<String> {
+        val schema = loadContractSchema(projectRootDirectory).managedSqlite
+        val document =
+            DistributionContractJson.loadJson(
+                projectRootDirectory,
+                DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            )
+        val hardening =
+            DistributionContractJson.objectProperty(
+                document,
+                schema.nativeHardening,
+                DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            )
+        val flagsNode = hardening.path(key(schema))
+        if (!flagsNode.isArray) {
+            throw IllegalStateException(
+                "Expected JSON array contract property ${key(schema)} in ${DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH}.",
+            )
+        }
+        val flags = linkedSetOf<String>()
+        flagsNode.forEach { node ->
+            val value = if (node.isString) node.stringValue()?.trim().orEmpty() else ""
+            if (value.isEmpty()) {
+                throw IllegalStateException(
+                    "Expected JSON string elements in contract property ${key(schema)} in ${DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH}.",
+                )
+            }
+            if (!flags.add(value)) {
+                throw IllegalStateException(
+                    "Duplicate contract list element $value in ${key(schema)} from ${DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH}.",
+                )
+            }
+        }
+        return flags.toList()
+    }
+
     private fun operationIdProperty(
         projectRootDirectory: Path,
         key: (OperationIdSchema) -> String,
@@ -178,6 +245,7 @@ object DistributionContractReader {
         val defaultBookCipher: String,
         val sqliteLibraryMode: String,
         val sqliteLibraryEnvironmentVariable: String,
+        val sqliteOperatorTrustSystemProperty: String,
         val sqliteBundleHomeSystemProperty: String,
     )
 
@@ -190,6 +258,14 @@ object DistributionContractReader {
         val requiredMinimumSqliteVersion: String,
         val requiredSqlite3mcVersion: String,
         val requiredSqliteSourceId: String,
+        val requiredSourcePackageId: String,
+        val vendoredReleaseFiles: String,
+        val nativeHardening: String,
+        val nativeHardeningUnixCompilerFlags: String,
+        val nativeHardeningLinuxLinkerFlags: String,
+        val nativeHardeningMacosLinkerFlags: String,
+        val nativeHardeningWindowsCompilerFlags: String,
+        val nativeHardeningWindowsLinkerFlags: String,
         val requiredCompileOptions: String,
         val forbiddenCompileOptions: String,
         val requiresSecureMemorySupport: String,

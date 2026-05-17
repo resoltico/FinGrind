@@ -37,6 +37,32 @@ public final class RejectionNarrative {
       case BookAdministrationRejection.AccountTaxonomyConflict accountTaxonomyConflict ->
           "Account '%s' already exists with a different immutable hierarchy or statement taxonomy."
               .formatted(accountTaxonomyConflict.accountCode().value());
+      case BookAdministrationRejection.ParentAccountMissing rejectionMissing ->
+          "Account '%s' names parent account '%s', but that parent account is not declared in this book."
+              .formatted(
+                  rejectionMissing.accountCode().value(),
+                  rejectionMissing.parentAccountCode().value());
+      case BookAdministrationRejection.ParentAccountInactive rejectionInactive ->
+          "Account '%s' names parent account '%s', but that parent account is inactive."
+              .formatted(
+                  rejectionInactive.accountCode().value(),
+                  rejectionInactive.parentAccountCode().value());
+      case BookAdministrationRejection.ParentAccountTypeConflict rejectionTypeConflict ->
+          "Account '%s' is declared as '%s', but parent account '%s' is '%s'. Parent and child must share one account type."
+              .formatted(
+                  rejectionTypeConflict.accountCode().value(),
+                  rejectionTypeConflict.requestedAccountType().wireValue(),
+                  rejectionTypeConflict.parentAccountCode().value(),
+                  rejectionTypeConflict.parentAccountType().wireValue());
+      case BookAdministrationRejection.ParentAccountTaxonomyConflict rejectionTaxonomyConflict ->
+          "Account '%s' names parent account '%s', but the child and parent do not share one statement-classification family."
+              .formatted(
+                  rejectionTaxonomyConflict.accountCode().value(),
+                  rejectionTaxonomyConflict.parentAccountCode().value());
+      case BookAdministrationRejection.AccountHierarchyCycle rejectionCycle ->
+          "Account '%s' cannot name parent account '%s' because that relationship would create a chart hierarchy cycle."
+              .formatted(
+                  rejectionCycle.accountCode().value(), rejectionCycle.parentAccountCode().value());
       case BookAdministrationRejection.ClosingEquityAccountMissing rejectionMissing ->
           "Closing-equity account '%s' is not declared in this book."
               .formatted(rejectionMissing.accountCode().value());

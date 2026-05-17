@@ -8,9 +8,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Renders write-side CLI results through the shared output channel. */
 final class CliMutationResponseWriter {
@@ -104,7 +106,10 @@ final class CliMutationResponseWriter {
         });
   }
 
-  void writeRekeyBookResult(RekeyBookResult result, OutputMode outputMode) {
+  void writeRekeyBookResult(
+      RekeyBookResult result,
+      BookAccess.PassphraseSource replacementPassphraseSource,
+      OutputMode outputMode) {
     switch (result) {
       case RekeyBookResult.Rekeyed rekeyed ->
           outputMode.run(
@@ -112,9 +117,13 @@ final class CliMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
                           new CliAdministrationJsonModels.RekeyBookPayload(
-                              absolutePath(rekeyed.bookFilePath())))),
+                              absolutePath(rekeyed.bookFilePath()),
+                              replacementPassphraseSourceKind(replacementPassphraseSource),
+                              replacementBookKeyFile(replacementPassphraseSource)))),
               () ->
-                  outputChannel.writeText(CliMutationOutputRenderer.renderRekeyBookHuman(rekeyed)),
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRekeyBookHuman(
+                          rekeyed, replacementPassphraseSource)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.REKEY_BOOK));
@@ -190,5 +199,22 @@ final class CliMutationResponseWriter {
 
   private static String absolutePath(Path path) {
     return path.toAbsolutePath().normalize().toString();
+  }
+
+  private static String replacementPassphraseSourceKind(
+      BookAccess.PassphraseSource replacementPassphraseSource) {
+    return switch (replacementPassphraseSource) {
+      case BookAccess.PassphraseSource.KeyFile _ -> "key-file";
+      case BookAccess.PassphraseSource.StandardInput _ -> "standard-input";
+      case BookAccess.PassphraseSource.InteractivePrompt _ -> "interactive-prompt";
+    };
+  }
+
+  private static @Nullable String replacementBookKeyFile(
+      BookAccess.PassphraseSource replacementPassphraseSource) {
+    if (replacementPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile) {
+      return absolutePath(keyFile.bookKeyFilePath());
+    }
+    return null;
   }
 }

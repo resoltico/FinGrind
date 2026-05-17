@@ -34,6 +34,7 @@ class BundleManifestRendererTest {
                     "defaultBookCipher": "cipher",
                     "sqliteLibraryMode": "libraryMode",
                     "sqliteLibraryEnvironmentVariable": "libraryEnv",
+                    "sqliteOperatorTrustSystemProperty": "operatorTrust",
                     "sqliteBundleHomeSystemProperty": "bundleHome"
                   },
                   "publicDistribution": {
@@ -44,6 +45,14 @@ class BundleManifestRendererTest {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
                     "requiredSqlite3mcVersion": "sqlite3mcVersion",
                     "requiredSqliteSourceId": "sqliteSourceId",
+                    "requiredSourcePackageId": "sourcePackageId",
+                    "vendoredReleaseFiles": "vendoredReleaseFiles",
+                    "nativeHardening": "nativeHardening",
+                    "nativeHardeningUnixCompilerFlags": "unixCompilerFlags",
+                    "nativeHardeningLinuxLinkerFlags": "linuxLinkerFlags",
+                    "nativeHardeningMacosLinkerFlags": "macosLinkerFlags",
+                    "nativeHardeningWindowsCompilerFlags": "windowsCompilerFlags",
+                    "nativeHardeningWindowsLinkerFlags": "windowsLinkerFlags",
                     "requiredCompileOptions": "compileOptions",
                     "forbiddenCompileOptions": "forbiddenCompileOptions",
                     "requiresSecureMemorySupport": "requiresSecureMemorySupport"
@@ -104,6 +113,17 @@ class BundleManifestRendererTest {
                   "minimumSqliteVersion": "3.53.1",
                   "sqlite3mcVersion": "2.3.4",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
+                  "sourcePackageId": "sqlite3mc-amalgamation-test",
+                  "vendoredReleaseFiles": {
+                    "sqlite3mc_amalgamation.c": "sha3-a"
+                  },
+                  "nativeHardening": {
+                    "unixCompilerFlags": ["-fstack-protector-strong"],
+                    "linuxLinkerFlags": ["-Wl,-z,relro"],
+                    "macosLinkerFlags": [],
+                    "windowsCompilerFlags": ["/GS"],
+                    "windowsLinkerFlags": ["/NXCOMPAT"]
+                  },
                   "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"],
                   "forbiddenCompileOptions": ["USE_URI"],
                   "requiresSecureMemorySupport": true

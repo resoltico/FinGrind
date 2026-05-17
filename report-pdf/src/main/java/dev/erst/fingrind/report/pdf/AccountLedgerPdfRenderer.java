@@ -59,20 +59,19 @@ final class AccountLedgerPdfRenderer {
         "Ledger Entries",
         List.of(
             new PdfTableColumn("Effective date", 0.95f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Posting id", 1.0f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Entry", 1.35f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Posting id", 1.35f, PdfTableColumn.CellAlignment.LEFT),
+            new PdfTableColumn("Entry", 1.55f, PdfTableColumn.CellAlignment.LEFT),
             new PdfTableColumn("Debit", 0.8f, PdfTableColumn.CellAlignment.RIGHT),
             new PdfTableColumn("Credit", 0.8f, PdfTableColumn.CellAlignment.RIGHT),
             new PdfTableColumn("Running net", 0.95f, PdfTableColumn.CellAlignment.RIGHT),
             new PdfTableColumn("Side", 0.65f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Counterpart accounts", 1.15f, PdfTableColumn.CellAlignment.LEFT)),
+            new PdfTableColumn("Counterpart accounts", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
         report.entries().stream()
             .map(
                 entry ->
                     List.of(
                         entry.postingFact().journalEntry().effectiveDate().toString(),
-                        PdfValueFormatter.compactOpaqueIdentifier(
-                            entry.postingFact().postingId().value()),
+                        entry.postingFact().postingId().value(),
                         postingEntrySummary(entry.postingFact()),
                         PdfValueFormatter.displayMoney(entry.movement().debitTotal()),
                         PdfValueFormatter.displayMoney(entry.movement().creditTotal()),
@@ -113,10 +112,8 @@ final class AccountLedgerPdfRenderer {
         .reversalReference()
         .map(
             reference ->
-                postingKind
-                    + " / Reversal of "
-                    + PdfValueFormatter.compactOpaqueIdentifier(reference.priorPostingId().value()))
-        .orElse(postingKind + " / Direct");
+                postingKind + " / Reversal posting of " + reference.priorPostingId().value())
+        .orElse(postingKind + " / Direct posting");
   }
 
   private static String counterpartAccounts(

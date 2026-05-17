@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: INDEX
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -109,6 +109,47 @@ route:
 | `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
 | `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
 | `WireValue` | `DOC_01_Core.md` | `WireValue` |
+| `AccountingEntityId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
+| `OrganizationId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
+| `ReportingGroupId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
+| `Counterparty` | `DOC_01_Core.md` | `Counterparty`, `CounterpartyId`, `CounterpartyKind`, And `CounterpartyName` |
+| `CounterpartyId` | `DOC_01_Core.md` | `Counterparty`, `CounterpartyId`, `CounterpartyKind`, And `CounterpartyName` |
+| `CounterpartyKind` | `DOC_01_Core.md` | `Counterparty`, `CounterpartyId`, `CounterpartyKind`, And `CounterpartyName` |
+| `CounterpartyName` | `DOC_01_Core.md` | `Counterparty`, `CounterpartyId`, `CounterpartyKind`, And `CounterpartyName` |
+| `SourceDocument` | `DOC_01_Core.md` | `SourceDocument`, `SourceDocumentId`, `SourceDocumentNumber`, And `SourceDocumentType` |
+| `SourceDocumentId` | `DOC_01_Core.md` | `SourceDocument`, `SourceDocumentId`, `SourceDocumentNumber`, And `SourceDocumentType` |
+| `SourceDocumentNumber` | `DOC_01_Core.md` | `SourceDocument`, `SourceDocumentId`, `SourceDocumentNumber`, And `SourceDocumentType` |
+| `SourceDocumentType` | `DOC_01_Core.md` | `SourceDocument`, `SourceDocumentId`, `SourceDocumentNumber`, And `SourceDocumentType` |
+| `Approval` | `DOC_01_Core.md` | `Approval`, `ApprovalStatus`, And `EvidenceBundle` |
+| `ApprovalStatus` | `DOC_01_Core.md` | `Approval`, `ApprovalStatus`, And `EvidenceBundle` |
+| `EvidenceBundle` | `DOC_01_Core.md` | `Approval`, `ApprovalStatus`, And `EvidenceBundle` |
+| `BusinessEventId` | `DOC_01_Core.md` | `BusinessEventId`, `BusinessEventKind`, And `BusinessEventStatus` |
+| `BusinessEventKind` | `DOC_01_Core.md` | `BusinessEventId`, `BusinessEventKind`, And `BusinessEventStatus` |
+| `BusinessEventStatus` | `DOC_01_Core.md` | `BusinessEventId`, `BusinessEventKind`, And `BusinessEventStatus` |
+| `TaxProfile` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxRegistration` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxRegistrationId` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxFilingFrequency` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxCode` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxCodeDefinition` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxCodeName` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxJurisdictionCode` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxPricingMode` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxRecoverability` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `TaxComponent` | `DOC_01_Core.md` | `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent` |
+| `ExchangeRate` | `DOC_01_Core.md` | `ExchangeRate`, `ExchangeRateEvidence`, `ExchangeRateSourceKind`, And `FunctionalMeasurement` |
+| `ExchangeRateEvidence` | `DOC_01_Core.md` | `ExchangeRate`, `ExchangeRateEvidence`, `ExchangeRateSourceKind`, And `FunctionalMeasurement` |
+| `ExchangeRateSourceKind` | `DOC_01_Core.md` | `ExchangeRate`, `ExchangeRateEvidence`, `ExchangeRateSourceKind`, And `FunctionalMeasurement` |
+| `FunctionalMeasurement` | `DOC_01_Core.md` | `ExchangeRate`, `ExchangeRateEvidence`, `ExchangeRateSourceKind`, And `FunctionalMeasurement` |
+| `InventoryItemId` | `DOC_01_Core.md` | `InventoryItemId`, `InventoryItemName`, And `InventoryQuantity` |
+| `InventoryItemName` | `DOC_01_Core.md` | `InventoryItemId`, `InventoryItemName`, And `InventoryQuantity` |
+| `InventoryQuantity` | `DOC_01_Core.md` | `InventoryItemId`, `InventoryItemName`, And `InventoryQuantity` |
+| `MigrationBatchId` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
+| `PriorPeriodAdjustmentKind` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
+| `CashFlowActivity` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
+| `OtherComprehensiveIncomeClassification` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
+| `DisclosureNoteKind` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
+| `PercentageRate` | `DOC_01_Core.md` | `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate` |
 | `ProtocolCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolCatalog` |
 | `ProtocolOperation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
@@ -177,6 +218,9 @@ route:
 | `ProtocolLedgerPlanFields.Step` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolLedgerPlanFields.Query` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolLedgerPlanFields.Assertion` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolOpenBookFields.TaxProfileFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields.TaxProfileFields`, `ProtocolOpenBookFields.TaxRegistrationFields`, And `ProtocolOpenBookFields.TaxCodeDefinitionFields` |
+| `ProtocolOpenBookFields.TaxRegistrationFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields.TaxProfileFields`, `ProtocolOpenBookFields.TaxRegistrationFields`, And `ProtocolOpenBookFields.TaxCodeDefinitionFields` |
+| `ProtocolOpenBookFields.TaxCodeDefinitionFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields.TaxProfileFields`, `ProtocolOpenBookFields.TaxRegistrationFields`, And `ProtocolOpenBookFields.TaxCodeDefinitionFields` |
 | `ScaffoldPlaceholders` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `MachineContract` | `DOC_02_ProtocolAndDiscovery.md` | `MachineContract` |
 | `ContractDiscovery` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -322,6 +366,24 @@ route:
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookQueryRejection` | `DOC_02_AdministrationAndReports.md` | `BookQueryRejection` |
 | `RejectionNarrative` | `DOC_02_AdministrationAndReports.md` | `RejectionNarrative` |
+| `BusinessEventPage` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `BusinessEventPageCursor` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `BusinessEventRecord` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `GetBusinessEventResult` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `ListBusinessEventsQuery` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `ListBusinessEventsResult` | `DOC_02_AdministrationAndReports.md` | `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult` |
+| `CashFlowQuery` | `DOC_02_AdministrationAndReports.md` | `CashFlowQuery`, `CashFlowLine`, `CashFlowReport`, And `CashFlowResult` |
+| `CashFlowLine` | `DOC_02_AdministrationAndReports.md` | `CashFlowQuery`, `CashFlowLine`, `CashFlowReport`, And `CashFlowResult` |
+| `CashFlowReport` | `DOC_02_AdministrationAndReports.md` | `CashFlowQuery`, `CashFlowLine`, `CashFlowReport`, And `CashFlowResult` |
+| `CashFlowResult` | `DOC_02_AdministrationAndReports.md` | `CashFlowQuery`, `CashFlowLine`, `CashFlowReport`, And `CashFlowResult` |
+| `ComprehensiveIncomeQuery` | `DOC_02_AdministrationAndReports.md` | `ComprehensiveIncomeQuery`, `ComprehensiveIncomeRow`, `ComprehensiveIncomeReport`, And `ComprehensiveIncomeResult` |
+| `ComprehensiveIncomeRow` | `DOC_02_AdministrationAndReports.md` | `ComprehensiveIncomeQuery`, `ComprehensiveIncomeRow`, `ComprehensiveIncomeReport`, And `ComprehensiveIncomeResult` |
+| `ComprehensiveIncomeReport` | `DOC_02_AdministrationAndReports.md` | `ComprehensiveIncomeQuery`, `ComprehensiveIncomeRow`, `ComprehensiveIncomeReport`, And `ComprehensiveIncomeResult` |
+| `ComprehensiveIncomeResult` | `DOC_02_AdministrationAndReports.md` | `ComprehensiveIncomeQuery`, `ComprehensiveIncomeRow`, `ComprehensiveIncomeReport`, And `ComprehensiveIncomeResult` |
+| `DisclosureNote` | `DOC_02_AdministrationAndReports.md` | `DisclosureNote`, `DisclosurePack`, `DisclosurePackQuery`, And `DisclosurePackResult` |
+| `DisclosurePack` | `DOC_02_AdministrationAndReports.md` | `DisclosureNote`, `DisclosurePack`, `DisclosurePackQuery`, And `DisclosurePackResult` |
+| `DisclosurePackQuery` | `DOC_02_AdministrationAndReports.md` | `DisclosureNote`, `DisclosurePack`, `DisclosurePackQuery`, And `DisclosurePackResult` |
+| `DisclosurePackResult` | `DOC_02_AdministrationAndReports.md` | `DisclosureNote`, `DisclosurePack`, `DisclosurePackQuery`, And `DisclosurePackResult` |
 | `PostingLineage` | `DOC_02_PostingAndLedgerPlans.md` | `PostingLineage` |
 | `PostEntryCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryCommand` |
 | `PostEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
@@ -349,6 +411,11 @@ route:
 | `LedgerPlanService` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerPlanService` |
 | `UuidV7PostingIdGenerator` | `DOC_02_PostingAndLedgerPlans.md` | `UuidV7PostingIdGenerator` |
 | `PostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` |
+| `RecordBusinessEventCommand` | `DOC_02_PostingAndLedgerPlans.md` | `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult` |
+| `BusinessEventRequest` | `DOC_02_PostingAndLedgerPlans.md` | `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult` |
+| `BusinessEventRejection` | `DOC_02_PostingAndLedgerPlans.md` | `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult` |
+| `PreflightBusinessEventResult` | `DOC_02_PostingAndLedgerPlans.md` | `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult` |
+| `CommitBusinessEventResult` | `DOC_02_PostingAndLedgerPlans.md` | `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult` |
 | `PostingCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
 | `PostingLineageModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
 | `PostingRequestModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
@@ -423,5 +490,6 @@ route:
 | `SqlitePassphraseIntent` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqlitePassphraseResolver` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `ChartOfAccounts` | `DOC_03_BookSessionsAndAdapters.md` | `ChartOfAccounts` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

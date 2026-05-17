@@ -15,6 +15,7 @@ record RuntimeSurfaceContract(
     BookCipher defaultBookCipher,
     SqliteLibraryMode sqliteLibraryMode,
     String sqliteLibraryEnvironmentVariable,
+    String sqliteOperatorTrustSystemProperty,
     String sqliteBundleHomeSystemProperty) {
   RuntimeSurfaceContract {
     directJavaRuntimeDistribution =
@@ -42,6 +43,9 @@ record RuntimeSurfaceContract(
     sqliteLibraryEnvironmentVariable =
         ContractDescriptorValidation.requireText(
             sqliteLibraryEnvironmentVariable, "sqliteLibraryEnvironmentVariable");
+    sqliteOperatorTrustSystemProperty =
+        ContractDescriptorValidation.requireText(
+            sqliteOperatorTrustSystemProperty, "sqliteOperatorTrustSystemProperty");
     sqliteBundleHomeSystemProperty =
         ContractDescriptorValidation.requireText(
             sqliteBundleHomeSystemProperty, "sqliteBundleHomeSystemProperty");

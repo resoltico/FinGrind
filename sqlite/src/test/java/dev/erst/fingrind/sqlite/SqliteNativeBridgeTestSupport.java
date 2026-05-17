@@ -166,12 +166,7 @@ class SqliteNativeBridgeTestSupport {
 
   BookAccess bookAccess(Path bookPath, String keyText) {
     try {
-      Path keyDirectory = tempDirectory.resolve("book-keys");
-      Files.createDirectories(keyDirectory);
-      Path keyPath = keyDirectory.resolve(bookPath.getFileName() + ".key");
-      if (keyPath.getParent() != null) {
-        Files.createDirectories(keyPath.getParent());
-      }
+      Path keyPath = tempDirectory.resolve("book-keys").resolve(bookPath.getFileName() + ".key");
       writeSecureKeyFile(keyPath, keyText);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {

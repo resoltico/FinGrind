@@ -13,8 +13,6 @@ import org.jspecify.annotations.Nullable;
 final class CliHumanDisplay {
   private static final DateTimeFormatter HUMAN_INSTANT_FORMATTER =
       DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
-  private static final int OPAQUE_IDENTIFIER_PREFIX = 12;
-  private static final int OPAQUE_IDENTIFIER_SUFFIX = 6;
 
   private CliHumanDisplay() {}
 
@@ -44,16 +42,6 @@ final class CliHumanDisplay {
   static String dateRange(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
     return lowerDateBoundary(effectiveDateFrom) + " to " + upperDateBoundary(effectiveDateTo);
-  }
-
-  static String compactOpaqueIdentifier(String value) {
-    Objects.requireNonNull(value, "value");
-    if (value.length() <= OPAQUE_IDENTIFIER_PREFIX + OPAQUE_IDENTIFIER_SUFFIX + 3) {
-      return value;
-    }
-    return value.substring(0, OPAQUE_IDENTIFIER_PREFIX)
-        + "..."
-        + value.substring(value.length() - OPAQUE_IDENTIFIER_SUFFIX);
   }
 
   static String wireLabel(String wireValue) {

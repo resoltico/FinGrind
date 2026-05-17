@@ -564,6 +564,110 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void readLedgerPlan_readsRegisteredTaxProfileForOpenBookSteps() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "taxRegistrationStatus": "REGISTERED",
+                        "taxProfile": {
+                          "registrations": [
+                            {
+                              "jurisdictionCode": "LV",
+                              "registrationId": "LV123456789",
+                              "filingFrequency": "MONTHLY"
+                            }
+                          ],
+                          "taxCodeDefinitions": [
+                            {
+                              "taxCode": "VAT21",
+                              "displayName": "Standard VAT",
+                              "jurisdictionCode": "LV",
+                              "rateBasisPoints": 2100,
+                              "pricingMode": "EXCLUSIVE",
+                              "recoverability": "FULLY_RECOVERABLE",
+                              "liabilityAccountCode": "2100",
+                              "receivableAccountCode": "1300"
+                            }
+                          ]
+                        },
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
+
+    LedgerStep.OpenBook openBookStep = (LedgerStep.OpenBook) plan.steps().getFirst();
+    assertEquals(
+        "LV",
+        openBookStep
+            .command()
+            .bookIdentity()
+            .taxProfile()
+            .registrations()
+            .getFirst()
+            .jurisdictionCode()
+            .value());
+    assertEquals(
+        "VAT21",
+        openBookStep
+            .command()
+            .bookIdentity()
+            .taxProfile()
+            .taxCodeDefinitions()
+            .getFirst()
+            .taxCode()
+            .value());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsRegisteredTaxStatusWithoutTaxProfile() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "taxRegistrationStatus": "REGISTERED",
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Registered tax status requires taxProfile details.", exception.getMessage());
+  }
+
+  @Test
   void requiredInt_rejectsMissingField() throws IOException {
     var rootNode =
         CliJsonFieldAccess.requireRootObject(

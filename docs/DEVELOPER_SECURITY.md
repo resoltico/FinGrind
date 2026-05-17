@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -125,9 +125,10 @@ three runtime-provenance values:
 
 Runtime identity rules:
 - publisher-owned managed runtimes (`bundle-managed` and `source-checkout-managed`) are
-  authenticated against one trusted FinGrind managed SQLite digest resource embedded in the
-  sqlite runtime artifact, copied into one private verification snapshot, and also checked against
-  the sibling `.sha256` file beside the extracted library before that verified snapshot is loaded
+  authenticated against one publisher-owned trusted digest sidecar
+  (`<library>.trusted.sha256`) shipped beside the managed library, copied into one private
+  verification snapshot, and also checked against the sibling `.sha256` file beside the extracted
+  library before that verified snapshot is loaded
 - `environment-configured` is an operator-trusted escape hatch: FinGrind requires the selected
   library to match its sibling `.sha256` file for local consistency, copies that pair into one
   private verification snapshot before load, but does not claim publisher-authenticated identity
@@ -148,7 +149,7 @@ Current verification paths:
 - `scripts/verify-environment-configured-sqlite-runtime.sh` proves the Gradle JavaExec path
   reports the canonical direct-Java runtime distribution with `environment-configured` provenance
 - `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
-  developer `java -jar` wrapper both resolve the managed runtime without leaking native-access
+  developer direct-Java wrapper both resolve the managed runtime without leaking native-access
   warnings
 - `scripts/render-managed-sqlite-compiler-flags.py` makes Docker compile the native library from
   the same canonical compile-option contract used elsewhere, and
@@ -208,8 +209,9 @@ Current evidence that this model is implemented:
 - `SqliteAuditEventStreamTest` proves durable bookkeeping audit rows are appended in the same book
   as the protected facts they describe and are rejected for in-place update/delete mutation
 - `SqliteManagedLibraryIdentityTest` proves publisher-owned managed runtimes require the trusted
-  embedded digest contract, while `environment-configured` runtimes require a matching sibling
-  `.sha256` sidecar for local consistency
+  `.trusted.sha256` sidecar plus the sibling `.sha256` sidecar, while
+  `environment-configured` runtimes require only the sibling `.sha256` sidecar for local
+  consistency
 - `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the
   same-book rollback naming contract before one warning is reported
 - `scripts/test-verify-github-release.sh` proves release verification now requires attested

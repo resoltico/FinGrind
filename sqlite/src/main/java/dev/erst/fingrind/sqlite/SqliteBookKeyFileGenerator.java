@@ -31,6 +31,20 @@ public final class SqliteBookKeyFileGenerator {
     void materialize(Path normalizedPath, byte[] encodedPassphrase) throws IOException;
   }
 
+  /** Internal seam for securing the destination parent directory during generator tests. */
+  @FunctionalInterface
+  interface SecureParentDirectoryEnsurer {
+    /** Ensures the normalized destination path resolves under one secure parent directory. */
+    void ensure(Path normalizedPath) throws IOException;
+  }
+
+  /** Internal seam for reserving one empty key-file path during generator tests. */
+  @FunctionalInterface
+  interface EmptyKeyFileCreator {
+    /** Creates one empty key file or returns the shaped rejection for an occupied destination. */
+    ContractDecision<Path> create(Path normalizedPath) throws IOException;
+  }
+
   private SqliteBookKeyFileGenerator() {}
 
   /** Creates one new key file and returns non-secret metadata about the created artifact. */
@@ -66,15 +80,31 @@ public final class SqliteBookKeyFileGenerator {
       Path bookKeyFilePath,
       SecureRandom secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
+    return generateDecision(
+        bookKeyFilePath,
+        secureRandom,
+        generatedKeyFileMaterializer,
+        SqliteBookKeyFileGenerator::ensureParentDirectory,
+        SqliteBookKeyFileGenerator::createFile);
+  }
+
+  static ContractDecision<GeneratedKeyFile> generateDecision(
+      Path bookKeyFilePath,
+      SecureRandom secureRandom,
+      GeneratedKeyFileMaterializer generatedKeyFileMaterializer,
+      SecureParentDirectoryEnsurer secureParentDirectoryEnsurer,
+      EmptyKeyFileCreator emptyKeyFileCreator) {
     Objects.requireNonNull(secureRandom, "secureRandom");
     Objects.requireNonNull(generatedKeyFileMaterializer, "generatedKeyFileMaterializer");
+    Objects.requireNonNull(secureParentDirectoryEnsurer, "secureParentDirectoryEnsurer");
+    Objects.requireNonNull(emptyKeyFileCreator, "emptyKeyFileCreator");
     Path normalizedPath = normalize(bookKeyFilePath);
     SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
     byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
     boolean created = false;
     try {
-      ensureParentDirectory(normalizedPath);
-      ContractDecision<Path> createdFile = createFile(normalizedPath);
+      secureParentDirectoryEnsurer.ensure(normalizedPath);
+      ContractDecision<Path> createdFile = emptyKeyFileCreator.create(normalizedPath);
       switch (createdFile) {
         case ContractDecision.Accepted<Path> _ -> {}
         case ContractDecision.Rejected<Path>(var failure) -> {

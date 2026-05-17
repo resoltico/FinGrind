@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 6;
+pragma user_version = 7;
 
 create table if not exists book_meta (
     key text primary key,
@@ -49,7 +49,6 @@ create table if not exists account (
             'RETAINED_EARNINGS',
             'ACCUMULATED_SURPLUS',
             'RESERVE',
-            'CURRENT_PERIOD_RESULT',
             'OTHER_EQUITY'
         )
     ),
@@ -318,7 +317,7 @@ Columns:
 - `account_type`: `text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'))`
 - `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA'))`
 - `parent_account_code`: `text references account(account_code)`
-- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'OWNER_CAPITAL', 'OWNER_DRAWINGS', 'PARTNER_CAPITAL', 'PARTNER_CURRENT', 'SHARE_CAPITAL', 'RETAINED_EARNINGS', 'ACCUMULATED_SURPLUS', 'RESERVE', 'CURRENT_PERIOD_RESULT', 'OTHER_EQUITY' ) )`
+- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'OWNER_CAPITAL', 'OWNER_DRAWINGS', 'PARTNER_CAPITAL', 'PARTNER_CURRENT', 'SHARE_CAPITAL', 'RETAINED_EARNINGS', 'ACCUMULATED_SURPLUS', 'RESERVE', 'OTHER_EQUITY' ) )`
 - `profit_and_loss_line_classification`: `text check ( profit_and_loss_line_classification is null or profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME', 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) )`
 - `active`: `integer not null check (active in (0, 1))`
 - `declared_at`: `text not null`
@@ -421,7 +420,7 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `6`
+- `user_version`: `7`
 - Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`, `period_close`, `period_close_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.

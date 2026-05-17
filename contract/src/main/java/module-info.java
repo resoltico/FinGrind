@@ -1,7 +1,9 @@
 module dev.erst.fingrind.contract {
   exports dev.erst.fingrind.contract.bookkeeping;
   exports dev.erst.fingrind.contract.discovery;
+  exports dev.erst.fingrind.contract.operations;
   exports dev.erst.fingrind.contract.protocol;
+  exports dev.erst.fingrind.contract.reporting;
   exports dev.erst.fingrind.contract.runtime;
   exports dev.erst.fingrind.contract.workflow;
 

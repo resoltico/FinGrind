@@ -83,6 +83,21 @@ class AccountSemanticsTest {
     assertEquals(
         "Financial-position classification must match the declared accountType.",
         balanceSheetMismatchFailure.getMessage());
+    IllegalArgumentException currentPeriodResultDeclaredAccountFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                AccountSemantics.validate(
+                    AccountType.EQUITY,
+                    AccountRole.ORDINARY,
+                    new AccountTaxonomy(
+                        java.util.Optional.empty(),
+                        java.util.Optional.of(
+                            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT),
+                        java.util.Optional.empty())));
+    assertEquals(
+        "CURRENT_PERIOD_RESULT is reserved for derived statement rows and must not be declared on accounts.",
+        currentPeriodResultDeclaredAccountFailure.getMessage());
     IllegalArgumentException nominalClassificationMissingFailure =
         assertThrows(
             IllegalArgumentException.class,

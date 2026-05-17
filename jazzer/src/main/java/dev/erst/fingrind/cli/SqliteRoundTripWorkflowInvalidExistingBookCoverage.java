@@ -81,9 +81,10 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
   static void exerciseInvalidExistingBookCoverage(PostEntryCommand command, Path invalidRoot)
       throws IOException {
     SqliteCliBookWorkflow workflow = SqliteRoundTripWorkflowResources.sqliteWorkflow();
+    SqliteFuzzAssertions.prepareSecureArtifactDirectory(invalidRoot);
 
     Path directoryBookPath = invalidRoot.resolve("directory-backed-book");
-    Files.createDirectories(directoryBookPath);
+    SqliteFuzzAssertions.prepareSecureArtifactDirectory(directoryBookPath);
     Path directoryKeyPath = invalidRoot.resolve("directory-backed-book.key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(directoryKeyPath);
     BookAccess directoryBookAccess =
@@ -102,7 +103,8 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
         null);
 
     Path plaintextBookPath = invalidRoot.resolve("plaintext-book.sqlite");
-    Files.createDirectories(plaintextBookPath.getParent());
+    SqliteFuzzAssertions.prepareSecureArtifactDirectory(
+        Objects.requireNonNull(plaintextBookPath.getParent(), "plaintextBookPath parent"));
     Files.writeString(plaintextBookPath, "not sqlite", StandardCharsets.UTF_8);
     Path plaintextKeyPath = invalidRoot.resolve("plaintext-book.key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(plaintextKeyPath);

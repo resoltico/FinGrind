@@ -140,20 +140,20 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 dependsOn(ruff)
             }
 
-            val managedSqlitePackageId = requiredGradleProperty("fingrindManagedSqlitePackageId")
-            val managedSqliteSourceSha3 = requiredGradleProperty("fingrindManagedSqliteSourceSha3")
             val repositoryRootDirectory = layout.projectDirectory.asFile.toPath()
+            val managedSqlitePackageId =
+                DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
 
             val managedSqlite =
                 ManagedSqliteProvisioningLogic.register(
                     project = this,
                     repositoryRootDirectory = repositoryRootDirectory,
-                    sourceDirectory = layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId"),
+                    sqliteSourceDirectory = layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId"),
                     sqliteVersionValue =
                         DistributionContractReader.requiredMinimumSqliteVersion(repositoryRootDirectory),
                     sqlite3mcVersionValue =
                         DistributionContractReader.requiredSqlite3mcVersion(repositoryRootDirectory),
-                    sourceSha3 = managedSqliteSourceSha3,
+                    sourcePackageId = managedSqlitePackageId,
                 )
 
             subprojects.forEach { subproject ->
@@ -212,10 +212,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             include("**/*.py")
             exclude("**/__pycache__/**")
         }
-
-    private fun Project.requiredGradleProperty(name: String): String =
-        providers.gradleProperty(name).orNull
-            ?: throw IllegalArgumentException("Missing Gradle property: $name")
 
     private fun defaultPythonExecutable(): String =
         if (System.getProperty("os.name").lowercase().contains("windows")) {

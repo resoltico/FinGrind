@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.OWNER_MODEL,
               ProtocolOptions.REPORTING_OBLIGATION_STATUS,
               ProtocolOptions.TAX_REGISTRATION_STATUS,
+              ProtocolOptions.TAX_PROFILE_FILE,
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
@@ -90,141 +92,219 @@ final class CliLifecycleMutationArguments {
   static CliCommand parseOpenBookCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, OPEN_BOOK_ARGUMENTS);
-    BookEntityName entityName = null;
-    EntityForm entityForm = null;
-    OwnerModel ownerModel = null;
-    ReportingObligationStatus reportingObligationStatus = null;
-    TaxRegistrationStatus taxRegistrationStatus = null;
-    List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
-    CurrencyUnit functionalCurrency = null;
-    FiscalYearStart fiscalYearStart = null;
-    AccountingBasis accountingBasis = null;
-    @Nullable OutputMode outputMode = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (ProtocolOptions.ENTITY_NAME.equals(argument)) {
-        entityName =
-            CliArgumentValueParser.parseBookEntityNameOption(
-                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ENTITY_NAME),
-                ProtocolOptions.ENTITY_NAME);
-        continue;
-      }
-      if (ProtocolOptions.ENTITY_FORM.equals(argument)) {
-        entityForm =
-            CliArgumentValueParser.parseEntityFormOption(
-                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ENTITY_FORM),
-                ProtocolOptions.ENTITY_FORM);
-        continue;
-      }
-      if (ProtocolOptions.OWNER_MODEL.equals(argument)) {
-        ownerModel =
-            CliArgumentValueParser.parseOwnerModelOption(
-                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OWNER_MODEL),
-                ProtocolOptions.OWNER_MODEL);
-        continue;
-      }
-      if (ProtocolOptions.REPORTING_OBLIGATION_STATUS.equals(argument)) {
-        reportingObligationStatus =
-            CliArgumentValueParser.parseReportingObligationStatusOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.REPORTING_OBLIGATION_STATUS),
-                ProtocolOptions.REPORTING_OBLIGATION_STATUS);
-        continue;
-      }
-      if (ProtocolOptions.TAX_REGISTRATION_STATUS.equals(argument)) {
-        taxRegistrationStatus =
-            CliArgumentValueParser.parseTaxRegistrationStatusOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.TAX_REGISTRATION_STATUS),
-                ProtocolOptions.TAX_REGISTRATION_STATUS);
-        continue;
-      }
-      if (ProtocolOptions.BUSINESS_ACTIVITY_TAG.equals(argument)) {
-        businessActivityTags.add(
-            CliArgumentValueParser.parseBusinessActivityTagOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.BUSINESS_ACTIVITY_TAG),
-                ProtocolOptions.BUSINESS_ACTIVITY_TAG));
-        continue;
-      }
-      if (ProtocolOptions.FUNCTIONAL_CURRENCY.equals(argument)) {
-        functionalCurrency =
-            CliArgumentValueParser.parseCurrencyUnitOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.FUNCTIONAL_CURRENCY),
-                ProtocolOptions.FUNCTIONAL_CURRENCY);
-        continue;
-      }
-      if (ProtocolOptions.FISCAL_YEAR_START.equals(argument)) {
-        fiscalYearStart =
-            CliArgumentValueParser.parseFiscalYearStartOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
-                ProtocolOptions.FISCAL_YEAR_START);
-        continue;
-      }
-      if (ProtocolOptions.ACCOUNTING_BASIS.equals(argument)) {
-        accountingBasis =
-            CliArgumentValueParser.parseAccountingBasisOption(
-                CliArgumentValueParser.requireValue(
-                    argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
-                ProtocolOptions.ACCOUNTING_BASIS);
-        continue;
-      }
-      outputMode =
-          CliArgumentValueParser.requireOutputMode(
-              outputMode,
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
-    }
-    if (entityName == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ENTITY_NAME,
-          "A " + ProtocolOptions.ENTITY_NAME + " argument is required.");
-    }
-    if (functionalCurrency == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FUNCTIONAL_CURRENCY,
-          "A " + ProtocolOptions.FUNCTIONAL_CURRENCY + " argument is required.");
-    }
-    if (entityForm == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ENTITY_FORM,
-          "A " + ProtocolOptions.ENTITY_FORM + " argument is required.");
-    }
-    if (fiscalYearStart == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FISCAL_YEAR_START,
-          "A " + ProtocolOptions.FISCAL_YEAR_START + " argument is required.");
-    }
-    if (accountingBasis == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ACCOUNTING_BASIS,
-          "A " + ProtocolOptions.ACCOUNTING_BASIS + " argument is required.");
-    }
-    OwnerModel resolvedOwnerModel = ownerModel == null ? OwnerModel.UNKNOWN : ownerModel;
-    ReportingObligationStatus resolvedReportingObligationStatus =
-        reportingObligationStatus == null
-            ? ReportingObligationStatus.UNSPECIFIED
-            : reportingObligationStatus;
-    TaxRegistrationStatus resolvedTaxRegistrationStatus =
-        taxRegistrationStatus == null ? TaxRegistrationStatus.UNSPECIFIED : taxRegistrationStatus;
+    OpenBookArgumentValues argumentValues =
+        parseOpenBookArgumentValues(parsedArguments.commandArguments());
+    TaxRegistrationStatus resolvedTaxRegistrationStatus = argumentValues.resolvedTaxStatus();
+    TaxProfile taxProfile =
+        resolveOpenBookTaxProfile(
+            parsedArguments.bookAccess(),
+            argumentValues.taxProfileFile,
+            resolvedTaxRegistrationStatus);
     return new OpenBook(
         parsedArguments.bookAccess(),
         new OpenBookCommand(
             new BookIdentity(
                 new EntityProfile(
-                    entityName,
-                    entityForm,
-                    resolvedOwnerModel,
-                    resolvedReportingObligationStatus,
+                    requireOpenBookEntityName(argumentValues.entityName),
+                    requireOpenBookEntityForm(argumentValues.entityForm),
+                    argumentValues.resolvedOwnerModel(),
+                    argumentValues.resolvedReportingObligationStatus(),
                     resolvedTaxRegistrationStatus,
-                    businessActivityTags),
-                functionalCurrency,
-                fiscalYearStart,
-                accountingBasis)),
-        CliArgumentValueParser.resolvedOutputMode(outputMode));
+                    argumentValues.businessActivityTags),
+                requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
+                requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
+                requireOpenBookAccountingBasis(argumentValues.accountingBasis),
+                taxProfile)),
+        CliArgumentValueParser.resolvedOutputMode(argumentValues.outputMode));
+  }
+
+  private static OpenBookArgumentValues parseOpenBookArgumentValues(List<String> commandArguments) {
+    OpenBookArgumentValues argumentValues = new OpenBookArgumentValues();
+    ListIterator<String> argumentIterator = commandArguments.listIterator();
+    while (argumentIterator.hasNext()) {
+      applyOpenBookArgument(argumentValues, argumentIterator.next(), argumentIterator);
+    }
+    return argumentValues;
+  }
+
+  static void applyOpenBookArgument(
+      OpenBookArgumentValues argumentValues,
+      String argument,
+      ListIterator<String> argumentIterator) {
+    switch (argument) {
+      case ProtocolOptions.ENTITY_NAME ->
+          argumentValues.entityName =
+              CliArgumentValueParser.parseBookEntityNameOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.ENTITY_NAME),
+                  ProtocolOptions.ENTITY_NAME);
+      case ProtocolOptions.ENTITY_FORM ->
+          argumentValues.entityForm =
+              CliArgumentValueParser.parseEntityFormOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.ENTITY_FORM),
+                  ProtocolOptions.ENTITY_FORM);
+      case ProtocolOptions.OWNER_MODEL ->
+          argumentValues.ownerModel =
+              CliArgumentValueParser.parseOwnerModelOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.OWNER_MODEL),
+                  ProtocolOptions.OWNER_MODEL);
+      case ProtocolOptions.REPORTING_OBLIGATION_STATUS ->
+          argumentValues.reportingObligationStatus =
+              CliArgumentValueParser.parseReportingObligationStatusOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.REPORTING_OBLIGATION_STATUS),
+                  ProtocolOptions.REPORTING_OBLIGATION_STATUS);
+      case ProtocolOptions.TAX_REGISTRATION_STATUS ->
+          argumentValues.taxRegistrationStatus =
+              CliArgumentValueParser.parseTaxRegistrationStatusOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.TAX_REGISTRATION_STATUS),
+                  ProtocolOptions.TAX_REGISTRATION_STATUS);
+      case ProtocolOptions.BUSINESS_ACTIVITY_TAG ->
+          argumentValues.businessActivityTags.add(
+              CliArgumentValueParser.parseBusinessActivityTagOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.BUSINESS_ACTIVITY_TAG),
+                  ProtocolOptions.BUSINESS_ACTIVITY_TAG));
+      case ProtocolOptions.TAX_PROFILE_FILE ->
+          argumentValues.taxProfileFile =
+              requireOpenBookTaxProfileFile(argumentValues.taxProfileFile, argumentIterator);
+      case ProtocolOptions.FUNCTIONAL_CURRENCY ->
+          argumentValues.functionalCurrency =
+              CliArgumentValueParser.parseCurrencyUnitOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.FUNCTIONAL_CURRENCY),
+                  ProtocolOptions.FUNCTIONAL_CURRENCY);
+      case ProtocolOptions.FISCAL_YEAR_START ->
+          argumentValues.fiscalYearStart =
+              CliArgumentValueParser.parseFiscalYearStartOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
+                  ProtocolOptions.FISCAL_YEAR_START);
+      case ProtocolOptions.ACCOUNTING_BASIS ->
+          argumentValues.accountingBasis =
+              CliArgumentValueParser.parseAccountingBasisOption(
+                  CliArgumentValueParser.requireValue(
+                      argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
+                  ProtocolOptions.ACCOUNTING_BASIS);
+      case ProtocolOptions.OUTPUT ->
+          argumentValues.outputMode =
+              CliArgumentValueParser.requireOutputMode(
+                  argumentValues.outputMode,
+                  CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                  CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+      default ->
+          throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+    }
+  }
+
+  private static Path requireOpenBookTaxProfileFile(
+      @Nullable Path existingTaxProfileFile, ListIterator<String> argumentIterator) {
+    if (existingTaxProfileFile != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.TAX_PROFILE_FILE,
+          "Duplicate argument: " + ProtocolOptions.TAX_PROFILE_FILE);
+    }
+    return CliArgumentValueParser.requirePathOptionValue(
+        argumentIterator, ProtocolOptions.TAX_PROFILE_FILE);
+  }
+
+  private static BookEntityName requireOpenBookEntityName(@Nullable BookEntityName entityName) {
+    if (entityName == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ENTITY_NAME,
+          "A " + ProtocolOptions.ENTITY_NAME + " argument is required.");
+    }
+    return entityName;
+  }
+
+  private static EntityForm requireOpenBookEntityForm(@Nullable EntityForm entityForm) {
+    if (entityForm == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ENTITY_FORM,
+          "A " + ProtocolOptions.ENTITY_FORM + " argument is required.");
+    }
+    return entityForm;
+  }
+
+  private static CurrencyUnit requireOpenBookFunctionalCurrency(
+      @Nullable CurrencyUnit functionalCurrency) {
+    if (functionalCurrency == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FUNCTIONAL_CURRENCY,
+          "A " + ProtocolOptions.FUNCTIONAL_CURRENCY + " argument is required.");
+    }
+    return functionalCurrency;
+  }
+
+  private static FiscalYearStart requireOpenBookFiscalYearStart(
+      @Nullable FiscalYearStart fiscalYearStart) {
+    if (fiscalYearStart == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FISCAL_YEAR_START,
+          "A " + ProtocolOptions.FISCAL_YEAR_START + " argument is required.");
+    }
+    return fiscalYearStart;
+  }
+
+  private static AccountingBasis requireOpenBookAccountingBasis(
+      @Nullable AccountingBasis accountingBasis) {
+    if (accountingBasis == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ACCOUNTING_BASIS,
+          "A " + ProtocolOptions.ACCOUNTING_BASIS + " argument is required.");
+    }
+    return accountingBasis;
+  }
+
+  private static TaxProfile resolveOpenBookTaxProfile(
+      BookAccess bookAccess,
+      @Nullable Path taxProfileFile,
+      TaxRegistrationStatus resolvedTaxRegistrationStatus) {
+    if (taxProfileFile == null) {
+      if (resolvedTaxRegistrationStatus == TaxRegistrationStatus.REGISTERED) {
+        throw CliArgumentValueParser.invalid(
+            ProtocolOptions.TAX_REGISTRATION_STATUS,
+            "Registered tax status requires " + ProtocolOptions.TAX_PROFILE_FILE + " <path>.");
+      }
+      return TaxProfile.empty();
+    }
+    CliBookPathValidator.validateDistinctPaths(
+        bookAccess.bookFilePath(), bookAccess.passphraseSource(), taxProfileFile);
+    return CliTaxProfileParser.readTaxProfileFile(taxProfileFile, resolvedTaxRegistrationStatus);
+  }
+
+  /** Accumulates one parsed open-book argument set before required-field resolution runs. */
+  static final class OpenBookArgumentValues {
+    private final List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
+    private @Nullable BookEntityName entityName;
+    private @Nullable EntityForm entityForm;
+    private @Nullable OwnerModel ownerModel;
+    private @Nullable ReportingObligationStatus reportingObligationStatus;
+    private @Nullable TaxRegistrationStatus taxRegistrationStatus;
+    private @Nullable Path taxProfileFile;
+    private @Nullable CurrencyUnit functionalCurrency;
+    private @Nullable FiscalYearStart fiscalYearStart;
+    private @Nullable AccountingBasis accountingBasis;
+    private @Nullable OutputMode outputMode;
+
+    private OwnerModel resolvedOwnerModel() {
+      return ownerModel == null ? OwnerModel.UNKNOWN : ownerModel;
+    }
+
+    private ReportingObligationStatus resolvedReportingObligationStatus() {
+      return reportingObligationStatus == null
+          ? ReportingObligationStatus.UNSPECIFIED
+          : reportingObligationStatus;
+    }
+
+    private TaxRegistrationStatus resolvedTaxStatus() {
+      return taxRegistrationStatus == null
+          ? TaxRegistrationStatus.UNSPECIFIED
+          : taxRegistrationStatus;
+    }
   }
 
   static CliCommand parseRekeyBookCommand(List<String> arguments) {

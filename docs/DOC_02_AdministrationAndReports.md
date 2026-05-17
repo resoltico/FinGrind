@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
@@ -550,3 +550,73 @@ public final class RejectionNarrative
 
 - Purpose: prevent CLI rendering and other public rejection surfaces from leaking Java class names
   as rejection text
+
+## `BusinessEventPage`, `BusinessEventPageCursor`, `BusinessEventRecord`, `GetBusinessEventResult`, `ListBusinessEventsQuery`, And `ListBusinessEventsResult`
+
+These public types expose typed business-event readback and pagination above the raw posting
+history surface.
+
+```java
+public record BusinessEventPage(...)
+public record BusinessEventPageCursor(String value)
+public record BusinessEventRecord(...)
+public sealed interface GetBusinessEventResult
+public record ListBusinessEventsQuery(...)
+public sealed interface ListBusinessEventsResult
+```
+
+- Purpose: let operators and agents query typed business events without flattening them back into
+  journal-entry history alone
+- Boundary: these remain public contract shapes; the executor keeps the underlying read model local
+- Pagination: `BusinessEventPageCursor` is the opaque page token for the stable business-event
+  listing surface
+
+## `CashFlowQuery`, `CashFlowLine`, `CashFlowReport`, And `CashFlowResult`
+
+These public types define the first-class cash-flow reporting surface.
+
+```java
+public record CashFlowQuery(ReportingPeriod reportingPeriod)
+public record CashFlowLine(...)
+public record CashFlowReport(...)
+public sealed interface CashFlowResult
+```
+
+- Purpose: keep cash-flow question, report rows, computed report, and deterministic rejection
+  result structural instead of burying them inside renderer-local projections
+- Result shape: `CashFlowResult` distinguishes computed reports from deterministic query refusals
+
+## `ComprehensiveIncomeQuery`, `ComprehensiveIncomeRow`, `ComprehensiveIncomeReport`, And `ComprehensiveIncomeResult`
+
+These public types define the comprehensive-income reporting surface above ordinary profit or loss.
+
+```java
+public record ComprehensiveIncomeQuery(ReportingPeriod reportingPeriod)
+public record ComprehensiveIncomeRow(...)
+public record ComprehensiveIncomeReport(...)
+public sealed interface ComprehensiveIncomeResult
+```
+
+- Purpose: keep profit-or-loss and OCI presentation structural instead of treating comprehensive
+  income as a renderer-local extension
+- Result shape: `ComprehensiveIncomeResult` distinguishes computed reports from deterministic
+  query refusals
+
+## `DisclosureNote`, `DisclosurePack`, `DisclosurePackQuery`, And `DisclosurePackResult`
+
+These public types define the externalized disclosure-pack reporting surface.
+
+```java
+public record DisclosureNote(...)
+public record DisclosurePack(...)
+public record DisclosurePackQuery(ReportingPeriod reportingPeriod)
+public sealed interface DisclosurePackResult
+```
+
+- Purpose: keep disclosure-note content, pack identity, query shape, and rejection surface typed
+  instead of leaving disclosures as undocumented side artifacts
+- Note taxonomy: each `DisclosureNote` carries one core-owned `DisclosureNoteKind`, so basis of
+  preparation, accounting-policy, tax-position, FX, and related note categories stay explicit at
+  the report boundary
+- Result shape: `DisclosurePackResult` distinguishes computed disclosure packs from deterministic
+  query refusals

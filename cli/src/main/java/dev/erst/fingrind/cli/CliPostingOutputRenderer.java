@@ -13,44 +13,30 @@ final class CliPostingOutputRenderer {
 
   static String renderPostingHuman(BookIdentity bookIdentity, PostingFact postingFact) {
     List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.rows(bookIdentity));
-    header.add(
-        List.of(
-            "Posting id",
-            CliHumanDisplay.compactOpaqueIdentifier(postingFact.postingId().value())));
+    header.add(List.of("Posting id", postingFact.postingId().value()));
     header.add(
         List.of(
             "Posting kind", CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())));
     header.add(
-        List.of(
-            "Reversal state", postingFact.reversalReference().isPresent() ? "Reversal" : "Direct"));
+        List.of("Posting role", CliQueryOutputFormatter.displayPostingRoleHuman(postingFact)));
     header.add(List.of("Effective date", postingFact.journalEntry().effectiveDate().toString()));
     header.add(
         List.of("Recorded at", CliHumanDisplay.instant(postingFact.provenance().recordedAt())));
-    header.add(
-        List.of(
-            "Actor id",
-            CliHumanDisplay.compactOpaqueIdentifier(
-                postingFact.provenance().requestProvenance().actorId().value())));
+    header.add(List.of("Actor id", postingFact.provenance().requestProvenance().actorId().value()));
     header.add(
         List.of(
             "Actor type",
             displayWireLabel(
                 postingFact.provenance().requestProvenance().actorType().wireValue())));
     header.add(
-        List.of(
-            "Command id",
-            CliHumanDisplay.compactOpaqueIdentifier(
-                postingFact.provenance().requestProvenance().commandId().value())));
+        List.of("Command id", postingFact.provenance().requestProvenance().commandId().value()));
     header.add(
         List.of(
             "Idempotency key",
-            CliHumanDisplay.compactOpaqueIdentifier(
-                postingFact.provenance().requestProvenance().idempotencyKey().value())));
+            postingFact.provenance().requestProvenance().idempotencyKey().value()));
     header.add(
         List.of(
-            "Causation id",
-            CliHumanDisplay.compactOpaqueIdentifier(
-                postingFact.provenance().requestProvenance().causationId().value())));
+            "Causation id", postingFact.provenance().requestProvenance().causationId().value()));
     header.add(
         List.of(
             "Correlation id",
@@ -58,21 +44,14 @@ final class CliPostingOutputRenderer {
                 .provenance()
                 .requestProvenance()
                 .correlationId()
-                .map(value -> CliHumanDisplay.compactOpaqueIdentifier(value.value()))
+                .map(dev.erst.fingrind.core.CorrelationId::value)
                 .orElse("(none)")));
     header.add(
         List.of(
             "Source channel",
             displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
     header.add(
-        List.of(
-            "Reversal target",
-            postingFact
-                .reversalReference()
-                .map(
-                    reference ->
-                        CliHumanDisplay.compactOpaqueIdentifier(reference.priorPostingId().value()))
-                .orElse("(direct)")));
+        List.of("Reverses posting", CliQueryOutputFormatter.reversalTargetHuman(postingFact)));
     header.add(
         List.of(
             "Reversal reason",
@@ -127,12 +106,12 @@ final class CliPostingOutputRenderer {
                 "Recorded at",
                 "Posting id",
                 "Posting kind",
-                "Reversal state",
+                "Posting role",
                 "Currency",
                 "Debit total",
                 "Credit total",
                 "Accounts",
-                "Reversal target"),
+                "Reverses posting"),
             page.postings().stream().map(CliQueryOutputFormatter::postingRegisterHumanRow).toList(),
             5,
             6);

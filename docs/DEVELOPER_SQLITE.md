@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.38.0"
+version: "0.39.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-16"
+updated: "2026-05-17"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,7 +44,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `4`, owned by `BookFormatContract`
+- the current supported book format is `7`, owned by `BookFormatContract`
 - FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - legacy plaintext books and other encryption variants are out of scope for the current
@@ -110,9 +110,10 @@ License and attribution stance:
 - root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
   image all build from the vendored official SQLite3 Multiple Ciphers 2.3.4 amalgamation under
   [third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001)
-- [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned
-  LF-normalized `sqlite3mc_amalgamation.c` SHA3-256 before the managed native library is used, so
-  Git checkout line-ending policy cannot create false integrity failures across machines or CI
+- [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned vendored SQLite3MC release
+  manifest, including the amalgamation and companion headers, with LF-normalized digests before the
+  managed native library is used, so Git checkout line-ending policy cannot create false integrity
+  failures across machines or CI and header drift cannot evade provenance checks
 - [`managed-sqlite-contract.json`](../contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json)
   is the canonical owner for the managed SQLite version, source-id, required compile options,
   forbidden compile options, and secure-memory requirement; build logic, runtime discovery, bundle
@@ -127,14 +128,18 @@ License and attribution stance:
   handwritten `SQLITE_*` defines
 - the Docker image verifies the vendored SQLite3MC source hash before compile, mirroring the
   managed-source integrity contract used in Gradle
+- the Docker image also launches through `fingrind.bundle.home` and resolves the packaged native
+  library from `/opt/fingrind/lib/native/`, so the container uses the same publisher-managed
+  runtime provenance family as the extracted bundle instead of the operator override path
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
 - generated source-checkout launchers are managed-only as well: after
   `./gradlew :cli:installShadowDist prepareManagedSqlite`, the launcher resolves the managed
   SQLite library from that prepared checkout automatically
-- standalone `java -jar` execution remains developer-only, but when it runs from a prepared
-  checkout it resolves the same managed SQLite library automatically and reads the native-access
-  permission from the JAR manifest
+- the developer direct-Java wrappers (`./scripts/direct-java-cli.sh` and
+  `.\scripts\direct-java-cli.ps1`) are the supported non-bundle Java entrypoints; they resolve
+  the same managed SQLite library automatically from a prepared checkout and grant native access
+  only to the `fingrind` module
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first. When the resulting
@@ -256,6 +261,10 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
+- publisher-owned managed runtimes verify the exact loaded native library against the publisher
+  `.trusted.sha256` sidecar and the local-consistency `.sha256` sidecar, while
+  `environment-configured` runtimes require explicit operator trust plus the sibling `.sha256`
+  sidecar only
 - runtime probes distinguish bundle-managed, source-checkout-managed, and
   environment-configured library provenance and
   report `environment.sqlite.requiredCompileOptions`,
@@ -268,7 +277,7 @@ The SQLite adapter is split into focused collaborators:
   `environment.sqlite.runtime.status`,
   `environment.sqlite.runtime.runtimeProvenance`,
   `environment.sqlite.runtime.runtimeTrustBasis`,
-  `environment.sqlite.runtime.loadedLibraryPath`,
+  `environment.sqlite.runtime.loadedLibraryPath` as a redacted public path hint,
   `environment.sqlite.runtime.loadedSqliteVersion`,
   `environment.sqlite.runtime.loadedSqlite3mcVersion`,
   `environment.sqlite.runtime.loadedSqliteSourceId`,
@@ -394,12 +403,12 @@ Reasons for the current design:
   code into FinGrind itself
 
 Managed runtime targets currently build SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 from the
-vendored amalgamation on macOS and Linux. The public bundle launcher starts its private runtime
-with `--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with
-the same native-access flag, generated source-checkout launchers plus the developer raw JAR inherit
-that contract automatically from the prepared checkout build, and controlled surfaces resolve the
-managed library through `fingrind.bundle.home`, source-checkout discovery, or
-`FINGRIND_SQLITE_LIBRARY` as the explicit escape hatch.
+vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint, generated
+source-checkout launcher, and developer direct-Java wrappers all grant native access only to the
+`fingrind` module. Gradle `Test` and `JavaExec` tasks keep their classpath-era native-access flag
+because those developer tasks execute in the unnamed module rather than through the published
+automatic module. Controlled surfaces resolve the managed library through `fingrind.bundle.home`,
+source-checkout discovery, or `FINGRIND_SQLITE_LIBRARY` as the explicit escape hatch.
 
 Distribution note:
 - public bundle archives and the public container image both package a private `jlink` runtime so
@@ -411,7 +420,8 @@ Native bridge notes:
   intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
   session
 - native library lookup has no platform-default fallback; it uses extracted bundle home for the
-  public launcher, prepared-checkout discovery for generated launchers and developer raw JARs, and
+  public launcher, prepared-checkout discovery for generated launchers and developer direct-Java
+  wrappers, and
   `FINGRIND_SQLITE_LIBRARY` only as the explicit direct-Java override
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
@@ -431,9 +441,8 @@ Native bridge notes:
   diagnostics do not dereference invalid database handles just to render an exception message
 - `sqlite3_exec` failure reporting prefers the exec-owned error buffer when SQLite provides one,
   then falls back to `sqlite3_errstr(resultCode)`
-- the runtime installs a JVM shutdown hook that attempts `sqlite3_shutdown()` after ordinary
-  session-close paths have already released active handles, matching SQLite3MC's shutdown
-  guidance for auto-extension and VFS cleanup
+- ordinary session-close paths attempt `sqlite3_shutdown()` once the process-scoped active-handle
+  count returns to zero; FinGrind does not rely on a JVM shutdown hook for that cleanup path
 
 This is a deliberate architectural correction to the earlier shell-out design, not an accidental
 runtime experiment.
