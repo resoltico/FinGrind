@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the Windows managed-SQLite verification snapshot hardening seam so owner-only ACLs now
+  keep the copied `sqlite3.dll` executable by that owner, preventing Windows native-runtime loads
+  from failing after snapshot verification.
+- Split the `Windows bundle smoke` CI job's root-gate and build-logic verification into separate
+  fail-fast steps, and tightened the release-surface regression so one failed Windows Gradle run
+  cannot be masked by later PowerShell steps in the same job.
 - Refined the field-tested operator and AI-agent CLI surface again: posting-ledger and statement
   views now keep full posting identities in human and PDF outputs, derived statement rows no
   longer expose internal synthetic line codes, reversal wording now names posting lineage

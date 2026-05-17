@@ -470,6 +470,12 @@ class SqliteManagedLibraryIdentityTest {
               .getFirst()
               .permissions()
               .contains(AclEntryPermission.READ_DATA));
+      assertTrue(
+          Objects.requireNonNull(libraryPath.aclView)
+              .getAcl()
+              .getFirst()
+              .permissions()
+              .contains(AclEntryPermission.EXECUTE));
     }
   }
 

@@ -107,11 +107,13 @@ jobs:
         shell: pwsh
         run: python -m pip install --user -r requirements-python-tools.txt
 
-      - name: Run root quality gates and included build-logic tests on Windows
+      - name: Run root quality gates on Windows
         shell: pwsh
-        run: |
-          .\gradlew.bat check --no-daemon --console=plain
-          .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
+        run: .\gradlew.bat check --no-daemon --console=plain
+
+      - name: Run included build-logic tests on Windows
+        shell: pwsh
+        run: .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
       - name: Verify environment-configured SQLite CLI runtime on Windows
         shell: pwsh

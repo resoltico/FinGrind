@@ -57,6 +57,7 @@ final class SqliteManagedLibraryIdentity {
           AclEntryPermission.READ_DATA,
           AclEntryPermission.WRITE_DATA,
           AclEntryPermission.APPEND_DATA,
+          AclEntryPermission.EXECUTE,
           AclEntryPermission.READ_NAMED_ATTRS,
           AclEntryPermission.WRITE_NAMED_ATTRS,
           AclEntryPermission.READ_ATTRIBUTES,
