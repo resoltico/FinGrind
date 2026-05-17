@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   POSIX-only path assumption, the interactive-console prompt bridge no longer loses coverage on
   hosted Windows when the Unix-only PTY probe is unavailable, and stale-handle period-close
   coverage no longer leaks one live initialized database handle during cleanup on Windows.
+- Replaced the last host-bound SQLite coverage assumptions with host-independent filesystem-fixture
+  proofs: rollback-artifact scan failures and managed-library private-snapshot permission paths
+  now execute through deterministic fixture seams instead of depending on POSIX-only host
+  behavior, so the Windows release gate proves the same SQLite coverage contract as macOS and
+  Linux.
 - Fixed the Windows managed-SQLite verification snapshot hardening seam so owner-only ACLs now
   keep the copied `sqlite3.dll` executable by that owner, preventing Windows native-runtime loads
   from failing after snapshot verification.

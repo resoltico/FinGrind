@@ -144,6 +144,52 @@ class SqliteRekeyRollbackFileTest {
   }
 
   @Test
+  void reportStaleRollbackArtifacts_reportsDirectoryScanFailuresWithoutHostSpecificPermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.failNewDirectoryStreamWith(new java.io.IOException("scan-boom"));
+      AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+
+      AtomicReference<Path> reportedBookPath = new AtomicReference<>();
+      AtomicReference<java.io.IOException> reportedFailure = new AtomicReference<>();
+      assertDoesNotThrow(
+          () ->
+              SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(
+                  bookPath,
+                  (normalizedBookPath, rollbackArtifacts) -> {
+                    throw new AssertionError(
+                        "unexpected stale artifact report for " + normalizedBookPath);
+                  },
+                  (normalizedBookPath, exception) -> {
+                    reportedBookPath.set(normalizedBookPath);
+                    reportedFailure.set(exception);
+                  }));
+
+      assertEquals(bookPath, reportedBookPath.get());
+      assertEquals("scan-boom", NullTestSupport.messageOf(reportedFailure.get()));
+    }
+  }
+
+  @Test
+  void reportStaleRollbackArtifacts_logsDirectoryScanFailuresWithoutThrowing() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.failNewDirectoryStreamWith(new java.io.IOException("scan-boom"));
+      AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+
+      assertDoesNotThrow(() -> SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(bookPath));
+    }
+  }
+
+  @Test
   void reportStaleRollbackArtifacts_logsAndSuppressesDirectoryScanFailures() throws Exception {
     Path lockedDirectory = tempDirectory.resolve("locked");
     Files.createDirectories(lockedDirectory);

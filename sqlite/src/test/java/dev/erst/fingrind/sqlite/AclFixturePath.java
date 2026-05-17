@@ -26,6 +26,7 @@ final class AclFixturePath implements Path {
   Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException newByteChannelFailure;
+  private @Nullable IOException newDirectoryStreamFailure;
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
     this.fileSystem = fileSystem;
@@ -49,6 +50,15 @@ final class AclFixturePath implements Path {
 
   @Nullable IOException newByteChannelFailure() {
     return newByteChannelFailure;
+  }
+
+  AclFixturePath failNewDirectoryStreamWith(IOException exception) {
+    newDirectoryStreamFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException newDirectoryStreamFailure() {
+    return newDirectoryStreamFailure;
   }
 
   @Override

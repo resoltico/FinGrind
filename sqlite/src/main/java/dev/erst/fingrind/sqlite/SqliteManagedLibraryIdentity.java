@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -394,7 +395,11 @@ final class SqliteManagedLibraryIdentity {
   }
 
   private static void registerDeleteOnExit(Path path) {
-    path.toFile().deleteOnExit();
+    try {
+      path.toFile().deleteOnExit();
+    } catch (UnsupportedOperationException | SecurityException ignored) {
+      // Delete-on-exit is best-effort only. The verified snapshot still has explicit cleanup paths.
+    }
   }
 
   private static String capitalize(String text) {
@@ -440,7 +445,22 @@ final class SqliteManagedLibraryIdentity {
         Path sourceLibraryPath,
         Path sourceChecksumPath,
         @Nullable Path sourceTrustedChecksumPath) {
-      Path snapshotDirectory = createPrivateSnapshotDirectory();
+      return copyOf(
+          sourceTarget,
+          sourceLibraryPath,
+          sourceChecksumPath,
+          sourceTrustedChecksumPath,
+          SqliteManagedLibraryIdentity::createPrivateSnapshotDirectory);
+    }
+
+    static VerifiedLibrarySnapshot copyOf(
+        SqliteLibraryTarget sourceTarget,
+        Path sourceLibraryPath,
+        Path sourceChecksumPath,
+        @Nullable Path sourceTrustedChecksumPath,
+        Supplier<Path> snapshotDirectoryFactory) {
+      Path snapshotDirectory =
+          Objects.requireNonNull(snapshotDirectoryFactory, "snapshotDirectoryFactory").get();
       Path snapshotLibraryPath = snapshotDirectory.resolve(sourceLibraryPath.getFileName());
       Path snapshotChecksumPath = snapshotDirectory.resolve(sourceChecksumPath.getFileName());
       @Nullable Path snapshotTrustedChecksumPath =

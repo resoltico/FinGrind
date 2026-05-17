@@ -16,6 +16,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.AclFileAttributeView;
@@ -178,7 +179,12 @@ final class AclFixtureFileSystem extends FileSystem {
 
     @Override
     public DirectoryStream<Path> newDirectoryStream(
-        Path dir, DirectoryStream.Filter<? super Path> filter) {
+        Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+      AclFixturePath testPath = testPath(dir);
+      IOException newDirectoryStreamFailure = testPath.newDirectoryStreamFailure();
+      if (newDirectoryStreamFailure != null) {
+        throw newDirectoryStreamFailure;
+      }
       return new DirectoryStream<>() {
         @Override
         public Iterator<Path> iterator() {
@@ -220,8 +226,23 @@ final class AclFixtureFileSystem extends FileSystem {
     }
 
     @Override
-    public void copy(Path source, Path target, CopyOption... options) {
-      throw new UnsupportedOperationException("copy is not used by this test filesystem");
+    public void copy(Path source, Path target, CopyOption... options) throws IOException {
+      AclFixturePath sourcePath = testPath(source);
+      if (!sourcePath.exists) {
+        throw new NoSuchFileException(source.toString());
+      }
+      AclFixturePath targetPath = testPath(target);
+      boolean replaceExisting =
+          java.util.Arrays.stream(options)
+              .anyMatch(option -> option == StandardCopyOption.REPLACE_EXISTING);
+      if (targetPath.exists && !replaceExisting) {
+        throw new FileAlreadyExistsException(target.toString());
+      }
+      targetPath.exists = true;
+      targetPath.regularFile = sourcePath.regularFile;
+      targetPath.posixPermissions = sourcePath.posixPermissions;
+      targetPath.aclView = sourcePath.aclView;
+      targetPath.overrideAclView = sourcePath.overrideAclView;
     }
 
     @Override

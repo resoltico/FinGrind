@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Objects;
@@ -341,6 +343,26 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   @Test
+  void createPrivateSnapshotDirectory_supportsPosixOwnerOnlyCreation() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath tempRoot = fileSystem.path("\\tmp");
+      tempRoot.exists = true;
+      tempRoot.regularFile = false;
+
+      Path snapshotDirectory =
+          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, true);
+
+      assertTrue(Files.isDirectory(snapshotDirectory));
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          ((AclFixturePath) snapshotDirectory).posixPermissions);
+    }
+  }
+
+  @Test
   void verifiedSnapshot_recordRejectsSnapshotPathsOutsideSnapshotDirectory() throws Exception {
     Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("snapshot"));
     Path outsideLibraryPath = tempDirectory.resolve("outside-library.dylib");
@@ -449,6 +471,79 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   @Test
+  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpAfterChecksumCopyFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
+      sourceLibraryPath.exists = true;
+      sourceLibraryPath.regularFile = true;
+      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
+      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
+      snapshotDirectory.exists = true;
+      snapshotDirectory.regularFile = false;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                          sourceLibraryPath.toString()),
+                      sourceLibraryPath,
+                      sourceChecksumPath,
+                      null,
+                      () -> snapshotDirectory));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to create the private managed SQLite verification snapshot"));
+      assertFalse(snapshotDirectory.exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
+    }
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpTrustedArtifactsOnFailure() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
+      sourceLibraryPath.exists = true;
+      sourceLibraryPath.regularFile = true;
+      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
+      sourceChecksumPath.exists = true;
+      sourceChecksumPath.regularFile = true;
+      AclFixturePath sourceTrustedChecksumPath =
+          fileSystem.path("\\source\\sqlite3.dll.trusted.sha256");
+      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
+      snapshotDirectory.exists = true;
+      snapshotDirectory.regularFile = false;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                          sourceLibraryPath.toString()),
+                      sourceLibraryPath,
+                      sourceChecksumPath,
+                      sourceTrustedChecksumPath,
+                      () -> snapshotDirectory));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to create the private managed SQLite verification snapshot"));
+      assertFalse(snapshotDirectory.exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
+      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.trusted.sha256").exists);
+    }
+  }
+
+  @Test
   void hardenPrivateFile_returnsQuietlyWhenFileStoreMetadataCannotBeResolved() throws Exception {
     Path missingPath = tempDirectory.resolve("missing-parent").resolve("missing.dylib");
 
@@ -482,6 +577,41 @@ class SqliteManagedLibraryIdentityTest {
               .getFirst()
               .permissions()
               .contains(AclEntryPermission.EXECUTE));
+    }
+  }
+
+  @Test
+  void hardenPrivateDirectory_andFile_applyOwnerOnlyPosixPermissions() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath directoryPath = fileSystem.path("\\snapshots");
+      directoryPath.exists = true;
+      directoryPath.regularFile = false;
+      directoryPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ);
+      AclFixturePath libraryPath = fileSystem.path("\\snapshots\\sqlite3.dylib");
+      libraryPath.exists = true;
+      libraryPath.regularFile = true;
+      libraryPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ);
+
+      SqliteManagedLibraryIdentity.hardenPrivateDirectory(directoryPath);
+      SqliteManagedLibraryIdentity.hardenPrivateFile(libraryPath);
+
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          directoryPath.posixPermissions);
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          libraryPath.posixPermissions);
     }
   }
 
