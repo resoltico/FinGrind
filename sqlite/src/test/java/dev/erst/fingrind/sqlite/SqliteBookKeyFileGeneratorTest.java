@@ -19,12 +19,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for {@link SqliteBookKeyFileGenerator}. */
 class SqliteBookKeyFileGeneratorTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void generate_publicFactoryCreatesSecureUtf8KeyFile() throws Exception {

@@ -16,12 +16,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for rollback-copy lifecycle behavior around SQLite rekey attempts. */
 class SqliteRekeyRollbackFileTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void createRestoreAndDeleteQuietly_roundTripOneRollbackCopy() throws java.io.IOException {

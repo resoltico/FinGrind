@@ -18,12 +18,18 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite book-key file loader. */
 class SqliteBookKeyFileTest {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void load_acceptsUtf8PassphraseAndStripsOneTrailingLineEnding() throws Exception {

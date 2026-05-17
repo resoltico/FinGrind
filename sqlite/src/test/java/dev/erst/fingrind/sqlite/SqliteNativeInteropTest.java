@@ -19,6 +19,7 @@ import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,6 +28,11 @@ import org.junit.jupiter.api.io.TempDir;
 class SqliteNativeInteropTest {
   private static final String TEST_BOOK_KEY = "interop-test-book-key";
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void nullHandleCalls_mapToBridgeFailures() {

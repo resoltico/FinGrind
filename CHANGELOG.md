@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Split the `Windows bundle smoke` CI job's root-gate and build-logic verification into separate
   fail-fast steps, and tightened the release-surface regression so one failed Windows Gradle run
   cannot be masked by later PowerShell steps in the same job.
+- Aligned the SQLite test infrastructure with the Windows owner-only filesystem contract: SQLite
+  integration and key-file tests now harden their temporary book and secret directories before
+  use, and ad hoc fixture key directories no longer inherit broader Windows temp-root ACLs that
+  would make release-gate book initialization fail only on hosted Windows runners.
 - Refined the field-tested operator and AI-agent CLI surface again: posting-ledger and statement
   views now keep full posting identities in human and PDF outputs, derived statement rows no
   longer expose internal synthetic line codes, reversal wording now names posting lineage

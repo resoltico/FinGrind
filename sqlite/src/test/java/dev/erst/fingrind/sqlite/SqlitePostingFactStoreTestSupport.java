@@ -10,11 +10,17 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Thin compatibility base that now layers small SQLite fixture and introspection supports. */
 class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupport {
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   void assertOpenConfigurationFailure(String driftSql, String expectedMessage) {
     Path bookPath =

@@ -503,7 +503,8 @@ class SqliteStoreFixtureSupport {
 
   static BookAccess staticBookAccess(Path bookPath) {
     try {
-      Path keyDirectory = Files.createTempDirectory("fingrind-book-key-");
+      Path keyDirectory =
+          SqliteTestPrivateDirectorySupport.createOwnerOnlyTempDirectory("fingrind-book-key-");
       Path keyPath = keyDirectory.resolve("book.key");
       keyDirectory.toFile().deleteOnExit();
       keyPath.toFile().deleteOnExit();
