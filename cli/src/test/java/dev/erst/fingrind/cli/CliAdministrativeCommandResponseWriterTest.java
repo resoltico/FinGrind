@@ -575,8 +575,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   private static void assertPortablePathSuffix(String renderedPath, String expectedSuffix) {
+    String normalizedPath = renderedPath.replace('\\', '/');
     assertTrue(
-        renderedPath.replace('\\', '/').endsWith(expectedSuffix),
-        () -> "Expected path ending " + expectedSuffix + " but was " + renderedPath);
+        normalizedPath.endsWith(expectedSuffix),
+        "Expected path ending " + expectedSuffix + " but was " + renderedPath);
   }
 }
