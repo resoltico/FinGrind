@@ -615,12 +615,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             Path.of("backup/entity.sqlite"),
             Path.of("backup/entity.key")),
         OutputMode.JSON);
-    assertTrue(
-        readJson(output)
-            .path("payload")
-            .path("backupFile")
-            .asText()
-            .endsWith("backup/entity.sqlite"));
+    assertPortablePathSuffix(
+        readJson(output).path("payload").path("backupFile").asText(), "backup/entity.sqlite");
     output.reset();
 
     writer.writeRestoreBookResult(
@@ -629,12 +625,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             Path.of("backup/entity.sqlite"),
             Path.of("backup/entity.key")),
         OutputMode.JSON);
-    assertTrue(
-        readJson(output)
-            .path("payload")
-            .path("backupBookKeyFile")
-            .asText()
-            .endsWith("backup/entity.key"));
+    assertPortablePathSuffix(
+        readJson(output).path("payload").path("backupBookKeyFile").asText(), "backup/entity.key");
     output.reset();
 
     writer.writeRecoverRekeyResult(
@@ -828,5 +820,11 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     assertNotNull(hint);
     assertTrue(hint.contains(expectedHintFragment));
     assertInstanceOf(detailsType, envelope.details());
+  }
+
+  private static void assertPortablePathSuffix(String renderedPath, String expectedSuffix) {
+    assertTrue(
+        renderedPath.replace('\\', '/').endsWith(expectedSuffix),
+        () -> "Expected path ending " + expectedSuffix + " but was " + renderedPath);
   }
 }
