@@ -4,11 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -200,6 +204,101 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(
         List.of(new BookAccess.PassphraseSource.KeyFile(replacementBookKeyFilePath)),
         workflow.rekeyReplacementPassphraseSources());
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
+  void run_routesMaintenanceCommandsThroughSelectedBookWorkflow() {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("maintenance.sqlite");
+    Path currentBookKeyFilePath = writeBookKey(bookFilePath);
+    Path backupFilePath = tempDirectory.resolve("backup").resolve("maintenance.sqlite");
+    Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("maintenance.key");
+    Path rollbackArtifactPath =
+        tempDirectory.resolve("books").resolve("maintenance.rekey-rollback.sqlite");
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(bookFilePath),
+            new DeclareAccountResult.Declared(
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    workflow.setBackupBookResult(
+        new BackupBookResult.BackedUp(bookFilePath, backupFilePath, backupBookKeyFilePath));
+    workflow.setRestoreBookResult(
+        new RestoreBookResult.Restored(bookFilePath, backupFilePath, backupBookKeyFilePath));
+    workflow.setRecoverRekeyResult(
+        new RecoverRekeyResult.Restored(bookFilePath, rollbackArtifactPath));
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "backup-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString(),
+              "--backup-file",
+              backupFilePath.toString(),
+              "--backup-book-key-file",
+              backupBookKeyFilePath.toString()
+            }));
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "restore-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--backup-file",
+              backupFilePath.toString(),
+              "--backup-book-key-file",
+              backupBookKeyFilePath.toString()
+            }));
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "recover-rekey",
+              "--book-file",
+              bookFilePath.toString(),
+              "--recovery-action",
+              "restore",
+              "--rollback-file",
+              rollbackArtifactPath.toString()
+            }));
+
+    assertEquals(
+        List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.backupBookAccesses());
+    assertEquals(List.of(backupFilePath), workflow.backupFilePaths());
+    assertEquals(List.of(backupBookKeyFilePath), workflow.backupBookKeyFilePaths());
+    assertEquals(List.of(bookFilePath), workflow.restoreBookFilePaths());
+    assertEquals(List.of(backupFilePath), workflow.restoreBackupFilePaths());
+    assertEquals(List.of(backupBookKeyFilePath), workflow.restoreBackupBookKeyFilePaths());
+    assertEquals(List.of(bookFilePath), workflow.recoverRekeyBookFilePaths());
+    assertEquals(List.of(RekeyRecoveryAction.RESTORE), workflow.recoverRekeyActions());
+    assertEquals(List.of(rollbackArtifactPath), workflow.recoverRekeyRollbackArtifactPaths());
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
   }
 }

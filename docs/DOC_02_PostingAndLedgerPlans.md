@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -384,26 +384,3 @@ public sealed interface PostingRejection
 - Variants: `BookNotInitialized`, `AccountStateViolations`, `DuplicateIdempotencyKey`,
   `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
 - Purpose: keep validly parsed but inadmissible postings machine-distinguishable
-
-## `RecordBusinessEventCommand`, `BusinessEventRequest`, `BusinessEventRejection`, `PreflightBusinessEventResult`, And `CommitBusinessEventResult`
-
-These public types define the typed business-event write surface above the raw journal-entry
-escape hatch.
-
-```java
-public record RecordBusinessEventCommand(BusinessEventRequest businessEventRequest, RequestProvenance provenance)
-public sealed interface BusinessEventRequest
-public sealed interface BusinessEventRejection
-public sealed interface PreflightBusinessEventResult
-public sealed interface CommitBusinessEventResult
-```
-
-- Purpose: let callers express invoices, receipts, bills, inventory movements, payroll runs,
-  owner draws, tax payments, opening-balance statements, and prior-period adjustments through one
-  typed business-event surface before translation into journals
-- Request shape: `BusinessEventRequest` is the sealed family of event-specific request records,
-  each of which owns its accounting effective date plus evidence, tax, and optional measurement
-  facts
-- Result shape: the preflight and commit result families distinguish accepted, rejected, and
-  unexpected-failure outcomes without collapsing back to a single posting-only response model
-- Boundary: these types stay public; executor keeps the event-to-posting recipe machinery local

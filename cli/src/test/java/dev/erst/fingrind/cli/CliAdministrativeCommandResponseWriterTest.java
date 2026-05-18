@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -14,7 +16,9 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
@@ -49,8 +53,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(openBookHuman.contains("Book Initialized"));
     assertTrue(openBookHuman.contains("Entity"));
     assertTrue(openBookHuman.contains("Acme Studio"));
-    assertTrue(openBookHuman.contains("Entity profile"));
-    assertTrue(openBookHuman.contains("Reporting profile"));
+    assertTrue(openBookHuman.contains("Entity form"));
+    assertTrue(openBookHuman.contains("Owner model"));
+    assertTrue(openBookHuman.contains("Reporting obligation"));
+    assertTrue(openBookHuman.contains("Tax registration"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
     assertTrue(openBookHuman.contains("Accounting basis"));
@@ -116,6 +122,40 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     String human = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(human.contains("Closing postings"));
     assertTrue(human.contains("(none)"));
+    assertTrue(human.contains("No closing movements were required"));
+  }
+
+  @Test
+  void writeClosePeriodResult_omitsEmptyOutcomeWhenClosingMovementsExist() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.HUMAN);
+
+    String human = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(human.contains("Closing postings"));
+    assertFalse(human.contains("No closing movements were required"));
+  }
+
+  @Test
+  void writeClosePeriodResult_omitsEmptyOutcomeWhenPostingIdsExistWithoutClosedTotals() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Closed(
+            new dev.erst.fingrind.contract.bookkeeping.ClosedPeriod(
+                1,
+                new dev.erst.fingrind.core.ReportingPeriod(
+                    LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                new AccountCode("3200"),
+                List.of(),
+                Instant.parse("2026-04-30T12:00:00Z"),
+                List.of(new PostingId("posting-close-1")))),
+        OutputMode.HUMAN);
+
+    String human = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(human.contains("Closing postings"));
+    assertFalse(human.contains("No closing movements were required"));
   }
 
   @Test
@@ -301,6 +341,91 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(
         interactivePromptJson.contains("\"replacementPassphraseSource\":\"interactive-prompt\""));
     assertFalse(interactivePromptJson.contains("\"replacementBookKeyFile\""));
+  }
+
+  @Test
+  void writeMaintenanceResults_supportSuccessEnvelopesAndHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeBackupBookResult(
+        new BackupBookResult.BackedUp(
+            Path.of("books/entity.sqlite"),
+            Path.of("backup/entity.sqlite"),
+            Path.of("backup/entity.key")),
+        OutputMode.HUMAN);
+    String backupHuman = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(backupHuman.contains("Book Backed Up"));
+    assertTrue(backupHuman.contains("Backup file"));
+    assertTrue(backupHuman.contains("entity.sqlite"));
+    outputStream.reset();
+
+    responseWriter.writeRestoreBookResult(
+        new RestoreBookResult.Restored(
+            Path.of("books/entity.sqlite"),
+            Path.of("backup/entity.sqlite"),
+            Path.of("backup/entity.key")),
+        OutputMode.HUMAN);
+    String restoreHuman = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(restoreHuman.contains("Book Restored"));
+    assertTrue(restoreHuman.contains("Book key file"));
+    outputStream.reset();
+
+    responseWriter.writeRecoverRekeyResult(
+        new RecoverRekeyResult.Inspected(
+            Path.of("books/entity.sqlite"),
+            List.of(
+                Path.of("books/entity.rekey-rollback-a.sqlite"),
+                Path.of("books/entity.rekey-rollback-b.sqlite"))),
+        OutputMode.HUMAN);
+    String inspectHuman = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(inspectHuman.contains("Rekey Rollback Artifacts"));
+    assertTrue(inspectHuman.contains("rollback-a"));
+    assertTrue(inspectHuman.contains("rollback-b"));
+    outputStream.reset();
+
+    responseWriter.writeRecoverRekeyResult(
+        new RecoverRekeyResult.Restored(
+            Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")),
+        OutputMode.JSON);
+    String restoreJson = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(restoreJson.contains("\"status\":\"ok\""));
+    assertTrue(restoreJson.contains("\"action\":\"restore\""));
+  }
+
+  @Test
+  void writeMaintenanceRejections_emitStructuredDetails() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeBackupBookResult(
+        new BackupBookResult.Rejected(
+            new BookMaintenanceRejection.BookHasBlockingArtifacts(
+                Path.of("books/entity.sqlite"),
+                List.of(Path.of("books/entity.sqlite-wal"), Path.of("books/entity.sqlite-shm")))),
+        OutputMode.HUMAN);
+    String human = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(human.contains("Rejected"));
+    assertTrue(human.contains("book-has-blocking-artifacts"));
+    assertTrue(human.contains("Blocking artifacts"));
+    outputStream.reset();
+
+    responseWriter.writeRecoverRekeyResult(
+        new RecoverRekeyResult.Rejected(
+            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
+                Path.of("books/entity.sqlite"),
+                List.of(
+                    Path.of("books/entity.rekey-rollback-a.sqlite"),
+                    Path.of("books/entity.rekey-rollback-b.sqlite")))),
+        OutputMode.JSON);
+    String json = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(json.contains("\"status\":\"rejected\""));
+    assertTrue(json.contains("\"code\":\"rollback-artifact-selection-required\""));
+    assertTrue(
+        readJson(outputStream)
+            .path("details")
+            .path("bookFile")
+            .asText()
+            .endsWith("books/entity.sqlite"));
+    assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
   }
 
   @Test

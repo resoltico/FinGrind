@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
@@ -30,7 +31,10 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -449,6 +453,26 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     public ContractDecision<RekeyBookResult> rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw new AssertionError("rekeyBook should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<BackupBookResult> backupBook(
+        BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
+      throw new AssertionError("backupBook should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<RestoreBookResult> restoreBook(
+        Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      throw new AssertionError("restoreBook should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<RecoverRekeyResult> recoverRekey(
+        Path bookFilePath,
+        RekeyRecoveryAction action,
+        @org.jspecify.annotations.Nullable Path rollbackArtifactPath) {
+      throw new AssertionError("recoverRekey should not be called in this test");
     }
 
     @Override

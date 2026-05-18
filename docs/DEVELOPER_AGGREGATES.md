@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -20,6 +20,7 @@ the code paths that are allowed to mutate them.
 
 FinGrind's current immediate-consistency boundaries are:
 - book lifecycle
+- protected-book maintenance
 - account registry
 - posting ledger
 - reversal relation
@@ -36,14 +37,37 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   SQLite, unsupported format, or incomplete FinGrind; commands must not guess.
 - Mutation paths: `open-book`, `rekey-book`, and the internal plan transaction lifecycle.
 - Immediate or derived: immediate.
-- Primary owners:
+- Domain owners:
   - `executor.bookkeeping.BookLifecycleInspection`
+  - `executor.BookAdministrationService`
+  - `contract.runtime.BookFormatContract`
+- Storage participants:
   - `sqlite.SqliteBookStateReader`
   - `sqlite.SqliteStoreMutationOperations`
-  - `contract.runtime.BookFormatContract`
 - Notes: book lifecycle is not inferred from file existence alone. It is proved from
   `application_id`, `user_version`, schema fingerprint, foreign-key integrity, persisted-money
   integrity, and journal integrity.
+
+## Protected-Book Maintenance Boundary
+
+- Invariant: one closed protected book may be exported only as a verified backup pair, restored
+  only from a verified backup pair, and recovered from rekey rollback artifacts only through one
+  explicit maintenance workflow.
+- Mutation paths: `backup-book`, `restore-book`, `recover-rekey`, and `rekey-book` rollback-file
+  creation/cleanup.
+- Immediate or derived: immediate.
+- Domain owners:
+  - `contract.bookkeeping.BackupBookResult`
+  - `contract.bookkeeping.RestoreBookResult`
+  - `contract.bookkeeping.RecoverRekeyResult`
+  - `contract.bookkeeping.RekeyRecoveryAction`
+- Storage participants:
+  - `sqlite.SqliteBookBackupService`
+  - `sqlite.SqliteBookRestoreService`
+  - `sqlite.SqliteRekeyRecoveryService`
+  - `sqlite.SqliteRekeyRollbackFile`
+- Notes: maintenance workflows are book-file operations, not bookkeeping mutations. They keep
+  backup, restore, and rekey-recovery state explicit without inventing a second bookkeeping model.
 
 ## Account Registry Boundary
 
@@ -54,12 +78,13 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   `accountRole`.
 - Mutation paths: `declare-account` and `declare-account` workflow steps.
 - Immediate or derived: immediate.
-- Primary owners:
+- Domain owners:
   - `core.AccountCodePolicy`
   - `core.AccountType`
   - `executor.bookkeeping.AccountDeclaration`
   - `executor.bookkeeping.RegisteredAccount`
   - `executor.BookAdministrationService`
+- Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
 - Notes: current FinGrind books use explicit parent-child hierarchy and statement taxonomy while
   keeping account-code text opaque and book-local rather than type-carrying numeric ranges.
@@ -72,11 +97,12 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Mutation paths: `post-entry`, `preflight-entry` validation before commit, and workflow posting
   steps inside `execute-plan`.
 - Immediate or derived: immediate for commit acceptance; derived for reports.
-- Primary owners:
+- Domain owners:
   - `core.JournalEntry`
   - `core.Money`, `core.PositiveMoney`, `core.CurrencyBalance`, `core.BalanceMath`
   - `executor.bookkeeping.PostingAcceptancePolicy`
   - `executor.PostingApplicationService`
+- Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
   - `sqlite.SqlitePostingSql`
 - Notes: read/report projections do not own ledger truth. They derive from the committed posting
@@ -88,10 +114,11 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   target posting exactly.
 - Mutation paths: posting commit when `reversal.priorPostingId` is present.
 - Immediate or derived: immediate.
-- Primary owners:
+- Domain owners:
   - `core.ReversalReference`
   - `executor.bookkeeping.PostingAcceptancePolicy`
   - `executor.bookkeeping.PostingLineageModel`
+- Storage participants:
   - `sqlite.SqlitePostingSql`
 - Notes: reversal is additive lineage, not in-place correction.
 
@@ -100,9 +127,10 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Invariant: one committed `idempotencyKey` is single-use inside one selected book.
 - Mutation paths: posting commit only.
 - Immediate or derived: immediate.
-- Primary owners:
+- Domain owners:
   - `core.IdempotencyKey`
   - `executor.bookkeeping.PostingAcceptancePolicy`
+- Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
   - SQLite unique constraint on `posting_fact.idempotency_key`
 - Notes: idempotency is book-local, not global across books.
@@ -114,9 +142,10 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   share one transaction boundary.
 - Mutation paths: `execute-plan`.
 - Immediate or derived: immediate.
-- Primary owners:
+- Domain owners:
   - `executor.workflow.BookWorkflowExecutionService`
   - `executor.spi.AtomicBookStore`
+- Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
 - Notes: workflow journals are returned after the authoritative transactional decision, not as a
   second source of bookkeeping truth.
@@ -128,9 +157,10 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Mutation paths: `open-book`, `declare-account`, `post-entry`, `execute-plan`, and `rekey-book`
   through the bookkeeping/store mutation paths that actually change the book.
 - Immediate or derived: immediate on write, read-only on inspection.
-- Primary owners:
+- Domain owners:
   - `executor.bookkeeping.BookAuditEvent`
   - `executor.bookkeeping.BookAuditEventKind`
+- Storage participants:
   - `sqlite.SqliteAuditEventWriter`
   - `sqlite.SqliteStoreMutationOperations`
   - SQLite `audit_event` append-only triggers

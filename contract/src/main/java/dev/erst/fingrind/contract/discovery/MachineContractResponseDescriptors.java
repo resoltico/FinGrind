@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -65,7 +66,9 @@ final class MachineContractResponseDescriptors {
     return java.util.stream.Stream.concat(
             java.util.stream.Stream.concat(
                 BookAdministrationRejection.descriptors().stream(),
-                BookQueryRejection.descriptors().stream()),
+                java.util.stream.Stream.concat(
+                    BookMaintenanceRejection.descriptors().stream(),
+                    BookQueryRejection.descriptors().stream())),
             PostingRejection.descriptors().stream())
         .toList();
   }

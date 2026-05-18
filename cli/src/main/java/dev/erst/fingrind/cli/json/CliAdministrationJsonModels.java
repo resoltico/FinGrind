@@ -8,46 +8,15 @@ import org.jspecify.annotations.Nullable;
 
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
-
-  record TaxRegistrationPayload(
-      String jurisdictionCode, String registrationId, String filingFrequency) {
-    public TaxRegistrationPayload {
-      jurisdictionCode = requireText(jurisdictionCode, "jurisdictionCode");
-      registrationId = requireText(registrationId, "registrationId");
-      filingFrequency = requireText(filingFrequency, "filingFrequency");
-    }
-  }
-
-  record TaxCodeDefinitionPayload(
-      String taxCode,
-      String displayName,
-      String jurisdictionCode,
-      int rateBasisPoints,
-      String pricingMode,
-      String recoverability,
-      String liabilityAccountCode,
-      @Nullable String receivableAccountCode) {
-    public TaxCodeDefinitionPayload {
-      taxCode = requireText(taxCode, "taxCode");
-      displayName = requireText(displayName, "displayName");
-      jurisdictionCode = requireText(jurisdictionCode, "jurisdictionCode");
-      requireNonNegative(rateBasisPoints, "rateBasisPoints");
-      pricingMode = requireText(pricingMode, "pricingMode");
-      recoverability = requireText(recoverability, "recoverability");
-      liabilityAccountCode = requireText(liabilityAccountCode, "liabilityAccountCode");
-      if (receivableAccountCode != null) {
-        receivableAccountCode = requireText(receivableAccountCode, "receivableAccountCode");
-      }
-    }
-  }
-
-  record TaxProfilePayload(
-      java.util.List<TaxRegistrationPayload> registrations,
-      java.util.List<TaxCodeDefinitionPayload> taxCodeDefinitions) {
-    public TaxProfilePayload {
-      registrations = CliJsonModelValidation.copyList(registrations, "registrations");
-      taxCodeDefinitions =
-          CliJsonModelValidation.copyList(taxCodeDefinitions, "taxCodeDefinitions");
+  record MigrationPolicyPayload(
+      String mode,
+      boolean inPlaceUpgradeSupported,
+      boolean olderFormatsAccepted,
+      boolean newerFormatsAccepted,
+      int supportedBookFormatVersion) {
+    public MigrationPolicyPayload {
+      mode = requireText(mode, "mode");
+      requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
     }
   }
 
@@ -57,7 +26,6 @@ public interface CliAdministrationJsonModels {
       String ownerModel,
       String reportingObligationStatus,
       String taxRegistrationStatus,
-      TaxProfilePayload taxProfile,
       java.util.List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
@@ -69,7 +37,6 @@ public interface CliAdministrationJsonModels {
       reportingObligationStatus =
           requireText(reportingObligationStatus, "reportingObligationStatus");
       taxRegistrationStatus = requireText(taxRegistrationStatus, "taxRegistrationStatus");
-      java.util.Objects.requireNonNull(taxProfile, "taxProfile");
       businessActivityTags =
           CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
@@ -111,6 +78,41 @@ public interface CliAdministrationJsonModels {
     }
   }
 
+  record BackupBookPayload(String bookFile, String backupFile, String backupBookKeyFile)
+      implements CliSuccessPayload {
+    public BackupBookPayload {
+      bookFile = requireText(bookFile, "bookFile");
+      backupFile = requireText(backupFile, "backupFile");
+      backupBookKeyFile = requireText(backupBookKeyFile, "backupBookKeyFile");
+    }
+  }
+
+  record RestoreBookPayload(String bookFile, String backupFile, String backupBookKeyFile)
+      implements CliSuccessPayload {
+    public RestoreBookPayload {
+      bookFile = requireText(bookFile, "bookFile");
+      backupFile = requireText(backupFile, "backupFile");
+      backupBookKeyFile = requireText(backupBookKeyFile, "backupBookKeyFile");
+    }
+  }
+
+  record RecoverRekeyInspectionPayload(String bookFile, java.util.List<String> rollbackArtifacts)
+      implements CliSuccessPayload {
+    public RecoverRekeyInspectionPayload {
+      bookFile = requireText(bookFile, "bookFile");
+      rollbackArtifacts = CliJsonModelValidation.copyList(rollbackArtifacts, "rollbackArtifacts");
+    }
+  }
+
+  record RecoverRekeyMutationPayload(String bookFile, String action, String rollbackArtifact)
+      implements CliSuccessPayload {
+    public RecoverRekeyMutationPayload {
+      bookFile = requireText(bookFile, "bookFile");
+      action = requireText(action, "action");
+      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
+    }
+  }
+
   record ClosedPeriodPayload(
       int closeOrder,
       String effectiveDateFrom,
@@ -136,12 +138,14 @@ public interface CliAdministrationJsonModels {
       String state,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
-      int supportedBookFormatVersion)
+      int supportedBookFormatVersion,
+      MigrationPolicyPayload migrationPolicy)
       implements CliSuccessPayload {
     public MissingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
+      java.util.Objects.requireNonNull(migrationPolicy, "migrationPolicy");
     }
   }
 
@@ -152,13 +156,15 @@ public interface CliAdministrationJsonModels {
       boolean canInitializeWithOpenBook,
       int applicationId,
       int detectedBookFormatVersion,
-      int supportedBookFormatVersion)
+      int supportedBookFormatVersion,
+      MigrationPolicyPayload migrationPolicy)
       implements CliSuccessPayload {
     public ExistingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
       requireNonNegative(detectedBookFormatVersion, "detectedBookFormatVersion");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
+      java.util.Objects.requireNonNull(migrationPolicy, "migrationPolicy");
     }
   }
 
@@ -170,6 +176,7 @@ public interface CliAdministrationJsonModels {
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
+      MigrationPolicyPayload migrationPolicy,
       String initializedAt,
       BookIdentityPayload bookIdentity)
       implements CliSuccessPayload {
@@ -178,6 +185,7 @@ public interface CliAdministrationJsonModels {
       state = requireText(state, "state");
       requireNonNegative(detectedBookFormatVersion, "detectedBookFormatVersion");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
+      java.util.Objects.requireNonNull(migrationPolicy, "migrationPolicy");
       initializedAt = requireText(initializedAt, "initializedAt");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
     }

@@ -25,6 +25,9 @@ final class CliCommandParsingRegistry {
       case GENERATE_BOOK_KEY_FILE -> CliMutationArguments::parseGenerateBookKeyFileCommand;
       case OPEN_BOOK -> CliMutationArguments::parseOpenBookCommand;
       case REKEY_BOOK -> CliMutationArguments::parseRekeyBookCommand;
+      case BACKUP_BOOK -> CliMutationArguments::parseBackupBookCommand;
+      case RESTORE_BOOK -> CliMutationArguments::parseRestoreBookCommand;
+      case RECOVER_REKEY -> CliMutationArguments::parseRecoverRekeyCommand;
       case DECLARE_ACCOUNT -> CliMutationArguments::parseDeclareAccountCommand;
       case CLOSE_PERIOD -> CliMutationArguments::parseClosePeriodCommand;
       case INSPECT_BOOK -> CliReadArguments::parseInspectBookCommand;

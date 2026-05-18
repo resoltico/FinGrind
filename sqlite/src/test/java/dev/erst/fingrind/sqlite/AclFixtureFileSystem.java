@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
@@ -178,6 +179,14 @@ final class AclFixtureFileSystem extends FileSystem {
     }
 
     @Override
+    public FileChannel newFileChannel(
+        Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
+        throws IOException {
+      SeekableByteChannel byteChannel = newByteChannel(path, options, attrs);
+      return new AclFixtureFileChannel((AclFixtureSeekableByteChannel) byteChannel);
+    }
+
+    @Override
     public DirectoryStream<Path> newDirectoryStream(
         Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
       AclFixturePath testPath = testPath(dir);
@@ -246,8 +255,28 @@ final class AclFixtureFileSystem extends FileSystem {
     }
 
     @Override
-    public void move(Path source, Path target, CopyOption... options) {
-      throw new UnsupportedOperationException("move is not used by this test filesystem");
+    public void move(Path source, Path target, CopyOption... options) throws IOException {
+      AclFixturePath sourcePath = testPath(source);
+      IOException moveFailure = sourcePath.moveFailure();
+      if (moveFailure != null) {
+        throw moveFailure;
+      }
+      if (!sourcePath.exists) {
+        throw new NoSuchFileException(source.toString());
+      }
+      AclFixturePath targetPath = testPath(target);
+      boolean replaceExisting =
+          java.util.Arrays.stream(options)
+              .anyMatch(option -> option == StandardCopyOption.REPLACE_EXISTING);
+      if (targetPath.exists && !replaceExisting) {
+        throw new FileAlreadyExistsException(target.toString());
+      }
+      targetPath.exists = true;
+      targetPath.regularFile = sourcePath.regularFile;
+      targetPath.posixPermissions = sourcePath.posixPermissions;
+      targetPath.aclView = sourcePath.aclView;
+      targetPath.overrideAclView = sourcePath.overrideAclView;
+      sourcePath.exists = false;
     }
 
     @Override

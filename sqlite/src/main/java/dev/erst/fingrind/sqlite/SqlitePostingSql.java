@@ -8,21 +8,10 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.util.Collections;
-import java.util.List;
 
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
   static final String INITIALIZED_AT_META_KEY = "initialized_at";
-  static final String BOOK_ENTITY_NAME_META_KEY = "entity_name";
-  static final String BOOK_ENTITY_FORM_META_KEY = "entity_form";
-  static final String BOOK_OWNER_MODEL_META_KEY = "owner_model";
-  static final String BOOK_REPORTING_OBLIGATION_STATUS_META_KEY = "reporting_obligation_status";
-  static final String BOOK_TAX_REGISTRATION_STATUS_META_KEY = "tax_registration_status";
-  static final String BOOK_TAX_PROFILE_META_KEY = "tax_profile_json";
-  static final String BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY = "business_activity_tags";
-  static final String BOOK_FUNCTIONAL_CURRENCY_META_KEY = "functional_currency_code";
-  static final String BOOK_FISCAL_YEAR_START_META_KEY = "fiscal_year_start";
-  static final String BOOK_ACCOUNTING_BASIS_META_KEY = "accounting_basis";
   static final String SCHEMA_FINGERPRINT_META_KEY = "schema_fingerprint_sha256";
 
   static final int COL_POSTING_ID = 0;
@@ -137,49 +126,43 @@ final class SqlitePostingSql {
       limit 1
       """;
 
+  static final String FIND_BOOK_IDENTITY_CORE =
+      """
+      select entity_name, functional_currency_code, fiscal_year_start
+      from book_identity
+      where singleton_id = 1
+      limit 1
+      """;
+
+  static final String FIND_ENTITY_PROFILE =
+      """
+      select
+          entity_form,
+          owner_model,
+          reporting_obligation_status,
+          tax_registration_status,
+          business_activity_tags
+      from entity_profile
+      where singleton_id = 1
+      limit 1
+      """;
+
+  static final String FIND_BOOK_POLICY =
+      """
+      select accounting_basis
+      from book_policy
+      where singleton_id = 1
+      limit 1
+      """;
+
   static final String PRAGMA_INTEGRITY_CHECK = "pragma integrity_check";
   static final String PRAGMA_FOREIGN_KEY_CHECK = "pragma foreign_key_check";
 
-  static final List<String> CANONICAL_SCHEMA_OBJECT_NAMES =
-      List.of(
-          "book_meta",
-          "account",
-          "posting_fact",
-          "journal_line",
-          "period_close",
-          "period_close_posting",
-          "audit_event",
-          "posting_fact_by_prior_posting_id",
-          "posting_fact_by_effective_recorded_posting",
-          "journal_line_by_account_code",
-          "audit_event_by_recorded_at",
-          "period_close_by_effective_date_to",
-          "period_close_posting_by_posting_id",
-          "posting_fact_one_reversal_per_target",
-          "posting_fact_reject_update",
-          "posting_fact_reject_delete",
-          "journal_line_reject_update",
-          "journal_line_reject_delete",
-          "period_close_reject_update",
-          "period_close_reject_delete",
-          "period_close_posting_reject_update",
-          "period_close_posting_reject_delete",
-          "audit_event_reject_update",
-          "audit_event_reject_delete");
-
-  static final int EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT = CANONICAL_SCHEMA_OBJECT_NAMES.size();
+  static final int EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT =
+      SqliteCanonicalSchemaManifest.objectCount();
 
   static final String LOAD_CANONICAL_SCHEMA_OBJECTS =
-      """
-      select type, name, ifnull(sql, '')
-      from sqlite_schema
-      where type in ('table', 'index', 'trigger')
-        and name in (
-            %s
-        )
-      order by type, name
-      """
-          .formatted("'" + String.join("',\n            '", CANONICAL_SCHEMA_OBJECT_NAMES) + "'");
+      SqliteCanonicalSchemaManifest.loadObjectsQuery();
 
   static final String FIND_ACCOUNT_BY_CODE =
       BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
@@ -285,9 +268,20 @@ final class SqlitePostingSql {
       insert into period_close (
           effective_date_from,
           effective_date_to,
+          closing_equity_account_code,
           closed_at
-      ) values (?, ?, ?)
+      ) values (?, ?, ?, ?)
       returning period_close_order
+      """;
+
+  static final String INSERT_PERIOD_CLOSE_TOTAL =
+      """
+      insert into period_close_total (
+          period_close_order,
+          currency_code,
+          debit_total_minor,
+          credit_total_minor
+      ) values (?, ?, ?, ?)
       """;
 
   static final String INSERT_PERIOD_CLOSE_POSTING =
@@ -417,17 +411,46 @@ final class SqlitePostingSql {
       """
       select journal_line.posting_id
       from journal_line
-      join book_meta
-        on book_meta.key = '%s'
-      where journal_line.currency_code <> book_meta.value
+      join book_identity
+        on book_identity.singleton_id = 1
+      where journal_line.currency_code <> book_identity.functional_currency_code
       limit 1
-      """
-          .formatted(BOOK_FUNCTIONAL_CURRENCY_META_KEY);
+      """;
 
   static final String INSERT_BOOK_INITIALIZED_AT =
       """
       insert into book_meta (key, value)
       values (?, ?)
+      """;
+
+  static final String INSERT_BOOK_IDENTITY =
+      """
+      insert into book_identity (
+          singleton_id,
+          entity_name,
+          functional_currency_code,
+          fiscal_year_start
+      ) values (1, ?, ?, ?)
+      """;
+
+  static final String INSERT_ENTITY_PROFILE =
+      """
+      insert into entity_profile (
+          singleton_id,
+          entity_form,
+          owner_model,
+          reporting_obligation_status,
+          tax_registration_status,
+          business_activity_tags
+      ) values (1, ?, ?, ?, ?, ?)
+      """;
+
+  static final String INSERT_BOOK_POLICY =
+      """
+      insert into book_policy (
+          singleton_id,
+          accounting_basis
+      ) values (1, ?)
       """;
 
   static final String UPSERT_ACCOUNT =

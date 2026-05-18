@@ -21,6 +21,12 @@ public enum OperationId implements WireValue {
   OPEN_BOOK,
   /** Rotates the passphrase protecting one book. */
   REKEY_BOOK,
+  /** Exports one closed encrypted-book backup pair. */
+  BACKUP_BOOK,
+  /** Restores one encrypted-book backup pair onto one selected book path. */
+  RESTORE_BOOK,
+  /** Inspects or applies one sibling rekey rollback artifact. */
+  RECOVER_REKEY,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
   /** Closes one contiguous reporting period into the selected closing equity account. */

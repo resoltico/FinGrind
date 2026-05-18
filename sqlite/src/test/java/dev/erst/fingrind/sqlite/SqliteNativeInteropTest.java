@@ -99,7 +99,8 @@ class SqliteNativeInteropTest {
   @Test
   void invalidSqlAndConstraintFailures_mapToSQLiteFailures() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("interop.sqlite")))) {
+        SqliteNativeConnections.openKeyFileAccess(
+            bookAccess(tempDirectory.resolve("interop.sqlite")))) {
       database.executeStatement("create table sample (id integer primary key)");
       try (Arena arena = Arena.ofConfined()) {
         MemorySegment sqlPointer = arena.allocateFrom("select from");
@@ -152,7 +153,8 @@ class SqliteNativeInteropTest {
   @Test
   void executeScript_surfacesTypedSqliteFailureForInvalidSql() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("script-failure.sqlite")))) {
+        SqliteNativeConnections.openKeyFileAccess(
+            bookAccess(tempDirectory.resolve("script-failure.sqlite")))) {
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
@@ -170,7 +172,8 @@ class SqliteNativeInteropTest {
   @Test
   void executeStatement_rejectsRowProducingSql() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
+        SqliteNativeConnections.openKeyFileAccess(
+            bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
       assertEquals(
@@ -181,7 +184,8 @@ class SqliteNativeInteropTest {
   @Test
   void mapper_readsPostingLineageOnlyFromCoupledPriorPostingIdAndReasonColumns() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
+        SqliteNativeConnections.openKeyFileAccess(
+            bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
       try (SqliteNativeStatement missingPrior =
           SqliteNativeStatements.prepare(
               database,
@@ -257,7 +261,7 @@ class SqliteNativeInteropTest {
   @Test
   void committedPosting_mapsToPublishedPostingAtTheBoundary() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(
+        SqliteNativeConnections.openKeyFileAccess(
             bookAccess(tempDirectory.resolve("posting-fact-wrapper.sqlite")))) {
       try (SqliteNativeStatement postingRow =
           SqliteNativeStatements.prepare(
@@ -301,7 +305,8 @@ class SqliteNativeInteropTest {
   @Test
   void databaseAndStatementClose_areIdempotent() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("close.sqlite")))) {
+        SqliteNativeConnections.openKeyFileAccess(
+            bookAccess(tempDirectory.resolve("close.sqlite")))) {
       try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, "select 1")) {
         assertDoesNotThrow(statement::close);
         assertDoesNotThrow(statement::close);

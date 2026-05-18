@@ -65,7 +65,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(7, BookFormatContract.FORMAT_VERSION);
+    assertEquals(8, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(

@@ -25,6 +25,9 @@ class ProtocolContractSchemaKeysTest {
     assertEquals("VERSION", current.operationIds().version());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
     assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());
+    assertEquals("BACKUP_BOOK", current.operationIds().backupBook());
+    assertEquals("RESTORE_BOOK", current.operationIds().restoreBook());
+    assertEquals("RECOVER_REKEY", current.operationIds().recoverRekey());
     assertEquals("CLOSE_PERIOD", current.operationIds().closePeriod());
     assertEquals("LIST_POSTINGS", current.operationIds().listPostings());
     assertEquals("FINANCIAL_POSITION", current.operationIds().financialPosition());

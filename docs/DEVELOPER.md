@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: DEVELOPER
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -108,10 +108,11 @@ report-pdf/   PDF artifact adapter:
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
-              generate-book-key-file, open-book, rekey-book, inspect-book, declare-account,
-              list-accounts, get-posting, list-postings, account-balance, trial-balance,
-              account-ledger, period-summary, execute-plan, preflight-entry, and post-entry,
-              with discovery payloads rendered from contract-owned protocol metadata.
+              generate-book-key-file, open-book, rekey-book, backup-book, restore-book,
+              recover-rekey, inspect-book, declare-account, list-accounts, get-posting,
+              list-postings, account-balance, trial-balance, account-ledger, period-summary,
+              execute-plan, preflight-entry, and post-entry, with discovery payloads rendered
+              from contract-owned protocol metadata.
 ```
 
 The dependency graph is deliberately one-way:
@@ -176,9 +177,15 @@ FinGrind's current public model is:
   taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `4`, owned by `BookFormatContract`
-- FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
-  directly and rejects older book formats explicitly instead of carrying migration code
+- the current supported on-disk format is `8`, owned by `BookFormatContract`
+- `inspect-book` publishes one explicit hard-break migration policy for the active format line:
+  no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
+- FinGrind is in an alpha hard-break phase, so schema evolution advances by replacing the current
+  model and rejecting non-matching book formats instead of carrying compatibility shims
+- maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair,
+  `restore-book` verifies that pair before replacing a live book path and the restored live book
+  then reuses the backup pair's key file, and `recover-rekey` inspects or restores stale
+  same-directory rollback artifacts after interrupted rekey cleanup
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book
@@ -534,8 +541,9 @@ FinGrind deliberately keeps several boundaries sharp:
 - There is no generic database-independence layer.
 - There is one canonical current SQLite schema, with the supported format version owned by
   `BookFormatContract`.
-- Alpha schema evolution is direct replacement plus explicit rejection of older formats; there is
-  no migration executor or legacy-compatibility layer.
+- Alpha schema evolution uses one explicit hard-break migration policy for the active format line:
+  there is no in-place upgrade path and non-matching book formats are rejected rather than routed
+  through legacy-compatibility code.
 - The CLI never bypasses the contract and executor boundary.
 - Caller-supplied request provenance is distinct from committed audit metadata.
 - Deterministic rejections stay separate from malformed requests and runtime failures.

@@ -27,7 +27,7 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
         tempDirectory.resolve(expectedMessage.replace(' ', '-').replace('.', '_') + ".sqlite");
     try (SqliteNativeDatabase database =
         SqliteConnectionConfigurer.configureOpenedDatabase(
-            SqliteNativeConnections.open(bookAccess(bookPath)),
+            SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath)),
             SqliteStoreAccessMode.READ_WRITE_CREATE)) {
       database.executeScript(driftSql + ";");
       IllegalStateException exception =

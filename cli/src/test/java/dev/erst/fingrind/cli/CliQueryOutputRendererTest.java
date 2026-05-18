@@ -46,22 +46,11 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.PercentageRate;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxCode;
-import dev.erst.fingrind.core.TaxCodeDefinition;
-import dev.erst.fingrind.core.TaxCodeName;
-import dev.erst.fingrind.core.TaxFilingFrequency;
-import dev.erst.fingrind.core.TaxJurisdictionCode;
-import dev.erst.fingrind.core.TaxPricingMode;
-import dev.erst.fingrind.core.TaxProfile;
-import dev.erst.fingrind.core.TaxRecoverability;
-import dev.erst.fingrind.core.TaxRegistration;
-import dev.erst.fingrind.core.TaxRegistrationId;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -120,14 +109,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(missingInspection.contains("Can initialize with open-book"));
     assertTrue(missingInspection.contains("Yes"));
     assertTrue(missingInspection.contains("Supported book format version"));
+    assertTrue(missingInspection.contains("Migration policy"));
+    assertTrue(missingInspection.contains("Hard-break line; reject older formats"));
     assertTrue(existingInspection.contains("SQLite applicationId"));
     assertTrue(existingInspection.contains("State"));
     assertTrue(existingInspection.contains("Blank SQLite"));
     assertTrue(initializedInspection.contains("Initialized at"));
     assertTrue(initializedInspection.contains("Entity"));
     assertTrue(initializedInspection.contains("Acme Studio"));
-    assertTrue(initializedInspection.contains("Entity profile"));
-    assertTrue(initializedInspection.contains("Reporting profile"));
+    assertTrue(initializedInspection.contains("Entity form"));
+    assertTrue(initializedInspection.contains("Owner model"));
+    assertTrue(initializedInspection.contains("Reporting obligation"));
+    assertTrue(initializedInspection.contains("Tax registration"));
     assertTrue(initializedInspection.contains("Functional currency"));
     assertTrue(initializedInspection.contains("Fiscal year start"));
     assertTrue(initializedInspection.contains("Accounting basis"));
@@ -166,8 +159,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            TaxProfile.empty());
+            AccountingBasis.ACCRUAL);
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
@@ -176,13 +168,12 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertTrue(inspection.contains("Business activity"));
     assertTrue(inspection.contains("translation,localization, cafe services"));
-    assertTrue(inspection.contains("Tax registrations"));
-    assertTrue(inspection.contains("Tax code definitions"));
-    assertTrue(inspection.contains("(none)"));
+    assertTrue(inspection.contains("Reporting obligation"));
+    assertTrue(inspection.contains("Unspecified"));
   }
 
   @Test
-  void renderBookInspectionHuman_includesTaxProfileSummaries() {
+  void renderBookInspectionHuman_includesRegisteredTaxStatusInReportingProfile() {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(
@@ -194,33 +185,15 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            new TaxProfile(
-                List.of(
-                    new TaxRegistration(
-                        new TaxJurisdictionCode("LV"),
-                        new TaxRegistrationId("LV123456789"),
-                        TaxFilingFrequency.MONTHLY)),
-                List.of(
-                    new TaxCodeDefinition(
-                        new TaxCode("VAT21"),
-                        new TaxCodeName("Standard VAT"),
-                        new TaxJurisdictionCode("LV"),
-                        new PercentageRate(2100),
-                        TaxPricingMode.EXCLUSIVE,
-                        TaxRecoverability.FULLY_RECOVERABLE,
-                        new AccountCode("2100"),
-                        Optional.of(new AccountCode("1300"))))));
+            AccountingBasis.ACCRUAL);
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
             new BookInspection.Initialized(
                 123, 1, 1, Instant.parse("2026-04-07T10:15:30Z"), registeredIdentity));
 
-    assertTrue(inspection.contains("Tax registrations"));
-    assertTrue(inspection.contains("LV / LV123456789 / Monthly"));
-    assertTrue(inspection.contains("Tax code definitions"));
-    assertTrue(inspection.contains("VAT21 / Standard VAT / 21.00% / Exclusive"));
+    assertTrue(inspection.contains("Tax registration"));
+    assertTrue(inspection.contains("Registered"));
   }
 
   @Test
@@ -289,8 +262,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(openBookHuman.contains("Book Initialized"));
     assertTrue(openBookHuman.contains("Entity"));
     assertTrue(openBookHuman.contains("Acme Studio"));
-    assertTrue(openBookHuman.contains("Entity profile"));
-    assertTrue(openBookHuman.contains("Reporting profile"));
+    assertTrue(openBookHuman.contains("Entity form"));
+    assertTrue(openBookHuman.contains("Owner model"));
+    assertTrue(openBookHuman.contains("Reporting obligation"));
+    assertTrue(openBookHuman.contains("Tax registration"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
     assertTrue(openBookHuman.contains("Accounting basis"));

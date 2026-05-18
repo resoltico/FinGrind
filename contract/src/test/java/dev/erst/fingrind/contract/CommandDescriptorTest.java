@@ -24,7 +24,7 @@ class CommandDescriptorTest {
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
-            new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.HUMAN),
+            new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON),
             List.of(),
             "Show help");
     CommandDescriptor fixedEnvelope =
@@ -47,7 +47,7 @@ class CommandDescriptorTest {
             "Print one plan template");
 
     assertEquals(
-        "json, human (via --output; default: human interactive, human redirected)",
+        "json, human (via --output; default: human interactive, json redirected)",
         selectable.stdoutContractSummary());
     assertEquals("json envelope (fixed)", fixedEnvelope.stdoutContractSummary());
     assertEquals("raw json (fixed)", fixedRawJson.stdoutContractSummary());
@@ -105,7 +105,7 @@ class CommandDescriptorTest {
             "Execute one plan");
 
     assertEquals(
-        OutputMode.HUMAN,
+        OutputMode.JSON,
         Objects.requireNonNull(help.selectableOutputDefaults()).redirectedStdout());
     assertEquals(
         OutputMode.JSON,

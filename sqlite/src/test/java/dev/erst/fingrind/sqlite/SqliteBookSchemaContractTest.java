@@ -566,13 +566,20 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
         new SqliteBookStateReader(
             SqliteBookContract.APPLICATION_ID,
             SqliteBookContract.FORMAT_VERSION,
-            "account",
-            "audit_event",
-            "book_meta",
-            "journal_line",
-            "posting_fact");
+            java.util.List.of(
+                SqliteBookContract.BOOK_META_TABLE,
+                SqliteBookContract.BOOK_IDENTITY_TABLE,
+                SqliteBookContract.ENTITY_PROFILE_TABLE,
+                SqliteBookContract.BOOK_POLICY_TABLE,
+                SqliteBookContract.ACCOUNT_TABLE,
+                SqliteBookContract.POSTING_FACT_TABLE,
+                SqliteBookContract.JOURNAL_LINE_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_TOTAL_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_POSTING_TABLE,
+                SqliteBookContract.AUDIT_EVENT_TABLE));
     Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
-    createPartialFinGrindBook(noMetaPath, false, false, false, false, false, false);
+    createPartialFinGrindBook(noMetaPath, false, SqliteBookContract.BOOK_META_TABLE);
     BookStateProbe noMetaProbe =
         withStandaloneDatabaseResult(
             bookAccess(noMetaPath),
@@ -585,22 +592,22 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertFalse(noMetaProbe.hasInitializedMarker());
     assertEquals("INCOMPLETE_FINGRIND", noMetaProbe.bookState());
     Path noAccountPath = tempDirectory.resolve("fgrd-no-account.sqlite");
-    createPartialFinGrindBook(noAccountPath, true, false, true, false, false, false);
+    createPartialFinGrindBook(noAccountPath, true, SqliteBookContract.ACCOUNT_TABLE);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noAccountPath), bookStateReader::hasCanonicalTables));
     Path noAuditEventPath = tempDirectory.resolve("fgrd-no-audit-event.sqlite");
-    createPartialFinGrindBook(noAuditEventPath, true, true, false, false, false, false);
+    createPartialFinGrindBook(noAuditEventPath, true, SqliteBookContract.AUDIT_EVENT_TABLE);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noAuditEventPath), bookStateReader::hasCanonicalTables));
     Path noPostingPath = tempDirectory.resolve("fgrd-no-posting.sqlite");
-    createPartialFinGrindBook(noPostingPath, true, true, true, false, false, false);
+    createPartialFinGrindBook(noPostingPath, true, SqliteBookContract.POSTING_FACT_TABLE);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noPostingPath), bookStateReader::hasCanonicalTables));
     Path noJournalLinePath = tempDirectory.resolve("fgrd-no-journal-line.sqlite");
-    createPartialFinGrindBook(noJournalLinePath, true, true, true, true, false, false);
+    createPartialFinGrindBook(noJournalLinePath, true, SqliteBookContract.JOURNAL_LINE_TABLE);
     BookStateProbe noJournalLineProbe =
         withStandaloneDatabaseResult(
             bookAccess(noJournalLinePath),

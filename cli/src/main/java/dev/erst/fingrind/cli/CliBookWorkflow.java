@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
@@ -26,7 +27,10 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -34,6 +38,8 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import java.nio.file.Path;
+import org.jspecify.annotations.Nullable;
 
 /** Execution seam for routing CLI commands through the selected book adapter. */
 interface CliBookWorkflow {
@@ -43,6 +49,18 @@ interface CliBookWorkflow {
   /** Rotates the passphrase that protects one existing book file. */
   ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource);
+
+  /** Exports one closed encrypted-book backup pair. */
+  ContractDecision<BackupBookResult> backupBook(
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath);
+
+  /** Restores one encrypted-book backup pair onto one selected live book path. */
+  ContractDecision<RestoreBookResult> restoreBook(
+      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath);
+
+  /** Inspects or applies one sibling rekey rollback artifact. */
+  ContractDecision<RecoverRekeyResult> recoverRekey(
+      Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath);
 
   /** Declares or reactivates one account inside the selected book. */
   ContractDecision<DeclareAccountResult> declareAccount(

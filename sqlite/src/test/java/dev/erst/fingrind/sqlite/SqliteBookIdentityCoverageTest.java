@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -13,18 +12,7 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.PercentageRate;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxCode;
-import dev.erst.fingrind.core.TaxCodeDefinition;
-import dev.erst.fingrind.core.TaxCodeName;
-import dev.erst.fingrind.core.TaxFilingFrequency;
-import dev.erst.fingrind.core.TaxJurisdictionCode;
-import dev.erst.fingrind.core.TaxPricingMode;
-import dev.erst.fingrind.core.TaxProfile;
-import dev.erst.fingrind.core.TaxRecoverability;
-import dev.erst.fingrind.core.TaxRegistration;
-import dev.erst.fingrind.core.TaxRegistrationId;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.util.List;
@@ -36,94 +24,90 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void loadBookIdentity_returnsEmptyWithoutEntityName() {
     Path bookPath = tempDirectory.resolve("book-identity-missing-entity.sqlite");
-    initializeBookOnDisk(bookPath);
+    createSchemaOnlyBook(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
-          database.executeStatement(
-              """
-              delete from book_meta
-              where key = 'entity_name'
-              """);
+          insertInitializedAtRow(database);
           assertEquals(Optional.empty(), SqliteStatementQueries.loadBookIdentity(database));
         });
   }
 
   @Test
-  void loadBookIdentity_requiresFunctionalCurrencyAndFiscalYearMetadata() {
-    Path missingFunctionalCurrencyPath =
-        tempDirectory.resolve("book-identity-missing-functional-currency.sqlite");
-    initializeBookOnDisk(missingFunctionalCurrencyPath);
+  void loadBookIdentity_requiresEntityProfileAndBookPolicyRows() {
+    Path missingEntityProfilePath =
+        tempDirectory.resolve("book-identity-missing-entity-profile.sqlite");
+    createSchemaOnlyBook(missingEntityProfilePath);
     withStandaloneDatabase(
-        bookAccess(missingFunctionalCurrencyPath),
+        bookAccess(missingEntityProfilePath),
         database -> {
+          insertInitializedAtRow(database);
           database.executeStatement(
               """
-              delete from book_meta
-              where key = 'functional_currency_code'
+              insert into book_identity (
+                  singleton_id,
+                  entity_name,
+                  functional_currency_code,
+                  fiscal_year_start
+              ) values (1, 'Acme Studio', 'EUR', '01-01')
               """);
           IllegalStateException exception =
               assertThrows(
                   IllegalStateException.class,
                   () -> SqliteStatementQueries.loadBookIdentity(database));
           assertEquals(
-              "Initialized SQLite book is missing functional-currency metadata.",
-              exception.getMessage());
+              "Initialized SQLite book is missing entity profile.", exception.getMessage());
         });
 
-    Path missingFiscalYearPath = tempDirectory.resolve("book-identity-missing-fiscal-year.sqlite");
-    initializeBookOnDisk(missingFiscalYearPath);
+    Path missingBookPolicyPath = tempDirectory.resolve("book-identity-missing-book-policy.sqlite");
+    createSchemaOnlyBook(missingBookPolicyPath);
     withStandaloneDatabase(
-        bookAccess(missingFiscalYearPath),
+        bookAccess(missingBookPolicyPath),
         database -> {
+          insertInitializedAtRow(database);
           database.executeStatement(
               """
-              delete from book_meta
-              where key = 'fiscal_year_start'
+              insert into book_identity (
+                  singleton_id,
+                  entity_name,
+                  functional_currency_code,
+                  fiscal_year_start
+              ) values (1, 'Acme Studio', 'EUR', '01-01')
+              """);
+          database.executeStatement(
+              """
+              insert into entity_profile (
+                  singleton_id,
+                  entity_form,
+                  owner_model,
+                  reporting_obligation_status,
+                  tax_registration_status,
+                  business_activity_tags
+              ) values (
+                  1,
+                  'COMPANY',
+                  'MULTI_OWNER',
+                  'INTERNAL_MANAGEMENT_ONLY',
+                  'UNSPECIFIED',
+                  ''
+              )
               """);
           IllegalStateException exception =
               assertThrows(
                   IllegalStateException.class,
                   () -> SqliteStatementQueries.loadBookIdentity(database));
-          assertEquals(
-              "Initialized SQLite book is missing fiscal-year-start metadata.",
-              exception.getMessage());
-        });
-  }
-
-  @Test
-  void loadBookIdentity_requiresTaxProfileMetadata() {
-    Path missingTaxProfilePath = tempDirectory.resolve("book-identity-missing-tax-profile.sqlite");
-    initializeBookOnDisk(missingTaxProfilePath);
-    withStandaloneDatabase(
-        bookAccess(missingTaxProfilePath),
-        database -> {
-          database.executeStatement(
-              """
-              delete from book_meta
-              where key = 'tax_profile_json'
-              """);
-          IllegalStateException exception =
-              assertThrows(
-                  IllegalStateException.class,
-                  () -> SqliteStatementQueries.loadBookIdentity(database));
-          assertEquals(
-              "Initialized SQLite book is missing tax-profile metadata.", exception.getMessage());
+          assertEquals("Initialized SQLite book is missing book policy.", exception.getMessage());
         });
   }
 
   @Test
   void lifecycleInspectionMapper_andTrialBalanceReader_requireBookIdentityMetadata() {
     Path bookPath = tempDirectory.resolve("book-identity-required-by-readers.sqlite");
-    initializeBookOnDisk(bookPath);
+    createSchemaOnlyBook(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
-          database.executeStatement(
-              """
-              delete from book_meta
-              where key = 'entity_name'
-              """);
+          insertInitializedAtRow(database);
 
           IllegalStateException mapperException =
               assertThrows(
@@ -182,8 +166,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            TaxProfile.empty());
+            AccountingBasis.ACCRUAL);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -197,8 +180,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_roundTripsRegisteredTaxProfile() {
-    Path bookPath = tempDirectory.resolve("book-identity-tax-profile.sqlite");
+  void loadBookIdentity_roundTripsRegisteredTaxStatusWithoutTaxProfileMetadata() {
+    Path bookPath = tempDirectory.resolve("book-identity-registered-tax-status.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(
@@ -210,23 +193,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 List.of(new BusinessActivityTag("translation-services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            new TaxProfile(
-                List.of(
-                    new TaxRegistration(
-                        new TaxJurisdictionCode("LV"),
-                        new TaxRegistrationId("LV123456789"),
-                        TaxFilingFrequency.MONTHLY)),
-                List.of(
-                    new TaxCodeDefinition(
-                        new TaxCode("VAT21"),
-                        new TaxCodeName("Standard VAT"),
-                        new TaxJurisdictionCode("LV"),
-                        new PercentageRate(2100),
-                        TaxPricingMode.EXCLUSIVE,
-                        TaxRecoverability.FULLY_RECOVERABLE,
-                        new AccountCode("2100"),
-                        Optional.of(new AccountCode("1300"))))));
+            AccountingBasis.ACCRUAL);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {

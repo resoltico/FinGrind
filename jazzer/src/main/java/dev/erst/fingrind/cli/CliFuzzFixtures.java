@@ -105,8 +105,7 @@ public final class CliFuzzFixtures {
             List.of()),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL,
-        dev.erst.fingrind.core.TaxProfile.empty());
+        AccountingBasis.ACCRUAL);
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */

@@ -149,15 +149,19 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(managedLibraryPath.getParent());
     Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     String originalSourceCheckoutRoot = System.getProperty("fingrind.source-checkout.root");
+    String originalSourceCheckoutBuildRoot =
+        System.getProperty("fingrind.source-checkout.build-root");
     try {
       System.setProperty(
           "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
+      System.clearProperty("fingrind.source-checkout.build-root");
       SqliteLibraryTarget libraryTarget =
           SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null);
       assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
       assertEquals(
           managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
     } finally {
+      restoreSystemProperty("fingrind.source-checkout.build-root", originalSourceCheckoutBuildRoot);
       restoreSystemProperty("fingrind.source-checkout.root", originalSourceCheckoutRoot);
     }
   }

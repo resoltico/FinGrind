@@ -83,7 +83,14 @@ class ProtocolCatalogTest {
         ProtocolCatalog.operationNames(OperationCategory.DISCOVERY));
     assertEquals(
         List.of(
-            "generate-book-key-file", "open-book", "rekey-book", "declare-account", "close-period"),
+            "generate-book-key-file",
+            "open-book",
+            "rekey-book",
+            "backup-book",
+            "restore-book",
+            "recover-rekey",
+            "declare-account",
+            "close-period"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
         List.of(

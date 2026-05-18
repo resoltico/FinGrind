@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.Money;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -64,7 +67,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   sql ->
                       database.prepare(
                           SqlitePostingSql.INSERT_PERIOD_CLOSE.equals(sql)
-                              ? "select ?1 as close_order where 0 and ?2 is not null and ?3 is not null"
+                              ? "select ?1 as close_order where 0 and ?2 is not null and ?3 is not null and ?4 is not null"
                               : sql));
           IllegalStateException noRowFailure =
               assertThrows(
@@ -87,7 +90,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   sql ->
                       database.prepare(
                           SqlitePostingSql.INSERT_PERIOD_CLOSE.equals(sql)
-                              ? "select ?1 as close_order union all select ?2 where ?3 is not null"
+                              ? "select ?1 as close_order union all select ?2 where ?3 is not null and ?4 is not null"
                               : sql));
           IllegalStateException extraRowFailure =
               assertThrows(
@@ -104,6 +107,36 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               "SQLite period close insert returned more than one close order.",
               extraRowFailure.getMessage());
+        });
+  }
+
+  @Test
+  void insertPeriodClose_persistsClosedTotalsRows() {
+    Path bookPath = tempDirectory.resolve("period-close-totals.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+          SqliteStoreFixtureSupport.insertAccountRow(
+              database, "3200", "Retained earnings", "EQUITY", "CREDIT", 1, "2026-01-01T00:00:00Z");
+
+          SqliteMutationWriter.insertPeriodClose(
+              database,
+              new dev.erst.fingrind.core.ReportingPeriod(
+                  LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+              new AccountCode("3200"),
+              List.of(
+                  CurrencyBalance.ofTotals(
+                      Money.ofMinorUnits(CurrencyUnit.of("EUR"), 1250),
+                      Money.ofMinorUnits(CurrencyUnit.of("EUR"), 750))),
+              Instant.parse("2026-04-30T10:15:30Z"),
+              List.of());
+
+          assertEquals(
+              1,
+              SqliteStatementQueries.querySingleInt(
+                  database, "select count(*) from period_close_total"));
         });
   }
 

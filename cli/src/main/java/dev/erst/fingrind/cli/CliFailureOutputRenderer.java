@@ -113,6 +113,68 @@ final class CliFailureOutputRenderer {
       return;
     }
     switch (rejectionDetails) {
+      case CliRejectionJsonModels.AccountStateViolationsDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PriorPostingDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PostingKindDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ClosedPeriodViolationDetails details ->
+          appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.AccountRoleConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.AccountTypeConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.AccountTaxonomyConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ParentAccountDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ParentAccountTypeConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodCloseStartDetails details ->
+          appendPeriodCloseRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodCloseFutureDateDetails details ->
+          appendPeriodCloseRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodCloseFiscalYearDetails details ->
+          appendPeriodCloseRejectionDetails(rows, details);
+      case CliRejectionJsonModels.UnknownAccountDetails details ->
+          appendQueryOrPlanRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PostingNotFoundDetails details ->
+          appendQueryOrPlanRejectionDetails(rows, details);
+      case CliRejectionJsonModels.BookFileDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.BlockingArtifactsDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.BackupFileDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.RollbackArtifactDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.RollbackArtifactMismatchDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.RollbackArtifactSelectionDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PlanRejectionDetails details ->
+          appendQueryOrPlanRejectionDetails(rows, details);
+    }
+  }
+
+  private static void appendPostingRejectionDetails(
+      List<List<String>> rows, CliRejectionJsonModels.PostingRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
       case CliRejectionJsonModels.AccountStateViolationsDetails violations ->
           rows.add(
               List.of(
@@ -122,6 +184,30 @@ final class CliFailureOutputRenderer {
                       .collect(java.util.stream.Collectors.joining(", "))));
       case CliRejectionJsonModels.PriorPostingDetails details ->
           rows.add(List.of("Prior posting id", details.priorPostingId()));
+      case CliRejectionJsonModels.PostingKindDetails details ->
+          rows.add(List.of("Posting kind", details.postingKind()));
+      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
+        rows.add(List.of("Functional currency", details.functionalCurrency()));
+        rows.add(List.of("Attempted currency", details.attemptedCurrency()));
+      }
+      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details -> {
+        rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
+        rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
+      }
+      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Account type", details.accountType()));
+      }
+      case CliRejectionJsonModels.ClosedPeriodViolationDetails details -> {
+        rows.add(List.of("Closed through", details.closedThroughEffectiveDate()));
+        rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
+      }
+    }
+  }
+
+  private static void appendAccountRejectionDetails(
+      List<List<String>> rows, CliRejectionJsonModels.AccountRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
       case CliRejectionJsonModels.AccountRoleConflictDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Existing account role", details.existingAccountRole()));
@@ -153,20 +239,6 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Parent account code", details.parentAccountCode()));
         appendTaxonomyRows(rows, "Parent", details.parentAccountTaxonomy());
       }
-      case CliRejectionJsonModels.PostingKindDetails details ->
-          rows.add(List.of("Posting kind", details.postingKind()));
-      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
-        rows.add(List.of("Functional currency", details.functionalCurrency()));
-        rows.add(List.of("Attempted currency", details.attemptedCurrency()));
-      }
-      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details -> {
-        rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
-        rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
-      }
-      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details -> {
-        rows.add(List.of("Account code", details.accountCode()));
-        rows.add(List.of("Account type", details.accountType()));
-      }
       case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
       case CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails details -> {
@@ -180,6 +252,13 @@ final class CliFailureOutputRenderer {
                 "Actual financial position classification",
                 details.actualFinancialPositionLineClassification()));
       }
+    }
+  }
+
+  private static void appendPeriodCloseRejectionDetails(
+      List<List<String>> rows,
+      CliRejectionJsonModels.PeriodCloseRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
       case CliRejectionJsonModels.PeriodCloseStartDetails details ->
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
       case CliRejectionJsonModels.PeriodCloseFutureDateDetails details ->
@@ -189,16 +268,46 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
         rows.add(List.of("Fiscal year start", details.fiscalYearStart()));
       }
-      case CliRejectionJsonModels.ClosedPeriodViolationDetails details -> {
-        rows.add(List.of("Closed through", details.closedThroughEffectiveDate()));
-        rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
-      }
+    }
+  }
+
+  private static void appendQueryOrPlanRejectionDetails(
+      List<List<String>> rows,
+      CliRejectionJsonModels.QueryOrPlanRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
       case CliRejectionJsonModels.UnknownAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
       case CliRejectionJsonModels.PostingNotFoundDetails details ->
           rows.add(List.of("Posting id", details.postingId()));
       case CliRejectionJsonModels.PlanRejectionDetails details ->
           rows.add(List.of("Plan id", details.plan().planId()));
+    }
+  }
+
+  private static void appendMaintenanceRejectionDetails(
+      List<List<String>> rows,
+      CliRejectionJsonModels.MaintenanceRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
+      case CliRejectionJsonModels.BookFileDetails details ->
+          rows.add(List.of("Book file", details.bookFile()));
+      case CliRejectionJsonModels.BlockingArtifactsDetails details -> {
+        rows.add(List.of("Book file", details.bookFile()));
+        rows.add(List.of("Blocking artifacts", CliTextFormat.joined(details.blockingArtifacts())));
+      }
+      case CliRejectionJsonModels.BackupFileDetails details ->
+          rows.add(List.of("Backup file", details.backupFile()));
+      case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
+          rows.add(List.of("Backup key file", details.backupBookKeyFile()));
+      case CliRejectionJsonModels.RollbackArtifactDetails details ->
+          rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
+      case CliRejectionJsonModels.RollbackArtifactMismatchDetails details -> {
+        rows.add(List.of("Book file", details.bookFile()));
+        rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
+      }
+      case CliRejectionJsonModels.RollbackArtifactSelectionDetails details -> {
+        rows.add(List.of("Book file", details.bookFile()));
+        rows.add(List.of("Rollback artifacts", CliTextFormat.joined(details.rollbackArtifacts())));
+      }
     }
   }
 

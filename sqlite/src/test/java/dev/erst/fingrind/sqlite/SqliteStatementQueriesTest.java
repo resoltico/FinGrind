@@ -72,4 +72,72 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                   database, "select 'x' union all select 'y'", statement -> {}));
         });
   }
+
+  @Test
+  void loadBookIdentity_rejectsDuplicateSingletonRows() {
+    Path bookPath = tempDirectory.resolve("load-book-identity-duplicates.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+
+          IllegalStateException identityCoreFailure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteStatementQueries.loadBookIdentity(
+                          redirectedDatabase(
+                              database,
+                              SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
+                              """
+                              select 'Acme Services', 'EUR', '01-01'
+                              union all
+                              select 'Acme Services', 'EUR', '01-01'
+                              """)));
+          assertEquals(
+              "SQLite book identity core query returned more than one row.",
+              identityCoreFailure.getMessage());
+
+          IllegalStateException entityProfileFailure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteStatementQueries.loadBookIdentity(
+                          redirectedDatabase(
+                              database,
+                              SqlitePostingSql.FIND_ENTITY_PROFILE,
+                              """
+                              select 'SOLE_PROPRIETORSHIP', 'SOLE_OWNER', 'INTERNAL_ONLY', 'NOT_REGISTERED', ''
+                              union all
+                              select 'SOLE_PROPRIETORSHIP', 'SOLE_OWNER', 'INTERNAL_ONLY', 'NOT_REGISTERED', ''
+                              """)));
+          assertEquals(
+              "SQLite entity profile query returned more than one row.",
+              entityProfileFailure.getMessage());
+
+          IllegalStateException bookPolicyFailure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteStatementQueries.loadBookIdentity(
+                          redirectedDatabase(
+                              database,
+                              SqlitePostingSql.FIND_BOOK_POLICY,
+                              """
+                              select 'ACCRUAL'
+                              union all
+                              select 'ACCRUAL'
+                              """)));
+          assertEquals(
+              "SQLite book policy query returned more than one row.",
+              bookPolicyFailure.getMessage());
+        });
+  }
+
+  private static SqliteStatementRedirectingDatabase redirectedDatabase(
+      SqliteNativeDatabase database, String targetSql, String replacementSql) {
+    return new SqliteStatementRedirectingDatabase(
+        database, sql -> database.prepare(targetSql.equals(sql) ? replacementSql : sql));
+  }
 }

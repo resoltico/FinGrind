@@ -46,7 +46,6 @@ final class SqliteSessionSecret implements AutoCloseable {
   }
 
   private static SqliteBookPassphrase copyOf(SqliteBookPassphrase sourcePassphrase) {
-    return SqliteBookPassphrase.fromUtf8Bytes(
-        sourcePassphrase.sourceDescription(), sourcePassphrase.utf8BytesCopy());
+    return sourcePassphrase.copy();
   }
 }

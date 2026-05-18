@@ -69,6 +69,42 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
+  void organizationGraphIdentifiers_stripWhitespaceAndRejectBlankNullAndOversizedValues() {
+    assertEquals("org-1", new OrganizationId("  org-1  ").value());
+    assertEquals("entity-1", new AccountingEntityId("  entity-1  ").value());
+    assertEquals("group-1", new ReportingGroupId("  group-1  ").value());
+
+    assertThrows(NullPointerException.class, () -> new OrganizationId(nullOf()));
+    assertThrows(NullPointerException.class, () -> new AccountingEntityId(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ReportingGroupId(nullOf()));
+
+    assertEquals(
+        "Organization id must not be blank.",
+        assertThrows(IllegalArgumentException.class, () -> new OrganizationId("   ")).getMessage());
+    assertEquals(
+        "Accounting entity id must not be blank.",
+        assertThrows(IllegalArgumentException.class, () -> new AccountingEntityId("   "))
+            .getMessage());
+    assertEquals(
+        "Reporting group id must not be blank.",
+        assertThrows(IllegalArgumentException.class, () -> new ReportingGroupId("   "))
+            .getMessage());
+
+    assertEquals(
+        "Organization id must not exceed 128 characters.",
+        assertThrows(IllegalArgumentException.class, () -> new OrganizationId("o".repeat(129)))
+            .getMessage());
+    assertEquals(
+        "Accounting entity id must not exceed 128 characters.",
+        assertThrows(IllegalArgumentException.class, () -> new AccountingEntityId("e".repeat(129)))
+            .getMessage());
+    assertEquals(
+        "Reporting group id must not exceed 128 characters.",
+        assertThrows(IllegalArgumentException.class, () -> new ReportingGroupId("g".repeat(129)))
+            .getMessage());
+  }
+
+  @Test
   void entityProfile_requiresAllFieldsAndDefensivelyCopiesActivityTags() {
     BookEntityName displayName = new BookEntityName("Acme Studio");
     List<BusinessActivityTag> tags =
@@ -174,11 +210,7 @@ class CoreTextValueObjectsTest {
 
     BookIdentity bookIdentity =
         new BookIdentity(
-            entityProfile,
-            functionalCurrency,
-            fiscalYearStart,
-            AccountingBasis.ACCRUAL,
-            TaxProfile.empty());
+            entityProfile, functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL);
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(EntityForm.COMPANY, bookIdentity.entityForm());
@@ -186,43 +218,17 @@ class CoreTextValueObjectsTest {
         NullPointerException.class,
         () ->
             new BookIdentity(
-                nullOf(),
-                functionalCurrency,
-                fiscalYearStart,
-                AccountingBasis.ACCRUAL,
-                TaxProfile.empty()));
+                nullOf(), functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL));
+    assertThrows(
+        NullPointerException.class,
+        () -> new BookIdentity(entityProfile, nullOf(), fiscalYearStart, AccountingBasis.ACCRUAL));
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookIdentity(
-                entityProfile,
-                nullOf(),
-                fiscalYearStart,
-                AccountingBasis.ACCRUAL,
-                TaxProfile.empty()));
+            new BookIdentity(entityProfile, functionalCurrency, nullOf(), AccountingBasis.ACCRUAL));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new BookIdentity(
-                entityProfile,
-                functionalCurrency,
-                nullOf(),
-                AccountingBasis.ACCRUAL,
-                TaxProfile.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new BookIdentity(
-                entityProfile, functionalCurrency, fiscalYearStart, nullOf(), TaxProfile.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new BookIdentity(
-                entityProfile,
-                functionalCurrency,
-                fiscalYearStart,
-                AccountingBasis.ACCRUAL,
-                nullOf()));
+        () -> new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart, nullOf()));
   }
 
   @Test

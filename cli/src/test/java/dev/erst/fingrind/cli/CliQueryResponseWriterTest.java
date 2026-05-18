@@ -650,6 +650,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(1_179_079_236, payload.path("applicationId").asInt());
     assertEquals(3, payload.path("detectedBookFormatVersion").asInt());
     assertEquals(3, payload.path("supportedBookFormatVersion").asInt());
+    assertEquals(
+        "hard-break-reject-older-formats",
+        payload.path("migrationPolicy").path("mode").stringValue());
+    assertFalse(payload.path("migrationPolicy").path("inPlaceUpgradeSupported").asBoolean());
     assertEquals("2026-04-07T10:15:30Z", payload.path("initializedAt").stringValue());
     assertEquals("Acme Studio", payload.path("bookIdentity").path("entityName").stringValue());
     assertEquals("EUR", payload.path("bookIdentity").path("functionalCurrency").stringValue());
@@ -674,7 +678,11 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
       assertEquals(states.get(index), payload.path("state").stringValue());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
       assertEquals(3, payload.path("supportedBookFormatVersion").asInt());
-      assertFalse(payload.has("migrationPolicy"));
+      assertEquals(
+          "hard-break-reject-older-formats",
+          payload.path("migrationPolicy").path("mode").stringValue());
+      assertFalse(payload.path("migrationPolicy").path("olderFormatsAccepted").asBoolean());
+      assertFalse(payload.path("migrationPolicy").path("newerFormatsAccepted").asBoolean());
       assertFalse(payload.has("initializedAt"));
     }
   }

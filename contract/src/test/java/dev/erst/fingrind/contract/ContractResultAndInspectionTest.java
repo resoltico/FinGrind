@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
@@ -188,9 +190,21 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
       assertEquals(canInitializeWithOpenBook.get(index), status.canInitializeWithOpenBook());
       assertEquals(
           BookFormatContract.FORMAT_VERSION, inspections.get(index).supportedBookFormatVersion());
+      assertEquals(
+          BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
+          inspections.get(index).migrationPolicy().mode());
+      assertEquals(
+          BookFormatContract.FORMAT_VERSION,
+          inspections.get(index).migrationPolicy().supportedBookFormatVersion());
+      assertFalse(inspections.get(index).migrationPolicy().inPlaceUpgradeSupported());
+      assertFalse(inspections.get(index).migrationPolicy().olderFormatsAccepted());
+      assertFalse(inspections.get(index).migrationPolicy().newerFormatsAccepted());
     }
     assertEquals(
         BookInspection.Status.BLANK_SQLITE, BookInspection.Status.fromWireValue("blank-sqlite"));
+    assertEquals(
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
+        BookMigrationPolicyMode.fromWireValue("hard-break-reject-older-formats"));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
     assertThrows(
         IllegalArgumentException.class,

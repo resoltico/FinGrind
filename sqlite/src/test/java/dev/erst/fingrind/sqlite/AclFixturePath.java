@@ -9,6 +9,8 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -25,8 +27,9 @@ final class AclFixturePath implements Path {
   @Nullable AclFileAttributeView overrideAclView;
   Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
-  private @Nullable IOException newByteChannelFailure;
+  private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private @Nullable IOException newDirectoryStreamFailure;
+  private final Deque<IOException> moveFailures = new ArrayDeque<>();
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
     this.fileSystem = fileSystem;
@@ -44,12 +47,30 @@ final class AclFixturePath implements Path {
   }
 
   AclFixturePath failNewByteChannelWith(IOException exception) {
-    newByteChannelFailure = Objects.requireNonNull(exception, "exception");
+    return failNewByteChannelAfter(0, exception);
+  }
+
+  AclFixturePath failNewByteChannelAfter(int successfulCalls, IOException exception) {
+    if (successfulCalls < 0) {
+      throw new IllegalArgumentException("successfulCalls must be greater than or equal to zero.");
+    }
+    newByteChannelFailures.addLast(
+        new PlannedIOException(successfulCalls, Objects.requireNonNull(exception, "exception")));
     return this;
   }
 
   @Nullable IOException newByteChannelFailure() {
-    return newByteChannelFailure;
+    PlannedIOException plannedFailure = newByteChannelFailures.peekFirst();
+    if (plannedFailure == null) {
+      return null;
+    }
+    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
+      newByteChannelFailures.removeFirst();
+      newByteChannelFailures.addFirst(plannedFailure.afterSuccessfulCall());
+      return null;
+    }
+    newByteChannelFailures.removeFirst();
+    return plannedFailure.exception();
   }
 
   AclFixturePath failNewDirectoryStreamWith(IOException exception) {
@@ -59,6 +80,29 @@ final class AclFixturePath implements Path {
 
   @Nullable IOException newDirectoryStreamFailure() {
     return newDirectoryStreamFailure;
+  }
+
+  AclFixturePath failMoveWith(IOException exception) {
+    moveFailures.addLast(Objects.requireNonNull(exception, "exception"));
+    return this;
+  }
+
+  @Nullable IOException moveFailure() {
+    return moveFailures.pollFirst();
+  }
+
+  private record PlannedIOException(int successfulCallsBeforeFailure, IOException exception) {
+    private PlannedIOException {
+      if (successfulCallsBeforeFailure < 0) {
+        throw new IllegalArgumentException(
+            "successfulCallsBeforeFailure must be greater than or equal to zero.");
+      }
+      Objects.requireNonNull(exception, "exception");
+    }
+
+    private PlannedIOException afterSuccessfulCall() {
+      return new PlannedIOException(successfulCallsBeforeFailure - 1, exception);
+    }
   }
 
   @Override

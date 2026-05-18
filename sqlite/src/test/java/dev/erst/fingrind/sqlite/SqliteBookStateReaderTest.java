@@ -62,14 +62,17 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
           insertJournalLineRow(
               database, "posting-mixed-currency", 1, "2000", "CREDIT", "USD", 1000);
         });
-    assertIncompleteStateAfterCorruption(
-        "book-state-missing-entity-name.sqlite",
-        database ->
-            database.executeStatement(
-                """
-                delete from book_meta
-                where key = 'entity_name'
-                """));
+    Path missingBookIdentityPath = tempDirectory.resolve("book-state-missing-book-identity.sqlite");
+    createSchemaOnlyBook(missingBookIdentityPath);
+    withStandaloneDatabase(
+        bookAccess(missingBookIdentityPath),
+        database -> {
+          insertInitializedAtRow(database);
+          SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
     assertIncompleteStateAfterCorruption(
         "book-state-functional-currency-mismatch.sqlite",
         database -> {

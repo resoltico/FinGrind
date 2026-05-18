@@ -14,22 +14,10 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.PercentageRate;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxCode;
-import dev.erst.fingrind.core.TaxCodeDefinition;
-import dev.erst.fingrind.core.TaxCodeName;
-import dev.erst.fingrind.core.TaxFilingFrequency;
-import dev.erst.fingrind.core.TaxJurisdictionCode;
-import dev.erst.fingrind.core.TaxPricingMode;
-import dev.erst.fingrind.core.TaxProfile;
-import dev.erst.fingrind.core.TaxRecoverability;
-import dev.erst.fingrind.core.TaxRegistration;
-import dev.erst.fingrind.core.TaxRegistrationId;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Focused regression tests for {@link CliBookPayloadMapper}. */
@@ -79,18 +67,16 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                     new BusinessActivityTag("platform-sales"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            TaxProfile.empty());
+            AccountingBasis.ACCRUAL);
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
 
     assertEquals(List.of("translation-services", "platform-sales"), payload.businessActivityTags());
-    assertEquals(List.of(), payload.taxProfile().registrations());
-    assertEquals(List.of(), payload.taxProfile().taxCodeDefinitions());
+    assertEquals("UNSPECIFIED", payload.taxRegistrationStatus());
   }
 
   @Test
-  void bookIdentityPayload_mapsStructuredTaxProfile() {
+  void bookIdentityPayload_mapsRegisteredTaxStatusWithoutTaxProfileScaffolding() {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(
@@ -102,67 +88,11 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            new TaxProfile(
-                List.of(
-                    new TaxRegistration(
-                        new TaxJurisdictionCode("LV"),
-                        new TaxRegistrationId("LV123456789"),
-                        TaxFilingFrequency.MONTHLY)),
-                List.of(
-                    new TaxCodeDefinition(
-                        new TaxCode("VAT21"),
-                        new TaxCodeName("Standard VAT"),
-                        new TaxJurisdictionCode("LV"),
-                        new PercentageRate(2100),
-                        TaxPricingMode.EXCLUSIVE,
-                        TaxRecoverability.FULLY_RECOVERABLE,
-                        new AccountCode("2100"),
-                        Optional.of(new AccountCode("1300"))))));
+            AccountingBasis.ACCRUAL);
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(registeredIdentity);
 
     assertEquals("REGISTERED", payload.taxRegistrationStatus());
-    assertEquals(1, payload.taxProfile().registrations().size());
-    assertEquals("LV", payload.taxProfile().registrations().getFirst().jurisdictionCode());
-    assertEquals(1, payload.taxProfile().taxCodeDefinitions().size());
-    assertEquals("VAT21", payload.taxProfile().taxCodeDefinitions().getFirst().taxCode());
-    assertEquals(2100, payload.taxProfile().taxCodeDefinitions().getFirst().rateBasisPoints());
-  }
-
-  @Test
-  void bookIdentityPayload_preservesOptionalMissingReceivableAccountCode() {
-    BookIdentity registeredIdentity =
-        new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Registered Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.REGISTERED,
-                List.of()),
-            CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL,
-            new TaxProfile(
-                List.of(
-                    new TaxRegistration(
-                        new TaxJurisdictionCode("LV"),
-                        new TaxRegistrationId("LV123456789"),
-                        TaxFilingFrequency.MONTHLY)),
-                List.of(
-                    new TaxCodeDefinition(
-                        new TaxCode("VAT21"),
-                        new TaxCodeName("Standard VAT"),
-                        new TaxJurisdictionCode("LV"),
-                        new PercentageRate(2100),
-                        TaxPricingMode.EXCLUSIVE,
-                        TaxRecoverability.FULLY_RECOVERABLE,
-                        new AccountCode("2100"),
-                        Optional.empty()))));
-
-    var payload = CliBookPayloadMapper.bookIdentityPayload(registeredIdentity);
-
-    assertNull(payload.taxProfile().taxCodeDefinitions().getFirst().receivableAccountCode());
+    assertEquals(List.of(), payload.businessActivityTags());
   }
 }

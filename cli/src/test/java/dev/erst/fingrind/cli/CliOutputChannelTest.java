@@ -19,7 +19,7 @@ class CliOutputChannelTest {
 
     outputChannel.writePrettySuccess(
         new CliDiscoveryJsonModels.HelpOverviewPayload(
-            "FinGrind", "0.39.0", "CLI help", List.of(), List.of("help"), List.of(), "hint"));
+            "FinGrind", "0.40.0", "CLI help", List.of(), List.of("help"), List.of(), "hint"));
 
     String rendered = output.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains(System.lineSeparator() + "  \"status\" : \"ok\","));

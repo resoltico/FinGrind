@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
@@ -10,6 +11,7 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Executes administrative CLI commands that mutate book setup or key material. */
 final class CliAdministrativeCommandExecutor {
@@ -56,6 +58,42 @@ final class CliAdministrativeCommandExecutor {
         outputMode,
         result ->
             responseWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runBackupBookCommand(
+      BookAccess bookAccess,
+      Path backupFilePath,
+      Path backupBookKeyFilePath,
+      OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
+        outputMode,
+        result -> responseWriter.writeBackupBookResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runRestoreBookCommand(
+      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath, OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath),
+        outputMode,
+        result -> responseWriter.writeRestoreBookResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runRecoverRekeyCommand(
+      Path bookFilePath,
+      RekeyRecoveryAction action,
+      @Nullable Path rollbackArtifactPath,
+      OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.recoverRekey(bookFilePath, action, rollbackArtifactPath),
+        outputMode,
+        result -> responseWriter.writeRecoverRekeyResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }

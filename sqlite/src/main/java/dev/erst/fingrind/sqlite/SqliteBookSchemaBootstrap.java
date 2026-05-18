@@ -85,4 +85,8 @@ final class SqliteBookSchemaBootstrap {
     return SqliteBookSchemaBootstrap.class.getResourceAsStream(
         "/dev/erst/fingrind/sqlite/book_schema.sql");
   }
+
+  static @Nullable InputStream openSchemaStreamForTests() {
+    return openSchemaStream();
+  }
 }

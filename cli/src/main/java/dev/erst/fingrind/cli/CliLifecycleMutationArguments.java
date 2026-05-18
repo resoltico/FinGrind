@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -16,7 +17,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -35,7 +35,6 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.OWNER_MODEL,
               ProtocolOptions.REPORTING_OBLIGATION_STATUS,
               ProtocolOptions.TAX_REGISTRATION_STATUS,
-              ProtocolOptions.TAX_PROFILE_FILE,
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
@@ -48,6 +47,13 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.CLOSING_EQUITY_ACCOUNT,
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.OUTPUT),
+          List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.BACKUP_FILE,
+              ProtocolOptions.BACKUP_BOOK_KEY_FILE,
               ProtocolOptions.OUTPUT),
           List.of());
 
@@ -95,11 +101,6 @@ final class CliLifecycleMutationArguments {
     OpenBookArgumentValues argumentValues =
         parseOpenBookArgumentValues(parsedArguments.commandArguments());
     TaxRegistrationStatus resolvedTaxRegistrationStatus = argumentValues.resolvedTaxStatus();
-    TaxProfile taxProfile =
-        resolveOpenBookTaxProfile(
-            parsedArguments.bookAccess(),
-            argumentValues.taxProfileFile,
-            resolvedTaxRegistrationStatus);
     return new OpenBook(
         parsedArguments.bookAccess(),
         new OpenBookCommand(
@@ -113,8 +114,7 @@ final class CliLifecycleMutationArguments {
                     argumentValues.businessActivityTags),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
                 requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
-                requireOpenBookAccountingBasis(argumentValues.accountingBasis),
-                taxProfile)),
+                requireOpenBookAccountingBasis(argumentValues.accountingBasis))),
         CliArgumentValueParser.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -168,9 +168,6 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.BUSINESS_ACTIVITY_TAG),
                   ProtocolOptions.BUSINESS_ACTIVITY_TAG));
-      case ProtocolOptions.TAX_PROFILE_FILE ->
-          argumentValues.taxProfileFile =
-              requireOpenBookTaxProfileFile(argumentValues.taxProfileFile, argumentIterator);
       case ProtocolOptions.FUNCTIONAL_CURRENCY ->
           argumentValues.functionalCurrency =
               CliArgumentValueParser.parseCurrencyUnitOption(
@@ -198,17 +195,6 @@ final class CliLifecycleMutationArguments {
       default ->
           throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
-  }
-
-  private static Path requireOpenBookTaxProfileFile(
-      @Nullable Path existingTaxProfileFile, ListIterator<String> argumentIterator) {
-    if (existingTaxProfileFile != null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.TAX_PROFILE_FILE,
-          "Duplicate argument: " + ProtocolOptions.TAX_PROFILE_FILE);
-    }
-    return CliArgumentValueParser.requirePathOptionValue(
-        argumentIterator, ProtocolOptions.TAX_PROFILE_FILE);
   }
 
   private static BookEntityName requireOpenBookEntityName(@Nullable BookEntityName entityName) {
@@ -259,23 +245,6 @@ final class CliLifecycleMutationArguments {
     return accountingBasis;
   }
 
-  private static TaxProfile resolveOpenBookTaxProfile(
-      BookAccess bookAccess,
-      @Nullable Path taxProfileFile,
-      TaxRegistrationStatus resolvedTaxRegistrationStatus) {
-    if (taxProfileFile == null) {
-      if (resolvedTaxRegistrationStatus == TaxRegistrationStatus.REGISTERED) {
-        throw CliArgumentValueParser.invalid(
-            ProtocolOptions.TAX_REGISTRATION_STATUS,
-            "Registered tax status requires " + ProtocolOptions.TAX_PROFILE_FILE + " <path>.");
-      }
-      return TaxProfile.empty();
-    }
-    CliBookPathValidator.validateDistinctPaths(
-        bookAccess.bookFilePath(), bookAccess.passphraseSource(), taxProfileFile);
-    return CliTaxProfileParser.readTaxProfileFile(taxProfileFile, resolvedTaxRegistrationStatus);
-  }
-
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
     private final List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
@@ -284,7 +253,6 @@ final class CliLifecycleMutationArguments {
     private @Nullable OwnerModel ownerModel;
     private @Nullable ReportingObligationStatus reportingObligationStatus;
     private @Nullable TaxRegistrationStatus taxRegistrationStatus;
-    private @Nullable Path taxProfileFile;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable AccountingBasis accountingBasis;
@@ -418,6 +386,189 @@ final class CliLifecycleMutationArguments {
     return new RekeyBook(
         new BookAccess(bookFilePath, currentPassphraseSource),
         replacementPassphraseSource,
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
+  }
+
+  static CliCommand parseBackupBookCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, BACKUP_BOOK_ARGUMENTS);
+    Path backupFilePath = null;
+    Path backupBookKeyFilePath = null;
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.BACKUP_FILE.equals(argument)) {
+        if (backupFilePath != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.BACKUP_FILE, "Duplicate argument: " + ProtocolOptions.BACKUP_FILE);
+        }
+        backupFilePath =
+            CliArgumentValueParser.requirePathOptionValue(
+                argumentIterator, ProtocolOptions.BACKUP_FILE);
+      } else if (ProtocolOptions.BACKUP_BOOK_KEY_FILE.equals(argument)) {
+        if (backupBookKeyFilePath != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+              "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+        }
+        backupBookKeyFilePath =
+            CliArgumentValueParser.requirePathOptionValue(
+                argumentIterator, ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+      } else {
+        outputMode =
+            CliArgumentValueParser.requireOutputMode(
+                outputMode,
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+      }
+    }
+    if (backupFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_FILE,
+          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
+    }
+    if (backupBookKeyFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE + " argument is required.");
+    }
+    CliBookPathValidator.validateDistinctBackupPaths(
+        parsedArguments.bookAccess().bookFilePath(),
+        parsedArguments.bookAccess().passphraseSource(),
+        backupFilePath,
+        backupBookKeyFilePath);
+    return new BackupBook(
+        parsedArguments.bookAccess(),
+        backupFilePath,
+        backupBookKeyFilePath,
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
+  }
+
+  static CliCommand parseRestoreBookCommand(List<String> arguments) {
+    Path bookFilePath = null;
+    Path backupFilePath = null;
+    Path backupBookKeyFilePath = null;
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.BOOK_FILE -> {
+          if (bookFilePath != null) {
+            throw CliArgumentValueParser.invalid(
+                ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
+          }
+          bookFilePath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.BOOK_FILE);
+        }
+        case ProtocolOptions.BACKUP_FILE -> {
+          if (backupFilePath != null) {
+            throw CliArgumentValueParser.invalid(
+                ProtocolOptions.BACKUP_FILE, "Duplicate argument: " + ProtocolOptions.BACKUP_FILE);
+          }
+          backupFilePath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.BACKUP_FILE);
+        }
+        case ProtocolOptions.BACKUP_BOOK_KEY_FILE -> {
+          if (backupBookKeyFilePath != null) {
+            throw CliArgumentValueParser.invalid(
+                ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+                "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+          }
+          backupBookKeyFilePath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                CliArgumentValueParser.requireOutputMode(
+                    outputMode,
+                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (bookFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
+    }
+    if (backupFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_FILE,
+          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
+    }
+    if (backupBookKeyFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE + " argument is required.");
+    }
+    CliBookPathValidator.validateDistinctRestorePaths(
+        bookFilePath, backupFilePath, backupBookKeyFilePath);
+    return new RestoreBook(
+        bookFilePath,
+        backupFilePath,
+        backupBookKeyFilePath,
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
+  }
+
+  static CliCommand parseRecoverRekeyCommand(List<String> arguments) {
+    Path bookFilePath = null;
+    Path rollbackArtifactPath = null;
+    RekeyRecoveryAction action = RekeyRecoveryAction.INSPECT;
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.BOOK_FILE -> {
+          if (bookFilePath != null) {
+            throw CliArgumentValueParser.invalid(
+                ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
+          }
+          bookFilePath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.BOOK_FILE);
+        }
+        case ProtocolOptions.RECOVERY_ACTION ->
+            action =
+                CliArgumentValueParser.requireValidArgument(
+                    ProtocolOptions.RECOVERY_ACTION,
+                    () ->
+                        RekeyRecoveryAction.fromWireValue(
+                            CliArgumentValueParser.requireValue(
+                                argumentIterator, ProtocolOptions.RECOVERY_ACTION)));
+        case ProtocolOptions.ROLLBACK_FILE -> {
+          if (rollbackArtifactPath != null) {
+            throw CliArgumentValueParser.invalid(
+                ProtocolOptions.ROLLBACK_FILE,
+                "Duplicate argument: " + ProtocolOptions.ROLLBACK_FILE);
+          }
+          rollbackArtifactPath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.ROLLBACK_FILE);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                CliArgumentValueParser.requireOutputMode(
+                    outputMode,
+                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (bookFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
+    }
+    return new RecoverRekey(
+        bookFilePath,
+        action,
+        rollbackArtifactPath,
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 

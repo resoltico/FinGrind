@@ -72,8 +72,7 @@ final class ContractFixtures {
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL,
-        dev.erst.fingrind.core.TaxProfile.empty());
+        AccountingBasis.ACCRUAL);
   }
 
   static OpenBookCommand openBookCommand() {

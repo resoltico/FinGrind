@@ -26,7 +26,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void open_rejectsNullBookAccess() {
     assertThrows(
         NullPointerException.class,
-        () -> SqliteNativeConnections.open(NullTestSupport.nullOf(BookAccess.class)));
+        () -> SqliteNativeConnections.openKeyFileAccess(NullTestSupport.nullOf(BookAccess.class)));
   }
 
   @Test
@@ -35,7 +35,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             ContractFailureException.class,
             () ->
-                SqliteNativeConnections.open(
+                SqliteNativeConnections.openKeyFileAccess(
                     new BookAccess(
                         tempDirectory.resolve("stdin-access.sqlite"),
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
@@ -77,7 +77,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeConnections.open(
+                SqliteNativeConnections.openKeyFileAccess(
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
     assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
@@ -90,7 +90,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             ContractFailureException.class,
             () ->
-                SqliteNativeConnections.open(
+                SqliteNativeConnections.openKeyFileAccess(
                     new BookAccess(
                         bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
     assertEquals(
@@ -160,7 +160,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
-            () -> SqliteNativeConnections.open(bookAccess(directoryPath)));
+            () -> SqliteNativeConnections.openKeyFileAccess(bookAccess(directoryPath)));
     assertTrue(exception.resultName().contains("SQLITE_CANTOPEN"));
   }
 
@@ -173,7 +173,9 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
-            () -> SqliteNativeConnections.open(bookAccess(bookPath, "different-book-key")));
+            () ->
+                SqliteNativeConnections.openKeyFileAccess(
+                    bookAccess(bookPath, "different-book-key")));
     assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
     assertFalse(String.valueOf(exception.getMessage()).contains("different-book-key"));
   }
