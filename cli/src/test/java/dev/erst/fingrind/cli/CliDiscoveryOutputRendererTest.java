@@ -6,15 +6,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
@@ -105,7 +109,7 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("help"));
     assertTrue(
         rendered.contains(
-            "json, human (via --output; default: human interactive, human redirected)"));
+            "json, human (via --output; default: human interactive, json redirected)"));
     assertTrue(rendered.contains("json envelope (fixed)"));
     assertTrue(rendered.contains("raw json (fixed)"));
     assertTrue(rendered.contains("Getting Started"));
@@ -305,8 +309,58 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("Generate a scaffold with:"));
     assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertTrue(rendered.contains("Accepted values:"));
+    assertTrue(rendered.contains("steps[].kind (administration)"));
+    assertTrue(rendered.contains("steps[].assertion.kind"));
     assertFalse(rendered.contains("Required fields:"));
     assertFalse(rendered.contains("Assertion fields:"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersAcceptedValuesForRequestFileCommands() {
+    String postEntryRendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            MachineContract.help(identity(), environment(), OperationId.POST_ENTRY));
+    String declareAccountRendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT));
+
+    assertTrue(postEntryRendered.contains("Accepted values:"));
+    assertTrue(postEntryRendered.contains("postingKind"));
+    assertTrue(postEntryRendered.contains("STANDARD, OPENING_BALANCE"));
+    assertTrue(postEntryRendered.contains("lineSide"));
+    assertTrue(postEntryRendered.contains("DEBIT, CREDIT"));
+    assertTrue(postEntryRendered.contains("actorType"));
+    assertTrue(postEntryRendered.contains("HUMAN, SYSTEM, AGENT"));
+
+    assertTrue(declareAccountRendered.contains("Accepted values:"));
+    assertTrue(declareAccountRendered.contains("accountType"));
+    assertTrue(declareAccountRendered.contains("accountRole"));
+    assertTrue(declareAccountRendered.contains("financialPositionLineClassification"));
+    assertTrue(declareAccountRendered.contains("profitAndLossLineClassification"));
+    assertTrue(
+        declareAccountRendered.contains("CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY"));
+    assertTrue(declareAccountRendered.contains("OPERATING_REVENUE, OTHER_REVENUE, FINANCE_INCOME"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersMaintenanceOperatorNotesAndCorrectedCloseExample() {
+    String keyHelp =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            MachineContract.help(identity(), environment(), OperationId.GENERATE_BOOK_KEY_FILE));
+    String restoreHelp =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            MachineContract.help(identity(), environment(), OperationId.RESTORE_BOOK));
+    String closeHelp =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            MachineContract.help(identity(), environment(), OperationId.CLOSE_PERIOD));
+
+    assertTrue(keyHelp.contains("Choose one missing private parent directory"));
+    assertTrue(
+        restoreHelp.contains("reopen the restored live book with that same backup key file"));
+    assertTrue(closeHelp.contains("FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL"));
+    assertTrue(closeHelp.contains("PARTNERSHIP requires PARTNER_CURRENT"));
+    assertTrue(closeHelp.contains("2026-04-30 --closing-equity-account 3300"));
   }
 
   @Test
@@ -859,6 +913,49 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
+  void renderCapabilitiesHuman_rendersSharedSelectableDefaultsAsOneValue() {
+    CapabilitiesDescriptor canonical = MachineContract.capabilities(identity(), environment());
+    CapabilitiesDescriptor customized =
+        new CapabilitiesDescriptor(
+            canonical.application(),
+            canonical.version(),
+            canonical.storage(),
+            new CommandCatalogDescriptor(
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON),
+                        List.of(),
+                        "Show help")),
+                List.of(),
+                List.of(),
+                List.of()),
+            canonical.requestInput(),
+            canonical.requestShapes(),
+            canonical.responseModel(),
+            canonical.planExecution(),
+            canonical.audit(),
+            canonical.accountRegistry(),
+            canonical.reversals(),
+            canonical.preflight(),
+            canonical.currencyModel(),
+            canonical.accountingBaseline(),
+            canonical.extensionSurface(),
+            canonical.environment());
+
+    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(customized);
+
+    assertTrue(
+        rendered.contains(
+            "json, human (via --output; default: json interactive, json redirected)"));
+    assertFalse(rendered.contains("json interactive / json redirected"));
+  }
+
+  @Test
   void renderCapabilitiesHuman_omitsDeepBoundaryDoctrineFromHumanSurface() {
     var canonical = MachineContract.capabilities(identity(), environment());
     String rendered =
@@ -918,7 +1015,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.39.0"));
+    assertTrue(rendered.contains("0.40.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -991,7 +1088,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.39.0",
+        "0.40.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

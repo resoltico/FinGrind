@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: CORE
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -196,19 +196,15 @@ public record BookIdentity(
     EntityProfile entityProfile,
     CurrencyUnit functionalCurrency,
     FiscalYearStart fiscalYearStart,
-    AccountingBasis accountingBasis,
-    TaxProfile taxProfile)
+    AccountingBasis accountingBasis)
 ```
 
 - Purpose: couple entity profile, functional currency, fiscal-year anchor, and accounting basis as
-  one typed bookkeeping fact, plus the first-class tax profile required when the entity declares
-  registered tax status
+  one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` and `entityForm()` keep the most common neutral identity facts
   accessible without unwrapping the full entity profile
 - Validation: rejects `null` entity profile, functional currency, fiscal-year start, and
-  accounting basis; also rejects registered tax posture without at least one tax registration and
-  rejects populated tax registrations or tax-code definitions when the entity profile does not
-  declare `REGISTERED` tax status
+  accounting basis
 
 ## `AccountType`
 
@@ -784,153 +780,3 @@ public record ReportingGroupId(String value)
 
 - Purpose: reserve stable typed identifiers for future multi-entity and reporting-group contexts
 - Validation: reject `null`, blank, and overlength text after normalization
-
-## `Counterparty`, `CounterpartyId`, `CounterpartyKind`, And `CounterpartyName`
-
-These types keep external party identity explicit for typed business events and source evidence.
-
-```java
-public record Counterparty(CounterpartyId counterpartyId, CounterpartyKind counterpartyKind, CounterpartyName displayName)
-public record CounterpartyId(String value)
-public enum CounterpartyKind implements WireValue
-public record CounterpartyName(String value)
-```
-
-- Purpose: keep customer, supplier, owner, bank, and similar party references structural instead
-  of implicit in free-form notes
-- Validation: the record rejects `null` constituents; the text-backed identifiers reject blank and
-  overlength values after normalization
-- Wire contract: `CounterpartyKind` owns the stable party-role vocabulary
-
-## `SourceDocument`, `SourceDocumentId`, `SourceDocumentNumber`, And `SourceDocumentType`
-
-These types keep accounting-event evidence documents explicit and typed.
-
-```java
-public record SourceDocument(...)
-public record SourceDocumentId(String value)
-public record SourceDocumentNumber(String value)
-public enum SourceDocumentType implements WireValue
-```
-
-- Purpose: anchor accounting events to invoices, bills, bank statements, payroll registers, and
-  similar source records instead of only provenance identifiers
-- Validation: `SourceDocument` rejects `null` fields and normalizes optional descriptions; the
-  text-backed identifiers reject blank and overlength values after normalization
-- Wire contract: `SourceDocumentType` owns the stable evidence-document taxonomy
-
-## `Approval`, `ApprovalStatus`, And `EvidenceBundle`
-
-These types keep approval state and evidence ownership structural for typed business events.
-
-```java
-public record Approval(...)
-public enum ApprovalStatus implements WireValue
-public record EvidenceBundle(...)
-```
-
-- Purpose: make approval facts, supporting documents, and optional counterparty context explicit
-  before business events are translated into journal entries
-- Validation: `Approval` rejects `null` fields and normalizes optional notes; `EvidenceBundle`
-  defends the source-document list and returns the canonical `empty()` bundle when no evidence is
-  genuinely required
-- Wire contract: `ApprovalStatus` owns the stable approval-state vocabulary
-
-## `BusinessEventId`, `BusinessEventKind`, And `BusinessEventStatus`
-
-These types reserve first-class identity and lifecycle vocabulary above the raw journal-entry
-escape hatch.
-
-```java
-public record BusinessEventId(String value)
-public enum BusinessEventKind implements WireValue
-public enum BusinessEventStatus implements WireValue
-```
-
-- Purpose: make typed business-event subledgers structural instead of leaving higher-level
-  accounting events anonymous
-- Validation: `BusinessEventId` rejects blank and overlength identifiers after normalization
-- Wire contract: `BusinessEventKind` and `BusinessEventStatus` own the stable public event
-  vocabulary
-
-## `TaxProfile`, `TaxRegistration`, `TaxRegistrationId`, `TaxFilingFrequency`, `TaxCode`, `TaxCodeDefinition`, `TaxCodeName`, `TaxJurisdictionCode`, `TaxPricingMode`, `TaxRecoverability`, And `TaxComponent`
-
-These types keep first-class tax posture, neutral tax-code definitions, and generated tax
-components structural instead of treating tax as free-form journal arithmetic.
-
-```java
-public record TaxProfile(List<TaxRegistration> registrations, List<TaxCodeDefinition> taxCodeDefinitions)
-public record TaxRegistration(...)
-public record TaxRegistrationId(String value)
-public enum TaxFilingFrequency implements WireValue
-public record TaxCode(String value)
-public record TaxCodeDefinition(...)
-public record TaxCodeName(String value)
-public record TaxJurisdictionCode(String value)
-public enum TaxPricingMode implements WireValue
-public enum TaxRecoverability implements WireValue
-public record TaxComponent(...)
-```
-
-- Purpose: preserve declared registrations, named tax-code definitions, neutral recoverability and
-  pricing posture, and generated tax components as typed accounting facts
-- Validation: `TaxProfile` defensively copies registrations and definitions; the text-backed tax
-  identifiers reject blank and overlength values after normalization; `TaxComponent` requires one
-  shared functional currency for taxable and tax amounts
-- Wire contract: filing frequency, pricing mode, and recoverability own stable machine vocabulary
-
-## `ExchangeRate`, `ExchangeRateEvidence`, `ExchangeRateSourceKind`, And `FunctionalMeasurement`
-
-These types reserve first-class transaction-currency measurement above the current single-book
-functional-currency reporting baseline.
-
-```java
-public record ExchangeRate(String value)
-public record ExchangeRateEvidence(...)
-public enum ExchangeRateSourceKind implements WireValue
-public record FunctionalMeasurement(...)
-```
-
-- Purpose: keep rate value, rate provenance, transaction amount, and measured functional amount
-  explicit instead of collapsing FX evidence outside FinGrind
-- Validation: `ExchangeRate` owns one exact positive plain-decimal grammar and canonicalizes
-  redundant trailing zeroes; `ExchangeRateEvidence` normalizes optional source references;
-  `FunctionalMeasurement` requires its transaction and functional currencies to match the attached
-  rate evidence
-- Wire contract: `ExchangeRateSourceKind` owns the stable rate-source vocabulary
-
-## `InventoryItemId`, `InventoryItemName`, And `InventoryQuantity`
-
-These types keep inventory references and units typed for business-event requests.
-
-```java
-public record InventoryItemId(String value)
-public record InventoryItemName(String value)
-public record InventoryQuantity(long units)
-```
-
-- Purpose: separate inventory identity and unit count from money so inventory events do not
-  overload exact-money types
-- Validation: identifiers reject blank and overlength values after normalization; quantity must be
-  strictly positive
-
-## `MigrationBatchId`, `PriorPeriodAdjustmentKind`, `CashFlowActivity`, `OtherComprehensiveIncomeClassification`, `DisclosureNoteKind`, And `PercentageRate`
-
-These supporting types reserve explicit vocabulary for migration, prior-period correction, cash
- flow reporting, disclosure-note classification, OCI classification, and exact percentage storage.
-
-```java
-public record MigrationBatchId(String value)
-public enum PriorPeriodAdjustmentKind implements WireValue
-public enum CashFlowActivity implements WireValue
-public enum OtherComprehensiveIncomeClassification implements WireValue
-public enum DisclosureNoteKind implements WireValue
-public record PercentageRate(int basisPoints)
-```
-
-- Purpose: keep future accounting-foundation expansion typed instead of scattering open strings and
-  primitive percentages through higher-level workflows
-- Validation: `MigrationBatchId` rejects blank and overlength values after normalization, and
-  `PercentageRate` rejects negative or unsupported basis-point values
-- Wire contract: prior-period-adjustment, cash-flow-activity, disclosure-note-kind, and OCI
-  vocabularies own stable machine tokens

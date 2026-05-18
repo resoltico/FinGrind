@@ -1,11 +1,14 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -132,6 +135,117 @@ final class CliMutationResponseWriter {
           outputChannel.writeMutationRejection(
               outputMode,
               CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              null);
+    }
+  }
+
+  void writeBackupBookResult(BackupBookResult result, OutputMode outputMode) {
+    switch (result) {
+      case BackupBookResult.BackedUp backedUp ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.BackupBookPayload(
+                              absolutePath(backedUp.bookFilePath()),
+                              absolutePath(backedUp.backupFilePath()),
+                              absolutePath(backedUp.backupBookKeyFilePath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderBackupBookHuman(backedUp)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK));
+              });
+      case BackupBookResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              null);
+    }
+  }
+
+  void writeRestoreBookResult(RestoreBookResult result, OutputMode outputMode) {
+    switch (result) {
+      case RestoreBookResult.Restored restored ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.RestoreBookPayload(
+                              absolutePath(restored.bookFilePath()),
+                              absolutePath(restored.backupFilePath()),
+                              absolutePath(restored.backupBookKeyFilePath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRestoreBookHuman(restored)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_BOOK));
+              });
+      case RestoreBookResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              null);
+    }
+  }
+
+  void writeRecoverRekeyResult(RecoverRekeyResult result, OutputMode outputMode) {
+    switch (result) {
+      case RecoverRekeyResult.Inspected inspected ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.RecoverRekeyInspectionPayload(
+                              absolutePath(inspected.bookFilePath()),
+                              inspected.rollbackArtifactPaths().stream()
+                                  .map(CliMutationResponseWriter::absolutePath)
+                                  .toList()))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRecoverRekeyInspectionHuman(inspected)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
+              });
+      case RecoverRekeyResult.Restored restored ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.RecoverRekeyMutationPayload(
+                              absolutePath(restored.bookFilePath()),
+                              "restore",
+                              absolutePath(restored.rollbackArtifactPath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRecoverRekeyRestoredHuman(restored)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
+              });
+      case RecoverRekeyResult.Deleted deleted ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.RecoverRekeyMutationPayload(
+                              absolutePath(deleted.bookFilePath()),
+                              "delete",
+                              absolutePath(deleted.rollbackArtifactPath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRecoverRekeyDeletedHuman(deleted)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
+              });
+      case RecoverRekeyResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
     }
   }

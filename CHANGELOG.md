@@ -5,11 +5,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-05-18
+
+### Added
+
+- Added first-class closed-book maintenance workflows: `backup-book`, `restore-book`, and
+  `recover-rekey` now ship as public CLI commands with structured JSON and human result shapes,
+  deterministic rejection contracts, and matching maintenance/regression coverage.
+- `inspect-book` now publishes the active migration-policy facts alongside lifecycle and format
+  metadata so operators and automation can distinguish the current hard-break format line from a
+  generic compatibility summary.
+
+### Changed
+
+- Narrowed the public bookkeeping kernel and protected-book identity back to executable ledger
+  concepts: `open-book` and the protected-book schema no longer carry first-class tax-profile
+  payloads, the live protected-book format advances to version `8`, and the public theory holders
+  now describe tax, FX, source evidence, and richer reporting as adjacent contexts rather than
+  live kernel-owned state.
+- Discovery surfaces now default to JSON when stdout is redirected, inline accepted enum
+  vocabularies for request-file commands, and separate operator notes from command grammar more
+  clearly.
+- Human inspection and maintenance output now render explicit entity and reporting rows, clearer
+  restore/rekey secret continuity, and more precise close-period outcome language instead of
+  compressed profile summaries or ambiguous empty sections.
+- Managed SQLite runtime publication and verification now align around artifact-side trusted
+  checksum sidecars across the bundle, source-checkout, Docker, and release-surface verifier
+  paths.
+
+### Removed
+
+- Removed scaffold-only public business-event contracts from `contract.operations` and placeholder
+  advanced-reporting contracts for cash flows, comprehensive income, and disclosure packs until
+  those surfaces have owning executable contexts and durable storage.
+- Removed leaked shared-kernel placeholder types for tax profiles, tax codes, FX measurement and
+  evidence, source evidence, business-event lifecycle, inventory, and adjacent reporting
+  classifications, together with the matching SQLite tax-profile codec and example payloads.
+
 ### Fixed
 
 - Release publication now gives the public container workflow enough release-asset wait budget to
-  survive slow GitHub-hosted platform bundle builders before it starts multi-arch image
-  publication.
+  survive slower GitHub-hosted platform bundle builders before multi-arch image publication
+  begins.
+- Tightened the protected-book lifecycle and theory-holder surfaces again: `backup-book`,
+  `restore-book`, and `recover-rekey` now validate path collisions, backup-pair verification,
+  rollback-artifact handling, and secret reuse deterministically across CLI, SQLite, schema, and
+  docs.
+- Raw `java -jar` discovery/help no longer leaves misleading native-access noise, successful PDF
+  exports no longer emit a harmless direct-buffer warning, single-record human views keep exact
+  durable identifiers, and the checked-in examples and rendered human fixtures now match the live
+  request and output contracts.
+- Tightened release-surface verification again so the environment-configured SQLite runtime
+  verifier exercises the operator-managed direct-Java path it claims to prove, and the contract
+  schema-key floor now includes the maintenance-operation payload keys introduced by the new
+  lifecycle commands.
+- Windows CI runtime verification no longer carries ad hoc inline PowerShell probes: the
+  environment-configured and source-checkout SQLite runtime checks now delegate to canonical
+  PowerShell verifier scripts that mirror the release-surface shell owners and their direct-Java
+  versus source-checkout launcher contracts.
 
 ## [0.39.0] - 2026-05-17
 
@@ -1922,7 +1975,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.39.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.40.0...HEAD
+[0.40.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.40.0
 [0.39.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.39.0
 [0.38.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.38.0
 [0.37.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.37.0

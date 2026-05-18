@@ -197,33 +197,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_acceptsStructuredTaxProfileFileForRegisteredBooks() throws Exception {
-    Path taxProfileFile =
-        writeRequest(
-            """
-            {
-              "registrations": [
-                {
-                  "jurisdictionCode": "LV",
-                  "registrationId": "LV123456789",
-                  "filingFrequency": "MONTHLY"
-                }
-              ],
-              "taxCodeDefinitions": [
-                {
-                  "taxCode": "VAT21",
-                  "displayName": "Standard VAT",
-                  "jurisdictionCode": "LV",
-                  "rateBasisPoints": 2100,
-                  "pricingMode": "EXCLUSIVE",
-                  "recoverability": "FULLY_RECOVERABLE",
-                  "liabilityAccountCode": "2100",
-                  "receivableAccountCode": "1300"
-                }
-              ]
-            }
-            """);
-
+  void parse_openBook_acceptsRegisteredTaxStatusWithoutTaxProfileScaffolding() {
     OpenBook openBook =
         assertInstanceOf(
             OpenBook.class,
@@ -240,8 +214,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--tax-registration-status",
                   "REGISTERED",
-                  "--tax-profile-file",
-                  taxProfileFile.toString(),
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -251,61 +223,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 }));
 
     assertEquals(
-        "LV",
-        openBook
-            .command()
-            .bookIdentity()
-            .taxProfile()
-            .registrations()
-            .getFirst()
-            .jurisdictionCode()
-            .value());
-    assertEquals(
-        "VAT21",
-        openBook
-            .command()
-            .bookIdentity()
-            .taxProfile()
-            .taxCodeDefinitions()
-            .getFirst()
-            .taxCode()
-            .value());
+        TaxRegistrationStatus.REGISTERED,
+        openBook.command().bookIdentity().entityProfile().taxRegistrationStatus());
   }
 
   @Test
-  void parse_openBook_rejectsRegisteredTaxStatusWithoutStructuredTaxProfile() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--tax-registration-status",
-                      "REGISTERED",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
-                    }));
-
-    assertEquals("--tax-registration-status", exception.argument());
-    assertEquals(
-        "Registered tax status requires --tax-profile-file <path>.", exception.getMessage());
-  }
-
-  @Test
-  void parse_openBook_rejectsDuplicateTaxProfileFileArgument() throws Exception {
+  void parse_openBook_rejectsRemovedTaxProfileFileArgument() throws Exception {
     Path taxProfileFile = writeRequest("{\"registrations\":[]}");
 
     CliArgumentsException exception =
@@ -323,8 +246,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
-                      "--tax-profile-file",
-                      taxProfileFile.toString(),
+                      "--tax-registration-status",
+                      "REGISTERED",
                       "--tax-profile-file",
                       taxProfileFile.toString(),
                       "--functional-currency",
@@ -336,7 +259,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                     }));
 
     assertEquals("--tax-profile-file", exception.argument());
-    assertEquals("Duplicate argument: --tax-profile-file", exception.getMessage());
+    assertEquals("Unsupported argument: --tax-profile-file", exception.getMessage());
   }
 
   @Test
@@ -905,5 +828,111 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals("A --entity-form argument is required.", missingEntityForm.getMessage());
     assertEquals("--accounting-basis", missingAccountingBasis.argument());
     assertEquals("A --accounting-basis argument is required.", missingAccountingBasis.getMessage());
+  }
+
+  @Test
+  void parse_returnsMaintenanceCommandsForValidArguments() {
+    BackupBook backupBook =
+        assertInstanceOf(
+            BackupBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "backup-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--backup-file",
+                  "backup/entity.sqlite",
+                  "--backup-book-key-file",
+                  "backup/entity.key",
+                  "--output",
+                  "human"
+                }));
+    RestoreBook restoreBook =
+        assertInstanceOf(
+            RestoreBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "restore-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--backup-file",
+                  "backup/entity.sqlite",
+                  "--backup-book-key-file",
+                  "backup/entity.key"
+                }));
+    RecoverRekey recoverRekey =
+        assertInstanceOf(
+            RecoverRekey.class,
+            CliArguments.parse(
+                new String[] {
+                  "recover-rekey",
+                  "--book-file",
+                  "book.sqlite",
+                  "--recovery-action",
+                  "restore",
+                  "--rollback-file",
+                  "book.rekey-rollback.sqlite"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), backupBook.bookAccess().bookFilePath());
+    assertEquals(Path.of("backup/entity.sqlite"), backupBook.backupFilePath());
+    assertEquals(Path.of("backup/entity.key"), backupBook.backupBookKeyFilePath());
+    assertEquals(OutputMode.HUMAN, backupBook.outputMode());
+
+    assertEquals(Path.of("book.sqlite"), restoreBook.bookFilePath());
+    assertEquals(Path.of("backup/entity.sqlite"), restoreBook.backupFilePath());
+    assertEquals(Path.of("backup/entity.key"), restoreBook.backupBookKeyFilePath());
+    assertEquals(OutputMode.JSON, restoreBook.outputMode());
+
+    assertEquals(Path.of("book.sqlite"), recoverRekey.bookFilePath());
+    assertEquals(
+        dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction.RESTORE, recoverRekey.action());
+    assertEquals(Path.of("book.rekey-rollback.sqlite"), recoverRekey.rollbackArtifactPath());
+    assertEquals(OutputMode.JSON, recoverRekey.outputMode());
+  }
+
+  @Test
+  void parse_rejectsMaintenancePathCollisions() {
+    CliArgumentsException backupCollision =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "backup-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--backup-file",
+                      "book.sqlite",
+                      "--backup-book-key-file",
+                      "backup.key"
+                    }));
+    CliArgumentsException restoreCollision =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "restore-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--backup-file",
+                      "backup.sqlite",
+                      "--backup-book-key-file",
+                      "backup.sqlite"
+                    }));
+
+    assertEquals("--backup-file", backupCollision.argument());
+    assertEquals(
+        "--book-file and --backup-file must not point to the same path.",
+        backupCollision.getMessage());
+    assertEquals("--backup-book-key-file", restoreCollision.argument());
+    assertEquals(
+        "--backup-file and --backup-book-key-file must not point to the same path.",
+        restoreCollision.getMessage());
   }
 }

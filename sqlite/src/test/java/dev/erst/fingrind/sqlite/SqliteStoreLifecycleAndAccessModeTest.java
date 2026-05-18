@@ -328,11 +328,18 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         new SqliteBookStateReader(
             SqliteBookContract.APPLICATION_ID,
             SqliteBookContract.FORMAT_VERSION,
-            "account",
-            "audit_event",
-            "book_meta",
-            "journal_line",
-            "posting_fact");
+            java.util.List.of(
+                SqliteBookContract.BOOK_META_TABLE,
+                SqliteBookContract.BOOK_IDENTITY_TABLE,
+                SqliteBookContract.ENTITY_PROFILE_TABLE,
+                SqliteBookContract.BOOK_POLICY_TABLE,
+                SqliteBookContract.ACCOUNT_TABLE,
+                SqliteBookContract.POSTING_FACT_TABLE,
+                SqliteBookContract.JOURNAL_LINE_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_TOTAL_TABLE,
+                SqliteBookContract.PERIOD_CLOSE_POSTING_TABLE,
+                SqliteBookContract.AUDIT_EVENT_TABLE));
     Path blankBookPath = tempDirectory.resolve("helper-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
     withStandaloneDatabase(
@@ -427,7 +434,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         });
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(blankBookPath))) {
-      setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(blankBookPath)));
+      setStoreDatabase(
+          postingFactStore, SqliteNativeConnections.openKeyFileAccess(bookAccess(blankBookPath)));
       assertEquals(
           Optional.of(
               new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection

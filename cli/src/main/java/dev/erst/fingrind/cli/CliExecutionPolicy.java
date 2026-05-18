@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
@@ -15,7 +16,9 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -178,6 +181,29 @@ final class CliExecutionPolicy {
     return switch (result) {
       case RekeyBookResult.Rekeyed _ -> 0;
       case RekeyBookResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(BackupBookResult result) {
+    return switch (result) {
+      case BackupBookResult.BackedUp _ -> 0;
+      case BackupBookResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(RestoreBookResult result) {
+    return switch (result) {
+      case RestoreBookResult.Restored _ -> 0;
+      case RestoreBookResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(RecoverRekeyResult result) {
+    return switch (result) {
+      case RecoverRekeyResult.Inspected _ -> 0;
+      case RecoverRekeyResult.Restored _ -> 0;
+      case RecoverRekeyResult.Deleted _ -> 0;
+      case RecoverRekeyResult.Rejected _ -> 2;
     };
   }
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -145,9 +145,12 @@ Runtime identity rules:
 Current verification paths:
 - `scripts/verify-source-checkout-sqlite-runtime.sh` proves the generated source-checkout launcher
   reports the canonical source-checkout runtime distribution with `source-checkout-managed`
-  provenance
-- `scripts/verify-environment-configured-sqlite-runtime.sh` proves the Gradle JavaExec path
-  reports the canonical direct-Java runtime distribution with `environment-configured` provenance
+  provenance; `scripts/verify-source-checkout-sqlite-runtime.ps1` proves that same contract on
+  the Windows PowerShell release surface
+- `scripts/verify-environment-configured-sqlite-runtime.sh` proves the developer direct-Java
+  wrapper reports the canonical direct-Java runtime distribution with
+  `environment-configured` provenance; `scripts/verify-environment-configured-sqlite-runtime.ps1`
+  proves that same contract on the Windows PowerShell release surface
 - `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
   developer direct-Java wrapper both resolve the managed runtime without leaking native-access
   warnings

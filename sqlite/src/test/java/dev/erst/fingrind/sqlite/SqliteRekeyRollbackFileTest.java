@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -22,6 +25,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for rollback-copy lifecycle behavior around SQLite rekey attempts. */
 class SqliteRekeyRollbackFileTest {
+  private static final MethodHandle PUBLIC_PATH_HINT = rollbackFileHelper("publicPathHint");
+
   @TempDir Path tempDirectory;
 
   @BeforeEach
@@ -125,6 +130,26 @@ class SqliteRekeyRollbackFileTest {
   }
 
   @Test
+  void isRollbackArtifactForBook_requiresSameParentDirectoryAndCanonicalName() throws Exception {
+    Path bookPath = tempDirectory.resolve("acme.sqlite");
+    Files.writeString(bookPath, "book");
+    Path validArtifact = tempDirectory.resolve("acme.sqlite.rekey-rollback-001.sqlite");
+    Path wrongParent =
+        tempDirectory.resolve("nested").resolve("acme.sqlite.rekey-rollback-001.sqlite");
+    Path wrongSuffix = tempDirectory.resolve("acme.sqlite.rekey-rollback-001.tmp");
+    Files.createDirectories(wrongParent.getParent());
+
+    assertTrue(SqliteRekeyRollbackFile.isRollbackArtifactForBook(bookPath, validArtifact));
+    assertFalse(SqliteRekeyRollbackFile.isRollbackArtifactForBook(bookPath, wrongParent));
+    assertFalse(SqliteRekeyRollbackFile.isRollbackArtifactForBook(bookPath, wrongSuffix));
+  }
+
+  @Test
+  void publicPathHint_redactsRootPathsWithoutAFileName() {
+    assertEquals("<redacted>", publicPathHint(tempDirectory.getRoot()));
+  }
+
+  @Test
   void reportStaleRollbackArtifacts_skipsReporterWhenNoArtifactsExist() throws Exception {
     Path bookPath = tempDirectory.resolve("empty.sqlite");
     Files.writeString(bookPath, "book");
@@ -220,6 +245,32 @@ class SqliteRekeyRollbackFileTest {
       assertDoesNotThrow(() -> SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(bookPath));
     } finally {
       Files.setPosixFilePermissions(lockedDirectory, originalPermissions);
+    }
+  }
+
+  private static String publicPathHint(Path path) {
+    try {
+      return (String) PUBLIC_PATH_HINT.invokeExact(path);
+    } catch (RuntimeException runtimeException) {
+      throw runtimeException;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new LinkageError("Failed to invoke SQLite rollback-file helper.", throwable);
+    }
+  }
+
+  private static MethodHandle rollbackFileHelper(String methodName) {
+    try {
+      MethodHandles.Lookup lookup =
+          MethodHandles.privateLookupIn(SqliteRekeyRollbackFile.class, MethodHandles.lookup());
+      return lookup.findStatic(
+          SqliteRekeyRollbackFile.class,
+          methodName,
+          MethodType.methodType(String.class, Path.class));
+    } catch (IllegalAccessException | NoSuchMethodException exception) {
+      throw new LinkageError(
+          "Failed to bind SQLite rollback-file helper: " + methodName, exception);
     }
   }
 }

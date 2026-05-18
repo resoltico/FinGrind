@@ -14,8 +14,10 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void secondWriterHonorsBusyTimeoutWhenFirstWriterHoldsImmediateTransaction() {
     Path bookPath = tempDirectory.resolve("contention-book.sqlite");
-    try (SqliteNativeDatabase firstWriter = SqliteNativeConnections.open(bookAccess(bookPath));
-        SqliteNativeDatabase secondWriter = SqliteNativeConnections.open(bookAccess(bookPath))) {
+    try (SqliteNativeDatabase firstWriter =
+            SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath));
+        SqliteNativeDatabase secondWriter =
+            SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath))) {
       firstWriter.executeStatement("begin immediate");
       setBusyTimeout(secondWriter, 100);
       long startNanos = System.nanoTime();

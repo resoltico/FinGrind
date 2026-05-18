@@ -63,6 +63,18 @@ final class SqliteStatementQueries {
     }
   }
 
+  private record BookIdentityCoreRow(
+      String entityName, String functionalCurrencyCode, String fiscalYearStart) {}
+
+  private record EntityProfileRow(
+      String entityForm,
+      String ownerModel,
+      String reportingObligationStatus,
+      String taxRegistrationStatus,
+      String businessActivityTags) {}
+
+  private record BookPolicyRow(String accountingBasis) {}
+
   private SqliteStatementQueries() {}
 
   static Optional<CommittedPosting> findOneCommittedPosting(
@@ -188,69 +200,29 @@ final class SqliteStatementQueries {
   }
 
   static Optional<BookIdentity> loadBookIdentity(SqliteNativeDatabase activeDatabase) {
-    Optional<String> entityName =
-        loadBookMetaValue(activeDatabase, SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY);
-    if (entityName.isEmpty()) {
+    Optional<BookIdentityCoreRow> identityCoreRow = loadBookIdentityCore(activeDatabase);
+    if (identityCoreRow.isEmpty()) {
       return Optional.empty();
     }
-    String requiredEntityForm =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_ENTITY_FORM_META_KEY,
-            "Initialized SQLite book is missing entity-form metadata.");
-    String requiredOwnerModel =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_OWNER_MODEL_META_KEY,
-            "Initialized SQLite book is missing owner-model metadata.");
-    String requiredReportingObligationStatus =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_REPORTING_OBLIGATION_STATUS_META_KEY,
-            "Initialized SQLite book is missing reporting-obligation metadata.");
-    String requiredTaxRegistrationStatus =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_TAX_REGISTRATION_STATUS_META_KEY,
-            "Initialized SQLite book is missing tax-registration metadata.");
-    String requiredTaxProfile =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_TAX_PROFILE_META_KEY,
-            "Initialized SQLite book is missing tax-profile metadata.");
-    String requiredBusinessActivityTags =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY,
-            "Initialized SQLite book is missing business-activity metadata.");
-    String requiredFunctionalCurrency =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY,
-            "Initialized SQLite book is missing functional-currency metadata.");
-    String requiredFiscalYearStart =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY,
-            "Initialized SQLite book is missing fiscal-year-start metadata.");
-    String requiredAccountingBasis =
-        requireBookMetaValue(
-            activeDatabase,
-            SqlitePostingSql.BOOK_ACCOUNTING_BASIS_META_KEY,
-            "Initialized SQLite book is missing accounting-basis metadata.");
+    EntityProfileRow entityProfileRow =
+        loadRequiredEntityProfile(
+            activeDatabase, "Initialized SQLite book is missing entity profile.");
+    BookPolicyRow bookPolicyRow =
+        loadRequiredBookPolicy(activeDatabase, "Initialized SQLite book is missing book policy.");
+    BookIdentityCoreRow coreRow = identityCoreRow.orElseThrow();
     return Optional.of(
         new BookIdentity(
             new EntityProfile(
-                new BookEntityName(entityName.orElseThrow()),
-                EntityForm.fromWireValue(requiredEntityForm),
-                OwnerModel.fromWireValue(requiredOwnerModel),
-                ReportingObligationStatus.fromWireValue(requiredReportingObligationStatus),
-                TaxRegistrationStatus.fromWireValue(requiredTaxRegistrationStatus),
-                decodeBusinessActivityTags(requiredBusinessActivityTags)),
-            CurrencyUnit.of(requiredFunctionalCurrency),
-            FiscalYearStart.parse(requiredFiscalYearStart),
-            AccountingBasis.fromWireValue(requiredAccountingBasis),
-            SqliteTaxProfileCodec.decode(requiredTaxProfile)));
+                new BookEntityName(coreRow.entityName()),
+                EntityForm.fromWireValue(entityProfileRow.entityForm()),
+                OwnerModel.fromWireValue(entityProfileRow.ownerModel()),
+                ReportingObligationStatus.fromWireValue(
+                    entityProfileRow.reportingObligationStatus()),
+                TaxRegistrationStatus.fromWireValue(entityProfileRow.taxRegistrationStatus()),
+                decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
+            CurrencyUnit.of(coreRow.functionalCurrencyCode()),
+            FiscalYearStart.parse(coreRow.fiscalYearStart()),
+            AccountingBasis.fromWireValue(bookPolicyRow.accountingBasis())));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {
@@ -321,18 +293,67 @@ final class SqliteStatementQueries {
         });
   }
 
-  private static Optional<String> loadBookMetaValue(
-      SqliteNativeDatabase activeDatabase, String metaKey) {
-    return loadOptionalText(
+  private static Optional<BookIdentityCoreRow> loadBookIdentityCore(
+      SqliteNativeDatabase activeDatabase) {
+    return withStatement(
         activeDatabase,
-        SqlitePostingSql.FIND_BOOK_META_VALUE,
-        statement -> statement.bindText(1, metaKey));
+        SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
+        statement -> {
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
+            return Optional.empty();
+          }
+          BookIdentityCoreRow row =
+              new BookIdentityCoreRow(
+                  SqlitePostingMapper.requiredText(statement, 0),
+                  SqlitePostingMapper.requiredText(statement, 1),
+                  SqlitePostingMapper.requiredText(statement, 2));
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
+            throw new IllegalStateException(
+                "SQLite book identity core query returned more than one row.");
+          }
+          return Optional.of(row);
+        });
   }
 
-  private static String requireBookMetaValue(
-      SqliteNativeDatabase activeDatabase, String metaKey, String missingMessage) {
-    return loadBookMetaValue(activeDatabase, metaKey)
-        .orElseThrow(() -> new IllegalStateException(missingMessage));
+  private static EntityProfileRow loadRequiredEntityProfile(
+      SqliteNativeDatabase activeDatabase, String missingMessage) {
+    return withStatement(
+        activeDatabase,
+        SqlitePostingSql.FIND_ENTITY_PROFILE,
+        statement -> {
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
+            throw new IllegalStateException(missingMessage);
+          }
+          EntityProfileRow row =
+              new EntityProfileRow(
+                  SqlitePostingMapper.requiredText(statement, 0),
+                  SqlitePostingMapper.requiredText(statement, 1),
+                  SqlitePostingMapper.requiredText(statement, 2),
+                  SqlitePostingMapper.requiredText(statement, 3),
+                  SqlitePostingMapper.requiredText(statement, 4));
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
+            throw new IllegalStateException(
+                "SQLite entity profile query returned more than one row.");
+          }
+          return row;
+        });
+  }
+
+  private static BookPolicyRow loadRequiredBookPolicy(
+      SqliteNativeDatabase activeDatabase, String missingMessage) {
+    return withStatement(
+        activeDatabase,
+        SqlitePostingSql.FIND_BOOK_POLICY,
+        statement -> {
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
+            throw new IllegalStateException(missingMessage);
+          }
+          BookPolicyRow row = new BookPolicyRow(SqlitePostingMapper.requiredText(statement, 0));
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
+            throw new IllegalStateException("SQLite book policy query returned more than one row.");
+          }
+          return row;
+        });
   }
 
   private static List<BusinessActivityTag> decodeBusinessActivityTags(String encodedTags) {

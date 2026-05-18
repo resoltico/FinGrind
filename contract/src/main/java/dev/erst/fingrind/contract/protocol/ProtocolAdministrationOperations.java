@@ -20,6 +20,8 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
+                ProtocolExampleStep.note(
+                    "Choose one missing private parent directory so FinGrind can create it securely, or tighten one existing parent directory to owner-only permissions before rerunning the command."),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./secrets/acme.book-key"
                         .formatted(
@@ -116,6 +118,87 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT)))),
         ProtocolOperationDefinitions.operation(
+            OperationId.BACKUP_BOOK,
+            OperationCategory.ADMINISTRATION,
+            "Backup Book",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.BACKUP_FILE + " <path>",
+                ProtocolOptions.BACKUP_BOOK_KEY_FILE + " <path>",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Export one closed encrypted-book backup pair without overwriting any existing destination.",
+            List.of(
+                ProtocolExampleStep.note(
+                    "backup-book refuses to run when the live book has SQLite sidecars or stale rekey rollback artifacts beside it."),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./backups/acme-2026-05-18.sqlite %s ./backups/acme-2026-05-18.book-key"
+                        .formatted(
+                            OperationId.BACKUP_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.BACKUP_FILE,
+                            ProtocolOptions.BACKUP_BOOK_KEY_FILE)))),
+        ProtocolOperationDefinitions.operation(
+            OperationId.RESTORE_BOOK,
+            OperationCategory.ADMINISTRATION,
+            "Restore Book",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                ProtocolOptions.BACKUP_FILE + " <path>",
+                ProtocolOptions.BACKUP_BOOK_KEY_FILE + " <path>",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Restore one verified encrypted-book backup pair onto the selected live book path.",
+            List.of(
+                ProtocolExampleStep.note(
+                    "restore-book verifies the backup with the supplied backup key file before replacing the live book path."),
+                ProtocolExampleStep.note(
+                    "After restore completes, reopen the restored live book with that same backup key file because the restored encrypted pair keeps that secret."),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./backups/acme-2026-05-18.sqlite %s ./backups/acme-2026-05-18.book-key"
+                        .formatted(
+                            OperationId.RESTORE_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BACKUP_FILE,
+                            ProtocolOptions.BACKUP_BOOK_KEY_FILE)))),
+        ProtocolOperationDefinitions.operation(
+            OperationId.RECOVER_REKEY,
+            OperationCategory.ADMINISTRATION,
+            "Recover Rekey",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                "["
+                    + ProtocolOptions.RECOVERY_ACTION
+                    + " <"
+                    + String.join(
+                        "|",
+                        dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction.wireValues())
+                    + ">]",
+                "[" + ProtocolOptions.ROLLBACK_FILE + " <path>]",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Inspect or apply one stale sibling rekey rollback artifact for the selected book path.",
+            List.of(
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite"
+                        .formatted(
+                            OperationId.RECOVER_REKEY.wireName(), ProtocolOptions.BOOK_FILE)),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s restore %s ./books/acme.sqlite.rekey-rollback-1234.sqlite"
+                        .formatted(
+                            OperationId.RECOVER_REKEY.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.RECOVERY_ACTION,
+                            ProtocolOptions.ROLLBACK_FILE)))),
+        ProtocolOperationDefinitions.operation(
             OperationId.DECLARE_ACCOUNT,
             OperationCategory.ADMINISTRATION,
             "Declare Account",
@@ -160,11 +243,13 @@ final class ProtocolAdministrationOperations {
             "Close one contiguous reporting period into one selected closing equity account.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Declare at least one active equity account that satisfies the active closing-equity policy for the selected entity form, then choose the target with --closing-equity-account."),
+                    "Built-in closing-equity mapping is entity-form specific: FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL; COMPANY and BRANCH require RETAINED_EARNINGS; PARTNERSHIP requires PARTNER_CURRENT; NONPROFIT requires ACCUMULATED_SURPLUS; OTHER requires OTHER_EQUITY."),
+                ProtocolExampleStep.note(
+                    "Declare at least one active equity account that satisfies the active closing-equity policy for the selected entity form, then choose that account with --closing-equity-account."),
                 ProtocolExampleStep.note(
                     "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon and remain inside one fiscal year."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s 3200"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s 3300"
                         .formatted(
                             OperationId.CLOSE_PERIOD.wireName(),
                             ProtocolOptions.BOOK_FILE,

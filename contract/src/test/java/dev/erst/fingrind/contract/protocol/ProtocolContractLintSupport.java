@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
@@ -443,6 +444,7 @@ class ProtocolContractLintSupport {
                 "windows-latest",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
+    ids.addAll(BookMigrationPolicyMode.wireValues());
     ids.addAll(
         ContractErrors.descriptors().stream()
             .map(dev.erst.fingrind.contract.runtime.ContractResponse.ErrorDescriptor::code)

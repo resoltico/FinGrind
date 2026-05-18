@@ -88,7 +88,8 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
     Path bookPath = tempDirectory.resolve("configured-close.sqlite");
-    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess(bookPath))) {
+    try (SqliteNativeDatabase database =
+        SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath))) {
       assertDoesNotThrow(() -> SqliteConnectionConfigurer.closeAfterConfigurationFailure(database));
     }
   }

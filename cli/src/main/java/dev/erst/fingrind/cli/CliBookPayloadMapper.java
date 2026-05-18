@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Path;
@@ -32,7 +33,8 @@ final class CliBookPayloadMapper {
               status.wireValue(),
               status.compatibleWithCurrentBinary(),
               status.canInitializeWithOpenBook(),
-              missing.supportedBookFormatVersion());
+              missing.supportedBookFormatVersion(),
+              migrationPolicyPayload(missing.migrationPolicy()));
       case BookInspection.Existing existing ->
           new CliAdministrationJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
@@ -41,7 +43,8 @@ final class CliBookPayloadMapper {
               status.canInitializeWithOpenBook(),
               existing.applicationId(),
               existing.detectedBookFormatVersion(),
-              existing.supportedBookFormatVersion());
+              existing.supportedBookFormatVersion(),
+              migrationPolicyPayload(existing.migrationPolicy()));
       case BookInspection.Initialized initialized ->
           new CliAdministrationJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
@@ -51,9 +54,20 @@ final class CliBookPayloadMapper {
               initialized.applicationId(),
               initialized.detectedBookFormatVersion(),
               initialized.supportedBookFormatVersion(),
+              migrationPolicyPayload(initialized.migrationPolicy()),
               initialized.initializedAt().toString(),
               bookIdentityPayload(initialized.bookIdentity()));
     };
+  }
+
+  static CliAdministrationJsonModels.MigrationPolicyPayload migrationPolicyPayload(
+      BookMigrationPolicy migrationPolicy) {
+    return new CliAdministrationJsonModels.MigrationPolicyPayload(
+        migrationPolicy.mode().wireValue(),
+        migrationPolicy.inPlaceUpgradeSupported(),
+        migrationPolicy.olderFormatsAccepted(),
+        migrationPolicy.newerFormatsAccepted(),
+        migrationPolicy.supportedBookFormatVersion());
   }
 
   static CliAdministrationJsonModels.BookIdentityPayload bookIdentityPayload(
@@ -64,39 +78,12 @@ final class CliBookPayloadMapper {
         bookIdentity.entityProfile().ownerModel().wireValue(),
         bookIdentity.entityProfile().reportingObligationStatus().wireValue(),
         bookIdentity.entityProfile().taxRegistrationStatus().wireValue(),
-        taxProfilePayload(bookIdentity.taxProfile()),
         bookIdentity.entityProfile().businessActivityTags().stream()
             .map(value -> value.value())
             .toList(),
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue(),
         bookIdentity.accountingBasis().wireValue());
-  }
-
-  static CliAdministrationJsonModels.TaxProfilePayload taxProfilePayload(
-      dev.erst.fingrind.core.TaxProfile taxProfile) {
-    return new CliAdministrationJsonModels.TaxProfilePayload(
-        taxProfile.registrations().stream()
-            .map(
-                registration ->
-                    new CliAdministrationJsonModels.TaxRegistrationPayload(
-                        registration.jurisdictionCode().value(),
-                        registration.registrationId().value(),
-                        registration.filingFrequency().wireValue()))
-            .toList(),
-        taxProfile.taxCodeDefinitions().stream()
-            .map(
-                definition ->
-                    new CliAdministrationJsonModels.TaxCodeDefinitionPayload(
-                        definition.taxCode().value(),
-                        definition.displayName().value(),
-                        definition.jurisdictionCode().value(),
-                        definition.rate().basisPoints(),
-                        definition.pricingMode().wireValue(),
-                        definition.recoverability().wireValue(),
-                        definition.liabilityAccountCode().value(),
-                        definition.receivableAccountCode().map(AccountCode::value).orElse(null)))
-            .toList());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {

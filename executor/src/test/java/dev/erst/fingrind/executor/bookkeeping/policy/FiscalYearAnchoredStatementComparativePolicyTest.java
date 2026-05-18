@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -32,8 +31,7 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
               java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("02-29"),
-          AccountingBasis.ACCRUAL,
-          TaxProfile.empty());
+          AccountingBasis.ACCRUAL);
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(
@@ -45,8 +43,7 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
               java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
-          AccountingBasis.ACCRUAL,
-          TaxProfile.empty());
+          AccountingBasis.ACCRUAL);
 
   @Test
   void comparativePeriod_rejectsInvertedDateRange() {

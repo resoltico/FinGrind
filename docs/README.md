@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -32,7 +32,6 @@ Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/request-template.json](./examples/request-template.json): exact `print-request-template` scaffold capture
 - [examples/declare-account-cash.json](./examples/declare-account-cash.json): minimal account-declaration request for a debit-balance cash account
 - [examples/declare-account-revenue.json](./examples/declare-account-revenue.json): minimal account-declaration request for a credit-balance revenue account
-- [examples/registered-tax-profile.json](./examples/registered-tax-profile.json): example first-class tax profile for a registered book
 - [examples/unknown-account-request.json](./examples/unknown-account-request.json): posting request that deterministically rejects for an undeclared account
 - [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): posting rejection example with aggregated account-state details
 - [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`

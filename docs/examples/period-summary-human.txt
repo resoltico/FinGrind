@@ -2,11 +2,11 @@ Period Summary
 ==============
 
 Entity               : Acme Studio
-Entity profile       : Company / Multi Owner
-Reporting profile    : Internal Management Only / Not Registered
+Entity form          : Company
+Owner model          : Multi Owner
+Reporting obligation : Internal Management Only
+Tax registration     : Not Registered
 Business activity    : (none)
-Tax registrations    : (none)
-Tax code definitions : (none)
 Functional currency  : EUR
 Fiscal year start    : 01-01
 Accounting basis     : Accrual

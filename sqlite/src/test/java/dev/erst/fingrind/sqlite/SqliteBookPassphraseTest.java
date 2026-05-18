@@ -32,6 +32,22 @@ class SqliteBookPassphraseTest {
   }
 
   @Test
+  void copy_returnsIndependentOwnedPassphraseBytes() {
+    byte[] sourceBytes = "secret\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    SqliteBookPassphrase original = SqliteBookPassphrase.fromUtf8Bytes("fixture", sourceBytes);
+    SqliteBookPassphrase copied = original.copy();
+    try (original;
+        copied) {
+      original.close();
+
+      assertEquals("fixture", copied.sourceDescription());
+      assertArrayEquals(
+          "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8), copied.utf8BytesCopy());
+    }
+  }
+
+  @Test
   void normalizeSourceDescription_trimsAndRejectsBlankSourceDescriptions() {
     assertEquals(
         "secret source", SqliteBookPassphrase.normalizeSourceDescription("  secret source  "));

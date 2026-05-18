@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -83,6 +84,42 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
     assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
+  }
+
+  @Test
+  void run_defaultsDiscoveryCommandsToJsonWhenStdoutIsRedirected() throws IOException {
+    ByteArrayOutputStream helpOutput = new ByteArrayOutputStream();
+    FinGrindCli helpCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(helpOutput), fixedClock());
+    int helpExitCode = helpCli.run(new String[] {"help"});
+    assertEquals(0, helpExitCode);
+    JsonNode helpEnvelope =
+        new ObjectMapper().readTree(helpOutput.toString(StandardCharsets.UTF_8));
+    assertEquals("ok", helpEnvelope.path("status").stringValue());
+    assertTrue(helpEnvelope.path("payload").path("commands").isArray());
+
+    ByteArrayOutputStream versionOutput = new ByteArrayOutputStream();
+    FinGrindCli versionCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(versionOutput), fixedClock());
+    int versionExitCode = versionCli.run(new String[] {"version"});
+    assertEquals(0, versionExitCode);
+    JsonNode versionEnvelope =
+        new ObjectMapper().readTree(versionOutput.toString(StandardCharsets.UTF_8));
+    assertEquals("ok", versionEnvelope.path("status").stringValue());
+    assertTrue(versionEnvelope.path("payload").has("version"));
+
+    ByteArrayOutputStream capabilitiesOutput = new ByteArrayOutputStream();
+    FinGrindCli capabilitiesCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(capabilitiesOutput),
+            fixedClock());
+    int capabilitiesExitCode = capabilitiesCli.run(new String[] {"capabilities"});
+    assertEquals(0, capabilitiesExitCode);
+    JsonNode capabilitiesEnvelope =
+        new ObjectMapper().readTree(capabilitiesOutput.toString(StandardCharsets.UTF_8));
+    assertEquals("ok", capabilitiesEnvelope.path("status").stringValue());
+    assertTrue(capabilitiesEnvelope.path("payload").path("commands").isObject());
   }
 
   @Test
@@ -317,7 +354,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   private static void assertCapabilitiesCommandCatalog(JsonNode payload) {
     assertEquals(
         List.of(
-            "generate-book-key-file", "open-book", "rekey-book", "declare-account", "close-period"),
+            "generate-book-key-file",
+            "open-book",
+            "rekey-book",
+            "backup-book",
+            "restore-book",
+            "recover-rekey",
+            "declare-account",
+            "close-period"),
         commandNames(payload.path("commands").path("administration")));
     assertEquals(
         List.of(
@@ -551,8 +595,17 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("runtimeProvenance")
             .stringValue()
             .isBlank());
+    String runtimeProvenance =
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("runtime")
+            .path("runtimeProvenance")
+            .stringValue();
     assertEquals(
-        SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.wireValue(),
+        SqliteRuntimeTrustBasis.fromProvenance(
+                SqliteRuntimeProvenance.fromWireValue(runtimeProvenance))
+            .wireValue(),
         payload
             .path("environment")
             .path("sqlite")

@@ -14,6 +14,18 @@ final class CliMutationArguments {
     return CliLifecycleMutationArguments.parseOpenBookCommand(arguments);
   }
 
+  static CliCommand parseBackupBookCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseBackupBookCommand(arguments);
+  }
+
+  static CliCommand parseRestoreBookCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseRestoreBookCommand(arguments);
+  }
+
+  static CliCommand parseRecoverRekeyCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseRecoverRekeyCommand(arguments);
+  }
+
   static CliCommand parseDeclareAccountCommand(List<String> arguments) {
     return CliRequestMutationArguments.parseDeclareAccountCommand(arguments);
   }

@@ -95,6 +95,38 @@ public final class RejectionNarrative {
     };
   }
 
+  /** Returns the canonical human-readable message for a maintenance rejection. */
+  public static String message(BookMaintenanceRejection rejection) {
+    return switch (Objects.requireNonNull(rejection, "rejection")) {
+      case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
+          "Book '%s' has blocking sibling artifacts and is not safe for one closed-copy maintenance workflow."
+              .formatted(blockingArtifacts.bookFilePath());
+      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
+          "Backup source '%s' has blocking sibling artifacts and is not safe to restore from."
+              .formatted(blockingArtifacts.backupFilePath());
+      case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
+          "Backup destination '%s' already exists and FinGrind will not overwrite it."
+              .formatted(destinationAlreadyExists.backupFilePath());
+      case BookMaintenanceRejection.BackupKeyFileAlreadyExists destinationAlreadyExists ->
+          "Backup key file '%s' already exists and FinGrind will not overwrite it."
+              .formatted(destinationAlreadyExists.backupBookKeyFilePath());
+      case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
+          "No sibling rekey rollback artifacts exist beside '%s'."
+              .formatted(noRollbackArtifactsFound.bookFilePath());
+      case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
+          "More than one sibling rekey rollback artifact exists beside '%s'; choose one explicit rollback artifact path."
+              .formatted(selectionRequired.bookFilePath());
+      case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
+          "Rollback artifact '%s' does not exist."
+              .formatted(rollbackArtifactNotFound.rollbackArtifactPath());
+      case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
+          "Rollback artifact '%s' does not belong to book '%s'."
+              .formatted(
+                  rollbackArtifactNotForBook.rollbackArtifactPath(),
+                  rollbackArtifactNotForBook.bookFilePath());
+    };
+  }
+
   /** Returns the canonical human-readable message for a query rejection. */
   public static String message(BookQueryRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {

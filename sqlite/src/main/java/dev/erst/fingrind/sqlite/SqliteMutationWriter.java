@@ -31,46 +31,27 @@ final class SqliteMutationWriter {
             .map(SqliteMutationWriter::encodeBookMetaValue)
             .reduce((left, right) -> left + "," + right)
             .orElse("");
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_ENTITY_NAME_META_KEY,
-        bookIdentity.entityName().value());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_ENTITY_FORM_META_KEY,
-        bookIdentity.entityProfile().entityForm().wireValue());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_OWNER_MODEL_META_KEY,
-        bookIdentity.entityProfile().ownerModel().wireValue());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_REPORTING_OBLIGATION_STATUS_META_KEY,
-        bookIdentity.entityProfile().reportingObligationStatus().wireValue());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_TAX_REGISTRATION_STATUS_META_KEY,
-        bookIdentity.entityProfile().taxRegistrationStatus().wireValue());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_TAX_PROFILE_META_KEY,
-        SqliteTaxProfileCodec.encode(bookIdentity.taxProfile()));
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_BUSINESS_ACTIVITY_TAGS_META_KEY,
-        encodedBusinessActivityTags);
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_FUNCTIONAL_CURRENCY_META_KEY,
-        bookIdentity.functionalCurrency().code());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_FISCAL_YEAR_START_META_KEY,
-        bookIdentity.fiscalYearStart().wireValue());
-    insertBookMetaValue(
-        activeDatabase,
-        SqlitePostingSql.BOOK_ACCOUNTING_BASIS_META_KEY,
-        bookIdentity.accountingBasis().wireValue());
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_IDENTITY)) {
+      statement.bindText(1, bookIdentity.entityName().value());
+      statement.bindText(2, bookIdentity.functionalCurrency().code());
+      statement.bindText(3, bookIdentity.fiscalYearStart().wireValue());
+      statement.step();
+    }
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.INSERT_ENTITY_PROFILE)) {
+      statement.bindText(1, bookIdentity.entityProfile().entityForm().wireValue());
+      statement.bindText(2, bookIdentity.entityProfile().ownerModel().wireValue());
+      statement.bindText(3, bookIdentity.entityProfile().reportingObligationStatus().wireValue());
+      statement.bindText(4, bookIdentity.entityProfile().taxRegistrationStatus().wireValue());
+      statement.bindText(5, encodedBusinessActivityTags);
+      statement.step();
+    }
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_POLICY)) {
+      statement.bindText(1, bookIdentity.accountingBasis().wireValue());
+      statement.step();
+    }
   }
 
   static void insertBookMetaValue(SqliteNativeDatabase activeDatabase, String key, String value) {
@@ -185,7 +166,8 @@ final class SqliteMutationWriter {
         activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE)) {
       statement.bindText(1, reportingPeriod.effectiveDateFrom().toString());
       statement.bindText(2, reportingPeriod.effectiveDateTo().toString());
-      statement.bindText(3, closedAt.toString());
+      statement.bindText(3, closingEquityAccountCode.value());
+      statement.bindText(4, closedAt.toString());
       if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("SQLite period close insert returned no close order.");
       }
@@ -193,6 +175,16 @@ final class SqliteMutationWriter {
       if (statement.step() != SqliteNativeResultCodes.DONE) {
         throw new IllegalStateException(
             "SQLite period close insert returned more than one close order.");
+      }
+    }
+    for (CurrencyBalance closedTotal : closedTotals) {
+      try (SqliteNativeStatement statement =
+          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE_TOTAL)) {
+        statement.bindInt(1, closeOrder);
+        statement.bindText(2, closedTotal.debitTotal().currencyUnit().code());
+        statement.bindLong(3, closedTotal.debitTotal().minorUnits());
+        statement.bindLong(4, closedTotal.creditTotal().minorUnits());
+        statement.step();
       }
     }
     for (CommittedPosting closingPosting : closingPostings) {

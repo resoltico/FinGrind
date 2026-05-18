@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Regress the shared PowerShell Gradle wrapper helper against the active host wrapper contract and
+# the Windows-specific batch-owner branches it must mirror.
+
+set -euo pipefail
+
+die() {
+    printf 'error: %s\n' "$1" >&2
+    exit 1
+}
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    while [[ -h "${source_path}" ]]; do
+        local source_dir
+        source_dir="$(cd -P -- "$(dirname -- "${source_path}")" && pwd)"
+        source_path="$(readlink "${source_path}")"
+        if [[ "${source_path}" != /* ]]; then
+            source_path="${source_dir}/${source_path}"
+        fi
+    done
+    cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+readonly script_dir="$(resolve_script_dir)"
+readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly shell_helper="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly powershell_helper="${repo_root}/scripts/gradle-wrapper-support.ps1"
+
+[[ -f "${shell_helper}" ]] || die "missing shell Gradle wrapper helper at ${shell_helper}"
+[[ -f "${powershell_helper}" ]] || die \
+    "missing PowerShell Gradle wrapper helper at ${powershell_helper}"
+grep -Fq 'RUNNER_TEMP' "${powershell_helper}" || die \
+    "PowerShell Gradle wrapper helper no longer keeps the Windows RUNNER_TEMP cache-root branch"
+grep -Fq 'LOCALAPPDATA' "${powershell_helper}" || die \
+    "PowerShell Gradle wrapper helper no longer keeps the Windows LOCALAPPDATA cache-root branch"
+grep -Fq 'RepositoryRoot.StartsWith("\\")' "${powershell_helper}" || die \
+    "PowerShell Gradle wrapper helper no longer keeps the Windows UNC externalization branch"
+grep -Fq '& cksum' "${powershell_helper}" || die \
+    "PowerShell Gradle wrapper helper no longer mirrors the POSIX cksum-based cache key"
+
+if ! command -v pwsh >/dev/null 2>&1; then
+    printf 'PowerShell Gradle wrapper helper regression: skipped (pwsh unavailable)\n'
+    exit 0
+fi
+
+# shellcheck source=/dev/null
+source "${shell_helper}"
+
+is_darwin=false
+case "$(uname -s)" in
+    Darwin) is_darwin=true ;;
+esac
+
+readonly expected_cache_key="$(fg_gradle_cache_key "${repo_root}")"
+readonly expected_cache_dir="$(fg_gradle_project_cache_dir "${repo_root}" "${is_darwin}")"
+readonly expected_build_root="$(fg_gradle_project_build_root "${repo_root}" "${is_darwin}")"
+readonly expected_root_build_dir="$(fg_gradle_project_build_dir "${repo_root}" root "${is_darwin}")"
+readonly expected_cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" cli "${is_darwin}")"
+
+actual_json="$(
+    REPO_ROOT="${repo_root}" pwsh -NoLogo -NoProfile -Command '
+        . (Join-Path $PWD "scripts/gradle-wrapper-support.ps1")
+        $repoRoot = $env:REPO_ROOT
+        $payload = [ordered]@{
+            cacheKey = Get-FinGrindProjectCacheKey -RepositoryRoot $repoRoot
+            cacheDir = Get-FinGrindProjectCacheDir -RepositoryRoot $repoRoot
+            buildRoot = Get-FinGrindProjectBuildRoot -RepositoryRoot $repoRoot
+            rootBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "root"
+            cliBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "cli"
+            externalize = Test-FinGrindShouldExternalizeProjectBuilds -RepositoryRoot $repoRoot
+        }
+        $payload | ConvertTo-Json -Compress
+    '
+)"
+
+python3 - <<'PY' \
+    "${expected_cache_key}" \
+    "${expected_cache_dir}" \
+    "${expected_build_root}" \
+    "${expected_root_build_dir}" \
+    "${expected_cli_build_dir}" \
+    "${actual_json}"
+import json
+import sys
+
+expected_cache_key = sys.argv[1]
+expected_cache_dir = sys.argv[2]
+expected_build_root = sys.argv[3]
+expected_root_build_dir = sys.argv[4]
+expected_cli_build_dir = sys.argv[5]
+payload = json.loads(sys.argv[6])
+
+if payload["cacheKey"] != expected_cache_key:
+    raise SystemExit(
+        f"PowerShell helper cache key drifted: {payload['cacheKey']} != {expected_cache_key}"
+    )
+if payload["cacheDir"] != expected_cache_dir:
+    raise SystemExit(
+        f"PowerShell helper cache dir drifted: {payload['cacheDir']} != {expected_cache_dir}"
+    )
+if payload["buildRoot"] != expected_build_root:
+    raise SystemExit(
+        f"PowerShell helper build root drifted: {payload['buildRoot']} != {expected_build_root}"
+    )
+if payload["rootBuildDir"] != expected_root_build_dir:
+    raise SystemExit(
+        "PowerShell helper root build dir drifted: "
+        f"{payload['rootBuildDir']} != {expected_root_build_dir}"
+    )
+if payload["cliBuildDir"] != expected_cli_build_dir:
+    raise SystemExit(
+        "PowerShell helper cli build dir drifted: "
+        f"{payload['cliBuildDir']} != {expected_cli_build_dir}"
+    )
+if payload["externalize"] is not True:
+    raise SystemExit("PowerShell helper lost the POSIX project-build externalization contract")
+PY
+
+printf 'PowerShell Gradle wrapper helper regression: success\n'

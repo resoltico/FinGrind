@@ -92,7 +92,7 @@ final class SqliteRekeyRollbackFile {
     Objects.requireNonNull(reporter, "reporter");
     Objects.requireNonNull(failureReporter, "failureReporter");
     try {
-      List<Path> rollbackArtifacts = findStaleRollbackArtifacts(normalizedBookPath);
+      List<Path> rollbackArtifacts = staleRollbackArtifacts(normalizedBookPath);
       if (!rollbackArtifacts.isEmpty()) {
         reporter.report(normalizedBookPath, rollbackArtifacts);
       }
@@ -117,6 +117,22 @@ final class SqliteRekeyRollbackFile {
           .sorted(Comparator.comparing(Path::toString))
           .collect(Collectors.toUnmodifiableList());
     }
+  }
+
+  static List<Path> staleRollbackArtifacts(Path normalizedBookPath) throws IOException {
+    return findStaleRollbackArtifacts(normalizedBookPath);
+  }
+
+  static boolean isRollbackArtifactForBook(Path normalizedBookPath, Path candidatePath) {
+    Path normalizedBook = Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+    Path normalizedCandidate =
+        Objects.requireNonNull(candidatePath, "candidatePath").toAbsolutePath().normalize();
+    Path parentDirectory = requireBookParentDirectory(normalizedBook.toAbsolutePath().normalize());
+    return parentDirectory.equals(normalizedCandidate.getParent())
+        && isRollbackArtifact(
+            normalizedCandidate,
+            Objects.requireNonNull(normalizedBook.getFileName(), "normalizedBookPath fileName")
+                .toString());
   }
 
   private static Path requireBookParentDirectory(Path normalizedBookPath) {
@@ -145,9 +161,11 @@ final class SqliteRekeyRollbackFile {
     LOGGER.log(
         WARNING,
         "Found stale FinGrind SQLite rekey rollback artifacts beside "
-            + normalizedBookPath
+            + publicPathHint(normalizedBookPath)
             + ": "
-            + rollbackArtifacts.stream().map(Path::toString).collect(Collectors.joining(", "))
+            + rollbackArtifacts.stream()
+                .map(SqliteRekeyRollbackFile::publicPathHint)
+                .collect(Collectors.joining(", "))
             + ". Inspect these encrypted copies explicitly before deleting them.");
   }
 
@@ -156,9 +174,14 @@ final class SqliteRekeyRollbackFile {
     LOGGER.log(
         WARNING,
         "Failed to scan for stale FinGrind SQLite rekey rollback artifacts beside "
-            + normalizedBookPath
+            + publicPathHint(normalizedBookPath)
             + ".",
         exception);
+  }
+
+  private static String publicPathHint(Path path) {
+    Path fileName = Objects.requireNonNull(path, "path").getFileName();
+    return fileName == null ? "<redacted>" : "<redacted>/" + fileName;
   }
 
   /** Receives one discovered stale rollback-artifact set for one protected book path. */

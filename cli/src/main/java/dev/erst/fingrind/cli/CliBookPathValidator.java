@@ -86,6 +86,83 @@ final class CliBookPathValidator {
     }
   }
 
+  static void validateDistinctBackupPaths(
+      Path bookFilePath,
+      BookAccess.PassphraseSource passphraseSource,
+      Path backupFilePath,
+      Path backupBookKeyFilePath) {
+    validateDistinctPaths(bookFilePath, passphraseSource, null);
+    Path normalizedBookFilePath = bookFilePath.toAbsolutePath();
+    Path normalizedBackupFilePath = backupFilePath.toAbsolutePath();
+    Path normalizedBackupBookKeyFilePath = backupBookKeyFilePath.toAbsolutePath();
+    if (normalizedBookFilePath.equals(normalizedBackupFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BOOK_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_FILE
+              + " must not point to the same path.");
+    }
+    if (normalizedBackupFilePath.equals(normalizedBackupBookKeyFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BACKUP_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + " must not point to the same path.");
+    }
+    Optional<Path> keyFilePath = keyFilePath(passphraseSource);
+    if (keyFilePath.isPresent()
+        && keyFilePath.orElseThrow().toAbsolutePath().equals(normalizedBackupFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BOOK_KEY_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_FILE
+              + " must not point to the same path.");
+    }
+    if (keyFilePath.isPresent()
+        && keyFilePath.orElseThrow().toAbsolutePath().equals(normalizedBackupBookKeyFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_KEY_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + " must not point to the same path.");
+    }
+  }
+
+  static void validateDistinctRestorePaths(
+      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+    Path normalizedBookFilePath = bookFilePath.toAbsolutePath();
+    Path normalizedBackupFilePath = backupFilePath.toAbsolutePath();
+    Path normalizedBackupBookKeyFilePath = backupBookKeyFilePath.toAbsolutePath();
+    if (normalizedBookFilePath.equals(normalizedBackupFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BOOK_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_FILE
+              + " must not point to the same path.");
+    }
+    if (normalizedBookFilePath.equals(normalizedBackupBookKeyFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + " must not point to the same path.");
+    }
+    if (normalizedBackupFilePath.equals(normalizedBackupBookKeyFilePath)) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BACKUP_FILE
+              + " and "
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + " must not point to the same path.");
+    }
+  }
+
   private static Optional<Path> keyFilePath(BookAccess.PassphraseSource passphraseSource) {
     return switch (passphraseSource) {
       case BookAccess.PassphraseSource.KeyFile keyFile -> Optional.of(keyFile.bookKeyFilePath());

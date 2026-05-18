@@ -45,6 +45,7 @@ dependencies {
 }
 
 application {
+    mainModule = "dev.erst.fingrind.cli"
     mainClass = "dev.erst.fingrind.cli.App"
     applicationDefaultJvmArgs =
         listOf(
@@ -251,7 +252,7 @@ if (bundleClassifierValue != hostBundleClassifier) {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
-    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    jvmArgs("--enable-native-access=dev.erst.fingrind.sqlite")
 }
 
 tasks.named<ShadowJar>("shadowJar") {

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: CORE_DECIMAL_BOUNDARIES
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, decimal, money, currency, percentage, tax-rate, exchange-rate, ratio, basis-points, boundaries]
   questions: ["can I use Money for tax rates in fingrind", "how should future exchange rates be modeled in fingrind", "what are the decimal boundaries in fingrind", "why does fingrind forbid generic BigDecimal domain seams"]
@@ -73,15 +73,13 @@ Do not answer those questions later with a generic `BigDecimal` field and a comm
 
 ## Implemented And Remaining Type Split
 
-The current repository now carries the following closed decimal-bearing types:
-
-- `PercentageRate`: one exact percentage stored as basis points
-- `ExchangeRate`: one exact positive plain-decimal quote used by transaction-currency evidence
+The current repository does not publish any exported non-money decimal domain type.
 
 The next decimal-bearing concepts must arrive as separate types in their owning contexts rather
-than widening either existing type:
+than as a shared generic decimal seam:
 
 - `TaxRate`: one tax-policy-owned rate with jurisdictional meaning and effective scope
+- `QuotedExchangeRate`: one FX-context-owned quote with source, date, and directional meaning
 - `AllocationRatio`: one exact non-money ratio for pro-rating or apportionment
 
 ## Guardrail

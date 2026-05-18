@@ -146,19 +146,22 @@ internal object ManagedSqliteProvisioningLogic {
     }
 
     fun configureConsumers(project: Project, provisioning: ManagedSqliteProvisioning) {
-        val libraryAbsolutePath = provisioning.libraryPath.get().asFile.absolutePath
-        val operatorTrustSystemProperty =
-            DistributionContractReader.sqliteOperatorTrustSystemProperty(project.rootProject.projectDir.toPath())
+        val repositoryRoot = project.rootProject.projectDir.toPath()
+        val sourceCheckoutBuildRoot = project.rootProject.layout.buildDirectory.get().asFile.toPath()
+        val sourceCheckoutRuntimeDistribution =
+            DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRoot)
         project.tasks.withType<Test>().configureEach {
             dependsOn(provisioning.prepareTask)
-            environment(SQLITE_LIBRARY_ENVIRONMENT, libraryAbsolutePath)
-            systemProperty(operatorTrustSystemProperty, "true")
+            systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
+            systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
+            systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())
             enableNativeAccess()
         }
         project.tasks.withType<JavaExec>().configureEach {
             dependsOn(provisioning.prepareTask)
-            environment(SQLITE_LIBRARY_ENVIRONMENT, libraryAbsolutePath)
-            systemProperty(operatorTrustSystemProperty, "true")
+            systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
+            systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
+            systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())
             enableNativeAccess()
         }
     }

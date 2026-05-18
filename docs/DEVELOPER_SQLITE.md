@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,9 +44,15 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `7`, owned by `BookFormatContract`
+- the current supported book format is `8`, owned by `BookFormatContract`
+- `inspect-book` exposes one explicit hard-break migration policy for the active format line:
+  no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
+- `backup-book` exports one verified encrypted backup pair; `restore-book` verifies that backup
+  pair before replacing the live book path and the restored live book then reuses that backup key
+  file; and `recover-rekey` inspects or restores stale same-directory rollback artifacts after
+  interrupted rekey cleanup
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
@@ -327,9 +333,9 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   rotated book behind
 - crash-interrupted rekeys can leave that rollback artifact on disk; later opens warn about the
   stale encrypted copy so operators can decide whether to recover or delete it
-- the supported operator backup path is a closed-book encrypted file copy: stop using the selected
-  book, copy the `.sqlite` file to protected storage, preserve the key file separately, and
-  restore by replacing the closed `.sqlite` file from that encrypted copy before reopening it
+- `backup-book` is the supported operator export path for a closed book and emits one verified
+  encrypted backup pair; `restore-book` verifies that pair before replacing the live book path and
+  the restored live book then reuses the supplied backup key file
 - same-book multi-session access is allowed, but one writer holding `begin immediate` will block
   another writer until SQLite's busy timeout expires and the second writer fails with one busy or
   locked result instead of silently interleaving journal mutations
@@ -387,8 +393,9 @@ text or re-querying after rollback.
   `journal_line`, plus `audit_event`
 - there are no versioned migration file names such as `V1__...`
 - `BookFormatContract` is the canonical owner of the supported format version
-- current alpha evolution is direct replacement of the canonical schema plus explicit rejection of
-  older book formats; there is no migration executor and no legacy-compatibility upgrade path
+- current alpha evolution is one explicit hard-break line: the canonical schema advances in
+  place, `inspect-book` reports the active no-upgrade migration policy, and non-matching formats
+  are rejected instead of being upgraded through legacy-compatibility code
 
 ## Why FFM-Backed SQLite
 

@@ -35,7 +35,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
@@ -165,8 +164,7 @@ class CliIoFixtureSupport {
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL,
-        TaxProfile.empty());
+        AccountingBasis.ACCRUAL);
   }
 
   protected static OpenBookCommand openBookCommand() {

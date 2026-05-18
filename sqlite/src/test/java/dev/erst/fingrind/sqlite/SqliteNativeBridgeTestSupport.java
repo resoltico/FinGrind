@@ -334,7 +334,7 @@ class SqliteNativeBridgeTestSupport {
   }
 
   static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
       action.run(database);
     }
   }

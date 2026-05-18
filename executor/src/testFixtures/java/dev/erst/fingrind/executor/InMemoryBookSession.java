@@ -106,8 +106,7 @@ public final class InMemoryBookSession
               List.of()),
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1),
-          AccountingBasis.ACCRUAL,
-          dev.erst.fingrind.core.TaxProfile.empty());
+          AccountingBasis.ACCRUAL);
 
   @Override
   public BookLifecycleInspection inspectBook() {

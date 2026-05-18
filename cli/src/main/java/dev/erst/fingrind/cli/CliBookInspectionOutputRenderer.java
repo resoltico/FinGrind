@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,9 +29,24 @@ final class CliBookInspectionOutputRenderer {
         List.of(
             "Supported book format version",
             Integer.toString(inspection.supportedBookFormatVersion())));
+    rows.addAll(migrationPolicyRows(inspection.migrationPolicy()));
     rows.addAll(detailRows(inspection));
     return CliTextFormat.renderTitledBlock(
         "Book Inspection", CliTextFormat.renderKeyValueBlock(rows));
+  }
+
+  private static List<List<String>> migrationPolicyRows(BookMigrationPolicy migrationPolicy) {
+    return List.of(
+        List.of("Migration policy", displayMigrationPolicyMode(migrationPolicy.mode())),
+        List.of(
+            "In-place upgrade supported",
+            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.inPlaceUpgradeSupported())),
+        List.of(
+            "Older book formats accepted",
+            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.olderFormatsAccepted())),
+        List.of(
+            "Newer book formats accepted",
+            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.newerFormatsAccepted())));
   }
 
   private static List<List<String>> detailRows(BookInspection inspection) {
@@ -66,6 +82,13 @@ final class CliBookInspectionOutputRenderer {
       case UNSUPPORTED_FORMAT_VERSION -> "Unsupported format version";
       case INCOMPLETE_FINGRIND -> "Incomplete FinGrind";
       case INITIALIZED -> "Initialized";
+    };
+  }
+
+  private static String displayMigrationPolicyMode(
+      dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode mode) {
+    return switch (mode) {
+      case HARD_BREAK_REJECT_OLDER_FORMATS -> "Hard-break line; reject older formats";
     };
   }
 }

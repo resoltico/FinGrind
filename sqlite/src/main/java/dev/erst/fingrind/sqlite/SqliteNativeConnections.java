@@ -17,7 +17,7 @@ final class SqliteNativeConnections {
 
   private SqliteNativeConnections() {}
 
-  static SqliteNativeDatabase open(BookAccess bookAccess) {
+  static SqliteNativeDatabase openKeyFileAccess(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     return SqliteBookAccessRules.requireKeyFile(bookAccess)
         .fold(

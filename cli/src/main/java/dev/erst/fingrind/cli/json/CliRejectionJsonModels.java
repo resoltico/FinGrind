@@ -13,30 +13,53 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   /** Sealed marker for machine-readable CLI rejection detail payloads. */
   sealed interface RejectionDetails
+      permits PostingRejectionDetails,
+          AccountRejectionDetails,
+          PeriodCloseRejectionDetails,
+          QueryOrPlanRejectionDetails,
+          MaintenanceRejectionDetails {}
+
+  /** Sealed category for posting lifecycle rejection payloads. */
+  sealed interface PostingRejectionDetails extends RejectionDetails
       permits AccountStateViolationsDetails,
-          AccountTypeConflictDetails,
+          PriorPostingDetails,
           PostingKindDetails,
           FunctionalCurrencyMismatchDetails,
           OpeningBalanceWindowClosedDetails,
           OpeningBalanceNominalAccountDetails,
-          PriorPostingDetails,
-          AccountRoleConflictDetails,
+          ClosedPeriodViolationDetails {}
+
+  /** Sealed category for account-registry rejection payloads. */
+  sealed interface AccountRejectionDetails extends RejectionDetails
+      permits AccountRoleConflictDetails,
+          AccountTypeConflictDetails,
           AccountTaxonomyConflictDetails,
           ParentAccountDetails,
           ParentAccountTypeConflictDetails,
           ParentAccountTaxonomyConflictDetails,
           ClosingEquityAccountDetails,
-          ClosingEquityAccountClassificationMismatchDetails,
-          PeriodCloseStartDetails,
-          PeriodCloseFutureDateDetails,
-          PeriodCloseFiscalYearDetails,
-          ClosedPeriodViolationDetails,
-          UnknownAccountDetails,
-          PostingNotFoundDetails,
-          PlanRejectionDetails {}
+          ClosingEquityAccountClassificationMismatchDetails {}
+
+  /** Sealed category for close-window rejection payloads. */
+  sealed interface PeriodCloseRejectionDetails extends RejectionDetails
+      permits PeriodCloseStartDetails, PeriodCloseFutureDateDetails, PeriodCloseFiscalYearDetails {}
+
+  /** Sealed category for query and workflow rejection payloads. */
+  sealed interface QueryOrPlanRejectionDetails extends RejectionDetails
+      permits UnknownAccountDetails, PostingNotFoundDetails, PlanRejectionDetails {}
+
+  /** Sealed category for protected-book maintenance rejection payloads. */
+  sealed interface MaintenanceRejectionDetails extends RejectionDetails
+      permits BookFileDetails,
+          BlockingArtifactsDetails,
+          BackupFileDetails,
+          BackupBookKeyFileDetails,
+          RollbackArtifactDetails,
+          RollbackArtifactMismatchDetails,
+          RollbackArtifactSelectionDetails {}
 
   record AccountStateViolationsDetails(List<AccountStateViolationPayload> violations)
-      implements RejectionDetails {
+      implements PostingRejectionDetails {
     public AccountStateViolationsDetails {
       violations = copyList(violations, "violations");
       if (violations.isEmpty()) {
@@ -52,7 +75,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record PriorPostingDetails(String priorPostingId) implements RejectionDetails {
+  record PriorPostingDetails(String priorPostingId) implements PostingRejectionDetails {
     public PriorPostingDetails {
       priorPostingId = requireText(priorPostingId, "priorPostingId");
     }
@@ -60,7 +83,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   record AccountRoleConflictDetails(
       String accountCode, String existingAccountRole, String requestedAccountRole)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public AccountRoleConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
       existingAccountRole = requireText(existingAccountRole, "existingAccountRole");
@@ -70,7 +93,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   record AccountTypeConflictDetails(
       String accountCode, String existingAccountType, String requestedAccountType)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public AccountTypeConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
       existingAccountType = requireText(existingAccountType, "existingAccountType");
@@ -82,7 +105,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       String accountCode,
       AccountTaxonomyDetails existingAccountTaxonomy,
       AccountTaxonomyDetails requestedAccountTaxonomy)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public AccountTaxonomyConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
       existingAccountTaxonomy = requireValue(existingAccountTaxonomy, "existingAccountTaxonomy");
@@ -91,7 +114,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   }
 
   record ParentAccountDetails(String accountCode, String parentAccountCode)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public ParentAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
       parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
@@ -103,7 +126,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       String requestedAccountType,
       String parentAccountCode,
       String parentAccountType)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public ParentAccountTypeConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
       requestedAccountType = requireText(requestedAccountType, "requestedAccountType");
@@ -117,7 +140,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       AccountTaxonomyDetails requestedAccountTaxonomy,
       String parentAccountCode,
       AccountTaxonomyDetails parentAccountTaxonomy)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public ParentAccountTaxonomyConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
       requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
@@ -140,14 +163,14 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record PostingKindDetails(String postingKind) implements RejectionDetails {
+  record PostingKindDetails(String postingKind) implements PostingRejectionDetails {
     public PostingKindDetails {
       postingKind = requireText(postingKind, "postingKind");
     }
   }
 
   record FunctionalCurrencyMismatchDetails(String functionalCurrency, String attemptedCurrency)
-      implements RejectionDetails {
+      implements PostingRejectionDetails {
     public FunctionalCurrencyMismatchDetails {
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       attemptedCurrency = requireText(attemptedCurrency, "attemptedCurrency");
@@ -155,7 +178,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   }
 
   record OpeningBalanceNominalAccountDetails(String accountCode, String accountType)
-      implements RejectionDetails {
+      implements PostingRejectionDetails {
     public OpeningBalanceNominalAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
       accountType = requireText(accountType, "accountType");
@@ -164,7 +187,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   record OpeningBalanceWindowClosedDetails(
       String firstBlockingPostingKind, String firstBlockingEffectiveDate)
-      implements RejectionDetails {
+      implements PostingRejectionDetails {
     public OpeningBalanceWindowClosedDetails {
       firstBlockingPostingKind = requireText(firstBlockingPostingKind, "firstBlockingPostingKind");
       firstBlockingEffectiveDate =
@@ -172,7 +195,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ClosingEquityAccountDetails(String accountCode) implements RejectionDetails {
+  record ClosingEquityAccountDetails(String accountCode) implements AccountRejectionDetails {
     public ClosingEquityAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
     }
@@ -182,7 +205,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       String accountCode,
       String requiredFinancialPositionLineClassification,
       String actualFinancialPositionLineClassification)
-      implements RejectionDetails {
+      implements AccountRejectionDetails {
     public ClosingEquityAccountClassificationMismatchDetails {
       accountCode = requireText(accountCode, "accountCode");
       requiredFinancialPositionLineClassification =
@@ -196,14 +219,16 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record PeriodCloseStartDetails(String requiredEffectiveDateFrom) implements RejectionDetails {
+  record PeriodCloseStartDetails(String requiredEffectiveDateFrom)
+      implements PeriodCloseRejectionDetails {
     public PeriodCloseStartDetails {
       requiredEffectiveDateFrom =
           requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
     }
   }
 
-  record PeriodCloseFutureDateDetails(String attemptedEffectiveDateTo) implements RejectionDetails {
+  record PeriodCloseFutureDateDetails(String attemptedEffectiveDateTo)
+      implements PeriodCloseRejectionDetails {
     public PeriodCloseFutureDateDetails {
       attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
@@ -211,7 +236,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   record PeriodCloseFiscalYearDetails(
       String attemptedEffectiveDateFrom, String attemptedEffectiveDateTo, String fiscalYearStart)
-      implements RejectionDetails {
+      implements PeriodCloseRejectionDetails {
     public PeriodCloseFiscalYearDetails {
       attemptedEffectiveDateFrom =
           requireText(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
@@ -222,7 +247,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
 
   record ClosedPeriodViolationDetails(
       String closedThroughEffectiveDate, String attemptedEffectiveDate)
-      implements RejectionDetails {
+      implements PostingRejectionDetails {
     public ClosedPeriodViolationDetails {
       closedThroughEffectiveDate =
           requireText(closedThroughEffectiveDate, "closedThroughEffectiveDate");
@@ -230,19 +255,74 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record UnknownAccountDetails(String accountCode) implements RejectionDetails {
+  record UnknownAccountDetails(String accountCode) implements QueryOrPlanRejectionDetails {
     public UnknownAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
     }
   }
 
-  record PostingNotFoundDetails(String postingId) implements RejectionDetails {
+  record PostingNotFoundDetails(String postingId) implements QueryOrPlanRejectionDetails {
     public PostingNotFoundDetails {
       postingId = requireText(postingId, "postingId");
     }
   }
 
-  record PlanRejectionDetails(LedgerPlanPayload plan) implements RejectionDetails {
+  record BookFileDetails(String bookFile) implements MaintenanceRejectionDetails {
+    public BookFileDetails {
+      bookFile = requireText(bookFile, "bookFile");
+    }
+  }
+
+  record BlockingArtifactsDetails(String bookFile, List<String> blockingArtifacts)
+      implements MaintenanceRejectionDetails {
+    public BlockingArtifactsDetails {
+      bookFile = requireText(bookFile, "bookFile");
+      blockingArtifacts = copyList(blockingArtifacts, "blockingArtifacts");
+      if (blockingArtifacts.isEmpty()) {
+        throw new IllegalArgumentException("blockingArtifacts must not be empty.");
+      }
+    }
+  }
+
+  record BackupFileDetails(String backupFile) implements MaintenanceRejectionDetails {
+    public BackupFileDetails {
+      backupFile = requireText(backupFile, "backupFile");
+    }
+  }
+
+  record BackupBookKeyFileDetails(String backupBookKeyFile) implements MaintenanceRejectionDetails {
+    public BackupBookKeyFileDetails {
+      backupBookKeyFile = requireText(backupBookKeyFile, "backupBookKeyFile");
+    }
+  }
+
+  record RollbackArtifactDetails(String rollbackArtifact) implements MaintenanceRejectionDetails {
+    public RollbackArtifactDetails {
+      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
+    }
+  }
+
+  record RollbackArtifactMismatchDetails(String bookFile, String rollbackArtifact)
+      implements MaintenanceRejectionDetails {
+    public RollbackArtifactMismatchDetails {
+      bookFile = requireText(bookFile, "bookFile");
+      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
+    }
+  }
+
+  record RollbackArtifactSelectionDetails(String bookFile, List<String> rollbackArtifacts)
+      implements MaintenanceRejectionDetails {
+    public RollbackArtifactSelectionDetails {
+      bookFile = requireText(bookFile, "bookFile");
+      rollbackArtifacts = copyList(rollbackArtifacts, "rollbackArtifacts");
+      if (rollbackArtifacts.size() < 2) {
+        throw new IllegalArgumentException(
+            "rollbackArtifacts must contain at least two entries when explicit selection is required.");
+      }
+    }
+  }
+
+  record PlanRejectionDetails(LedgerPlanPayload plan) implements QueryOrPlanRejectionDetails {
     public PlanRejectionDetails {
       plan = requireValue(plan, "plan");
     }

@@ -25,7 +25,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxProfile;
 import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -45,8 +44,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
-          AccountingBasis.ACCRUAL,
-          TaxProfile.empty());
+          AccountingBasis.ACCRUAL);
 
   @Test
   void rendering_helpers_cover_blank_csv_json_and_fragment_guards() {

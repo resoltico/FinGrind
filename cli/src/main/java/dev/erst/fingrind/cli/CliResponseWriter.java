@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -13,7 +14,9 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
@@ -143,6 +146,18 @@ final class CliResponseWriter {
       BookAccess.PassphraseSource replacementPassphraseSource,
       OutputMode outputMode) {
     mutationWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode);
+  }
+
+  void writeBackupBookResult(BackupBookResult result, OutputMode outputMode) {
+    mutationWriter.writeBackupBookResult(result, outputMode);
+  }
+
+  void writeRestoreBookResult(RestoreBookResult result, OutputMode outputMode) {
+    mutationWriter.writeRestoreBookResult(result, outputMode);
+  }
+
+  void writeRecoverRekeyResult(RecoverRekeyResult result, OutputMode outputMode) {
+    mutationWriter.writeRecoverRekeyResult(result, outputMode);
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result) {

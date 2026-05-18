@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
@@ -23,8 +24,12 @@ final class CliRejectionPayloadMapper {
       ProtocolCatalog.operationName(OperationId.GET_POSTING);
   private static final String LIST_POSTINGS_OPERATION =
       ProtocolCatalog.operationName(OperationId.LIST_POSTINGS);
+  private static final String BACKUP_BOOK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.BACKUP_BOOK);
   private static final String CLOSE_PERIOD_OPERATION =
       ProtocolCatalog.operationName(OperationId.CLOSE_PERIOD);
+  private static final String RECOVER_REKEY_OPERATION =
+      ProtocolCatalog.operationName(OperationId.RECOVER_REKEY);
 
   private CliRejectionPayloadMapper() {}
 
@@ -48,6 +53,17 @@ final class CliRejectionPayloadMapper {
         administrationRejectionHint(rejection),
         null,
         administrationRejectionDetails(rejection));
+  }
+
+  static CliEnvelopeJsonModels.RejectedEnvelope maintenanceRejectedEnvelope(
+      BookMaintenanceRejection rejection) {
+    return new CliEnvelopeJsonModels.RejectedEnvelope(
+        ProtocolRejectionStatus.REJECTED,
+        BookMaintenanceRejection.wireCode(rejection),
+        RejectionNarrative.message(rejection),
+        maintenanceRejectionHint(rejection),
+        null,
+        maintenanceRejectionDetails(rejection));
   }
 
   static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(
@@ -207,6 +223,43 @@ final class CliRejectionPayloadMapper {
     };
   }
 
+  private static String maintenanceRejectionHint(BookMaintenanceRejection rejection) {
+    return switch (rejection) {
+      case BookMaintenanceRejection.BookHasBlockingArtifacts _ ->
+          "Close every process using the selected book, remove SQLite sidecars only by finishing or restoring the interrupted workflow, and rerun the maintenance command after "
+              + INSPECT_BOOK_OPERATION
+              + " and "
+              + RECOVER_REKEY_OPERATION
+              + " confirm one clean closed-copy state.";
+      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ ->
+          "Choose one encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
+              + BACKUP_BOOK_OPERATION
+              + ".";
+      case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
+          "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
+              + BACKUP_BOOK_OPERATION
+              + ".";
+      case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ ->
+          "Choose a new --backup-book-key-file path or remove the existing key file yourself before rerunning "
+              + BACKUP_BOOK_OPERATION
+              + ".";
+      case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
+          "Rerun "
+              + RECOVER_REKEY_OPERATION
+              + " without mutation flags to confirm that no stale rollback copies remain.";
+      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ ->
+          "Rerun "
+              + RECOVER_REKEY_OPERATION
+              + " with one explicit --rollback-file path from details.rollbackArtifacts.";
+      case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
+          "Choose an existing rollback artifact path returned by "
+              + RECOVER_REKEY_OPERATION
+              + " inspection output and rerun the command.";
+      case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
+          "Choose one rollback artifact that lives beside the selected --book-file and matches FinGrind's canonical rollback naming.";
+    };
+  }
+
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
       postingRejectionDetails(PostingRejection rejection) {
     return switch (rejection) {
@@ -336,6 +389,58 @@ final class CliRejectionPayloadMapper {
           new CliRejectionJsonModels.UnknownAccountDetails(unknownAccount.accountCode().value());
       case BookQueryRejection.PostingNotFound postingNotFound ->
           new CliRejectionJsonModels.PostingNotFoundDetails(postingNotFound.postingId().value());
+    };
+  }
+
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      maintenanceRejectionDetails(BookMaintenanceRejection rejection) {
+    return switch (rejection) {
+      case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
+          new CliRejectionJsonModels.BlockingArtifactsDetails(
+              blockingArtifacts.bookFilePath().toAbsolutePath().normalize().toString(),
+              blockingArtifacts.blockingArtifactPaths().stream()
+                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .toList());
+      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
+          new CliRejectionJsonModels.BlockingArtifactsDetails(
+              blockingArtifacts.backupFilePath().toAbsolutePath().normalize().toString(),
+              blockingArtifacts.blockingArtifactPaths().stream()
+                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .toList());
+      case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
+          new CliRejectionJsonModels.BackupFileDetails(
+              destinationAlreadyExists.backupFilePath().toAbsolutePath().normalize().toString());
+      case BookMaintenanceRejection.BackupKeyFileAlreadyExists destinationAlreadyExists ->
+          new CliRejectionJsonModels.BackupBookKeyFileDetails(
+              destinationAlreadyExists
+                  .backupBookKeyFilePath()
+                  .toAbsolutePath()
+                  .normalize()
+                  .toString());
+      case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
+          new CliRejectionJsonModels.BookFileDetails(
+              noRollbackArtifactsFound.bookFilePath().toAbsolutePath().normalize().toString());
+      case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
+          new CliRejectionJsonModels.RollbackArtifactSelectionDetails(
+              selectionRequired.bookFilePath().toAbsolutePath().normalize().toString(),
+              selectionRequired.rollbackArtifactPaths().stream()
+                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .toList());
+      case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
+          new CliRejectionJsonModels.RollbackArtifactDetails(
+              rollbackArtifactNotFound
+                  .rollbackArtifactPath()
+                  .toAbsolutePath()
+                  .normalize()
+                  .toString());
+      case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
+          new CliRejectionJsonModels.RollbackArtifactMismatchDetails(
+              rollbackArtifactNotForBook.bookFilePath().toAbsolutePath().normalize().toString(),
+              rollbackArtifactNotForBook
+                  .rollbackArtifactPath()
+                  .toAbsolutePath()
+                  .normalize()
+                  .toString());
     };
   }
 

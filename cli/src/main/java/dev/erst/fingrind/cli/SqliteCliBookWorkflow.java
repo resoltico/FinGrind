@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
@@ -26,7 +27,10 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -41,22 +45,33 @@ import dev.erst.fingrind.executor.PeriodCloseService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.sqlite.SqliteBookBackupService;
+import dev.erst.fingrind.sqlite.SqliteBookRestoreService;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.SqliteRekeyRecoveryService;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /** SQLite-backed CLI workflow that opens one book session per command. */
 final class SqliteCliBookWorkflow implements CliBookWorkflow {
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;
+  private final SqliteBookBackupService backupService;
+  private final SqliteBookRestoreService restoreService;
+  private final SqliteRekeyRecoveryService rekeyRecoveryService;
 
   SqliteCliBookWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    this.backupService = new SqliteBookBackupService();
+    this.restoreService = new SqliteBookRestoreService();
+    this.rekeyRecoveryService = new SqliteRekeyRecoveryService();
   }
 
   @Override
@@ -84,6 +99,26 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookSession ->
             bookSession.rekeyBook(
                 replacementPassphraseSource, passphraseResolver, clock.instant()));
+  }
+
+  @Override
+  public ContractDecision<BackupBookResult> backupBook(
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
+    return backupService.backupBook(
+        bookAccess, backupFilePath, backupBookKeyFilePath, passphraseResolver);
+  }
+
+  @Override
+  public ContractDecision<RestoreBookResult> restoreBook(
+      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+    return restoreService.restoreBook(
+        bookFilePath, backupFilePath, backupBookKeyFilePath, passphraseResolver);
+  }
+
+  @Override
+  public ContractDecision<RecoverRekeyResult> recoverRekey(
+      Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
+    return rekeyRecoveryService.recover(bookFilePath, action, rollbackArtifactPath);
   }
 
   @Override

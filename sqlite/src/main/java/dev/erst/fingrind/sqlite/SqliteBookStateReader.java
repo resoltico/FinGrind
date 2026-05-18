@@ -1,30 +1,18 @@
 package dev.erst.fingrind.sqlite;
 
+import java.util.List;
+
 /** Reads lifecycle and compatibility state from one selected SQLite database handle. */
 final class SqliteBookStateReader {
   private final int bookApplicationId;
   private final int bookFormatVersion;
-  private final String accountTable;
-  private final String auditEventTable;
-  private final String bookMetaTable;
-  private final String journalLineTable;
-  private final String postingFactTable;
+  private final List<String> canonicalTables;
 
   SqliteBookStateReader(
-      int bookApplicationId,
-      int bookFormatVersion,
-      String accountTable,
-      String auditEventTable,
-      String bookMetaTable,
-      String journalLineTable,
-      String postingFactTable) {
+      int bookApplicationId, int bookFormatVersion, List<String> canonicalTables) {
     this.bookApplicationId = bookApplicationId;
     this.bookFormatVersion = bookFormatVersion;
-    this.accountTable = accountTable;
-    this.auditEventTable = auditEventTable;
-    this.bookMetaTable = bookMetaTable;
-    this.journalLineTable = journalLineTable;
-    this.postingFactTable = postingFactTable;
+    this.canonicalTables = List.copyOf(canonicalTables);
   }
 
   SqliteBookState bookState(SqliteNativeDatabase activeDatabase) {
@@ -61,15 +49,11 @@ final class SqliteBookStateReader {
   }
 
   boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase) {
-    return existsTable(activeDatabase, bookMetaTable)
-        && existsTable(activeDatabase, accountTable)
-        && existsTable(activeDatabase, auditEventTable)
-        && existsTable(activeDatabase, postingFactTable)
-        && existsTable(activeDatabase, journalLineTable);
+    return canonicalTables.stream().allMatch(tableName -> existsTable(activeDatabase, tableName));
   }
 
   boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase) {
-    return existsTable(activeDatabase, bookMetaTable)
+    return existsTable(activeDatabase, SqliteBookContract.BOOK_META_TABLE)
         && SqliteStatementQueries.existsRow(
             activeDatabase,
             SqlitePostingSql.BOOK_INITIALIZED_EXISTS,

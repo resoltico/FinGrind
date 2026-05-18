@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -157,14 +157,6 @@ Current ledger-plan rules:
 - `open-book` uses nested `openBook`, which requires `entityName`, `entityForm`, `ownerModel`,
   `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`,
   `functionalCurrency`, `fiscalYearStart`, and `accountingBasis`
-- `openBook.taxProfile` is required when `openBook.taxRegistrationStatus` is `REGISTERED`
-- `openBook.taxProfile.registrations[]` entries require `jurisdictionCode`, `registrationId`, and
-  `filingFrequency`
-- `openBook.taxProfile.taxCodeDefinitions[]` entries require `taxCode`, `displayName`,
-  `jurisdictionCode`, `rateBasisPoints`, `pricingMode`, `recoverability`,
-  `liabilityAccountCode`, and optional `receivableAccountCode`
-- when `openBook.taxRegistrationStatus` is `UNSPECIFIED` or `NOT_REGISTERED`, omit
-  `openBook.taxProfile` or leave both nested arrays empty
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
@@ -220,7 +212,7 @@ deterministic repair data.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `recover-rekey`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
 | `ok` | successful `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
@@ -236,10 +228,12 @@ Dynamic fields:
   `replace-before-commit-*` provenance values so callers must supply a real posting date plus
   real actor, command, idempotency, and causation values before commit
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
+- `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
+  or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.entityForm`, `.ownerModel`,
-  `.reportingObligationStatus`, `.taxRegistrationStatus`, `.taxProfile`,
-  `.businessActivityTags`, `.functionalCurrency`, `.fiscalYearStart`, and
+  `.reportingObligationStatus`, `.taxRegistrationStatus`, `.businessActivityTags`,
+  `.functionalCurrency`, `.fiscalYearStart`, and
   `.accountingBasis` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
@@ -256,8 +250,8 @@ Dynamic fields:
   facts nest their child observations under `facts`
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries `entityForm`,
-  `ownerModel`, `reportingObligationStatus`, `taxRegistrationStatus`, `taxProfile`,
-  `businessActivityTags`, and `accountingBasis`
+  `ownerModel`, `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`,
+  and `accountingBasis`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
@@ -341,11 +335,6 @@ Shared initialized-book identity payload:
 - `ownerModel`
 - `reportingObligationStatus`
 - `taxRegistrationStatus`
-- `taxProfile.registrations[]`, where each entry carries `jurisdictionCode`, `registrationId`,
-  and `filingFrequency`
-- `taxProfile.taxCodeDefinitions[]`, where each entry carries `taxCode`, `displayName`,
-  `jurisdictionCode`, `rateBasisPoints`, `pricingMode`, `recoverability`,
-  `liabilityAccountCode`, and optional `receivableAccountCode`
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`
@@ -387,6 +376,7 @@ Every response-side money object reuses the same exact money shape with `currenc
 - optional `payload.applicationId`
 - optional `payload.detectedBookFormatVersion`
 - `payload.supportedBookFormatVersion`
+- `payload.migrationPolicy`
 - optional `payload.initializedAt`
 - optional `payload.bookIdentity`, using the shared initialized-book identity payload
 
@@ -397,6 +387,26 @@ with a separate `initialized` flag.
 `payload.canInitializeWithOpenBook` is true exactly when `open-book` may initialize the selected
 path directly. The current public line reports `true` for `missing` and `blank-sqlite`, and
 `false` for every other inspection state.
+`payload.migrationPolicy.mode` is currently
+`hard-break-reject-older-formats`, and the remaining migration-policy booleans are all `false`
+for the current hard-break line.
+
+`backup-book` success returns:
+- `payload.bookFile`
+- `payload.backupFile`
+- `payload.backupBookKeyFile`
+
+`restore-book` success returns:
+- `payload.bookFile`
+- `payload.backupFile`
+- `payload.backupBookKeyFile`
+
+That `payload.backupBookKeyFile` is also the key file required to reopen the restored live
+`payload.bookFile`.
+
+`recover-rekey` success returns one of:
+- inspection payload with `payload.bookFile` and `payload.rollbackArtifacts[]`
+- mutation payload with `payload.bookFile`, `payload.action`, and `payload.rollbackArtifact`
 
 `list-accounts` success returns:
 - `payload.context.bookIdentity`, using the shared initialized-book identity payload

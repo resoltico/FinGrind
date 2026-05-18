@@ -165,6 +165,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     Path declareCashFile = copyExampleFixture("declare-account-cash.json");
     Path declareRevenueFile = copyExampleFixture("declare-account-revenue.json");
     Path postingRequestFile = copyExampleFixture("basic-posting-request.json");
+    Path unknownAccountRequestFile = copyExampleFixture("unknown-account-request.json");
     Path reversalRequestFile = copyExampleFixture("reversal-request.json");
     Path planBookFile = workspace.resolve("acme-plan.sqlite");
     Path rawPlanTemplateFile = workspace.resolve("raw-ledger-plan-template.json");
@@ -200,6 +201,19 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             postingRequestFile.toString());
     String postingId = committed.path("payload").path("postingId").stringValue();
     assertFalse(postingId.isBlank());
+    JsonNode unknownAccountPreflight =
+        runJsonCommandExpectingExit(
+            2,
+            "preflight-entry",
+            "--book-file",
+            bookFile.toString(),
+            "--book-key-file",
+            bookKeyFile.toString(),
+            "--request-file",
+            unknownAccountRequestFile.toString());
+    assertEquals("rejected", unknownAccountPreflight.path("status").stringValue());
+    assertEquals("account-state-violations", unknownAccountPreflight.path("code").stringValue());
+    assertTrue(unknownAccountPreflight.toString().contains("\"accountCode\":\"3000\""));
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
         runJsonCommand(

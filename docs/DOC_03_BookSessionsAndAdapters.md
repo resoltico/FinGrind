@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: ADAPTERS
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -419,6 +419,27 @@ public final class SqliteBookSessions
   `SqliteStoreReadOperations` delegates query/report reads through focused readers, and
   `SqliteStoreMutationOperations` owns only ordinary durable mutations behind the public session
   API
+
+## `SqliteBookBackupService`, `SqliteBookRestoreService`, And `SqliteRekeyRecoveryService`
+
+These public SQLite maintenance services own explicit closed-copy backup, restore, and rollback
+recovery workflows above the lower-level session/runtime surface.
+
+```java
+public final class SqliteBookBackupService
+public final class SqliteBookRestoreService
+public final class SqliteRekeyRecoveryService
+```
+
+- `SqliteBookBackupService`: verifies the live book path is free of SQLite sidecars and stale
+  rollback artifacts, resolves the current book secret through the shared passphrase seam, and
+  emits one fresh encrypted backup file plus one fresh key file without overwriting destinations
+- `SqliteBookRestoreService`: verifies the selected backup pair is one clean closed-copy source
+  before replacing the live book path
+- `SqliteRekeyRecoveryService`: turns sibling rollback-artifact inspection, restore, and deletion
+  into one deterministic service that returns typed maintenance results and rejections
+- Boundary: these services keep maintenance doctrine in one public adapter owner instead of
+  scattering file-copy and rollback rules through CLI command handlers
 
 ## Protection Boundary
 

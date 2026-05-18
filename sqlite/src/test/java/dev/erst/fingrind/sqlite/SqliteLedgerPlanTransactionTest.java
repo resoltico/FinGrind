@@ -118,7 +118,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(beginFailurePath))) {
       try (SqliteNativeDatabase closedDatabase =
-          SqliteNativeConnections.open(bookAccess(beginFailurePath))) {
+          SqliteNativeConnections.openKeyFileAccess(bookAccess(beginFailurePath))) {
         closedDatabase.close();
         setStoreDatabase(postingFactStore, closedDatabase);
       }

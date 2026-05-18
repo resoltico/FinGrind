@@ -117,18 +117,11 @@ jobs:
 
       - name: Verify environment-configured SQLite CLI runtime on Windows
         shell: pwsh
-        run: |
-          $output = .\gradlew.bat -q :cli:run "--args=capabilities --output json" --no-daemon --console=plain | Out-String
-          Write-Host $output
-          $output | python .\scripts\verify-sqlite-runtime-contract.py --expected-runtime-distribution-key directJavaRuntimeDistribution --expected-runtime-provenance environment-configured --label windows-environment-configured-runtime
+        run: .\scripts\verify-environment-configured-sqlite-runtime.ps1
 
       - name: Verify source-checkout SQLite CLI runtime on Windows
         shell: pwsh
-        run: |
-          .\gradlew.bat :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain | Out-Null
-          $output = .\scripts\source-checkout-cli.ps1 capabilities --output json | Out-String
-          Write-Host $output
-          $output | python .\scripts\verify-sqlite-runtime-contract.py --expected-runtime-distribution-key sourceCheckoutRuntimeDistribution --expected-runtime-provenance source-checkout-managed --label windows-source-checkout-runtime
+        run: .\scripts\verify-source-checkout-sqlite-runtime.ps1
 
       - name: Build self-contained Windows CLI bundle
         shell: pwsh

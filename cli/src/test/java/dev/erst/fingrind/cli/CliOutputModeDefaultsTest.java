@@ -11,10 +11,16 @@ class CliOutputModeDefaultsTest {
   void outputModeDefaults_coverInteractiveAndRedirectedBranches() {
     assertEquals(OutputMode.HUMAN, CliOutputModeDefaults.defaultSelectableOutputMode(true));
     assertEquals(OutputMode.JSON, CliOutputModeDefaults.defaultSelectableOutputMode(false));
+    assertEquals(OutputMode.HUMAN, CliOutputModeDefaults.defaultDiscoveryOutputMode(true));
+    assertEquals(OutputMode.JSON, CliOutputModeDefaults.defaultDiscoveryOutputMode(false));
     assertEquals(
         CliOutputModeDefaults.resolved(null), CliOutputModeDefaults.defaultSelectableOutputMode());
+    assertEquals(
+        CliOutputModeDefaults.resolvedDiscovery(null),
+        CliOutputModeDefaults.defaultDiscoveryOutputMode());
     assertEquals(OutputMode.HUMAN, CliOutputModeDefaults.resolved(null, true));
     assertEquals(OutputMode.JSON, CliOutputModeDefaults.resolved(null, false));
+    assertEquals(OutputMode.HUMAN, CliOutputModeDefaults.resolvedDiscovery(OutputMode.HUMAN));
     assertEquals(OutputMode.CSV, CliOutputModeDefaults.resolved(OutputMode.CSV, true));
   }
 }

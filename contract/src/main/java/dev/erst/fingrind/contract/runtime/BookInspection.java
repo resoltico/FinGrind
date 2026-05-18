@@ -74,6 +74,11 @@ public sealed interface BookInspection
   /** Book format version supported by the current FinGrind binary. */
   int supportedBookFormatVersion();
 
+  /** Machine-readable migration posture for the current public book-format line. */
+  default BookMigrationPolicy migrationPolicy() {
+    return BookMigrationPolicy.current(supportedBookFormatVersion());
+  }
+
   private static void requireSupportedBookFormatVersion(int supportedBookFormatVersion) {
     if (supportedBookFormatVersion < 1) {
       throw new IllegalArgumentException("Supported book format version must be at least 1.");

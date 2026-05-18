@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,11 +18,48 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 7;
+pragma user_version = 8;
 
 create table if not exists book_meta (
-    key text primary key,
-    value text not null
+    key text primary key check (key in ('initialized_at', 'schema_fingerprint_sha256')),
+    value text not null check (length(trim(value)) > 0)
+) strict;
+
+create table if not exists book_identity (
+    singleton_id integer primary key check (singleton_id = 1),
+    entity_name text not null check (length(trim(entity_name)) > 0),
+    functional_currency_code text not null check (
+        length(functional_currency_code) = 3
+        and functional_currency_code glob '[A-Z][A-Z][A-Z]'
+    ),
+    fiscal_year_start text not null check (
+        length(fiscal_year_start) = 5
+        and fiscal_year_start glob '[0-1][0-9]-[0-3][0-9]'
+    )
+) strict;
+
+create table if not exists entity_profile (
+    singleton_id integer primary key check (singleton_id = 1),
+    entity_form text not null check (
+        entity_form in ('FREELANCER', 'SOLE_PROPRIETORSHIP', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'BRANCH', 'OTHER')
+    ),
+    owner_model text not null check (
+        owner_model in ('SOLE_OWNER', 'MULTI_OWNER', 'MEMBER_FUNDED', 'INSTITUTIONALLY_GOVERNED', 'UNKNOWN')
+    ),
+    reporting_obligation_status text not null check (
+        reporting_obligation_status in ('INTERNAL_MANAGEMENT_ONLY', 'EXTERNAL_GENERAL_PURPOSE', 'MIXED', 'UNSPECIFIED')
+    ),
+    tax_registration_status text not null check (
+        tax_registration_status in ('REGISTERED', 'NOT_REGISTERED', 'UNSPECIFIED')
+    ),
+    business_activity_tags text not null,
+    foreign key (singleton_id) references book_identity(singleton_id)
+) strict;
+
+create table if not exists book_policy (
+    singleton_id integer primary key check (singleton_id = 1),
+    accounting_basis text not null check (accounting_basis in ('CASH', 'ACCRUAL')),
+    foreign key (singleton_id) references book_identity(singleton_id)
 ) strict;
 
 create table if not exists account (
@@ -122,6 +159,59 @@ create table if not exists account (
     )
 ) strict;
 
+create trigger if not exists account_validate_parent_on_insert
+before insert on account
+when new.parent_account_code is not null
+begin
+    select raise(fail, 'account parent must be active.')
+    where exists (
+        select 1
+        from account parent
+        where parent.account_code = new.parent_account_code
+          and parent.active = 0
+    );
+    select raise(fail, 'account parent must share the child account type.')
+    where exists (
+        select 1
+        from account parent
+        where parent.account_code = new.parent_account_code
+          and parent.account_type <> new.account_type
+    );
+    with recursive ancestors(account_code, parent_account_code) as (
+        select account_code, parent_account_code
+        from account
+        where account_code = new.parent_account_code
+        union all
+        select account.account_code, account.parent_account_code
+        from account
+        join ancestors on account.account_code = ancestors.parent_account_code
+    )
+    select raise(fail, 'account hierarchy cycle.')
+    where exists (
+        select 1
+        from ancestors
+        where account_code = new.account_code
+    );
+end;
+
+create trigger if not exists account_reject_immutable_update
+before update on account
+when
+    old.account_type <> new.account_type
+    or old.account_role <> new.account_role
+    or ifnull(old.parent_account_code, '') <> ifnull(new.parent_account_code, '')
+    or ifnull(old.financial_position_line_classification, '') <> ifnull(new.financial_position_line_classification, '')
+    or ifnull(old.profit_and_loss_line_classification, '') <> ifnull(new.profit_and_loss_line_classification, '')
+begin
+    select raise(fail, 'account immutable declaration fields cannot change.');
+end;
+
+create trigger if not exists account_reject_delete
+before delete on account
+begin
+    select raise(fail, 'account rows are append-only.');
+end;
+
 create table if not exists posting_fact (
     posting_id text primary key,
     posting_kind text not null check (posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE')),
@@ -172,8 +262,21 @@ create table if not exists period_close (
     period_close_order integer primary key,
     effective_date_from text not null,
     effective_date_to text not null,
+    closing_equity_account_code text not null references account(account_code),
     closed_at text not null,
     check (effective_date_from <= effective_date_to)
+) strict;
+
+create table if not exists period_close_total (
+    period_close_order integer not null,
+    currency_code text not null check (
+        length(currency_code) = 3
+        and currency_code glob '[A-Z][A-Z][A-Z]'
+    ),
+    debit_total_minor integer not null check (debit_total_minor >= 0),
+    credit_total_minor integer not null check (credit_total_minor >= 0),
+    primary key (period_close_order, currency_code),
+    foreign key (period_close_order) references period_close(period_close_order)
 ) strict;
 
 create table if not exists period_close_posting (
@@ -230,6 +333,9 @@ create index if not exists audit_event_by_recorded_at
 create index if not exists period_close_by_effective_date_to
     on period_close (effective_date_to desc, period_close_order desc);
 
+create index if not exists period_close_total_by_currency
+    on period_close_total (currency_code, period_close_order);
+
 create index if not exists period_close_posting_by_posting_id
     on period_close_posting (posting_id, period_close_order);
 
@@ -261,6 +367,42 @@ begin
     select raise(fail, 'journal_line rows are append-only.');
 end;
 
+create trigger if not exists book_identity_reject_update
+before update on book_identity
+begin
+    select raise(fail, 'book_identity rows are append-only.');
+end;
+
+create trigger if not exists book_identity_reject_delete
+before delete on book_identity
+begin
+    select raise(fail, 'book_identity rows are append-only.');
+end;
+
+create trigger if not exists entity_profile_reject_update
+before update on entity_profile
+begin
+    select raise(fail, 'entity_profile rows are append-only.');
+end;
+
+create trigger if not exists entity_profile_reject_delete
+before delete on entity_profile
+begin
+    select raise(fail, 'entity_profile rows are append-only.');
+end;
+
+create trigger if not exists book_policy_reject_update
+before update on book_policy
+begin
+    select raise(fail, 'book_policy rows are append-only.');
+end;
+
+create trigger if not exists book_policy_reject_delete
+before delete on book_policy
+begin
+    select raise(fail, 'book_policy rows are append-only.');
+end;
+
 create trigger if not exists audit_event_reject_update
 before update on audit_event
 begin
@@ -285,6 +427,18 @@ begin
     select raise(fail, 'period_close rows are append-only.');
 end;
 
+create trigger if not exists period_close_total_reject_update
+before update on period_close_total
+begin
+    select raise(fail, 'period_close_total rows are append-only.');
+end;
+
+create trigger if not exists period_close_total_reject_delete
+before delete on period_close_total
+begin
+    select raise(fail, 'period_close_total rows are append-only.');
+end;
+
 create trigger if not exists period_close_posting_reject_update
 before update on period_close_posting
 begin
@@ -303,11 +457,44 @@ end;
 ### `book_meta`
 
 Columns:
-- `key`: `text primary key`
-- `value`: `text not null`
+- `key`: `text primary key check (key in ('initialized_at', 'schema_fingerprint_sha256'))`
+- `value`: `text not null check (length(trim(value)) > 0)`
 
 Table-level constraints:
 - None.
+
+### `book_identity`
+
+Columns:
+- `singleton_id`: `integer primary key check (singleton_id = 1)`
+- `entity_name`: `text not null check (length(trim(entity_name)) > 0)`
+- `functional_currency_code`: `text not null check ( length(functional_currency_code) = 3 and functional_currency_code glob '[A-Z][A-Z][A-Z]' )`
+- `fiscal_year_start`: `text not null check ( length(fiscal_year_start) = 5 and fiscal_year_start glob '[0-1][0-9]-[0-3][0-9]' )`
+
+Table-level constraints:
+- None.
+
+### `entity_profile`
+
+Columns:
+- `singleton_id`: `integer primary key check (singleton_id = 1)`
+- `entity_form`: `text not null check ( entity_form in ('FREELANCER', 'SOLE_PROPRIETORSHIP', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'BRANCH', 'OTHER') )`
+- `owner_model`: `text not null check ( owner_model in ('SOLE_OWNER', 'MULTI_OWNER', 'MEMBER_FUNDED', 'INSTITUTIONALLY_GOVERNED', 'UNKNOWN') )`
+- `reporting_obligation_status`: `text not null check ( reporting_obligation_status in ('INTERNAL_MANAGEMENT_ONLY', 'EXTERNAL_GENERAL_PURPOSE', 'MIXED', 'UNSPECIFIED') )`
+- `tax_registration_status`: `text not null check ( tax_registration_status in ('REGISTERED', 'NOT_REGISTERED', 'UNSPECIFIED') )`
+- `business_activity_tags`: `text not null`
+
+Table-level constraints:
+- `foreign key (singleton_id) references book_identity(singleton_id)`
+
+### `book_policy`
+
+Columns:
+- `singleton_id`: `integer primary key check (singleton_id = 1)`
+- `accounting_basis`: `text not null check (accounting_basis in ('CASH', 'ACCRUAL'))`
+
+Table-level constraints:
+- `foreign key (singleton_id) references book_identity(singleton_id)`
 
 ### `account`
 
@@ -369,10 +556,23 @@ Columns:
 - `period_close_order`: `integer primary key`
 - `effective_date_from`: `text not null`
 - `effective_date_to`: `text not null`
+- `closing_equity_account_code`: `text not null references account(account_code)`
 - `closed_at`: `text not null`
 
 Table-level constraints:
 - `check (effective_date_from <= effective_date_to)`
+
+### `period_close_total`
+
+Columns:
+- `period_close_order`: `integer not null`
+- `currency_code`: `text not null check ( length(currency_code) = 3 and currency_code glob '[A-Z][A-Z][A-Z]' )`
+- `debit_total_minor`: `integer not null check (debit_total_minor >= 0)`
+- `credit_total_minor`: `integer not null check (credit_total_minor >= 0)`
+
+Table-level constraints:
+- `primary key (period_close_order, currency_code)`
+- `foreign key (period_close_order) references period_close(period_close_order)`
 
 ### `period_close_posting`
 
@@ -408,6 +608,7 @@ Table-level constraints:
 - `journal_line_by_account_code` on `journal_line`: `create index if not exists journal_line_by_account_code on journal_line (account_code, posting_id, line_order);`
 - `audit_event_by_recorded_at` on `audit_event`: `create index if not exists audit_event_by_recorded_at on audit_event (recorded_at, audit_event_order);`
 - `period_close_by_effective_date_to` on `period_close`: `create index if not exists period_close_by_effective_date_to on period_close (effective_date_to desc, period_close_order desc);`
+- `period_close_total_by_currency` on `period_close_total`: `create index if not exists period_close_total_by_currency on period_close_total (currency_code, period_close_order);`
 - `period_close_posting_by_posting_id` on `period_close_posting`: `create index if not exists period_close_posting_by_posting_id on period_close_posting (posting_id, period_close_order);`
 - `posting_fact_one_reversal_per_target` on `posting_fact`: `create unique index if not exists posting_fact_one_reversal_per_target on posting_fact (prior_posting_id) where prior_posting_id is not null;`
 
@@ -420,9 +621,9 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `7`
-- Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`, `period_close`, `period_close_posting`, `audit_event`
-- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
+- `user_version`: `8`
+- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `book_policy`, `account`, `posting_fact`, `journal_line`, `period_close`, `period_close_total`, `period_close_posting`, `audit_event`
+- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_total_by_currency`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.
 - The current public line rejects non-matching book formats instead of upgrading them in place.

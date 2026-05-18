@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -88,6 +89,11 @@ final class CliResponsePayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
     return CliRejectionPayloadMapper.administrationRejectedEnvelope(rejection);
+  }
+
+  static CliEnvelopeJsonModels.RejectedEnvelope maintenanceRejectedEnvelope(
+      BookMaintenanceRejection rejection) {
+    return CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejection);
   }
 
   static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(

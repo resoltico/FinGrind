@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: USER_CLI
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -51,15 +51,19 @@ Both scaffold commands emit `actorType: "AGENT"` plus
 must be replaced before submission. Idempotency keys are single-use per book once one posting
 commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
+The easiest path is one missing private parent directory that FinGrind can create securely, or one
+existing parent directory that you have already tightened to owner-only permissions.
 `open-book` explicitly initializes one new protected book.
-When `--tax-registration-status REGISTERED` is selected, `open-book` also requires
-`--tax-profile-file <path|->` so the book persists first-class tax registrations and tax code
-definitions instead of a bare registration flag.
+When `--tax-registration-status REGISTERED` is selected, `open-book` records that registration
+status on the book identity. Jurisdiction-specific tax registrations, tax codes, rate schedules,
+recoverability, and filing behavior belong to adjacent tax contexts rather than the current
+kernel.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
 pre-rekey file automatically if replacement-passphrase verification fails.
-The supported backup path today is one closed-book encrypted file copy: stop using the book,
-copy the `.sqlite` file to protected storage, keep the key file protected separately, and restore
-by replacing the closed `.sqlite` file from that copy before reopening it.
+`backup-book` exports one verified encrypted backup pair for a closed book, `restore-book`
+verifies that pair before replacing the live book path and leaves the restored live book protected
+by that backup key file, and `recover-rekey` inspects or restores stale same-directory rollback
+artifacts after interrupted rekey cleanup.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable `accountRole`, immutable declared taxonomy, and derived
 `normalBalance`.
@@ -67,8 +71,12 @@ by replacing the closed `.sqlite` file from that copy before reopening it.
 closing equity account, and successful results surface that closing-equity account code plus
 the per-currency closed totals that were moved into equity. The first close may begin before the
 earliest posting date; after one close is recorded, later closes must start on the day after the
-closed-through horizon.
-`inspect-book` reports lifecycle state, format metadata, and compatibility for one selected book.
+closed-through horizon. Built-in closing-equity mapping is entity-form specific:
+`FREELANCER` and `SOLE_PROPRIETORSHIP` require `OWNER_CAPITAL`, `COMPANY` and `BRANCH` require
+`RETAINED_EARNINGS`, `PARTNERSHIP` requires `PARTNER_CURRENT`, `NONPROFIT` requires
+`ACCUMULATED_SURPLUS`, and `OTHER` requires `OTHER_EQUITY`.
+`inspect-book` reports lifecycle state, format metadata, compatibility, and the active hard-break
+migration policy for one selected book.
 `list-accounts` returns one stable page of the current account registry.
 `get-posting`, `list-postings`, and `account-balance` expose read/query access to committed history.
 `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, and
@@ -123,6 +131,9 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>[--owner-model &lt;owner-model&gt;]</code><br><code>[--reporting-obligation-status &lt;reporting-obligation-status&gt;]</code><br><code>[--tax-registration-status &lt;tax-registration-status&gt;]</code><br><code>[--business-activity-tag &lt;business-activity-tag&gt; ...]</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--accounting-basis &lt;accounting-basis&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
+    <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
+    <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
+    <tr><td><code>recover-rekey</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--recovery-action &lt;inspect|restore|delete&gt;]</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect or apply one stale sibling rekey rollback artifact for the selected book path.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
     <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>--closing-equity-account &lt;account-code&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into one selected closing equity account.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
@@ -366,6 +377,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   replacement. Do not copy a book while FinGrind is actively mutating it, and keep the copied
   `.sqlite` file under the same protected filesystem stance as the live book while storing key
   material separately from the copied book tree.
+- `restore-book` reuses the supplied backup key file as the secret for the restored live book, so
+  reopen the restored `--book-file` path with that same key file after the replacement completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /

@@ -145,6 +145,10 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return utf8Bytes.clone();
   }
 
+  SqliteBookPassphrase copy() {
+    return fromUtf8Bytes(sourceDescription, utf8BytesCopy());
+  }
+
   @Override
   public void close() {
     Arrays.fill(utf8Bytes, (byte) 0);

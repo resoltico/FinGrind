@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.39.0"
+version: "0.40.0"
 domain: USER_EXAMPLES
-updated: "2026-05-17"
+updated: "2026-05-18"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -117,13 +117,8 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","taxRegistrationStatus":"NOT_REGISTERED","taxProfile":{"registrations":[],"taxCodeDefinitions":[]},"businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","taxRegistrationStatus":"NOT_REGISTERED","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
 ```
-
-If the book is tax registered, copy
-[examples/registered-tax-profile.json](./examples/registered-tax-profile.json) into your working
-directory and add both `--tax-registration-status REGISTERED` and
-`--tax-profile-file ./registered-tax-profile.json` to the same `open-book` command.
 
 ## Inspect Compatibility Before Mutating
 
@@ -137,7 +132,8 @@ fingrind \
 One successful response is checked in at
 [examples/inspect-book-response.json](./examples/inspect-book-response.json).
 Use this command when an agent needs to know whether the selected book is initialized, compatible
-with the current binary, and safe for `open-book`, `declare-account`, or `post-entry`.
+with the current binary, which hard-break migration policy governs the current format line, and
+whether the path is safe for `open-book`, `declare-account`, or `post-entry`.
 
 ## Rotate One Book Passphrase
 
@@ -184,32 +180,52 @@ One successful response:
 
 ## Back Up And Restore One Closed Protected Book
 
-The supported backup path is a closed-book encrypted file copy. Stop using the book first, then
-copy the `.sqlite` file to protected storage and keep the key file protected separately through
-your normal secret-storage path.
+Stop using the book first. The canonical encrypted backup flow is one verified backup pair:
 
 ```bash
-mkdir -p ./backup/books
-cp ./books/acme.sqlite ./backup/books/acme.sqlite
-```
-
-To restore, replace the closed live book with the encrypted copy before reopening it:
-
-```bash
-cp ./backup/books/acme.sqlite ./books/acme.sqlite
 fingrind \
-  inspect-book \
+  backup-book \
   --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key
+  --book-key-file ./secrets/acme.book-key \
+  --backup-file ./backup/books/acme.sqlite \
+  --backup-book-key-file ./backup/secrets/acme.book-key
 ```
 
-On Windows PowerShell, the same closed-book copy/restore flow is:
+That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
+artifacts beside it.
 
-```powershell
-New-Item -ItemType Directory -Force -Path .\backup\books | Out-Null
-Copy-Item .\books\acme.sqlite .\backup\books\acme.sqlite
-Copy-Item .\backup\books\acme.sqlite .\books\acme.sqlite -Force
-fingrind inspect-book --book-file .\books\acme.sqlite --book-key-file .\secrets\acme.book-key
+To restore, verify the backup pair and replace the live book path in one step:
+
+```bash
+fingrind \
+  restore-book \
+  --book-file ./books/acme.sqlite \
+  --backup-file ./backup/books/acme.sqlite \
+  --backup-book-key-file ./backup/secrets/acme.book-key
+```
+
+After restore completes, reopen `./books/acme.sqlite` with that same backup key file because the
+restored encrypted book keeps the backup pair's secret.
+
+## Recover One Interrupted Rekey
+
+Inspect stale same-directory rollback artifacts first:
+
+```bash
+fingrind \
+  recover-rekey \
+  --book-file ./books/acme.sqlite \
+  --recovery-action inspect
+```
+
+If the inspection confirms the rollback artifact you want to restore, recover it explicitly:
+
+```bash
+fingrind \
+  recover-rekey \
+  --book-file ./books/acme.sqlite \
+  --recovery-action restore \
+  --rollback-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite
 ```
 
 ## Declare Accounts And Page The Registry

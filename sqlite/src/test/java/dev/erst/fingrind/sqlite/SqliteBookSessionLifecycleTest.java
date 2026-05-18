@@ -22,7 +22,8 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
     Path publishedPath = tempDirectory.resolve("prime-published.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(publishedPath))) {
-      setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(publishedPath)));
+      setStoreDatabase(
+          postingFactStore, SqliteNativeConnections.openKeyFileAccess(bookAccess(publishedPath)));
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
     Path existingPath = tempDirectory.resolve("prime-existing.sqlite");

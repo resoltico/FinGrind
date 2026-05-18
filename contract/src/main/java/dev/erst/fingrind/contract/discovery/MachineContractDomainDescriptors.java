@@ -239,9 +239,7 @@ final class MachineContractDomainDescriptors {
     if (operation.outputModes().isEmpty()) {
       return null;
     }
-    return new SelectableOutputDefaultsDescriptor(
-        OutputMode.HUMAN,
-        operation.category() == OperationCategory.DISCOVERY ? OutputMode.HUMAN : OutputMode.JSON);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON);
   }
 
   private static List<CommandDescriptor> commandDescriptors(OperationCategory category) {

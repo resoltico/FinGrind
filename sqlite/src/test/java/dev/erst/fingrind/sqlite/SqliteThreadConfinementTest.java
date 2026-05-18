@@ -48,7 +48,7 @@ class SqliteThreadConfinementTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("cross-thread-native.sqlite");
     withOwnedResourceOnThread(
         "sqlite-owner-native",
-        () -> SqliteNativeConnections.open(bookAccess(bookPath)),
+        () -> SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath)),
         database -> {
           IllegalStateException exception =
               captureIllegalStateOnThread("sqlite-reader-native", database::handle);

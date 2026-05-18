@@ -12,7 +12,9 @@ final class CliOutputModeDefaults {
   }
 
   static OutputMode resolvedDiscovery(@Nullable OutputMode explicitOutputMode) {
-    return explicitOutputMode == null ? OutputMode.HUMAN : explicitOutputMode;
+    return explicitOutputMode == null
+        ? defaultDiscoveryOutputMode(interactiveConsoleAvailable())
+        : explicitOutputMode;
   }
 
   static OutputMode defaultSelectableOutputMode() {
@@ -31,12 +33,15 @@ final class CliOutputModeDefaults {
   }
 
   static OutputMode defaultDiscoveryOutputMode() {
-    return OutputMode.HUMAN;
+    return defaultDiscoveryOutputMode(interactiveConsoleAvailable());
+  }
+
+  static OutputMode defaultDiscoveryOutputMode(boolean interactiveConsoleAvailable) {
+    return interactiveConsoleAvailable ? OutputMode.HUMAN : OutputMode.JSON;
   }
 
   private static boolean interactiveConsoleAvailable() {
-    return java.util.Optional.ofNullable(System.console())
-        .map(java.io.Console::isTerminal)
-        .orElse(false);
+    java.io.Console console = System.console();
+    return java.util.Optional.ofNullable(console).map(java.io.Console::isTerminal).orElse(false);
   }
 }

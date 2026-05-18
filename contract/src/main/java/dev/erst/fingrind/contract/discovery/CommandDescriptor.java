@@ -83,11 +83,6 @@ public record CommandDescriptor(
     if (outputModes.isEmpty()) {
       return null;
     }
-    OutputMode redirected =
-        switch (name) {
-          case HELP, CAPABILITIES, VERSION -> OutputMode.HUMAN;
-          default -> OutputMode.JSON;
-        };
-    return new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, redirected);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON);
   }
 }

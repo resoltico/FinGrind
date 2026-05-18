@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
@@ -149,6 +150,56 @@ class RejectionNarrativeTest {
   }
 
   @Test
+  void maintenanceMessagesCoverEveryRejection() {
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BookHasBlockingArtifacts(
+                    java.nio.file.Path.of("books/acme.sqlite"),
+                    List.of(java.nio.file.Path.of("books/acme.sqlite-wal"))))
+            .contains("blocking sibling artifacts"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
+                    java.nio.file.Path.of("backup/acme.sqlite"),
+                    List.of(java.nio.file.Path.of("backup/acme.sqlite-wal"))))
+            .contains("safe to restore"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupDestinationAlreadyExists(
+                    java.nio.file.Path.of("backup/acme.sqlite")))
+            .contains("will not overwrite"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupKeyFileAlreadyExists(
+                    java.nio.file.Path.of("backup/acme.book-key")))
+            .contains("key file"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.NoRollbackArtifactsFound(
+                    java.nio.file.Path.of("books/acme.sqlite")))
+            .contains("No sibling rekey rollback artifacts"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
+                    java.nio.file.Path.of("books/acme.sqlite"),
+                    List.of(
+                        java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite"),
+                        java.nio.file.Path.of("books/acme.rekey-rollback-2.sqlite"))))
+            .contains("choose one explicit rollback artifact path"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.RollbackArtifactNotFound(
+                    java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite")))
+            .contains("does not exist"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.RollbackArtifactNotForBook(
+                    java.nio.file.Path.of("books/acme.sqlite"),
+                    java.nio.file.Path.of("books/other.rekey-rollback-1.sqlite")))
+            .contains("does not belong"));
+  }
+
+  @Test
   void postingMessagesCoverEveryRejection() {
     PostingRejection.AccountStateViolations accountStateViolations =
         new PostingRejection.AccountStateViolations(
@@ -215,6 +266,9 @@ class RejectionNarrativeTest {
     assertThrows(
         NullPointerException.class,
         () -> RejectionNarrative.message(NullTestSupport.<BookQueryRejection>nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> RejectionNarrative.message(NullTestSupport.<BookMaintenanceRejection>nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> RejectionNarrative.message(NullTestSupport.<PostingRejection>nullOf()));

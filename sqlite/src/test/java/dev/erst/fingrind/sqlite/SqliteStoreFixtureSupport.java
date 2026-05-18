@@ -381,82 +381,53 @@ class SqliteStoreFixtureSupport {
   }
 
   static void createPartialFinGrindBook(
-      Path bookPath,
-      boolean includeBookMeta,
-      boolean includeAccount,
-      boolean includeAuditEvent,
-      boolean includePostingFact,
-      boolean includeJournalLine,
-      boolean includeInitializedMarker) {
+      Path bookPath, boolean includeInitializedMarker, String... omittedTables) {
     withStandaloneDatabase(
         staticBookAccess(bookPath),
         database -> {
-          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
-          database.executeStatement("pragma user_version = " + SqliteBookContract.FORMAT_VERSION);
-          if (includeBookMeta) {
-            database.executeStatement(
-                "create table book_meta (key text primary key, value text not null)");
-          }
-          if (includeAccount) {
-            database.executeStatement(
-                """
-                create table account (
-                    account_code text primary key,
-                    account_name text not null,
-                    account_type text not null,
-                    normal_balance text not null,
-                    active integer not null,
-                    declared_at text not null
-                )
-                """);
-          }
-          if (includeAuditEvent) {
-            database.executeStatement(
-                """
-                create table audit_event (
-                    recorded_at text not null,
-                    event_kind text not null,
-                    account_code text,
-                    posting_id text
-                )
-                """);
-          }
-          if (includePostingFact) {
-            database.executeStatement(
-                """
-                create table posting_fact (
-                    posting_id text primary key,
-                    effective_date text not null,
-                    recorded_at text not null,
-                    actor_id text not null,
-                    actor_type text not null,
-                    command_id text not null,
-                    idempotency_key text not null unique,
-                    causation_id text not null,
-                    correlation_id text null,
-                    reason text null,
-                    source_channel text not null,
-                    prior_posting_id text null
-                )
-                """);
-          }
-          if (includeJournalLine) {
-            database.executeStatement(
-                """
-                create table journal_line (
-                    posting_id text not null,
-                    line_order integer not null,
-                    account_code text not null,
-                    entry_side text not null,
-                    currency_code text not null,
-                    amount text not null
-                )
-                """);
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          if (omittedTables.length > 0) {
+            database.executeStatement("pragma foreign_keys = off");
+            for (String omittedTable : omittedTables) {
+              database.executeStatement("drop table if exists " + omittedTable);
+            }
+            database.executeStatement("pragma foreign_keys = on");
           }
           if (includeInitializedMarker) {
-            insertInitializedAtRow(database);
+            insertOptionalInitializedFixtureRows(database, omittedTables.length == 0);
           }
         });
+  }
+
+  private static void insertOptionalInitializedFixtureRows(
+      SqliteNativeDatabase database, boolean includeCanonicalFixtureRows) {
+    if (tableExists(database, SqliteBookContract.BOOK_META_TABLE)) {
+      insertInitializedAtRow(database);
+      if (includeCanonicalFixtureRows) {
+        SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
+      }
+    }
+    if (!includeCanonicalFixtureRows) {
+      return;
+    }
+    if (tableExists(database, SqliteBookContract.BOOK_IDENTITY_TABLE)
+        && tableExists(database, SqliteBookContract.ENTITY_PROFILE_TABLE)
+        && tableExists(database, SqliteBookContract.BOOK_POLICY_TABLE)) {
+      SqliteMutationWriter.insertBookIdentity(
+          database, SqlitePostingFactFixtureSupport.bookIdentity());
+    }
+    if (tableExists(database, SqliteBookContract.AUDIT_EVENT_TABLE)) {
+      insertAuditEventRow(
+          database,
+          "2026-04-07T10:15:30Z",
+          BookAuditEventKind.BOOK_OPENED.wireValue(),
+          "null",
+          "null");
+    }
+    if (tableExists(database, SqliteBookContract.ACCOUNT_TABLE)) {
+      insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+      insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
+    }
   }
 
   static void initializeBookOnDisk(Path bookPath) {
@@ -476,6 +447,11 @@ class SqliteStoreFixtureSupport {
         });
   }
 
+  private static boolean tableExists(SqliteNativeDatabase database, String tableName) {
+    return SqliteStatementQueries.existsRow(
+        database, SqlitePostingSql.TABLE_EXISTS, statement -> statement.bindText(1, tableName));
+  }
+
   static void deactivateAccount(Path bookPath, String accountCode) {
     withStandaloneDatabase(
         staticBookAccess(bookPath),
@@ -490,13 +466,13 @@ class SqliteStoreFixtureSupport {
   }
 
   static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
       action.run(database);
     }
   }
 
   static <T> T withStandaloneDatabaseResult(BookAccess bookAccess, SqliteDatabaseQuery<T> query) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
       return query.run(database);
     }
   }

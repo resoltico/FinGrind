@@ -222,8 +222,7 @@ final class CliLedgerPlanParser {
                 "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
             CliArgumentValueParser.parseAccountingBasisOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
-                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS),
-            CliTaxProfileParser.readOpenBookTaxProfile(openBookNode, taxRegistrationStatus)));
+                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)));
   }
 
   private static OwnerModel optionalOwnerModel(ObjectNode openBookNode) {

@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -11,6 +12,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.WireValue;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -279,14 +282,17 @@ final class CliDiscoveryOutputRenderer {
         || helpDescriptor.requestTemplate() == null) {
       return "";
     }
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+        helpDescriptor.requestShapes().postEntry();
     return section(
         "Request File",
-        conciseRequestFileGuidance(
+        requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + operationId.wireName(),
-            operationId));
+            operationId,
+            acceptedValueRows(postEntryShape.enumVocabularies())));
   }
 
   private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -295,14 +301,17 @@ final class CliDiscoveryOutputRenderer {
         || helpDescriptor.declareAccountTemplate() == null) {
       return "";
     }
+    ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccountShape =
+        helpDescriptor.requestShapes().declareAccount();
     return section(
         "Request File",
-        conciseRequestFileGuidance(
+        requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_ACCOUNT.wireName(),
-            OperationId.DECLARE_ACCOUNT));
+            OperationId.DECLARE_ACCOUNT,
+            acceptedValueRows(declareAccountShape.enumVocabularies())));
   }
 
   private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -311,12 +320,15 @@ final class CliDiscoveryOutputRenderer {
         || helpDescriptor.planTemplate() == null) {
       return "";
     }
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
+        helpDescriptor.requestShapes().ledgerPlan();
     return section(
         "Request File",
-        conciseRequestFileGuidance(
+        requestFileGuidance(
             "Provide one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
-            OperationId.EXECUTE_PLAN));
+            OperationId.EXECUTE_PLAN,
+            ledgerPlanAcceptedValueRows(ledgerPlanShape)));
   }
 
   static String renderJsonTemplate(
@@ -338,18 +350,55 @@ final class CliDiscoveryOutputRenderer {
     }
   }
 
-  private static String conciseRequestFileGuidance(
-      String introduction, String shortcutCommand, OperationId operationId) {
-    return String.join(
-        System.lineSeparator(),
+  private static String requestFileGuidance(
+      String introduction,
+      String shortcutCommand,
+      OperationId operationId,
+      List<List<String>> acceptedValuesRows) {
+    List<String> paragraphs = new ArrayList<>();
+    paragraphs.add(introduction);
+    paragraphs.add("Generate a scaffold with: " + shortcutCommand);
+    paragraphs.add(
+        "Inspect the machine-readable contract with: "
+            + CliInvocationText.commandExample(OperationId.HELP)
+            + " "
+            + ProtocolCatalog.operationName(operationId)
+            + " --output json");
+    if (!acceptedValuesRows.isEmpty()) {
+      paragraphs.add(
+          "Accepted values:"
+              + System.lineSeparator()
+              + CliTextFormat.renderKeyValueBlock(List.copyOf(acceptedValuesRows)));
+    }
+    return String.join(System.lineSeparator() + System.lineSeparator(), paragraphs);
+  }
+
+  private static List<List<String>> acceptedValueRows(
+      List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies) {
+    if (enumVocabularies.isEmpty()) {
+      return List.of();
+    }
+    return enumVocabularies.stream()
+        .map(descriptor -> List.of(descriptor.name(), String.join(", ", descriptor.values())))
+        .toList();
+  }
+
+  private static List<List<String>> ledgerPlanAcceptedValueRows(
+      ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape) {
+    return List.of(
         List.of(
-            introduction,
-            "Generate a scaffold with: " + shortcutCommand,
-            "Inspect the machine-readable contract with: "
-                + CliInvocationText.commandExample(OperationId.HELP)
-                + " "
-                + ProtocolCatalog.operationName(operationId)
-                + " --output json"));
+            "steps[].kind (administration)",
+            joinWireValues(ledgerPlanShape.administrationStepKinds())),
+        List.of("steps[].kind (query)", joinWireValues(ledgerPlanShape.queryStepKinds())),
+        List.of("steps[].kind (write)", joinWireValues(ledgerPlanShape.writeStepKinds())),
+        List.of("steps[].kind (assert)", ledgerPlanShape.assertStepKind().wireValue()),
+        List.of("steps[].assertion.kind", joinWireValues(ledgerPlanShape.assertionKinds())));
+  }
+
+  private static String joinWireValues(List<? extends WireValue> wireValues) {
+    return wireValues.stream()
+        .map(WireValue::wireValue)
+        .collect(java.util.stream.Collectors.joining(", "));
   }
 
   private static String selectableDefaultsSummary(

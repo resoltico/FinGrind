@@ -912,12 +912,19 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   private static Path hostManagedLibraryPath() {
-    String configuredLibraryPath = System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE);
-    if (configuredLibraryPath == null || configuredLibraryPath.isBlank()) {
+    SqliteLibraryTarget libraryTarget;
+    try {
+      libraryTarget = SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null);
+    } catch (IllegalStateException exception) {
       throw new IllegalStateException(
-          "Missing " + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " for managed SQLite tests.");
+          "Missing source-checkout managed SQLite runtime for managed-library identity tests.",
+          exception);
     }
-    return Path.of(configuredLibraryPath);
+    if (libraryTarget.provenance() != SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED) {
+      throw new IllegalStateException(
+          "Managed-library identity tests require the source-checkout managed SQLite runtime.");
+    }
+    return Path.of(libraryTarget.lookupTarget());
   }
 
   private static AclFileAttributeView throwingAclView(String message) {
