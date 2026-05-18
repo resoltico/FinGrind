@@ -41,8 +41,7 @@ final class CliOutputModeDefaults {
   }
 
   private static boolean interactiveConsoleAvailable() {
-    return java.util.Optional.ofNullable(System.console())
-        .map(java.io.Console::isTerminal)
-        .orElse(false);
+    java.io.Console console = System.console();
+    return java.util.Optional.ofNullable(console).map(java.io.Console::isTerminal).orElse(false);
   }
 }

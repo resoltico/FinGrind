@@ -149,9 +149,8 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   private static @Nullable PromptingConsole systemPromptingConsole() {
-    return Optional.ofNullable(availableSystemConsole())
-        .map(CliBookPassphraseResolver::systemPromptingConsole)
-        .orElse(null);
+    java.io.Console console = availableSystemConsole();
+    return Optional.ofNullable(console).map(c -> systemPromptingConsole(c)).orElse(null);
   }
 
   static @Nullable PromptingConsole systemPromptingConsole(java.io.Console console) {
