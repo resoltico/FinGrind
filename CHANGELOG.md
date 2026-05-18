@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   verifier exercises the operator-managed direct-Java path it claims to prove, and the contract
   schema-key floor now includes the maintenance-operation payload keys introduced by the new
   lifecycle commands.
+- Windows CI runtime verification no longer carries ad hoc inline PowerShell probes: the
+  environment-configured and source-checkout SQLite runtime checks now delegate to canonical
+  PowerShell verifier scripts that mirror the release-surface shell owners and their direct-Java
+  versus source-checkout launcher contracts.
 
 ## [0.39.0] - 2026-05-17
 

@@ -40,6 +40,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-public-container-surface.sh
     scripts/test-gradlew-bat-wrapper.sh
     scripts/test-gradle-wrapper-support.sh
+    scripts/test-gradle-wrapper-support-powershell.sh
     scripts/test-jazzer-stale-class-pruning.sh
     scripts/test-jazzer-stale-resource-pruning.sh
     scripts/test-check-monitor-common.sh
@@ -58,6 +59,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-security-policy-surface.sh
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-sqlite-runtime-contract.sh
+    scripts/test-verify-sqlite-runtime-powershell.sh
     scripts/test-render-managed-sqlite-compiler-flags.sh
     scripts/test-verify-repo-hygiene.sh
     scripts/validate-devcontainer.sh

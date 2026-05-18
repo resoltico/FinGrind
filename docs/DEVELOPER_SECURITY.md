@@ -145,9 +145,12 @@ Runtime identity rules:
 Current verification paths:
 - `scripts/verify-source-checkout-sqlite-runtime.sh` proves the generated source-checkout launcher
   reports the canonical source-checkout runtime distribution with `source-checkout-managed`
-  provenance
-- `scripts/verify-environment-configured-sqlite-runtime.sh` proves the Gradle JavaExec path
-  reports the canonical direct-Java runtime distribution with `environment-configured` provenance
+  provenance; `scripts/verify-source-checkout-sqlite-runtime.ps1` proves that same contract on
+  the Windows PowerShell release surface
+- `scripts/verify-environment-configured-sqlite-runtime.sh` proves the developer direct-Java
+  wrapper reports the canonical direct-Java runtime distribution with
+  `environment-configured` provenance; `scripts/verify-environment-configured-sqlite-runtime.ps1`
+  proves that same contract on the Windows PowerShell release surface
 - `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
   developer direct-Java wrapper both resolve the managed runtime without leaking native-access
   warnings

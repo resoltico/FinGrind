@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Verify the environment-configured SQLite runtime contract against Gradle JavaExec.
+# Verify the environment-configured SQLite runtime contract against the developer direct-Java
+# wrapper.
 
 set -euo pipefail
 
