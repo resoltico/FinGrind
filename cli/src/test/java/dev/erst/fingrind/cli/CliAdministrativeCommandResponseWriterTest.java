@@ -419,8 +419,13 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"status\":\"rejected\""));
     assertTrue(json.contains("\"code\":\"rollback-artifact-selection-required\""));
-    assertPortablePathSuffix(
-        readJson(outputStream).path("details").path("bookFile").asText(), "books/entity.sqlite");
+    assertTrue(
+        readJson(outputStream)
+            .path("details")
+            .path("bookFile")
+            .asText()
+            .replace('\\', '/')
+            .endsWith("books/entity.sqlite"));
     assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
   }
 
@@ -572,12 +577,5 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     String negateTargetJson =
         rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-7")));
     assertTrue(negateTargetJson.contains("\"priorPostingId\":\"posting-7\""));
-  }
-
-  private static void assertPortablePathSuffix(String renderedPath, String expectedSuffix) {
-    String normalizedPath = renderedPath.replace('\\', '/');
-    assertTrue(
-        normalizedPath.endsWith(expectedSuffix),
-        "Expected path ending " + expectedSuffix + " but was " + renderedPath);
   }
 }
