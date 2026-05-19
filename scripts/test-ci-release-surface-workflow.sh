@@ -34,12 +34,17 @@ grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
     "CI workflow no longer resolves the pinned uv launcher version from build metadata"
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
     "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
+grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \
+    "CI workflow no longer resolves the uv launcher scripts path through Python sysconfig"
 grep -Fq 'Run root quality gates on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps the Windows root gate as an explicit fail-fast step"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
 grep -Fq 'uv.exe' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
+if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
+    die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
+fi
 grep -Fq '.\scripts\verify-environment-configured-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows environment-configured runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \

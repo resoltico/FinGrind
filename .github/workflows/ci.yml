@@ -59,15 +59,14 @@ jobs:
           [ -n "${uv_version}" ]
           python -m pip install --user "uv==${uv_version}"
           uv_bin_dir="$(python - <<'PY'
-          import os
-          import site
-          scripts_dir = "Scripts" if os.name == "nt" else "bin"
-          print(os.path.join(site.USER_BASE, scripts_dir))
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
           PY
           )"
           printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
-          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s/uv\n' "${uv_bin_dir}" >> "${GITHUB_ENV}"
-          "${uv_bin_dir}/uv" --version
+          uv_executable="${uv_bin_dir}/uv"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
           python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run the canonical root verification gate
@@ -128,11 +127,14 @@ jobs:
           }
           $uvVersion = $uvVersionLine.Line.Split('=')[1]
           python -m pip install --user "uv==$uvVersion"
-          $userBase = python -c "import site; print(site.USER_BASE)"
-          $uvBinDir = Join-Path $userBase 'Scripts'
+          $uvBinDir = python -c "import sysconfig; print(sysconfig.get_path('scripts', scheme=sysconfig.get_preferred_scheme('user')))"
+          $uvExecutable = Join-Path $uvBinDir 'uv.exe'
+          if (-not (Test-Path $uvExecutable)) {
+            throw "uv executable was not installed at $uvExecutable"
+          }
           Add-Content -Path $env:GITHUB_PATH -Value $uvBinDir
-          Add-Content -Path $env:GITHUB_ENV -Value "ORG_GRADLE_PROJECT_fingrindUvExecutable=$uvBinDir\uv.exe"
-          & (Join-Path $uvBinDir 'uv.exe') --version
+          Add-Content -Path $env:GITHUB_ENV -Value "ORG_GRADLE_PROJECT_fingrindUvExecutable=$uvExecutable"
+          & $uvExecutable --version
           python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run root quality gates on Windows
