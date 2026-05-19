@@ -818,6 +818,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   @Test
   void sqliteCliBookWorkflow_routesMaintenanceMethodsThroughFileServices() throws Exception {
     Path tempDirectory = Files.createTempDirectory("fingrind-cli-maintenance-workflow");
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
     Path bookFile = Files.createFile(tempDirectory.resolve("book.sqlite"));
     Files.createFile(tempDirectory.resolve("book.sqlite-wal"));
     Path backupFile = tempDirectory.resolve("backup.sqlite");
