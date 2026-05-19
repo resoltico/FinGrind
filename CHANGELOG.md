@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed release-surface Python runtime support so repeated shell sourcing, uv fallback resolution,
   and fresh-bundle verification remain deterministic across operator environments instead of
   depending on whichever host Python executables happen to be present.
+- Fixed the Gradle-owned Python tool gate on hosted Windows so Ruff and SQLFluff no longer depend
+  on a multiline `python -c` version probe: the shared uv task owner now verifies Python through
+  the standard `python --version` banner and build-logic regression tests guard that
+  cross-platform parser directly.
 - Fixed repository-hygiene and release-publication drift around orphaned Git coordination locks:
   the hygiene verifier now rejects shared or worktree Git `.lock` files before release-sensitive
   verification begins, and the release/developer runbooks now spell out the live-owner versus

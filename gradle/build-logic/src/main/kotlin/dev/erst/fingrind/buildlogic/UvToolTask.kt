@@ -23,6 +23,9 @@ import org.gradle.process.ExecOperations
 abstract class UvToolTask @Inject constructor(
     private val execOperations: ExecOperations,
 ) : DefaultTask() {
+    private val requiredPythonMajorMinor: Pair<Int, Int>
+        get() = parseRequiredPythonMajorMinor(requiredPythonVersion.get())
+
     @get:Input
     abstract val pythonExecutable: Property<String>
 
@@ -94,23 +97,21 @@ abstract class UvToolTask @Inject constructor(
         val result =
             execOperations.exec {
                 executable = pythonExecutable.get()
-                args(
-                    "-c",
-                    """
-                    import sys
-                    version = f"{sys.version_info[0]}.{sys.version_info[1]}"
-                    print(version)
-                    major, minor = map(int, ${requiredPythonVersion.get().quoteForPython()}.split("."))
-                    sys.exit(0 if (sys.version_info[0], sys.version_info[1]) >= (major, minor) else 1)
-                    """.trimIndent(),
-                )
+                args("--version")
                 isIgnoreExitValue = true
                 configureSharedEnvironment(this)
                 standardOutput = stdout
                 errorOutput = stderr
             }
-        if (result.exitValue != 0) {
-            val detectedVersion = normalizedOutput(stdout, stderr).lineSequence().firstOrNull().orEmpty()
+        val detectedOutput = normalizedOutput(stdout, stderr)
+        val detectedVersion = parsePythonVersionBanner(detectedOutput)
+        val detectedMajorMinor = parsePythonMajorMinor(detectedOutput)
+        if (
+            result.exitValue != 0 ||
+                detectedVersion == null ||
+                detectedMajorMinor == null ||
+                !pythonVersionSatisfiesRequirement(detectedMajorMinor, requiredPythonMajorMinor)
+        ) {
             throw GradleException(
                 buildString {
                     append("Python tool tasks require Python ")
@@ -118,7 +119,10 @@ abstract class UvToolTask @Inject constructor(
                     append("+ but ")
                     append(pythonExecutable.get())
                     append(" reports ")
-                    append(if (detectedVersion.isBlank()) "an unsupported version" else detectedVersion)
+                    append(
+                        detectedVersion
+                            ?: detectedOutput.lineSequence().firstOrNull().orEmpty().ifBlank { "an unsupported version" },
+                    )
                     append(". ")
                     append(bootstrapHint.get())
                 },
@@ -231,6 +235,29 @@ abstract class UvToolTask @Inject constructor(
             append(stdout.toString(StandardCharsets.UTF_8))
             append(stderr.toString(StandardCharsets.UTF_8))
         }.trim()
-
-    private fun String.quoteForPython(): String = "'" + replace("\\", "\\\\").replace("'", "\\'") + "'"
 }
+
+private val PYTHON_VERSION_BANNER_REGEX = Regex("""\bPython\s+(\d+)\.(\d+)(?:\.\d+)?\b""")
+
+internal fun parsePythonVersionBanner(output: String): String? =
+    PYTHON_VERSION_BANNER_REGEX.find(output)?.value?.trim()
+
+internal fun parsePythonMajorMinor(output: String): Pair<Int, Int>? =
+    PYTHON_VERSION_BANNER_REGEX.find(output)?.destructured?.let { (major, minor) ->
+        major.toInt() to minor.toInt()
+    }
+
+internal fun parseRequiredPythonMajorMinor(requiredVersion: String): Pair<Int, Int> {
+    val components = requiredVersion.split('.', limit = 3)
+    require(components.size >= 2) {
+        "Required Python version must contain major and minor components: $requiredVersion"
+    }
+    return components[0].toInt() to components[1].toInt()
+}
+
+internal fun pythonVersionSatisfiesRequirement(
+    detectedVersion: Pair<Int, Int>,
+    requiredVersion: Pair<Int, Int>,
+): Boolean =
+    detectedVersion.first > requiredVersion.first ||
+        (detectedVersion.first == requiredVersion.first && detectedVersion.second >= requiredVersion.second)
