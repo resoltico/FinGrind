@@ -141,6 +141,20 @@ if (( ${#git_lock_files[@]} > 0 )); then
     exit 1
 fi
 
+git_gc_log_path="${git_common_dir}/gc.log"
+if [[ -f "${git_gc_log_path}" ]]; then
+    printf '%s\n' \
+        'error: git housekeeping is suspended by a persisted gc.log; the checkout is not safe for release or hygiene-sensitive verification:' >&2
+    printf '  - %s\n' "${git_gc_log_path}" >&2
+    while IFS= read -r gc_log_line; do
+        [[ -n "${gc_log_line}" ]] || continue
+        printf '    %s\n' "${gc_log_line}" >&2
+    done < "${git_gc_log_path}"
+    printf '%s\n' \
+        'Repair the underlying Git housekeeping failure, then remove gc.log only after a successful manual git gc or equivalent cleanup.' >&2
+    exit 1
+fi
+
 set +e
 object_store_output="$(git -C "${repo_root}" fsck --full --no-dangling --no-progress 2>&1)"
 object_store_status=$?

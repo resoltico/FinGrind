@@ -211,7 +211,8 @@ Canonical commands:
   report with `--report-local-state`; the report now classifies each local-state root as generated
   state, tool state, or scratch state and tells you which cleanup flag removes it; the verifier
   also fails when Git coordination lock files are present, because release or staging work cannot
-  trust a checkout with an active or orphaned Git owner
+  trust a checkout with an active or orphaned Git owner, and when a persisted `.git/gc.log`
+  shows that Git housekeeping is suspended pending manual cleanup
 - `./scripts/clean-repo-hygiene.sh` removes empty unexpected root entries and Finder droppings; use
   `--purge-generated-state` to prune repo-owned generated caches, `--purge-tool-state` to discard
   ignored tool/editor state such as `.claude/` or `.vscode/`, and `--purge-tmp` when you want to

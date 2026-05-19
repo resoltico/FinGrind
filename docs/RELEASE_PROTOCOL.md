@@ -134,7 +134,9 @@ checkout-availability problem, not proof that the release payload is bad.
 Run `./scripts/verify-repo-hygiene.sh`. It must exit 0. If it fails, repair the checkout or
 move the release into a clean clone before proceeding. If it reports Git coordination lock files,
 inspect ownership with `lsof` before removing anything: delete only orphaned lock files, and treat
-any owned lock as proof that another Git owner has the checkout open.
+any owned lock as proof that another Git owner has the checkout open. If it reports a persisted
+`gc.log`, complete manual Git housekeeping first and remove that log only after a successful
+`git gc` or equivalent cleanup.
 
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves

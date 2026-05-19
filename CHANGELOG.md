@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the hygiene verifier now rejects shared or worktree Git `.lock` files before release-sensitive
   verification begins, and the release/developer runbooks now spell out the live-owner versus
   orphaned-lock decision path instead of leaving staging failures to ad hoc operator recovery.
+- Fixed another release-path hygiene blind spot around suppressed Git housekeeping: repo hygiene
+  now rejects a persisted `.git/gc.log` before publication or checkout-sensitive verification, and
+  the release/developer runbooks now require a successful manual `git gc` cleanup before that log
+  can be cleared.
 
 ## [0.40.0] - 2026-05-18
 

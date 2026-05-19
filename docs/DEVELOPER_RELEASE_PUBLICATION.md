@@ -157,7 +157,8 @@ but a worktree shares the same `.git` metadata as the primary checkout. If
 to a clean clone before continuing the publication path; a sibling worktree will inherit the same
 object-store defect. The same rule applies when repo hygiene reports Git coordination lock files:
 inspect ownership with `lsof`, remove only orphaned lock files, and treat any live owner as proof
-that the checkout is unavailable for publication.
+that the checkout is unavailable for publication. If repo hygiene reports a persisted `gc.log`,
+run manual Git housekeeping first and remove that log only after a successful cleanup pass.
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,

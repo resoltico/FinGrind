@@ -100,6 +100,23 @@ rm -f "${fixture_root}/.git/index.lock"
 "${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
     "repo hygiene verifier should pass after removing the Git coordination lock file"
 
+printf 'warning: unreachable loose objects remain\n' > "${fixture_root}/.git/gc.log"
+
+set +e
+gc_log_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
+gc_log_status=$?
+set -e
+[[ ${gc_log_status} -ne 0 ]] || die \
+    "repo hygiene verifier should fail when Git housekeeping is suspended by gc.log"
+[[ "${gc_log_output}" == *'git housekeeping is suspended by a persisted gc.log'* ]] || die \
+    "repo hygiene verifier did not report the persisted gc.log failure"
+[[ "${gc_log_output}" == *'.git/gc.log'* ]] || die \
+    "repo hygiene verifier did not report the gc.log path"
+rm -f "${fixture_root}/.git/gc.log"
+
+"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+    "repo hygiene verifier should pass after removing the persisted gc.log"
+
 mkdir -p \
     "${fixture_root}/build/report" \
     "${fixture_root}/cli/build/cache" \
