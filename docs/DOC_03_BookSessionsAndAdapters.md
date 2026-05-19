@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: ADAPTERS
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -224,6 +224,27 @@ public sealed interface BookkeepingQueryRejection
 - Purpose: keep local read/report refusals inside the bookkeeping context until
   `BookkeepingReadPublishedLanguageTranslator` projects them into public `BookQueryRejection`
 
+## `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookMaintenanceVerificationFailure`
+
+These maintenance-boundary types keep protected-book verification local inside executor while
+projecting only redacted, typed maintenance outcomes into the public contract.
+
+```java
+public final class ProtectedBookMaintenancePublishedLanguageTranslator
+public enum ProtectedBookMaintenanceVerificationFailure
+```
+
+- `ProtectedBookMaintenanceVerificationFailure`: local verification vocabulary for missing,
+  blank-SQLite, foreign-SQLite, unsupported-format-version, incomplete-FinGrind, and generic
+  protected-book verification failures discovered before backup, restore, rollback inspection, or
+  rollback restore is allowed to proceed
+- `ProtectedBookMaintenancePublishedLanguageTranslator`: the only exported translator that may
+  project local maintenance outcomes into `BackupBookResult`, `RestoreBookResult`,
+  `RekeyRollbackResult`, and `BookMaintenanceRejection`
+- Redaction rule: the translator converts filesystem `Path` values into `PublicPathHint` values
+  and converts local artifact-role and verification-failure vocabularies into the stable public
+  contract types instead of leaking SQLite or filesystem implementation detail across the boundary
+
 ## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
 
 These exported `executor.bookkeeping` types are the local bookkeeping read model used by
@@ -371,75 +392,89 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
+## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
 
-`SqliteBookSession` is the public SQLite-backed FinGrind session surface, while
-`SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
+FinGrind now publishes one family of workflow-shaped SQLite session views instead of one composite
+god-session. `SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
 `SqlitePassphraseResolver` describe secret resolution without leaking CLI-specific prompt policy,
-and `SqliteBookSessions` owns session creation.
+and `SqliteBookSessions` owns public session creation.
 
 ```java
-public interface SqliteBookSession extends AutoCloseable
+public interface SqliteAdministrationSession extends AutoCloseable
+public interface SqliteReadSession extends AutoCloseable
+public interface SqlitePostingSession extends AutoCloseable
+public interface SqlitePeriodCloseSession extends AutoCloseable
+public interface SqlitePlanExecutionSession extends AutoCloseable
+public interface SqliteRekeySession extends AutoCloseable
 public enum SqliteBookSessionMode
 public enum SqlitePassphraseIntent
 public interface SqlitePassphraseResolver
 public final class SqliteBookSessions
 ```
 
-- Purpose: expose one stable public session API for CLI, tooling, and fuzz harnesses without
-  exporting the internal store/lifecycle implementation types
+- Purpose: expose only the public workflow surface each caller needs instead of one all-capability
+  session seam
+- `SqliteAdministrationSession`: lifecycle and account-registry workflows
+- `SqliteReadSession`: inspection, lookup, list, and report workflows
+- `SqlitePostingSession`: administration, reads, validation, and commit for ordinary posting flows
+- `SqlitePeriodCloseSession`: period-close workflows
+- `SqlitePlanExecutionSession`: plan execution plus transaction ownership
+- `SqliteRekeySession`: rekey workflows
 - `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
   `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
 - `SqlitePassphraseIntent`: distinguishes whether the caller is resolving an existing book secret
   or a confirmed replacement/new secret before `openBook(...)` or `rekeyBook(...)`
 - `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
   `SqlitePassphraseIntent` into a `SqliteBookPassphrase` whose owned buffers are best-effort
-  overwritten after use, so external tooling can stay on the neutral `BookAccess` seam instead of
-  passing adapter-native secret objects around
-- `SqliteBookSessions.open(...)`: constructs one SQLite-backed session boundary for the selected
-  caller intent without requiring an eager SQLite open; overloads accept either an already-resolved
-  `SqliteBookPassphrase` or the higher-level `BookAccess` plus `SqlitePassphraseResolver`
-- `SqliteBookSessions.openResolved(...)`: primes the session according to the selected access mode
-  and transfers ownership only after that priming succeeds; missing books may still resolve lazily
-  for read-only or existing-only flows that intentionally defer opening, while create and plan
-  modes resolve secrets eagerly so initialization and rekey prompts can enforce new-secret policy
-- Session shape: `SqliteBookSession` composes `BookAdministrationStore`, `BookkeepingReadStore`,
-  `PostingValidationStore`, `PostingCommitStore`, `PeriodCloseStore`, `LedgerPlanTransaction`,
-  and `AccountCatalogStore` on one public session boundary while still exposing direct
-  `findAccount(...)`, `findExistingPosting(...)`, and `rekeyBook(...)` helpers needed by
-  CLI/tooling flows; rekeying now consumes a `BookAccess.PassphraseSource` plus
-  `SqlitePassphraseResolver` so the same safe source-resolution policy applies to both open and
-  rotate flows
-- Internal split: `SqlitePostingFactStore` is now a thin session wrapper over one immutable
-  `SqliteStoreContext` dependency bundle plus one mutable `SqliteStoreLifecycle` state owner;
-  `SqliteSessionSecret` owns the reusable session secret, `SqliteLedgerPlanTransactionCoordinator`
-  owns ledger-plan transaction state plus missing-book cleanup policy, `SqliteRekeyService` owns
-  reopen-and-rollback rekey orchestration, `SqliteBookLifecycleInspectionMapper` owns local
-  lifecycle projection, `SqliteTransactionValidationBook` owns focused validation lookups,
-  `SqliteStoreReadOperations` delegates query/report reads through focused readers, and
-  `SqliteStoreMutationOperations` owns only ordinary durable mutations behind the public session
-  API
+  overwritten after use
+- `SqliteBookSessions`: opens the narrow public session view that matches the caller workflow and
+  transfers ownership only after priming succeeds
+- Internal split: one package-private `SqlitePostingFactStore` implements the narrow public views
+  over one immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`; the factory
+  projects that internal store into the public workflow-shaped interfaces instead of publishing the
+  full implementation seam
 
-## `SqliteBookBackupService`, `SqliteBookRestoreService`, And `SqliteRekeyRecoveryService`
+## `ProtectedBookMaintenanceEvent` And `ProtectedBookMaintenanceEventKind`
 
-These public SQLite maintenance services own explicit closed-copy backup, restore, and rollback
-recovery workflows above the lower-level session/runtime surface.
+These executor-owned maintenance facts keep successful protected-book maintenance workflows
+durably recordable with one closed event vocabulary.
 
 ```java
-public final class SqliteBookBackupService
-public final class SqliteBookRestoreService
-public final class SqliteRekeyRecoveryService
+public record ProtectedBookMaintenanceEvent(...)
+public enum ProtectedBookMaintenanceEventKind
 ```
 
-- `SqliteBookBackupService`: verifies the live book path is free of SQLite sidecars and stale
-  rollback artifacts, resolves the current book secret through the shared passphrase seam, and
-  emits one fresh encrypted backup file plus one fresh key file without overwriting destinations
-- `SqliteBookRestoreService`: verifies the selected backup pair is one clean closed-copy source
-  before replacing the live book path
-- `SqliteRekeyRecoveryService`: turns sibling rollback-artifact inspection, restore, and deletion
-  into one deterministic service that returns typed maintenance results and rejections
-- Boundary: these services keep maintenance doctrine in one public adapter owner instead of
-  scattering file-copy and rollback rules through CLI command handlers
+- `ProtectedBookMaintenanceEvent`: one durable redacted maintenance fact carrying event time, one
+  selected book path, and the workflow-specific backup or rollback artifact hints needed to
+  reconstruct successful maintenance history without leaking absolute filesystem paths
+- `ProtectedBookMaintenanceEventKind`: the closed successful-maintenance vocabulary:
+  `BACKUP_CREATED`, `BACKUP_RESTORED`, `REKEY_ROLLBACK_INSPECTED`,
+  `REKEY_ROLLBACK_RESTORED`, and `REKEY_ROLLBACK_DELETED`
+- Factory surface: the record exposes named factories for each successful maintenance workflow so
+  caller code cannot assemble malformed event shapes ad hoc
+
+## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore`
+
+Protected-book maintenance now belongs to one executor-owned maintenance boundary with one narrow
+SQLite store SPI and one append-only adjacent maintenance journal beside the selected book.
+
+```java
+public final class ProtectedBookMaintenanceService
+public interface ProtectedBookMaintenanceStore
+public final class SqliteProtectedBookMaintenanceStore
+```
+
+- `ProtectedBookMaintenanceService`: owns backup, rollback inspection, rollback restore,
+  rollback deletion, and restore doctrine plus typed rejections and published maintenance results
+- `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, reversible book
+  replacement, rollback-artifact selection, and journal recording
+- `SqliteProtectedBookMaintenanceStore`: verifies protected-book artifacts through SQLite, rejects
+  non-initialized and noncanonical sources, and performs reversible replacement work
+- Internal adapter: one package-private `SqliteProtectedBookMaintenanceJournal` appends durable
+  redacted maintenance facts beside the protected book instead of pretending maintenance happened
+  invisibly
+- Boundary: maintenance doctrine now lives above SQLite, while SQLite owns only verification and
+  filesystem/native execution details
 
 ## Protection Boundary
 

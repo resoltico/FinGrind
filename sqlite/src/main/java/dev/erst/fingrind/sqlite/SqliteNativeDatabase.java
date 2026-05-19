@@ -2,22 +2,31 @@ package dev.erst.fingrind.sqlite;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Thread-confined SQLite database handle backed by the configured SQLite C library. */
 class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
+  private final @Nullable Path normalizedBookPath;
   private final SqliteNativeApi sqliteApi;
   private final SqliteThreadOwner threadOwner =
       new SqliteThreadOwner("SQLite native database handle");
   private boolean closed;
 
   SqliteNativeDatabase(MemorySegment databaseHandle) {
-    this(databaseHandle, SqliteNativeBootstrap.api());
+    this(databaseHandle, null, SqliteNativeBootstrap.api());
   }
 
   SqliteNativeDatabase(MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
+    this(databaseHandle, null, sqliteApi);
+  }
+
+  SqliteNativeDatabase(
+      MemorySegment databaseHandle, @Nullable Path normalizedBookPath, SqliteNativeApi sqliteApi) {
     this.databaseHandle = Objects.requireNonNull(databaseHandle, "databaseHandle");
+    this.normalizedBookPath = normalizedBookPath;
     this.sqliteApi = Objects.requireNonNull(sqliteApi, "sqliteApi");
   }
 
@@ -69,7 +78,7 @@ class SqliteNativeDatabase implements AutoCloseable {
     if (closed) {
       return;
     }
-    SqliteNativeConnections.close(databaseHandle, sqliteApi);
+    SqliteNativeConnections.close(databaseHandle, normalizedBookPath, sqliteApi);
     closed = true;
   }
 

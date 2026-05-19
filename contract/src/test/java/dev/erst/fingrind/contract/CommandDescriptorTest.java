@@ -112,4 +112,39 @@ class CommandDescriptorTest {
         Objects.requireNonNull(declareAccount.selectableOutputDefaults()).redirectedStdout());
     assertNull(fixedEnvelope.selectableOutputDefaults());
   }
+
+  @Test
+  void outputModeSummary_distinguishesSelectableAndFixedOutputContracts() {
+    CommandDescriptor selectable =
+        new CommandDescriptor(
+            OperationId.HELP,
+            List.of(),
+            List.of(),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(),
+            "Show help");
+    CommandDescriptor fixedEnvelope =
+        new CommandDescriptor(
+            OperationId.EXECUTE_PLAN,
+            List.of(),
+            List.of(),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(),
+            List.of(),
+            "Execute one plan");
+    CommandDescriptor fixedRawJson =
+        new CommandDescriptor(
+            OperationId.PRINT_PLAN_TEMPLATE,
+            List.of(),
+            List.of(),
+            ExecutionMode.RAW_JSON,
+            List.of(),
+            List.of(),
+            "Print one plan template");
+
+    assertEquals("json | human", selectable.outputModeSummary());
+    assertEquals("json envelope", fixedEnvelope.outputModeSummary());
+    assertEquals("raw json", fixedRawJson.outputModeSummary());
+  }
 }

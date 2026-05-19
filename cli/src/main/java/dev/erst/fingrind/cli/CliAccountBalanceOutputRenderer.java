@@ -10,7 +10,7 @@ final class CliAccountBalanceOutputRenderer {
 
   static String renderHuman(AccountBalanceSnapshot snapshot) {
     List<List<String>> headerRows =
-        new java.util.ArrayList<>(CliBookIdentityDisplay.rows(snapshot.bookIdentity()));
+        new java.util.ArrayList<>(CliBookIdentityDisplay.summaryRows(snapshot.bookIdentity()));
     headerRows.add(
         List.of(
             "Posting coverage",

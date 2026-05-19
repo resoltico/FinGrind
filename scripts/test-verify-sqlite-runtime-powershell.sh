@@ -41,6 +41,10 @@ grep -Fq 'verify-sqlite-runtime-contract.py' "${environment_verifier_ps1}" || di
     "PowerShell environment-configured runtime verifier no longer delegates to the canonical Python verifier"
 grep -Fq 'verify-sqlite-runtime-contract.py' "${source_checkout_verifier_ps1}" || die \
     "PowerShell source-checkout runtime verifier no longer delegates to the canonical Python verifier"
+grep -Fq 'environment --output json' "${environment_verifier_ps1}" || die \
+    "PowerShell environment-configured runtime verifier no longer probes the canonical environment command"
+grep -Fq 'environment --output json' "${source_checkout_verifier_ps1}" || die \
+    "PowerShell source-checkout runtime verifier no longer probes the canonical environment command"
 if grep -Fq ':cli:run "--args=capabilities --output json"' "${environment_verifier_ps1}"; then
     die "PowerShell environment-configured runtime verifier regressed to the retired Gradle run seam"
 fi

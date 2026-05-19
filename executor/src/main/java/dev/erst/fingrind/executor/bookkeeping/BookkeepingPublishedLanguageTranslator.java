@@ -36,13 +36,6 @@ public final class BookkeepingPublishedLanguageTranslator {
     return command.reportingPeriod();
   }
 
-  /** Returns the selected closing-equity target for one public close-period command. */
-  public static dev.erst.fingrind.core.AccountCode closingEquityAccountCode(
-      ClosePeriodCommand command) {
-    Objects.requireNonNull(command, "command");
-    return command.closingEquityAccountCode();
-  }
-
   /** Translates one public open-book request into the local identity model. */
   public static dev.erst.fingrind.core.BookIdentity fromPublished(OpenBookCommand command) {
     Objects.requireNonNull(command, "command");
@@ -185,15 +178,14 @@ public final class BookkeepingPublishedLanguageTranslator {
       case BookkeepingAdministrationRejection.AccountHierarchyCycle conflict ->
           new BookAdministrationRejection.AccountHierarchyCycle(
               conflict.accountCode(), conflict.parentAccountCode());
-      case BookkeepingAdministrationRejection.ClosingEquityAccountMissing conflict ->
-          new BookAdministrationRejection.ClosingEquityAccountMissing(conflict.accountCode());
-      case BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->
-          new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-              conflict.accountCode(),
+      case BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing conflict ->
+          new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
               conflict.requiredFinancialPositionLineClassification(),
-              conflict.actualFinancialPositionLineClassification());
-      case BookkeepingAdministrationRejection.ClosingEquityAccountInactive conflict ->
-          new BookAdministrationRejection.ClosingEquityAccountInactive(conflict.accountCode());
+              conflict.inactiveCandidateAccountCodes());
+      case BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous conflict ->
+          new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+              conflict.requiredFinancialPositionLineClassification(),
+              conflict.candidateAccountCodes());
       case BookkeepingAdministrationRejection.PeriodCloseMustStartAt conflict ->
           new BookAdministrationRejection.PeriodCloseMustStartAt(
               conflict.requiredEffectiveDateFrom());

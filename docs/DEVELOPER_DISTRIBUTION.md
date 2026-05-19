@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -141,7 +141,7 @@ Current rules:
 - the container image ships the same application JAR plus a private `jlink` runtime, not a full
   inherited distro JRE
 - the container image advertises itself through
-  `capabilities.environment.distribution.runtimeDistribution = "container-image"`
+  `environment.distribution.runtimeDistribution = "container-image"`
 - the bundle remains the canonical public CLI artifact; the container is an additional supported
   public runtime surface, not a weaker or differently pinned path
 

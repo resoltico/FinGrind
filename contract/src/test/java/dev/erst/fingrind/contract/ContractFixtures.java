@@ -51,7 +51,6 @@ import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -68,7 +67,6 @@ final class ContractFixtures {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),

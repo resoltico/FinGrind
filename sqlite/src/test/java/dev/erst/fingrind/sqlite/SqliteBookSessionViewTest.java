@@ -51,8 +51,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByIdempotency_requiresInitializedBookWhenPostingIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -67,8 +66,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByPostingId_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-posting.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -83,8 +81,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findReversalFor_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-reversal.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -99,8 +96,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void commit_returnsBookNotInitializedWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-commit.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           rejected(new BookkeepingPostingRejection.BookNotInitialized()),
           commitPosting(
@@ -114,8 +110,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void openBook_rejectsSQLiteFileThatAlreadyContainsSchema() {
     Path databasePath = tempDirectory.resolve("legacy.sqlite");
     createPostingFactOnlyBook(databasePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookContainsSchema()),
@@ -126,16 +121,25 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void seamAccessors_returnStoreAsEachNarrowSessionView() {
     Path databasePath = tempDirectory.resolve("seam-accessors.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertNotNull((SqliteBookSession) postingFactStore);
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      assertNotNull((SqliteAdministrationSession) postingFactStore);
+      assertNotNull((SqliteReadSession) postingFactStore);
+      assertNotNull((SqlitePostingSession) postingFactStore);
+      assertNotNull((SqlitePeriodCloseSession) postingFactStore);
+      assertNotNull((SqlitePlanExecutionSession) postingFactStore);
+      assertNotNull((SqliteRekeySession) postingFactStore);
       assertNotNull((BookAdministrationStore) postingFactStore);
       assertNotNull((BookkeepingReadStore) postingFactStore);
       assertNotNull((PostingValidationStore) postingFactStore);
       assertNotNull((PostingCommitStore) postingFactStore);
       assertNotNull((PeriodCloseStore) postingFactStore);
       assertNotNull((LedgerPlanTransaction) postingFactStore);
-      assertSame(postingFactStore, (SqliteBookSession) postingFactStore);
+      assertSame(postingFactStore, (SqliteAdministrationSession) postingFactStore);
+      assertSame(postingFactStore, (SqliteReadSession) postingFactStore);
+      assertSame(postingFactStore, (SqlitePostingSession) postingFactStore);
+      assertSame(postingFactStore, (SqlitePeriodCloseSession) postingFactStore);
+      assertSame(postingFactStore, (SqlitePlanExecutionSession) postingFactStore);
+      assertSame(postingFactStore, (SqliteRekeySession) postingFactStore);
       assertSame(postingFactStore, (BookAdministrationStore) postingFactStore);
       assertSame(postingFactStore, (BookkeepingReadStore) postingFactStore);
       assertSame(postingFactStore, (PostingValidationStore) postingFactStore);
@@ -190,8 +194,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                 failure.code());
       }
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
@@ -199,8 +202,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void administrationView_delegatesMutationsWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("administration-view.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           administrationView(postingFactStore)
@@ -229,8 +231,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void postingView_delegatesReadsWritesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("posting-view.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
@@ -269,8 +270,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void queryView_delegatesQueriesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("query-view.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
@@ -324,8 +324,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(postingFactStore, openingPosting);
       commitPosting(postingFactStore, zeroingPosting);
@@ -390,8 +389,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       IllegalStateException trialBalanceFailure =
           assertThrows(
               IllegalStateException.class,
@@ -427,8 +425,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
     AccountBalanceCriteria balanceQuery = AccountBalanceCriteria.unbounded(new AccountCode("1000"));
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath))) {
       assertFalse(postingFactStore.inspectBook().initialized());
       assertInitializedQueryViewFailure(
           () -> readView(postingFactStore).listAccounts(firstAccountPage()),
@@ -439,8 +436,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     }
     Path rawSqlitePath = tempDirectory.resolve("query-view-uninitialized.sqlite");
     createEmptySqliteFile(rawSqlitePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(rawSqlitePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(rawSqlitePath))) {
       assertFalse(postingFactStore.inspectBook().initialized());
       assertInitializedQueryViewFailure(
           () -> readView(postingFactStore).listAccounts(firstAccountPage()),
@@ -454,8 +450,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void queryView_wrapsNativeFailuresFromDirectQueryCalls() throws Exception {
     Path databasePath = tempDirectory.resolve("query-view-native-failure.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath));
       assertWrappedQueryViewNativeFailure(
           () -> readView(postingFactStore).listAccounts(firstAccountPage()),

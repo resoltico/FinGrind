@@ -51,7 +51,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -120,7 +119,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(initializedInspection.contains("Entity form"));
     assertTrue(initializedInspection.contains("Owner model"));
     assertTrue(initializedInspection.contains("Reporting obligation"));
-    assertTrue(initializedInspection.contains("Tax registration"));
     assertTrue(initializedInspection.contains("Functional currency"));
     assertTrue(initializedInspection.contains("Fiscal year start"));
     assertTrue(initializedInspection.contains("Accounting basis"));
@@ -153,7 +151,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.UNSPECIFIED,
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
@@ -169,11 +166,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(inspection.contains("Business activity"));
     assertTrue(inspection.contains("translation,localization, cafe services"));
     assertTrue(inspection.contains("Reporting obligation"));
-    assertTrue(inspection.contains("Unspecified"));
+    assertTrue(inspection.contains("Internal Management Only"));
   }
 
   @Test
-  void renderBookInspectionHuman_includesRegisteredTaxStatusInReportingProfile() {
+  void renderBookInspectionHuman_includesReportingProfileRows() {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(
@@ -181,7 +178,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.REGISTERED,
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
@@ -192,8 +188,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new BookInspection.Initialized(
                 123, 1, 1, Instant.parse("2026-04-07T10:15:30Z"), registeredIdentity));
 
-    assertTrue(inspection.contains("Tax registration"));
-    assertTrue(inspection.contains("Registered"));
+    assertTrue(inspection.contains("Reporting obligation"));
+    assertTrue(inspection.contains("Internal Management Only"));
   }
 
   @Test
@@ -265,7 +261,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(openBookHuman.contains("Entity form"));
     assertTrue(openBookHuman.contains("Owner model"));
     assertTrue(openBookHuman.contains("Reporting obligation"));
-    assertTrue(openBookHuman.contains("Tax registration"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
     assertTrue(openBookHuman.contains("Accounting basis"));
@@ -874,7 +869,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(nonComparativeReport);
 
     assertTrue(rendered.contains("Changes In Equity"));
-    assertTrue(rendered.contains("Opening totals"));
+    assertTrue(rendered.contains("Outcome"));
+    assertTrue(rendered.contains("No equity balances or movements matched the selected period."));
     assertFalse(rendered.contains("Comparative Changes In Equity"));
   }
 
@@ -957,6 +953,140 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertTrue(rendered.contains("Comparative Changes In Equity"));
     assertTrue(rendered.contains("Comparative movement totals"));
+  }
+
+  @Test
+  void renderChangesInEquityHuman_rendersComparativeRowsWithoutSyntheticTotalsBlock() {
+    CurrencyBalance zeroBalance =
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO);
+    ChangesInEquityReport report =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(
+                new dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow(
+                    "equity-rollforward",
+                    "Equity rollforward",
+                    Optional.of(AccountType.EQUITY),
+                    Optional.empty(),
+                    FinancialPositionLineClassification.OTHER_EQUITY,
+                    StatementLineKind.DECLARED_ACCOUNT,
+                    zeroBalance,
+                    zeroBalance,
+                    zeroBalance)),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityHuman(report);
+
+    assertTrue(rendered.contains("Comparative Changes In Equity"));
+    assertTrue(rendered.contains("Equity rollforward"));
+    assertFalse(rendered.contains("Comparative opening totals"));
+    assertFalse(rendered.contains("Comparative movement totals"));
+    assertFalse(rendered.contains("Comparative closing totals"));
+  }
+
+  @Test
+  void reportSurfacePolicy_detectsTrialBalanceAndCurrentEquityComparatives() {
+    DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
+    TrialBalanceReport nonComparativeTrialBalance =
+        new TrialBalanceReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(new TrialBalanceRow(cashAccount, eurDebitBalance())),
+            List.of());
+    ChangesInEquityReport nonCurrentEquityReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    ChangesInEquityReport openingOnlyEquityReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(),
+            List.of(
+                CliResponseWriterTestSupport.currencyBalance(
+                    "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    ChangesInEquityReport movementOnlyEquityReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(
+                CliResponseWriterTestSupport.currencyBalance(
+                    "EUR", "0.00", "3.00", "3.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    ChangesInEquityReport closingOnlyEquityReport =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(
+                CliResponseWriterTestSupport.currencyBalance(
+                    "EUR", "0.00", "8.00", "8.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    assertFalse(CliReportSurfacePolicy.hasComparative(nonComparativeTrialBalance));
+    assertTrue(
+        CliReportSurfacePolicy.hasComparative(
+            new TrialBalanceReport(
+                nonComparativeTrialBalance.bookIdentity(),
+                Optional.of(LocalDate.parse("2026-04-30")),
+                EffectiveDateRange.unbounded(),
+                allPostingKinds(),
+                nonComparativeTrialBalance.rows(),
+                List.of(new TrialBalanceRow(cashAccount, eurDebitBalance())))));
+    assertFalse(CliReportSurfacePolicy.hasCurrent(nonCurrentEquityReport));
+    assertTrue(CliReportSurfacePolicy.hasCurrent(openingOnlyEquityReport));
+    assertTrue(CliReportSurfacePolicy.hasCurrent(movementOnlyEquityReport));
+    assertTrue(CliReportSurfacePolicy.hasCurrent(closingOnlyEquityReport));
   }
 
   private static PostingFact directPostingFact() {

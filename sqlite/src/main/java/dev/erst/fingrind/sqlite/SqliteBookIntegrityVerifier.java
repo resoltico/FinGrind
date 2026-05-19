@@ -43,6 +43,11 @@ final class SqliteBookIntegrityVerifier {
             activeDatabase, SqlitePostingSql.FIND_UNBALANCED_POSTING, statement -> {});
   }
 
+  static boolean hasNoUnexpectedSchemaObjects(SqliteNativeDatabase activeDatabase) {
+    return !SqliteStatementQueries.existsRow(
+        activeDatabase, SqlitePostingSql.LOAD_NON_CANONICAL_SCHEMA_OBJECTS, statement -> {});
+  }
+
   static boolean hasValidPersistedMoney(SqliteNativeDatabase activeDatabase) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.LOAD_PERSISTED_MONEY_AUDIT_ROWS)) {

@@ -52,11 +52,11 @@ import org.junit.jupiter.api.Test;
 class MachineContractTest {
   @Test
   void capabilities_areDerivedFromLiveEnumsAndRejectionCatalogs() {
+    EnvironmentDescriptor environment = readyEnvironmentDescriptor();
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.9.0", "desc"), readyEnvironmentDescriptor());
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.9.0", "desc"));
 
-    assertPreflightAndCurrencyCapabilities(capabilities);
+    assertPreflightAndCurrencyCapabilities(capabilities, environment);
     assertAccountingBaselineCapabilities(capabilities);
     assertExtensionSurfaceCapabilities(capabilities);
     assertRequestInputCapabilities(capabilities);
@@ -65,7 +65,8 @@ class MachineContractTest {
     assertResponseModelCatalog(capabilities);
   }
 
-  private static void assertPreflightAndCurrencyCapabilities(CapabilitiesDescriptor capabilities) {
+  private static void assertPreflightAndCurrencyCapabilities(
+      CapabilitiesDescriptor capabilities, EnvironmentDescriptor environment) {
     assertEquals("advisory", capabilities.preflight().semantics());
     assertEquals(
         ContractResponse.CommitGuarantee.NOT_GUARANTEED,
@@ -74,7 +75,7 @@ class MachineContractTest {
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
     assertEquals(
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-        ((EnvironmentSqliteDescriptor.ReadyRuntime) capabilities.environment().sqlite().runtime())
+        ((EnvironmentSqliteDescriptor.ReadyRuntime) environment.sqlite().runtime())
             .runtimeTrustBasis());
   }
 
@@ -94,13 +95,6 @@ class MachineContractTest {
     assertEquals(
         "neutral-single-entity-policy-pack",
         capabilities.accountingBaseline().defaultPolicyPack().policyPackId());
-    assertTrue(
-        capabilities.accountingBaseline().reportCapabilities().stream()
-            .anyMatch(
-                capability ->
-                    "statement-of-cash-flows".equals(capability.statementId())
-                        && capability.status() == CapabilityStatus.PLANNED
-                        && capability.requiredForTargetBaseline()));
     assertTrue(
         capabilities
             .accountingBaseline()
@@ -139,13 +133,6 @@ class MachineContractTest {
         capabilities.extensionSurface().implementedSeams());
     assertEquals(
         "neutral-single-entity-policy-pack", capabilities.extensionSurface().defaultPolicyPackId());
-    assertTrue(
-        capabilities.extensionSurface().futureContexts().contains("tax-determination-and-filing"));
-    assertTrue(
-        capabilities
-            .extensionSurface()
-            .futureContexts()
-            .contains("group-reporting-and-consolidation"));
     assertTrue(
         capabilities.extensionSurface().policySeams().stream()
             .anyMatch(
@@ -319,7 +306,6 @@ class MachineContractTest {
         command(help.commands(), OperationId.TRIAL_BALANCE).artifactOutputs().getFirst().option());
     assertEquals(5, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
-    assertEquals(environment, help.environment());
     assertEquals(
         List.of(WorkflowSurface.BUNDLE_POSIX_SHELL, WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
         help.quickStart().stream().map(WorkflowDescriptor::surface).toList());

@@ -70,8 +70,12 @@ repo_root="$(cd -P -- "${repo_root}" && pwd)"
 [[ -d "${repo_root}" ]] || die "repository root is not a directory: ${repo_root}"
 [[ -d "${repo_root}/.git" || -f "${repo_root}/.git" ]] || die \
     "repository root does not contain a .git entry: ${repo_root}"
-git -C "${repo_root}" rev-parse --git-dir >/dev/null 2>&1 || die \
+git_dir="$(git -C "${repo_root}" rev-parse --path-format=absolute --git-dir 2>/dev/null)" || die \
     "repository root is not a readable Git checkout: ${repo_root}"
+git_common_dir="$(git -C "${repo_root}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || die \
+    "repository root does not expose a readable Git common directory: ${repo_root}"
+readonly git_dir
+readonly git_common_dir
 
 if [[ "${report_local_state}" == true ]]; then
     printf '%s\n' 'Allowed local-state root sizes:'
@@ -110,6 +114,44 @@ if (( ${#unignored_local_state_entries[@]} > 0 )); then
     printf '%s\n' \
         'error: approved local-state roots exist at the repository top level but are not ignored by Git:' >&2
     printf '  - %s\n' "${unignored_local_state_entries[@]}" >&2
+    exit 1
+fi
+
+git_lock_files=()
+git_lock_search_roots=("${git_dir}")
+if [[ "${git_common_dir}" != "${git_dir}" ]]; then
+    git_lock_search_roots+=("${git_common_dir}")
+fi
+
+while IFS= read -r git_lock_file; do
+    [[ -n "${git_lock_file}" ]] || continue
+    git_lock_files+=("${git_lock_file}")
+done < <(
+    for git_lock_root in "${git_lock_search_roots[@]}"; do
+        find "${git_lock_root}" -type f -name '*.lock' -print
+    done | LC_ALL=C sort -u
+)
+
+if (( ${#git_lock_files[@]} > 0 )); then
+    printf '%s\n' \
+        'error: git coordination lock files are present; the checkout is not safe for release or hygiene-sensitive verification:' >&2
+    printf '  - %s\n' "${git_lock_files[@]}" >&2
+    printf '%s\n' \
+        'Inspect lock ownership with lsof before removing any lock file. Remove only orphaned lock files; wait for or isolate live Git owners.' >&2
+    exit 1
+fi
+
+git_gc_log_path="${git_common_dir}/gc.log"
+if [[ -f "${git_gc_log_path}" ]]; then
+    printf '%s\n' \
+        'error: git housekeeping is suspended by a persisted gc.log; the checkout is not safe for release or hygiene-sensitive verification:' >&2
+    printf '  - %s\n' "${git_gc_log_path}" >&2
+    while IFS= read -r gc_log_line; do
+        [[ -n "${gc_log_line}" ]] || continue
+        printf '    %s\n' "${gc_log_line}" >&2
+    done < "${git_gc_log_path}"
+    printf '%s\n' \
+        'Repair the underlying Git housekeeping failure, then remove gc.log only after a successful manual git gc or equivalent cleanup.' >&2
     exit 1
 fi
 

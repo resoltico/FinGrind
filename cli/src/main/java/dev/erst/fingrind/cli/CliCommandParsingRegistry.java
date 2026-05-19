@@ -20,6 +20,7 @@ final class CliCommandParsingRegistry {
       case HELP -> CliDiscoveryArguments::parseHelp;
       case VERSION -> CliDiscoveryArguments::parseVersion;
       case CAPABILITIES -> CliDiscoveryArguments::parseCapabilities;
+      case ENVIRONMENT -> CliDiscoveryArguments::parseEnvironment;
       case PRINT_REQUEST_TEMPLATE -> CliDiscoveryArguments::parsePrintRequestTemplate;
       case PRINT_PLAN_TEMPLATE -> CliDiscoveryArguments::parsePrintPlanTemplate;
       case GENERATE_BOOK_KEY_FILE -> CliMutationArguments::parseGenerateBookKeyFileCommand;
@@ -27,7 +28,9 @@ final class CliCommandParsingRegistry {
       case REKEY_BOOK -> CliMutationArguments::parseRekeyBookCommand;
       case BACKUP_BOOK -> CliMutationArguments::parseBackupBookCommand;
       case RESTORE_BOOK -> CliMutationArguments::parseRestoreBookCommand;
-      case RECOVER_REKEY -> CliMutationArguments::parseRecoverRekeyCommand;
+      case INSPECT_REKEY_ROLLBACK -> CliMutationArguments::parseInspectRekeyRollbackCommand;
+      case DELETE_REKEY_ROLLBACK -> CliMutationArguments::parseDeleteRekeyRollbackCommand;
+      case RESTORE_REKEY_ROLLBACK -> CliMutationArguments::parseRestoreRekeyRollbackCommand;
       case DECLARE_ACCOUNT -> CliMutationArguments::parseDeclareAccountCommand;
       case CLOSE_PERIOD -> CliMutationArguments::parseClosePeriodCommand;
       case INSPECT_BOOK -> CliReadArguments::parseInspectBookCommand;

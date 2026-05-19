@@ -31,7 +31,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
@@ -101,7 +100,6 @@ public final class CliFuzzFixtures {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),

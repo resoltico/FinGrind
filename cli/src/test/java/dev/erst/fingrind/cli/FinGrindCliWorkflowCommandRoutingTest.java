@@ -9,9 +9,8 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
@@ -236,11 +235,13 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z")));
     workflow.setBackupBookResult(
-        new BackupBookResult.BackedUp(bookFilePath, backupFilePath, backupBookKeyFilePath));
+        new BackupBookResult.BackedUp(
+            hint(bookFilePath), hint(backupFilePath), hint(backupBookKeyFilePath)));
     workflow.setRestoreBookResult(
-        new RestoreBookResult.Restored(bookFilePath, backupFilePath, backupBookKeyFilePath));
-    workflow.setRecoverRekeyResult(
-        new RecoverRekeyResult.Restored(bookFilePath, rollbackArtifactPath));
+        new RestoreBookResult.Restored(
+            hint(bookFilePath), hint(backupFilePath), hint(backupBookKeyFilePath)));
+    workflow.setRekeyRollbackResult(
+        new RekeyRollbackResult.Restored(hint(bookFilePath), hint(rollbackArtifactPath)));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
@@ -280,11 +281,11 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         0,
         cli.run(
             new String[] {
-              "recover-rekey",
+              "restore-rekey-rollback",
               "--book-file",
               bookFilePath.toString(),
-              "--recovery-action",
-              "restore",
+              "--book-key-file",
+              currentBookKeyFilePath.toString(),
               "--rollback-file",
               rollbackArtifactPath.toString()
             }));
@@ -296,9 +297,68 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(List.of(bookFilePath), workflow.restoreBookFilePaths());
     assertEquals(List.of(backupFilePath), workflow.restoreBackupFilePaths());
     assertEquals(List.of(backupBookKeyFilePath), workflow.restoreBackupBookKeyFilePaths());
-    assertEquals(List.of(bookFilePath), workflow.recoverRekeyBookFilePaths());
-    assertEquals(List.of(RekeyRecoveryAction.RESTORE), workflow.recoverRekeyActions());
-    assertEquals(List.of(rollbackArtifactPath), workflow.recoverRekeyRollbackArtifactPaths());
+    assertEquals(List.of(bookFilePath), workflow.restoreRekeyRollbackBookFilePaths());
+    assertEquals(List.of(rollbackArtifactPath), workflow.restoreRekeyRollbackArtifactPaths());
+    assertEquals(
+        List.of(new BookAccess.PassphraseSource.KeyFile(currentBookKeyFilePath)),
+        workflow.restoreRekeyRollbackExpectedPassphraseSources());
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
+  void run_routesInspectAndDeleteRollbackCommandsThroughSelectedBookWorkflow() {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("rollback.sqlite");
+    Path rollbackArtifactPath =
+        tempDirectory.resolve("books").resolve("rollback.rekey-rollback.sqlite");
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(bookFilePath),
+            new DeclareAccountResult.Declared(
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    workflow.setRekeyRollbackResult(
+        new RekeyRollbackResult.Inspected(hint(bookFilePath), List.of(hint(rollbackArtifactPath))));
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    assertEquals(
+        0,
+        cli.run(new String[] {"inspect-rekey-rollback", "--book-file", bookFilePath.toString()}));
+    workflow.setRekeyRollbackResult(
+        new RekeyRollbackResult.Deleted(hint(bookFilePath), hint(rollbackArtifactPath)));
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "delete-rekey-rollback",
+              "--book-file",
+              bookFilePath.toString(),
+              "--rollback-file",
+              rollbackArtifactPath.toString()
+            }));
+
+    assertEquals(List.of(bookFilePath), workflow.inspectRekeyRollbackBookFilePaths());
+    assertEquals(List.of(bookFilePath), workflow.deleteRekeyRollbackBookFilePaths());
+    assertEquals(List.of(rollbackArtifactPath), workflow.deleteRekeyRollbackArtifactPaths());
   }
 }

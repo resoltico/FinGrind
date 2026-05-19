@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -27,7 +26,6 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
               EntityForm.FREELANCER,
               OwnerModel.SOLE_OWNER,
               ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-              TaxRegistrationStatus.UNSPECIFIED,
               java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("02-29"),
@@ -39,7 +37,6 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
               EntityForm.FREELANCER,
               OwnerModel.SOLE_OWNER,
               ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-              TaxRegistrationStatus.UNSPECIFIED,
               java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),

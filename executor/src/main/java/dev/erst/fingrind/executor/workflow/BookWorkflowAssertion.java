@@ -7,9 +7,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
-import java.time.LocalDate;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Internal workflow assertion family for agent-authored book plans. */
 public sealed interface BookWorkflowAssertion
@@ -44,14 +42,14 @@ public sealed interface BookWorkflowAssertion
   /** Asserts one grouped balance snapshot for an account/date range/currency. */
   record AccountBalanceEquals(
       AccountCode accountCode,
-      @Nullable LocalDate effectiveDateFrom,
-      @Nullable LocalDate effectiveDateTo,
+      EffectiveDateRange effectiveDateRange,
       Money netAmount,
       BalanceSide balanceSide)
       implements BookWorkflowAssertion {
     /** Validates the assertion. */
     public AccountBalanceEquals {
       Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
       Objects.requireNonNull(netAmount, "netAmount");
       Objects.requireNonNull(balanceSide, "balanceSide");
     }
@@ -59,9 +57,7 @@ public sealed interface BookWorkflowAssertion
     /** Returns the bookkeeping balance query implied by this assertion. */
     public AccountBalanceCriteria query() {
       return new AccountBalanceCriteria(
-          accountCode,
-          EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo),
-          PostingCoverage.ALL_POSTING_KINDS);
+          accountCode, effectiveDateRange, PostingCoverage.ALL_POSTING_KINDS);
     }
   }
 }

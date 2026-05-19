@@ -28,8 +28,12 @@ final class CliRejectionPayloadMapper {
       ProtocolCatalog.operationName(OperationId.BACKUP_BOOK);
   private static final String CLOSE_PERIOD_OPERATION =
       ProtocolCatalog.operationName(OperationId.CLOSE_PERIOD);
-  private static final String RECOVER_REKEY_OPERATION =
-      ProtocolCatalog.operationName(OperationId.RECOVER_REKEY);
+  private static final String INSPECT_REKEY_ROLLBACK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.INSPECT_REKEY_ROLLBACK);
+  private static final String DELETE_REKEY_ROLLBACK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.DELETE_REKEY_ROLLBACK);
+  private static final String RESTORE_REKEY_ROLLBACK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.RESTORE_REKEY_ROLLBACK);
 
   private CliRejectionPayloadMapper() {}
 
@@ -170,22 +174,22 @@ final class CliRejectionPayloadMapper {
           + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountMissing) {
-      return "Declare the selected closing equity account first, using accountType EQUITY and the built-in financial position classification required for this book's entity form, then rerun "
-          + CLOSE_PERIOD_OPERATION
-          + " with --closing-equity-account set to that code.";
-    }
     if (rejection
-        instanceof
-        BookAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict) {
-      return "Choose an account whose declared financialPositionLineClassification matches the built-in closing classification "
-          + conflict.requiredFinancialPositionLineClassification().wireValue()
-          + ", or redeclare the selected account with the correct policy-owned classification before rerunning "
-          + CLOSE_PERIOD_OPERATION
-          + ".";
+        instanceof BookAdministrationRejection.ClosingEquityAccountCandidateMissing missing) {
+      return missing.inactiveCandidateAccountCodes().isEmpty()
+          ? "Declare one active equity account whose financialPositionLineClassification is "
+              + missing.requiredFinancialPositionLineClassification().wireValue()
+              + ", then rerun "
+              + CLOSE_PERIOD_OPERATION
+              + "."
+          : "Reactivate one of the matching equity accounts or declare exactly one active replacement with financialPositionLineClassification "
+              + missing.requiredFinancialPositionLineClassification().wireValue()
+              + ", then rerun "
+              + CLOSE_PERIOD_OPERATION
+              + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountInactive) {
-      return "Redeclare the closing equity account to reactivate it, or declare the correct closing equity account before rerunning "
+    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous) {
+      return "Leave exactly one active equity account with the built-in closing classification for this book, then rerun "
           + CLOSE_PERIOD_OPERATION
           + ".";
     }
@@ -229,12 +233,16 @@ final class CliRejectionPayloadMapper {
           "Close every process using the selected book, remove SQLite sidecars only by finishing or restoring the interrupted workflow, and rerun the maintenance command after "
               + INSPECT_BOOK_OPERATION
               + " and "
-              + RECOVER_REKEY_OPERATION
+              + INSPECT_REKEY_ROLLBACK_OPERATION
               + " confirm one clean closed-copy state.";
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ ->
           "Choose one encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
               + BACKUP_BOOK_OPERATION
               + ".";
+      case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
+          "Close the process using the "
+              + artifactBusy.artifactRole().wireValue()
+              + " artifact, wait for the active maintenance workflow to finish, then rerun the command.";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
@@ -243,17 +251,23 @@ final class CliRejectionPayloadMapper {
           "Choose a new --backup-book-key-file path or remove the existing key file yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
+      case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
+          "Use an artifact that opens as one initialized FinGrind protected book for role "
+              + verificationFailed.artifactRole().wireValue()
+              + ", with the matching passphrase source for that artifact, then rerun the maintenance command.";
       case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
           "Rerun "
-              + RECOVER_REKEY_OPERATION
-              + " without mutation flags to confirm that no stale rollback copies remain.";
+              + INSPECT_REKEY_ROLLBACK_OPERATION
+              + " to confirm that no stale rollback copies remain.";
       case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ ->
           "Rerun "
-              + RECOVER_REKEY_OPERATION
+              + RESTORE_REKEY_ROLLBACK_OPERATION
+              + " or "
+              + DELETE_REKEY_ROLLBACK_OPERATION
               + " with one explicit --rollback-file path from details.rollbackArtifacts.";
       case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
           "Choose an existing rollback artifact path returned by "
-              + RECOVER_REKEY_OPERATION
+              + INSPECT_REKEY_ROLLBACK_OPERATION
               + " inspection output and rerun the command.";
       case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
           "Choose one rollback artifact that lives beside the selected --book-file and matches FinGrind's canonical rollback naming.";
@@ -358,15 +372,14 @@ final class CliRejectionPayloadMapper {
       case BookAdministrationRejection.AccountHierarchyCycle conflict ->
           new CliRejectionJsonModels.ParentAccountDetails(
               conflict.accountCode().value(), conflict.parentAccountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountMissing conflict ->
-          new CliRejectionJsonModels.ClosingEquityAccountDetails(conflict.accountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch conflict ->
-          new CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails(
-              conflict.accountCode().value(),
+      case BookAdministrationRejection.ClosingEquityAccountCandidateMissing conflict ->
+          new CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
-              conflict.actualFinancialPositionLineClassification().wireValue());
-      case BookAdministrationRejection.ClosingEquityAccountInactive conflict ->
-          new CliRejectionJsonModels.ClosingEquityAccountDetails(conflict.accountCode().value());
+              conflict.inactiveCandidateAccountCodes().stream().map(code -> code.value()).toList());
+      case BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous conflict ->
+          new CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails(
+              conflict.requiredFinancialPositionLineClassification().wireValue(),
+              conflict.candidateAccountCodes().stream().map(code -> code.value()).toList());
       case BookAdministrationRejection.PeriodCloseMustStartAt conflict ->
           new CliRejectionJsonModels.PeriodCloseStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
@@ -397,50 +410,46 @@ final class CliRejectionPayloadMapper {
     return switch (rejection) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
           new CliRejectionJsonModels.BlockingArtifactsDetails(
-              blockingArtifacts.bookFilePath().toAbsolutePath().normalize().toString(),
+              blockingArtifacts.bookFilePath().value(),
               blockingArtifacts.blockingArtifactPaths().stream()
-                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .map(path -> path.value())
                   .toList());
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
           new CliRejectionJsonModels.BlockingArtifactsDetails(
-              blockingArtifacts.backupFilePath().toAbsolutePath().normalize().toString(),
+              blockingArtifacts.backupFilePath().value(),
               blockingArtifacts.blockingArtifactPaths().stream()
-                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .map(path -> path.value())
                   .toList());
+      case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
+          new CliRejectionJsonModels.ArtifactBusyDetails(
+              artifactBusy.artifactRole().wireValue(), artifactBusy.artifactPath().value());
       case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
           new CliRejectionJsonModels.BackupFileDetails(
-              destinationAlreadyExists.backupFilePath().toAbsolutePath().normalize().toString());
+              destinationAlreadyExists.backupFilePath().value());
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists destinationAlreadyExists ->
           new CliRejectionJsonModels.BackupBookKeyFileDetails(
-              destinationAlreadyExists
-                  .backupBookKeyFilePath()
-                  .toAbsolutePath()
-                  .normalize()
-                  .toString());
+              destinationAlreadyExists.backupBookKeyFilePath().value());
+      case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
+          new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
+              verificationFailed.artifactRole().wireValue(),
+              verificationFailed.artifactPath().value(),
+              verificationFailed.verificationFailure().wireValue());
       case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
           new CliRejectionJsonModels.BookFileDetails(
-              noRollbackArtifactsFound.bookFilePath().toAbsolutePath().normalize().toString());
+              noRollbackArtifactsFound.bookFilePath().value());
       case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
           new CliRejectionJsonModels.RollbackArtifactSelectionDetails(
-              selectionRequired.bookFilePath().toAbsolutePath().normalize().toString(),
+              selectionRequired.bookFilePath().value(),
               selectionRequired.rollbackArtifactPaths().stream()
-                  .map(path -> path.toAbsolutePath().normalize().toString())
+                  .map(path -> path.value())
                   .toList());
       case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
           new CliRejectionJsonModels.RollbackArtifactDetails(
-              rollbackArtifactNotFound
-                  .rollbackArtifactPath()
-                  .toAbsolutePath()
-                  .normalize()
-                  .toString());
+              rollbackArtifactNotFound.rollbackArtifactPath().value());
       case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
           new CliRejectionJsonModels.RollbackArtifactMismatchDetails(
-              rollbackArtifactNotForBook.bookFilePath().toAbsolutePath().normalize().toString(),
-              rollbackArtifactNotForBook
-                  .rollbackArtifactPath()
-                  .toAbsolutePath()
-                  .normalize()
-                  .toString());
+              rollbackArtifactNotForBook.bookFilePath().value(),
+              rollbackArtifactNotForBook.rollbackArtifactPath().value());
     };
   }
 

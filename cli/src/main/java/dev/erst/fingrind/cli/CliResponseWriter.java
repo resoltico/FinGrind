@@ -14,8 +14,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
@@ -25,6 +25,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
@@ -64,6 +65,10 @@ final class CliResponseWriter {
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
     discoveryWriter.writeCapabilities(capabilitiesDescriptor, outputMode);
+  }
+
+  void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {
+    discoveryWriter.writeEnvironment(environmentDescriptor, outputMode);
   }
 
   void writeVersion(VersionDescriptor versionDescriptor) {
@@ -156,8 +161,16 @@ final class CliResponseWriter {
     mutationWriter.writeRestoreBookResult(result, outputMode);
   }
 
-  void writeRecoverRekeyResult(RecoverRekeyResult result, OutputMode outputMode) {
-    mutationWriter.writeRecoverRekeyResult(result, outputMode);
+  void writeInspectRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
+    mutationWriter.writeInspectRekeyRollbackResult(result, outputMode);
+  }
+
+  void writeRestoreRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
+    mutationWriter.writeRestoreRekeyRollbackResult(result, outputMode);
+  }
+
+  void writeDeleteRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
+    mutationWriter.writeDeleteRekeyRollbackResult(result, outputMode);
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result) {

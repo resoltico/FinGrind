@@ -26,9 +26,8 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.ParentAccountTypeConflict,
         BookAdministrationRejection.ParentAccountTaxonomyConflict,
         BookAdministrationRejection.AccountHierarchyCycle,
-        BookAdministrationRejection.ClosingEquityAccountMissing,
-        BookAdministrationRejection.ClosingEquityAccountClassificationMismatch,
-        BookAdministrationRejection.ClosingEquityAccountInactive,
+        BookAdministrationRejection.ClosingEquityAccountCandidateMissing,
+        BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous,
         BookAdministrationRejection.PeriodCloseMustStartAt,
         BookAdministrationRejection.PeriodCloseFutureDate,
         BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
@@ -151,38 +150,29 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /* Rejection for period close when no closing-equity account is declared. */
-  record ClosingEquityAccountMissing(AccountCode accountCode)
-      implements BookAdministrationRejection {
-    public ClosingEquityAccountMissing {
-      Objects.requireNonNull(accountCode, "accountCode");
-    }
-  }
-
-  /*
-   * Rejection for period close when the selected account does not satisfy the active close
-   * classification policy.
-   */
-  record ClosingEquityAccountClassificationMismatch(
-      AccountCode accountCode,
+  /* Rejection for period close when policy finds no active declared closing-equity target. */
+  record ClosingEquityAccountCandidateMissing(
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
-      FinancialPositionLineClassification actualFinancialPositionLineClassification)
+      List<AccountCode> inactiveCandidateAccountCodes)
       implements BookAdministrationRejection {
-    public ClosingEquityAccountClassificationMismatch {
-      Objects.requireNonNull(accountCode, "accountCode");
+    public ClosingEquityAccountCandidateMissing {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
-      Objects.requireNonNull(
-          actualFinancialPositionLineClassification, "actualFinancialPositionLineClassification");
+      inactiveCandidateAccountCodes = List.copyOf(inactiveCandidateAccountCodes);
     }
   }
 
-  /* Rejection for period close when the selected closing-equity account exists but is inactive. */
-  record ClosingEquityAccountInactive(AccountCode accountCode)
+  /* Rejection for period close when policy finds more than one active declared close target. */
+  record ClosingEquityAccountCandidateAmbiguous(
+      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
+      List<AccountCode> candidateAccountCodes)
       implements BookAdministrationRejection {
-    public ClosingEquityAccountInactive {
-      Objects.requireNonNull(accountCode, "accountCode");
+    public ClosingEquityAccountCandidateAmbiguous {
+      Objects.requireNonNull(
+          requiredFinancialPositionLineClassification,
+          "requiredFinancialPositionLineClassification");
+      candidateAccountCodes = List.copyOf(candidateAccountCodes);
     }
   }
 
@@ -238,12 +228,10 @@ public sealed interface BookAdministrationRejection
           Descriptor.PARENT_ACCOUNT_TAXONOMY_CONFLICT;
       case BookAdministrationRejection.AccountHierarchyCycle _ ->
           Descriptor.ACCOUNT_HIERARCHY_CYCLE;
-      case BookAdministrationRejection.ClosingEquityAccountMissing _ ->
-          Descriptor.CLOSING_EQUITY_ACCOUNT_MISSING;
-      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch _ ->
-          Descriptor.CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH;
-      case BookAdministrationRejection.ClosingEquityAccountInactive _ ->
-          Descriptor.CLOSING_EQUITY_ACCOUNT_INACTIVE;
+      case BookAdministrationRejection.ClosingEquityAccountCandidateMissing _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING;
+      case BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous _ ->
+          Descriptor.CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS;
       case BookAdministrationRejection.PeriodCloseMustStartAt _ ->
           Descriptor.PERIOD_CLOSE_MUST_START_AT;
       case BookAdministrationRejection.PeriodCloseFutureDate _ ->
@@ -266,9 +254,8 @@ public sealed interface BookAdministrationRejection
     PARENT_ACCOUNT_TYPE_CONFLICT,
     PARENT_ACCOUNT_TAXONOMY_CONFLICT,
     ACCOUNT_HIERARCHY_CYCLE,
-    CLOSING_EQUITY_ACCOUNT_MISSING,
-    CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
-    CLOSING_EQUITY_ACCOUNT_INACTIVE,
+    CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,
+    CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS,
     PERIOD_CLOSE_MUST_START_AT,
     PERIOD_CLOSE_FUTURE_DATE,
     PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY;
@@ -286,10 +273,9 @@ public sealed interface BookAdministrationRejection
         case PARENT_ACCOUNT_TYPE_CONFLICT -> "parent-account-type-conflict";
         case PARENT_ACCOUNT_TAXONOMY_CONFLICT -> "parent-account-taxonomy-conflict";
         case ACCOUNT_HIERARCHY_CYCLE -> "account-hierarchy-cycle";
-        case CLOSING_EQUITY_ACCOUNT_MISSING -> "closing-equity-account-missing";
-        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
-            "closing-equity-account-classification-mismatch";
-        case CLOSING_EQUITY_ACCOUNT_INACTIVE -> "closing-equity-account-inactive";
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING -> "closing-equity-account-candidate-missing";
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS ->
+            "closing-equity-account-candidate-ambiguous";
         case PERIOD_CLOSE_MUST_START_AT -> "period-close-must-start-at";
         case PERIOD_CLOSE_FUTURE_DATE -> "period-close-future-date";
         case PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY ->
@@ -323,12 +309,10 @@ public sealed interface BookAdministrationRejection
             "Account declaration refused because the requested parentAccountCode belongs to a different statement-classification family than the child declaration.";
         case ACCOUNT_HIERARCHY_CYCLE ->
             "Account declaration refused because the requested parentAccountCode would create a cycle in the chart hierarchy.";
-        case CLOSING_EQUITY_ACCOUNT_MISSING ->
-            "Period close refused because the selected closing-equity account code is not declared in the selected book.";
-        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
-            "Period close refused because the selected account does not satisfy the active closing-equity classification policy.";
-        case CLOSING_EQUITY_ACCOUNT_INACTIVE ->
-            "Period close refused because the selected closing-equity account is inactive.";
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING ->
+            "Period close refused because policy could not find one active declared closing-equity account for the selected book.";
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS ->
+            "Period close refused because policy found more than one active declared closing-equity account for the selected book.";
         case PERIOD_CLOSE_MUST_START_AT ->
             "Period close refused because the requested effectiveDateFrom does not match the live unclosed horizon.";
         case PERIOD_CLOSE_FUTURE_DATE ->
@@ -341,11 +325,14 @@ public sealed interface BookAdministrationRejection
     private List<ContractResponse.FieldDescriptor> detailFields() {
       return switch (this) {
         case BOOK_ALREADY_INITIALIZED, BOOK_NOT_INITIALIZED, BOOK_CONTAINS_SCHEMA -> List.of();
-        case CLOSING_EQUITY_ACCOUNT_MISSING ->
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING ->
             List.of(
                 detailField(
-                    "accountCode",
-                    "Selected closing-equity account code that was not declared in this book."));
+                    "requiredFinancialPositionLineClassification",
+                    "Required financialPositionLineClassification for the selected book's active close policy."),
+                detailField(
+                    "inactiveCandidateAccountCodes",
+                    "Matching declared account codes that satisfy the required classification but are inactive."));
         case ACCOUNT_TYPE_CONFLICT ->
             List.of(
                 detailField(
@@ -411,22 +398,14 @@ public sealed interface BookAdministrationRejection
                 detailField(
                     "parentAccountTaxonomy",
                     "Declared parent taxonomy that conflicts with the child request."));
-        case CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH ->
+        case CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS ->
             List.of(
-                detailField(
-                    "accountCode",
-                    "Selected account code that exists but does not satisfy the active closing-equity classification policy."),
                 detailField(
                     "requiredFinancialPositionLineClassification",
                     "Required financialPositionLineClassification for the selected book's active close policy."),
                 detailField(
-                    "actualFinancialPositionLineClassification",
-                    "Actual financialPositionLineClassification stored for the selected account."));
-        case CLOSING_EQUITY_ACCOUNT_INACTIVE ->
-            List.of(
-                detailField(
-                    "accountCode",
-                    "Declared closing-equity account code that exists but is inactive."));
+                    "candidateAccountCodes",
+                    "Active declared account codes that all satisfy the required close policy and therefore make the close target ambiguous."));
         case PERIOD_CLOSE_MUST_START_AT ->
             List.of(
                 detailField(
@@ -469,9 +448,8 @@ public sealed interface BookAdministrationRejection
               PARENT_ACCOUNT_TYPE_CONFLICT,
               PARENT_ACCOUNT_TAXONOMY_CONFLICT,
               ACCOUNT_HIERARCHY_CYCLE,
-              CLOSING_EQUITY_ACCOUNT_MISSING,
-              CLOSING_EQUITY_ACCOUNT_CLASSIFICATION_MISMATCH,
-              CLOSING_EQUITY_ACCOUNT_INACTIVE,
+              CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,
+              CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS,
               PERIOD_CLOSE_MUST_START_AT,
               PERIOD_CLOSE_FUTURE_DATE,
               PERIOD_CLOSE_CROSSES_FISCAL_YEAR_BOUNDARY)

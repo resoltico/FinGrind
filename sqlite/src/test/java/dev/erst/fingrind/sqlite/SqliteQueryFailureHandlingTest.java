@@ -38,14 +38,12 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -54,8 +52,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                       new PostingHistoryQuery(Optional.empty(), null, null, 10, Optional.empty())));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -64,16 +61,14 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                       AccountBalanceCriteria.unbounded(new AccountCode("1000"))));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.trialBalance(trialBalanceCriteria(Optional.empty())));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -82,8 +77,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                       AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -99,8 +93,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   void queryMethods_wrapNativeFailuresAfterDatabaseOpen() throws Exception {
     Path bookPath = tempDirectory.resolve("query-stale.sqlite");
     initializeBookOnDisk(bookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       RegisteredAccount cashAccount =
           registeredAccount(
@@ -188,8 +181,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByIdempotency_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("query-native-failure.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -203,8 +195,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void inspectBook_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("initialized-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
@@ -216,8 +207,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findAccount_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("account-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -232,8 +222,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   void findAccount_wrapsQueryFailureFromStaleInitializedDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("account-stale-initialized-handle.sqlite");
     initializeBookOnDisk(bookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       setStoreCachedBookState(
           postingFactStore,
@@ -253,8 +242,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findAccounts_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("accounts-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -268,8 +256,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void declareAccount_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("declare-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -291,8 +278,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void listAccounts_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("list-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -305,8 +291,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByPostingId_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("posting-id-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(
@@ -320,8 +305,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findReversalFor_wrapsQueryFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("reversal-stale-handle.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.core.AccountCode;
 import java.util.Objects;
 
 /** Canonical human-readable rejection prose for public rejection contracts. */
@@ -63,23 +64,24 @@ public final class RejectionNarrative {
           "Account '%s' cannot name parent account '%s' because that relationship would create a chart hierarchy cycle."
               .formatted(
                   rejectionCycle.accountCode().value(), rejectionCycle.parentAccountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountMissing rejectionMissing ->
-          "Closing-equity account '%s' is not declared in this book."
-              .formatted(rejectionMissing.accountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountClassificationMismatch
-              rejectionClassificationMismatch ->
-          "Account '%s' has financial position classification '%s', but this book requires '%s' for period close."
+      case BookAdministrationRejection.ClosingEquityAccountCandidateMissing rejectionMissing ->
+          rejectionMissing.inactiveCandidateAccountCodes().isEmpty()
+              ? "No active declared closing-equity account satisfies required classification '%s'."
+                  .formatted(
+                      rejectionMissing.requiredFinancialPositionLineClassification().wireValue())
+              : "No active declared closing-equity account satisfies required classification '%s'; inactive candidates: %s."
+                  .formatted(
+                      rejectionMissing.requiredFinancialPositionLineClassification().wireValue(),
+                      rejectionMissing.inactiveCandidateAccountCodes().stream()
+                          .map(AccountCode::value)
+                          .collect(java.util.stream.Collectors.joining(", ")));
+      case BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous rejectionAmbiguous ->
+          "More than one active declared closing-equity account satisfies required classification '%s': %s."
               .formatted(
-                  rejectionClassificationMismatch.accountCode().value(),
-                  rejectionClassificationMismatch
-                      .actualFinancialPositionLineClassification()
-                      .wireValue(),
-                  rejectionClassificationMismatch
-                      .requiredFinancialPositionLineClassification()
-                      .wireValue());
-      case BookAdministrationRejection.ClosingEquityAccountInactive rejectionInactive ->
-          "Closing-equity account '%s' is inactive and cannot receive closing entries."
-              .formatted(rejectionInactive.accountCode().value());
+                  rejectionAmbiguous.requiredFinancialPositionLineClassification().wireValue(),
+                  rejectionAmbiguous.candidateAccountCodes().stream()
+                      .map(AccountCode::value)
+                      .collect(java.util.stream.Collectors.joining(", ")));
       case BookAdministrationRejection.PeriodCloseMustStartAt rejectionStartAt ->
           "Close period must start at '%s' to preserve one contiguous close horizon."
               .formatted(rejectionStartAt.requiredEffectiveDateFrom());
@@ -100,30 +102,40 @@ public final class RejectionNarrative {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
           "Book '%s' has blocking sibling artifacts and is not safe for one closed-copy maintenance workflow."
-              .formatted(blockingArtifacts.bookFilePath());
+              .formatted(blockingArtifacts.bookFilePath().value());
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
           "Backup source '%s' has blocking sibling artifacts and is not safe to restore from."
-              .formatted(blockingArtifacts.backupFilePath());
+              .formatted(blockingArtifacts.backupFilePath().value());
+      case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
+          "Protected-book artifact '%s' with role '%s' is actively in use and cannot be maintained safely."
+              .formatted(
+                  artifactBusy.artifactPath().value(), artifactBusy.artifactRole().wireValue());
       case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
           "Backup destination '%s' already exists and FinGrind will not overwrite it."
-              .formatted(destinationAlreadyExists.backupFilePath());
+              .formatted(destinationAlreadyExists.backupFilePath().value());
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists destinationAlreadyExists ->
           "Backup key file '%s' already exists and FinGrind will not overwrite it."
-              .formatted(destinationAlreadyExists.backupBookKeyFilePath());
+              .formatted(destinationAlreadyExists.backupBookKeyFilePath().value());
+      case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
+          "Protected-book artifact '%s' with role '%s' failed verification: '%s'."
+              .formatted(
+                  verificationFailed.artifactPath().value(),
+                  verificationFailed.artifactRole().wireValue(),
+                  verificationFailed.verificationFailure().wireValue());
       case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
           "No sibling rekey rollback artifacts exist beside '%s'."
-              .formatted(noRollbackArtifactsFound.bookFilePath());
+              .formatted(noRollbackArtifactsFound.bookFilePath().value());
       case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
           "More than one sibling rekey rollback artifact exists beside '%s'; choose one explicit rollback artifact path."
-              .formatted(selectionRequired.bookFilePath());
+              .formatted(selectionRequired.bookFilePath().value());
       case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
           "Rollback artifact '%s' does not exist."
-              .formatted(rollbackArtifactNotFound.rollbackArtifactPath());
+              .formatted(rollbackArtifactNotFound.rollbackArtifactPath().value());
       case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
           "Rollback artifact '%s' does not belong to book '%s'."
               .formatted(
-                  rollbackArtifactNotForBook.rollbackArtifactPath(),
-                  rollbackArtifactNotForBook.bookFilePath());
+                  rollbackArtifactNotForBook.rollbackArtifactPath().value(),
+                  rollbackArtifactNotForBook.bookFilePath().value());
     };
   }
 

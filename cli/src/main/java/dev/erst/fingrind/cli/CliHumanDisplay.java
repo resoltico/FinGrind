@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,14 +22,11 @@ final class CliHumanDisplay {
   }
 
   static String path(Path path) {
-    Objects.requireNonNull(path, "path");
-    Path normalized = path.toAbsolutePath().normalize();
-    Path currentDirectory = Path.of("").toAbsolutePath().normalize();
-    if (normalized.startsWith(currentDirectory)) {
-      Path relative = currentDirectory.relativize(normalized);
-      return relative.toString().isBlank() ? "." : "." + java.io.File.separator + relative;
-    }
-    return normalized.toString();
+    return CliPublicPaths.normalizedValue(Objects.requireNonNull(path, "path"));
+  }
+
+  static String path(PublicPathHint pathHint) {
+    return CliPublicPaths.redactedValue(Objects.requireNonNull(pathHint, "pathHint"));
   }
 
   static String lowerDateBoundary(@Nullable LocalDate effectiveDateFrom) {

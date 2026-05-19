@@ -52,8 +52,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_setsFinGrindIdentityAndHardeningPragmas() throws Exception {
     Path databasePath = tempDirectory.resolve("identity-pragmas.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
@@ -90,8 +89,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_hardensBookDirectoryAndFilePermissionsOnSupportedHost() throws Exception {
     Path databasePath = tempDirectory.resolve("secure-book.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
     }
     if (!databasePath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
@@ -113,8 +111,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("encrypted-sentinel.sqlite");
     String sentinelAccountName = "SENTINEL_ACCOUNT_NAME_X9Q2";
     String sentinelIdempotencyKey = "SENTINEL_IDEMPOTENCY_X9Q2";
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
@@ -164,8 +161,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   void foreignAndUnsupportedBooks_areRejectedAcrossBoundaries() throws Exception {
     Path foreignBookPath = tempDirectory.resolve("foreign.sqlite");
     createPostingFactOnlyBook(foreignBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(foreignBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.FOREIGN_SQLITE,
@@ -186,8 +182,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
         database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(unsupportedBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
@@ -216,8 +211,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_initializesCanonicalTablesAsStrict() {
     Path databasePath = tempDirectory.resolve("strict-schema.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
@@ -252,8 +246,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_createsAccountCodeIndexForJournalLines() {
     Path databasePath = tempDirectory.resolve("journal-line-index.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
@@ -275,8 +268,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_createsPostingHistoryIndexForReverseChronologicalPages() {
     Path databasePath = tempDirectory.resolve("posting-history-index.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
@@ -298,8 +290,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_configuresOpenConnectionForHardeningAndDurability() throws Exception {
     Path databasePath = tempDirectory.resolve("connection-pragmas.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
@@ -480,7 +471,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     withStandaloneDatabase(
         bookAccess(initializedBookPath),
         database -> {
-          database.executeStatement("delete from book_meta where key = 'initialized_at'");
+          database.executeStatement("delete from book_meta where meta_key = 'initialized_at'");
 
           IllegalStateException exception =
               assertThrows(
@@ -503,14 +494,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   void bookPath_and_passphraseDelegates_matchTheSharedStoreContext() {
     Path bookPath = tempDirectory.resolve("delegate-path.sqlite");
     BookAccess access = bookAccess(bookPath);
-    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(access)) {
+    try (SqlitePostingFactStore postingFactStore = openStore(access)) {
       assertEquals(bookPath, postingFactStore.bookPath());
-      try (SqliteBookPassphrase delegated =
-              SqlitePostingFactStore.passphraseDecisionFor(access).requireAccepted();
-          SqliteBookPassphrase forwarded =
-              SqlitePostingFactStore.passphraseFor(access).requireAccepted()) {
-        assertEquals(delegated.sourceDescription(), forwarded.sourceDescription());
-        assertArrayEquals(delegated.utf8BytesCopy(), forwarded.utf8BytesCopy());
+      try (SqliteBookPassphrase delegated = loadPassphrase(access);
+          SqliteBookPassphrase reopened = loadPassphrase(access)) {
+        assertEquals(delegated.sourceDescription(), reopened.sourceDescription());
+        assertArrayEquals(delegated.utf8BytesCopy(), reopened.utf8BytesCopy());
       }
     }
   }
@@ -625,7 +614,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             bookAccess(initializedPath),
             database -> {
               try (SqlitePostingFactStore postingFactStore =
-                  new SqlitePostingFactStore(bookAccess(initializedPath))) {
+                  openStore(bookAccess(initializedPath))) {
                 assertDoesNotThrow(() -> postingFactStore.requireInitializedBook(database));
                 return new BookStateProbe(
                     bookStateReader.hasCanonicalTables(database),

@@ -20,8 +20,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void close_failureMarksSessionClosedAndRequiresFreshHandleOwnerForCleanup() throws Exception {
     Path databasePath = tempDirectory.resolve("close-retry.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       MemorySegment activeHandle = requireStoreDatabase(postingFactStore).handle();
       setStoreDatabase(
@@ -88,8 +87,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
     Path bookPath = tempDirectory.resolve("configured-close.sqlite");
-    try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath))) {
+    try (SqliteNativeDatabase database = openNativeDatabase(bookAccess(bookPath))) {
       assertDoesNotThrow(() -> SqliteConnectionConfigurer.closeAfterConfigurationFailure(database));
     }
   }
@@ -111,7 +109,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void close_rejectsFurtherUse() {
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(tempDirectory.resolve("closed.sqlite")))) {
+        openStore(bookAccess(tempDirectory.resolve("closed.sqlite")))) {
       postingFactStore.close();
       IllegalStateException exception =
           assertThrows(
@@ -124,8 +122,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void close_wrapsNativeDatabaseCloseFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::close);
@@ -138,8 +135,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void close_wrapsLifecycleCloseFailureAndMarksSessionTerminal() {
     Path bookPath = tempDirectory.resolve("close-illegal-state-failure.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, new IllegalStateClosingSqliteNativeDatabase());
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::close);

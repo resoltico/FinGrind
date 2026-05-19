@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -15,9 +15,9 @@ route:
 [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md), or the host-native Java 26 setup from
 [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) plus Docker in the active shell as codified in
 [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). Root verification also depends on a working
-`python3` plus `pip` surface for the repo-owned Python tools in
-[`requirements-python-tools.txt`](../requirements-python-tools.txt). No global Gradle install is
-required for repo work; use `./gradlew`.
+`python3` plus `python3 -m pip` surface so the pinned repo-owned `uv` launcher can bootstrap the
+Python helper tools declared in [`requirements-python-tools.txt`](../requirements-python-tools.txt).
+No global Gradle install is required for repo work; use `./gradlew`.
 
 The preferred contributor path is the committed devcontainer in
 [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). VS Code is one supported client, not the
@@ -109,7 +109,8 @@ report-pdf/   PDF artifact adapter:
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
               generate-book-key-file, open-book, rekey-book, backup-book, restore-book,
-              recover-rekey, inspect-book, declare-account, list-accounts, get-posting,
+              inspect-rekey-rollback, restore-rekey-rollback, delete-rekey-rollback,
+              inspect-book, declare-account, list-accounts, get-posting,
               list-postings, account-balance, trial-balance, account-ledger, period-summary,
               execute-plan, preflight-entry, and post-entry, with discovery payloads rendered
               from contract-owned protocol metadata.
@@ -177,15 +178,17 @@ FinGrind's current public model is:
   taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `8`, owned by `BookFormatContract`
+- the current supported on-disk format is `9`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
 - maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair,
   `restore-book` verifies that pair before replacing a live book path and the restored live book
-  then reuses the backup pair's key file, and `recover-rekey` inspects or restores stale
-  same-directory rollback artifacts after interrupted rekey cleanup
+  then reuses the backup pair's key file, `inspect-rekey-rollback` reports stale same-directory
+  rollback artifacts, `restore-rekey-rollback` rewinds one interrupted rekey from one selected
+  rollback artifact, and `delete-rekey-rollback` removes one stale rollback artifact without
+  touching the live book path
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book
@@ -206,7 +209,10 @@ Repository-root policy:
 Canonical commands:
 - `./scripts/verify-repo-hygiene.sh` verifies the root boundary and can print a local-state size
   report with `--report-local-state`; the report now classifies each local-state root as generated
-  state, tool state, or scratch state and tells you which cleanup flag removes it
+  state, tool state, or scratch state and tells you which cleanup flag removes it; the verifier
+  also fails when Git coordination lock files are present, because release or staging work cannot
+  trust a checkout with an active or orphaned Git owner, and when a persisted `.git/gc.log`
+  shows that Git housekeeping is suspended pending manual cleanup
 - `./scripts/clean-repo-hygiene.sh` removes empty unexpected root entries and Finder droppings; use
   `--purge-generated-state` to prune repo-owned generated caches, `--purge-tool-state` to discard
   ignored tool/editor state such as `.claude/` or `.vscode/`, and `--purge-tmp` when you want to
@@ -225,7 +231,7 @@ Generated-state stance:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Python helper toolchain | 3.12 in CI, plus repo-owned tools from `requirements-python-tools.txt` |
+| Python helper toolchain | Python 3.12 in CI, `uv` 0.11.15 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0-RC in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
@@ -278,9 +284,9 @@ Root verification and packaging:
 
 ```bash
 java --version
-python3 -m pip install --user -r requirements-python-tools.txt
+python3 -m pip install --user uv==0.11.15
 ./gradlew verifyManagedSqliteSource
-./gradlew ruffCheck ruffFormatCheck
+./gradlew ruff sqlfluff
 ./gradlew prepareManagedSqlite
 ./gradlew check
 ./gradlew coverage
@@ -288,6 +294,10 @@ python3 -m pip install --user -r requirements-python-tools.txt
 ./scripts/bundle-smoke.sh
 ./check.sh
 ```
+
+The canonical shell gates resolve the helper-tool Python runtime automatically. If the ambient
+`python3` is older than the repo minimum, `./check.sh` and `./scripts/run-quality-gates.sh` fall
+back to a `uv`-managed Python `3.12+` interpreter for `ruff` and `sqlfluff`.
 
 Nested Jazzer verification:
 
@@ -334,6 +344,7 @@ Local CLI usage from source:
 `./gradlew check` is the root CI gate. It runs:
 - Spotless formatting checks
 - Ruff lint and formatting checks for `scripts/**/*.py`
+- SQLFluff verification for the canonical SQLite schema file
 - Error Prone compile-time checks
 - PMD on main and test sources
 - unit tests

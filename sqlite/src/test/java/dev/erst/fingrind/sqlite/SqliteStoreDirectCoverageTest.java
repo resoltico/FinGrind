@@ -54,8 +54,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void storeQuerySurface_reportsAccountsPostingRangeAndOpenCloseHorizon() {
     Path bookPath = tempDirectory.resolve("store-query-surface.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
@@ -88,8 +87,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void transactionValidationBook_reportsSuccessfulQueriesAcrossTheFullValidationSurface() {
     Path bookPath = tempDirectory.resolve("validation-surface-success.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
@@ -116,8 +114,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void closePeriod_persistsClosedPeriodAuditAndCloseHorizon() {
     Path bookPath = tempDirectory.resolve("close-period-direct.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
@@ -187,8 +184,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void accountTotals_surfaceHonorsDateRangesAndPostingCoverage() {
     Path bookPath = tempDirectory.resolve("account-totals-direct.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
@@ -292,8 +288,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void readModels_excludePeriodClosePostingsWhenNonClosingCoverageIsRequested() {
     Path bookPath = tempDirectory.resolve("non-closing-read-coverage.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(

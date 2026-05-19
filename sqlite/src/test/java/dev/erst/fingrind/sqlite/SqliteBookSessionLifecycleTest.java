@@ -20,23 +20,20 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void lifecyclePrime_coversPublishedDatabaseAndAuthenticationRejectionBranches() throws Exception {
     Path publishedPath = tempDirectory.resolve("prime-published.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(publishedPath))) {
-      setStoreDatabase(
-          postingFactStore, SqliteNativeConnections.openKeyFileAccess(bookAccess(publishedPath)));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(publishedPath))) {
+      setStoreDatabase(postingFactStore, openNativeDatabase(bookAccess(publishedPath)));
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
     Path existingPath = tempDirectory.resolve("prime-existing.sqlite");
     initializeBookOnDisk(existingPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(existingPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(existingPath))) {
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
     Path existingReadWriteExistingPath =
         tempDirectory.resolve("prime-existing-read-write-existing.sqlite");
     initializeBookOnDisk(existingReadWriteExistingPath);
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
+        openStore(
             bookAccess(existingReadWriteExistingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
@@ -64,8 +61,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void lifecycleTransactionBranches_coverExistingCreateAndDetachedRollbackPaths() throws Exception {
     Path existingPath = tempDirectory.resolve("lifecycle-existing-create.sqlite");
     initializeBookOnDisk(existingPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(existingPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(existingPath))) {
       postingFactStore.beginLedgerPlanTransaction();
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
@@ -78,8 +74,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
       }
     }
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
-            bookAccess(existingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
+        openStore(bookAccess(existingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
       postingFactStore.beginLedgerPlanTransaction();
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
@@ -117,8 +112,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
             .resolve("nested")
             .resolve("book.sqlite");
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
-            bookAccess(databasePath), SqliteStoreAccessMode.PLAN_EXECUTION)) {
+        openStore(bookAccess(databasePath), SqliteStoreAccessMode.PLAN_EXECUTION)) {
       assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       assertDoesNotThrow(
           () ->
@@ -138,8 +132,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void lifecycleIntrospection_coversCreatedArtifactCleanupBranchState() throws Exception {
     Path parentDirectory = tempDirectory.resolve("lifecycle-created-cleanup").resolve("nested");
     Path databasePath = parentDirectory.resolve("book.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));

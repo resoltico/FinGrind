@@ -144,8 +144,7 @@ class StatementAndCloseContractTypesTest {
 
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
-    ClosePeriodCommand closePeriodCommand =
-        new ClosePeriodCommand(reportingPeriod, new AccountCode("3000"));
+    ClosePeriodCommand closePeriodCommand = new ClosePeriodCommand(reportingPeriod);
     ClosedPeriod closedPeriod =
         new ClosedPeriod(
             1,
@@ -189,7 +188,6 @@ class StatementAndCloseContractTypesTest {
     assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
     assertEquals(reportingPeriod, closePeriodCommand.reportingPeriod());
-    assertEquals(new AccountCode("3000"), closePeriodCommand.closingEquityAccountCode());
     assertSame(closedPeriod, closePeriodClosed.closedPeriod());
     assertSame(closePeriodRejection, closePeriodRejected.rejection());
     assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
@@ -296,15 +294,7 @@ class StatementAndCloseContractTypesTest {
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Rejected(nullOf()));
 
-    assertThrows(
-        NullPointerException.class,
-        () -> new ClosePeriodCommand(nullOf(), new AccountCode("3000")));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new ClosePeriodCommand(
-                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-                nullOf()));
+    assertThrows(NullPointerException.class, () -> new ClosePeriodCommand(nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () ->

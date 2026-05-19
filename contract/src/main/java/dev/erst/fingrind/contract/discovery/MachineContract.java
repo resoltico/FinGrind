@@ -54,15 +54,12 @@ public final class MachineContract {
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
-        MachineContractDomainDescriptors.extensionSurface(),
-        environment);
+        MachineContractDomainDescriptors.extensionSurface());
   }
 
   /** Builds the canonical capabilities descriptor. */
-  public static CapabilitiesDescriptor capabilities(
-      ApplicationIdentity identity, EnvironmentDescriptor environment) {
+  public static CapabilitiesDescriptor capabilities(ApplicationIdentity identity) {
     Objects.requireNonNull(identity, "identity");
-    Objects.requireNonNull(environment, "environment");
     return new CapabilitiesDescriptor(
         identity.application(),
         identity.version(),
@@ -78,8 +75,7 @@ public final class MachineContract {
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
         MachineContractDomainDescriptors.accountingBaseline(),
-        MachineContractDomainDescriptors.extensionSurface(),
-        environment);
+        MachineContractDomainDescriptors.extensionSurface());
   }
 
   /** Builds the canonical version descriptor. */

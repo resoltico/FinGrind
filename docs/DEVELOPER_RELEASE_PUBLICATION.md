@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -155,7 +155,10 @@ Git worktree is the preferred release vehicle because it keeps post-release reco
 but a worktree shares the same `.git` metadata as the primary checkout. If
 `./scripts/verify-repo-hygiene.sh` reports object-store corruption in the primary checkout, switch
 to a clean clone before continuing the publication path; a sibling worktree will inherit the same
-object-store defect.
+object-store defect. The same rule applies when repo hygiene reports Git coordination lock files:
+inspect ownership with `lsof`, remove only orphaned lock files, and treat any live owner as proof
+that the checkout is unavailable for publication. If repo hygiene reports a persisted `gc.log`,
+run manual Git housekeeping first and remove that log only after a successful cleanup pass.
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,

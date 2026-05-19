@@ -11,6 +11,8 @@ object FinGrindBuildMetadata {
 
     data class Values(
         val javaVersion: Int,
+        val pythonVersion: String,
+        val uvVersion: String,
         val implementationVendor: String,
         val implementationLicense: String,
         val foojayResolverConventionVersion: String,
@@ -23,6 +25,8 @@ object FinGrindBuildMetadata {
         Files.newInputStream(metadataPath(projectRootDirectory)).use(properties::load)
         return Values(
             javaVersion = property(properties, "fingrindJavaVersion").toInt(),
+            pythonVersion = property(properties, "fingrindPythonVersion"),
+            uvVersion = property(properties, "fingrindUvVersion"),
             implementationVendor = property(properties, "implementationVendor"),
             implementationLicense = property(properties, "implementationLicense"),
             foojayResolverConventionVersion = property(properties, "foojayResolverConventionVersion"),

@@ -101,12 +101,35 @@ final class SqliteBookFileSecurity {
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
       requireSecureExistingDirectory(parentDirectory);
     }
+    requireRegularNonSymlinkFileIfExists(normalizedBookPath);
     hardenExistingFile(normalizedBookPath);
     String baseFileName =
         Objects.requireNonNull(normalizedBookPath.getFileName(), "normalizedBookPath fileName")
             .toString();
     for (String suffix : SIDECAR_SUFFIXES) {
       hardenExistingFile(normalizedBookPath.resolveSibling(baseFileName + suffix));
+    }
+  }
+
+  static void hardenOwnerOnlyFile(Path normalizedPath) throws IOException {
+    requireSupportedSecureFilesystem(normalizedPath);
+    Path parentDirectory = requireBookParentDirectory(normalizedPath);
+    if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      requireSecureExistingDirectory(parentDirectory);
+    }
+    requireRegularNonSymlinkFileIfExists(normalizedPath);
+    hardenExistingFile(normalizedPath);
+  }
+
+  static void requireRegularNonSymlinkFileIfExists(Path normalizedBookPath) {
+    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+    if (!Files.exists(normalizedBookPath, LinkOption.NOFOLLOW_LINKS)) {
+      return;
+    }
+    if (!Files.isRegularFile(normalizedBookPath, LinkOption.NOFOLLOW_LINKS)) {
+      throw new IllegalStateException(
+          "The FinGrind SQLite book path must resolve to one regular non-symlink file: "
+              + normalizedBookPath);
     }
   }
 

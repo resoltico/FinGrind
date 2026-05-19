@@ -126,18 +126,16 @@ class BookkeepingStatementModelTest {
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
         FinancialPositionLineClassification.RETAINED_EARNINGS,
-        new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                new AccountCode("3200"),
+        new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
                 FinancialPositionLineClassification.RETAINED_EARNINGS,
-                FinancialPositionLineClassification.OWNER_CAPITAL)
+                List.of(new AccountCode("3200")))
             .requiredFinancialPositionLineClassification());
     assertEquals(
-        FinancialPositionLineClassification.OWNER_CAPITAL,
-        new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                new AccountCode("3200"),
+        List.of(new AccountCode("3200")),
+        new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
                 FinancialPositionLineClassification.RETAINED_EARNINGS,
-                FinancialPositionLineClassification.OWNER_CAPITAL)
-            .actualFinancialPositionLineClassification());
+                List.of(new AccountCode("3200")))
+            .inactiveCandidateAccountCodes());
     assertEquals(
         LocalDate.parse("2026-05-13"),
         new BookkeepingAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-05-13"))
@@ -159,12 +157,12 @@ class BookkeepingStatementModelTest {
                         nullOf(AccountCode.class), AccountRole.ORDINARY, AccountRole.CONTRA))
             .getMessage());
     assertEquals(
-        "accountCode",
+        "requiredFinancialPositionLineClassification",
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.ClosingEquityAccountInactive(
-                        nullOf(AccountCode.class)))
+                    new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                        nullOf(FinancialPositionLineClassification.class), List.of()))
             .getMessage());
     assertEquals(
         "requiredEffectiveDateFrom",
@@ -179,22 +177,9 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection
-                        .ClosingEquityAccountClassificationMismatch(
-                        new AccountCode("3200"),
+                    new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
                         nullOf(FinancialPositionLineClassification.class),
-                        FinancialPositionLineClassification.OWNER_CAPITAL))
-            .getMessage());
-    assertEquals(
-        "actualFinancialPositionLineClassification",
-        assertThrows(
-                NullPointerException.class,
-                () ->
-                    new BookkeepingAdministrationRejection
-                        .ClosingEquityAccountClassificationMismatch(
-                        new AccountCode("3200"),
-                        FinancialPositionLineClassification.RETAINED_EARNINGS,
-                        nullOf(FinancialPositionLineClassification.class)))
+                        List.of(new AccountCode("3200"))))
             .getMessage());
     assertEquals(
         "existingAccountTaxonomy",

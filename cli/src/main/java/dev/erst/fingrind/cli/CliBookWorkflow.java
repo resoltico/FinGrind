@@ -27,13 +27,13 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
@@ -48,7 +48,7 @@ interface CliBookWorkflow {
 
   /** Rotates the passphrase that protects one existing book file. */
   ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource);
+      BookAccess bookAccess, PassphraseSource replacementPassphraseSource);
 
   /** Exports one closed encrypted-book backup pair. */
   ContractDecision<BackupBookResult> backupBook(
@@ -58,15 +58,24 @@ interface CliBookWorkflow {
   ContractDecision<RestoreBookResult> restoreBook(
       Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath);
 
-  /** Inspects or applies one sibling rekey rollback artifact. */
-  ContractDecision<RecoverRekeyResult> recoverRekey(
-      Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath);
+  /** Inspects stale sibling rekey rollback artifacts for the selected book path. */
+  ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath);
+
+  /** Deletes one selected sibling rekey rollback artifact. */
+  ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+      Path bookFilePath, @Nullable Path rollbackArtifactPath);
+
+  /** Restores one selected sibling rekey rollback artifact onto the live book path. */
+  ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+      Path bookFilePath,
+      @Nullable Path rollbackArtifactPath,
+      PassphraseSource expectedPassphraseSource);
 
   /** Declares or reactivates one account inside the selected book. */
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
 
-  /** Closes one contiguous reporting period into the selected closing equity account. */
+  /** Closes one contiguous reporting period into the policy-selected closing equity account. */
   ContractDecision<ClosePeriodResult> closePeriod(
       BookAccess bookAccess, ClosePeriodCommand command);
 

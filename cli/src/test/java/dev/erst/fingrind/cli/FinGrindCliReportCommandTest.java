@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /** Report-command tests for stdout rendering and optional PDF artifact behavior. */
 class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
@@ -61,7 +62,46 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     assertTrue(
         diagnosticsStream
             .toString(StandardCharsets.UTF_8)
-            .contains(pdfOutputPath.toAbsolutePath().normalize().toString()));
+            .contains(CliPublicPaths.normalizedValue(pdfOutputPath)));
+  }
+
+  @Test
+  void run_jsonReportWithPdfOut_publishesNormalizedArtifactPathOnStdoutAndDiagnostics()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
+    Path pdfOutputPath = tempDirectory.resolve("reports").resolve("trial-balance.json.pdf");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock(),
+            reportingWorkflow(new TrialBalanceResult.Reported(sampleTrialBalanceReport())));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "trial-balance",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--output",
+              "json",
+              "--pdf-out",
+              pdfOutputPath.toString()
+            });
+
+    assertEquals(0, exitCode);
+    var envelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("pdf", envelope.path("artifacts").get(0).path("format").stringValue());
+    assertEquals(
+        CliPublicPaths.normalizedValue(pdfOutputPath),
+        envelope.path("artifacts").get(0).path("path").stringValue());
+    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 
   @Test

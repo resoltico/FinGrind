@@ -34,9 +34,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
@@ -254,11 +253,22 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
           }
 
           @Override
-          public ContractDecision<RecoverRekeyResult> recoverRekey(
+          public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+            throw new AssertionError("inspectRekeyRollback should not be called in this test");
+          }
+
+          @Override
+          public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+              Path bookFilePath, @org.jspecify.annotations.Nullable Path rollbackArtifactPath) {
+            throw new AssertionError("deleteRekeyRollback should not be called in this test");
+          }
+
+          @Override
+          public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
               Path bookFilePath,
-              RekeyRecoveryAction action,
-              @org.jspecify.annotations.Nullable Path rollbackArtifactPath) {
-            throw new AssertionError("recoverRekey should not be called in this test");
+              @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
+              BookAccess.PassphraseSource expectedPassphraseSource) {
+            throw new AssertionError("restoreRekeyRollback should not be called in this test");
           }
 
           @Override

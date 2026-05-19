@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -63,7 +64,7 @@ class SqliteStoreFixtureSupport {
   static void insertInitializedAtRow(SqliteNativeDatabase database) {
     database.executeStatement(
         """
-        insert into book_meta (key, value)
+        insert into book_meta (meta_key, value)
         values ('initialized_at', '2026-04-07T10:15:30Z')
         """);
   }
@@ -466,13 +467,13 @@ class SqliteStoreFixtureSupport {
   }
 
   static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
+    try (SqliteNativeDatabase database = openNativeDatabase(bookAccess)) {
       action.run(database);
     }
   }
 
   static <T> T withStandaloneDatabaseResult(BookAccess bookAccess, SqliteDatabaseQuery<T> query) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
+    try (SqliteNativeDatabase database = openNativeDatabase(bookAccess)) {
       return query.run(database);
     }
   }
@@ -498,6 +499,42 @@ class SqliteStoreFixtureSupport {
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
     }
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
+  }
+
+  static SqlitePostingFactStore openStore(BookAccess bookAccess) {
+    return openStore(bookAccess, SqliteStoreAccessMode.READ_WRITE_CREATE);
+  }
+
+  static SqlitePostingFactStore openStore(BookAccess bookAccess, SqliteStoreAccessMode accessMode) {
+    return new SqlitePostingFactStore(
+        bookAccess.bookFilePath(), loadPassphrase(bookAccess), accessMode);
+  }
+
+  static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
+    return SqliteNativeConnections.openKeyFileAccess(
+        bookAccess.bookFilePath(), requireKeyFilePath(bookAccess));
+  }
+
+  static SqliteBookPassphrase loadPassphrase(BookAccess bookAccess) {
+    return SqliteBookKeyFile.loadDecision(requireKeyFilePath(bookAccess))
+        .fold(
+            resolvedPassphrase -> resolvedPassphrase,
+            failure -> {
+              throw new ContractFailureException(failure);
+            });
+  }
+
+  static Path requireKeyFilePath(BookAccess bookAccess) {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    return switch (bookAccess.passphraseSource()) {
+      case BookAccess.PassphraseSource.KeyFile keyFile -> keyFile.bookKeyFilePath();
+      case BookAccess.PassphraseSource.StandardInput source ->
+          throw new IllegalArgumentException(
+              "Test SQLite key-file helpers do not accept " + source.optionName() + ".");
+      case BookAccess.PassphraseSource.InteractivePrompt source ->
+          throw new IllegalArgumentException(
+              "Test SQLite key-file helpers do not accept " + source.optionName() + ".");
+    };
   }
 
   /** Checked action against a temporary native SQLite handle. */

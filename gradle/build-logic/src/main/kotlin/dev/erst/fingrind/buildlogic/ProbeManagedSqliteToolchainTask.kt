@@ -42,8 +42,9 @@ abstract class ProbeManagedSqliteToolchainTask
             )
         val targetTriple =
             ManagedSqliteToolchainProbeSupport.targetTriple(
+                operatingSystemId.get(),
+                hostArchitecture.get(),
                 compilerExecutable,
-                ::runCommand,
             )
         val linkerVersion =
             ManagedSqliteToolchainProbeSupport.linkerVersion(
@@ -53,6 +54,7 @@ abstract class ProbeManagedSqliteToolchainTask
         val sdkOrSysroot =
             ManagedSqliteToolchainProbeSupport.sdkOrSysroot(
                 operatingSystemId.get(),
+                compilerExecutable,
                 ::runCommand,
             )
             outputFile.get().asFile.apply {
@@ -175,13 +177,19 @@ internal object ManagedSqliteToolchainProbeSupport {
         }
 
     fun targetTriple(
+        operatingSystemId: String,
+        hostArchitecture: String,
         compilerExecutable: String,
-        runCommand: (List<String>) -> CommandProbe,
     ): String =
-        bestEffortProbeOutput(
-            { ProbeAttempt(runCommand(listOf(compilerExecutable, "-dumpmachine"))) },
-            fallback = "unavailable",
-        )
+        when (operatingSystemId) {
+            "macos" -> darwinTargetTriple(hostArchitecture)
+            "linux" -> linuxTargetTriple(hostArchitecture)
+            "windows" -> windowsTargetTriple(hostArchitecture)
+            else ->
+                throw IllegalStateException(
+                    "Unsupported managed SQLite operating system id for target-triple derivation: $operatingSystemId.",
+                )
+        }
 
     fun linkerVersion(
         operatingSystemId: String,
@@ -189,37 +197,99 @@ internal object ManagedSqliteToolchainProbeSupport {
     ): String =
         when (operatingSystemId) {
             "windows" ->
-                bestEffortProbeOutput(
+                requireProbeOutput(
+                    "linker version",
                     { ProbeAttempt(runCommand(listOf("link")), acceptOutputOnFailure = true) },
                     { ProbeAttempt(runCommand(listOf("link", "/?")), acceptOutputOnFailure = true) },
-                    fallback = "unavailable",
                 )
             "macos" ->
-                bestEffortProbeOutput(
+                requireProbeOutput(
+                    "linker version",
                     { ProbeAttempt(runCommand(listOf("ld", "-v"))) },
                     { ProbeAttempt(runCommand(listOf("ld", "-V"))) },
-                    fallback = "unavailable",
                 )
             else ->
-                bestEffortProbeOutput(
+                requireProbeOutput(
+                    "linker version",
                     { ProbeAttempt(runCommand(listOf("ld", "-v"))) },
                     { ProbeAttempt(runCommand(listOf("ld", "-V"))) },
-                    fallback = "unavailable",
                 )
         }
 
     fun sdkOrSysroot(
         operatingSystemId: String,
+        compilerExecutable: String,
         runCommand: (List<String>) -> CommandProbe,
     ): String =
         when (operatingSystemId) {
             "macos" ->
-                bestEffortProbeOutput(
+                requireProbeOutput(
+                    "SDK path",
                     { ProbeAttempt(runCommand(listOf("xcrun", "--show-sdk-path"))) },
-                    fallback = "unavailable",
                 )
-            else -> "unavailable"
+            "windows" ->
+                requireProbeOutput(
+                    "Windows SDK path",
+                    {
+                        ProbeAttempt(
+                            runCommand(
+                                listOf(
+                                    "cmd",
+                                    "/c",
+                                    "echo",
+                                    "%WindowsSdkDir%%WindowsSDKVersion%",
+                                ),
+                            ),
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(
+                                listOf(
+                                    "cmd",
+                                    "/c",
+                                    "echo",
+                                    "%UniversalCRTSdkDir%%UCRTVersion%",
+                                ),
+                            ),
+                        )
+                    },
+                )
+            else ->
+                bestEffortProbeOutput(
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "--print-sysroot"))) },
+                    fallback = "system-default-sysroot",
+                )
         }
+
+    private fun darwinTargetTriple(hostArchitecture: String): String =
+        when (hostArchitecture.lowercase()) {
+            "aarch64", "arm64" -> "aarch64-apple-darwin"
+            "x86_64", "amd64" -> "x86_64-apple-darwin"
+            else -> throw unsupportedHostArchitecture(hostArchitecture, "macos")
+        }
+
+    private fun linuxTargetTriple(hostArchitecture: String): String =
+        when (hostArchitecture.lowercase()) {
+            "aarch64", "arm64" -> "aarch64-unknown-linux-gnu"
+            "x86_64", "amd64" -> "x86_64-unknown-linux-gnu"
+            else -> throw unsupportedHostArchitecture(hostArchitecture, "linux")
+        }
+
+    private fun windowsTargetTriple(hostArchitecture: String): String =
+        when (hostArchitecture.lowercase()) {
+            "aarch64", "arm64" -> "aarch64-pc-windows-msvc"
+            "x86_64", "amd64" -> "x86_64-pc-windows-msvc"
+            else -> throw unsupportedHostArchitecture(hostArchitecture, "windows")
+        }
+
+    private fun unsupportedHostArchitecture(
+        hostArchitecture: String,
+        operatingSystemId: String,
+    ): IllegalStateException =
+        IllegalStateException(
+            "Unsupported managed SQLite host architecture $hostArchitecture for $operatingSystemId.",
+        )
 
     private fun requireProbeOutput(label: String, vararg probes: () -> ProbeAttempt): String {
         val attempts = mutableListOf<ProbeAttempt>()

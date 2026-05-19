@@ -7,6 +7,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 /** Local bookkeeping refusal family for book initialization and account declaration. */
@@ -22,9 +23,8 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.ParentAccountTypeConflict,
         BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict,
         BookkeepingAdministrationRejection.AccountHierarchyCycle,
-        BookkeepingAdministrationRejection.ClosingEquityAccountMissing,
-        BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch,
-        BookkeepingAdministrationRejection.ClosingEquityAccountInactive,
+        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing,
+        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous,
         BookkeepingAdministrationRejection.PeriodCloseMustStartAt,
         BookkeepingAdministrationRejection.PeriodCloseFutureDate,
         BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
@@ -130,38 +130,29 @@ public sealed interface BookkeepingAdministrationRejection
     }
   }
 
-  /** Refusal for period close when no closing-equity account has been declared. */
-  record ClosingEquityAccountMissing(AccountCode accountCode)
-      implements BookkeepingAdministrationRejection {
-    public ClosingEquityAccountMissing {
-      Objects.requireNonNull(accountCode, "accountCode");
-    }
-  }
-
-  /**
-   * Refusal for period close when the selected account does not satisfy the active close
-   * classification policy.
-   */
-  record ClosingEquityAccountClassificationMismatch(
-      AccountCode accountCode,
+  /** Refusal for period close when policy finds no active declared close target. */
+  record ClosingEquityAccountCandidateMissing(
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
-      FinancialPositionLineClassification actualFinancialPositionLineClassification)
+      List<AccountCode> inactiveCandidateAccountCodes)
       implements BookkeepingAdministrationRejection {
-    public ClosingEquityAccountClassificationMismatch {
-      Objects.requireNonNull(accountCode, "accountCode");
+    public ClosingEquityAccountCandidateMissing {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
-      Objects.requireNonNull(
-          actualFinancialPositionLineClassification, "actualFinancialPositionLineClassification");
+      inactiveCandidateAccountCodes = List.copyOf(inactiveCandidateAccountCodes);
     }
   }
 
-  /** Refusal for period close when the closing-equity account exists but is inactive. */
-  record ClosingEquityAccountInactive(AccountCode accountCode)
+  /** Refusal for period close when policy finds more than one active declared close target. */
+  record ClosingEquityAccountCandidateAmbiguous(
+      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
+      List<AccountCode> candidateAccountCodes)
       implements BookkeepingAdministrationRejection {
-    public ClosingEquityAccountInactive {
-      Objects.requireNonNull(accountCode, "accountCode");
+    public ClosingEquityAccountCandidateAmbiguous {
+      Objects.requireNonNull(
+          requiredFinancialPositionLineClassification,
+          "requiredFinancialPositionLineClassification");
+      candidateAccountCodes = List.copyOf(candidateAccountCodes);
     }
   }
 

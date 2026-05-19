@@ -48,7 +48,7 @@ final class CliResponsePayloadMapper {
             ? null
             : List.of(
                 new CliEnvelopeJsonModels.SuccessArtifact(
-                    "pdf", exportedArtifactPath.toAbsolutePath().normalize().toString()));
+                    "pdf", CliPublicPaths.normalizedValue(exportedArtifactPath)));
     return new CliEnvelopeJsonModels.SuccessEnvelope<>(
         ProtocolSuccessStatus.OK, payload, artifacts);
   }

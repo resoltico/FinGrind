@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -292,8 +292,9 @@ public final class SqliteRuntimeStateValidator
   defaults, managed SQLite loading mode, runtime provenance, runtime trust basis, and runtime
   readiness in enum-owned wire vocabularies
 - `SqliteRuntimeTrustBasis`: publishes whether the selected runtime is
-  `publisher-authenticated` or `operator-trusted`, so machine consumers can distinguish bundle or
-  source-checkout authenticity from operator-managed configured paths
+  `publisher-authenticated`, `source-verified-local-build`, or `unsafe-local-override`, so
+  machine consumers can distinguish public bundle identity, checkout-local build identity, and
+  explicit operator overrides
 - `SqliteRuntimeStatus`: distinguishes `ready`, `unavailable`, `failed`, and `incompatible`, so
   discovery can separate missing-runtime failures from late probe failures after one concrete
   library target was already resolved
@@ -337,20 +338,19 @@ public record PlanExecutionFacts(...)
   owner, and blocking model gaps for each statement/reporting capability
 - `AccountingPolicyPackFacts`: publishes the built-in neutral policy-pack identity, supported
   entity forms, and policy-dimension coverage
-- `PolicyDimensionFacts`: publishes one structured status row for chart, close, tax, FX, evidence,
-  comparatives, and related policy dimensions
+- `PolicyDimensionFacts`: publishes one structured status row for the executable accounting-basis,
+  comparatives, chart, close, and statement-presentation dimensions
 - `CapabilityStatus`: publishes the shared lifecycle vocabulary for implemented, planned,
   future-context, deliberately-excluded, and unsupported capability states
 - `AccountingBaselineFacts`: publishes the declared standards posture, explicit non-claims,
   current/next baseline targets, built-in statement inventory, report-capability inventory,
-  required missing capabilities, default policy pack, small-entity position, organizational
+  default policy pack, small-entity position, organizational
   position, and the ISO-vs-IFRS clarification as typed machine facts instead of burying that scope
   only in prose documentation
-- `PolicySeamFacts`: publishes the structured inventory of executable and planned policy seams
+- `PolicySeamFacts`: publishes the structured inventory of executable policy seams
 - `ExtensionSurfaceFacts`: publishes the current policy-pack model, the default pack id, the
-  implemented extension seams, the structured seam inventory, plus the adjacent future contexts
-  that are intentionally outside today's bookkeeping kernel so machine consumers do not mistake
-  roadmap domains for already-pluggable seams
+  implemented extension seams, and the structured seam inventory without promoting roadmap domains
+  into the machine contract
 
 ## `MonetaryAmount`
 
@@ -587,7 +587,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 8`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 9`
 
 ## `ProtectedBookFormatContract`
 

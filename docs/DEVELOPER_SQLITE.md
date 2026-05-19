@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,24 +44,29 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `8`, owned by `BookFormatContract`
+- the current supported book format is `9`, owned by `BookFormatContract`
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - `backup-book` exports one verified encrypted backup pair; `restore-book` verifies that backup
   pair before replacing the live book path and the restored live book then reuses that backup key
-  file; and `recover-rekey` inspects or restores stale same-directory rollback artifacts after
-  interrupted rekey cleanup
+  file; `inspect-rekey-rollback` reports stale same-directory rollback artifacts;
+  `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
+  `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
 ## Current Adapter Choice
 
-FinGrind's public durable SQLite session surface is
-[`SqliteBookSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSession.java),
-opened through
-[`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java).
+FinGrind's public durable SQLite session surface is one family of narrow workflow views opened
+through [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
+[`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
+[`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
+[`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
+[`SqlitePeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodCloseSession.java),
+[`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
+and [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java).
 The package-private backing implementation remains
 [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
 
@@ -161,10 +166,15 @@ The SQLite adapter is split into focused collaborators:
 - [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
   normalized UTF-8 passphrase bytes after CLI-side source resolution, with best-effort overwrite
   of owned heap/direct buffers
-- [`SqliteBookSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSession.java),
+- [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
+  [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
+  [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
+  [`SqlitePeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodCloseSession.java),
+  [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
+  [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
-  stable public session contract and factory for CLI, tooling, and fuzz harnesses
+  stable public workflow-shaped session views and factory for CLI, tooling, and fuzz harnesses
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
   thin package-private session wrapper for one thread-confined protected-book boundary; it composes
   one immutable store context plus one mutable lifecycle owner instead of inheriting one wide
@@ -185,6 +195,12 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteTransactionValidationBook`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteTransactionValidationBook.java):
   focused helpers that keep local lifecycle mapping and validation lookups separate from the outer
   session wrapper instead of layering multiple narrow session-view classes over the same state
+- [`ProtectedBookMaintenanceService`](../executor/src/main/java/dev/erst/fingrind/executor/ProtectedBookMaintenanceService.java),
+  [`ProtectedBookMaintenanceStore`](../executor/src/main/java/dev/erst/fingrind/executor/spi/ProtectedBookMaintenanceStore.java),
+  [`SqliteProtectedBookMaintenanceStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceStore.java),
+  and [`SqliteProtectedBookMaintenanceJournal`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceJournal.java):
+  executor-owned maintenance doctrine plus SQLite-backed verification, reversible replacement, and
+  append-only maintenance-journal persistence
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
@@ -267,8 +283,9 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
-- publisher-owned managed runtimes verify the exact loaded native library against the publisher
-  `.trusted.sha256` sidecar and the local-consistency `.sha256` sidecar, while
+- bundle-managed runtimes verify the exact loaded native library against the publisher
+  `.trusted.sha256` sidecar and the local-consistency `.sha256` sidecar, source-checkout-managed
+  runtimes verify one checkout-local build identity through those same sidecars, and
   `environment-configured` runtimes require explicit operator trust plus the sibling `.sha256`
   sidecar only
 - runtime probes distinguish bundle-managed, source-checkout-managed, and
@@ -372,9 +389,9 @@ The repository's canonical threat boundary is documented in
 
 ## Transaction Model
 
-- one `SqliteBookSession` instance, implemented by one thin `SqlitePostingFactStore` over one
-  immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`, owns at most one open
-  native SQLite handle and one explicit ledger-plan transaction/artifact-cleanup state
+- one narrow SQLite workflow session, implemented internally by one `SqlitePostingFactStore` over
+  one immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`, owns at most one
+  open native SQLite handle and one explicit ledger-plan transaction/artifact-cleanup state
 - read methods reuse that handle when it exists
 - commit uses SQLite's `begin immediate` transaction mode and performs ordinary duplicate checks
   before insert on the same native handle

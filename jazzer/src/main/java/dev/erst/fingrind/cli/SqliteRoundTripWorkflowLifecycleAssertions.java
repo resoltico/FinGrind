@@ -14,7 +14,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
+import dev.erst.fingrind.sqlite.SqliteReadSession;
 import java.util.Optional;
 
 /** Lifecycle and domain assertions for SQLite round-trip workflow coverage. */
@@ -22,7 +22,7 @@ final class SqliteRoundTripWorkflowLifecycleAssertions {
   private SqliteRoundTripWorkflowLifecycleAssertions() {}
 
   static void assertAccountReactivationPersisted(
-      SqliteBookSession postingFactStore, AccountCode accountCode) {
+      SqliteReadSession postingFactStore, AccountCode accountCode) {
     if (!postingFactStore.findAccount(accountCode).orElseThrow().active()) {
       throw new IllegalStateException("Account reactivation did not persist to SQLite.");
     }

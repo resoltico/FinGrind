@@ -9,7 +9,7 @@ final class CliAccountPageOutputRenderer {
 
   static String renderHuman(AccountPage page) {
     String header =
-        CliTextFormat.renderKeyValueBlock(CliBookIdentityDisplay.rows(page.bookIdentity()));
+        CliTextFormat.renderKeyValueBlock(CliBookIdentityDisplay.summaryRows(page.bookIdentity()));
     String nextCursor =
         page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
     String summary =

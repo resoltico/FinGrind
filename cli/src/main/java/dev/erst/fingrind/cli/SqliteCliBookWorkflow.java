@@ -27,13 +27,13 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
@@ -43,15 +43,19 @@ import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PeriodCloseService;
 import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.sqlite.SqliteBookBackupService;
-import dev.erst.fingrind.sqlite.SqliteBookRestoreService;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
+import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.SqliteRekeyRecoveryService;
+import dev.erst.fingrind.sqlite.SqlitePeriodCloseSession;
+import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
+import dev.erst.fingrind.sqlite.SqlitePostingSession;
+import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
+import dev.erst.fingrind.sqlite.SqliteReadSession;
+import dev.erst.fingrind.sqlite.SqliteRekeySession;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;
@@ -62,24 +66,24 @@ import org.jspecify.annotations.Nullable;
 final class SqliteCliBookWorkflow implements CliBookWorkflow {
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;
-  private final SqliteBookBackupService backupService;
-  private final SqliteBookRestoreService restoreService;
-  private final SqliteRekeyRecoveryService rekeyRecoveryService;
+  private final ProtectedBookMaintenanceService maintenanceService;
 
   SqliteCliBookWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
-    this.backupService = new SqliteBookBackupService();
-    this.restoreService = new SqliteBookRestoreService();
-    this.rekeyRecoveryService = new SqliteRekeyRecoveryService();
+    this.maintenanceService =
+        new ProtectedBookMaintenanceService(
+            this.clock, new SqliteProtectedBookMaintenanceStore(this.passphraseResolver));
   }
 
   @Override
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_WRITE_CREATE,
-        SqlitePassphraseIntent.NEW_SECRET,
+    return withAdministrationSession(
+        SqliteBookSessions.openResolvedAdministration(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_CREATE,
+            passphraseResolver,
+            SqlitePassphraseIntent.NEW_SECRET),
         bookSession ->
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(
@@ -91,11 +95,10 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
 
   @Override
   public ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
-    return withBookSessionDecision(
-        bookAccess,
-        SqliteBookSessionMode.READ_WRITE_EXISTING,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+      BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
+    return withRekeySession(
+        SqliteBookSessions.openResolvedRekey(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             bookSession.rekeyBook(
                 replacementPassphraseSource, passphraseResolver, clock.instant()));
@@ -104,30 +107,44 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   @Override
   public ContractDecision<BackupBookResult> backupBook(
       BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
-    return backupService.backupBook(
-        bookAccess, backupFilePath, backupBookKeyFilePath, passphraseResolver);
+    return maintenanceService.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath);
   }
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
       Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
-    return restoreService.restoreBook(
-        bookFilePath, backupFilePath, backupBookKeyFilePath, passphraseResolver);
+    return maintenanceService.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath);
   }
 
   @Override
-  public ContractDecision<RecoverRekeyResult> recoverRekey(
-      Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
-    return rekeyRecoveryService.recover(bookFilePath, action, rollbackArtifactPath);
+  public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+    return maintenanceService.inspectRekeyRollback(bookFilePath);
+  }
+
+  @Override
+  public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+      Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+    return maintenanceService.deleteRekeyRollback(bookFilePath, rollbackArtifactPath);
+  }
+
+  @Override
+  public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+      Path bookFilePath,
+      @Nullable Path rollbackArtifactPath,
+      PassphraseSource expectedPassphraseSource) {
+    return maintenanceService.restoreRekeyRollback(
+        bookFilePath, rollbackArtifactPath, expectedPassphraseSource);
   }
 
   @Override
   public ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_WRITE_EXISTING,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withAdministrationSession(
+        SqliteBookSessions.openResolvedAdministration(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_EXISTING,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new BookAdministrationService(bookSession, bookSession, bookSession, clock)
@@ -138,10 +155,9 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   @Override
   public ContractDecision<ClosePeriodResult> closePeriod(
       BookAccess bookAccess, ClosePeriodCommand command) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_WRITE_EXISTING,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withPeriodCloseSession(
+        SqliteBookSessions.openResolvedPeriodClose(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new PeriodCloseService(
@@ -151,129 +167,117 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
                         bookSession,
                         new UuidV7PostingIdGenerator(),
                         clock)
-                    .closePeriod(
-                        BookkeepingPublishedLanguageTranslator.fromPublished(command),
-                        BookkeepingPublishedLanguageTranslator.closingEquityAccountCode(command))));
+                    .closePeriod(BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
   public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).inspectBook());
   }
 
   @Override
   public ContractDecision<ListAccountsResult> listAccounts(
       BookAccess bookAccess, ListAccountsQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).listAccounts(query));
   }
 
   @Override
   public ContractDecision<GetPostingResult> getPosting(
       BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).getPosting(postingId));
   }
 
   @Override
   public ContractDecision<ListPostingsResult> listPostings(
       BookAccess bookAccess, ListPostingsQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).listPostings(query));
   }
 
   @Override
   public ContractDecision<AccountBalanceResult> accountBalance(
       BookAccess bookAccess, AccountBalanceQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).accountBalance(query));
   }
 
   @Override
   public ContractDecision<TrialBalanceResult> trialBalance(
       BookAccess bookAccess, TrialBalanceQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).trialBalance(query));
   }
 
   @Override
   public ContractDecision<AccountLedgerResult> accountLedger(
       BookAccess bookAccess, AccountLedgerQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).accountLedger(query));
   }
 
   @Override
   public ContractDecision<PeriodSummaryResult> periodSummary(
       BookAccess bookAccess, PeriodSummaryQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).periodSummary(query));
   }
 
   @Override
   public ContractDecision<FinancialPositionResult> financialPosition(
       BookAccess bookAccess, FinancialPositionQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).financialPosition(query));
   }
 
   @Override
   public ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).incomeStatement(query));
   }
 
   @Override
   public ContractDecision<ChangesInEquityResult> changesInEquity(
       BookAccess bookAccess, ChangesInEquityQuery query) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withReadSession(
+        SqliteBookSessions.openResolvedRead(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession -> new BookReadService(bookSession).changesInEquity(query));
   }
 
   @Override
   public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
     boolean initializesBook = plan.beginsWithOpenBook();
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.PLAN_EXECUTION,
-        initializesBook
-            ? SqlitePassphraseIntent.NEW_SECRET
-            : SqlitePassphraseIntent.EXISTING_SECRET,
+    return withPlanExecutionSession(
+        SqliteBookSessions.openResolvedPlanExecution(
+            bookAccess,
+            passphraseResolver,
+            initializesBook
+                ? SqlitePassphraseIntent.NEW_SECRET
+                : SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             new LedgerPlanService(
                     bookSession,
@@ -290,10 +294,12 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   @Override
   public ContractDecision<PreflightEntryResult> preflight(
       BookAccess bookAccess, PostEntryCommand command) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_ONLY,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withPostingSession(
+        SqliteBookSessions.openResolvedPosting(
+            bookAccess,
+            SqliteBookSessionMode.READ_ONLY,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             postingApplicationService(bookSession, clock)
                 .preflight(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
@@ -302,55 +308,89 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   @Override
   public ContractDecision<CommitEntryResult> commit(
       BookAccess bookAccess, PostEntryCommand command) {
-    return withBookSession(
-        bookAccess,
-        SqliteBookSessionMode.READ_WRITE_EXISTING,
-        SqlitePassphraseIntent.EXISTING_SECRET,
+    return withPostingSession(
+        SqliteBookSessions.openResolvedPosting(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_EXISTING,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             postingApplicationService(bookSession, clock)
                 .commit(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
-  private ContractDecision<SqliteBookSession> openBookSession(
-      BookAccess bookAccess,
-      SqliteBookSessionMode accessMode,
-      SqlitePassphraseIntent passphraseIntent) {
-    return SqliteBookSessions.openResolved(
-        bookAccess, accessMode, passphraseResolver, passphraseIntent);
+  private static <T> ContractDecision<T> withAdministrationSession(
+      ContractDecision<SqliteAdministrationSession> decision,
+      Function<SqliteAdministrationSession, T> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqliteAdministrationSession ignored = bookSession) {
+            return ContractDecision.accepted(work.apply(bookSession));
+          }
+        },
+        ContractDecision::rejected);
   }
 
-  private <T> ContractDecision<T> withBookSession(
-      BookAccess bookAccess,
-      SqliteBookSessionMode accessMode,
-      SqlitePassphraseIntent passphraseIntent,
-      Function<SqliteBookSession, T> work) {
-    return openBookSession(bookAccess, accessMode, passphraseIntent)
-        .fold(
-            bookSession -> {
-              try (SqliteBookSession ignored = bookSession) {
-                return ContractDecision.accepted(work.apply(bookSession));
-              }
-            },
-            ContractDecision::rejected);
+  private static <T> ContractDecision<T> withReadSession(
+      ContractDecision<SqliteReadSession> decision, Function<SqliteReadSession, T> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqliteReadSession ignored = bookSession) {
+            return ContractDecision.accepted(work.apply(bookSession));
+          }
+        },
+        ContractDecision::rejected);
   }
 
-  private <T> ContractDecision<T> withBookSessionDecision(
-      BookAccess bookAccess,
-      SqliteBookSessionMode accessMode,
-      SqlitePassphraseIntent passphraseIntent,
-      Function<SqliteBookSession, ContractDecision<T>> work) {
-    return openBookSession(bookAccess, accessMode, passphraseIntent)
-        .fold(
-            bookSession -> {
-              try (SqliteBookSession ignored = bookSession) {
-                return work.apply(bookSession);
-              }
-            },
-            ContractDecision::rejected);
+  private static <T> ContractDecision<T> withPostingSession(
+      ContractDecision<SqlitePostingSession> decision, Function<SqlitePostingSession, T> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqlitePostingSession ignored = bookSession) {
+            return ContractDecision.accepted(work.apply(bookSession));
+          }
+        },
+        ContractDecision::rejected);
+  }
+
+  private static <T> ContractDecision<T> withPeriodCloseSession(
+      ContractDecision<SqlitePeriodCloseSession> decision,
+      Function<SqlitePeriodCloseSession, T> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqlitePeriodCloseSession ignored = bookSession) {
+            return ContractDecision.accepted(work.apply(bookSession));
+          }
+        },
+        ContractDecision::rejected);
+  }
+
+  private static <T> ContractDecision<T> withPlanExecutionSession(
+      ContractDecision<SqlitePlanExecutionSession> decision,
+      Function<SqlitePlanExecutionSession, T> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqlitePlanExecutionSession ignored = bookSession) {
+            return ContractDecision.accepted(work.apply(bookSession));
+          }
+        },
+        ContractDecision::rejected);
+  }
+
+  private static <T> ContractDecision<T> withRekeySession(
+      ContractDecision<SqliteRekeySession> decision,
+      Function<SqliteRekeySession, ContractDecision<T>> work) {
+    return decision.fold(
+        bookSession -> {
+          try (SqliteRekeySession ignored = bookSession) {
+            return work.apply(bookSession);
+          }
+        },
+        ContractDecision::rejected);
   }
 
   private static PostingApplicationService postingApplicationService(
-      SqliteBookSession bookSession, Clock clock) {
+      SqlitePostingSession bookSession, Clock clock) {
     return new PostingApplicationService(
         bookSession, bookSession, new UuidV7PostingIdGenerator(), clock);
   }

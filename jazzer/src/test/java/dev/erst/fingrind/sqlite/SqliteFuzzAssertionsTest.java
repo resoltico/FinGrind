@@ -26,7 +26,7 @@ class SqliteFuzzAssertionsTest {
     Path bookPath = tempDirectory.resolve("entity-book.sqlite");
     var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
 
-    try (SqliteBookSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(store);
       CliFuzzFixtures.openBook(administrationService);
@@ -51,7 +51,7 @@ class SqliteFuzzAssertionsTest {
   @Test
   void sqliteAssertions_reject_invalid_store_shapes_and_broken_schema_checks() throws Exception {
     Path bookPath = tempDirectory.resolve("entity-book.sqlite");
-    try (SqliteBookSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
       IllegalStateException noRow =
           assertThrows(
               IllegalStateException.class,
@@ -133,11 +133,11 @@ class SqliteFuzzAssertionsTest {
         String.valueOf(invalidUpdate.getMessage())
             .contains("Failed to update account active flag"));
 
-    try (SqliteBookSession unsupportedSession =
-        (SqliteBookSession)
+    try (SqlitePostingSession unsupportedSession =
+        (SqlitePostingSession)
             Proxy.newProxyInstance(
                 Thread.currentThread().getContextClassLoader(),
-                new Class<?>[] {SqliteBookSession.class},
+                new Class<?>[] {SqlitePostingSession.class},
                 (proxy, method, args) -> null)) {
       IllegalArgumentException unsupported =
           assertThrows(

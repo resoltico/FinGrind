@@ -22,8 +22,16 @@ final class CliMutationArguments {
     return CliLifecycleMutationArguments.parseRestoreBookCommand(arguments);
   }
 
-  static CliCommand parseRecoverRekeyCommand(List<String> arguments) {
-    return CliLifecycleMutationArguments.parseRecoverRekeyCommand(arguments);
+  static CliCommand parseInspectRekeyRollbackCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseInspectRekeyRollbackCommand(arguments);
+  }
+
+  static CliCommand parseDeleteRekeyRollbackCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseDeleteRekeyRollbackCommand(arguments);
+  }
+
+  static CliCommand parseRestoreRekeyRollbackCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseRestoreRekeyRollbackCommand(arguments);
   }
 
   static CliCommand parseDeclareAccountCommand(List<String> arguments) {

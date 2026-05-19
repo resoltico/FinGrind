@@ -25,7 +25,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -40,7 +39,6 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
               ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-              TaxRegistrationStatus.UNSPECIFIED,
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),

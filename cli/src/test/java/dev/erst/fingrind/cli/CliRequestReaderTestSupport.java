@@ -117,7 +117,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "entityForm": "COMPANY",
                 "ownerModel": "MULTI_OWNER",
                 "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                "taxRegistrationStatus": "UNSPECIFIED",
                 "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
                 "fiscalYearStart": "01-01",

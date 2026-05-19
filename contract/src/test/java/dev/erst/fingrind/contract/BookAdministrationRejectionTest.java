@@ -28,9 +28,8 @@ class BookAdministrationRejectionTest {
             "parent-account-type-conflict",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "closing-equity-account-missing",
-            "closing-equity-account-classification-mismatch",
-            "closing-equity-account-inactive",
+            "closing-equity-account-candidate-missing",
+            "closing-equity-account-candidate-ambiguous",
             "period-close-must-start-at",
             "period-close-future-date",
             "period-close-crosses-fiscal-year-boundary"),
@@ -95,16 +94,15 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new dev.erst.fingrind.core.AccountCode("1100"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ClosingEquityAccountMissing(
-                    new dev.erst.fingrind.core.AccountCode("3000"))),
-            BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                    new dev.erst.fingrind.core.AccountCode("3000"),
+                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
                     FinancialPositionLineClassification.RETAINED_EARNINGS,
-                    FinancialPositionLineClassification.OTHER_EQUITY)),
+                    List.of(new dev.erst.fingrind.core.AccountCode("3000")))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ClosingEquityAccountInactive(
-                    new dev.erst.fingrind.core.AccountCode("3000"))),
+                new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+                    FinancialPositionLineClassification.OTHER_EQUITY,
+                    List.of(
+                        new dev.erst.fingrind.core.AccountCode("3000"),
+                        new dev.erst.fingrind.core.AccountCode("3010")))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.PeriodCloseMustStartAt(
                     java.time.LocalDate.parse("2026-04-01"))),
@@ -133,9 +131,8 @@ class BookAdministrationRejectionTest {
             "parent-account-type-conflict",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "closing-equity-account-missing",
-            "closing-equity-account-classification-mismatch",
-            "closing-equity-account-inactive",
+            "closing-equity-account-candidate-missing",
+            "closing-equity-account-candidate-ambiguous",
             "period-close-must-start-at",
             "period-close-future-date",
             "period-close-crosses-fiscal-year-boundary"),

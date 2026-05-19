@@ -27,14 +27,15 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
@@ -62,9 +63,13 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     private final List<Path> restoreBookFilePaths = new ArrayList<>();
     private final List<Path> restoreBackupFilePaths = new ArrayList<>();
     private final List<Path> restoreBackupBookKeyFilePaths = new ArrayList<>();
-    private final List<Path> recoverRekeyBookFilePaths = new ArrayList<>();
-    private final List<RekeyRecoveryAction> recoverRekeyActions = new ArrayList<>();
-    private final List<@Nullable Path> recoverRekeyRollbackArtifactPaths = new ArrayList<>();
+    private final List<Path> inspectRekeyRollbackBookFilePaths = new ArrayList<>();
+    private final List<Path> restoreRekeyRollbackBookFilePaths = new ArrayList<>();
+    private final List<Path> deleteRekeyRollbackBookFilePaths = new ArrayList<>();
+    private final List<@Nullable Path> restoreRekeyRollbackArtifactPaths = new ArrayList<>();
+    private final List<@Nullable Path> deleteRekeyRollbackArtifactPaths = new ArrayList<>();
+    private final List<PassphraseSource> restoreRekeyRollbackExpectedPassphraseSources =
+        new ArrayList<>();
     private final List<BookAccess> declareAccountAccesses = new ArrayList<>();
     private final List<BookAccess> listAccountAccesses = new ArrayList<>();
     private final List<ListAccountsQuery> listAccountQueries = new ArrayList<>();
@@ -79,16 +84,16 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     private final CommitEntryResult commitResult;
     private BackupBookResult backupBookResult =
         new BackupBookResult.BackedUp(
-            Path.of("books/unused.sqlite"),
-            Path.of("books/unused.backup.sqlite"),
-            Path.of("keys/unused.backup.key"));
+            hint(Path.of("books/unused.sqlite")),
+            hint(Path.of("books/unused.backup.sqlite")),
+            hint(Path.of("keys/unused.backup.key")));
     private RestoreBookResult restoreBookResult =
         new RestoreBookResult.Restored(
-            Path.of("books/unused.sqlite"),
-            Path.of("books/unused.backup.sqlite"),
-            Path.of("keys/unused.backup.key"));
-    private RecoverRekeyResult recoverRekeyResult =
-        new RecoverRekeyResult.Inspected(Path.of("books/unused.sqlite"), List.of());
+            hint(Path.of("books/unused.sqlite")),
+            hint(Path.of("books/unused.backup.sqlite")),
+            hint(Path.of("keys/unused.backup.key")));
+    private RekeyRollbackResult recoverRekeyResult =
+        new RekeyRollbackResult.Inspected(hint(Path.of("books/unused.sqlite")), List.of());
     private @Nullable LedgerPlanResult executePlanResult;
 
     RecordingWorkflow(
@@ -116,7 +121,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyBookResult> rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+        BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
       rekeyBookAccesses.add(bookAccess);
       rekeyReplacementPassphraseSources.add(replacementPassphraseSource);
       return accepted(rekeyBookResult);
@@ -141,11 +146,27 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
-    public ContractDecision<RecoverRekeyResult> recoverRekey(
-        Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
-      recoverRekeyBookFilePaths.add(bookFilePath);
-      recoverRekeyActions.add(action);
-      recoverRekeyRollbackArtifactPaths.add(rollbackArtifactPath);
+    public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+      inspectRekeyRollbackBookFilePaths.add(bookFilePath);
+      return accepted(recoverRekeyResult);
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+      deleteRekeyRollbackBookFilePaths.add(bookFilePath);
+      deleteRekeyRollbackArtifactPaths.add(rollbackArtifactPath);
+      return accepted(recoverRekeyResult);
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+        Path bookFilePath,
+        @Nullable Path rollbackArtifactPath,
+        PassphraseSource expectedPassphraseSource) {
+      restoreRekeyRollbackBookFilePaths.add(bookFilePath);
+      restoreRekeyRollbackArtifactPaths.add(rollbackArtifactPath);
+      restoreRekeyRollbackExpectedPassphraseSources.add(expectedPassphraseSource);
       return accepted(recoverRekeyResult);
     }
 
@@ -294,16 +315,28 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       return restoreBackupBookKeyFilePaths;
     }
 
-    List<Path> recoverRekeyBookFilePaths() {
-      return recoverRekeyBookFilePaths;
+    List<Path> inspectRekeyRollbackBookFilePaths() {
+      return inspectRekeyRollbackBookFilePaths;
     }
 
-    List<RekeyRecoveryAction> recoverRekeyActions() {
-      return recoverRekeyActions;
+    List<Path> restoreRekeyRollbackBookFilePaths() {
+      return restoreRekeyRollbackBookFilePaths;
     }
 
-    List<@Nullable Path> recoverRekeyRollbackArtifactPaths() {
-      return recoverRekeyRollbackArtifactPaths;
+    List<Path> deleteRekeyRollbackBookFilePaths() {
+      return deleteRekeyRollbackBookFilePaths;
+    }
+
+    List<@Nullable Path> restoreRekeyRollbackArtifactPaths() {
+      return restoreRekeyRollbackArtifactPaths;
+    }
+
+    List<@Nullable Path> deleteRekeyRollbackArtifactPaths() {
+      return deleteRekeyRollbackArtifactPaths;
+    }
+
+    List<PassphraseSource> restoreRekeyRollbackExpectedPassphraseSources() {
+      return restoreRekeyRollbackExpectedPassphraseSources;
     }
 
     List<BookAccess> listAccountAccesses() {
@@ -331,7 +364,9 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
           || !rekeyBookAccesses.isEmpty()
           || !backupBookAccesses.isEmpty()
           || !restoreBookFilePaths.isEmpty()
-          || !recoverRekeyBookFilePaths.isEmpty()
+          || !inspectRekeyRollbackBookFilePaths.isEmpty()
+          || !restoreRekeyRollbackBookFilePaths.isEmpty()
+          || !deleteRekeyRollbackBookFilePaths.isEmpty()
           || !declareAccountAccesses.isEmpty()
           || !listAccountAccesses.isEmpty()
           || !executePlanAccesses.isEmpty()
@@ -351,7 +386,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       this.restoreBookResult = restoreBookResult;
     }
 
-    void setRecoverRekeyResult(RecoverRekeyResult recoverRekeyResult) {
+    void setRekeyRollbackResult(RekeyRollbackResult recoverRekeyResult) {
       this.recoverRekeyResult = recoverRekeyResult;
     }
   }
@@ -372,7 +407,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyBookResult> rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+        BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
       throw failure;
     }
 
@@ -389,8 +424,21 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
-    public ContractDecision<RecoverRekeyResult> recoverRekey(
-        Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
+    public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+      throw failure;
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+      throw failure;
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+        Path bookFilePath,
+        @Nullable Path rollbackArtifactPath,
+        PassphraseSource expectedPassphraseSource) {
       throw failure;
     }
 
@@ -499,7 +547,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyBookResult> rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+        BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -516,8 +564,21 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
-    public ContractDecision<RecoverRekeyResult> recoverRekey(
-        Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
+    public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+        Path bookFilePath,
+        @Nullable Path rollbackArtifactPath,
+        PassphraseSource expectedPassphraseSource) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -668,7 +729,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
       @Override
       public ContractDecision<RekeyBookResult> rekeyBook(
-          BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+          BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
         throw new AssertionError("rekeyBook should not be called in this test");
       }
 
@@ -685,9 +746,22 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       }
 
       @Override
-      public ContractDecision<RecoverRekeyResult> recoverRekey(
-          Path bookFilePath, RekeyRecoveryAction action, @Nullable Path rollbackArtifactPath) {
-        throw new AssertionError("recoverRekey should not be called in this test");
+      public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
+        throw new AssertionError("inspectRekeyRollback should not be called in this test");
+      }
+
+      @Override
+      public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
+          Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+        throw new AssertionError("deleteRekeyRollback should not be called in this test");
+      }
+
+      @Override
+      public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
+          Path bookFilePath,
+          @Nullable Path rollbackArtifactPath,
+          PassphraseSource expectedPassphraseSource) {
+        throw new AssertionError("restoreRekeyRollback should not be called in this test");
       }
 
       @Override
@@ -789,5 +863,9 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
   protected static <T> ContractDecision<T> accepted(T value) {
     return ContractDecision.accepted(value);
+  }
+
+  protected static PublicPathHint hint(Path path) {
+    return PublicPathHint.fromPath(path);
   }
 }

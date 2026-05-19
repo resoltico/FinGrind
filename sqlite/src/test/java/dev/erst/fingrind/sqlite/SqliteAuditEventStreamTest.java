@@ -19,8 +19,7 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void mutationPaths_appendExpectedAuditEvents() {
     Path bookPath = tempDirectory.resolve("audit-event-sequence.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
@@ -75,8 +74,7 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void rekeyBook_appendsBookRekeyedAuditEvent() throws Exception {
     Path bookPath = tempDirectory.resolve("audit-event-rekey.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-            new SqlitePostingFactStore(bookAccess(bookPath));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
         SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "audit event replacement", "rotated-audit-key".toCharArray())) {

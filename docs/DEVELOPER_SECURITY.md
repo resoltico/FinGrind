@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -124,20 +124,23 @@ three runtime-provenance values:
   canonical environment-variable route
 
 Runtime identity rules:
-- publisher-owned managed runtimes (`bundle-managed` and `source-checkout-managed`) are
-  authenticated against one publisher-owned trusted digest sidecar
-  (`<library>.trusted.sha256`) shipped beside the managed library, copied into one private
-  verification snapshot, and also checked against the sibling `.sha256` file beside the extracted
-  library before that verified snapshot is loaded
-- `environment-configured` is an operator-trusted escape hatch: FinGrind requires the selected
-  library to match its sibling `.sha256` file for local consistency, copies that pair into one
-  private verification snapshot before load, but does not claim publisher-authenticated identity
-  for the operator-supplied binary
+- `bundle-managed` is publisher-authenticated: the public bundle ships one publisher-owned trusted
+  digest sidecar (`<library>.trusted.sha256`), FinGrind copies that pair into one private
+  verification snapshot, and also checks the sibling `.sha256` file beside the extracted library
+  before the verified snapshot is loaded
+- `source-checkout-managed` is source-verified-local-build: FinGrind verifies the locally prepared
+  library against the checkout-local `.trusted.sha256` and `.sha256` sidecars, but that proof is
+  one source-checkout build identity check rather than one public-release publisher attestation
+- `environment-configured` is an unsafe-local-override escape hatch: FinGrind requires the
+  selected library to match its sibling `.sha256` file for local consistency, copies that pair
+  into one private verification snapshot before load, but does not claim publisher-authenticated
+  or source-checkout-managed identity for the operator-supplied binary
 - machine consumers read `environment.sqlite.runtime.runtimeProvenance` together with
   `environment.sqlite.runtime.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field
-  reports `publisher-authenticated` for `bundle-managed` and `source-checkout-managed`, while
-  `operator-trusted` is the trust basis for `environment-configured`
-- capabilities.environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes without requiring agents to infer that downgrade from prose alone
+  reports `publisher-authenticated` for `bundle-managed`,
+  `source-verified-local-build` for `source-checkout-managed`, and
+  `unsafe-local-override` for `environment-configured`
+- environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes, source-verified local-build runtimes, and unsafe local overrides without requiring agents to infer that downgrade from prose alone
 - the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
   and the active root-project build directory, so relocated Gradle build roots resolve the same
   managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
@@ -211,8 +214,9 @@ Current evidence that this model is implemented:
   deterministic `protected-book-verification-failed` contract
 - `SqliteAuditEventStreamTest` proves durable bookkeeping audit rows are appended in the same book
   as the protected facts they describe and are rejected for in-place update/delete mutation
-- `SqliteManagedLibraryIdentityTest` proves publisher-owned managed runtimes require the trusted
-  `.trusted.sha256` sidecar plus the sibling `.sha256` sidecar, while
+- `SqliteManagedLibraryIdentityTest` proves bundle-managed runtimes require the trusted
+  `.trusted.sha256` sidecar plus the sibling `.sha256` sidecar, source-checkout-managed runtimes
+  verify one checkout-local build identity through those same sidecars, and
   `environment-configured` runtimes require only the sibling `.sha256` sidecar for local
   consistency
 - `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the

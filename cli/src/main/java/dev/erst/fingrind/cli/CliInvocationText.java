@@ -15,6 +15,8 @@ import org.jspecify.annotations.Nullable;
 /** User-facing command-text helpers for neutral launcher examples and hints. */
 final class CliInvocationText {
   private static final String NEUTRAL_LAUNCHER_COMMAND = "fingrind";
+  private static final String RAW_JAR_MODULE_NAME = "fingrind";
+  private static final String RAW_JAR_APPLICATION_MODULE = "fingrind/dev.erst.fingrind.cli.App";
   private static final Pattern COMMAND_PREFIX_PATTERN =
       Pattern.compile(
           "(^|\\|\\s*)(?:fingrind|\\./bin/fingrind|\\.\\\\bin\\\\fingrind\\.ps1|\\./scripts/source-checkout-cli\\.sh|\\.\\\\scripts\\\\source-checkout-cli\\.ps1|\\./scripts/direct-java-cli\\.sh|\\.\\\\scripts\\\\direct-java-cli\\.ps1)(?=\\s|$)");
@@ -146,6 +148,11 @@ final class CliInvocationText {
   }
 
   private static String rawJarLauncherCommand(String jarFileName) {
-    return "java --enable-native-access=ALL-UNNAMED -jar " + jarFileName;
+    return "java --enable-native-access="
+        + RAW_JAR_MODULE_NAME
+        + " --module-path "
+        + jarFileName
+        + " --module "
+        + RAW_JAR_APPLICATION_MODULE;
   }
 }

@@ -564,7 +564,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_readsRegisteredTaxStatusForOpenBookSteps() {
+  void readLedgerPlan_defaultsOptionalOpenBookPolicyFields() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -578,7 +578,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
-                        "taxRegistrationStatus": "REGISTERED",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
                         "accountingBasis": "ACCRUAL"
@@ -593,8 +592,11 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
 
     LedgerStep.OpenBook openBookStep = (LedgerStep.OpenBook) plan.steps().getFirst();
     assertEquals(
-        dev.erst.fingrind.core.TaxRegistrationStatus.REGISTERED,
-        openBookStep.command().bookIdentity().entityProfile().taxRegistrationStatus());
+        dev.erst.fingrind.core.OwnerModel.UNKNOWN,
+        openBookStep.command().bookIdentity().entityProfile().ownerModel());
+    assertEquals(
+        dev.erst.fingrind.core.ReportingObligationStatus.UNSPECIFIED,
+        openBookStep.command().bookIdentity().entityProfile().reportingObligationStatus());
   }
 
   @Test
@@ -612,7 +614,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
-                        "taxRegistrationStatus": "REGISTERED",
                         "taxProfile": {
                           "registrations": []
                         },

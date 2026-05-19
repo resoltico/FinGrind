@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -124,7 +125,9 @@ public final class SqliteBookKeyFileGenerator {
         deleteQuietly(normalizedPath);
       }
       throw new IllegalStateException(
-          "Failed to create the FinGrind book key file: " + normalizedPath, exception);
+          "Failed to create the FinGrind book key file: "
+              + PublicPathHint.fromPath(normalizedPath).value(),
+          exception);
     } finally {
       Arrays.fill(encodedPassphrase, (byte) 0);
     }
@@ -153,7 +156,7 @@ public final class SqliteBookKeyFileGenerator {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.failure(
               "The FinGrind book key file already exists and will not be overwritten: "
-                  + normalizedPath,
+                  + PublicPathHint.fromPath(normalizedPath).value(),
               "Choose a different destination path for "
                   + ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)
                   + ", or remove the existing file yourself before rerunning.",

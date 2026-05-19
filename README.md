@@ -50,18 +50,11 @@ fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets
 Trial Balance
 =============
 
-Entity                : Acme Studio
-Entity profile        : Company / Unknown
-Reporting profile     : Unspecified / Unspecified
-Business activity     : (none)
-Tax registrations     : (none)
-Tax code definitions  : (none)
-Functional currency   : EUR
-Fiscal year start     : 01-01
-Accounting basis      : Accrual
-Posting coverage      : All posting kinds
-Comparative reference : book start to 2025-04-08
-Effective date to     : 2026-04-08
+Entity            : Acme Studio
+Profile           : Company | Unknown | Unspecified
+Accounting        : EUR | FY start 01-01 | Accrual
+Posting coverage  : All posting kinds
+Effective date to : 2026-04-08
 
 Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------

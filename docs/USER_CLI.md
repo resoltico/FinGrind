@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: USER_CLI
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -54,24 +54,21 @@ commits successfully.
 The easiest path is one missing private parent directory that FinGrind can create securely, or one
 existing parent directory that you have already tightened to owner-only permissions.
 `open-book` explicitly initializes one new protected book.
-When `--tax-registration-status REGISTERED` is selected, `open-book` records that registration
-status on the book identity. Jurisdiction-specific tax registrations, tax codes, rate schedules,
-recoverability, and filing behavior belong to adjacent tax contexts rather than the current
-kernel.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
 pre-rekey file automatically if replacement-passphrase verification fails.
 `backup-book` exports one verified encrypted backup pair for a closed book, `restore-book`
 verifies that pair before replacing the live book path and leaves the restored live book protected
-by that backup key file, and `recover-rekey` inspects or restores stale same-directory rollback
-artifacts after interrupted rekey cleanup.
+by that backup key file, `inspect-rekey-rollback` reports stale same-directory rollback artifacts,
+`restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact, and
+`delete-rekey-rollback` removes one stale rollback artifact without touching the live book path.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable `accountRole`, immutable declared taxonomy, and derived
 `normalBalance`.
-`close-period` closes one contiguous reporting period into one selected active declared
-closing equity account, and successful results surface that closing-equity account code plus
-the per-currency closed totals that were moved into equity. The first close may begin before the
-earliest posting date; after one close is recorded, later closes must start on the day after the
-closed-through horizon. Built-in closing-equity mapping is entity-form specific:
+`close-period` closes one contiguous reporting period into one policy-selected active declared
+closing equity account, and successful results surface that selected closing-equity account code
+plus the per-currency closed totals that were moved into equity. The first close may begin before
+the earliest posting date; after one close is recorded, later closes must start on the day after
+the closed-through horizon. Built-in closing-equity mapping is entity-form specific:
 `FREELANCER` and `SOLE_PROPRIETORSHIP` require `OWNER_CAPITAL`, `COMPANY` and `BRANCH` require
 `RETAINED_EARNINGS`, `PARTNERSHIP` requires `PARTNER_CURRENT`, `NONPROFIT` requires
 `ACCUMULATED_SURPLUS`, and `OTHER` requires `OTHER_EQUITY`.
@@ -126,16 +123,19 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[&lt;command&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
+    <tr><td><code>environment</code></td><td>none</td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print live runtime, distribution, and SQLite provenance facts for this launcher instance.</td></tr>
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|declare-account]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>[--owner-model &lt;owner-model&gt;]</code><br><code>[--reporting-obligation-status &lt;reporting-obligation-status&gt;]</code><br><code>[--tax-registration-status &lt;tax-registration-status&gt;]</code><br><code>[--business-activity-tag &lt;business-activity-tag&gt; ...]</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--accounting-basis &lt;accounting-basis&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>[--owner-model &lt;owner-model&gt;]</code><br><code>[--reporting-obligation-status &lt;reporting-obligation-status&gt;]</code><br><code>[--business-activity-tag &lt;business-activity-tag&gt; ...]</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--accounting-basis &lt;accounting-basis&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
     <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
-    <tr><td><code>recover-rekey</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--recovery-action &lt;inspect|restore|delete&gt;]</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect or apply one stale sibling rekey rollback artifact for the selected book path.</td></tr>
+    <tr><td><code>inspect-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect stale sibling rekey rollback artifacts for the selected book path.</td></tr>
+    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
+    <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
-    <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>--closing-equity-account &lt;account-code&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into one selected closing equity account.</td></tr>
+    <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into one policy-selected closing equity account.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
@@ -383,11 +383,11 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /
   SQLite3 Multiple Ciphers 2.3.4 native library.
-- `capabilities.environment.distribution.runtimeDistribution` tells you whether the current
+- `environment.distribution.runtimeDistribution` tells you whether the current
   process is running from a self-contained bundle, container image, source-checkout Gradle launch,
   or direct Java wrapper invocation.
-- `capabilities.environment.distribution.supportedPublicCliBundleTargets` and
-  `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` expose the public
+- `environment.distribution.supportedPublicCliBundleTargets` and
+  `environment.distribution.unsupportedPublicCliBundleTargets` expose the public
   distribution matrix directly to automation.
 - `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and
   `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field
@@ -426,33 +426,33 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `kind`, `name`, and either `value` or nested grouped `facts`; successful `list-accounts` and
   `list-postings` steps keep both pagination facts and structured row groups instead of collapsing
   to counts alone.
-- `capabilities` reports runtime-contract details under nested environment descriptors:
-  `environment.distribution.publicCliDistribution`,
-  `environment.distribution.sourceCheckoutJava`,
-  `environment.distribution.runtimeDistribution`,
-  `environment.distribution.supportedPublicCliBundleTargets`,
-  `environment.distribution.unsupportedPublicCliBundleTargets`,
-  `environment.sqlite.libraryEnvironmentVariable`,
-  `environment.sqlite.bundleHomeSystemProperty`,
-  `environment.sqlite.requiredCompileOptions`,
-  `environment.sqlite.forbiddenCompileOptions`,
-  `environment.sqlite.requiresSecureMemorySupport`,
-  `environment.sqlite.requiredMinimumSqliteVersion`,
-  `environment.sqlite.requiredSqlite3mcVersion`,
-  `environment.sqlite.requiredSqliteSourceId`,
-  `environment.sqlite.runtime.compileOptionsVerification`,
-  `environment.sqlite.runtime.status`,
-  `environment.sqlite.runtime.runtimeProvenance`,
-  `environment.sqlite.runtime.runtimeTrustBasis`,
-  `environment.sqlite.runtime.loadedLibraryPath` as a redacted public path hint,
-  `environment.sqlite.runtime.loadedSqliteVersion`,
-  `environment.sqlite.runtime.loadedSqlite3mcVersion`,
-  `environment.sqlite.runtime.loadedSqliteSourceId`,
-  `environment.storage.bookProtectionMode`, and
-  `environment.storage.defaultProtectedBookFormat.cipher`,
-  `environment.storage.defaultProtectedBookFormat.legacyMode`,
-  `environment.storage.defaultProtectedBookFormat.pageSize`,
-  `environment.storage.defaultProtectedBookFormat.reservedBytes`,
+- `environment` reports runtime-contract details directly under:
+  `payload.distribution.publicCliDistribution`,
+  `payload.distribution.sourceCheckoutJava`,
+  `payload.distribution.runtimeDistribution`,
+  `payload.distribution.supportedPublicCliBundleTargets`,
+  `payload.distribution.unsupportedPublicCliBundleTargets`,
+  `payload.sqlite.libraryEnvironmentVariable`,
+  `payload.sqlite.bundleHomeSystemProperty`,
+  `payload.sqlite.requiredCompileOptions`,
+  `payload.sqlite.forbiddenCompileOptions`,
+  `payload.sqlite.requiresSecureMemorySupport`,
+  `payload.sqlite.requiredMinimumSqliteVersion`,
+  `payload.sqlite.requiredSqlite3mcVersion`,
+  `payload.sqlite.requiredSqliteSourceId`,
+  `payload.sqlite.runtime.compileOptionsVerification`,
+  `payload.sqlite.runtime.status`,
+  `payload.sqlite.runtime.runtimeProvenance`,
+  `payload.sqlite.runtime.runtimeTrustBasis`,
+  `payload.sqlite.runtime.loadedLibraryPath` as a redacted public path hint,
+  `payload.sqlite.runtime.loadedSqliteVersion`,
+  `payload.sqlite.runtime.loadedSqlite3mcVersion`,
+  `payload.sqlite.runtime.loadedSqliteSourceId`,
+  `payload.storage.bookProtectionMode`, and
+  `payload.storage.defaultProtectedBookFormat.cipher`,
+  `payload.storage.defaultProtectedBookFormat.legacyMode`,
+  `payload.storage.defaultProtectedBookFormat.pageSize`,
+  `payload.storage.defaultProtectedBookFormat.reservedBytes`,
   `environment.storage.defaultProtectedBookFormat.kdfIter`, and
   `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
 - `environment.sqlite.runtime.compileOptionsVerification` is `verified` only when the managed
@@ -469,7 +469,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
   native access when they run from a prepared checkout. Custom direct-Java launches outside that
   checkout shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
-  provenance reports `environment.sqlite.runtime.runtimeTrustBasis: "operator-trusted"` and is
+  provenance reports `environment.sqlite.runtime.runtimeTrustBasis: "unsafe-local-override"` and is
   only checked for local library-plus-sidecar consistency, not publisher-authenticated bundle
   provenance.
 - `capabilities` is the best machine-readable contract surface.

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: CORE
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -108,8 +108,7 @@ public enum EntityForm implements WireValue {
 }
 ```
 
-- Purpose: distinguish neutral entity forms before future jurisdiction packs or organization
-  graphs arrive
+- Purpose: distinguish neutral entity forms inside the current single-entity bookkeeping kernel
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
@@ -139,18 +138,6 @@ public enum ReportingObligationStatus implements WireValue
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `TaxRegistrationStatus`
-
-`TaxRegistrationStatus` is the neutral tax-registration vocabulary attached to one entity profile.
-
-```java
-public enum TaxRegistrationStatus implements WireValue
-```
-
-- Purpose: keep tax-registration posture explicit before the dedicated tax bounded context exists
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
 ## `AccountingBasis`
 
 `AccountingBasis` is the explicit recognition premise attached to one book identity.
@@ -158,9 +145,7 @@ public enum TaxRegistrationStatus implements WireValue
 ```java
 public enum AccountingBasis implements WireValue {
   CASH,
-  ACCRUAL,
-  HYBRID_POLICY_DEFINED,
-  EXTENSION_DEFINED
+  ACCRUAL
 }
 ```
 
@@ -178,14 +163,13 @@ public record EntityProfile(
     EntityForm entityForm,
     OwnerModel ownerModel,
     ReportingObligationStatus reportingObligationStatus,
-    TaxRegistrationStatus taxRegistrationStatus,
     List<BusinessActivityTag> businessActivityTags)
 ```
 
-- Purpose: make entity form, ownership, reporting posture, tax posture, and activity tags explicit
-  before future policy packs and organization graphs expand
-- Validation: rejects `null` entity name, entity form, owner model, reporting status,
-  tax-registration status, and activity-tag collections
+- Purpose: make entity form, ownership, reporting posture, and activity tags explicit inside the
+  current single-entity bookkeeping kernel
+- Validation: rejects `null` entity name, entity form, owner model, reporting status, and
+  activity-tag collections
 
 ## `BookIdentity`
 
@@ -766,17 +750,3 @@ public interface WireValue {
 - Parsing: `wireValues(...)` exposes the declaration-order public vocabulary, and
   `fromWireValue(...)` resolves one stable token through the shared cached enum-vocabulary owner
   instead of forcing each enum to reimplement its own lookup logic
-
-## `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId`
-
-These identifiers keep organization-graph and reporting-group references typed instead of falling
-back to raw strings.
-
-```java
-public record AccountingEntityId(String value)
-public record OrganizationId(String value)
-public record ReportingGroupId(String value)
-```
-
-- Purpose: reserve stable typed identifiers for future multi-entity and reporting-group contexts
-- Validation: reject `null`, blank, and overlength text after normalization

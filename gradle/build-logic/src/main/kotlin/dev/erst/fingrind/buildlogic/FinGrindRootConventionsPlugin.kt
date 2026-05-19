@@ -24,6 +24,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             pluginManager.apply("com.diffplug.spotless")
 
             val libs = versionCatalog()
+            val buildMetadata = FinGrindBuildMetadata.load(this)
 
             description = providers.gradleProperty("fingrindDescription").get()
             configureFinGrindArtifactRepositories()
@@ -46,6 +47,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                                 ".gitattributes",
                                 ".gitignore",
                                 ".dockerignore",
+                                "gradle/sqlfluff/sqlfluff.cfg",
                                 "Dockerfile",
                                 "*.toml",
                                 "**/*.gradle.kts",
@@ -72,60 +74,106 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             }
 
             val pythonScripts = pythonScripts()
+            val canonicalSqliteSchemaFile =
+                layout.projectDirectory.file("sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql")
+            val canonicalSqliteSchemaFiles =
+                fileTree(layout.projectDirectory) {
+                    include("sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql")
+                }
             val ruffConfig = layout.projectDirectory.file("ruff.toml")
+            val sqlfluffConfig = layout.projectDirectory.file("gradle/sqlfluff/sqlfluff.cfg")
             val requirementsFilePath = layout.projectDirectory.file("requirements-python-tools.txt")
             val pythonExecutableProvider =
                 providers
                     .gradleProperty("fingrindPythonExecutable")
-                    .orElse(defaultPythonExecutable())
-            val ruffInstallHint =
-                "Install the repo-owned Python tools with `${pythonExecutableProvider.get()} -m pip install --user -r ${requirementsFilePath.asFile.name}`."
+                    .orElse(defaultPythonExecutable(buildMetadata.pythonVersion))
+            val uvExecutableProvider =
+                providers
+                    .gradleProperty("fingrindUvExecutable")
+                    .orElse(defaultUvExecutable())
+            val uvBootstrapPythonProvider = defaultUvBootstrapPythonExecutable()
+            val pythonToolsBootstrapHint =
+                "Install the pinned uv launcher with `${uvBootstrapPythonProvider} -m pip install --user uv==${buildMetadata.uvVersion}`."
 
-            fun registerRuffTask(
+            fun registerUvToolTask(
                 name: String,
                 taskGroup: String,
                 taskDescription: String,
+                toolCommand: String,
                 arguments: List<String>,
-            ) = tasks.register<RuffTask>(name) {
+                targetPaths: List<String>,
+                sourceFiles: FileTree,
+                configFilePath: org.gradle.api.file.RegularFile? = null,
+                toolCacheEnvironmentVariableName: String? = null,
+            ) = tasks.register<UvToolTask>(name) {
                 group = taskGroup
                 description = taskDescription
                 pythonExecutable.set(pythonExecutableProvider)
-                ruffArguments.set(arguments)
-                targetPaths.set(listOf("scripts"))
-                installHint.set(ruffInstallHint)
-                configFile.set(ruffConfig)
+                uvExecutable.set(uvExecutableProvider)
+                requiredPythonVersion.set(buildMetadata.pythonVersion)
+                requiredUvVersion.set(buildMetadata.uvVersion)
+                this.toolCommand.set(toolCommand)
+                toolArguments.set(arguments)
+                this.targetPaths.set(targetPaths)
+                bootstrapHint.set(pythonToolsBootstrapHint)
+                if (configFilePath != null) {
+                    configFile.set(configFilePath)
+                }
                 requirementsFile.set(requirementsFilePath)
-                sourceFiles.from(pythonScripts)
+                this.sourceFiles.from(sourceFiles)
                 workingDirectory.set(layout.projectDirectory)
-                pythonPycacheDirectory.set(layout.buildDirectory.dir("tmp/python-pycache/$name"))
-                ruffCacheDirectory.set(layout.buildDirectory.dir("tmp/ruff-cache/$name"))
+                uvCacheDirectory.set(layout.buildDirectory.dir("tmp/uv-cache/$name"))
+                toolCacheDirectory.set(layout.buildDirectory.dir("tmp/python-tool-cache/$name"))
+                if (toolCacheEnvironmentVariableName != null) {
+                    toolCacheEnvironmentVariable.set(toolCacheEnvironmentVariableName)
+                }
             }
 
             val ruffCheck =
-                registerRuffTask(
+                registerUvToolTask(
                     name = "ruffCheck",
                     taskGroup = "verification",
                     taskDescription = "Lint Python helper scripts with Ruff.",
+                    toolCommand = "ruff",
                     arguments = listOf("check"),
+                    targetPaths = listOf("scripts"),
+                    sourceFiles = pythonScripts,
+                    configFilePath = ruffConfig,
+                    toolCacheEnvironmentVariableName = "RUFF_CACHE_DIR",
                 )
             val ruffFormatCheck =
-                registerRuffTask(
+                registerUvToolTask(
                     name = "ruffFormatCheck",
                     taskGroup = "verification",
                     taskDescription = "Check Python helper script formatting with Ruff.",
+                    toolCommand = "ruff",
                     arguments = listOf("format", "--check"),
+                    targetPaths = listOf("scripts"),
+                    sourceFiles = pythonScripts,
+                    configFilePath = ruffConfig,
+                    toolCacheEnvironmentVariableName = "RUFF_CACHE_DIR",
                 )
-            registerRuffTask(
+            registerUvToolTask(
                 name = "ruffFix",
                 taskGroup = "formatting",
                 taskDescription = "Apply safe Ruff lint fixes to Python helper scripts.",
+                toolCommand = "ruff",
                 arguments = listOf("check", "--fix"),
+                targetPaths = listOf("scripts"),
+                sourceFiles = pythonScripts,
+                configFilePath = ruffConfig,
+                toolCacheEnvironmentVariableName = "RUFF_CACHE_DIR",
             )
-            registerRuffTask(
+            registerUvToolTask(
                 name = "ruffFormat",
                 taskGroup = "formatting",
                 taskDescription = "Format Python helper scripts with Ruff.",
+                toolCommand = "ruff",
                 arguments = listOf("format"),
+                targetPaths = listOf("scripts"),
+                sourceFiles = pythonScripts,
+                configFilePath = ruffConfig,
+                toolCacheEnvironmentVariableName = "RUFF_CACHE_DIR",
             )
             val ruff =
                 tasks.register("ruff") {
@@ -135,9 +183,38 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                     dependsOn(ruffFormatCheck)
                 }
 
+            val sqlfluffCheck =
+                registerUvToolTask(
+                    name = "sqlfluffCheck",
+                    taskGroup = "verification",
+                    taskDescription = "Lint the canonical SQLite schema with SQLFluff.",
+                    toolCommand = "sqlfluff",
+                    arguments = listOf("lint"),
+                    targetPaths = listOf(canonicalSqliteSchemaFile.asFile.invariantSeparatorsPath),
+                    sourceFiles = canonicalSqliteSchemaFiles,
+                    configFilePath = sqlfluffConfig,
+                )
+            registerUvToolTask(
+                name = "sqlfluffFix",
+                taskGroup = "formatting",
+                taskDescription = "Apply SQLFluff fixes to the canonical SQLite schema.",
+                toolCommand = "sqlfluff",
+                arguments = listOf("fix", "--force"),
+                targetPaths = listOf(canonicalSqliteSchemaFile.asFile.invariantSeparatorsPath),
+                sourceFiles = canonicalSqliteSchemaFiles,
+                configFilePath = sqlfluffConfig,
+            )
+            val sqlfluff =
+                tasks.register("sqlfluff") {
+                    group = "verification"
+                    description = "Runs SQLFluff verification over the canonical SQLite schema."
+                    dependsOn(sqlfluffCheck)
+                }
+
             tasks.named("check") {
                 dependsOn("spotlessCheck")
                 dependsOn(ruff)
+                dependsOn(sqlfluff)
             }
 
             val repositoryRootDirectory = layout.projectDirectory.asFile.toPath()
@@ -213,11 +290,56 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             exclude("**/__pycache__/**")
         }
 
-    private fun defaultPythonExecutable(): String =
+    private fun defaultPythonExecutable(requiredPythonVersion: String): String =
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            "python"
+        } else {
+            listOf("python3.13", "python3.12", "python3")
+                .mapNotNull(::executableOnPath)
+                .firstOrNull()
+                ?: findUvManagedPythonExecutable(requiredPythonVersion)
+                ?: "python3"
+        }
+
+    private fun defaultUvExecutable(): String =
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            "uv.exe"
+        } else {
+            "uv"
+        }
+
+    private fun defaultUvBootstrapPythonExecutable(): String =
         if (System.getProperty("os.name").lowercase().contains("windows")) {
             "python"
         } else {
             "python3"
+        }
+
+    private fun executableOnPath(command: String): String? {
+        val path = System.getenv("PATH") ?: return null
+        val separator = System.getProperty("path.separator")
+        return path.split(separator).firstNotNullOfOrNull { entry ->
+            val candidate = java.nio.file.Path.of(entry, command)
+            candidate.takeIf {
+                java.nio.file.Files.isRegularFile(it) && java.nio.file.Files.isExecutable(it)
+            }?.toAbsolutePath()?.toString()
+        }
+    }
+
+    private fun findUvManagedPythonExecutable(requiredPythonVersion: String): String? =
+        try {
+            val process =
+                ProcessBuilder(defaultUvExecutable(), "python", "find", requiredPythonVersion)
+                    .redirectErrorStream(true)
+                    .start()
+            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+            if (process.waitFor() == 0 && output.isNotBlank()) {
+                output.lineSequence().first().trim().takeIf(String::isNotBlank)
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
         }
 
     private fun Project.requiresManagedSqliteRuntime(): Boolean =

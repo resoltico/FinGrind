@@ -35,11 +35,11 @@ class ProtocolWireVocabularyTest {
     assertEquals(
         "environment-configured", SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.toString());
     assertEquals(
-        List.of("publisher-authenticated", "operator-trusted"),
+        List.of("publisher-authenticated", "source-verified-local-build", "unsafe-local-override"),
         SqliteRuntimeTrustBasis.wireValues());
     assertEquals(
         "publisher-authenticated", SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED.wireValue());
-    assertEquals("operator-trusted", SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.toString());
+    assertEquals("unsafe-local-override", SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE.toString());
     assertEquals(
         List.of(
             "macos-aarch64",
@@ -75,13 +75,16 @@ class ProtocolWireVocabularyTest {
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
         SqliteRuntimeTrustBasis.fromWireValue("publisher-authenticated"));
     assertEquals(
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+        SqliteRuntimeTrustBasis.fromWireValue("source-verified-local-build"));
+    assertEquals(
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.BUNDLE_MANAGED));
     assertEquals(
-        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED));
     assertEquals(
-        SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+        SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED));
     assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,

@@ -10,6 +10,8 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.WireValue;
@@ -34,13 +36,13 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Description", helpDescriptor.description())));
     String commands =
         CliTextFormat.renderTable(
-            List.of("Command", "Stdout", "Summary"),
+            List.of("Command", "Output", "Summary"),
             helpDescriptor.commands().stream()
                 .map(
                     command ->
                         List.of(
                             command.name().wireName(),
-                            command.stdoutContractSummary(),
+                            command.outputModeSummary(),
                             command.summary()))
                 .toList());
     String gettingStarted =
@@ -52,7 +54,12 @@ final class CliDiscoveryOutputRenderer {
                     + " <command>' for command-specific usage, request-file guidance, and examples.",
                 "Run '"
                     + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                    + " --output json' for the full machine-readable contract."));
+                    + " --output json' for the stable machine-readable command contract.",
+                "Run '"
+                    + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                    + " --output json' for live runtime, distribution, and SQLite provenance facts."));
+    String stdoutDefaults =
+        "Selectable commands default to human on one interactive terminal and json on redirected stdout. Override with --output when one command advertises selectable output modes.";
     String exitCodes =
         CliTextFormat.renderTable(
             List.of("Code", "Meaning"),
@@ -65,6 +72,7 @@ final class CliDiscoveryOutputRenderer {
         joinSections(
             header,
             section("Commands", commands),
+            section("Stdout Defaults", stdoutDefaults),
             section("Getting Started", gettingStarted),
             section("Exit Codes", exitCodes)));
   }
@@ -151,7 +159,7 @@ final class CliDiscoveryOutputRenderer {
                     command ->
                         List.of(
                             command.name().wireName(),
-                            command.stdoutContractSummary(),
+                            command.outputModeSummary(),
                             selectableDefaultsSummary(command.selectableOutputDefaults()),
                             artifactSummary(command)))
                 .toList());
@@ -181,7 +189,10 @@ final class CliDiscoveryOutputRenderer {
                     + " <command> --output json' when you only need one command contract.",
                 "Use '"
                     + CliInvocationText.commandExample(OperationId.VERSION)
-                    + " --output json' for a minimal application identity response."));
+                    + " --output json' for a minimal application identity response.",
+                "Use '"
+                    + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                    + " --output json' for live runtime and SQLite provenance facts."));
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         joinSections(
@@ -190,6 +201,164 @@ final class CliDiscoveryOutputRenderer {
             section("Command Contracts", commandContracts),
             section("Request Input", requestInput),
             section("Targeted Retrieval", targetedRetrieval)));
+  }
+
+  static String renderEnvironmentHuman(EnvironmentDescriptor environmentDescriptor) {
+    Objects.requireNonNull(environmentDescriptor, "environmentDescriptor");
+    EnvironmentSqliteDescriptor.RuntimeState runtime = environmentDescriptor.sqlite().runtime();
+    String distribution =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Runtime distribution",
+                    environmentDescriptor.distribution().runtimeDistribution().wireValue()),
+                List.of(
+                    "Public CLI distribution",
+                    environmentDescriptor.distribution().publicCliDistribution().wireValue()),
+                List.of(
+                    "Source checkout runtime",
+                    environmentDescriptor.distribution().sourceCheckoutJava()),
+                List.of(
+                    "Supported bundle targets",
+                    CliTextFormat.joined(
+                        environmentDescriptor
+                            .distribution()
+                            .supportedPublicCliBundleTargets()
+                            .stream()
+                            .map(WireValue::wireValue)
+                            .toList())),
+                List.of(
+                    "Unsupported bundle targets",
+                    CliTextFormat.joined(
+                        environmentDescriptor
+                            .distribution()
+                            .unsupportedPublicCliBundleTargets()
+                            .stream()
+                            .map(WireValue::wireValue)
+                            .toList()))));
+    String storage =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Storage driver", environmentDescriptor.storage().storageDriver().wireValue()),
+                List.of(
+                    "Storage engine", environmentDescriptor.storage().storageEngine().wireValue()),
+                List.of(
+                    "Book protection",
+                    environmentDescriptor.storage().bookProtectionMode().wireValue()),
+                List.of(
+                    "Protected-book format",
+                    renderProtectedBookFormat(
+                        environmentDescriptor.storage().defaultProtectedBookFormat()))));
+    String sqlite =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Library mode", environmentDescriptor.sqlite().libraryMode().wireValue()),
+                List.of("Runtime status", runtime.status().wireValue()),
+                List.of(
+                    "Compile-options verification",
+                    runtime.compileOptionsVerification().wireValue()),
+                List.of("Runtime provenance", runtimeProvenance(runtime)),
+                List.of("Runtime trust basis", runtimeTrustBasis(runtime)),
+                List.of("Loaded library path", loadedLibraryPath(runtime)),
+                List.of("Loaded SQLite version", loadedSqliteVersion(runtime)),
+                List.of("Loaded SQLite3MC version", loadedSqlite3mcVersion(runtime)),
+                List.of("Loaded SQLite source id", loadedSqliteSourceId(runtime)),
+                List.of("Issue", runtimeIssue(runtime))));
+    return CliTextFormat.renderTitledBlock(
+        "FinGrind Environment",
+        joinSections(
+            section("Distribution", distribution),
+            section("Storage Surface", storage),
+            section("SQLite Runtime", sqlite)));
+  }
+
+  private static String runtimeProvenance(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.runtimeProvenance().wireValue();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed ->
+          failed.runtimeProvenance().wireValue();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeProvenance().wireValue();
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String runtimeTrustBasis(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.runtimeTrustBasis().wireValue();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed ->
+          failed.runtimeTrustBasis().wireValue();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeTrustBasis().wireValue();
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String loadedLibraryPath(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.loadedLibraryPath();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed -> failed.loadedLibraryPath();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.loadedLibraryPath();
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String loadedSqliteVersion(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.loadedSqliteVersion();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.loadedSqliteVersion();
+      case EnvironmentSqliteDescriptor.FailedRuntime ignored -> "(none)";
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String loadedSqlite3mcVersion(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.loadedSqlite3mcVersion();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.loadedSqlite3mcVersion();
+      case EnvironmentSqliteDescriptor.FailedRuntime ignored -> "(none)";
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String loadedSqliteSourceId(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.loadedSqliteSourceId();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.loadedSqliteSourceId();
+      case EnvironmentSqliteDescriptor.FailedRuntime ignored -> "(none)";
+      case EnvironmentSqliteDescriptor.UnavailableRuntime ignored -> "(none)";
+    };
+  }
+
+  private static String runtimeIssue(EnvironmentSqliteDescriptor.RuntimeState runtime) {
+    return switch (runtime) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ignored -> "(none)";
+      case EnvironmentSqliteDescriptor.UnavailableRuntime unavailable -> unavailable.runtimeIssue();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed -> failed.runtimeIssue();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeIssue();
+    };
+  }
+
+  private static String renderProtectedBookFormat(
+      dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract format) {
+    return "cipher="
+        + format.cipher().wireValue()
+        + ", page-size="
+        + format.pageSize()
+        + ", reserved-bytes="
+        + format.reservedBytes()
+        + ", kdf-iter="
+        + format.kdfIter()
+        + ", plaintext-header-size="
+        + format.plaintextHeaderSize()
+        + ", legacy-mode="
+        + format.legacyMode();
   }
 
   static String renderVersionHuman(VersionDescriptor versionDescriptor) {

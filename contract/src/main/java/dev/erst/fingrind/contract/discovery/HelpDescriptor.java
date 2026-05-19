@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplate
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
-import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -28,8 +27,7 @@ public record HelpDescriptor(
     List<ExitCodeDescriptor> exitCodes,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
-    ContractResponse.ExtensionSurfaceDescriptor extensionSurface,
-    EnvironmentDescriptor environment)
+    ContractResponse.ExtensionSurfaceDescriptor extensionSurface)
     implements ContractDiscoveryDescriptor {
   /** Validates one help descriptor payload. */
   public HelpDescriptor {
@@ -47,6 +45,5 @@ public record HelpDescriptor(
     currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
     extensionSurface =
         ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
-    environment = ContractDescriptorValidation.requireValue(environment, "environment");
   }
 }

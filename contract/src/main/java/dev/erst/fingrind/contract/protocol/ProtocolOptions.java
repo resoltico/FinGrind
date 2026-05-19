@@ -29,9 +29,6 @@ public final class ProtocolOptions {
   /** Option selecting one explicit stale rollback artifact for rekey recovery. */
   public static final String ROLLBACK_FILE = "--rollback-file";
 
-  /** Option selecting the recover-rekey action. */
-  public static final String RECOVERY_ACTION = "--recovery-action";
-
   /** Option requesting the replacement passphrase from standard input during rekey. */
   public static final String REPLACEMENT_BOOK_PASSPHRASE_STDIN =
       "--replacement-book-passphrase-stdin";
@@ -67,9 +64,6 @@ public final class ProtocolOptions {
   /** Option selecting the reporting-obligation status used when initializing one new book. */
   public static final String REPORTING_OBLIGATION_STATUS = "--reporting-obligation-status";
 
-  /** Option selecting the tax-registration status used when initializing one new book. */
-  public static final String TAX_REGISTRATION_STATUS = "--tax-registration-status";
-
   /** Option selecting one business-activity tag used when initializing one new book. */
   public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
 
@@ -83,7 +77,6 @@ public final class ProtocolOptions {
   public static final String ACCOUNTING_BASIS = "--accounting-basis";
 
   /** Option selecting the closing equity account used by one close-period command. */
-  public static final String CLOSING_EQUITY_ACCOUNT = "--closing-equity-account";
 
   /** Option selecting which posting kinds one report query should include. */
   public static final String POSTING_COVERAGE = "--posting-coverage";

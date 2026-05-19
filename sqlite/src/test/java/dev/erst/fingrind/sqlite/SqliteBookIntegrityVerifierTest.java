@@ -80,7 +80,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           database.executeStatement(
               """
               delete from book_meta
-              where key = 'schema_fingerprint_sha256'
+              where meta_key = 'schema_fingerprint_sha256'
               """);
           assertFalse(SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(database));
 

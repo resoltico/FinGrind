@@ -11,9 +11,9 @@ import java.util.Objects;
 final class SqliteBookAccessRules {
   private SqliteBookAccessRules() {}
 
-  static ContractDecision<Path> requireKeyFile(BookAccess bookAccess) {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    return switch (bookAccess.passphraseSource()) {
+  static ContractDecision<Path> requireKeyFile(BookAccess.PassphraseSource passphraseSource) {
+    Objects.requireNonNull(passphraseSource, "passphraseSource");
+    return switch (passphraseSource) {
       case BookAccess.PassphraseSource.KeyFile keyFile ->
           ContractDecision.accepted(keyFile.bookKeyFilePath());
       case BookAccess.PassphraseSource.StandardInput source ->

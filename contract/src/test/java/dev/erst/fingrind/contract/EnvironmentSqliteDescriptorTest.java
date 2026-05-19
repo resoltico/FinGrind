@@ -277,7 +277,7 @@ class EnvironmentSqliteDescriptorTest {
                         SqliteCompileOptionsVerificationStatus.VERIFIED,
                         SqliteRuntimeStatus.READY,
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                        SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+                        SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
                         "/tmp/libsqlite3.dylib",
                         "3.53.1",
                         "2.3.4",
@@ -308,7 +308,8 @@ class EnvironmentSqliteDescriptorTest {
                 "2.3.4",
                 ProtocolCatalog.requiredSqliteSourceId(),
                 null));
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeTrustBasis(descriptor));
+    assertEquals(
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
   }
 
   @Test
@@ -429,7 +430,7 @@ class EnvironmentSqliteDescriptorTest {
             null,
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, runtimeStatus(descriptor));
-    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, runtimeTrustBasis(descriptor));
+    assertEquals(SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE, runtimeTrustBasis(descriptor));
     assertEquals("native bridge failed", runtimeIssue(descriptor));
   }
 
@@ -552,7 +553,7 @@ class EnvironmentSqliteDescriptorTest {
             "source id mismatch");
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, runtimeStatus(descriptor));
     assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, runtimeProvenance(descriptor));
-    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, runtimeTrustBasis(descriptor));
+    assertEquals(SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE, runtimeTrustBasis(descriptor));
     assertEquals("different-source-id", loadedSqliteSourceId(descriptor));
     assertEquals("source id mismatch", runtimeIssue(descriptor));
   }
@@ -581,7 +582,7 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor.FailedRuntime failed =
         new EnvironmentSqliteDescriptor.FailedRuntime(
             SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-            SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+            SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
             "/tmp/libsqlite3.dylib",
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, failed.status());
@@ -592,7 +593,7 @@ class EnvironmentSqliteDescriptorTest {
         new EnvironmentSqliteDescriptor.IncompatibleRuntime(
             SqliteCompileOptionsVerificationStatus.FAILED,
             SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-            SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+            SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
@@ -612,7 +613,7 @@ class EnvironmentSqliteDescriptorTest {
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-                    SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+                    SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",

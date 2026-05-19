@@ -1,10 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -100,16 +98,11 @@ record RestoreBook(
   }
 }
 
-/** Administrative CLI command that inspects or applies one sibling rekey rollback artifact. */
-record RecoverRekey(
-    Path bookFilePath,
-    RekeyRecoveryAction action,
-    @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
-    OutputMode outputMode)
+/** Administrative CLI command that inspects stale sibling rekey rollback artifacts. */
+record InspectRekeyRollback(Path bookFilePath, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
-  RecoverRekey {
+  InspectRekeyRollback {
     Objects.requireNonNull(bookFilePath, "bookFilePath");
-    Objects.requireNonNull(action, "action");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -117,7 +110,48 @@ record RecoverRekey(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runRecoverRekeyCommand(bookFilePath, action, rollbackArtifactPath, outputMode);
+        .runInspectRekeyRollbackCommand(bookFilePath, outputMode);
+  }
+}
+
+/** Administrative CLI command that restores one selected sibling rekey rollback artifact. */
+record RestoreRekeyRollback(
+    Path bookFilePath,
+    @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
+    BookAccess.PassphraseSource expectedPassphraseSource,
+    OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  RestoreRekeyRollback {
+    Objects.requireNonNull(bookFilePath, "bookFilePath");
+    Objects.requireNonNull(expectedPassphraseSource, "expectedPassphraseSource");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runRestoreRekeyRollbackCommand(
+            bookFilePath, rollbackArtifactPath, expectedPassphraseSource, outputMode);
+  }
+}
+
+/** Administrative CLI command that deletes one selected sibling rekey rollback artifact. */
+record DeleteRekeyRollback(
+    Path bookFilePath,
+    @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
+    OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  DeleteRekeyRollback {
+    Objects.requireNonNull(bookFilePath, "bookFilePath");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runDeleteRekeyRollbackCommand(bookFilePath, rollbackArtifactPath, outputMode);
   }
 }
 
@@ -139,16 +173,11 @@ record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode output
 }
 
 /** Administrative CLI command that closes one contiguous reporting period. */
-record ClosePeriod(
-    BookAccess bookAccess,
-    ReportingPeriod reportingPeriod,
-    AccountCode closingEquityAccountCode,
-    OutputMode outputMode)
+record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   ClosePeriod {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -156,6 +185,6 @@ record ClosePeriod(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runClosePeriodCommand(bookAccess, reportingPeriod, closingEquityAccountCode, outputMode);
+        .runClosePeriodCommand(bookAccess, reportingPeriod, outputMode);
   }
 }

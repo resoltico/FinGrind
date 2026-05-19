@@ -41,7 +41,6 @@ final class ProtocolAdministrationOperations {
                 "["
                     + ProtocolOptions.REPORTING_OBLIGATION_STATUS
                     + " <reporting-obligation-status>]",
-                "[" + ProtocolOptions.TAX_REGISTRATION_STATUS + " <tax-registration-status>]",
                 "[" + ProtocolOptions.BUSINESS_ACTIVITY_TAG + " <business-activity-tag> ...]",
                 ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
                 ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
@@ -168,36 +167,62 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.BACKUP_FILE,
                             ProtocolOptions.BACKUP_BOOK_KEY_FILE)))),
         ProtocolOperationDefinitions.operation(
-            OperationId.RECOVER_REKEY,
+            OperationId.INSPECT_REKEY_ROLLBACK,
             OperationCategory.ADMINISTRATION,
-            "Recover Rekey",
+            "Inspect Rekey Rollback",
             List.of(),
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
-                "["
-                    + ProtocolOptions.RECOVERY_ACTION
-                    + " <"
-                    + String.join(
-                        "|",
-                        dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction.wireValues())
-                    + ">]",
-                "[" + ProtocolOptions.ROLLBACK_FILE + " <path>]",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
-            "Inspect or apply one stale sibling rekey rollback artifact for the selected book path.",
+            "Inspect stale sibling rekey rollback artifacts for the selected book path.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite"
                         .formatted(
-                            OperationId.RECOVER_REKEY.wireName(), ProtocolOptions.BOOK_FILE)),
+                            OperationId.INSPECT_REKEY_ROLLBACK.wireName(),
+                            ProtocolOptions.BOOK_FILE)))),
+        ProtocolOperationDefinitions.operation(
+            OperationId.DELETE_REKEY_ROLLBACK,
+            OperationCategory.ADMINISTRATION,
+            "Delete Rekey Rollback",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Delete one selected stale sibling rekey rollback artifact.",
+            List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s restore %s ./books/acme.sqlite.rekey-rollback-1234.sqlite"
+                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite"
                         .formatted(
-                            OperationId.RECOVER_REKEY.wireName(),
+                            OperationId.DELETE_REKEY_ROLLBACK.wireName(),
                             ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.RECOVERY_ACTION,
                             ProtocolOptions.ROLLBACK_FILE)))),
+        ProtocolOperationDefinitions.operation(
+            OperationId.RESTORE_REKEY_ROLLBACK,
+            OperationCategory.ADMINISTRATION,
+            "Restore Rekey Rollback",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
+                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Restore one selected stale sibling rekey rollback artifact onto the live book path.",
+            List.of(
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite %s ./secrets/acme.book-key"
+                        .formatted(
+                            OperationId.RESTORE_REKEY_ROLLBACK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.ROLLBACK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE)))),
         ProtocolOperationDefinitions.operation(
             OperationId.DECLARE_ACCOUNT,
             OperationCategory.ADMINISTRATION,
@@ -236,26 +261,18 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
                 ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
-                ProtocolOptions.CLOSING_EQUITY_ACCOUNT + " <account-code>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
-            "Close one contiguous reporting period into one selected closing equity account.",
+            "Close one contiguous reporting period into one policy-selected closing equity account.",
             List.of(
                 ProtocolExampleStep.note(
                     "Built-in closing-equity mapping is entity-form specific: FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL; COMPANY and BRANCH require RETAINED_EARNINGS; PARTNERSHIP requires PARTNER_CURRENT; NONPROFIT requires ACCUMULATED_SURPLUS; OTHER requires OTHER_EQUITY."),
                 ProtocolExampleStep.note(
-                    "Declare at least one active equity account that satisfies the active closing-equity policy for the selected entity form, then choose that account with --closing-equity-account."),
+                    "Declare exactly one active equity account that satisfies the active closing-equity policy for the selected entity form. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
                 ProtocolExampleStep.note(
                     "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon and remain inside one fiscal year."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s 3300"
-                        .formatted(
-                            OperationId.CLOSE_PERIOD.wireName(),
-                            ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.EFFECTIVE_DATE_FROM,
-                            ProtocolOptions.EFFECTIVE_DATE_TO,
-                            ProtocolOptions.CLOSING_EQUITY_ACCOUNT)))));
+                    "fingrind close-period --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --effective-date-from 2026-04-01 --effective-date-to 2026-04-30"))));
   }
 }

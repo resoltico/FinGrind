@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -32,7 +33,9 @@ final class SqliteBookKeyFileMaterializer {
         SqliteBookKeyFileGenerator.deleteQuietly(normalizedPath);
       }
       throw new IllegalStateException(
-          "Failed to create the FinGrind backup key file: " + normalizedPath, exception);
+          "Failed to create the FinGrind backup key file: "
+              + PublicPathHint.fromPath(normalizedPath).value(),
+          exception);
     } finally {
       Arrays.fill(encodedPassphrase, (byte) 0);
     }
@@ -42,7 +45,7 @@ final class SqliteBookKeyFileMaterializer {
     if (Files.exists(normalizedPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new IllegalArgumentException(
           "The FinGrind backup key file destination already exists and will not be overwritten: "
-              + normalizedPath);
+              + PublicPathHint.fromPath(normalizedPath).value());
     }
   }
 

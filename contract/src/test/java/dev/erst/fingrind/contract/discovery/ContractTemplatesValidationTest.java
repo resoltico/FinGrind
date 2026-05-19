@@ -18,7 +18,6 @@ import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and invariant tests for contract-owned template descriptors. */
@@ -84,7 +83,6 @@ class ContractTemplatesValidationTest {
                   EntityForm.FREELANCER,
                   OwnerModel.SOLE_OWNER,
                   ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                  TaxRegistrationStatus.UNSPECIFIED,
                   java.util.List.of("translation-services"),
                   "EUR",
                   "01-01",

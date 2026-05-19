@@ -1,9 +1,188 @@
 #!/usr/bin/env bash
-# Keep Python bytecode artifacts out of the repository during shell-driven verification flows.
+# Keep Python bytecode artifacts out of the repository during shell-driven verification flows and
+# resolve the repo-owned Python tooling runtime for Gradle verification entrypoints.
+
+resolve_python_runtime_support_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    while [[ -h "${source_path}" ]]; do
+        local source_dir
+        source_dir="$(cd -P -- "$(dirname -- "${source_path}")" && pwd)"
+        source_path="$(readlink "${source_path}")"
+        if [[ "${source_path}" != /* ]]; then
+            source_path="${source_dir}/${source_path}"
+        fi
+    done
+    cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+if [[ -z "${python_runtime_support_dir+x}" ]]; then
+    python_runtime_support_dir="$(resolve_python_runtime_support_dir)"
+    readonly python_runtime_support_dir
+fi
+if [[ -z "${python_runtime_support_repo_root+x}" ]]; then
+    python_runtime_support_repo_root="$(cd -P -- "${python_runtime_support_dir}/.." && pwd)"
+    readonly python_runtime_support_repo_root
+fi
+if [[ -z "${python_runtime_support_build_properties+x}" ]]; then
+    python_runtime_support_build_properties=\
+"${python_runtime_support_repo_root}/gradle/fingrind-build.properties"
+    readonly python_runtime_support_build_properties
+fi
+
+fingrind_build_property() {
+    local property_name=$1
+    local fallback_value=$2
+    if [[ -f "${python_runtime_support_build_properties}" ]]; then
+        local property_value
+        property_value="$(
+            awk -F= -v property_name="${property_name}" \
+                '$1 == property_name { print $2; exit }' \
+                "${python_runtime_support_build_properties}"
+        )"
+        if [[ -n "${property_value}" ]]; then
+            printf '%s\n' "${property_value}"
+            return 0
+        fi
+    fi
+    printf '%s\n' "${fallback_value}"
+}
+
+fingrind_required_python_version() {
+    fingrind_build_property "fingrindPythonVersion" "3.12"
+}
+
+fingrind_required_uv_version() {
+    fingrind_build_property "fingrindUvVersion" "0.11.15"
+}
+
+python_runtime_command_path() {
+    command -v "$1" 2>/dev/null || true
+}
+
+python_runtime_version_satisfies() {
+    local python_executable=$1
+    local required_version=$2
+    "${python_executable}" - "${required_version}" <<'PY' >/dev/null 2>&1
+import sys
+
+required = tuple(int(part) for part in sys.argv[1].split("."))
+current = sys.version_info[: len(required)]
+raise SystemExit(0 if current >= required else 1)
+PY
+}
+
+default_uv_bootstrap_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s\n' "python3"
+    else
+        printf '%s\n' "python"
+    fi
+}
+
+uv_command_path() {
+    python_runtime_command_path uv
+}
+
+python_runtime_bootstrap_hint() {
+    local bootstrap_python
+    bootstrap_python="$(default_uv_bootstrap_python)"
+    printf 'Install the pinned uv launcher with `%s -m pip install --user uv==%s`.' \
+        "${bootstrap_python}" \
+        "$(fingrind_required_uv_version)"
+}
+
+resolve_system_python_runtime() {
+    local required_version=$1
+    local candidate_path
+    local candidate
+    for candidate in python3.13 python3.12 python3 python; do
+        candidate_path="$(python_runtime_command_path "${candidate}")"
+        if [[ -n "${candidate_path}" ]] && python_runtime_version_satisfies "${candidate_path}" "${required_version}"; then
+            printf '%s\n' "${candidate_path}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_uv_managed_python_runtime() {
+    local required_version=$1
+    local uv_executable
+    uv_executable="$(uv_command_path)"
+    [[ -n "${uv_executable}" ]] || return 1
+
+    local python_path
+    python_path="$("${uv_executable}" python find "${required_version}" 2>/dev/null || true)"
+    if [[ -n "${python_path}" ]] && python_runtime_version_satisfies "${python_path}" "${required_version}"; then
+        printf '%s\n' "${python_path}"
+        return 0
+    fi
+
+    "${uv_executable}" python install "${required_version}" >/dev/null
+    python_path="$("${uv_executable}" python find "${required_version}" 2>/dev/null || true)"
+    if [[ -n "${python_path}" ]] && python_runtime_version_satisfies "${python_path}" "${required_version}"; then
+        printf '%s\n' "${python_path}"
+        return 0
+    fi
+
+    return 1
+}
+
+resolve_repo_python_runtime() {
+    local required_version=$1
+
+    if [[ -n "${FINGRIND_PYTHON_EXECUTABLE:-}" ]]; then
+        if python_runtime_version_satisfies "${FINGRIND_PYTHON_EXECUTABLE}" "${required_version}"; then
+            printf '%s\n' "${FINGRIND_PYTHON_EXECUTABLE}"
+            return 0
+        fi
+        printf 'error: FINGRIND_PYTHON_EXECUTABLE=%s does not satisfy Python %s+\n' \
+            "${FINGRIND_PYTHON_EXECUTABLE}" \
+            "${required_version}" >&2
+        return 1
+    fi
+
+    local system_python
+    system_python="$(resolve_system_python_runtime "${required_version}" || true)"
+    if [[ -n "${system_python}" ]]; then
+        printf '%s\n' "${system_python}"
+        return 0
+    fi
+
+    local uv_managed_python
+    uv_managed_python="$(resolve_uv_managed_python_runtime "${required_version}" || true)"
+    if [[ -n "${uv_managed_python}" ]]; then
+        printf '%s\n' "${uv_managed_python}"
+        return 0
+    fi
+
+    printf 'error: no Python %s+ runtime is available for repo-owned tooling. %s\n' \
+        "${required_version}" \
+        "$(python_runtime_bootstrap_hint)" >&2
+    return 1
+}
 
 prepare_python_runtime_env() {
     export PYTHONDONTWRITEBYTECODE=1
     if [[ -z "${PYTHONPYCACHEPREFIX:-}" ]]; then
         export PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/fingrind-python-pycache.$$.$RANDOM"
+    fi
+
+    local required_python_version
+    required_python_version="$(fingrind_required_python_version)"
+
+    if [[ -z "${ORG_GRADLE_PROJECT_fingrindPythonExecutable:-}" ]]; then
+        local resolved_python
+        resolved_python="$(resolve_repo_python_runtime "${required_python_version}")" || return 1
+        export ORG_GRADLE_PROJECT_fingrindPythonExecutable="${resolved_python}"
+        export FINGRIND_PYTHON_EXECUTABLE="${resolved_python}"
+    fi
+
+    if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" ]]; then
+        local uv_executable
+        uv_executable="$(uv_command_path)"
+        if [[ -n "${uv_executable}" ]]; then
+            export ORG_GRADLE_PROJECT_fingrindUvExecutable="${uv_executable}"
+        fi
     fi
 }

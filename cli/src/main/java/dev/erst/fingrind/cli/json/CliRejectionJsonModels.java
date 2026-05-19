@@ -38,7 +38,8 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           ParentAccountTypeConflictDetails,
           ParentAccountTaxonomyConflictDetails,
           ClosingEquityAccountDetails,
-          ClosingEquityAccountClassificationMismatchDetails {}
+          ClosingEquityAccountCandidateMissingDetails,
+          ClosingEquityAccountCandidateAmbiguousDetails {}
 
   /** Sealed category for close-window rejection payloads. */
   sealed interface PeriodCloseRejectionDetails extends RejectionDetails
@@ -52,6 +53,8 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   sealed interface MaintenanceRejectionDetails extends RejectionDetails
       permits BookFileDetails,
           BlockingArtifactsDetails,
+          ArtifactBusyDetails,
+          ArtifactVerificationFailureDetails,
           BackupFileDetails,
           BackupBookKeyFileDetails,
           RollbackArtifactDetails,
@@ -201,21 +204,29 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ClosingEquityAccountClassificationMismatchDetails(
-      String accountCode,
+  record ClosingEquityAccountCandidateMissingDetails(
       String requiredFinancialPositionLineClassification,
-      String actualFinancialPositionLineClassification)
+      List<String> inactiveCandidateAccountCodes)
       implements AccountRejectionDetails {
-    public ClosingEquityAccountClassificationMismatchDetails {
-      accountCode = requireText(accountCode, "accountCode");
+    public ClosingEquityAccountCandidateMissingDetails {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
               "requiredFinancialPositionLineClassification");
-      actualFinancialPositionLineClassification =
+      inactiveCandidateAccountCodes =
+          copyList(inactiveCandidateAccountCodes, "inactiveCandidateAccountCodes");
+    }
+  }
+
+  record ClosingEquityAccountCandidateAmbiguousDetails(
+      String requiredFinancialPositionLineClassification, List<String> candidateAccountCodes)
+      implements AccountRejectionDetails {
+    public ClosingEquityAccountCandidateAmbiguousDetails {
+      requiredFinancialPositionLineClassification =
           requireText(
-              actualFinancialPositionLineClassification,
-              "actualFinancialPositionLineClassification");
+              requiredFinancialPositionLineClassification,
+              "requiredFinancialPositionLineClassification");
+      candidateAccountCodes = copyList(candidateAccountCodes, "candidateAccountCodes");
     }
   }
 
@@ -293,6 +304,24 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   record BackupBookKeyFileDetails(String backupBookKeyFile) implements MaintenanceRejectionDetails {
     public BackupBookKeyFileDetails {
       backupBookKeyFile = requireText(backupBookKeyFile, "backupBookKeyFile");
+    }
+  }
+
+  record ArtifactBusyDetails(String artifactRole, String artifactPath)
+      implements MaintenanceRejectionDetails {
+    public ArtifactBusyDetails {
+      artifactRole = requireText(artifactRole, "artifactRole");
+      artifactPath = requireText(artifactPath, "artifactPath");
+    }
+  }
+
+  record ArtifactVerificationFailureDetails(
+      String artifactRole, String artifactPath, String verificationFailure)
+      implements MaintenanceRejectionDetails {
+    public ArtifactVerificationFailureDetails {
+      artifactRole = requireText(artifactRole, "artifactRole");
+      artifactPath = requireText(artifactPath, "artifactPath");
+      verificationFailure = requireText(verificationFailure, "verificationFailure");
     }
   }
 

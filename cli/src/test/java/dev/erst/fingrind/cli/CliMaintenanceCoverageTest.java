@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,8 +10,7 @@ import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -31,13 +29,12 @@ import org.junit.jupiter.api.Test;
 class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   @Test
   void maintenanceArgumentParsing_coversDefaultsAndValidationBranches() {
-    RecoverRekey defaultInspect =
+    InspectRekeyRollback defaultInspect =
         assertInstanceOf(
-            RecoverRekey.class,
-            CliArguments.parse(new String[] {"recover-rekey", "--book-file", "book.sqlite"}));
+            InspectRekeyRollback.class,
+            CliArguments.parse(
+                new String[] {"inspect-rekey-rollback", "--book-file", "book.sqlite"}));
     assertEquals(Path.of("book.sqlite"), defaultInspect.bookFilePath());
-    assertEquals(RekeyRecoveryAction.INSPECT, defaultInspect.action());
-    assertNull(defaultInspect.rollbackArtifactPath());
     assertEquals(OutputMode.JSON, defaultInspect.outputMode());
 
     BackupBook backupBook =
@@ -305,7 +302,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "recover-rekey",
+                      "delete-rekey-rollback",
                       "--book-file",
                       "book.sqlite",
                       "--rollback-file",
@@ -315,49 +312,61 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                     }));
     assertEquals("--rollback-file", duplicateRollbackFile.argument());
 
-    CliArgumentsException invalidRecoveryAction =
+    CliArgumentsException inspectRollbackPathRejected =
         assertThrows(
             CliArgumentsException.class,
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "recover-rekey", "--book-file", "book.sqlite", "--recovery-action", "explode"
+                      "inspect-rekey-rollback",
+                      "--book-file",
+                      "book.sqlite",
+                      "--rollback-file",
+                      "rollback.sqlite"
                     }));
-    assertEquals("--recovery-action", invalidRecoveryAction.argument());
-    String invalidRecoveryMessage = invalidRecoveryAction.getMessage();
-    assertNotNull(invalidRecoveryMessage);
-    assertTrue(invalidRecoveryMessage.contains("Unsupported rekey recovery action"));
+    assertEquals("--rollback-file", inspectRollbackPathRejected.argument());
+    assertEquals(
+        "--rollback-file is accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
+        inspectRollbackPathRejected.getMessage());
 
-    RecoverRekey recoverWithHumanOutput =
+    InspectRekeyRollback inspectWithHumanOutput =
         assertInstanceOf(
-            RecoverRekey.class,
+            InspectRekeyRollback.class,
             CliArguments.parse(
-                new String[] {"recover-rekey", "--book-file", "book.sqlite", "--output", "human"}));
-    assertEquals(OutputMode.HUMAN, recoverWithHumanOutput.outputMode());
+                new String[] {
+                  "inspect-rekey-rollback", "--book-file", "book.sqlite", "--output", "human"
+                }));
+    assertEquals(OutputMode.HUMAN, inspectWithHumanOutput.outputMode());
 
-    CliArgumentsException duplicateRecoverBookFile =
+    CliArgumentsException duplicateInspectBookFile =
         assertThrows(
             CliArgumentsException.class,
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "recover-rekey", "--book-file", "book.sqlite", "--book-file", "book-2.sqlite"
+                      "inspect-rekey-rollback",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-file",
+                      "book-2.sqlite"
                     }));
-    assertEquals("--book-file", duplicateRecoverBookFile.argument());
+    assertEquals("--book-file", duplicateInspectBookFile.argument());
 
-    CliArgumentsException unsupportedRecoverArgument =
+    CliArgumentsException unsupportedInspectArgument =
         assertThrows(
             CliArgumentsException.class,
             () ->
                 CliArguments.parse(
-                    new String[] {"recover-rekey", "--book-file", "book.sqlite", "--explode"}));
-    assertEquals("--explode", unsupportedRecoverArgument.argument());
+                    new String[] {
+                      "inspect-rekey-rollback", "--book-file", "book.sqlite", "--explode"
+                    }));
+    assertEquals("--explode", unsupportedInspectArgument.argument());
 
-    CliArgumentsException missingRecoverBookFile =
+    CliArgumentsException missingInspectBookFile =
         assertThrows(
             CliArgumentsException.class,
-            () -> CliArguments.parse(new String[] {"recover-rekey", "--output", "human"}));
-    assertEquals("--book-file", missingRecoverBookFile.argument());
+            () -> CliArguments.parse(new String[] {"inspect-rekey-rollback", "--output", "human"}));
+    assertEquals("--book-file", missingInspectBookFile.argument());
   }
 
   @Test
@@ -483,84 +492,107 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         0,
         CliExecutionPolicy.exitCodeFor(
             new BackupBookResult.BackedUp(
-                Path.of("book.sqlite"), Path.of("backup.sqlite"), Path.of("backup.key"))));
+                hint(Path.of("book.sqlite")),
+                hint(Path.of("backup.sqlite")),
+                hint(Path.of("backup.key")))));
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
             new BackupBookResult.Rejected(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
-                    Path.of("backup.sqlite")))));
+                    hint(Path.of("backup.sqlite"))))));
     assertEquals(
         0,
         CliExecutionPolicy.exitCodeFor(
             new RestoreBookResult.Restored(
-                Path.of("book.sqlite"), Path.of("backup.sqlite"), Path.of("backup.key"))));
+                hint(Path.of("book.sqlite")),
+                hint(Path.of("backup.sqlite")),
+                hint(Path.of("backup.key")))));
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                    Path.of("backup.sqlite"), List.of(Path.of("backup.sqlite-wal"))))));
+                    hint(Path.of("backup.sqlite")), List.of(hint(Path.of("backup.sqlite-wal")))))));
     assertEquals(
         0,
         CliExecutionPolicy.exitCodeFor(
-            new RecoverRekeyResult.Inspected(Path.of("book.sqlite"), List.of())));
+            new RekeyRollbackResult.Inspected(hint(Path.of("book.sqlite")), List.of())));
     assertEquals(
         0,
         CliExecutionPolicy.exitCodeFor(
-            new RecoverRekeyResult.Deleted(
-                Path.of("book.sqlite"), Path.of("book.rekey-rollback.sqlite"))));
+            new RekeyRollbackResult.Deleted(
+                hint(Path.of("book.sqlite")), hint(Path.of("book.rekey-rollback.sqlite")))));
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
-            new RecoverRekeyResult.Rejected(
-                new BookMaintenanceRejection.NoRollbackArtifactsFound(Path.of("book.sqlite")))));
+            new RekeyRollbackResult.Rejected(
+                new BookMaintenanceRejection.NoRollbackArtifactsFound(
+                    hint(Path.of("book.sqlite"))))));
   }
 
   @Test
   void maintenanceRejectionPayloadMapper_coversEveryHintAndDetailShape() {
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.BookHasBlockingArtifacts(
-            Path.of("books/entity.sqlite"),
-            List.of(Path.of("books/entity.sqlite-wal"), Path.of("books/entity.sqlite-shm"))),
+            hint(Path.of("books/entity.sqlite")),
+            List.of(
+                hint(Path.of("books/entity.sqlite-wal")),
+                hint(Path.of("books/entity.sqlite-shm")))),
         "clean closed-copy state",
         CliRejectionJsonModels.BlockingArtifactsDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-            Path.of("backup/entity.sqlite"), List.of(Path.of("backup/entity.sqlite-wal"))),
+            hint(Path.of("backup/entity.sqlite")),
+            List.of(hint(Path.of("backup/entity.sqlite-wal")))),
         "Choose one encrypted backup copy",
         CliRejectionJsonModels.BlockingArtifactsDetails.class);
     assertMaintenanceEnvelope(
+        new BookMaintenanceRejection.ArtifactBusy(
+            dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.BACKUP_SOURCE,
+            hint(Path.of("backup/entity.sqlite"))),
+        "wait for the active maintenance workflow",
+        CliRejectionJsonModels.ArtifactBusyDetails.class);
+    assertMaintenanceEnvelope(
         new BookMaintenanceRejection.BackupDestinationAlreadyExists(
-            Path.of("backup/entity.sqlite")),
+            hint(Path.of("backup/entity.sqlite"))),
         "Choose a new --backup-file path",
         CliRejectionJsonModels.BackupFileDetails.class);
     assertMaintenanceEnvelope(
-        new BookMaintenanceRejection.BackupKeyFileAlreadyExists(Path.of("backup/entity.key")),
+        new BookMaintenanceRejection.BackupKeyFileAlreadyExists(hint(Path.of("backup/entity.key"))),
         "Choose a new --backup-book-key-file path",
         CliRejectionJsonModels.BackupBookKeyFileDetails.class);
     assertMaintenanceEnvelope(
-        new BookMaintenanceRejection.NoRollbackArtifactsFound(Path.of("books/entity.sqlite")),
-        "without mutation flags",
+        new BookMaintenanceRejection.NoRollbackArtifactsFound(hint(Path.of("books/entity.sqlite"))),
+        "inspect-rekey-rollback",
         CliRejectionJsonModels.BookFileDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-            Path.of("books/entity.sqlite"),
+            hint(Path.of("books/entity.sqlite")),
             List.of(
-                Path.of("books/entity.rekey-rollback-a.sqlite"),
-                Path.of("books/entity.rekey-rollback-b.sqlite"))),
+                hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
+                hint(Path.of("books/entity.rekey-rollback-b.sqlite")))),
         "with one explicit --rollback-file path",
         CliRejectionJsonModels.RollbackArtifactSelectionDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.RollbackArtifactNotFound(
-            Path.of("books/entity.rekey-rollback.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         "Choose an existing rollback artifact path",
         CliRejectionJsonModels.RollbackArtifactDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.RollbackArtifactNotForBook(
-            Path.of("books/entity.sqlite"), Path.of("other/entity.rekey-rollback.sqlite")),
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("other/entity.rekey-rollback.sqlite"))),
         "matches FinGrind's canonical rollback naming",
         CliRejectionJsonModels.RollbackArtifactMismatchDetails.class);
+    assertMaintenanceEnvelope(
+        new BookMaintenanceRejection.ArtifactVerificationFailed(
+            dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.RESTORED_TARGET,
+            hint(Path.of("books/entity.sqlite")),
+            dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
+                .PROTECTED_BOOK_VERIFICATION_FAILED),
+        "matching passphrase source",
+        CliRejectionJsonModels.ArtifactVerificationFailureDetails.class);
   }
 
   @Test
@@ -576,6 +608,12 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         "/tmp/book.sqlite-wal",
         "/tmp/book.sqlite-shm");
     assertRenderedMaintenanceDetails(
+        new CliRejectionJsonModels.ArtifactBusyDetails("backup-source", "<redacted>/backup.sqlite"),
+        "Artifact role",
+        "backup-source",
+        "Artifact path",
+        "<redacted>/backup.sqlite");
+    assertRenderedMaintenanceDetails(
         new CliRejectionJsonModels.BackupFileDetails("/tmp/backup.sqlite"),
         "Backup file",
         "/tmp/backup.sqlite");
@@ -583,6 +621,15 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         new CliRejectionJsonModels.BackupBookKeyFileDetails("/tmp/backup.key"),
         "Backup key file",
         "/tmp/backup.key");
+    assertRenderedMaintenanceDetails(
+        new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
+            "restored-target", "<redacted>/book.sqlite", "protected-book-verification-failed"),
+        "Artifact role",
+        "restored-target",
+        "Artifact path",
+        "<redacted>/book.sqlite",
+        "Verification failure",
+        "protected-book-verification-failed");
     assertRenderedMaintenanceDetails(
         new CliRejectionJsonModels.RollbackArtifactDetails("/tmp/book.rekey-rollback.sqlite"),
         "Rollback artifact",
@@ -611,9 +658,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
 
     writer.writeBackupBookResult(
         new BackupBookResult.BackedUp(
-            Path.of("books/entity.sqlite"),
-            Path.of("backup/entity.sqlite"),
-            Path.of("backup/entity.key")),
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("backup/entity.sqlite")),
+            hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
     assertTrue(
         readJson(output)
@@ -621,14 +668,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .path("backupFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("backup/entity.sqlite"));
+            .endsWith("<redacted>/entity.sqlite"));
     output.reset();
 
     writer.writeRestoreBookResult(
         new RestoreBookResult.Restored(
-            Path.of("books/entity.sqlite"),
-            Path.of("backup/entity.sqlite"),
-            Path.of("backup/entity.key")),
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("backup/entity.sqlite")),
+            hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
     assertTrue(
         readJson(output)
@@ -636,33 +683,43 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .path("backupBookKeyFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("backup/entity.key"));
+            .endsWith("<redacted>/entity.key"));
     output.reset();
 
-    writer.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Inspected(
-            Path.of("books/entity.sqlite"), List.of(Path.of("books/entity.rekey-rollback.sqlite"))),
+    writer.writeInspectRekeyRollbackResult(
+        new RekeyRollbackResult.Inspected(
+            hint(Path.of("books/entity.sqlite")),
+            List.of(hint(Path.of("books/entity.rekey-rollback.sqlite")))),
         OutputMode.JSON);
     assertEquals(1, readJson(output).path("payload").path("rollbackArtifacts").size());
     output.reset();
 
-    writer.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Deleted(
-            Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")),
+    writer.writeDeleteRekeyRollbackResult(
+        new RekeyRollbackResult.Deleted(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.HUMAN);
     assertTrue(output.toString(StandardCharsets.UTF_8).contains("Rollback Artifact Deleted"));
     output.reset();
 
-    writer.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Deleted(
-            Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")),
+    writer.writeDeleteRekeyRollbackResult(
+        new RekeyRollbackResult.Deleted(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.JSON);
-    assertEquals("delete", readJson(output).path("payload").path("action").asText());
+    assertTrue(
+        readJson(output)
+            .path("payload")
+            .path("rollbackArtifact")
+            .asText()
+            .replace('\\', '/')
+            .endsWith("<redacted>/entity.rekey-rollback.sqlite"));
     output.reset();
 
-    writer.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Restored(
-            Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")),
+    writer.writeRestoreRekeyRollbackResult(
+        new RekeyRollbackResult.Restored(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.HUMAN);
     assertTrue(output.toString(StandardCharsets.UTF_8).contains("Book Restored From Rollback"));
     output.reset();
@@ -670,7 +727,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     writer.writeRestoreBookResult(
         new RestoreBookResult.Rejected(
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                Path.of("backup/entity.sqlite"), List.of(Path.of("backup/entity.sqlite-wal")))),
+                hint(Path.of("backup/entity.sqlite")),
+                List.of(hint(Path.of("backup/entity.sqlite-wal"))))),
         OutputMode.JSON);
     assertEquals("backup-source-has-blocking-artifacts", readJson(output).path("code").asText());
     output.reset();
@@ -681,9 +739,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             () ->
                 writer.writeBackupBookResult(
                     new BackupBookResult.BackedUp(
-                        Path.of("books/entity.sqlite"),
-                        Path.of("backup/entity.sqlite"),
-                        Path.of("backup/entity.key")),
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("backup/entity.sqlite")),
+                        hint(Path.of("backup/entity.key"))),
                     OutputMode.CSV));
     assertEquals(
         CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK), backupCsv.getMessage());
@@ -694,9 +752,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             () ->
                 writer.writeRestoreBookResult(
                     new RestoreBookResult.Restored(
-                        Path.of("books/entity.sqlite"),
-                        Path.of("backup/entity.sqlite"),
-                        Path.of("backup/entity.key")),
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("backup/entity.sqlite")),
+                        hint(Path.of("backup/entity.key"))),
                     OutputMode.CSV));
     assertEquals(
         CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_BOOK), restoreCsv.getMessage());
@@ -705,59 +763,62 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                writer.writeRecoverRekeyResult(
-                    new RecoverRekeyResult.Restored(
-                        Path.of("books/entity.sqlite"),
-                        Path.of("books/entity.rekey-rollback.sqlite")),
+                writer.writeRestoreRekeyRollbackResult(
+                    new RekeyRollbackResult.Restored(
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("books/entity.rekey-rollback.sqlite"))),
                     OutputMode.CSV));
     assertEquals(
-        CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY), recoverCsv.getMessage());
+        CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_REKEY_ROLLBACK),
+        recoverCsv.getMessage());
 
     IllegalArgumentException recoverInspectCsv =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                writer.writeRecoverRekeyResult(
-                    new RecoverRekeyResult.Inspected(
-                        Path.of("books/entity.sqlite"),
-                        List.of(Path.of("books/entity.rekey-rollback.sqlite"))),
+                writer.writeInspectRekeyRollbackResult(
+                    new RekeyRollbackResult.Inspected(
+                        hint(Path.of("books/entity.sqlite")),
+                        List.of(hint(Path.of("books/entity.rekey-rollback.sqlite")))),
                     OutputMode.CSV));
     assertEquals(
-        CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY),
+        CliOperationText.unsupportedCsvOutput(OperationId.INSPECT_REKEY_ROLLBACK),
         recoverInspectCsv.getMessage());
 
     IllegalArgumentException recoverDeleteCsv =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                writer.writeRecoverRekeyResult(
-                    new RecoverRekeyResult.Deleted(
-                        Path.of("books/entity.sqlite"),
-                        Path.of("books/entity.rekey-rollback.sqlite")),
+                writer.writeDeleteRekeyRollbackResult(
+                    new RekeyRollbackResult.Deleted(
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("books/entity.rekey-rollback.sqlite"))),
                     OutputMode.CSV));
     assertEquals(
-        CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY),
+        CliOperationText.unsupportedCsvOutput(OperationId.DELETE_REKEY_ROLLBACK),
         recoverDeleteCsv.getMessage());
   }
 
   @Test
   void mutationOutputRenderer_rendersRollbackRecoveryVariants() {
     String inspectedHuman =
-        CliMutationOutputRenderer.renderRecoverRekeyInspectionHuman(
-            new RecoverRekeyResult.Inspected(Path.of("books/entity.sqlite"), List.of()));
+        CliMutationOutputRenderer.renderInspectRekeyRollbackHuman(
+            new RekeyRollbackResult.Inspected(hint(Path.of("books/entity.sqlite")), List.of()));
     assertTrue(inspectedHuman.contains("Rollback artifacts"));
     assertTrue(inspectedHuman.contains("(none)"));
 
     String restoredHuman =
-        CliMutationOutputRenderer.renderRecoverRekeyRestoredHuman(
-            new RecoverRekeyResult.Restored(
-                Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")));
+        CliMutationOutputRenderer.renderRestoreRekeyRollbackHuman(
+            new RekeyRollbackResult.Restored(
+                hint(Path.of("books/entity.sqlite")),
+                hint(Path.of("books/entity.rekey-rollback.sqlite"))));
     assertTrue(restoredHuman.contains("Book Restored From Rollback"));
   }
 
   @Test
   void sqliteCliBookWorkflow_routesMaintenanceMethodsThroughFileServices() throws Exception {
     Path tempDirectory = Files.createTempDirectory("fingrind-cli-maintenance-workflow");
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
     Path bookFile = Files.createFile(tempDirectory.resolve("book.sqlite"));
     Files.createFile(tempDirectory.resolve("book.sqlite-wal"));
     Path backupFile = tempDirectory.resolve("backup.sqlite");
@@ -788,16 +849,26 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .requireAccepted();
     assertInstanceOf(RestoreBookResult.Rejected.class, restoreResult);
 
-    RecoverRekeyResult inspectResult =
+    RekeyRollbackResult inspectResult =
+        workflow.inspectRekeyRollback(tempDirectory.resolve("recovery.sqlite")).requireAccepted();
+    RekeyRollbackResult.Inspected inspected =
+        assertInstanceOf(RekeyRollbackResult.Inspected.class, inspectResult);
+    assertEquals(hint(tempDirectory.resolve("recovery.sqlite")), inspected.bookFilePath());
+
+    RekeyRollbackResult deleteResult =
         workflow
-            .recoverRekey(
-                tempDirectory.resolve("recovery.sqlite"), RekeyRecoveryAction.INSPECT, null)
+            .deleteRekeyRollback(tempDirectory.resolve("recovery.sqlite"), null)
             .requireAccepted();
-    RecoverRekeyResult.Inspected inspected =
-        assertInstanceOf(RecoverRekeyResult.Inspected.class, inspectResult);
-    assertEquals(
-        tempDirectory.resolve("recovery.sqlite").toAbsolutePath().normalize(),
-        inspected.bookFilePath());
+    assertInstanceOf(RekeyRollbackResult.Rejected.class, deleteResult);
+
+    RekeyRollbackResult restoreRollbackResult =
+        workflow
+            .restoreRekeyRollback(
+                tempDirectory.resolve("recovery.sqlite"),
+                null,
+                new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")))
+            .requireAccepted();
+    assertInstanceOf(RekeyRollbackResult.Rejected.class, restoreRollbackResult);
   }
 
   @Test

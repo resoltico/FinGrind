@@ -4,9 +4,13 @@ import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** Process-scoped bootstrap and publication of the SQLite native API bundle. */
 final class SqliteNativeBootstrap {
@@ -15,6 +19,8 @@ final class SqliteNativeBootstrap {
   private static final java.lang.foreign.FunctionDescriptor STRLEN_DESCRIPTOR =
       java.lang.foreign.FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS);
   private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
+  private static final ConcurrentMap<Path, AtomicInteger> ACTIVE_CONNECTIONS_BY_BOOK_PATH =
+      new ConcurrentHashMap<>();
 
   private SqliteNativeBootstrap() {}
 
@@ -102,20 +108,67 @@ final class SqliteNativeBootstrap {
         });
   }
 
-  static void recordOpenedConnection() {
+  static void recordOpeningConnection(Path normalizedBookPath) {
+    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
     ACTIVE_CONNECTIONS.incrementAndGet();
+    AtomicInteger activeBookConnections =
+        ACTIVE_CONNECTIONS_BY_BOOK_PATH.computeIfAbsent(
+            normalizedBookPath, ignored -> new AtomicInteger());
+    int openedConnections = activeBookConnections.incrementAndGet();
+    if (openedConnections == 1) {
+      try {
+        SqliteBookActivityMarkers.createCurrentProcessMarker(normalizedBookPath);
+      } catch (RuntimeException exception) {
+        rollbackOpeningConnection(normalizedBookPath, activeBookConnections);
+        throw exception;
+      }
+    }
   }
 
-  static void recordClosedConnection() {
+  static void recordConnectionClosed(@Nullable Path normalizedBookPath) {
     int remainingConnections = ACTIVE_CONNECTIONS.decrementAndGet();
     if (remainingConnections < 0) {
       ACTIVE_CONNECTIONS.incrementAndGet();
       throw new IllegalStateException("SQLite active connection count underflow.");
     }
+    if (normalizedBookPath == null) {
+      return;
+    }
+    AtomicInteger activeBookConnections = ACTIVE_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
+    if (activeBookConnections == null) {
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      throw new IllegalStateException(
+          "SQLite active connection registry missing the normalized book path entry for "
+              + normalizedBookPath
+              + ".");
+    }
+    int remainingBookConnections = activeBookConnections.decrementAndGet();
+    if (remainingBookConnections < 0) {
+      activeBookConnections.incrementAndGet();
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      throw new IllegalStateException(
+          "SQLite active connection count underflow for normalized book path "
+              + normalizedBookPath
+              + ".");
+    }
+    if (remainingBookConnections == 0) {
+      ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
+      SqliteBookActivityMarkers.deleteCurrentProcessMarker(normalizedBookPath);
+    }
   }
 
   static int activeConnectionCount() {
     return ACTIVE_CONNECTIONS.get();
+  }
+
+  static int activeConnectionCount(Path normalizedBookPath) {
+    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+    AtomicInteger activeBookConnections = ACTIVE_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
+    return activeBookConnections == null ? 0 : activeBookConnections.get();
+  }
+
+  static boolean hasExternalActiveConnections(Path normalizedBookPath) {
+    return SqliteBookActivityMarkers.hasExternalLiveMarker(normalizedBookPath);
   }
 
   static void shutdownIfQuiescent(MethodHandle sqlite3Shutdown, int activeConnections) {
@@ -137,6 +190,15 @@ final class SqliteNativeBootstrap {
     } catch (RuntimeException exception) {
       reporter.report("shutting down the process-scoped SQLite runtime", exception);
     }
+  }
+
+  private static void rollbackOpeningConnection(
+      Path normalizedBookPath, AtomicInteger activeBookConnections) {
+    int remainingBookConnections = activeBookConnections.decrementAndGet();
+    if (remainingBookConnections == 0) {
+      ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
+    }
+    ACTIVE_CONNECTIONS.decrementAndGet();
   }
 
   /** Lazily publishes the process-scoped SQLite native API bundle on first use. */

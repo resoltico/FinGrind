@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,21 +16,48 @@ import org.junit.jupiter.api.Test;
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
   @Test
-  void constructor_rejectsNonKeyFileAccessSelection() {
-    ContractFailureException exception =
-        assertThrows(
-            ContractFailureException.class,
-            () ->
-                new SqlitePostingFactStore(
-                    new BookAccess(
-                        tempDirectory.resolve("stdin-access.sqlite"),
-                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
-    assertEquals(
-        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
-        exception.failure().code());
-    assertEquals(
-        "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-stdin.",
-        exception.failure().message());
+  void requireKeyFile_rejectsNonKeyFilePassphraseSource() {
+    var decision =
+        SqliteBookAccessRules.requireKeyFile(BookAccess.PassphraseSource.StandardInput.INSTANCE);
+    switch (decision) {
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Accepted<Path>(Path ignored) ->
+          throw new AssertionError("Expected stdin selection to be rejected.");
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Rejected<Path>(var failure) -> {
+        assertEquals(
+            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(), failure.code());
+        assertEquals(
+            "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-stdin.",
+            failure.message());
+      }
+    }
+  }
+
+  @Test
+  void requireKeyFile_acceptsKeyFilesAndRejectsInteractivePrompt() {
+    Path keyFilePath = tempDirectory.resolve("interactive.key");
+    var accepted =
+        SqliteBookAccessRules.requireKeyFile(new BookAccess.PassphraseSource.KeyFile(keyFilePath));
+    switch (accepted) {
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Accepted<Path>(Path path) ->
+          assertEquals(keyFilePath, path);
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Rejected<Path>(var failure) ->
+          throw new AssertionError("Expected key-file selection to be accepted: " + failure.code());
+    }
+
+    var rejected =
+        SqliteBookAccessRules.requireKeyFile(
+            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+    switch (rejected) {
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Accepted<Path>(Path ignored) ->
+          throw new AssertionError("Expected interactive prompt selection to be rejected.");
+      case dev.erst.fingrind.contract.runtime.ContractDecision.Rejected<Path>(var failure) -> {
+        assertEquals(
+            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(), failure.code());
+        assertEquals(
+            "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-prompt.",
+            failure.message());
+      }
+    }
   }
 
   @Test
@@ -44,21 +70,20 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                new SqlitePostingFactStore(
+                openStore(
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
     assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
   @Test
-  void passphraseFor_loadsKeyFileBackedAccessSelection() throws Exception {
+  void loadPassphrase_loadsKeyFileBackedAccessSelection() throws Exception {
     Path keyFile = tempDirectory.resolve("book-passphrase.key");
     writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
     try (SqliteBookPassphrase passphrase =
-        SqlitePostingFactStore.passphraseDecisionFor(
-                new BookAccess(
-                    tempDirectory.resolve("book-passphrase.sqlite"),
-                    new BookAccess.PassphraseSource.KeyFile(keyFile)))
-            .requireAccepted()) {
+        loadPassphrase(
+            new BookAccess(
+                tempDirectory.resolve("book-passphrase.sqlite"),
+                new BookAccess.PassphraseSource.KeyFile(keyFile)))) {
       assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
       assertEquals(TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
     }
@@ -68,8 +93,7 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
   void sessionReopensCleanlyAfterDatabaseStateReset() throws Exception {
     Path bookPath = tempDirectory.resolve("session-reopen.sqlite");
     initializeBookOnDisk(bookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       assertTrue(postingFactStore.inspectBook().initialized());
       try (SqliteNativeDatabase firstDatabase = requireStoreDatabase(postingFactStore)) {
         clearPublishedDatabaseState(postingFactStore);

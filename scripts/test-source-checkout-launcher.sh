@@ -89,8 +89,8 @@ PY
 
 help_stdout="${tmp_dir}/help.out"
 help_stderr="${tmp_dir}/help.err"
-capabilities_stdout="${tmp_dir}/capabilities.out"
-capabilities_stderr="${tmp_dir}/capabilities.err"
+environment_stdout="${tmp_dir}/environment.out"
+environment_stderr="${tmp_dir}/environment.err"
 key_stdout="${tmp_dir}/key.out"
 key_stderr="${tmp_dir}/key.err"
 open_stdout="${tmp_dir}/open.out"
@@ -99,14 +99,14 @@ raw_help_stdout="${tmp_dir}/raw-help.out"
 raw_help_stderr="${tmp_dir}/raw-help.err"
 raw_command_help_stdout="${tmp_dir}/raw-command-help.out"
 raw_command_help_stderr="${tmp_dir}/raw-command-help.err"
-raw_capabilities_stdout="${tmp_dir}/raw-capabilities.out"
-raw_capabilities_stderr="${tmp_dir}/raw-capabilities.err"
+raw_environment_stdout="${tmp_dir}/raw-environment.out"
+raw_environment_stderr="${tmp_dir}/raw-environment.err"
 raw_open_stdout="${tmp_dir}/raw-open.out"
 raw_open_stderr="${tmp_dir}/raw-open.err"
 raw_jar_help_stdout="${tmp_dir}/raw-jar-help.out"
 raw_jar_help_stderr="${tmp_dir}/raw-jar-help.err"
-raw_jar_capabilities_stdout="${tmp_dir}/raw-jar-capabilities.out"
-raw_jar_capabilities_stderr="${tmp_dir}/raw-jar-capabilities.err"
+raw_jar_environment_stdout="${tmp_dir}/raw-jar-environment.out"
+raw_jar_environment_stderr="${tmp_dir}/raw-jar-environment.err"
 raw_jar_open_stdout="${tmp_dir}/raw-jar-open.out"
 raw_jar_open_stderr="${tmp_dir}/raw-jar-open.err"
 
@@ -132,22 +132,20 @@ if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been call
     die "source-checkout launcher help leaked the Java native-access warning"
 fi
 
-"${launcher_wrapper}" capabilities --output json >"${capabilities_stdout}" 2>"${capabilities_stderr}" ||
-    die "source-checkout launcher capabilities failed"
+"${launcher_wrapper}" environment --output json >"${environment_stdout}" 2>"${environment_stderr}" ||
+    die "source-checkout launcher environment failed"
 
-[[ ! -s "${capabilities_stderr}" ]] || die "source-checkout launcher capabilities wrote diagnostics"
-python3 - "${capabilities_stdout}" "${expected_runtime_distribution}" <<'PY'
+[[ ! -s "${environment_stderr}" ]] || die "source-checkout launcher environment wrote diagnostics"
+python3 - "${environment_stdout}" "${expected_runtime_distribution}" <<'PY'
 import json
 import pathlib
 import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_runtime_distribution = sys.argv[2]
-sqlite = document["payload"]["environment"]["sqlite"]
+sqlite = document["payload"]["sqlite"]
 runtime = sqlite["runtime"]
-actual_runtime_distribution = (
-    document["payload"]["environment"]["distribution"]["runtimeDistribution"]
-)
+actual_runtime_distribution = document["payload"]["distribution"]["runtimeDistribution"]
 if actual_runtime_distribution != expected_runtime_distribution:
     raise SystemExit(
         "unexpected runtime distribution: "
@@ -254,19 +252,19 @@ if grep -Fq 'fingrind open-book' "${raw_command_help_stdout}"; then
     die "developer direct-Java command help leaked the generic launcher token"
 fi
 
-"${raw_java_wrapper}" capabilities --output json >"${raw_capabilities_stdout}" 2>"${raw_capabilities_stderr}" ||
-    die "developer direct-Java capabilities failed"
+"${raw_java_wrapper}" environment --output json >"${raw_environment_stdout}" 2>"${raw_environment_stderr}" ||
+    die "developer direct-Java environment failed"
 
-[[ ! -s "${raw_capabilities_stderr}" ]] || die "developer direct-Java capabilities wrote diagnostics"
-python3 - "${raw_capabilities_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
+[[ ! -s "${raw_environment_stderr}" ]] || die "developer direct-Java environment wrote diagnostics"
+python3 - "${raw_environment_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
 import json
 import pathlib
 import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_distribution = sys.argv[2]
-distribution = document["payload"]["environment"]["distribution"]["runtimeDistribution"]
-provenance = document["payload"]["environment"]["sqlite"]["runtime"]["runtimeProvenance"]
+distribution = document["payload"]["distribution"]["runtimeDistribution"]
+provenance = document["payload"]["sqlite"]["runtime"]["runtimeProvenance"]
 if distribution != expected_distribution:
     raise SystemExit(
         "unexpected direct-Java runtime distribution: "
@@ -320,25 +318,25 @@ java -jar "${raw_jar}" help --output human >"${raw_jar_help_stdout}" 2>"${raw_ja
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
-grep -Fq 'java --enable-native-access=ALL-UNNAMED -jar fingrind.jar help' "${raw_jar_help_stdout}" ||
-    die "raw java -jar help did not publish the explicit native-access jar launcher"
+grep -Fq 'java --enable-native-access=fingrind --module-path fingrind.jar --module fingrind/dev.erst.fingrind.cli.App help' "${raw_jar_help_stdout}" ||
+    die "raw java -jar help did not publish the explicit modular raw-jar launcher"
 if grep -Fq './scripts/direct-java-cli.sh help' "${raw_jar_help_stdout}"; then
     die "raw java -jar help leaked the source-checkout direct-Java wrapper"
 fi
 
-java -jar "${raw_jar}" capabilities --output json >"${raw_jar_capabilities_stdout}" \
-    2>"${raw_jar_capabilities_stderr}" || die "raw java -jar capabilities failed"
+java -jar "${raw_jar}" environment --output json >"${raw_jar_environment_stdout}" \
+    2>"${raw_jar_environment_stderr}" || die "raw java -jar environment failed"
 
-[[ ! -s "${raw_jar_capabilities_stderr}" ]] || die "raw java -jar capabilities wrote diagnostics"
-python3 - "${raw_jar_capabilities_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
+[[ ! -s "${raw_jar_environment_stderr}" ]] || die "raw java -jar environment wrote diagnostics"
+python3 - "${raw_jar_environment_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
 import json
 import pathlib
 import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 payload = document["payload"]
-distribution = payload["environment"]["distribution"]["runtimeDistribution"]
-runtime = payload["environment"]["sqlite"]["runtime"]
+distribution = payload["distribution"]["runtimeDistribution"]
+runtime = payload["sqlite"]["runtime"]
 if distribution != sys.argv[2]:
     raise SystemExit(
         "unexpected raw java -jar runtime distribution: "
@@ -347,10 +345,10 @@ if distribution != sys.argv[2]:
         + sys.argv[2]
     )
 if runtime["status"] != "unavailable":
-    raise SystemExit("raw java -jar capabilities did not report an unavailable SQLite runtime")
+    raise SystemExit("raw java -jar environment did not report an unavailable SQLite runtime")
 issue = runtime["runtimeIssue"]
 if "--enable-native-access=ALL-UNNAMED" not in issue:
-    raise SystemExit("raw java -jar capabilities did not surface the native-access repair flag")
+    raise SystemExit("raw java -jar environment did not surface the native-access repair flag")
 PY
 
 set +e

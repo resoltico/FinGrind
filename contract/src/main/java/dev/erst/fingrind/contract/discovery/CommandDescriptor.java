@@ -76,6 +76,17 @@ public record CommandDescriptor(
     };
   }
 
+  /** Returns the selectable or fixed output modes without default-policy prose. */
+  public String outputModeSummary() {
+    if (!outputModes.isEmpty()) {
+      return String.join(" | ", outputModes.stream().map(OutputMode::wireValue).toList());
+    }
+    return switch (executionMode) {
+      case JSON_ENVELOPE -> "json envelope";
+      case RAW_JSON -> "raw json";
+    };
+  }
+
   private static @Nullable SelectableOutputDefaultsDescriptor inferredSelectableOutputDefaults(
       OperationId name, List<OutputMode> outputModes) {
     Objects.requireNonNull(name, "name");

@@ -28,8 +28,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void storeOperations_rejectDirectReadsForMissingAndRawUninitializedSqliteBooks() {
     Path missingBookPath = tempDirectory.resolve("missing-ops.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
@@ -58,8 +57,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
     Path rawSqlitePath = tempDirectory.resolve("raw-uninitialized.sqlite");
     createEmptySqliteFile(rawSqlitePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(rawSqlitePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(rawSqlitePath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, SqliteBookContract.FORMAT_VERSION),
@@ -92,22 +90,19 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   void storeOperations_wrapFailuresForInvalidBookFiles() throws IOException {
     Path invalidBookPath = tempDirectory.resolve("not-a-sqlite-file.sqlite");
     Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findAccount(new AccountCode("1000")));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -121,31 +116,27 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
                       Instant.parse("2026-04-07T10:15:30Z")));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class, () -> postingFactStore.listAccounts(firstAccountPage()));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findPosting(new PostingId("posting-1")));
       assertProtectedBookVerificationFailure(exception);
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -157,8 +148,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void openBook_rejectsAlreadyInitializedBook() {
     Path databasePath = tempDirectory.resolve("already-initialized.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
@@ -173,8 +163,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   void openBook_initializesBlankSqliteFile() {
     Path databasePath = tempDirectory.resolve("blank-before-open.sqlite");
     createEmptySqliteFile(databasePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
@@ -186,8 +175,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   void schemaOnlyBook_isRejectedAsIncompleteFinGrindBook() {
     Path databasePath = tempDirectory.resolve("schema-only.sqlite");
     createSchemaOnlyBook(databasePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.INCOMPLETE_FINGRIND,
@@ -216,16 +204,14 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void inspectBook_reportsLifecycleAndCompatibilityStates() throws Exception {
     Path missingBookPath = tempDirectory.resolve("inspect-missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
     Path blankBookPath = tempDirectory.resolve("inspect-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, SqliteBookContract.FORMAT_VERSION),
@@ -233,8 +219,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
     Path initializedBookPath = tempDirectory.resolve("inspect-initialized.sqlite");
     initializeBookOnDisk(initializedBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(initializedBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(initializedBookPath))) {
       assertEquals(
           initializedLifecycleInspection(
               SqliteBookContract.APPLICATION_ID,
@@ -245,8 +230,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
     Path foreignBookPath = tempDirectory.resolve("inspect-foreign.sqlite");
     createPostingFactOnlyBook(foreignBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(foreignBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.FOREIGN_SQLITE,
@@ -261,8 +245,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
         database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(unsupportedBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
@@ -273,8 +256,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
     Path incompleteBookPath = tempDirectory.resolve("inspect-incomplete.sqlite");
     createSchemaOnlyBook(incompleteBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(incompleteBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(incompleteBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.INCOMPLETE_FINGRIND,
@@ -289,8 +271,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   void inspectBook_reloadsStateAfterExplicitCacheClear() throws Exception {
     Path initializedBookPath = tempDirectory.resolve("inspect-cache-clear.sqlite");
     initializeBookOnDisk(initializedBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(initializedBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(initializedBookPath))) {
       assertEquals(
           BookLifecycleInspection.Status.INITIALIZED, postingFactStore.inspectBook().status());
       setStoreCachedBookState(
@@ -306,8 +287,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void openBook_wrapsInitializationFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("schema-native-failure.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       IllegalStateException exception =
           assertThrows(

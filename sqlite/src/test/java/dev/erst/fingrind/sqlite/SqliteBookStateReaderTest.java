@@ -21,7 +21,7 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
               """
               update book_meta
               set value = 'bogus'
-              where key = 'schema_fingerprint_sha256'
+              where meta_key = 'schema_fingerprint_sha256'
               """);
           assertEquals(
               SqliteBookState.INCOMPLETE_FINGRIND,

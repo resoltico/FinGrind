@@ -46,6 +46,17 @@ final class ProtocolDiscoveryOperations {
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of()),
         ProtocolOperationDefinitions.operation(
+            OperationId.ENVIRONMENT,
+            OperationCategory.DISCOVERY,
+            "Environment",
+            List.of(),
+            List.of(
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Print live runtime, distribution, and SQLite provenance facts for this launcher instance.",
+            List.of()),
+        ProtocolOperationDefinitions.operation(
             OperationId.PRINT_REQUEST_TEMPLATE,
             OperationCategory.DISCOVERY,
             "Print Request Template",

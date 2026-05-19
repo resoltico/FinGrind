@@ -12,7 +12,7 @@ final class CliPostingOutputRenderer {
   private CliPostingOutputRenderer() {}
 
   static String renderPostingHuman(BookIdentity bookIdentity, PostingFact postingFact) {
-    List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.rows(bookIdentity));
+    List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
     header.add(List.of("Posting id", postingFact.postingId().value()));
     header.add(
         List.of(
@@ -79,7 +79,7 @@ final class CliPostingOutputRenderer {
 
   static String renderPostingRegisterHuman(PostingPage page) {
     List<List<String>> headerRows =
-        new ArrayList<>(CliBookIdentityDisplay.rows(page.bookIdentity()));
+        new ArrayList<>(CliBookIdentityDisplay.summaryRows(page.bookIdentity()));
     headerRows.add(
         List.of(
             "Account filter",

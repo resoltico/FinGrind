@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -155,7 +155,7 @@ Current ledger-plan rules:
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `open-book` uses nested `openBook`, which requires `entityName`, `entityForm`, `ownerModel`,
-  `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`,
+  `reportingObligationStatus`, `businessActivityTags`,
   `functionalCurrency`, `fiscalYearStart`, and `accountingBasis`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
@@ -212,7 +212,7 @@ deterministic repair data.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `recover-rekey`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
 | `ok` | successful `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
@@ -232,7 +232,7 @@ Dynamic fields:
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.entityForm`, `.ownerModel`,
-  `.reportingObligationStatus`, `.taxRegistrationStatus`, `.businessActivityTags`,
+  `.reportingObligationStatus`, ``.businessActivityTags`,
   `.functionalCurrency`, `.fiscalYearStart`, and
   `.accountingBasis` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
@@ -250,7 +250,7 @@ Dynamic fields:
   facts nest their child observations under `facts`
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries `entityForm`,
-  `ownerModel`, `reportingObligationStatus`, `taxRegistrationStatus`, `businessActivityTags`,
+  `ownerModel`, `reportingObligationStatus`, `businessActivityTags`,
   and `accountingBasis`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
@@ -268,8 +268,10 @@ Discovery output also has two intentionally different JSON scopes:
   hints, and exit codes
 - `help <command> --output json` returns one narrow command-local payload with usage, options,
   examples, operator notes, and request-file guidance when that command accepts `--request-file`
-- `capabilities --output json` remains the full deep machine contract for doctrine, runtime, and
-  cross-command facts
+- `capabilities --output json` is the stable deep machine contract for doctrine, command grammar,
+  request shapes, and cross-command facts
+- `environment --output json` is the live runtime contract for distribution, runtime provenance,
+  loaded SQLite facts, and launcher-local storage paths
 
 ## Capabilities Discovery Shape
 
@@ -313,8 +315,8 @@ rendered:
   yet claim multi-entity organizational accounting
 - `extensionSurface.implementedSeams` lists the live executable policy seams currently owned in
   code
-- `extensionSurface.futureContexts` lists adjacent future domains such as tax, FX, subledgers,
-  and consolidation instead of misrepresenting them as already-pluggable seams
+- `extensionSurface.policySeams` lists only live executable seams; adjacent domains stay in ADRs
+  and domain docs until they own commands, state, storage, and tests
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
@@ -334,7 +336,6 @@ Shared initialized-book identity payload:
 - `entityForm`
 - `ownerModel`
 - `reportingObligationStatus`
-- `taxRegistrationStatus`
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`
@@ -404,9 +405,17 @@ for the current hard-break line.
 That `payload.backupBookKeyFile` is also the key file required to reopen the restored live
 `payload.bookFile`.
 
-`recover-rekey` success returns one of:
-- inspection payload with `payload.bookFile` and `payload.rollbackArtifacts[]`
-- mutation payload with `payload.bookFile`, `payload.action`, and `payload.rollbackArtifact`
+`inspect-rekey-rollback` success returns:
+- `payload.bookFile`
+- `payload.rollbackArtifacts[]`
+
+`restore-rekey-rollback` success returns:
+- `payload.bookFile`
+- `payload.rollbackArtifact`
+
+`delete-rekey-rollback` success returns:
+- `payload.bookFile`
+- `payload.rollbackArtifact`
 
 `list-accounts` success returns:
 - `payload.context.bookIdentity`, using the shared initialized-book identity payload
@@ -562,8 +571,8 @@ explicitly, such as `--output json`.
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
 JSON report payload itself, but successful JSON success envelopes now also publish one
-`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful exports
-also emit a diagnostics info message with the same normalized artifact path. If the report result
+`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful human and
+CSV exports also emit a diagnostics info message with the same normalized artifact path. If the report result
 succeeds but the PDF artifact later fails, stdout still carries the same report payload while
 diagnostics emit a repair warning for the `--pdf-out` path.
 Deterministic failures for commands that accept `--output human` are rendered in the same

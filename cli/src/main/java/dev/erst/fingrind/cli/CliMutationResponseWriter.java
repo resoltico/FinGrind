@@ -6,12 +6,13 @@ import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -191,62 +192,92 @@ final class CliMutationResponseWriter {
     }
   }
 
-  void writeRecoverRekeyResult(RecoverRekeyResult result, OutputMode outputMode) {
+  void writeInspectRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
     switch (result) {
-      case RecoverRekeyResult.Inspected inspected ->
+      case RekeyRollbackResult.Inspected inspected ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          new CliAdministrationJsonModels.RecoverRekeyInspectionPayload(
+                          new CliAdministrationJsonModels.InspectRekeyRollbackPayload(
                               absolutePath(inspected.bookFilePath()),
                               inspected.rollbackArtifactPaths().stream()
                                   .map(CliMutationResponseWriter::absolutePath)
                                   .toList()))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRecoverRekeyInspectionHuman(inspected)),
+                      CliMutationOutputRenderer.renderInspectRekeyRollbackHuman(inspected)),
               () -> {
                 throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
+                    CliOperationText.unsupportedCsvOutput(OperationId.INSPECT_REKEY_ROLLBACK));
               });
-      case RecoverRekeyResult.Restored restored ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
-                          new CliAdministrationJsonModels.RecoverRekeyMutationPayload(
-                              absolutePath(restored.bookFilePath()),
-                              "restore",
-                              absolutePath(restored.rollbackArtifactPath())))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRecoverRekeyRestoredHuman(restored)),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
-              });
-      case RecoverRekeyResult.Deleted deleted ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
-                          new CliAdministrationJsonModels.RecoverRekeyMutationPayload(
-                              absolutePath(deleted.bookFilePath()),
-                              "delete",
-                              absolutePath(deleted.rollbackArtifactPath())))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRecoverRekeyDeletedHuman(deleted)),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.RECOVER_REKEY));
-              });
-      case RecoverRekeyResult.Rejected rejected ->
+      case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
               CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
+      default ->
+          throw new IllegalArgumentException(
+              "Inspect rekey rollback received unexpected result type: "
+                  + result.getClass().getSimpleName());
+    }
+  }
+
+  void writeRestoreRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
+    switch (result) {
+      case RekeyRollbackResult.Restored restored ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.RestoreRekeyRollbackPayload(
+                              absolutePath(restored.bookFilePath()),
+                              absolutePath(restored.rollbackArtifactPath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderRestoreRekeyRollbackHuman(restored)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_REKEY_ROLLBACK));
+              });
+      case RekeyRollbackResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              null);
+      default ->
+          throw new IllegalArgumentException(
+              "Restore rekey rollback received unexpected result type: "
+                  + result.getClass().getSimpleName());
+    }
+  }
+
+  void writeDeleteRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
+    switch (result) {
+      case RekeyRollbackResult.Deleted deleted ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.DeleteRekeyRollbackPayload(
+                              absolutePath(deleted.bookFilePath()),
+                              absolutePath(deleted.rollbackArtifactPath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderDeleteRekeyRollbackHuman(deleted)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.DELETE_REKEY_ROLLBACK));
+              });
+      case RekeyRollbackResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              null);
+      default ->
+          throw new IllegalArgumentException(
+              "Delete rekey rollback received unexpected result type: "
+                  + result.getClass().getSimpleName());
     }
   }
 
@@ -312,7 +343,11 @@ final class CliMutationResponseWriter {
   }
 
   private static String absolutePath(Path path) {
-    return path.toAbsolutePath().normalize().toString();
+    return CliPublicPaths.normalizedValue(path);
+  }
+
+  private static String absolutePath(PublicPathHint pathHint) {
+    return CliPublicPaths.redactedValue(pathHint);
   }
 
   private static String replacementPassphraseSourceKind(

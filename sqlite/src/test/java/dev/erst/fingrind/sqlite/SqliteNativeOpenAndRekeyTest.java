@@ -19,41 +19,33 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.TestAbortedException;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   @Test
-  void open_rejectsNullBookAccess() {
+  void open_rejectsNullBookPath() {
     assertThrows(
         NullPointerException.class,
-        () -> SqliteNativeConnections.openKeyFileAccess(NullTestSupport.nullOf(BookAccess.class)));
+        () ->
+            SqliteNativeConnections.openKeyFileAccess(
+                NullTestSupport.nullOf(Path.class), tempDirectory.resolve("book.key")));
   }
 
   @Test
-  void open_rejectsNonKeyFileAccessSelection() {
-    ContractFailureException exception =
-        assertThrows(
-            ContractFailureException.class,
-            () ->
-                SqliteNativeConnections.openKeyFileAccess(
-                    new BookAccess(
-                        tempDirectory.resolve("stdin-access.sqlite"),
-                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
-    assertEquals(
-        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
-        exception.failure().code());
-    assertEquals(
-        "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-stdin.",
-        exception.failure().message());
+  void open_rejectsNullKeyFilePath() {
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            SqliteNativeConnections.openKeyFileAccess(
+                tempDirectory.resolve("null-key.sqlite"), NullTestSupport.nullOf(Path.class)));
   }
 
   @Test
   void requireKeyFile_rejectsInteractivePromptSelection() {
     ContractDecision<Path> decision =
         SqliteBookAccessRules.requireKeyFile(
-            new BookAccess(
-                tempDirectory.resolve("prompt-access.sqlite"),
-                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
+            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
     switch (decision) {
       case ContractDecision.Accepted<Path>(Path ignored) ->
           throw new AssertionError("Expected prompt selection to be rejected.");
@@ -76,9 +68,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                SqliteNativeConnections.openKeyFileAccess(
-                    new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
+            () -> SqliteNativeConnections.openKeyFileAccess(bookPath, keyPath));
     assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
@@ -89,10 +79,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     ContractFailureException exception =
         assertThrows(
             ContractFailureException.class,
-            () ->
-                SqliteNativeConnections.openKeyFileAccess(
-                    new BookAccess(
-                        bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
+            () -> SqliteNativeConnections.openKeyFileAccess(bookPath, missingKeyPath));
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(), exception.failure().code());
     assertTrue(NullTestSupport.messageOf(exception).contains("does not exist"));
@@ -157,11 +144,28 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void open_throwsForDirectoryTarget() throws Exception {
     Path directoryPath = tempDirectory.resolve("not-a-book");
     java.nio.file.Files.createDirectories(directoryPath);
-    SqliteNativeException exception =
+    IllegalStateException exception =
         assertThrows(
-            SqliteNativeException.class,
-            () -> SqliteNativeConnections.openKeyFileAccess(bookAccess(directoryPath)));
-    assertTrue(exception.resultName().contains("SQLITE_CANTOPEN"));
+            IllegalStateException.class, () -> openNativeDatabase(bookAccess(directoryPath)));
+    assertTrue(NullTestSupport.messageOf(exception).contains("regular non-symlink file"));
+  }
+
+  @Test
+  void open_rejectsBookFileSymlinkTargetsBeforeNativeOpen() throws Exception {
+    Path realBookPath = tempDirectory.resolve("real-book.sqlite");
+    Files.writeString(realBookPath, "placeholder", StandardCharsets.UTF_8);
+    Path symlinkBookPath = tempDirectory.resolve("linked-book.sqlite");
+    createSymbolicLinkOrAbort(symlinkBookPath, realBookPath);
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "symlink native passphrase", TEST_BOOK_KEY.toCharArray())) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeConnections.open(symlinkBookPath, passphrase));
+      assertTrue(NullTestSupport.messageOf(exception).contains("regular non-symlink file"));
+    }
   }
 
   @Test
@@ -173,11 +177,18 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
-            () ->
-                SqliteNativeConnections.openKeyFileAccess(
-                    bookAccess(bookPath, "different-book-key")));
+            () -> openNativeDatabase(bookAccess(bookPath, "different-book-key")));
     assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
     assertFalse(String.valueOf(exception.getMessage()).contains("different-book-key"));
+  }
+
+  private static void createSymbolicLinkOrAbort(Path linkPath, Path targetPath) {
+    try {
+      Files.createSymbolicLink(linkPath, targetPath);
+    } catch (IOException | UnsupportedOperationException exception) {
+      throw new TestAbortedException(
+          "Symbolic-link creation is unavailable on this host.", exception);
+    }
   }
 
   @Test

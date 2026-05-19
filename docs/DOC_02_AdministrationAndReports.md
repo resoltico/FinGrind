@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
@@ -192,19 +192,18 @@ public sealed interface RestoreBookResult
 - Purpose: verify one supplied encrypted backup pair before replacing the target live book path,
   with the restored live book then reopened by the supplied backup key file
 
-## `RecoverRekeyResult` And `RekeyRecoveryAction`
+## `RekeyRollbackResult`
 
-These types own the public stale-rollback recovery surface for interrupted rekeys.
+This type owns the public stale-rollback maintenance surface for interrupted rekeys.
 
 ```java
-public sealed interface RecoverRekeyResult
-public enum RekeyRecoveryAction
+public sealed interface RekeyRollbackResult
 ```
 
 - Variants: `Inspected`, `Restored`, `Deleted`, `Rejected`
-- Actions: `inspect`, `restore`, `delete`
-- Purpose: turn rollback-artifact inspection and cleanup into one deterministic maintenance
-  workflow instead of warning-only log guidance
+- Purpose: model the explicit `inspect-rekey-rollback`, `restore-rekey-rollback`, and
+  `delete-rekey-rollback` command results instead of hiding multiple maintenance workflows behind
+  one action enum
 
 ## `BookInspection`
 
@@ -581,8 +580,8 @@ public sealed interface BookAdministrationRejection
 ```
 
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`,
-  `AccountRoleConflict`, `ClosingEquityAccountMissing`,
-  `ClosingEquityAccountInactive`, `PeriodCloseMustStartAt`
+  `AccountRoleConflict`, `ClosingEquityAccountCandidateMissing`,
+  `ClosingEquityAccountCandidateAmbiguous`, `PeriodCloseMustStartAt`
 
 ## `BookQueryRejection`
 
@@ -594,6 +593,31 @@ public sealed interface BookQueryRejection
 
 - Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
 
+## `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint`
+
+These public maintenance-contract types keep verification-driven maintenance outcomes typed and
+redacted at the published-language edge.
+
+```java
+public enum BookMaintenanceArtifactRole implements WireValue
+public enum BookMaintenanceVerificationFailure implements WireValue
+public sealed interface BookMaintenanceRejection
+public record PublicPathHint(String value)
+```
+
+- `BookMaintenanceArtifactRole`: keeps maintenance failures precise about whether the rejected
+  artifact was the live book, backup source, rollback artifact, or restored target
+- `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed
+  as missing, blank SQLite, foreign SQLite, unsupported format version, incomplete FinGrind book,
+  or protected-book verification failure
+- `PublicPathHint`: redacts filesystem paths to `<redacted>` or `<redacted>/<file-name>` so
+  public maintenance output proves which artifact failed without leaking absolute operator paths
+- Boundary: `BookMaintenanceRejection.ArtifactBusy` and
+  `BookMaintenanceRejection.ArtifactVerificationFailed` use these types so backup, restore, and
+  rekey-recovery refusals preserve artifact role, failure class, and redacted path hints as
+  first-class machine contract
+  instead of collapsing maintenance verification into generic runtime failure text
+
 ## `BookMaintenanceRejection`
 
 `BookMaintenanceRejection` is the closed family of deterministic maintenance-workflow refusals.
@@ -603,7 +627,8 @@ public sealed interface BookMaintenanceRejection
 ```
 
 - Variants: `BookHasBlockingArtifacts`, `BackupSourceHasBlockingArtifacts`,
-  `BackupDestinationAlreadyExists`, `BackupKeyFileAlreadyExists`,
+  `ArtifactBusy`, `BackupDestinationAlreadyExists`, `BackupKeyFileAlreadyExists`,
+  `ArtifactVerificationFailed`,
   `NoRollbackArtifactsFound`, `RollbackArtifactSelectionRequired`,
   `RollbackArtifactNotFound`, and `RollbackArtifactNotForBook`
 - Purpose: preserve closed-copy and rollback-artifact safety as first-class rejection language
