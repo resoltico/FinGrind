@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -17,7 +17,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -34,7 +33,6 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.ENTITY_FORM,
               ProtocolOptions.OWNER_MODEL,
               ProtocolOptions.REPORTING_OBLIGATION_STATUS,
-              ProtocolOptions.TAX_REGISTRATION_STATUS,
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
@@ -44,7 +42,6 @@ final class CliLifecycleMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec CLOSE_PERIOD_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.CLOSING_EQUITY_ACCOUNT,
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               ProtocolOptions.EFFECTIVE_DATE_TO,
               ProtocolOptions.OUTPUT),
@@ -56,6 +53,10 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.BACKUP_BOOK_KEY_FILE,
               ProtocolOptions.OUTPUT),
           List.of());
+  private static final String DELETE_REKEY_ROLLBACK_COMMAND =
+      ProtocolCatalog.operationName(OperationId.DELETE_REKEY_ROLLBACK);
+  private static final String RESTORE_REKEY_ROLLBACK_COMMAND =
+      ProtocolCatalog.operationName(OperationId.RESTORE_REKEY_ROLLBACK);
 
   private CliLifecycleMutationArguments() {}
 
@@ -100,7 +101,6 @@ final class CliLifecycleMutationArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, OPEN_BOOK_ARGUMENTS);
     OpenBookArgumentValues argumentValues =
         parseOpenBookArgumentValues(parsedArguments.commandArguments());
-    TaxRegistrationStatus resolvedTaxRegistrationStatus = argumentValues.resolvedTaxStatus();
     return new OpenBook(
         parsedArguments.bookAccess(),
         new OpenBookCommand(
@@ -110,7 +110,6 @@ final class CliLifecycleMutationArguments {
                     requireOpenBookEntityForm(argumentValues.entityForm),
                     argumentValues.resolvedOwnerModel(),
                     argumentValues.resolvedReportingObligationStatus(),
-                    resolvedTaxRegistrationStatus,
                     argumentValues.businessActivityTags),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
                 requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
@@ -156,12 +155,6 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.REPORTING_OBLIGATION_STATUS),
                   ProtocolOptions.REPORTING_OBLIGATION_STATUS);
-      case ProtocolOptions.TAX_REGISTRATION_STATUS ->
-          argumentValues.taxRegistrationStatus =
-              CliArgumentValueParser.parseTaxRegistrationStatusOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.TAX_REGISTRATION_STATUS),
-                  ProtocolOptions.TAX_REGISTRATION_STATUS);
       case ProtocolOptions.BUSINESS_ACTIVITY_TAG ->
           argumentValues.businessActivityTags.add(
               CliArgumentValueParser.parseBusinessActivityTagOption(
@@ -252,7 +245,6 @@ final class CliLifecycleMutationArguments {
     private @Nullable EntityForm entityForm;
     private @Nullable OwnerModel ownerModel;
     private @Nullable ReportingObligationStatus reportingObligationStatus;
-    private @Nullable TaxRegistrationStatus taxRegistrationStatus;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable AccountingBasis accountingBasis;
@@ -266,12 +258,6 @@ final class CliLifecycleMutationArguments {
       return reportingObligationStatus == null
           ? ReportingObligationStatus.UNSPECIFIED
           : reportingObligationStatus;
-    }
-
-    private TaxRegistrationStatus resolvedTaxStatus() {
-      return taxRegistrationStatus == null
-          ? TaxRegistrationStatus.UNSPECIFIED
-          : taxRegistrationStatus;
     }
   }
 
@@ -515,10 +501,55 @@ final class CliLifecycleMutationArguments {
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
-  static CliCommand parseRecoverRekeyCommand(List<String> arguments) {
+  static CliCommand parseInspectRekeyRollbackCommand(List<String> arguments) {
+    ParsedRekeyRollbackArguments parsedArguments = parseRekeyRollbackArguments(arguments);
+    rejectUnexpectedRollbackPath(parsedArguments.rollbackArtifactPath());
+    rejectUnexpectedPassphraseSource(parsedArguments.passphraseSourceKind());
+    return new InspectRekeyRollback(
+        parsedArguments.bookFilePath(),
+        CliArgumentValueParser.resolvedOutputMode(parsedArguments.outputMode()));
+  }
+
+  static CliCommand parseDeleteRekeyRollbackCommand(List<String> arguments) {
+    ParsedRekeyRollbackArguments parsedArguments = parseRekeyRollbackArguments(arguments);
+    rejectUnexpectedPassphraseSource(parsedArguments.passphraseSourceKind());
+    return new DeleteRekeyRollback(
+        parsedArguments.bookFilePath(),
+        parsedArguments.rollbackArtifactPath(),
+        CliArgumentValueParser.resolvedOutputMode(parsedArguments.outputMode()));
+  }
+
+  static CliCommand parseRestoreRekeyRollbackCommand(List<String> arguments) {
+    ParsedRekeyRollbackArguments parsedArguments = parseRekeyRollbackArguments(arguments);
+    if (parsedArguments.passphraseSourceKind() == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_KEY_FILE,
+          "Restore rekey rollback requires exactly one book passphrase source: "
+              + ProtocolOptions.BOOK_KEY_FILE
+              + " <path>, "
+              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ", or "
+              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
+              + ".");
+    }
+    BookAccess.PassphraseSource expectedPassphraseSource =
+        CliBookPassphraseParser.passphraseSource(
+            parsedArguments.passphraseSourceKind(), parsedArguments.bookKeyFilePath());
+    CliBookPathValidator.validateDistinctPaths(
+        parsedArguments.bookFilePath(), expectedPassphraseSource, null);
+    CliBookPathValidator.validateStandardInputUsage(expectedPassphraseSource, null);
+    return new RestoreRekeyRollback(
+        parsedArguments.bookFilePath(),
+        parsedArguments.rollbackArtifactPath(),
+        expectedPassphraseSource,
+        CliArgumentValueParser.resolvedOutputMode(parsedArguments.outputMode()));
+  }
+
+  private static ParsedRekeyRollbackArguments parseRekeyRollbackArguments(List<String> arguments) {
     Path bookFilePath = null;
     Path rollbackArtifactPath = null;
-    RekeyRecoveryAction action = RekeyRecoveryAction.INSPECT;
+    Path bookKeyFilePath = null;
+    CliBookPassphraseParser.PassphraseSourceKind passphraseSourceKind = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
@@ -533,14 +564,24 @@ final class CliLifecycleMutationArguments {
               CliArgumentValueParser.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.BOOK_FILE);
         }
-        case ProtocolOptions.RECOVERY_ACTION ->
-            action =
-                CliArgumentValueParser.requireValidArgument(
-                    ProtocolOptions.RECOVERY_ACTION,
-                    () ->
-                        RekeyRecoveryAction.fromWireValue(
-                            CliArgumentValueParser.requireValue(
-                                argumentIterator, ProtocolOptions.RECOVERY_ACTION)));
+        case ProtocolOptions.BOOK_KEY_FILE -> {
+          passphraseSourceKind =
+              CliBookPassphraseParser.requireSinglePassphraseSource(
+                  passphraseSourceKind, CliBookPassphraseParser.PassphraseSourceKind.KEY_FILE);
+          bookKeyFilePath =
+              CliArgumentValueParser.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
+        }
+        case ProtocolOptions.BOOK_PASSPHRASE_STDIN ->
+            passphraseSourceKind =
+                CliBookPassphraseParser.requireSinglePassphraseSource(
+                    passphraseSourceKind,
+                    CliBookPassphraseParser.PassphraseSourceKind.STANDARD_INPUT);
+        case ProtocolOptions.BOOK_PASSPHRASE_PROMPT ->
+            passphraseSourceKind =
+                CliBookPassphraseParser.requireSinglePassphraseSource(
+                    passphraseSourceKind,
+                    CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
         case ProtocolOptions.ROLLBACK_FILE -> {
           if (rollbackArtifactPath != null) {
             throw CliArgumentValueParser.invalid(
@@ -565,34 +606,59 @@ final class CliLifecycleMutationArguments {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
     }
-    return new RecoverRekey(
-        bookFilePath,
-        action,
-        rollbackArtifactPath,
-        CliArgumentValueParser.resolvedOutputMode(outputMode));
+    return new ParsedRekeyRollbackArguments(
+        bookFilePath, rollbackArtifactPath, bookKeyFilePath, passphraseSourceKind, outputMode);
   }
+
+  private static void rejectUnexpectedRollbackPath(@Nullable Path rollbackArtifactPath) {
+    if (rollbackArtifactPath != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ROLLBACK_FILE,
+          ProtocolOptions.ROLLBACK_FILE
+              + " is accepted only when "
+              + DELETE_REKEY_ROLLBACK_COMMAND
+              + " or "
+              + RESTORE_REKEY_ROLLBACK_COMMAND
+              + " is selected.");
+    }
+  }
+
+  private static void rejectUnexpectedPassphraseSource(
+      CliBookPassphraseParser.@Nullable PassphraseSourceKind passphraseSourceKind) {
+    if (passphraseSourceKind != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_KEY_FILE,
+          "Book passphrase source arguments are accepted only when "
+              + RESTORE_REKEY_ROLLBACK_COMMAND
+              + " is selected.");
+    }
+  }
+
+  private record ParsedRekeyRollbackArguments(
+      Path bookFilePath,
+      @Nullable Path rollbackArtifactPath,
+      @Nullable Path bookKeyFilePath,
+      CliBookPassphraseParser.@Nullable PassphraseSourceKind passphraseSourceKind,
+      @Nullable OutputMode outputMode) {}
 
   static CliCommand parseClosePeriodCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, CLOSE_PERIOD_ARGUMENTS);
+    ParsedClosePeriodArguments parsedClosePeriodArguments =
+        parseClosePeriodArguments(parsedArguments.commandArguments());
+    return new ClosePeriod(
+        parsedArguments.bookAccess(),
+        parsedClosePeriodArguments.reportingPeriod(),
+        CliArgumentValueParser.resolvedOutputMode(parsedClosePeriodArguments.outputMode()));
+  }
+
+  static ParsedClosePeriodArguments parseClosePeriodArguments(List<String> commandArguments) {
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
-    String closingEquityAccountCodeValue = null;
     @Nullable OutputMode outputMode = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    ListIterator<String> argumentIterator = commandArguments.listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.CLOSING_EQUITY_ACCOUNT.equals(argument)) {
-        if (closingEquityAccountCodeValue != null) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolOptions.CLOSING_EQUITY_ACCOUNT,
-              "Duplicate argument: " + ProtocolOptions.CLOSING_EQUITY_ACCOUNT);
-        }
-        closingEquityAccountCodeValue =
-            CliArgumentValueParser.requireValue(
-                argumentIterator, ProtocolOptions.CLOSING_EQUITY_ACCOUNT);
-        continue;
-      }
       if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
         effectiveDateFrom =
             CliReportArguments.requireDateOption(
@@ -605,11 +671,15 @@ final class CliLifecycleMutationArguments {
                 effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
         continue;
       }
-      outputMode =
-          CliArgumentValueParser.requireOutputMode(
-              outputMode,
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode =
+            CliArgumentValueParser.requireOutputMode(
+                outputMode,
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        continue;
+      }
+      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
@@ -621,29 +691,17 @@ final class CliLifecycleMutationArguments {
           ProtocolOptions.EFFECTIVE_DATE_TO,
           "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
     }
-    if (closingEquityAccountCodeValue == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CLOSING_EQUITY_ACCOUNT,
-          "A " + ProtocolOptions.CLOSING_EQUITY_ACCOUNT + " argument is required.");
-    }
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
-    String resolvedClosingEquityAccountCodeValue = closingEquityAccountCodeValue;
     CliArgumentValueParser.requireOrderedDateRange(
         resolvedEffectiveDateFrom,
         resolvedEffectiveDateTo,
         ProtocolOptions.EFFECTIVE_DATE_FROM,
         ProtocolOptions.EFFECTIVE_DATE_TO);
-    ReportingPeriod reportingPeriod =
-        new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo);
-    AccountCode closingEquityAccountCode =
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.CLOSING_EQUITY_ACCOUNT,
-            () -> new AccountCode(resolvedClosingEquityAccountCodeValue));
-    return new ClosePeriod(
-        parsedArguments.bookAccess(),
-        reportingPeriod,
-        closingEquityAccountCode,
-        CliArgumentValueParser.resolvedOutputMode(outputMode));
+    return new ParsedClosePeriodArguments(
+        new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo), outputMode);
   }
+
+  record ParsedClosePeriodArguments(
+      ReportingPeriod reportingPeriod, @Nullable OutputMode outputMode) {}
 }

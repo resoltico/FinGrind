@@ -25,7 +25,6 @@ public interface CliAdministrationJsonModels {
       String entityForm,
       String ownerModel,
       String reportingObligationStatus,
-      String taxRegistrationStatus,
       java.util.List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
@@ -36,7 +35,6 @@ public interface CliAdministrationJsonModels {
       ownerModel = requireText(ownerModel, "ownerModel");
       reportingObligationStatus =
           requireText(reportingObligationStatus, "reportingObligationStatus");
-      taxRegistrationStatus = requireText(taxRegistrationStatus, "taxRegistrationStatus");
       businessActivityTags =
           CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
@@ -96,19 +94,26 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RecoverRekeyInspectionPayload(String bookFile, java.util.List<String> rollbackArtifacts)
+  record InspectRekeyRollbackPayload(String bookFile, java.util.List<String> rollbackArtifacts)
       implements CliSuccessPayload {
-    public RecoverRekeyInspectionPayload {
+    public InspectRekeyRollbackPayload {
       bookFile = requireText(bookFile, "bookFile");
       rollbackArtifacts = CliJsonModelValidation.copyList(rollbackArtifacts, "rollbackArtifacts");
     }
   }
 
-  record RecoverRekeyMutationPayload(String bookFile, String action, String rollbackArtifact)
+  record RestoreRekeyRollbackPayload(String bookFile, String rollbackArtifact)
       implements CliSuccessPayload {
-    public RecoverRekeyMutationPayload {
+    public RestoreRekeyRollbackPayload {
       bookFile = requireText(bookFile, "bookFile");
-      action = requireText(action, "action");
+      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
+    }
+  }
+
+  record DeleteRekeyRollbackPayload(String bookFile, String rollbackArtifact)
+      implements CliSuccessPayload {
+    public DeleteRekeyRollbackPayload {
+      bookFile = requireText(bookFile, "bookFile");
       rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
     }
   }

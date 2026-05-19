@@ -70,20 +70,20 @@ PY
 [[ -f "${host_sqlite_library_path}" ]] || die \
     "missing managed SQLite library for environment-configured runtime at ${host_sqlite_library_path}"
 
-capabilities_output="$(
+environment_output="$(
     cd "${repo_root}" &&
         FINGRIND_SQLITE_LIBRARY="${host_sqlite_library_path}" \
             JAVA_TOOL_OPTIONS='-Dfingrind.sqlite.allowEnvironmentConfiguredRuntime=true' \
-            "${direct_java_wrapper}" capabilities --output json
+            "${direct_java_wrapper}" environment --output json
 )"
 if ! verifier_output="$(
-    printf '%s\n' "${capabilities_output}" |
+    printf '%s\n' "${environment_output}" |
         python3 "${verifier}" \
             --expected-runtime-distribution-key directJavaRuntimeDistribution \
             --expected-runtime-provenance environment-configured \
             --label environment-configured-runtime 2>&1
 )"; then
-    printf '%s\n' "${capabilities_output}"
+    printf '%s\n' "${environment_output}"
     printf '%s\n' "${verifier_output}" >&2
     exit 1
 fi

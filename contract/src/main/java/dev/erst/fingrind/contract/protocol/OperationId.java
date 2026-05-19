@@ -11,6 +11,8 @@ public enum OperationId implements WireValue {
   VERSION,
   /** Prints the machine-readable contract catalog. */
   CAPABILITIES,
+  /** Prints live runtime, distribution, and SQLite provenance facts. */
+  ENVIRONMENT,
   /** Prints the canonical minimal posting-request scaffold JSON document. */
   PRINT_REQUEST_TEMPLATE,
   /** Prints the canonical minimal AI-agent ledger-plan scaffold JSON document. */
@@ -25,11 +27,15 @@ public enum OperationId implements WireValue {
   BACKUP_BOOK,
   /** Restores one encrypted-book backup pair onto one selected book path. */
   RESTORE_BOOK,
-  /** Inspects or applies one sibling rekey rollback artifact. */
-  RECOVER_REKEY,
+  /** Inspects stale sibling rekey rollback artifacts for one selected book path. */
+  INSPECT_REKEY_ROLLBACK,
+  /** Deletes one selected stale sibling rekey rollback artifact. */
+  DELETE_REKEY_ROLLBACK,
+  /** Restores one selected stale sibling rekey rollback artifact onto the live book path. */
+  RESTORE_REKEY_ROLLBACK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
-  /** Closes one contiguous reporting period into the selected closing equity account. */
+  /** Closes one contiguous reporting period into the policy-selected closing equity account. */
   CLOSE_PERIOD,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,

@@ -22,7 +22,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -102,7 +101,6 @@ public final class InMemoryBookSession
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
               ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-              TaxRegistrationStatus.UNSPECIFIED,
               List.of()),
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1),

@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceMath;
@@ -98,10 +99,8 @@ public final class PeriodCloseService {
   }
 
   /** Closes one contiguous reporting period using generated closing-equity postings. */
-  public PeriodCloseOutcome closePeriod(
-      ReportingPeriod reportingPeriod, AccountCode closingEquityAccountCode) {
+  public PeriodCloseOutcome closePeriod(ReportingPeriod reportingPeriod) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
     BookLifecycleInspection inspection = lifecycleReader.inspectBook();
     if (!inspection.allowsInitializedWorkflow()) {
       return new PeriodCloseOutcome.Rejected(
@@ -111,13 +110,10 @@ public final class PeriodCloseService {
         (BookLifecycleInspection.Initialized) inspection;
 
     List<RegisteredAccount> accounts = accountCatalogStore.allAccounts();
-    Optional<RegisteredAccount> closingEquityAccount =
-        closingEquityAccount(accounts, closingEquityAccountCode);
-    Optional<BookkeepingAdministrationRejection> closingEquityRejection =
-        closingEquityRejection(
-            initialized.bookIdentity(), closingEquityAccountCode, closingEquityAccount);
-    if (closingEquityRejection.isPresent()) {
-      return new PeriodCloseOutcome.Rejected(closingEquityRejection.orElseThrow());
+    ClosingEquitySelection closingEquitySelection =
+        closingEquityAccount(initialized.bookIdentity(), accounts);
+    if (closingEquitySelection instanceof RejectedClosingEquitySelection rejected) {
+      return new PeriodCloseOutcome.Rejected(rejected.rejection());
     }
 
     Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
@@ -127,7 +123,8 @@ public final class PeriodCloseService {
     }
 
     Instant closedAt = clock.instant();
-    RegisteredAccount requiredClosingEquityAccount = closingEquityAccount.orElseThrow();
+    RegisteredAccount requiredClosingEquityAccount =
+        ((AcceptedClosingEquitySelection) closingEquitySelection).account();
     PeriodClosePlan closePlan =
         closingPostings(reportingPeriod, requiredClosingEquityAccount, accounts, closedAt);
     return periodCloseStore.closePeriod(
@@ -140,49 +137,37 @@ public final class PeriodCloseService {
         postingIdGenerator);
   }
 
-  private Optional<RegisteredAccount> closingEquityAccount(
-      List<RegisteredAccount> accounts, AccountCode closingEquityAccountCode) {
-    Objects.requireNonNull(accounts, "accounts");
-    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
-    return accounts.stream()
-        .filter(account -> account.accountCode().equals(closingEquityAccountCode))
-        .findFirst();
-  }
-
-  private Optional<BookkeepingAdministrationRejection> closingEquityRejection(
-      dev.erst.fingrind.core.BookIdentity bookIdentity,
-      AccountCode closingEquityAccountCode,
-      Optional<RegisteredAccount> closingEquityAccount) {
+  private ClosingEquitySelection closingEquityAccount(
+      dev.erst.fingrind.core.BookIdentity bookIdentity, List<RegisteredAccount> accounts) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
-    if (closingEquityAccount.isEmpty()) {
-      return Optional.of(
-          new BookkeepingAdministrationRejection.ClosingEquityAccountMissing(
-              closingEquityAccountCode));
-    }
     var requiredClassification = closePolicy.closingEquityLineClassification(bookIdentity);
-    if (closingEquityAccount
-            .orElseThrow()
-            .accountTaxonomy()
-            .financialPositionLineClassification()
-            .orElseThrow()
-        != requiredClassification) {
-      return Optional.of(
-          new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-              closingEquityAccountCode,
+    List<RegisteredAccount> matchingCandidates =
+        accounts.stream()
+            .filter(account -> account.accountType() == AccountType.EQUITY)
+            .filter(
+                account ->
+                    account
+                        .accountTaxonomy()
+                        .financialPositionLineClassification()
+                        .filter(requiredClassification::equals)
+                        .isPresent())
+            .sorted(Comparator.comparing(account -> account.accountCode().value()))
+            .toList();
+    List<RegisteredAccount> activeCandidates =
+        matchingCandidates.stream().filter(RegisteredAccount::active).toList();
+    if (activeCandidates.isEmpty()) {
+      return new RejectedClosingEquitySelection(
+          new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
               requiredClassification,
-              closingEquityAccount
-                  .orElseThrow()
-                  .accountTaxonomy()
-                  .financialPositionLineClassification()
-                  .orElseThrow()));
+              matchingCandidates.stream().map(RegisteredAccount::accountCode).toList()));
     }
-    if (!closingEquityAccount.orElseThrow().active()) {
-      return Optional.of(
-          new BookkeepingAdministrationRejection.ClosingEquityAccountInactive(
-              closingEquityAccount.orElseThrow().accountCode()));
+    if (activeCandidates.size() > 1) {
+      return new RejectedClosingEquitySelection(
+          new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+              requiredClassification,
+              activeCandidates.stream().map(RegisteredAccount::accountCode).toList()));
     }
-    return Optional.empty();
+    return new AcceptedClosingEquitySelection(activeCandidates.getFirst());
   }
 
   private Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
@@ -406,6 +391,36 @@ public final class PeriodCloseService {
       Objects.requireNonNull(closedTotals, "closedTotals");
       closingPostings = List.copyOf(closingPostings);
       closedTotals = List.copyOf(closedTotals);
+    }
+  }
+
+  /** Resolution outcome for selecting the single closing-equity account required by a close. */
+  private sealed interface ClosingEquitySelection
+      permits AcceptedClosingEquitySelection, RejectedClosingEquitySelection {}
+
+  /** Successful selection of the only valid active closing-equity account. */
+  private static final class AcceptedClosingEquitySelection implements ClosingEquitySelection {
+    private final RegisteredAccount account;
+
+    private AcceptedClosingEquitySelection(RegisteredAccount account) {
+      this.account = Objects.requireNonNull(account, "account");
+    }
+
+    private RegisteredAccount account() {
+      return account;
+    }
+  }
+
+  /** Deterministic close rejection caused by missing or ambiguous closing-equity candidates. */
+  private static final class RejectedClosingEquitySelection implements ClosingEquitySelection {
+    private final BookkeepingAdministrationRejection rejection;
+
+    private RejectedClosingEquitySelection(BookkeepingAdministrationRejection rejection) {
+      this.rejection = Objects.requireNonNull(rejection, "rejection");
+    }
+
+    private BookkeepingAdministrationRejection rejection() {
+      return rejection;
     }
   }
 

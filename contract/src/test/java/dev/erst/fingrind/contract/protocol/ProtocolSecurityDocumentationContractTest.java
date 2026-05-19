@@ -23,6 +23,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   void developerSecurityReference_coversCanonicalSecurityFacts() throws IOException {
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
     CapabilitiesDescriptor capabilities = capabilitiesDescriptor();
+    EnvironmentDescriptor environment = readyEnvironmentDescriptor();
     ProtectedBookFormatContract protectedBookFormat = ProtocolCatalog.protectedBookFormat();
 
     Set<String> violations = new LinkedHashSet<>();
@@ -86,21 +87,21 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
           passphraseOption,
           "documented supported passphrase route " + passphraseOption);
     }
-    for (String compileOption : capabilities.environment().sqlite().requiredCompileOptions()) {
+    for (String compileOption : environment.sqlite().requiredCompileOptions()) {
       requireContains(
           document,
           violations,
           compileOption,
           "documented required SQLite compile option " + compileOption);
     }
-    for (String compileOption : capabilities.environment().sqlite().forbiddenCompileOptions()) {
+    for (String compileOption : environment.sqlite().forbiddenCompileOptions()) {
       requireContains(
           document,
           violations,
           compileOption,
           "documented forbidden SQLite compile option " + compileOption);
     }
-    if (capabilities.environment().sqlite().requiresSecureMemorySupport()) {
+    if (environment.sqlite().requiresSecureMemorySupport()) {
       requireContains(
           document,
           violations,
@@ -109,8 +110,8 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
     }
     for (String runtimeFact :
         java.util.List.of(
-            capabilities.environment().sqlite().requiredMinimumSqliteVersion(),
-            capabilities.environment().sqlite().requiredSqlite3mcVersion(),
+            environment.sqlite().requiredMinimumSqliteVersion(),
+            environment.sqlite().requiredSqlite3mcVersion(),
             protectedBookFormat.cipher().wireValue(),
             Integer.toString(protectedBookFormat.pageSize()),
             Integer.toString(protectedBookFormat.reservedBytes()),
@@ -141,22 +142,23 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   @Test
   void developerSecurityReference_matchesMachineReadableRuntimeTrustSurface() throws IOException {
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
-    CapabilitiesDescriptor capabilities = capabilitiesDescriptor();
-    EnvironmentSqliteDescriptor sqlite = capabilities.environment().sqlite();
+    EnvironmentSqliteDescriptor sqlite = readyEnvironmentDescriptor().sqlite();
 
     assertTrue(
-        document.contains(
-            "publisher-owned managed runtimes (`bundle-managed` and `source-checkout-managed`)"),
+        document.contains("`bundle-managed` is publisher-authenticated"),
         "docs/DEVELOPER_SECURITY.md must describe the trusted managed-runtime identity boundary explicitly.");
     assertTrue(
-        document.contains("`environment-configured` is an operator-trusted escape hatch"),
-        "docs/DEVELOPER_SECURITY.md must describe environment-configured as operator-trusted rather than publisher-authenticated.");
+        document.contains("`source-checkout-managed` is source-verified-local-build"),
+        "docs/DEVELOPER_SECURITY.md must describe source-checkout-managed as one local-build trust class rather than publisher-authenticated release identity.");
+    assertTrue(
+        document.contains("`environment-configured` is an unsafe-local-override escape hatch"),
+        "docs/DEVELOPER_SECURITY.md must describe environment-configured as one explicit unsafe local override.");
     assertTrue(
         document.contains("`runtimeTrustBasis`"),
         "docs/DEVELOPER_SECURITY.md must describe the machine-readable runtimeTrustBasis field.");
     assertTrue(
         document.contains(
-            "capabilities.environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes"),
+            "environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes, source-verified local-build runtimes, and unsafe local overrides"),
         "docs/DEVELOPER_SECURITY.md must explain how machine consumers distinguish runtime trust classes.");
     EnvironmentSqliteDescriptor.ReadyRuntime readyRuntime =
         (EnvironmentSqliteDescriptor.ReadyRuntime) sqlite.runtime();
@@ -216,8 +218,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(
-        new ApplicationIdentity("FinGrind", "0.40.0", "desc"), readyEnvironmentDescriptor());
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.41.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {

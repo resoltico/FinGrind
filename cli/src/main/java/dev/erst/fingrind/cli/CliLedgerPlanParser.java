@@ -35,7 +35,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -200,7 +199,6 @@ final class CliLedgerPlanParser {
 
   private static OpenBookCommand readOpenBookCommand(ObjectNode openBookNode) {
     rejectUnexpectedFields(openBookNode, "openBook", CliJsonRequestSchemas.OPEN_BOOK_FIELDS);
-    TaxRegistrationStatus taxRegistrationStatus = optionalTaxRegistrationStatus(openBookNode);
     return new OpenBookCommand(
         new BookIdentity(
             new EntityProfile(
@@ -212,7 +210,6 @@ final class CliLedgerPlanParser {
                     "openBook." + ProtocolOpenBookFields.ENTITY_FORM),
                 optionalOwnerModel(openBookNode),
                 optionalReportingObligationStatus(openBookNode),
-                taxRegistrationStatus,
                 businessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
@@ -242,15 +239,6 @@ final class CliLedgerPlanParser {
                 CliArgumentValueParser.parseReportingObligationStatusOption(
                     value, "openBook." + ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS))
         .orElse(ReportingObligationStatus.UNSPECIFIED);
-  }
-
-  private static TaxRegistrationStatus optionalTaxRegistrationStatus(ObjectNode openBookNode) {
-    return optionalText(openBookNode, ProtocolOpenBookFields.TAX_REGISTRATION_STATUS)
-        .map(
-            value ->
-                CliArgumentValueParser.parseTaxRegistrationStatusOption(
-                    value, "openBook." + ProtocolOpenBookFields.TAX_REGISTRATION_STATUS))
-        .orElse(TaxRegistrationStatus.UNSPECIFIED);
   }
 
   private static List<BusinessActivityTag> businessActivityTags(ObjectNode openBookNode) {

@@ -43,8 +43,7 @@ final class SqliteMutationWriter {
       statement.bindText(1, bookIdentity.entityProfile().entityForm().wireValue());
       statement.bindText(2, bookIdentity.entityProfile().ownerModel().wireValue());
       statement.bindText(3, bookIdentity.entityProfile().reportingObligationStatus().wireValue());
-      statement.bindText(4, bookIdentity.entityProfile().taxRegistrationStatus().wireValue());
-      statement.bindText(5, encodedBusinessActivityTags);
+      statement.bindText(4, encodedBusinessActivityTags);
       statement.step();
     }
     try (SqliteNativeStatement statement =
@@ -54,10 +53,11 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertBookMetaValue(SqliteNativeDatabase activeDatabase, String key, String value) {
+  static void insertBookMetaValue(
+      SqliteNativeDatabase activeDatabase, String metaKey, String value) {
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_INITIALIZED_AT)) {
-      statement.bindText(1, key);
+        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_META_VALUE)) {
+      statement.bindText(1, metaKey);
       statement.bindText(2, value);
       statement.step();
     }

@@ -107,11 +107,9 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("help"));
-    assertTrue(
-        rendered.contains(
-            "json, human (via --output; default: human interactive, json redirected)"));
-    assertTrue(rendered.contains("json envelope (fixed)"));
-    assertTrue(rendered.contains("raw json (fixed)"));
+    assertTrue(rendered.contains("json | human"));
+    assertTrue(rendered.contains("json envelope"));
+    assertTrue(rendered.contains("raw json"));
     assertTrue(rendered.contains("Getting Started"));
     assertFalse(rendered.contains("Quick Start"));
     assertFalse(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
@@ -302,8 +300,7 @@ class CliDiscoveryOutputRendererTest {
             canonical.exitCodes(),
             canonical.preflight(),
             canonical.currencyModel(),
-            canonical.extensionSurface(),
-            canonical.environment());
+            canonical.extensionSurface());
 
     String rendered = CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor);
 
@@ -360,7 +357,8 @@ class CliDiscoveryOutputRendererTest {
         restoreHelp.contains("reopen the restored live book with that same backup key file"));
     assertTrue(closeHelp.contains("FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL"));
     assertTrue(closeHelp.contains("PARTNERSHIP requires PARTNER_CURRENT"));
-    assertTrue(closeHelp.contains("2026-04-30 --closing-equity-account 3300"));
+    assertTrue(closeHelp.contains("2026-04-30"));
+    assertFalse(closeHelp.contains("--closing-equity-account"));
   }
 
   @Test
@@ -604,8 +602,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel(),
-                postEntryCanonical.extensionSurface(),
-                postEntryCanonical.environment()));
+                postEntryCanonical.extensionSurface()));
     String declareRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -624,8 +621,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface(),
-                declareCanonical.environment()));
+                declareCanonical.extensionSurface()));
     String executePlanRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -644,8 +640,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface(),
-                executePlanCanonical.environment()));
+                executePlanCanonical.extensionSurface()));
 
     assertFalse(postEntryRendered.contains("Request File"));
     assertFalse(declareRendered.contains("Request File"));
@@ -683,8 +678,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel(),
-                postEntryCanonical.extensionSurface(),
-                postEntryCanonical.environment()));
+                postEntryCanonical.extensionSurface()));
     String declareWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -703,8 +697,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface(),
-                declareCanonical.environment()));
+                declareCanonical.extensionSurface()));
     String declareWithoutDeclareShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -727,8 +720,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface(),
-                declareCanonical.environment()));
+                declareCanonical.extensionSurface()));
     String executePlanWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -747,8 +739,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface(),
-                executePlanCanonical.environment()));
+                executePlanCanonical.extensionSurface()));
     String executePlanWithoutLedgerShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -771,8 +762,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface(),
-                executePlanCanonical.environment()));
+                executePlanCanonical.extensionSurface()));
 
     assertFalse(postEntryWithoutPostShape.contains("Request File"));
     assertFalse(declareWithoutRequestShapes.contains("Request File"));
@@ -894,7 +884,7 @@ class CliDiscoveryOutputRendererTest {
   void renderCapabilitiesHuman_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
-            MachineContract.capabilities(identity(), environment()));
+            MachineContract.capabilities(identity()));
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Command Groups"));
@@ -902,9 +892,8 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Request Input"));
     assertTrue(rendered.contains("Discovery"));
     assertTrue(rendered.contains("trial-balance"));
-    assertTrue(
-        rendered.contains(
-            "json, human, csv (via --output; default: human interactive, json redirected)"));
+    assertTrue(rendered.contains("json | human | csv"));
+    assertTrue(rendered.contains("Targeted Retrieval"));
     assertTrue(rendered.contains("Selectable stdout flag"));
     assertTrue(rendered.contains("Targeted Retrieval"));
     assertFalse(rendered.contains("Timestamp"));
@@ -914,7 +903,7 @@ class CliDiscoveryOutputRendererTest {
 
   @Test
   void renderCapabilitiesHuman_rendersSharedSelectableDefaultsAsOneValue() {
-    CapabilitiesDescriptor canonical = MachineContract.capabilities(identity(), environment());
+    CapabilitiesDescriptor canonical = MachineContract.capabilities(identity());
     CapabilitiesDescriptor customized =
         new CapabilitiesDescriptor(
             canonical.application(),
@@ -944,20 +933,17 @@ class CliDiscoveryOutputRendererTest {
             canonical.preflight(),
             canonical.currencyModel(),
             canonical.accountingBaseline(),
-            canonical.extensionSurface(),
-            canonical.environment());
+            canonical.extensionSurface());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(customized);
 
-    assertTrue(
-        rendered.contains(
-            "json, human (via --output; default: json interactive, json redirected)"));
+    assertTrue(rendered.contains("json | human"));
     assertFalse(rendered.contains("json interactive / json redirected"));
   }
 
   @Test
   void renderCapabilitiesHuman_omitsDeepBoundaryDoctrineFromHumanSurface() {
-    var canonical = MachineContract.capabilities(identity(), environment());
+    var canonical = MachineContract.capabilities(identity());
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
             new dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor(
@@ -983,7 +969,6 @@ class CliDiscoveryOutputRendererTest {
                     canonical.accountingBaseline().deliberateExclusions(),
                     canonical.accountingBaseline().nonClaims(),
                     canonical.accountingBaseline().reportCapabilities(),
-                    canonical.accountingBaseline().requiredMissingCapabilities(),
                     canonical.accountingBaseline().defaultPolicyPack(),
                     canonical.accountingBaseline().standardsPosition(),
                     canonical.accountingBaseline().reportingPosition(),
@@ -998,14 +983,81 @@ class CliDiscoveryOutputRendererTest {
                     canonical.extensionSurface().defaultPolicyPackId(),
                     List.of("ifrs-ias-iso-fx-ar-ap-gaap-playbook", "oci"),
                     canonical.extensionSurface().policySeams(),
-                    canonical.extensionSurface().futureContexts(),
-                    canonical.extensionSurface().description()),
-                canonical.environment()));
+                    canonical.extensionSurface().description())));
 
     assertFalse(rendered.contains("Financial position"));
     assertFalse(rendered.contains("Extension model"));
     assertFalse(rendered.contains("IFRS IAS ISO FX AR AP GAAP Playbook"));
     assertFalse(rendered.contains("OCI"));
+  }
+
+  @Test
+  void renderEnvironmentHuman_coversExplicitRuntimeStateFamilies() {
+    String readyRendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+            environmentWithRuntime(
+                new EnvironmentSqliteDescriptor.ReadyRuntime(
+                    SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                    SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                    "<redacted>/libsqlite3.dylib",
+                    ProtocolCatalog.requiredMinimumSqliteVersion(),
+                    ProtocolCatalog.requiredSqlite3mcVersion(),
+                    ProtocolCatalog.requiredSqliteSourceId())));
+    String failedRendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+            environmentWithRuntime(
+                new EnvironmentSqliteDescriptor.FailedRuntime(
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                    SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+                    "<redacted>/libsqlite3.dylib",
+                    "load failed")));
+    String incompatibleRendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+            environmentWithRuntime(
+                new EnvironmentSqliteDescriptor.IncompatibleRuntime(
+                    SqliteCompileOptionsVerificationStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+                    "<redacted>/libsqlite3.dylib",
+                    "3.53.1",
+                    "2.3.4",
+                    "source-id",
+                    "compile options mismatch")));
+    String unavailableRendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+            environmentWithRuntime(
+                new EnvironmentSqliteDescriptor.UnavailableRuntime("no SQLite runtime available")));
+
+    assertTrue(readyRendered.contains("Runtime provenance"));
+    assertTrue(readyRendered.contains("bundle-managed"));
+    assertTrue(readyRendered.contains("publisher-authenticated"));
+    assertTrue(readyRendered.contains("<redacted>/libsqlite3.dylib"));
+    assertTrue(readyRendered.contains("Issue"));
+    assertTrue(readyRendered.contains("(none)"));
+
+    assertTrue(failedRendered.contains("Runtime status"));
+    assertTrue(failedRendered.contains("failed"));
+    assertTrue(failedRendered.contains("source-checkout-managed"));
+    assertTrue(failedRendered.contains("source-verified-local-build"));
+    assertTrue(failedRendered.contains("load failed"));
+    assertTrue(failedRendered.contains("Loaded SQLite version"));
+    assertTrue(failedRendered.contains("(none)"));
+
+    assertTrue(incompatibleRendered.contains("Runtime status"));
+    assertTrue(incompatibleRendered.contains("incompatible"));
+    assertTrue(incompatibleRendered.contains("environment-configured"));
+    assertTrue(incompatibleRendered.contains("unsafe-local-override"));
+    assertTrue(incompatibleRendered.contains("compile options mismatch"));
+    assertTrue(incompatibleRendered.contains("3.53.1"));
+    assertTrue(incompatibleRendered.contains("2.3.4"));
+    assertTrue(incompatibleRendered.contains("source-id"));
+
+    assertTrue(unavailableRendered.contains("Runtime status"));
+    assertTrue(unavailableRendered.contains("unavailable"));
+    assertTrue(unavailableRendered.contains("Runtime provenance"));
+    assertTrue(unavailableRendered.contains("Runtime trust basis"));
+    assertTrue(unavailableRendered.contains("no SQLite runtime available"));
+    assertTrue(unavailableRendered.contains("(none)"));
   }
 
   @Test
@@ -1015,7 +1067,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.40.0"));
+    assertTrue(rendered.contains("0.41.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -1069,8 +1121,7 @@ class CliDiscoveryOutputRendererTest {
         exitCodes,
         preflight,
         currencyModel,
-        canonical.extensionSurface(),
-        environment());
+        canonical.extensionSurface());
   }
 
   private static ContractRequestShapes.RequestShapesDescriptor withoutDeclareAccountEnumVocabulary(
@@ -1088,11 +1139,26 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.40.0",
+        "0.41.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
   private static EnvironmentDescriptor environment() {
+    return environmentWithRuntime(
+        EnvironmentSqliteDescriptor.runtime(
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            SqliteRuntimeStatus.READY,
+            SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+            "<redacted>/libsqlite3.dylib",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
+            null));
+  }
+
+  private static EnvironmentDescriptor environmentWithRuntime(
+      EnvironmentSqliteDescriptor.RuntimeState runtime) {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
             ProtocolCatalog.bundleRuntimeDistribution(),
@@ -1116,15 +1182,6 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            EnvironmentSqliteDescriptor.runtime(
-                SqliteCompileOptionsVerificationStatus.VERIFIED,
-                SqliteRuntimeStatus.READY,
-                SqliteRuntimeProvenance.BUNDLE_MANAGED,
-                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-                "<redacted>/libsqlite3.dylib",
-                ProtocolCatalog.requiredMinimumSqliteVersion(),
-                ProtocolCatalog.requiredSqlite3mcVersion(),
-                ProtocolCatalog.requiredSqliteSourceId(),
-                null)));
+            runtime));
   }
 }

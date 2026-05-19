@@ -23,7 +23,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -162,7 +161,6 @@ public final class ContractTemplates {
       EntityForm entityForm,
       OwnerModel ownerModel,
       ReportingObligationStatus reportingObligationStatus,
-      TaxRegistrationStatus taxRegistrationStatus,
       List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
@@ -177,8 +175,6 @@ public final class ContractTemplates {
       reportingObligationStatus =
           ContractDescriptorValidation.requireValue(
               reportingObligationStatus, "reportingObligationStatus");
-      taxRegistrationStatus =
-          ContractDescriptorValidation.requireValue(taxRegistrationStatus, "taxRegistrationStatus");
       businessActivityTags =
           ContractDescriptorValidation.copyList(businessActivityTags, "businessActivityTags");
       businessActivityTags.forEach(BusinessActivityTag::new);

@@ -11,11 +11,11 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -59,8 +59,8 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
       try {
         setupTurn.acquire();
         setupTurnHeld = true;
-        try (SqliteBookSession bookSession =
-            SqliteBookSessions.open(
+        try (SqlitePostingSession bookSession =
+            SqliteBookSessions.openPosting(
                 bookAccess,
                 SqliteBookSessionMode.READ_WRITE_EXISTING,
                 SqliteRoundTripWorkflowResources.passphraseResolver(),
@@ -136,7 +136,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
       List<ConcurrentCommitOutcome> outcomes =
           List.of(awaitCommitOutcome(futures.getFirst()), awaitCommitOutcome(futures.getLast()));
       boolean storedFactPresent;
-      try (SqliteBookSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+      try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
         storedFactPresent =
             store
                 .findExistingPosting(concurrentCommand.requestProvenance().idempotencyKey())

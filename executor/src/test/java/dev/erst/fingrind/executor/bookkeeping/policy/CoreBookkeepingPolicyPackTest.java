@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.EntityForm;
@@ -19,14 +18,10 @@ import org.junit.jupiter.api.Test;
 /** Covers the built-in neutral bookkeeping policy pack contract. */
 class CoreBookkeepingPolicyPackTest {
   @Test
-  void current_returnsSingletonAndPublishedFacts() {
+  void current_returnsSingleton() {
     CoreBookkeepingPolicyPack policyPack = CoreBookkeepingPolicyPack.current();
 
     assertSame(policyPack, CoreBookkeepingPolicyPack.current());
-    assertEquals(ProtocolCatalog.accountingBaseline().defaultPolicyPack(), policyPack.facts());
-    assertTrue(
-        policyPack.facts().policyDimensions().stream()
-            .anyMatch(dimension -> "accounting-basis".equals(dimension.dimensionId())));
   }
 
   @Test
@@ -36,8 +31,6 @@ class CoreBookkeepingPolicyPackTest {
     assertEquals(List.of(AccountingBasis.CASH, AccountingBasis.ACCRUAL), policy.supportedBases());
     assertTrue(policy.supports(AccountingBasis.CASH));
     assertTrue(policy.supports(AccountingBasis.ACCRUAL));
-    assertFalse(policy.supports(AccountingBasis.HYBRID_POLICY_DEFINED));
-    assertFalse(policy.supports(AccountingBasis.EXTENSION_DEFINED));
   }
 
   @Test
@@ -81,9 +74,6 @@ class CoreBookkeepingPolicyPackTest {
             "Current Period Result",
             FinancialPositionLineClassification.CURRENT_PERIOD_RESULT),
         policyPack.statementPresentationPolicy().currentPeriodResultLine(bookIdentity()));
-    assertFalse(policyPack.taxPolicy().supportsFirstClassTax());
-    assertFalse(policyPack.foreignExchangePolicy().supportsTransactionCurrencies());
-    assertFalse(policyPack.evidencePolicy().requiresFirstClassEvidence());
     assertEquals(
         FiscalYearAnchoredStatementComparativePolicy.class,
         policyPack.statementComparativePolicy().getClass());

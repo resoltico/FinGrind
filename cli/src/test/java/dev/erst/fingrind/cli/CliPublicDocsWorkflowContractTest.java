@@ -151,7 +151,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertTrue(examplesGuide.contains("--entity-name"));
     assertTrue(examplesGuide.contains("--owner-model"));
     assertTrue(examplesGuide.contains("--reporting-obligation-status"));
-    assertTrue(examplesGuide.contains("--tax-registration-status"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
     assertTrue(requestsGuide.contains("replace-before-commit-*"));
@@ -213,7 +212,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             unknownAccountRequestFile.toString());
     assertEquals("rejected", unknownAccountPreflight.path("status").stringValue());
     assertEquals("account-state-violations", unknownAccountPreflight.path("code").stringValue());
-    assertTrue(unknownAccountPreflight.toString().contains("\"accountCode\":\"3000\""));
+    assertTrue(unknownAccountPreflight.toString().contains("\"accountCode\":\"9998\""));
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
         runJsonCommand(

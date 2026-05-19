@@ -17,7 +17,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -151,12 +150,8 @@ final class PdfValueFormatter {
     return wireLabel(entityForm.wireValue()) + " / " + wireLabel(ownerModel.wireValue());
   }
 
-  static String displayReportingProfile(
-      ReportingObligationStatus reportingObligationStatus,
-      TaxRegistrationStatus taxRegistrationStatus) {
-    return wireLabel(reportingObligationStatus.wireValue())
-        + " / "
-        + wireLabel(taxRegistrationStatus.wireValue());
+  static String displayReportingProfile(ReportingObligationStatus reportingObligationStatus) {
+    return wireLabel(reportingObligationStatus.wireValue());
   }
 
   static String displayBusinessActivityTags(List<BusinessActivityTag> businessActivityTags) {

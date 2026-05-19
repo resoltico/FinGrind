@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
+import org.jspecify.annotations.Nullable;
 
 /** Maps report-domain payloads into CLI JSON report models. */
 final class CliReportPayloadMapper {
@@ -31,7 +32,9 @@ final class CliReportPayloadMapper {
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
-            report.comparativeEffectiveDateRange()),
+            comparativeRangeOrNull(
+                CliReportSurfacePolicy.hasComparative(report),
+                report.comparativeEffectiveDateRange())),
         report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList(),
         report.comparativeRows().stream()
             .map(CliReportPayloadMapper::trialBalanceRowPayload)
@@ -80,7 +83,9 @@ final class CliReportPayloadMapper {
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
-            report.comparativeEffectiveDateRange()),
+            comparativeRangeOrNull(
+                CliReportSurfacePolicy.hasComparative(report),
+                report.comparativeEffectiveDateRange())),
         report.sections().stream()
             .map(CliReportPayloadMapper::financialPositionSectionPayload)
             .toList(),
@@ -97,7 +102,9 @@ final class CliReportPayloadMapper {
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
-            report.comparativeEffectiveDateRange()),
+            comparativeRangeOrNull(
+                CliReportSurfacePolicy.hasComparative(report),
+                report.comparativeEffectiveDateRange())),
         report.sections().stream()
             .map(CliReportPayloadMapper::incomeStatementSectionPayload)
             .toList(),
@@ -118,7 +125,9 @@ final class CliReportPayloadMapper {
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
-            report.comparativeEffectiveDateRange()),
+            comparativeRangeOrNull(
+                CliReportSurfacePolicy.hasComparative(report),
+                report.comparativeEffectiveDateRange())),
         report.rows().stream().map(CliReportPayloadMapper::changesInEquityRowPayload).toList(),
         report.openingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
         report.movementTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
@@ -246,18 +255,26 @@ final class CliReportPayloadMapper {
 
   static CliReportJsonModels.ReportContextPayload reportContextPayload(
       BookIdentity bookIdentity, PostingCoverage postingCoverage) {
-    return reportContextPayload(
-        bookIdentity, postingCoverage, dev.erst.fingrind.core.EffectiveDateRange.unbounded());
+    return reportContextPayload(bookIdentity, postingCoverage, null);
   }
 
   static CliReportJsonModels.ReportContextPayload reportContextPayload(
       BookIdentity bookIdentity,
       PostingCoverage postingCoverage,
-      EffectiveDateRange comparativeEffectiveDateRange) {
+      @Nullable EffectiveDateRange comparativeEffectiveDateRange) {
     return new CliReportJsonModels.ReportContextPayload(
         CliBookPayloadMapper.bookIdentityPayload(bookIdentity),
         postingCoverage.wireValue(),
-        comparativeEffectiveDateRange.effectiveDateFrom().map(Object::toString).orElse(null),
-        comparativeEffectiveDateRange.effectiveDateTo().map(Object::toString).orElse(null));
+        comparativeEffectiveDateRange == null
+            ? null
+            : comparativeEffectiveDateRange.effectiveDateFrom().map(Object::toString).orElse(null),
+        comparativeEffectiveDateRange == null
+            ? null
+            : comparativeEffectiveDateRange.effectiveDateTo().map(Object::toString).orElse(null));
+  }
+
+  private static @Nullable EffectiveDateRange comparativeRangeOrNull(
+      boolean includeComparativeReference, EffectiveDateRange comparativeEffectiveDateRange) {
+    return includeComparativeReference ? comparativeEffectiveDateRange : null;
   }
 }

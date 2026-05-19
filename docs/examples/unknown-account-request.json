@@ -3,7 +3,7 @@
   "effectiveDate": "2026-04-08",
   "lines": [
     {
-      "accountCode": "3000",
+      "accountCode": "9998",
       "side": "DEBIT",
       "amount": {
         "currencyCode": "EUR",

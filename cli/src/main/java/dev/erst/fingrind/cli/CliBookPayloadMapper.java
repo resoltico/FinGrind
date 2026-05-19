@@ -77,7 +77,6 @@ final class CliBookPayloadMapper {
         bookIdentity.entityProfile().entityForm().wireValue(),
         bookIdentity.entityProfile().ownerModel().wireValue(),
         bookIdentity.entityProfile().reportingObligationStatus().wireValue(),
-        bookIdentity.entityProfile().taxRegistrationStatus().wireValue(),
         bookIdentity.entityProfile().businessActivityTags().stream()
             .map(value -> value.value())
             .toList(),
@@ -223,6 +222,6 @@ final class CliBookPayloadMapper {
   }
 
   private static String absolutePath(Path bookFilePath) {
-    return bookFilePath.toAbsolutePath().normalize().toString();
+    return CliPublicPaths.normalizedValue(bookFilePath);
   }
 }

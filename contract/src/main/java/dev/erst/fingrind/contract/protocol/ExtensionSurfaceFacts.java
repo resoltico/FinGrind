@@ -3,13 +3,12 @@ package dev.erst.fingrind.contract.protocol;
 import java.util.List;
 import java.util.Objects;
 
-/** Shared immutable facts describing sanctioned current seams and adjacent future contexts. */
+/** Shared immutable facts describing sanctioned current executable policy seams. */
 public record ExtensionSurfaceFacts(
     String model,
     String defaultPolicyPackId,
     List<String> implementedSeams,
     List<PolicySeamFacts> policySeams,
-    List<String> futureContexts,
     String description) {
   /** Validates one published extension-surface fact family. */
   public ExtensionSurfaceFacts {
@@ -17,7 +16,6 @@ public record ExtensionSurfaceFacts(
     Objects.requireNonNull(defaultPolicyPackId, "defaultPolicyPackId");
     implementedSeams = List.copyOf(Objects.requireNonNull(implementedSeams, "implementedSeams"));
     policySeams = List.copyOf(Objects.requireNonNull(policySeams, "policySeams"));
-    futureContexts = List.copyOf(Objects.requireNonNull(futureContexts, "futureContexts"));
     Objects.requireNonNull(description, "description");
     List<String> implementedPolicySeamIds =
         policySeams.stream()

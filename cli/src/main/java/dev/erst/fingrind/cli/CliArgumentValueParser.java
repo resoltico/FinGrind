@@ -16,7 +16,6 @@ import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -114,19 +113,6 @@ final class CliArgumentValueParser {
           optionName,
           Objects.requireNonNullElse(
               exception.getMessage(), "Unsupported reporting obligation status."),
-          exception);
-    }
-  }
-
-  static TaxRegistrationStatus parseTaxRegistrationStatusOption(
-      String rawValue, String optionName) {
-    try {
-      return TaxRegistrationStatus.fromWireValue(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw invalid(
-          optionName,
-          Objects.requireNonNullElse(
-              exception.getMessage(), "Unsupported tax registration status."),
           exception);
     }
   }

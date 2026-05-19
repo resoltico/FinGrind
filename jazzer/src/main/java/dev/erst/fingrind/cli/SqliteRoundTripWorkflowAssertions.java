@@ -9,8 +9,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +74,7 @@ public final class SqliteRoundTripWorkflowAssertions {
 
   private static DirectRoundTripState drivePrimaryRoundTrip(
       PostEntryCommand command, byte[] input, Path bookPath) throws IOException {
-    try (SqliteBookSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(postingFactStore);
       PostingApplicationService applicationService =
@@ -145,7 +145,7 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus inactiveCommitStatus)
       throws IOException {
     SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
-    try (SqliteBookSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
       PostingFact postingFact =
           SqliteRoundTripWorkflowLifecycleAssertions.requireStoredPosting(
               CliFuzzFixtures.publishedStoredPosting(
@@ -176,7 +176,7 @@ public final class SqliteRoundTripWorkflowAssertions {
   private static DirectRoundTripState rejectedState(
       PostEntryCommand command,
       PostingApplicationService applicationService,
-      SqliteBookSession postingFactStore,
+      SqlitePostingSession postingFactStore,
       CommitRejected rejected,
       PostingLifecycleStatus uninitializedCommitStatus,
       PostingLifecycleStatus undeclaredCommitStatus,

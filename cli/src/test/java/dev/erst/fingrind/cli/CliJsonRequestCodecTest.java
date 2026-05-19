@@ -62,7 +62,7 @@ class CliJsonRequestCodecTest {
             requestFile, new NoSuchFileException(requestFile.toString()), "unused hint");
 
     assertEquals(
-        "Request file does not exist: " + requestFile.toAbsolutePath().normalize() + ".",
+        "Request file does not exist: " + CliPublicPaths.redactedValue(requestFile) + ".",
         exception.getMessage());
     assertTrue(
         Objects.requireNonNull(exception.failure().hint())
@@ -78,7 +78,7 @@ class CliJsonRequestCodecTest {
             requestFile, new AccessDeniedException(requestFile.toString()), "unused hint");
 
     assertEquals(
-        "Request file is not readable: " + requestFile.toAbsolutePath().normalize() + ".",
+        "Request file is not readable: " + CliPublicPaths.redactedValue(requestFile) + ".",
         exception.getMessage());
   }
 
@@ -91,7 +91,7 @@ class CliJsonRequestCodecTest {
             requestFile, new IOException("boom"), "unused hint");
 
     assertEquals(
-        "Failed to read request file: " + requestFile.toAbsolutePath().normalize() + ".",
+        "Failed to read request file: " + CliPublicPaths.redactedValue(requestFile) + ".",
         exception.getMessage());
   }
 
@@ -135,7 +135,7 @@ class CliJsonRequestCodecTest {
         "Request file exceeded the supported "
             + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit: "
-            + requestFile.toAbsolutePath().normalize()
+            + CliPublicPaths.redactedValue(requestFile)
             + ".",
         fileException.getMessage());
   }

@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -94,28 +95,21 @@ class RejectionNarrativeTest {
             .contains("chart hierarchy cycle"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ClosingEquityAccountMissing(
-                    new AccountCode("3200")))
-            .contains("Closing-equity account"));
+                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                    FinancialPositionLineClassification.RETAINED_EARNINGS, List.of()))
+            .contains("required classification"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                    new AccountCode("3200"),
+                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
                     FinancialPositionLineClassification.RETAINED_EARNINGS,
-                    FinancialPositionLineClassification.OTHER_EQUITY))
-            .contains("OTHER_EQUITY"));
+                    List.of(new AccountCode("3200"))))
+            .contains("inactive candidates: 3200"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                    new AccountCode("3200"),
-                    FinancialPositionLineClassification.RETAINED_EARNINGS,
-                    FinancialPositionLineClassification.OTHER_EQUITY))
-            .contains("RETAINED_EARNINGS"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookAdministrationRejection.ClosingEquityAccountInactive(
-                    new AccountCode("3900")))
-            .contains("3900"));
+                new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+                    FinancialPositionLineClassification.OTHER_EQUITY,
+                    List.of(new AccountCode("3200"), new AccountCode("3210"))))
+            .contains("3200, 3210"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.PeriodCloseMustStartAt(
@@ -154,49 +148,68 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BookHasBlockingArtifacts(
-                    java.nio.file.Path.of("books/acme.sqlite"),
-                    List.of(java.nio.file.Path.of("books/acme.sqlite-wal"))))
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    List.of(hint(java.nio.file.Path.of("books/acme.sqlite-wal")))))
             .contains("blocking sibling artifacts"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                    java.nio.file.Path.of("backup/acme.sqlite"),
-                    List.of(java.nio.file.Path.of("backup/acme.sqlite-wal"))))
+                    hint(java.nio.file.Path.of("backup/acme.sqlite")),
+                    List.of(hint(java.nio.file.Path.of("backup/acme.sqlite-wal")))))
             .contains("safe to restore"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.ArtifactBusy(
+                    dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.LIVE_BOOK,
+                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
+            .contains("actively in use"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
-                    java.nio.file.Path.of("backup/acme.sqlite")))
+                    hint(java.nio.file.Path.of("backup/acme.sqlite"))))
             .contains("will not overwrite"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BackupKeyFileAlreadyExists(
-                    java.nio.file.Path.of("backup/acme.book-key")))
+                    hint(java.nio.file.Path.of("backup/acme.book-key"))))
             .contains("key file"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.ArtifactVerificationFailed(
+                    dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole
+                        .RESTORED_TARGET,
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
+                        .PROTECTED_BOOK_VERIFICATION_FAILED))
+            .contains("failed verification"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.NoRollbackArtifactsFound(
-                    java.nio.file.Path.of("books/acme.sqlite")))
+                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
             .contains("No sibling rekey rollback artifacts"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                    java.nio.file.Path.of("books/acme.sqlite"),
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
                     List.of(
-                        java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite"),
-                        java.nio.file.Path.of("books/acme.rekey-rollback-2.sqlite"))))
+                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite")),
+                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-2.sqlite")))))
             .contains("choose one explicit rollback artifact path"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.RollbackArtifactNotFound(
-                    java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite")))
+                    hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite"))))
             .contains("does not exist"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                    java.nio.file.Path.of("books/acme.sqlite"),
-                    java.nio.file.Path.of("books/other.rekey-rollback-1.sqlite")))
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/other.rekey-rollback-1.sqlite"))))
             .contains("does not belong"));
+  }
+
+  private static PublicPathHint hint(java.nio.file.Path path) {
+    return PublicPathHint.fromPath(path);
   }
 
   @Test

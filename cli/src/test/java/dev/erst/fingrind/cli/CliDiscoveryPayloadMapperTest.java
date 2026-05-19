@@ -60,8 +60,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 canonical.exitCodes(),
                 canonical.preflight(),
                 canonical.currencyModel(),
-                canonical.extensionSurface(),
-                canonical.environment()));
+                canonical.extensionSurface()));
 
     assertInstanceOf(CliDiscoveryJsonModels.HelpOverviewPayload.class, payload);
   }
@@ -142,8 +141,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel(),
-                    postEntry.extensionSurface(),
-                    postEntry.environment())));
+                    postEntry.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -164,8 +162,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel(),
-                    declareAccount.extensionSurface(),
-                    declareAccount.environment())));
+                    declareAccount.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -186,8 +183,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.exitCodes(),
                     executePlan.preflight(),
                     executePlan.currencyModel(),
-                    executePlan.extensionSurface(),
-                    executePlan.environment())));
+                    executePlan.extensionSurface())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -219,8 +215,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel(),
-                    postEntry.extensionSurface(),
-                    postEntry.environment())));
+                    postEntry.extensionSurface())));
 
     assertNull(payload.requestFile());
   }
@@ -254,8 +249,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel(),
-                    postEntry.extensionSurface(),
-                    postEntry.environment())));
+                    postEntry.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -276,8 +270,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel(),
-                    declareAccount.extensionSurface(),
-                    declareAccount.environment())));
+                    declareAccount.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -298,8 +291,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.exitCodes(),
                     executePlan.preflight(),
                     executePlan.currencyModel(),
-                    executePlan.extensionSurface(),
-                    executePlan.environment())));
+                    executePlan.extensionSurface())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -340,8 +332,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel(),
-                    postEntry.extensionSurface(),
-                    postEntry.environment())));
+                    postEntry.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -367,8 +358,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel(),
-                    declareAccount.extensionSurface(),
-                    declareAccount.environment())));
+                    declareAccount.extensionSurface())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -394,8 +384,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.exitCodes(),
                     executePlan.preflight(),
                     executePlan.currencyModel(),
-                    executePlan.extensionSurface(),
-                    executePlan.environment())));
+                    executePlan.extensionSurface())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -472,7 +461,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.40.0",
+        "0.41.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

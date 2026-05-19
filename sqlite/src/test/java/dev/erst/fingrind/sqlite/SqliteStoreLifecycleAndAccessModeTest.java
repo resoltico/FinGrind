@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -157,7 +158,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   @Test
   void close_isIdempotent() {
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(tempDirectory.resolve("close-ok.sqlite")))) {
+        openStore(bookAccess(tempDirectory.resolve("close-ok.sqlite")))) {
       assertDoesNotThrow(postingFactStore::close);
       assertDoesNotThrow(postingFactStore::close);
     }
@@ -167,8 +168,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   void close_afterDatabaseOpenRemainsIdempotent() throws Exception {
     Path bookPath = tempDirectory.resolve("close-opened.sqlite");
     initializeBookOnDisk(bookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       assertDoesNotThrow(() -> postingFactStore.listAccounts(firstAccountPage()));
       assertDoesNotThrow(postingFactStore::close);
       assertDoesNotThrow(postingFactStore::close);
@@ -192,8 +192,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   void storeRetainsStableOpenFailureAfterPassphraseConsumption() throws Exception {
     Path invalidBookPath = tempDirectory.resolve("invalid-retry.sqlite");
     Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException firstFailure =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
       IllegalStateException secondFailure =
@@ -241,6 +240,37 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         Optional.empty(),
         SqliteStoreOperations.protectedBookVerificationFailure(
             new SqliteNativeException(SqliteNativeResultCodes.ERROR, "ordinary runtime failure")));
+  }
+
+  @Test
+  void lifecycleOpen_wrapsNonVerificationNativeOpenFailures() {
+    Path bookPath = tempDirectory.resolve("open-runtime-failure.sqlite");
+    SqliteStoreContext context =
+        new SqliteStoreContext(
+            bookPath, SqliteStoreAccessMode.READ_ONLY, SqliteNativeBootstrap::api) {
+          @Override
+          SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+            throw new SqliteNativeException(SqliteNativeResultCodes.ERROR, "open-boom");
+          }
+        };
+    try (SqliteSessionSecret sessionSecret =
+        new SqliteSessionSecret(
+            SqliteBookPassphrase.fromCharacters(
+                "open runtime failure", TEST_BOOK_KEY.toCharArray()))) {
+      SqliteStoreLifecycle lifecycle = new SqliteStoreLifecycle(context, sessionSecret);
+
+      IllegalStateException firstFailure =
+          assertThrows(IllegalStateException.class, lifecycle::database);
+      IllegalStateException repeatedFailure =
+          assertThrows(IllegalStateException.class, lifecycle::database);
+
+      assertInstanceOf(SqliteStorageFailureException.class, firstFailure);
+      assertTrue(
+          NullTestSupport.messageOf(firstFailure)
+              .contains("Failed to open SQLite book connection. SQLITE_ERROR: open-boom"),
+          () -> NullTestSupport.messageOf(firstFailure));
+      assertSame(firstFailure, repeatedFailure);
+    }
   }
 
   @Test
@@ -314,8 +344,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   }
 
   private void assertProtectedBookVerificationFailure(Path bookPath) {
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
       assertProtectedBookVerificationFailure(exception);
@@ -359,8 +388,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
           assertEquals(
               "SQLite text query returned no rows: select 'x' where 0",
               emptyTextQueryException.getMessage());
-          try (SqlitePostingFactStore postingFactStore =
-              new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+          try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
             IllegalStateException blankException =
                 assertThrows(
                     IllegalStateException.class,
@@ -403,8 +431,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     withStandaloneDatabase(
         bookAccess(foreignBookPath),
         database -> {
-          try (SqlitePostingFactStore postingFactStore =
-              new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
+          try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(foreignBookPath))) {
             IllegalStateException foreignException =
                 assertThrows(
                     IllegalStateException.class,
@@ -432,10 +459,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         database -> {
           assertEquals("INCOMPLETE_FINGRIND", bookStateReader.bookState(database).toString());
         });
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
-      setStoreDatabase(
-          postingFactStore, SqliteNativeConnections.openKeyFileAccess(bookAccess(blankBookPath)));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
+      setStoreDatabase(postingFactStore, openNativeDatabase(bookAccess(blankBookPath)));
       assertEquals(
           Optional.of(
               new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
@@ -447,8 +472,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     }
     Path staleBookPath = tempDirectory.resolve("find-one-stale.sqlite");
     createEmptySqliteFile(staleBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(staleBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(staleBookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(staleBookPath));
       IllegalStateException failure =
           assertThrows(
@@ -462,8 +486,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   @Test
   void activeNativeDatabase_returnsPublishedSessionHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("active-native-database.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(storeDatabase(postingFactStore), postingFactStore.activeNativeDatabase());
     }
@@ -473,8 +496,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   @SuppressWarnings("PMD.CloseResource")
   void lifecycleStateModel_coversFailedClosedAndHelperFallbackBranches() throws Exception {
     Path bookPath = tempDirectory.resolve("lifecycle-state-model.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       assertDoesNotThrow(postingFactStore.lifecycle::ensureOpenSession);
       initializeBookWithDefaultAccounts(postingFactStore);
       SqliteStoreLifecycle lifecycle = postingFactStore.lifecycle;

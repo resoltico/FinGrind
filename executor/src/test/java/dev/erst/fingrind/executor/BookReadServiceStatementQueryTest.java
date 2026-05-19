@@ -188,8 +188,7 @@ class BookReadServiceStatementQueryTest {
               () -> new PostingId("period-close-1"),
               FIXED_CLOCK);
 
-      PeriodCloseOutcome outcome =
-          closeService.closePeriod(CLOSE_PERIOD, RETAINED_EARNINGS_ACCOUNT_CODE);
+      PeriodCloseOutcome outcome = closeService.closePeriod(CLOSE_PERIOD);
       dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
           assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
 

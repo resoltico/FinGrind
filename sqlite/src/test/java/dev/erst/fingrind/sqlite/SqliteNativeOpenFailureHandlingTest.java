@@ -6,7 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -127,7 +134,14 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               AssertionError.class,
               () ->
                   SqliteNativeConnections.configureOpenedDatabase(
-                      fakeDatabaseHandle, passphrase, sqliteApi, arena));
+                      tempDirectory
+                          .resolve("configure-opened-error.sqlite")
+                          .toAbsolutePath()
+                          .normalize(),
+                      fakeDatabaseHandle,
+                      passphrase,
+                      sqliteApi,
+                      arena));
       assertEquals("boom", exception.getMessage());
       assertEquals(1, closeCalls.get());
     }
@@ -156,10 +170,243 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               IllegalStateException.class,
               () ->
                   SqliteNativeConnections.configureOpenedDatabase(
-                      fakeDatabaseHandle, passphrase, sqliteApi, arena));
+                      tempDirectory
+                          .resolve("configure-opened-close-failure.sqlite")
+                          .toAbsolutePath()
+                          .normalize(),
+                      fakeDatabaseHandle,
+                      passphrase,
+                      sqliteApi,
+                      arena));
       assertEquals("Failed to open the SQLite native library bridge.", exception.getMessage());
       assertEquals("busy-timeout boom", Objects.requireNonNull(exception.getCause()).getMessage());
       assertEquals(1, exception.getSuppressed().length);
+    }
+  }
+
+  @Test
+  void hardenOpenedDatabase_addsSuppressedCloseFailureWhenHardeningFails() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
+        Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "configure-and-harden-close-failure", TEST_BOOK_KEY.toCharArray())) {
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = throwingAclView("book-harden-boom");
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "recordCloseCallThenThrow",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      SqliteStorageFailureException exception =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  hardenOpenedDatabase(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeConnections.configureOpenedDatabase(
+                          bookPath.toAbsolutePath().normalize(),
+                          fakeDatabaseHandle,
+                          passphrase,
+                          sqliteApi,
+                          arena),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE));
+
+      assertEquals(
+          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
+      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
+      assertEquals(1, closeCalls.get());
+      assertEquals(1, exception.getSuppressed().length);
+      assertEquals(
+          "Failed to close the SQLite native library bridge.",
+          exception.getSuppressed()[0].getMessage());
+    }
+  }
+
+  @Test
+  void hardenOpenedDatabase_closesOpenedDatabaseWhenHardeningFailsWithoutCloseFault()
+      throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
+        Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "configure-and-harden-close-success", TEST_BOOK_KEY.toCharArray())) {
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = throwingAclView("book-harden-boom");
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      SqliteStorageFailureException exception =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  hardenOpenedDatabase(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeConnections.configureOpenedDatabase(
+                          bookPath.toAbsolutePath().normalize(),
+                          fakeDatabaseHandle,
+                          passphrase,
+                          sqliteApi,
+                          arena),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE));
+
+      assertEquals(
+          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
+      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
+      assertEquals(1, closeCalls.get());
+      assertEquals(
+          1,
+          java.util.Arrays.stream(exception.getSuppressed())
+              .filter(
+                  suppressed ->
+                      "Failed to close the SQLite native library bridge."
+                          .equals(suppressed.getMessage()))
+              .count());
+    }
+  }
+
+  @Test
+  void open_closesConfiguredDatabaseWhenHardeningFailsWithoutCloseFault() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
+        Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "open hardening cleanup", TEST_BOOK_KEY.toCharArray())) {
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = throwingAclView("book-harden-boom");
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "openWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      SqliteStorageFailureException exception =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.open(
+                      bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi));
+
+      assertEquals(
+          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
+      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
+      assertEquals(1, closeCalls.get());
+      assertEquals(0, exception.getSuppressed().length);
+    }
+  }
+
+  @Test
+  void open_addsSuppressedCloseFailureWhenHardeningFails() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
+        Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "open hardening cleanup failure", TEST_BOOK_KEY.toCharArray())) {
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = throwingAclView("book-harden-boom");
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "openWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "recordCloseCallThenThrow",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      SqliteStorageFailureException exception =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.open(
+                      bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi));
+
+      assertEquals(
+          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
+      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
+      assertEquals(1, closeCalls.get());
+      assertEquals(1, exception.getSuppressed().length);
+      assertEquals(
+          "Failed to close the SQLite native library bridge.",
+          exception.getSuppressed()[0].getMessage());
     }
   }
 
@@ -359,5 +606,60 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               () -> SqliteNativeConnections.requireOpenConfigurationSuccess(14, sqliteApi));
       assertEquals("SQLITE_CANTOPEN", exception.getMessage());
     }
+  }
+
+  private static SqliteNativeDatabase hardenOpenedDatabase(
+      Path normalizedBookPath, SqliteNativeDatabase openedDatabase, SqliteNativeOpenMode openMode) {
+    try {
+      MethodHandles.Lookup lookup =
+          MethodHandles.privateLookupIn(SqliteNativeConnections.class, MethodHandles.lookup());
+      return (SqliteNativeDatabase)
+          lookup
+              .findStatic(
+                  SqliteNativeConnections.class,
+                  "hardenOpenedDatabase",
+                  MethodType.methodType(
+                      SqliteNativeDatabase.class,
+                      Path.class,
+                      SqliteNativeDatabase.class,
+                      SqliteNativeOpenMode.class))
+              .invokeExact(normalizedBookPath, openedDatabase, openMode);
+    } catch (RuntimeException runtimeException) {
+      throw runtimeException;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new LinkageError(
+          "Failed to invoke SQLite native open-and-harden helper for tests.", throwable);
+    }
+  }
+
+  private static AclFileAttributeView throwingAclView(String message) {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() {
+        return List.of();
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws java.io.IOException {
+        throw new java.io.IOException(message);
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws java.io.IOException {
+        throw new java.io.IOException(message);
+      }
+
+      @Override
+      public void setOwner(UserPrincipal ownerPrincipal) {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 }

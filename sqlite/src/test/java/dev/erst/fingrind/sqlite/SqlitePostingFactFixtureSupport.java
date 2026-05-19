@@ -38,7 +38,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -61,7 +60,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),

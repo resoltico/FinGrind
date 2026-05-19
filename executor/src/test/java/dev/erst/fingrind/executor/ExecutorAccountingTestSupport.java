@@ -29,7 +29,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -179,7 +178,6 @@ public final class ExecutorAccountingTestSupport {
             entityForm,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),

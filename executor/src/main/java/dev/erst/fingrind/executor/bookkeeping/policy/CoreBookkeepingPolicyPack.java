@@ -1,7 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping.policy;
 
-import dev.erst.fingrind.contract.protocol.AccountingPolicyPackFacts;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookIdentity;
@@ -57,9 +55,6 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
               FinancialPositionLineClassification.CURRENT_PERIOD_RESULT);
         }
       };
-  private static final TaxPolicy TAX_POLICY = () -> false;
-  private static final ForeignExchangePolicy FOREIGN_EXCHANGE_POLICY = () -> false;
-  private static final EvidencePolicy EVIDENCE_POLICY = () -> false;
 
   private final StatementComparativePolicy statementComparativePolicy =
       new FiscalYearAnchoredStatementComparativePolicy();
@@ -69,11 +64,6 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   /** Returns the built-in bookkeeping policy pack. */
   public static CoreBookkeepingPolicyPack current() {
     return CURRENT;
-  }
-
-  @Override
-  public AccountingPolicyPackFacts facts() {
-    return ProtocolCatalog.accountingBaseline().defaultPolicyPack();
   }
 
   @Override
@@ -99,20 +89,5 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   @Override
   public StatementPresentationPolicy statementPresentationPolicy() {
     return STATEMENT_PRESENTATION_POLICY;
-  }
-
-  @Override
-  public TaxPolicy taxPolicy() {
-    return TAX_POLICY;
-  }
-
-  @Override
-  public ForeignExchangePolicy foreignExchangePolicy() {
-    return FOREIGN_EXCHANGE_POLICY;
-  }
-
-  @Override
-  public EvidencePolicy evidencePolicy() {
-    return EVIDENCE_POLICY;
   }
 }

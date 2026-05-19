@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import java.util.Objects;
@@ -221,8 +222,9 @@ public final class BookWorkflowPublishedLanguageTranslator {
       case LedgerAssertion.AccountBalanceEquals balanceEquals ->
           new BookWorkflowAssertion.AccountBalanceEquals(
               balanceEquals.accountCode(),
-              balanceEquals.effectiveDateFrom().orElse(null),
-              balanceEquals.effectiveDateTo().orElse(null),
+              EffectiveDateRange.of(
+                  balanceEquals.effectiveDateFrom().orElse(null),
+                  balanceEquals.effectiveDateTo().orElse(null)),
               balanceEquals.netAmount(),
               balanceEquals.balanceSide());
     };

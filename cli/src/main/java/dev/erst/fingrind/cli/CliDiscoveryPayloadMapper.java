@@ -37,11 +37,14 @@ final class CliDiscoveryPayloadMapper {
                 + " <command>' for command-specific usage, operator notes, and examples.",
             "Run '"
                 + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                + " --output json' for the full machine-readable contract."),
+                + " --output json' for the stable machine-readable command contract.",
+            "Run '"
+                + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                + " --output json' for live runtime, distribution, and SQLite provenance facts."),
         helpDescriptor.exitCodes(),
         "Run '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-            + " --output json' for the full machine-readable contract.");
+            + " --output json' for the stable machine-readable command contract.");
   }
 
   private static CliDiscoveryJsonModels.CommandHelpPayload commandHelpPayload(
@@ -69,6 +72,7 @@ final class CliDiscoveryPayloadMapper {
       case EXECUTE_PLAN -> ledgerPlanRequestGuidance(helpDescriptor);
       case HELP,
           CAPABILITIES,
+          ENVIRONMENT,
           VERSION,
           PRINT_REQUEST_TEMPLATE,
           PRINT_PLAN_TEMPLATE,
@@ -77,7 +81,9 @@ final class CliDiscoveryPayloadMapper {
           REKEY_BOOK,
           BACKUP_BOOK,
           RESTORE_BOOK,
-          RECOVER_REKEY,
+          INSPECT_REKEY_ROLLBACK,
+          DELETE_REKEY_ROLLBACK,
+          RESTORE_REKEY_ROLLBACK,
           CLOSE_PERIOD,
           INSPECT_BOOK,
           LIST_ACCOUNTS,

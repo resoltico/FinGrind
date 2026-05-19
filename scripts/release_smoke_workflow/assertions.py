@@ -31,13 +31,14 @@ def parse_csv_rows(csv_output: str, surface_name: str) -> tuple[list[str], list[
     return list(fieldnames), rows
 
 
-def assert_capabilities_payload(
+def assert_discovery_payloads(
     config: ReleaseSmokeConfig,
     contract: dict[str, object],
     capabilities_payload: dict[str, Any],
+    environment_payload: dict[str, Any],
 ) -> None:
     payload = required_mapping(capabilities_payload, "payload")
-    environment = required_mapping(payload, "environment")
+    environment = required_mapping(environment_payload, "payload")
     distribution = required_mapping(environment, "distribution")
     storage = required_mapping(environment, "storage")
     sqlite = required_mapping(environment, "sqlite")
@@ -66,54 +67,54 @@ def assert_capabilities_payload(
 
     require(
         require_string(distribution, "runtimeDistribution") == runtime_distribution,
-        f"{config.label} capabilities output did not report the canonical runtime distribution",
+        f"{config.label} environment output did not report the canonical runtime distribution",
     )
     require(
         require_string(distribution, "publicCliDistribution")
         == require_string(runtime_surface, "publicCliDistribution"),
-        f"{config.label} capabilities output did not report the public CLI distribution contract",
+        f"{config.label} environment output did not report the public CLI distribution contract",
     )
     require(
         required_list(distribution, "supportedPublicCliBundleTargets")
         == required_list(public_distribution, "supportedPublicCliBundleTargets"),
-        f"{config.label} capabilities output did not report the supported public bundle targets",
+        f"{config.label} environment output did not report the supported public bundle targets",
     )
     require(
         required_list(distribution, "unsupportedPublicCliBundleTargets")
         == required_list(public_distribution, "unsupportedPublicCliBundleTargets"),
-        f"{config.label} capabilities output did not report the current unsupported public bundle targets",
+        f"{config.label} environment output did not report the current unsupported public bundle targets",
     )
     require(
         require_string(storage, "storageDriver")
         == require_string(runtime_surface, "storageDriver"),
-        f"{config.label} capabilities output did not report the SQLite3 Multiple Ciphers storage driver",
+        f"{config.label} environment output did not report the SQLite3 Multiple Ciphers storage driver",
     )
     require(
         require_string(storage, "bookProtectionMode")
         == require_string(runtime_surface, "bookProtectionMode"),
-        f"{config.label} capabilities output did not report required book protection",
+        f"{config.label} environment output did not report required book protection",
     )
     storage_format = required_mapping(storage, "defaultProtectedBookFormat")
     require(
         require_string(storage_format, "cipher") == require_string(protected_book_format, "cipher"),
-        f"{config.label} capabilities output did not report the canonical default book cipher",
+        f"{config.label} environment output did not report the canonical default book cipher",
     )
     require(
         storage_format.get("legacyMode") == protected_book_format.get("legacyMode"),
-        f"{config.label} capabilities output did not report the canonical legacy-mode flag",
+        f"{config.label} environment output did not report the canonical legacy-mode flag",
     )
     require(
         storage_format.get("pageSize") == protected_book_format.get("pageSize"),
-        f"{config.label} capabilities output did not report the canonical protected-book page size",
+        f"{config.label} environment output did not report the canonical protected-book page size",
     )
     require(
         storage_format.get("reservedBytes") == protected_book_format.get("reservedBytes"),
-        f"{config.label} capabilities output did not report the canonical protected-book reserved bytes",
+        f"{config.label} environment output did not report the canonical protected-book reserved bytes",
     )
     require(
         require_string(sqlite, "libraryMode")
         == require_string(runtime_surface, "sqliteLibraryMode"),
-        f"{config.label} capabilities output did not report the managed-only SQLite runtime mode",
+        f"{config.label} environment output did not report the managed-only SQLite runtime mode",
     )
     require(
         require_string(request_input, "outputOption") == "--output",
@@ -168,61 +169,61 @@ def assert_capabilities_payload(
         )
         require(
             require_string(runtime, "status") == "ready",
-            f"{config.label} capabilities output did not report a ready SQLite runtime",
+            f"{config.label} environment output did not report a ready SQLite runtime",
         )
         require(
             require_string(runtime, "runtimeProvenance") == expected_runtime_provenance,
-            f"{config.label} capabilities output did not report the expected SQLite runtime provenance",
+            f"{config.label} environment output did not report the expected SQLite runtime provenance",
         )
         require(
             bool(require_string(runtime, "loadedLibraryPath").strip()),
-            f"{config.label} capabilities output did not report the loaded SQLite library path",
+            f"{config.label} environment output did not report the loaded SQLite library path",
         )
         require(
             require_string(sqlite, "requiredSqliteSourceId")
             == require_string(managed_sqlite, "requiredSqliteSourceId"),
-            f"{config.label} capabilities output did not report the canonical SQLite source id requirement",
+            f"{config.label} environment output did not report the canonical SQLite source id requirement",
         )
         require(
             require_string(runtime, "loadedSqliteVersion")
             == require_string(managed_sqlite, "requiredMinimumSqliteVersion"),
-            f"{config.label} capabilities output did not report the canonical SQLite version",
+            f"{config.label} environment output did not report the canonical SQLite version",
         )
         require(
             require_string(runtime, "loadedSqlite3mcVersion")
             == require_string(managed_sqlite, "requiredSqlite3mcVersion"),
-            f"{config.label} capabilities output did not report the canonical SQLite3 Multiple Ciphers version",
+            f"{config.label} environment output did not report the canonical SQLite3 Multiple Ciphers version",
         )
         require(
             require_string(runtime, "loadedSqliteSourceId")
             == require_string(managed_sqlite, "requiredSqliteSourceId"),
-            f"{config.label} capabilities output did not report the canonical SQLite source id",
+            f"{config.label} environment output did not report the canonical SQLite source id",
         )
         require(
             required_list(sqlite, "requiredCompileOptions")
             == required_list(managed_sqlite, "requiredCompileOptions"),
-            f"{config.label} capabilities output did not report the canonical SQLite compile options",
+            f"{config.label} environment output did not report the canonical SQLite compile options",
         )
         require(
             required_list(sqlite, "forbiddenCompileOptions")
             == required_list(managed_sqlite, "forbiddenCompileOptions"),
-            f"{config.label} capabilities output did not report the canonical forbidden SQLite compile options",
+            f"{config.label} environment output did not report the canonical forbidden SQLite compile options",
         )
         require(
             require_bool(sqlite, "requiresSecureMemorySupport")
             == require_bool(managed_sqlite, "requiresSecureMemorySupport"),
-            f"{config.label} capabilities output did not report the canonical SQLite3MC secure-memory requirement",
+            f"{config.label} environment output did not report the canonical SQLite3MC secure-memory requirement",
         )
         require(
             require_string(runtime, "compileOptionsVerification") == "verified",
-            f"{config.label} capabilities output did not report verified SQLite compile-option enforcement",
+            f"{config.label} environment output did not report verified SQLite compile-option enforcement",
         )
 
     if config.expect_bundle_home_property:
         require(
             require_string(sqlite, "bundleHomeSystemProperty")
             == require_string(runtime_surface, "sqliteBundleHomeSystemProperty"),
-            f"{config.label} capabilities output did not report the bundle-home system property",
+            f"{config.label} environment output did not report the bundle-home system property",
         )
 
 

@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.NormalBalance;
@@ -176,41 +175,13 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
-            environmentDescriptor(
-                FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
-                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-                "unavailable",
-                nullOf(),
-                nullOf(),
-                "system sqlite unavailable")));
+                "Command-line double-entry bookkeeping with one protected book per accounting entity")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
-    JsonNode environment = payload.path("environment");
     assertTrue(payload.has("preflight"));
     assertTrue(payload.has("currencyModel"));
     assertEquals("advisory", payload.path("preflight").path("semantics").stringValue());
-    assertEquals(
-        ProtocolCatalog.bookProtectionMode().wireValue(),
-        environment.path("storage").path("bookProtectionMode").stringValue());
-    assertEquals(
-        FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
-        environment.path("distribution").path("runtimeDistribution").stringValue());
-    assertEquals(
-        ProtocolCatalog.publicCliDistribution().wireValue(),
-        environment.path("distribution").path("publicCliDistribution").stringValue());
-    assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
-            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
-            .toList(),
-        readTextArray(environment.path("distribution").path("supportedPublicCliBundleTargets")));
-    assertEquals(
-        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
-            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
-            .toList(),
-        readTextArray(environment.path("distribution").path("unsupportedPublicCliBundleTargets")));
-    assertFalse(environment.path("sqlite").has("loadedSqliteVersion"));
-    assertFalse(environment.path("sqlite").has("loadedSqlite3mcVersion"));
+    assertFalse(payload.has("environment"));
   }
 
   @Test
@@ -220,14 +191,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
-            environmentDescriptor(
-                FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
-                SqliteCompileOptionsVerificationStatus.VERIFIED,
-                "ready",
-                "3.53.1",
-                "2.3.4",
-                nullOf()));
+                "Command-line double-entry bookkeeping with one protected book per accounting entity"));
     ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
     CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
     humanWriter.writeCapabilities(capabilities, OutputMode.HUMAN);
@@ -237,6 +201,28 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () -> csvWriter.writeCapabilities(capabilities, OutputMode.CSV));
+  }
+
+  @Test
+  void writeEnvironment_supportsHumanButRejectsCsv() {
+    var environment =
+        environmentDescriptor(
+            FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            "ready",
+            "3.53.1",
+            "2.3.4",
+            nullOf());
+    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
+    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
+    humanWriter.writeEnvironment(environment, OutputMode.HUMAN);
+    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Environment"));
+
+    ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
+    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> csvWriter.writeEnvironment(environment, OutputMode.CSV));
   }
 
   @Test
@@ -267,7 +253,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
     assertEquals(
-        Path.of("secrets").resolve("entity.book-key").toAbsolutePath().normalize().toString(),
+        CliPublicPaths.normalizedValue(Path.of("secrets").resolve("entity.book-key")),
         json.path("payload").path("bookKeyFile").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());

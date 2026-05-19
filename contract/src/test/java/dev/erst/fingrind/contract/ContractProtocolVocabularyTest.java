@@ -65,7 +65,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(8, BookFormatContract.FORMAT_VERSION);
+    assertEquals(9, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -130,7 +130,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
         SqliteRuntimeTrustBasis.fromWireValue("publisher-authenticated"));
-    assertEquals("operator-trusted", SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.toString());
+    assertEquals("unsafe-local-override", SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE.toString());
     assertEquals(SqliteRuntimeStatus.READY, SqliteRuntimeStatus.fromWireValue("ready"));
     assertEquals("ready", SqliteRuntimeStatus.READY.toString());
     assertEquals(SqliteRuntimeStatus.FAILED, SqliteRuntimeStatus.fromWireValue("failed"));

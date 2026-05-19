@@ -10,14 +10,12 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -29,15 +27,11 @@ import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -46,13 +40,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
-import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
-import java.time.Instant;
-import java.time.LocalDate;
+import dev.erst.fingrind.sqlite.SqliteReadSession;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -234,10 +222,10 @@ final class SqliteRoundTripWorkflowTestSupport {
     assertTrue(Objects.requireNonNullElse(throwable.getMessage(), "").contains(expectedFragment));
   }
 
-  static final class StubSqliteBookSession implements SqliteBookSession {
+  static final class StubSqliteReadSession implements SqliteReadSession {
     private final Optional<RegisteredAccount> account;
 
-    StubSqliteBookSession(Optional<DeclaredAccount> account) {
+    StubSqliteReadSession(Optional<DeclaredAccount> account) {
       this.account =
           Objects.requireNonNull(account, "account")
               .map(SqliteRoundTripWorkflowTestSupport::registeredAccount);
@@ -247,22 +235,6 @@ final class SqliteRoundTripWorkflowTestSupport {
     public BookLifecycleInspection inspectBook() {
       return new BookLifecycleInspection.Initialized(
           7, 1, 1, CliFuzzFixtures.fixedClock().instant(), CliFuzzFixtures.bookIdentity());
-    }
-
-    @Override
-    public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountRole accountRole,
-        AccountTaxonomy accountTaxonomy,
-        Instant declaredAt) {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -301,21 +273,6 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public java.util.List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
       throw new UnsupportedOperationException();
     }
@@ -342,44 +299,7 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public dev.erst.fingrind.contract.runtime.ContractDecision<
-            dev.erst.fingrind.contract.bookkeeping.RekeyBookResult>
-        rekeyBook(
-            BookAccess.PassphraseSource replacementPassphraseSource,
-            SqlitePassphraseResolver passphraseResolver,
-            Instant rekeyedAt) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void close() {}
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void rollbackLedgerPlanTransaction() {
-      throw new UnsupportedOperationException();
-    }
   }
 
   private static RegisteredAccount registeredAccount(DeclaredAccount account) {

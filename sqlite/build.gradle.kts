@@ -3,6 +3,7 @@ import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
+import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     `java-library`
@@ -17,6 +18,10 @@ val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRoo
 val managedSqliteToolchainFingerprintPath =
     rootProject.layout.buildDirectory.file(
         "managed-sqlite/${hostBundleTarget.classifier}/toolchain-fingerprint.json",
+    )
+val managedSqliteBuildContractPath =
+    rootProject.layout.buildDirectory.file(
+        "managed-sqlite/${hostBundleTarget.classifier}/build-contract.json",
     )
 val protectedBookFixturePath =
     project.layout.projectDirectory.file(
@@ -40,6 +45,10 @@ tasks.named<ProcessResources>("processResources") {
     from(managedSqliteToolchainFingerprintPath) {
         into("META-INF/fingrind")
         rename { "managed-sqlite-toolchain.json" }
+    }
+    from(managedSqliteBuildContractPath) {
+        into("META-INF/fingrind")
+        rename { "managed-sqlite-build-contract.json" }
     }
 }
 

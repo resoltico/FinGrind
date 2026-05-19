@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import java.util.Objects;
 
@@ -39,6 +40,20 @@ final class CliDiscoveryResponseWriter {
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.CAPABILITIES));
+        });
+  }
+
+  void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {
+    outputMode.run(
+        () ->
+            outputChannel.writeEnvelope(
+                CliResponsePayloadMapper.successEnvelope(environmentDescriptor)),
+        () ->
+            outputChannel.writeText(
+                CliDiscoveryOutputRenderer.renderEnvironmentHuman(environmentDescriptor)),
+        () -> {
+          throw new IllegalArgumentException(
+              CliOperationText.unsupportedCsvOutput(OperationId.ENVIRONMENT));
         });
   }
 

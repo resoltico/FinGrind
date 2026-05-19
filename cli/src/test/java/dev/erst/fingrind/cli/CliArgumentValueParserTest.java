@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
@@ -89,10 +88,6 @@ class CliArgumentValueParserTest {
         CliArgumentValueParser.parseReportingObligationStatusOption(
             "INTERNAL_MANAGEMENT_ONLY", "--reporting-obligation-status"));
     assertEquals(
-        TaxRegistrationStatus.UNSPECIFIED,
-        CliArgumentValueParser.parseTaxRegistrationStatusOption(
-            "UNSPECIFIED", "--tax-registration-status"));
-    assertEquals(
         AccountingBasis.ACCRUAL,
         CliArgumentValueParser.parseAccountingBasisOption("ACCRUAL", "--accounting-basis"));
     assertEquals(
@@ -119,14 +114,6 @@ class CliArgumentValueParserTest {
                 () ->
                     CliArgumentValueParser.parseReportingObligationStatusOption(
                         "NOPE", "--reporting-obligation-status"))
-            .argument());
-    assertEquals(
-        "--tax-registration-status",
-        assertThrows(
-                CliArgumentsException.class,
-                () ->
-                    CliArgumentValueParser.parseTaxRegistrationStatusOption(
-                        "NOPE", "--tax-registration-status"))
             .argument());
     assertEquals(
         "--accounting-basis",

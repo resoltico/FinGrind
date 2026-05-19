@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 final class SqliteCanonicalSchemaManifest {
   private static final Pattern CREATE_OBJECT_PATTERN =
       Pattern.compile(
-          "(?im)^create\\s+(table|index|trigger)\\s+if\\s+not\\s+exists\\s+([A-Za-z0-9_]+)");
+          "(?im)^create\\s+(?:unique\\s+)?(table|index|trigger)\\s+if\\s+not\\s+exists\\s+([A-Za-z0-9_]+)");
 
   private SqliteCanonicalSchemaManifest() {}
 
@@ -26,6 +26,10 @@ final class SqliteCanonicalSchemaManifest {
     return loadManifest().loadObjectsQuery();
   }
 
+  static String loadNonCanonicalObjectsQuery() {
+    return loadManifest().loadNonCanonicalObjectsQuery();
+  }
+
   private static Manifest loadManifest() {
     return ManifestHolder.MANIFEST;
   }
@@ -34,7 +38,10 @@ final class SqliteCanonicalSchemaManifest {
     String schemaSql =
         SqliteBookSchemaBootstrap.readSchema(SqliteBookSchemaBootstrap::openSchemaStreamForTests);
     List<String> objectNames = parseObjectNames(schemaSql);
-    return new Manifest(objectNames, buildLoadObjectsQuery(objectNames));
+    return new Manifest(
+        objectNames,
+        buildLoadObjectsQuery(objectNames),
+        buildLoadNonCanonicalObjectsQuery(objectNames));
   }
 
   static List<String> parseObjectNames(String schemaSql) {
@@ -63,10 +70,26 @@ final class SqliteCanonicalSchemaManifest {
         .formatted("'" + String.join("',\n              '", objectNames) + "'");
   }
 
-  private record Manifest(List<String> objectNames, String loadObjectsQuery) {
+  private static String buildLoadNonCanonicalObjectsQuery(List<String> objectNames) {
+    return """
+        select type, name, ifnull(sql, '')
+        from sqlite_schema
+        where type in ('table', 'index', 'trigger', 'view')
+          and name not like 'sqlite_%%'
+          and name not in (
+              %s
+          )
+        order by type, name
+        """
+        .formatted("'" + String.join("',\n              '", objectNames) + "'");
+  }
+
+  private record Manifest(
+      List<String> objectNames, String loadObjectsQuery, String loadNonCanonicalObjectsQuery) {
     private Manifest {
       objectNames = List.copyOf(Objects.requireNonNull(objectNames, "objectNames"));
       Objects.requireNonNull(loadObjectsQuery, "loadObjectsQuery");
+      Objects.requireNonNull(loadNonCanonicalObjectsQuery, "loadNonCanonicalObjectsQuery");
     }
   }
 

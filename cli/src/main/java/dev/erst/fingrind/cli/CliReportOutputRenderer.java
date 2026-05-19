@@ -17,12 +17,15 @@ final class CliReportOutputRenderer {
   private CliReportOutputRenderer() {}
 
   static String renderTrialBalanceHuman(TrialBalanceReport report) {
+    boolean hasComparative = !report.comparativeRows().isEmpty();
     String header =
         CliTextFormat.renderKeyValueBlock(
             statementIdentityRows(
                 report.bookIdentity(),
                 report.postingCoverage(),
-                report.comparativeEffectiveDateRange(),
+                hasComparative
+                    ? report.comparativeEffectiveDateRange()
+                    : EffectiveDateRange.unbounded(),
                 List.of(
                     List.of(
                         "Effective date to",
@@ -47,7 +50,7 @@ final class CliReportOutputRenderer {
             7,
             8);
     String comparative =
-        report.comparativeRows().isEmpty()
+        !hasComparative
             ? ""
             : section(
                 "Comparative Trial Balance",
@@ -410,12 +413,15 @@ final class CliReportOutputRenderer {
   }
 
   static String renderFinancialPositionHuman(FinancialPositionReport report) {
+    boolean hasComparative = CliReportSurfacePolicy.hasComparative(report);
     String header =
         CliTextFormat.renderKeyValueBlock(
             statementIdentityRows(
                 report.bookIdentity(),
                 report.postingCoverage(),
-                report.comparativeEffectiveDateRange(),
+                hasComparative
+                    ? report.comparativeEffectiveDateRange()
+                    : EffectiveDateRange.unbounded(),
                 List.of(
                     List.of(
                         "Effective date to",
@@ -423,7 +429,7 @@ final class CliReportOutputRenderer {
                             report.effectiveDateTo().orElse(null))))));
     String sections = renderFinancialPositionSections(report.sections());
     String comparative =
-        !hasRenderableFinancialPositionSections(report.comparativeSections())
+        !hasComparative
             ? ""
             : section(
                 "Comparative Financial Position",
@@ -462,12 +468,15 @@ final class CliReportOutputRenderer {
   }
 
   static String renderIncomeStatementHuman(IncomeStatementReport report) {
+    boolean hasComparative = CliReportSurfacePolicy.hasComparative(report);
     String header =
         CliTextFormat.renderKeyValueBlock(
             statementIdentityRows(
                 report.bookIdentity(),
                 report.postingCoverage(),
-                report.comparativeEffectiveDateRange(),
+                hasComparative
+                    ? report.comparativeEffectiveDateRange()
+                    : EffectiveDateRange.unbounded(),
                 List.of(
                     List.of("Effective date from", report.effectiveDateFrom().toString()),
                     List.of("Effective date to", report.effectiveDateTo().toString()),
@@ -480,8 +489,7 @@ final class CliReportOutputRenderer {
                                 .collect(java.util.stream.Collectors.joining(", "))))));
     String sections = renderIncomeStatementSections(report.sections());
     String comparative =
-        !hasRenderableIncomeStatementSections(report.comparativeSections())
-                && report.comparativeNetIncomeTotals().isEmpty()
+        !hasComparative
             ? ""
             : section(
                 "Comparative Income Statement",
@@ -528,114 +536,34 @@ final class CliReportOutputRenderer {
   }
 
   static String renderChangesInEquityHuman(ChangesInEquityReport report) {
+    boolean hasComparative = CliReportSurfacePolicy.hasComparative(report);
+    boolean hasCurrent = CliReportSurfacePolicy.hasCurrent(report);
     String header =
         CliTextFormat.renderKeyValueBlock(
             statementIdentityRows(
                 report.bookIdentity(),
                 report.postingCoverage(),
-                report.comparativeEffectiveDateRange(),
-                List.of(
-                    List.of("Effective date from", report.effectiveDateFrom().toString()),
-                    List.of("Effective date to", report.effectiveDateTo().toString()),
-                    List.of("Opening totals", joinedBalancesHuman(report.openingTotals())),
-                    List.of("Movement totals", joinedBalancesHuman(report.movementTotals())),
-                    List.of("Closing totals", joinedBalancesHuman(report.closingTotals())))));
-    String table =
-        CliTextFormat.renderTable(
-            List.of(
-                "Line code",
-                "Line name",
-                "Role",
-                "Classification",
-                "Kind",
-                "Currency",
-                "Opening",
-                "Movement",
-                "Closing",
-                "Closing side"),
-            report.rows().stream()
-                .map(
-                    row ->
-                        List.of(
-                            CliQueryOutputFormatter.displayStatementLineCode(
-                                row.lineCode(), row.lineKind()),
-                            row.lineName(),
-                            CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                            CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-                                row.lineClassification()),
-                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
-                            row.closingBalance().netAmount().currencyUnit().code(),
-                            CliQueryOutputFormatter.displayMoney(row.openingBalance().netAmount()),
-                            CliQueryOutputFormatter.displayMoney(row.movement().netAmount()),
-                            CliQueryOutputFormatter.displayMoney(row.closingBalance().netAmount()),
-                            CliQueryOutputFormatter.displayBalanceSideLabel(
-                                row.closingBalance().balanceSide())))
-                .toList(),
-            5,
-            6,
-            7);
+                hasComparative
+                    ? report.comparativeEffectiveDateRange()
+                    : EffectiveDateRange.unbounded(),
+                changesInEquitySummaryRows(report, hasCurrent)));
+    String table = renderChangesInEquityTable(report.rows());
     String comparative =
-        report.comparativeRows().isEmpty()
-                && report.comparativeOpeningTotals().isEmpty()
-                && report.comparativeMovementTotals().isEmpty()
-                && report.comparativeClosingTotals().isEmpty()
+        !hasComparative
             ? ""
             : section(
                 "Comparative Changes In Equity",
                 joinSections(
                     comparativeReferenceLine(report.comparativeEffectiveDateRange()),
-                    CliTextFormat.renderTable(
-                        List.of(
-                            "Line code",
-                            "Line name",
-                            "Role",
-                            "Classification",
-                            "Kind",
-                            "Currency",
-                            "Opening",
-                            "Movement",
-                            "Closing",
-                            "Closing side"),
-                        report.comparativeRows().stream()
-                            .map(
-                                row ->
-                                    List.of(
-                                        CliQueryOutputFormatter.displayStatementLineCode(
-                                            row.lineCode(), row.lineKind()),
-                                        row.lineName(),
-                                        CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                        CliQueryOutputFormatter
-                                            .displayFinancialPositionLineClassification(
-                                                row.lineClassification()),
-                                        CliQueryOutputFormatter.displayRowKind(row.lineKind()),
-                                        row.closingBalance().netAmount().currencyUnit().code(),
-                                        CliQueryOutputFormatter.displayMoney(
-                                            row.openingBalance().netAmount()),
-                                        CliQueryOutputFormatter.displayMoney(
-                                            row.movement().netAmount()),
-                                        CliQueryOutputFormatter.displayMoney(
-                                            row.closingBalance().netAmount()),
-                                        CliQueryOutputFormatter.displayBalanceSideLabel(
-                                            row.closingBalance().balanceSide())))
-                            .toList(),
-                        5,
-                        6,
-                        7),
-                    CliTextFormat.renderKeyValueBlock(
-                        List.of(
-                            List.of(
-                                "Comparative opening totals",
-                                joinedBalancesHuman(report.comparativeOpeningTotals())),
-                            List.of(
-                                "Comparative movement totals",
-                                joinedBalancesHuman(report.comparativeMovementTotals())),
-                            List.of(
-                                "Comparative closing totals",
-                                joinedBalancesHuman(report.comparativeClosingTotals()))))));
+                    renderChangesInEquityTable(report.comparativeRows()),
+                    comparativeChangesInEquityTotals(report)));
     return CliTextFormat.renderTitledBlock(
         "Changes In Equity",
         joinSections(
-            header + System.lineSeparator() + System.lineSeparator() + table, comparative));
+            table.isBlank()
+                ? header
+                : header + System.lineSeparator() + System.lineSeparator() + table,
+            comparative));
   }
 
   static String renderChangesInEquityCsv(ChangesInEquityReport report) {
@@ -692,16 +620,24 @@ final class CliReportOutputRenderer {
   }
 
   private static String renderStatementSection(
-      String title, String table, List<dev.erst.fingrind.core.CurrencyBalance> totals) {
+      String title,
+      String table,
+      List<dev.erst.fingrind.core.CurrencyBalance> totals,
+      String totalsLabel) {
+    java.util.List<String> bodySections = new java.util.ArrayList<>();
+    if (!table.isBlank()) {
+      bodySections.add(table);
+    }
+    if (!totals.isEmpty()) {
+      bodySections.add(
+          CliTextFormat.renderKeyValueBlock(
+              List.of(List.of(totalsLabel, joinedBalancesHuman(totals)))));
+    }
     return title
         + System.lineSeparator()
         + "-".repeat(title.length())
         + System.lineSeparator()
-        + table
-        + System.lineSeparator()
-        + System.lineSeparator()
-        + CliTextFormat.renderKeyValueBlock(
-            List.of(List.of("Section totals", joinedBalancesHuman(totals))));
+        + joinSections(bodySections.toArray(String[]::new));
   }
 
   private static String joinSections(String... sections) {
@@ -735,7 +671,7 @@ final class CliReportOutputRenderer {
   private static List<List<String>> identityRows(
       BookIdentity bookIdentity, PostingCoverage postingCoverage, List<List<String>> rows) {
     List<List<String>> identityRows =
-        new java.util.ArrayList<>(CliBookIdentityDisplay.rows(bookIdentity));
+        new java.util.ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
     identityRows.add(List.of("Posting coverage", displayPostingCoverage(postingCoverage)));
     identityRows.addAll(rows);
     return List.copyOf(identityRows);
@@ -765,44 +701,49 @@ final class CliReportOutputRenderer {
                     renderStatementSection(
                         CliQueryOutputFormatter.displayAccountTypeSectionLabel(
                             section.accountType()),
-                        CliTextFormat.renderTable(
-                            List.of(
-                                "Line code",
-                                "Line name",
-                                "Role",
-                                "Classification",
-                                "Kind",
-                                "Currency",
-                                "Debit total",
-                                "Credit total",
-                                "Net amount",
-                                "Balance side"),
-                            section.rows().stream()
-                                .map(
-                                    row ->
-                                        List.of(
-                                            CliQueryOutputFormatter.displayStatementLineCode(
-                                                row.lineCode(), row.lineKind()),
-                                            row.lineName(),
-                                            CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                            CliQueryOutputFormatter
-                                                .displayFinancialPositionLineClassification(
-                                                    row.lineClassification()),
-                                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
-                                            row.balance().netAmount().currencyUnit().code(),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.balance().debitTotal()),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.balance().creditTotal()),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.balance().netAmount()),
-                                            CliQueryOutputFormatter.displayBalanceSideLabel(
-                                                row.balance().balanceSide())))
-                                .toList(),
-                            5,
-                            6,
-                            7),
-                        section.totals()))
+                        section.rows().isEmpty()
+                            ? ""
+                            : CliTextFormat.renderTable(
+                                List.of(
+                                    "Line code",
+                                    "Line name",
+                                    "Role",
+                                    "Classification",
+                                    "Kind",
+                                    "Currency",
+                                    "Debit total",
+                                    "Credit total",
+                                    "Net amount",
+                                    "Balance side"),
+                                section.rows().stream()
+                                    .map(
+                                        row ->
+                                            List.of(
+                                                CliQueryOutputFormatter.displayStatementLineCode(
+                                                    row.lineCode(), row.lineKind()),
+                                                row.lineName(),
+                                                CliQueryOutputFormatter.displayLineRole(
+                                                    row.lineRole()),
+                                                CliQueryOutputFormatter
+                                                    .displayFinancialPositionLineClassification(
+                                                        row.lineClassification()),
+                                                CliQueryOutputFormatter.displayRowKind(
+                                                    row.lineKind()),
+                                                row.balance().netAmount().currencyUnit().code(),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.balance().debitTotal()),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.balance().creditTotal()),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.balance().netAmount()),
+                                                CliQueryOutputFormatter.displayBalanceSideLabel(
+                                                    row.balance().balanceSide())))
+                                    .toList(),
+                                5,
+                                6,
+                                7),
+                        section.totals(),
+                        "Section totals"))
             .collect(
                 java.util.stream.Collectors.joining(
                     System.lineSeparator() + System.lineSeparator()));
@@ -881,44 +822,49 @@ final class CliReportOutputRenderer {
                     renderStatementSection(
                         CliQueryOutputFormatter.displayAccountTypeSectionLabel(
                             section.accountType()),
-                        CliTextFormat.renderTable(
-                            List.of(
-                                "Line code",
-                                "Line name",
-                                "Role",
-                                "Classification",
-                                "Kind",
-                                "Currency",
-                                "Debit total",
-                                "Credit total",
-                                "Net amount",
-                                "Balance side"),
-                            section.rows().stream()
-                                .map(
-                                    row ->
-                                        List.of(
-                                            CliQueryOutputFormatter.displayStatementLineCode(
-                                                row.lineCode(), row.lineKind()),
-                                            row.lineName(),
-                                            CliQueryOutputFormatter.displayLineRole(row.lineRole()),
-                                            CliQueryOutputFormatter
-                                                .displayProfitAndLossLineClassification(
-                                                    row.lineClassification()),
-                                            CliQueryOutputFormatter.displayRowKind(row.lineKind()),
-                                            row.movement().netAmount().currencyUnit().code(),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.movement().debitTotal()),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.movement().creditTotal()),
-                                            CliQueryOutputFormatter.displayMoney(
-                                                row.movement().netAmount()),
-                                            CliQueryOutputFormatter.displayBalanceSideLabel(
-                                                row.movement().balanceSide())))
-                                .toList(),
-                            5,
-                            6,
-                            7),
-                        section.totals()))
+                        section.rows().isEmpty()
+                            ? ""
+                            : CliTextFormat.renderTable(
+                                List.of(
+                                    "Line code",
+                                    "Line name",
+                                    "Role",
+                                    "Classification",
+                                    "Kind",
+                                    "Currency",
+                                    "Debit total",
+                                    "Credit total",
+                                    "Net amount",
+                                    "Balance side"),
+                                section.rows().stream()
+                                    .map(
+                                        row ->
+                                            List.of(
+                                                CliQueryOutputFormatter.displayStatementLineCode(
+                                                    row.lineCode(), row.lineKind()),
+                                                row.lineName(),
+                                                CliQueryOutputFormatter.displayLineRole(
+                                                    row.lineRole()),
+                                                CliQueryOutputFormatter
+                                                    .displayProfitAndLossLineClassification(
+                                                        row.lineClassification()),
+                                                CliQueryOutputFormatter.displayRowKind(
+                                                    row.lineKind()),
+                                                row.movement().netAmount().currencyUnit().code(),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.movement().debitTotal()),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.movement().creditTotal()),
+                                                CliQueryOutputFormatter.displayMoney(
+                                                    row.movement().netAmount()),
+                                                CliQueryOutputFormatter.displayBalanceSideLabel(
+                                                    row.movement().balanceSide())))
+                                    .toList(),
+                                5,
+                                6,
+                                7),
+                        section.totals(),
+                        "Section totals"))
             .collect(
                 java.util.stream.Collectors.joining(
                     System.lineSeparator() + System.lineSeparator()));
@@ -1152,24 +1098,96 @@ final class CliReportOutputRenderer {
     return CliQueryOutputFormatter.displayPostingCoverage(postingCoverage);
   }
 
-  private static boolean hasRenderableFinancialPositionSections(
-      List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> sections) {
-    return sections.stream()
-        .anyMatch(CliReportOutputRenderer::hasRenderableFinancialPositionSection);
-  }
-
   private static boolean hasRenderableFinancialPositionSection(
       dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection section) {
-    return !section.rows().isEmpty() || !section.totals().isEmpty();
-  }
-
-  private static boolean hasRenderableIncomeStatementSections(
-      List<dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection> sections) {
-    return sections.stream().anyMatch(CliReportOutputRenderer::hasRenderableIncomeStatementSection);
+    return CliReportSurfacePolicy.hasRenderableFinancialPositionSection(section);
   }
 
   private static boolean hasRenderableIncomeStatementSection(
       dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection section) {
-    return !section.rows().isEmpty() || !section.totals().isEmpty();
+    return CliReportSurfacePolicy.hasRenderableIncomeStatementSection(section);
+  }
+
+  private static List<List<String>> changesInEquitySummaryRows(
+      ChangesInEquityReport report, boolean hasCurrent) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Effective date from", report.effectiveDateFrom().toString()));
+    rows.add(List.of("Effective date to", report.effectiveDateTo().toString()));
+    if (!report.openingTotals().isEmpty()) {
+      rows.add(List.of("Opening totals", joinedBalancesHuman(report.openingTotals())));
+    }
+    if (!report.movementTotals().isEmpty()) {
+      rows.add(List.of("Movement totals", joinedBalancesHuman(report.movementTotals())));
+    }
+    if (!report.closingTotals().isEmpty()) {
+      rows.add(List.of("Closing totals", joinedBalancesHuman(report.closingTotals())));
+    }
+    if (!hasCurrent) {
+      rows.add(List.of("Outcome", "No equity balances or movements matched the selected period."));
+    }
+    return List.copyOf(rows);
+  }
+
+  private static String renderChangesInEquityTable(
+      List<dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow> rows) {
+    if (rows.isEmpty()) {
+      return "";
+    }
+    return CliTextFormat.renderTable(
+        List.of(
+            "Line code",
+            "Line name",
+            "Role",
+            "Classification",
+            "Kind",
+            "Currency",
+            "Opening",
+            "Movement",
+            "Closing",
+            "Closing side"),
+        rows.stream()
+            .map(
+                row ->
+                    List.of(
+                        CliQueryOutputFormatter.displayStatementLineCode(
+                            row.lineCode(), row.lineKind()),
+                        row.lineName(),
+                        CliQueryOutputFormatter.displayLineRole(row.lineRole()),
+                        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+                            row.lineClassification()),
+                        CliQueryOutputFormatter.displayRowKind(row.lineKind()),
+                        row.closingBalance().netAmount().currencyUnit().code(),
+                        CliQueryOutputFormatter.displayMoney(row.openingBalance().netAmount()),
+                        CliQueryOutputFormatter.displayMoney(row.movement().netAmount()),
+                        CliQueryOutputFormatter.displayMoney(row.closingBalance().netAmount()),
+                        CliQueryOutputFormatter.displayBalanceSideLabel(
+                            row.closingBalance().balanceSide())))
+            .toList(),
+        5,
+        6,
+        7);
+  }
+
+  private static String comparativeChangesInEquityTotals(ChangesInEquityReport report) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    if (!report.comparativeOpeningTotals().isEmpty()) {
+      rows.add(
+          List.of(
+              "Comparative opening totals",
+              joinedBalancesHuman(report.comparativeOpeningTotals())));
+    }
+    if (!report.comparativeMovementTotals().isEmpty()) {
+      rows.add(
+          List.of(
+              "Comparative movement totals",
+              joinedBalancesHuman(report.comparativeMovementTotals())));
+    }
+    if (!report.comparativeClosingTotals().isEmpty()) {
+      rows.add(
+          List.of(
+              "Comparative closing totals",
+              joinedBalancesHuman(report.comparativeClosingTotals())));
+    }
+    return rows.isEmpty() ? "" : CliTextFormat.renderKeyValueBlock(List.copyOf(rows));
   }
 }

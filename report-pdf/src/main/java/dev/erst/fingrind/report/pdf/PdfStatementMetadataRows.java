@@ -28,8 +28,7 @@ final class PdfStatementMetadataRows {
         List.of(
             "Reporting profile",
             PdfValueFormatter.displayReportingProfile(
-                bookIdentity.entityProfile().reportingObligationStatus(),
-                bookIdentity.entityProfile().taxRegistrationStatus())));
+                bookIdentity.entityProfile().reportingObligationStatus())));
     statementRows.add(
         List.of(
             "Business activity",

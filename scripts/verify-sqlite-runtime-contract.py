@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify one FinGrind SQLite runtime contract from a capabilities payload."""
+"""Verify one FinGrind SQLite runtime contract from an environment payload."""
 
 from __future__ import annotations
 
@@ -47,12 +47,9 @@ def main() -> None:
     runtime_surface = require_mapping(contract.get("runtimeSurface"), "runtimeSurface")
     managed_sqlite = require_mapping(contract.get("managedSqlite"), "managedSqlite")
     payload = require_mapping(document.get("payload"), "payload")
-    environment = require_mapping(payload.get("environment"), "payload.environment")
-    distribution = require_mapping(
-        environment.get("distribution"), "payload.environment.distribution"
-    )
-    sqlite = require_mapping(environment.get("sqlite"), "payload.environment.sqlite")
-    runtime = require_mapping(sqlite.get("runtime"), "payload.environment.sqlite.runtime")
+    distribution = require_mapping(payload.get("distribution"), "payload.distribution")
+    sqlite = require_mapping(payload.get("sqlite"), "payload.sqlite")
+    runtime = require_mapping(sqlite.get("runtime"), "payload.sqlite.runtime")
 
     expected_runtime_distribution = runtime_surface.get(args.expected_runtime_distribution_key)
 

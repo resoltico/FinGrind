@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_JAVA
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -12,7 +12,7 @@ route:
 
 **Purpose**: Document the supported host-native macOS Java and Gradle setup for FinGrind contributors, including how Java and Gradle should be sourced and why.
 **Prerequisites**: macOS with zsh, plus a working `python3` and `python3 -m pip` surface if you
-plan to run the root verification gate locally.
+plan to bootstrap the pinned repo-owned `uv` launcher for the root verification gate locally.
 
 The preferred contributor workflow is the committed devcontainer described in
 [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). VS Code is optional there; the
@@ -32,7 +32,8 @@ FinGrind targets Java 26 and uses the repository Gradle wrapper pinned in
 
 The supported setup is intentionally simple:
 - the machine provides Java 26
-- the machine also provides `python3` plus `python3 -m pip` for the repo-owned Python helper tools
+- the machine also provides `python3` plus `python3 -m pip` for the pinned repo-owned `uv`
+  launcher that executes the Python helper tools
 - the repository checkout can live on local or mounted storage, while the wrapper-owned transient
   Gradle state and ordinary build trees live outside the checkout
 - the repository provides Gradle through `./gradlew`
@@ -76,8 +77,8 @@ Reasons:
   `https://openjdk.org`, not from a third-party redistribution
 - avoiding Brew `gradle` avoids Homebrew's `openjdk` dependency from silently becoming part of the
   repo's Java story again
-- root verification now includes Ruff over the repo-owned Python helper scripts, so the local
-  shell also needs one working Python bootstrap path
+- root verification now includes Ruff over the repo-owned Python helper scripts and SQLFluff over
+  the canonical SQLite schema, so the local shell also needs one working Python bootstrap path
 - building Gradle from source adds bootstrap cost, maintenance burden, and version ambiguity without
   improving reproducibility for a wrapped application repo
 

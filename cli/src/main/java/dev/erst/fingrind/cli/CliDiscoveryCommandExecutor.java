@@ -36,7 +36,12 @@ final class CliDiscoveryCommandExecutor {
 
   int writeCapabilities(OutputMode outputMode) {
     responseWriter.writeCapabilities(
-        MachineContract.capabilities(applicationIdentity(), environmentDescriptor()), outputMode);
+        MachineContract.capabilities(applicationIdentity()), outputMode);
+    return 0;
+  }
+
+  int writeEnvironment(OutputMode outputMode) {
+    responseWriter.writeEnvironment(environmentDescriptor(), outputMode);
     return 0;
   }
 
@@ -87,8 +92,7 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.exitCodes(),
         helpDescriptor.preflight(),
         helpDescriptor.currencyModel(),
-        helpDescriptor.extensionSurface(),
-        helpDescriptor.environment());
+        helpDescriptor.extensionSurface());
   }
 
   private EnvironmentDescriptor environmentDescriptor() {

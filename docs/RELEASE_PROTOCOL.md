@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -132,7 +132,9 @@ release payload into a clean worktree and run the release gate there. A live loc
 checkout-availability problem, not proof that the release payload is bad.
 
 Run `./scripts/verify-repo-hygiene.sh`. It must exit 0. If it fails, repair the checkout or
-move the release into a clean clone before proceeding.
+move the release into a clean clone before proceeding. If it reports Git coordination lock files,
+inspect ownership with `lsof` before removing anything: delete only orphaned lock files, and treat
+any owned lock as proof that another Git owner has the checkout open.
 
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves
@@ -543,7 +545,7 @@ Requirements:
   - `fingrind-X.Y.Z-windows-x86_64.zip`
   - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
 - Targets disclosed through
-  `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` such as the current
+  `environment.distribution.unsupportedPublicCliBundleTargets` such as the current
   `windows-aarch64` entry must not appear as release assets unless the public-distribution
   contract changes first.
 - Every published archive and published checksum file verifies through `gh attestation verify`

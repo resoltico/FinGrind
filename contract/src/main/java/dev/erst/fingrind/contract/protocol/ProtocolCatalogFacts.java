@@ -38,14 +38,7 @@ final class ProtocolCatalogFacts {
               OperationId.FINANCIAL_POSITION.wireName(),
               OperationId.INCOME_STATEMENT.wireName(),
               OperationId.CHANGES_IN_EQUITY.wireName()),
-          List.of(
-              "statement-of-cash-flows",
-              "oci-and-comprehensive-income-presentation",
-              "external-note-and-disclosure-packages",
-              "operational-subledgers-for-invoicing-receivables-payables-inventory-or-payroll",
-              "jurisdiction-specific-tax-or-filing-rules",
-              "group-reporting-and-consolidation",
-              "foreign-currency-translation-and-exchange-difference-accounting-inside-one-book"),
+          List.of(),
           List.of(
               "full IFRS compliance",
               "IFRS for SMEs parity",
@@ -71,39 +64,7 @@ final class ProtocolCatalogFacts {
                   true,
                   "reporting",
                   List.of(),
-                  "Built into the current kernel as one internal management statement."),
-              new ReportCapabilityFacts(
-                  "statement-of-cash-flows",
-                  CapabilityStatus.PLANNED,
-                  true,
-                  "reporting",
-                  List.of(
-                      "typed operating investing and financing movement taxonomy",
-                      "source event classification beyond raw journal lines"),
-                  "Required for a broader reporting baseline but not implemented in the current kernel."),
-              new ReportCapabilityFacts(
-                  "oci-and-comprehensive-income-presentation",
-                  CapabilityStatus.PLANNED,
-                  false,
-                  "reporting",
-                  List.of(
-                      "other comprehensive income domain model",
-                      "statement line taxonomy for comprehensive income"),
-                  "Future reporting context for OCI and comprehensive-income presentation."),
-              new ReportCapabilityFacts(
-                  "external-note-and-disclosure-packages",
-                  CapabilityStatus.PLANNED,
-                  true,
-                  "reporting",
-                  List.of("disclosure pack model", "source evidence and policy-note linkage"),
-                  "Future reporting context for external notes and disclosures.")),
-          List.of(
-              "tax bounded context",
-              "foreign-currency transaction evidence and measurement",
-              "typed business-event commands and posting recipes",
-              "source-document and approval evidence",
-              "statement-of-cash-flows",
-              "external-note-and-disclosure-packages"),
+                  "Built into the current kernel as one internal management statement.")),
           new AccountingPolicyPackFacts(
               "neutral-single-entity-policy-pack",
               "Neutral Single-Entity Policy Pack",
@@ -136,27 +97,7 @@ final class ProtocolCatalogFacts {
                   new PolicyDimensionFacts(
                       "statement-presentation",
                       CapabilityStatus.IMPLEMENTED,
-                      "Built-in statements publish typed line classifications and current-versus-noncurrent financial-position taxonomy."),
-                  new PolicyDimensionFacts(
-                      "tax",
-                      CapabilityStatus.FUTURE_CONTEXT,
-                      "Tax remains an adjacent bounded context rather than a first-class kernel model."),
-                  new PolicyDimensionFacts(
-                      "foreign-exchange",
-                      CapabilityStatus.FUTURE_CONTEXT,
-                      "Foreign-currency measurement and translation remain future context work."),
-                  new PolicyDimensionFacts(
-                      "source-evidence",
-                      CapabilityStatus.PLANNED,
-                      "Source-document and approval evidence are not yet first-class."),
-                  new PolicyDimensionFacts(
-                      "operational-subledgers",
-                      CapabilityStatus.FUTURE_CONTEXT,
-                      "Operational subledgers belong above the ledger as adjacent contexts."),
-                  new PolicyDimensionFacts(
-                      "organization-graph",
-                      CapabilityStatus.FUTURE_CONTEXT,
-                      "Multi-entity organization and consolidation remain above the current single book.")),
+                      "Built-in statements publish typed line classifications and current-versus-noncurrent financial-position taxonomy.")),
               "Current neutral built-in policy pack for one single-entity, single-functional-currency bookkeeping foundation with explicit accounting basis, account taxonomy, statement taxonomy, and entity-form-aware close policy."),
           "FinGrind targets one policy-driven exact-money bookkeeping foundation, not one full IFRS or local-GAAP compliance/reporting package.",
           "Built-in reporting stops at financial position, income statement, and changes in equity. Those built-in statements already publish typed account and line classifications, while cash flows, OCI/comprehensive-income reporting, and note/disclosure packages belong to adjacent reporting contexts rather than the current kernel.",
@@ -201,31 +142,8 @@ final class ProtocolCatalogFacts {
                   "statement-presentation-policy",
                   CapabilityStatus.IMPLEMENTED,
                   "reporting",
-                  "Executable policy seam that declares the current statement-classification posture for built-in reports."),
-              new PolicySeamFacts(
-                  "tax-policy",
-                  CapabilityStatus.FUTURE_CONTEXT,
-                  "tax",
-                  "Future bounded context for tax registrations, codes, recoverability, and filing."),
-              new PolicySeamFacts(
-                  "foreign-exchange-policy",
-                  CapabilityStatus.FUTURE_CONTEXT,
-                  "foreign-exchange",
-                  "Future bounded context for transaction currency, measurement, and FX results."),
-              new PolicySeamFacts(
-                  "source-evidence-policy",
-                  CapabilityStatus.PLANNED,
-                  "audit-evidence",
-                  "Future seam for source-document and approval requirements tied to posting recipes.")),
-          List.of(
-              "statement-presentation-policy",
-              "cash-flow-and-oci-reporting",
-              "notes-and-disclosures",
-              "fx-accounting-and-translation",
-              "tax-determination-and-filing",
-              "operational-subledgers-ar-ap-invoicing",
-              "group-reporting-and-consolidation"),
-          "Future standards-specific or jurisdiction-specific behavior must arrive as explicit adjacent contexts or stabilized policy seams layered on top of the current kernel instead of compatibility shims inside the core model. The published built-in seams already cover accounting basis, comparative windows, chart taxonomy, close doctrine, and statement-presentation posture.");
+                  "Executable policy seam that declares the current statement-classification posture for built-in reports.")),
+          "The public protocol exposes only current executable policy seams. Adjacent domains and future reporting contexts stay in ADRs and domain docs until they have owned commands, state, storage, and conformance tests.");
   private static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",

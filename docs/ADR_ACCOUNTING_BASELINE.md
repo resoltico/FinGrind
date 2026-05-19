@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: ADR_ACCOUNTING_BASELINE
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, accounting baseline, ifrs, country agnostic, functional currency, scope, external reporting]
   questions: ["what accounting standards baseline does fingrind target", "is fingrind full ifrs", "what does legislation agnostic mean in fingrind", "what accounting scope is intentionally out of scope"]
@@ -135,7 +135,6 @@ The built-in policy pack already owns:
 - executable entity-form-aware close policy for the active closing-equity classification
 - executable built-in statement-presentation policy for current internal statements
 
-The built-in policy pack does not yet implement:
-- first-class tax policy
-- first-class foreign-exchange policy
-- first-class source-evidence policy
+The built-in kernel intentionally publishes no first-class tax, foreign-exchange, or
+source-evidence policy seams until those domains own executable commands, state, storage, and
+tests.

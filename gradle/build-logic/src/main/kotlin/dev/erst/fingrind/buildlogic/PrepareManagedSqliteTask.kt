@@ -51,6 +51,9 @@ abstract class PrepareManagedSqliteTask
         abstract val requiredCompileOptions: ListProperty<String>
 
         @get:Input
+        abstract val forbiddenCompileOptions: ListProperty<String>
+
+        @get:Input
         abstract val requiresSecureMemorySupport: Property<Boolean>
 
         @get:Input
@@ -71,6 +74,9 @@ abstract class PrepareManagedSqliteTask
         @get:InputFile
         @get:PathSensitive(PathSensitivity.NONE)
         abstract val toolchainFingerprintFile: RegularFileProperty
+
+        @get:OutputFile
+        abstract val buildContractFile: RegularFileProperty
 
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
@@ -98,6 +104,7 @@ abstract class PrepareManagedSqliteTask
                 )
                 return
             }
+            writeBuildContractFile(buildContractFile.get().asFile)
             execOperations.exec {
                 commandLine(
                     buildUnixCommandLine(
@@ -151,6 +158,7 @@ abstract class PrepareManagedSqliteTask
                 )
             }
             compiledLibraryFile.copyTo(outputLibraryFile, overwrite = true)
+            writeBuildContractFile(buildContractFile.get().asFile)
             writeChecksumFiles(
                 outputLibraryFile,
                 checksumFile.get().asFile,
@@ -278,6 +286,23 @@ abstract class PrepareManagedSqliteTask
             writeChecksumFile(outputLibraryFile, trustedChecksumOutputFile, digest)
         }
 
+        private fun writeBuildContractFile(buildContractOutputFile: java.io.File) {
+            buildContractOutputFile.parentFile.mkdirs()
+            buildContractOutputFile.writeText(
+                buildString {
+                    appendLine("{")
+                    appendLine("  \"sqliteVersion\": ${json(sqliteVersion.get())},")
+                    appendLine("  \"operatingSystemId\": ${json(operatingSystemId.get())},")
+                    appendLine("  \"requiredCompileOptions\": ${jsonArray(requiredCompileOptions.get())},")
+                    appendLine("  \"forbiddenCompileOptions\": ${jsonArray(forbiddenCompileOptions.get())},")
+                    appendLine(
+                        "  \"requiresSecureMemorySupport\": ${requiresSecureMemorySupport.get()}",
+                    )
+                    appendLine("}")
+                },
+            )
+        }
+
         private fun writeChecksumFile(
             outputLibraryFile: java.io.File,
             checksumOutputFile: java.io.File,
@@ -288,4 +313,23 @@ abstract class PrepareManagedSqliteTask
                 HexFormat.of().formatHex(digest) + "  " + outputLibraryFile.name + System.lineSeparator(),
             )
         }
+
+        private fun jsonArray(values: List<String>): String =
+            values.joinToString(prefix = "[", postfix = "]") { value -> json(value) }
+
+        private fun json(value: String): String =
+            buildString {
+                append('"')
+                value.forEach { character ->
+                    when (character) {
+                        '\\' -> append("\\\\")
+                        '"' -> append("\\\"")
+                        '\n' -> append("\\n")
+                        '\r' -> append("\\r")
+                        '\t' -> append("\\t")
+                        else -> append(character)
+                    }
+                }
+                append('"')
+            }
     }

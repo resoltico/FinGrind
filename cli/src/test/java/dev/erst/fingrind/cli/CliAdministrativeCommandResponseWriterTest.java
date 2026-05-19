@@ -16,8 +16,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -56,7 +56,6 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(openBookHuman.contains("Entity form"));
     assertTrue(openBookHuman.contains("Owner model"));
     assertTrue(openBookHuman.contains("Reporting obligation"));
-    assertTrue(openBookHuman.contains("Tax registration"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
     assertTrue(openBookHuman.contains("Accounting basis"));
@@ -241,10 +240,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                List.of())),
         OutputMode.HUMAN);
     assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("closing-equity-account-missing"));
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("closing-equity-account-candidate-missing"));
   }
 
   @Test
@@ -349,9 +352,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeBackupBookResult(
         new BackupBookResult.BackedUp(
-            Path.of("books/entity.sqlite"),
-            Path.of("backup/entity.sqlite"),
-            Path.of("backup/entity.key")),
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("backup/entity.sqlite")),
+            hint(Path.of("backup/entity.key"))),
         OutputMode.HUMAN);
     String backupHuman = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(backupHuman.contains("Book Backed Up"));
@@ -361,21 +364,21 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
 
     responseWriter.writeRestoreBookResult(
         new RestoreBookResult.Restored(
-            Path.of("books/entity.sqlite"),
-            Path.of("backup/entity.sqlite"),
-            Path.of("backup/entity.key")),
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("backup/entity.sqlite")),
+            hint(Path.of("backup/entity.key"))),
         OutputMode.HUMAN);
     String restoreHuman = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(restoreHuman.contains("Book Restored"));
     assertTrue(restoreHuman.contains("Book key file"));
     outputStream.reset();
 
-    responseWriter.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Inspected(
-            Path.of("books/entity.sqlite"),
+    responseWriter.writeInspectRekeyRollbackResult(
+        new RekeyRollbackResult.Inspected(
+            hint(Path.of("books/entity.sqlite")),
             List.of(
-                Path.of("books/entity.rekey-rollback-a.sqlite"),
-                Path.of("books/entity.rekey-rollback-b.sqlite"))),
+                hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
+                hint(Path.of("books/entity.rekey-rollback-b.sqlite")))),
         OutputMode.HUMAN);
     String inspectHuman = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(inspectHuman.contains("Rekey Rollback Artifacts"));
@@ -383,13 +386,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(inspectHuman.contains("rollback-b"));
     outputStream.reset();
 
-    responseWriter.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Restored(
-            Path.of("books/entity.sqlite"), Path.of("books/entity.rekey-rollback.sqlite")),
+    responseWriter.writeRestoreRekeyRollbackResult(
+        new RekeyRollbackResult.Restored(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.JSON);
     String restoreJson = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(restoreJson.contains("\"status\":\"ok\""));
-    assertTrue(restoreJson.contains("\"action\":\"restore\""));
+    assertTrue(restoreJson.contains("\"rollbackArtifact\""));
   }
 
   @Test
@@ -399,8 +403,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     responseWriter.writeBackupBookResult(
         new BackupBookResult.Rejected(
             new BookMaintenanceRejection.BookHasBlockingArtifacts(
-                Path.of("books/entity.sqlite"),
-                List.of(Path.of("books/entity.sqlite-wal"), Path.of("books/entity.sqlite-shm")))),
+                hint(Path.of("books/entity.sqlite")),
+                List.of(
+                    hint(Path.of("books/entity.sqlite-wal")),
+                    hint(Path.of("books/entity.sqlite-shm"))))),
         OutputMode.HUMAN);
     String human = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(human.contains("Rejected"));
@@ -408,13 +414,13 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(human.contains("Blocking artifacts"));
     outputStream.reset();
 
-    responseWriter.writeRecoverRekeyResult(
-        new RecoverRekeyResult.Rejected(
+    responseWriter.writeInspectRekeyRollbackResult(
+        new RekeyRollbackResult.Rejected(
             new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                Path.of("books/entity.sqlite"),
+                hint(Path.of("books/entity.sqlite")),
                 List.of(
-                    Path.of("books/entity.rekey-rollback-a.sqlite"),
-                    Path.of("books/entity.rekey-rollback-b.sqlite")))),
+                    hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
+                    hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.JSON);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"status\":\"rejected\""));
@@ -425,8 +431,146 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             .path("bookFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("books/entity.sqlite"));
+            .endsWith("<redacted>/entity.sqlite"));
     assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
+  }
+
+  @Test
+  void writeDeleteRekeyRollbackResult_writesSuccessEnvelope() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeDeleteRekeyRollbackResult(
+        new RekeyRollbackResult.Deleted(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+        OutputMode.JSON);
+
+    assertEquals("ok", readJson(outputStream).path("status").stringValue());
+    assertTrue(readJson(outputStream).path("payload").has("rollbackArtifact"));
+  }
+
+  @Test
+  void writeRekeyRollbackRestoreAndDelete_supportHumanAndRejectCsv() {
+    ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
+    CliResponseWriter restoreWriter = new CliResponseWriter(utf8PrintStream(restoreOutput));
+    restoreWriter.writeRestoreRekeyRollbackResult(
+        new RekeyRollbackResult.Restored(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+        OutputMode.HUMAN);
+    assertTrue(
+        restoreOutput.toString(StandardCharsets.UTF_8).contains("Book Restored From Rollback"));
+
+    ByteArrayOutputStream deleteOutput = new ByteArrayOutputStream();
+    CliResponseWriter deleteWriter = new CliResponseWriter(utf8PrintStream(deleteOutput));
+    deleteWriter.writeDeleteRekeyRollbackResult(
+        new RekeyRollbackResult.Deleted(
+            hint(Path.of("books/entity.sqlite")),
+            hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+        OutputMode.HUMAN);
+    assertTrue(deleteOutput.toString(StandardCharsets.UTF_8).contains("Rollback Artifact Deleted"));
+
+    IllegalArgumentException restoreCsv =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                restoreWriter.writeRestoreRekeyRollbackResult(
+                    new RekeyRollbackResult.Restored(
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+                    OutputMode.CSV));
+    IllegalArgumentException deleteCsv =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                deleteWriter.writeDeleteRekeyRollbackResult(
+                    new RekeyRollbackResult.Deleted(
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+                    OutputMode.CSV));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(restoreCsv.getMessage())
+            .contains("restore-rekey-rollback"));
+    assertTrue(
+        java.util.Objects.requireNonNull(deleteCsv.getMessage()).contains("delete-rekey-rollback"));
+  }
+
+  @Test
+  void writeRekeyRollbackRestoreAndDelete_writeMaintenanceRejections() throws Exception {
+    ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
+    CliResponseWriter restoreWriter = new CliResponseWriter(utf8PrintStream(restoreOutput));
+    restoreWriter.writeRestoreRekeyRollbackResult(
+        new RekeyRollbackResult.Rejected(
+            new BookMaintenanceRejection.RollbackArtifactNotForBook(
+                hint(Path.of("books/entity.sqlite")),
+                hint(Path.of("books/other.rekey-rollback.sqlite")))),
+        OutputMode.JSON);
+
+    assertEquals("rejected", readJson(restoreOutput).path("status").stringValue());
+    assertEquals(
+        "rollback-artifact-not-for-book", readJson(restoreOutput).path("code").stringValue());
+
+    ByteArrayOutputStream deleteOutput = new ByteArrayOutputStream();
+    CliResponseWriter deleteWriter = new CliResponseWriter(utf8PrintStream(deleteOutput));
+    deleteWriter.writeDeleteRekeyRollbackResult(
+        new RekeyRollbackResult.Rejected(
+            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
+                hint(Path.of("books/entity.sqlite")),
+                List.of(
+                    hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
+                    hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
+        OutputMode.HUMAN);
+
+    String human = deleteOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(human.contains("Rejected"));
+    assertTrue(human.contains("rollback-artifact-selection-required"));
+  }
+
+  @Test
+  void writeRekeyRollbackResult_rejectsUnexpectedResultShapes() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    IllegalArgumentException inspectUnexpected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                responseWriter.writeInspectRekeyRollbackResult(
+                    new RekeyRollbackResult.Restored(
+                        hint(Path.of("books/entity.sqlite")),
+                        hint(Path.of("books/entity.rekey-rollback.sqlite"))),
+                    OutputMode.JSON));
+    assertTrue(
+        java.util.Objects.requireNonNull(inspectUnexpected.getMessage())
+            .contains("Inspect rekey rollback"));
+
+    IllegalArgumentException restoreUnexpected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                responseWriter.writeRestoreRekeyRollbackResult(
+                    new RekeyRollbackResult.Inspected(
+                        hint(Path.of("books/entity.sqlite")),
+                        List.of(hint(Path.of("books/entity.rekey-rollback.sqlite")))),
+                    OutputMode.JSON));
+    assertTrue(
+        java.util.Objects.requireNonNull(restoreUnexpected.getMessage())
+            .contains("Restore rekey rollback"));
+
+    IllegalArgumentException deleteUnexpected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                responseWriter.writeDeleteRekeyRollbackResult(
+                    new RekeyRollbackResult.Inspected(
+                        hint(Path.of("books/entity.sqlite")),
+                        List.of(hint(Path.of("books/entity.rekey-rollback.sqlite")))),
+                    OutputMode.JSON));
+    assertTrue(
+        java.util.Objects.requireNonNull(deleteUnexpected.getMessage())
+            .contains("Delete rekey rollback"));
   }
 
   @Test
@@ -506,12 +650,18 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
     missingWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountMissing(new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                List.of(new AccountCode("3200")))),
         OutputMode.JSON);
     assertTrue(
         missingOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"closing-equity-account-missing\""));
+            .contains("\"code\":\"closing-equity-account-candidate-missing\""));
+    assertTrue(
+        missingOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"requiredFinancialPositionLineClassification\":\"RETAINED_EARNINGS\""));
 
     ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
     CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
@@ -537,20 +687,25 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(typeConflictJson.contains("\"existingAccountType\":\"EQUITY\""));
     assertTrue(typeConflictJson.contains("\"requestedAccountType\":\"LIABILITY\""));
 
-    ByteArrayOutputStream inactiveOutput = new ByteArrayOutputStream();
-    CliResponseWriter inactiveWriter = new CliResponseWriter(utf8PrintStream(inactiveOutput));
-    inactiveWriter.writeClosePeriodResult(
+    ByteArrayOutputStream ambiguousOutput = new ByteArrayOutputStream();
+    CliResponseWriter ambiguousWriter = new CliResponseWriter(utf8PrintStream(ambiguousOutput));
+    ambiguousWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountInactive(new AccountCode("3200"))),
+            new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+                dev.erst.fingrind.core.FinancialPositionLineClassification.OTHER_EQUITY,
+                List.of(new AccountCode("3200"), new AccountCode("3210")))),
         OutputMode.JSON);
     assertTrue(
-        inactiveOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"3200\""));
+        ambiguousOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"closing-equity-account-candidate-ambiguous\""));
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
             new ClosePeriodResult.Rejected(
-                new BookAdministrationRejection.ClosingEquityAccountMissing(
-                    new AccountCode("3200")))));
+                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                    dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    List.of()))));
   }
 
   @Test

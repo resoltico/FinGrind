@@ -220,8 +220,8 @@ class BookAdministrationServiceTest {
                   () -> new dev.erst.fingrind.core.PostingId("period-close-1"),
                   FIXED_CLOCK)
               .closePeriod(
-                  new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
-                  new AccountCode("3200"));
+                  new ReportingPeriod(
+                      LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")));
 
       org.junit.jupiter.api.Assertions.assertEquals(
           1,

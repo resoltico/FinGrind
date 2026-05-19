@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -69,6 +69,29 @@ context:
 This context is public and machine-facing, but it is not bookkeeping meaning and not workflow
 execution state.
 
+### Protected-Book Maintenance Context
+
+The protected-book maintenance context lives across:
+- `executor/src/main/java/dev/erst/fingrind/executor/ProtectedBookMaintenanceService.java`
+- `executor/src/main/java/dev/erst/fingrind/executor/maintenance/`
+- `executor/src/main/java/dev/erst/fingrind/executor/spi/ProtectedBookMaintenanceStore.java`
+
+This context owns:
+- backup, restore, and rekey-recovery acceptance semantics
+- the local maintenance rejection and verification-failure language
+- the distinction between verified live books, verified backup sources, rollback artifacts, and
+  restored targets
+- reversible replacement discipline for destructive restore-style workflows
+- durable protected-book maintenance event meaning
+
+This context uses `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`,
+`ProtectedBookRecoveryOutcome`, `ProtectedBookMaintenanceRejection`,
+`ProtectedBookMaintenanceVerificationFailure`, and `ProtectedBookMaintenanceEvent` as its local
+language.
+
+The maintenance context is not bookkeeping. It does not own accounts, postings, or reports. It
+owns protected-book artifact verification and closed-copy maintenance workflows around one book.
+
 ### Bookkeeping Context
 
 The bookkeeping context lives across:
@@ -129,14 +152,8 @@ Current accounting-standards scope:
 - tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent
   future contexts above the current kernel
 
-Adjacent future contexts implied by the current boundary:
-- one external-reporting context for cash flow, OCI, note/disclosure, and richer presentation
-  taxonomy
-- one FX/currency-accounting context for foreign-currency measurement and translation
-- one tax context for tax regimes, rates, inclusivity, recoverability, and filing
-- one operational-sales-and-settlement context for invoices, receivables, payables, and cash
-  application
-- one group-reporting context for consolidation and intercompany elimination
+Adjacent future contexts implied by the current boundary may emerge later, but they are not
+published protocol seams until they own executable commands, state, storage, and tests.
 
 ### Workflow Context
 
@@ -158,7 +175,8 @@ Assertions and step ordering belong here, not inside the bookkeeping model.
 
 `cli/` and `sqlite/` are host/adaptor contexts:
 - `cli/` accepts or renders the published language
-- `sqlite/` persists and retrieves bookkeeping state and projects read/report results
+- `sqlite/` persists and retrieves bookkeeping state, verifies protected-book artifacts, and
+  appends the maintenance journal beside the live book
 
 They do not redefine bookkeeping rules or public workflow vocabulary.
 
@@ -174,33 +192,46 @@ Published contract subcontexts (`contract`)
   - runtime/discovery contract
         |  published-language translators
         |  / anti-corruption layer
+        +-------------------------------+
+        |                               |
         v
+Protected-book maintenance context (`executor.maintenance`)
+        |  maintenance store port
+        v
+SQLite maintenance adapter (`sqlite`)
+        ^
+        |
 Bookkeeping context (`core` + `executor.bookkeeping`)
         ^
         |
 Workflow context (`executor.workflow`)
         |
         v
-SQLite adapter (`sqlite`)
+SQLite bookkeeping adapter (`sqlite`)
 ```
 
 Interpretation:
 - the CLI speaks the public protocol context
 - translator classes are the anti-corruption layer between the published bookkeeping/workflow
-  languages and the internal bookkeeping/workflow contexts
+  languages and the internal bookkeeping/workflow/maintenance contexts
+- `ProtectedBookMaintenanceService` is the thin published-language adapter over the local
+  maintenance context plus the `ProtectedBookMaintenanceStore` SPI
 - `BookReadService` is the thin published-language adapter over the local
   `executor.bookkeeping.read.BookkeepingReadService`
 - `PostingApplicationService` is the thin published-language adapter over the local
   `executor.bookkeeping.posting.BookkeepingPostingService`
 - `LedgerPlanService` is the thin published-language adapter over the local
   `executor.workflow.BookWorkflowExecutionService`
+- the local maintenance service owns backup, restore, rollback selection, replacement, and
+  verification semantics before any public maintenance DTO or rejection family is projected
 - the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics
   before any public DTO or public rejection family is projected
 - `execute-plan` enters through the public workflow schema, then runs as internal workflow steps
   plus workflow-owned `BookWorkflowFact` observations before the public journal/result surface is
   projected back out
-- SQLite persists bookkeeping state and serves the executor-owned local inspection/read/write
-  models rather than public report DTOs directly
+- SQLite persists bookkeeping state, serves the executor-owned local inspection/read/write models
+  rather than public report DTOs directly, and implements the maintenance store and maintenance
+  journal without owning maintenance semantics
 
 ## Ownership Rules
 
@@ -210,6 +241,8 @@ Interpretation:
   `contract.runtime` packages are published-language boundaries, not one shared local model.
 - Bookkeeping invariants must live with bookkeeping aggregates or bookkeeping policies, not inside
   the SQLite adapter.
+- Maintenance invariants must live with the protected-book maintenance context, not inside the
+  SQLite adapter and not inside published DTO/result types.
 - `Money` / `PositiveMoney` / `MonetaryAmount` are only for posted monetary facts, not for tax
   rates, percentages, exchange rates, or generic decimal factors.
 - Workflow semantics must live with workflow types and services, not inside bookkeeping value

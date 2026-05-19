@@ -33,7 +33,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +40,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
 /** Minimal ACL-capable filesystem for exercising platform-specific security code. */
@@ -50,6 +50,7 @@ final class AclFixtureFileSystem extends FileSystem {
   private final Set<String> views;
   final UserPrincipal owner = new AclFixturePrincipal("owner");
   final GroupPrincipal group = new AclFixtureGroup("group");
+  private @Nullable Consumer<AclFixturePath> pathInitializer;
   private boolean open = true;
 
   private AclFixtureFileSystem(Set<String> views) {
@@ -61,8 +62,22 @@ final class AclFixtureFileSystem extends FileSystem {
     return new AclFixtureFileSystem(views);
   }
 
+  AclFixtureFileSystem onPathCreated(Consumer<AclFixturePath> initializer) {
+    pathInitializer = Objects.requireNonNull(initializer, "initializer");
+    return this;
+  }
+
   AclFixturePath path(String value) {
-    return paths.computeIfAbsent(value, key -> new AclFixturePath(this, key));
+    return paths.computeIfAbsent(
+        value,
+        key -> {
+          AclFixturePath createdPath = new AclFixturePath(this, key);
+          @Nullable Consumer<AclFixturePath> initializer = pathInitializer;
+          if (initializer != null) {
+            initializer.accept(createdPath);
+          }
+          return createdPath;
+        });
   }
 
   @Override
@@ -197,11 +212,23 @@ final class AclFixtureFileSystem extends FileSystem {
       return new DirectoryStream<>() {
         @Override
         public Iterator<Path> iterator() {
-          return Collections.emptyIterator();
+          List<Path> children =
+              fileSystem.paths.values().stream()
+                  .filter(candidate -> candidate.exists)
+                  .filter(candidate -> Objects.equals(candidate.getParent(), testPath))
+                  .map(Path.class::cast)
+                  .sorted((left, right) -> left.toString().compareTo(right.toString()))
+                  .toList();
+          return children.iterator();
         }
 
         @Override
-        public void close() {}
+        public void close() throws IOException {
+          IOException closeFailure = testPath.directoryStreamCloseFailure();
+          if (closeFailure != null) {
+            throw closeFailure;
+          }
+        }
       };
     }
 
@@ -229,6 +256,9 @@ final class AclFixtureFileSystem extends FileSystem {
       }
       if (!testPath.exists) {
         return false;
+      }
+      if (testPath.preserveExistingEntryOnDeleteIfExistsValue()) {
+        return true;
       }
       testPath.exists = false;
       return true;

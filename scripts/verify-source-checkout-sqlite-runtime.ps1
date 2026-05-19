@@ -48,22 +48,22 @@ try {
         Fail "Gradle failed while preparing the source-checkout managed runtime"
     }
 
-    $capabilitiesOutput = (& $launcherWrapper capabilities --output json | Out-String)
+    $environmentOutput = (& $launcherWrapper environment --output json | Out-String)
     if ($LASTEXITCODE -ne 0) {
-        Fail "source-checkout launcher capabilities probe failed"
+        Fail "source-checkout launcher environment probe failed"
     }
 } finally {
     Pop-Location
 }
 
-$verifierOutput = ($capabilitiesOutput |
+$verifierOutput = ($environmentOutput |
         & $pythonCommand $verifier `
             --expected-runtime-distribution-key sourceCheckoutRuntimeDistribution `
             --expected-runtime-provenance source-checkout-managed `
             --label source-checkout-managed-runtime 2>&1 |
         Out-String)
 if ($LASTEXITCODE -ne 0) {
-    Write-Host $capabilitiesOutput
+    Write-Host $environmentOutput
     [Console]::Error.WriteLine($verifierOutput.TrimEnd())
     exit 1
 }

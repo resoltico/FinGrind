@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
-import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 
 /** Descriptor for the capabilities payload. */
@@ -21,8 +20,7 @@ public record CapabilitiesDescriptor(
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
     ContractResponse.AccountingBaselineDescriptor accountingBaseline,
-    ContractResponse.ExtensionSurfaceDescriptor extensionSurface,
-    EnvironmentDescriptor environment)
+    ContractResponse.ExtensionSurfaceDescriptor extensionSurface)
     implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */
   public CapabilitiesDescriptor {
@@ -43,6 +41,5 @@ public record CapabilitiesDescriptor(
         ContractDescriptorValidation.requireValue(accountingBaseline, "accountingBaseline");
     extensionSurface =
         ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
-    environment = ContractDescriptorValidation.requireValue(environment, "environment");
   }
 }

@@ -5,10 +5,11 @@ import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
@@ -72,7 +73,7 @@ final class CliMutationOutputRenderer {
                 List.of("Book key file", absolutePath(restored.backupBookKeyFilePath())))));
   }
 
-  static String renderRecoverRekeyInspectionHuman(RecoverRekeyResult.Inspected inspected) {
+  static String renderInspectRekeyRollbackHuman(RekeyRollbackResult.Inspected inspected) {
     String rollbackArtifacts =
         inspected.rollbackArtifactPaths().isEmpty()
             ? "(none)"
@@ -87,7 +88,7 @@ final class CliMutationOutputRenderer {
                 List.of("Rollback artifacts", rollbackArtifacts))));
   }
 
-  static String renderRecoverRekeyRestoredHuman(RecoverRekeyResult.Restored restored) {
+  static String renderRestoreRekeyRollbackHuman(RekeyRollbackResult.Restored restored) {
     return CliTextFormat.renderTitledBlock(
         "Book Restored From Rollback",
         CliTextFormat.renderKeyValueBlock(
@@ -96,7 +97,7 @@ final class CliMutationOutputRenderer {
                 List.of("Rollback artifact", absolutePath(restored.rollbackArtifactPath())))));
   }
 
-  static String renderRecoverRekeyDeletedHuman(RecoverRekeyResult.Deleted deleted) {
+  static String renderDeleteRekeyRollbackHuman(RekeyRollbackResult.Deleted deleted) {
     return CliTextFormat.renderTitledBlock(
         "Rollback Artifact Deleted",
         CliTextFormat.renderKeyValueBlock(
@@ -172,6 +173,10 @@ final class CliMutationOutputRenderer {
 
   private static String absolutePath(Path path) {
     return CliHumanDisplay.path(path);
+  }
+
+  private static String absolutePath(PublicPathHint pathHint) {
+    return CliHumanDisplay.path(pathHint);
   }
 
   private static String displayPassphraseSourceKind(BookAccess.PassphraseSource passphraseSource) {

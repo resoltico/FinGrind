@@ -165,12 +165,19 @@ class CliFailureOutputRendererTest {
     assertRenderedRejection(
         new CliRejectionJsonModels.ClosingEquityAccountDetails("3200"), "Account code", "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails(
-            "3200", "RETAINED_EARNINGS", "OTHER_EQUITY"),
+        new CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails(
+            "retained-earnings", List.of("3200")),
         "Required financial position classification",
-        "RETAINED_EARNINGS",
-        "Actual financial position classification",
-        "OTHER_EQUITY");
+        "retained-earnings",
+        "Inactive candidate account codes",
+        "3200");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails(
+            "other-equity", List.of("3200", "3210")),
+        "Required financial position classification",
+        "other-equity",
+        "Candidate account codes",
+        "3200, 3210");
     assertRenderedRejection(
         new CliRejectionJsonModels.PeriodCloseStartDetails("2026-04-01"),
         "Required start date",

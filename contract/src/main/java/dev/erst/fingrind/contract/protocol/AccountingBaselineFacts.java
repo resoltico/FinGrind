@@ -13,7 +13,6 @@ public record AccountingBaselineFacts(
     List<String> deliberateExclusions,
     List<String> nonClaims,
     List<ReportCapabilityFacts> reportCapabilities,
-    List<String> requiredMissingCapabilities,
     AccountingPolicyPackFacts defaultPolicyPack,
     String standardsPosition,
     String reportingPosition,
@@ -35,9 +34,6 @@ public record AccountingBaselineFacts(
     nonClaims = List.copyOf(Objects.requireNonNull(nonClaims, "nonClaims"));
     reportCapabilities =
         List.copyOf(Objects.requireNonNull(reportCapabilities, "reportCapabilities"));
-    requiredMissingCapabilities =
-        List.copyOf(
-            Objects.requireNonNull(requiredMissingCapabilities, "requiredMissingCapabilities"));
     Objects.requireNonNull(defaultPolicyPack, "defaultPolicyPack");
     Objects.requireNonNull(standardsPosition, "standardsPosition");
     Objects.requireNonNull(reportingPosition, "reportingPosition");

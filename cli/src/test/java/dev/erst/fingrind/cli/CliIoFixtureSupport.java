@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
@@ -35,7 +36,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
@@ -67,6 +67,10 @@ import tools.jackson.databind.JsonNode;
 class CliIoFixtureSupport {
   protected static final String TEST_BOOK_KEY = "cli-test-book-key";
   @TempDir protected Path tempDirectory;
+
+  protected static PublicPathHint hint(Path path) {
+    return PublicPathHint.fromPath(path);
+  }
 
   @BeforeEach
   void hardenTempDirectory() {
@@ -160,7 +164,6 @@ class CliIoFixtureSupport {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
@@ -186,8 +189,6 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
-      ProtocolOptions.TAX_REGISTRATION_STATUS,
-      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -211,8 +212,6 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
-      ProtocolOptions.TAX_REGISTRATION_STATUS,
-      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -236,8 +235,6 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
-      ProtocolOptions.TAX_REGISTRATION_STATUS,
-      bookIdentity().entityProfile().taxRegistrationStatus().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -371,7 +368,6 @@ class CliIoFixtureSupport {
                     "entityForm": "COMPANY",
                     "ownerModel": "MULTI_OWNER",
                     "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                    "taxRegistrationStatus": "UNSPECIFIED",
                     "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01",

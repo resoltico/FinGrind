@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -126,8 +127,7 @@ class SqliteBookKeyFileGeneratorTest {
                       throw new IOException("simulated materialization failure");
                     }));
     assertTrue(
-        NullTestSupport.messageOf(exception)
-            .contains(keyFile.toAbsolutePath().normalize().toString()));
+        NullTestSupport.messageOf(exception).contains(PublicPathHint.fromPath(keyFile).value()));
     assertEquals(
         "simulated materialization failure",
         NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
@@ -155,8 +155,7 @@ class SqliteBookKeyFileGeneratorTest {
                     .requireAccepted());
 
     assertTrue(
-        NullTestSupport.messageOf(exception)
-            .contains(keyFile.toAbsolutePath().normalize().toString()));
+        NullTestSupport.messageOf(exception).contains(PublicPathHint.fromPath(keyFile).value()));
     assertEquals("parent boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
     assertFalse(Files.exists(keyFile));
   }

@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.Objects;
@@ -95,11 +93,5 @@ final class SqliteStoreOperations {
             + " is unsupported. Expected version "
             + expectedBookVersion
             + ".");
-  }
-
-  static ContractDecision<SqliteBookPassphrase> passphraseFor(BookAccess bookAccess) {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    return SqliteBookAccessRules.requireKeyFile(bookAccess)
-        .fold(SqliteBookKeyFile::loadDecision, ContractDecision::rejected);
   }
 }

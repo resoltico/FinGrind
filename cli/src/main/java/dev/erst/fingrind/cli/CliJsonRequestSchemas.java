@@ -24,7 +24,6 @@ final class CliJsonRequestSchemas {
           ProtocolOpenBookFields.ENTITY_FORM,
           ProtocolOpenBookFields.OWNER_MODEL,
           ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS,
-          ProtocolOpenBookFields.TAX_REGISTRATION_STATUS,
           ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START,

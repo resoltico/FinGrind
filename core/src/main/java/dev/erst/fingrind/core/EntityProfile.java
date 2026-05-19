@@ -9,7 +9,6 @@ public record EntityProfile(
     EntityForm entityForm,
     OwnerModel ownerModel,
     ReportingObligationStatus reportingObligationStatus,
-    TaxRegistrationStatus taxRegistrationStatus,
     List<BusinessActivityTag> businessActivityTags) {
   /** Validates one entity profile. */
   public EntityProfile {
@@ -17,7 +16,6 @@ public record EntityProfile(
     Objects.requireNonNull(entityForm, "entityForm");
     Objects.requireNonNull(ownerModel, "ownerModel");
     Objects.requireNonNull(reportingObligationStatus, "reportingObligationStatus");
-    Objects.requireNonNull(taxRegistrationStatus, "taxRegistrationStatus");
     businessActivityTags =
         List.copyOf(Objects.requireNonNull(businessActivityTags, "businessActivityTags"));
   }

@@ -17,7 +17,7 @@ class SqliteThreadConfinementTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("cross-thread-prime.sqlite");
     withOwnedResourceOnThread(
         "sqlite-owner-session",
-        () -> new SqlitePostingFactStore(bookAccess(bookPath)),
+        () -> openStore(bookAccess(bookPath)),
         store -> {
           IllegalStateException exception =
               captureIllegalStateOnThread("sqlite-reader-session", store::prime);
@@ -32,7 +32,7 @@ class SqliteThreadConfinementTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("cross-thread-read-session.sqlite");
     withOwnedResourceOnThread(
         "sqlite-owner-read-session",
-        () -> new SqlitePostingFactStore(bookAccess(bookPath)),
+        () -> openStore(bookAccess(bookPath)),
         bookStore -> {
           IllegalStateException exception =
               captureIllegalStateOnThread("sqlite-reader-read-session", bookStore::inspectBook);
@@ -48,7 +48,7 @@ class SqliteThreadConfinementTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("cross-thread-native.sqlite");
     withOwnedResourceOnThread(
         "sqlite-owner-native",
-        () -> SqliteNativeConnections.openKeyFileAccess(bookAccess(bookPath)),
+        () -> openNativeDatabase(bookAccess(bookPath)),
         database -> {
           IllegalStateException exception =
               captureIllegalStateOnThread("sqlite-reader-native", database::handle);

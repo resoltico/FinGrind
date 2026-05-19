@@ -30,8 +30,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
   @Test
   void accountBalance_validatesBookStateAndComputesFunctionalCurrencyBalances() throws Exception {
     Path missingBookPath = tempDirectory.resolve("account-balance-missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -44,8 +43,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
     }
     Path blankBookPath = tempDirectory.resolve("account-balance-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -102,8 +100,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "7.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "7.00")));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(postingFactStore, postingOne);
       commitPosting(postingFactStore, postingTwo);
@@ -191,8 +188,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(postingFactStore, postingOne);
       commitPosting(postingFactStore, postingTwo);

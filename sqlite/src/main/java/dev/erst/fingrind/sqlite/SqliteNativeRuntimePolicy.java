@@ -269,7 +269,7 @@ final class SqliteNativeRuntimePolicy {
             + SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY
             + "=true together with "
             + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
-            + " when intentionally loading an operator-managed library outside the publisher-authenticated bundle or source-checkout runtime.");
+            + " when intentionally loading an operator-managed library outside the publisher-authenticated bundle or source-verified local-build runtime.");
   }
 
   private static SqliteLibraryTarget bundledLibraryTarget(String normalizedBundleHomePath) {

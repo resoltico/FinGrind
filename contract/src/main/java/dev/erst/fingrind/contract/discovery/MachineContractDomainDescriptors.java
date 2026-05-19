@@ -48,7 +48,6 @@ final class MachineContractDomainDescriptors {
         baseline.deliberateExclusions(),
         baseline.nonClaims(),
         baseline.reportCapabilities(),
-        baseline.requiredMissingCapabilities(),
         baseline.defaultPolicyPack(),
         baseline.standardsPosition(),
         baseline.reportingPosition(),
@@ -207,7 +206,6 @@ final class MachineContractDomainDescriptors {
         extensionSurface.defaultPolicyPackId(),
         extensionSurface.implementedSeams(),
         extensionSurface.policySeams(),
-        extensionSurface.futureContexts(),
         extensionSurface.description());
   }
 

@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -81,14 +80,12 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   entity_form,
                   owner_model,
                   reporting_obligation_status,
-                  tax_registration_status,
                   business_activity_tags
               ) values (
                   1,
                   'COMPANY',
                   'MULTI_OWNER',
                   'INTERNAL_MANAGEMENT_ONLY',
-                  'UNSPECIFIED',
                   ''
               )
               """);
@@ -160,7 +157,6 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.UNSPECIFIED,
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
@@ -189,7 +185,6 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.REGISTERED,
                 List.of(new BusinessActivityTag("translation-services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),

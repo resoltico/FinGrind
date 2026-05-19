@@ -63,7 +63,6 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -84,7 +83,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.40.0", CLOCK);
+      new PdfReportService("FinGrind", "0.41.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(
@@ -92,7 +91,6 @@ class PdfReportServiceTest {
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
               ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-              TaxRegistrationStatus.UNSPECIFIED,
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
@@ -142,7 +140,8 @@ class PdfReportServiceTest {
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
     assertTrue(trialBalanceText.contains("Company / Multi Owner"));
-    assertTrue(trialBalanceText.contains("Internal Management Only / Unspecified"));
+    assertTrue(trialBalanceText.contains("Internal Management Only"));
+    assertFalse(trialBalanceText.contains("Internal Management Only / Unspecified"));
     assertTrue(trialBalanceText.contains("Accrual"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
@@ -704,10 +703,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.40.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.41.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.40.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.41.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -724,7 +723,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.40.0", information.getCreator());
+      assertEquals("FinGrind 0.41.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

@@ -27,8 +27,10 @@ final class AclFixturePath implements Path {
   @Nullable AclFileAttributeView overrideAclView;
   Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
+  private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private @Nullable IOException newDirectoryStreamFailure;
+  private @Nullable IOException directoryStreamCloseFailure;
   private final Deque<IOException> moveFailures = new ArrayDeque<>();
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
@@ -44,6 +46,15 @@ final class AclFixturePath implements Path {
 
   @Nullable IOException deleteIfExistsFailure() {
     return deleteIfExistsFailure;
+  }
+
+  AclFixturePath preserveExistingEntryOnDeleteIfExists() {
+    preserveExistingEntryOnDeleteIfExists = true;
+    return this;
+  }
+
+  boolean preserveExistingEntryOnDeleteIfExistsValue() {
+    return preserveExistingEntryOnDeleteIfExists;
   }
 
   AclFixturePath failNewByteChannelWith(IOException exception) {
@@ -80,6 +91,15 @@ final class AclFixturePath implements Path {
 
   @Nullable IOException newDirectoryStreamFailure() {
     return newDirectoryStreamFailure;
+  }
+
+  AclFixturePath failDirectoryStreamCloseWith(IOException exception) {
+    directoryStreamCloseFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException directoryStreamCloseFailure() {
+    return directoryStreamCloseFailure;
   }
 
   AclFixturePath failMoveWith(IOException exception) {

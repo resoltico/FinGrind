@@ -108,12 +108,18 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandForCurrentRuntime(
             null, "Linux", unnamedModule, "fingrind.jar");
 
-    assertEquals("java --enable-native-access=ALL-UNNAMED -jar fingrind.jar", launcherCommand);
     assertEquals(
-        "java --enable-native-access=ALL-UNNAMED -jar fingrind.jar help",
+        "java --enable-native-access=fingrind --module-path fingrind.jar --module"
+            + " fingrind/dev.erst.fingrind.cli.App",
+        launcherCommand);
+    assertEquals(
+        "java --enable-native-access=fingrind --module-path fingrind.jar --module"
+            + " fingrind/dev.erst.fingrind.cli.App help",
         CliInvocationText.rewriteInvocationPrefix("fingrind help", launcherCommand));
     assertEquals(
-        "cat ./secrets/acme.book-key | java --enable-native-access=ALL-UNNAMED -jar fingrind.jar open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+        "cat ./secrets/acme.book-key | java --enable-native-access=fingrind --module-path"
+            + " fingrind.jar --module fingrind/dev.erst.fingrind.cli.App open-book --book-file"
+            + " ./books/acme.sqlite --book-passphrase-stdin",
         CliInvocationText.rewriteInvocationPrefix(
             "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
             launcherCommand));

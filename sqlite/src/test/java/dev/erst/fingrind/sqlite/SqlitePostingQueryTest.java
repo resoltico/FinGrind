@@ -32,14 +32,12 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
     PostingHistoryQuery firstPage =
         new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
     Path missingBookPath = tempDirectory.resolve("list-postings-missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath))) {
       assertInitializedQueryViewFailure(() -> postingFactStore.listPostings(firstPage));
     }
     Path blankBookPath = tempDirectory.resolve("list-postings-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
       assertInitializedQueryViewFailure(() -> postingFactStore.listPostings(firstPage));
     }
   }
@@ -74,8 +72,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "30.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "30.00")));
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
@@ -154,8 +151,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
     CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       commitPosting(postingFactStore, postingFact);
       assertEquals(
@@ -167,8 +163,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
   void findByIdempotency_rejectsForeignSqliteFileWithPostingLikeSchema() {
     Path bookPath = tempDirectory.resolve("missing-line-table.sqlite");
     createPostingFactOnlyBook(bookPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(bookPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,

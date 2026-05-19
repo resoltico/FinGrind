@@ -269,7 +269,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
             IllegalStateException.class,
             () ->
                 SqliteRoundTripWorkflowLifecycleAssertions.assertAccountReactivationPersisted(
-                    new SqliteRoundTripWorkflowTestSupport.StubSqliteBookSession(
+                    new SqliteRoundTripWorkflowTestSupport.StubSqliteReadSession(
                         Optional.of(
                             SqliteRoundTripWorkflowTestSupport.declaredAccount(
                                 new AccountCode("1000"), false))),

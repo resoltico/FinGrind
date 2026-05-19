@@ -5,13 +5,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-05-19
+
+### Changed
+
+- Protected-book maintenance now runs through an explicit executor-owned maintenance model instead
+  of SQLite-owned workflow glue: `backup-book`, `restore-book`, and the public rekey-rollback
+  inspection, restore, and deletion workflows now verify initialized sources, rollback artifacts,
+  and restored targets through one typed verification surface, emit durable maintenance journal
+  facts, and keep operator-selected artifact outputs distinct from redacted maintenance
+  diagnostics.
+- CLI help, machine discovery, and canonical examples now describe the same command grammar more
+  precisely: action-specific maintenance requirements are surfaced explicitly, operator guidance is
+  separated from first-class grammar sections, and report/query outputs use the normalized versus
+  redacted path vocabulary consistently across human, JSON, bundle-smoke, and Docker acceptance
+  surfaces.
+- The current bookkeeping kernel was narrowed to executable present-day meaning: unsupported
+  `AccountingBasis` extension values, dormant tax/FX/evidence policy seams, and unused
+  organization/reporting identity types were removed from the active model, while workflow
+  assertions now preserve structured effective-date ranges instead of degrading them to nullable
+  bounds.
+- Managed-SQLite runtime and release provenance contracts are tighter: discovery now distinguishes
+  source-checkout-managed and environment-configured trust more clearly, managed-toolchain probing
+  and compiler-flag rendering verify the release contract more aggressively, and the public
+  developer/runtime references align with that stronger trust vocabulary.
+- Root Python helper-tool verification now runs through a pinned repo-owned `uv` launcher instead
+  of direct ambient-package imports: `fingrindUvVersion` now pins the launcher bootstrap, Ruff is
+  pinned at `0.15.13`, SQLFluff `4.2.1` now lints the canonical SQLite schema through the
+  repo-owned `gradle/sqlfluff/sqlfluff.cfg` contract, the shell verification entrypoints now
+  auto-resolve a Python `3.12+` runtime through `uv` when the ambient `python3` is older, and the
+  developer references point contributors at the new bootstrap contract.
+- The canonical SQLite schema renamed `book_meta.key` to `book_meta.meta_key` and tightened the
+  recursive account-cycle trigger query so the SQLFluff-checked schema, generated schema
+  reference, and SQLite adapter vocabulary stay aligned.
+
+### Removed
+
+- Removed the broad `SqliteBookSession` public seam and the old SQLite-owned backup, restore, and
+  rekey-recovery service entrypoints in favor of narrower administration, read, posting,
+  period-close, plan-execution, and rekey session surfaces plus the executor-owned maintenance
+  boundary.
+
+### Fixed
+
+- Fixed maintenance-lease and recovery workflows that could previously strand follow-up operations
+  behind generic runtime failures or filename-only rollback selection; recovery and restore paths
+  now reject invalid maintenance artifacts deterministically and verify the resulting protected
+  book before reporting success.
+- Fixed report-export and diagnostics path drift so explicit artifact payloads publish normalized
+  paths while maintenance and request-file failure surfaces redact local filesystem topology by
+  default.
+- Fixed release-surface Python runtime support so repeated shell sourcing, uv fallback resolution,
+  and fresh-bundle verification remain deterministic across operator environments instead of
+  depending on whichever host Python executables happen to be present.
+- Fixed repository-hygiene and release-publication drift around orphaned Git coordination locks:
+  the hygiene verifier now rejects shared or worktree Git `.lock` files before release-sensitive
+  verification begins, and the release/developer runbooks now spell out the live-owner versus
+  orphaned-lock decision path instead of leaving staging failures to ad hoc operator recovery.
+
 ## [0.40.0] - 2026-05-18
 
 ### Added
 
-- Added first-class closed-book maintenance workflows: `backup-book`, `restore-book`, and
-  `recover-rekey` now ship as public CLI commands with structured JSON and human result shapes,
-  deterministic rejection contracts, and matching maintenance/regression coverage.
+- Added first-class closed-book maintenance workflows: `backup-book`, `restore-book`, and the
+  explicit rekey-rollback inspection, restore, and deletion commands now ship as public CLI
+  commands with structured JSON and human result shapes, deterministic rejection contracts, and
+  matching maintenance/regression coverage.
 - `inspect-book` now publishes the active migration-policy facts alongside lifecycle and format
   metadata so operators and automation can distinguish the current hard-break format line from a
   generic compatibility summary.
@@ -48,9 +107,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   survive slower GitHub-hosted platform bundle builders before multi-arch image publication
   begins.
 - Tightened the protected-book lifecycle and theory-holder surfaces again: `backup-book`,
-  `restore-book`, and `recover-rekey` now validate path collisions, backup-pair verification,
-  rollback-artifact handling, and secret reuse deterministically across CLI, SQLite, schema, and
-  docs.
+  `restore-book`, and the explicit rekey-rollback inspection, restore, and deletion commands now
+  validate path collisions, backup-pair verification, rollback-artifact handling, and secret
+  reuse deterministically across CLI, SQLite, schema, and docs.
 - Raw `java -jar` discovery/help no longer leaves misleading native-access noise, successful PDF
   exports no longer emit a harmless direct-buffer warning, single-record human views keep exact
   durable identifiers, and the checked-in examples and rendered human fixtures now match the live
@@ -1975,7 +2034,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.40.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.41.0...HEAD
+[0.41.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.41.0
 [0.40.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.40.0
 [0.39.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.39.0
 [0.38.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.38.0

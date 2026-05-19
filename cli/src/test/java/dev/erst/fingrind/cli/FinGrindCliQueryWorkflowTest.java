@@ -95,6 +95,10 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                   bookKeyFilePath.toString()
                 }));
     assertTrue(
+        inspectOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains(CliPublicPaths.normalizedValue(bookFilePath)));
+    assertTrue(
         inspectOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(

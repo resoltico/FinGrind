@@ -123,7 +123,6 @@ public final class ContractResponse {
       List<String> deliberateExclusions,
       List<String> nonClaims,
       List<ReportCapabilityFacts> reportCapabilities,
-      List<String> requiredMissingCapabilities,
       AccountingPolicyPackFacts defaultPolicyPack,
       String standardsPosition,
       String reportingPosition,
@@ -147,9 +146,6 @@ public final class ContractResponse {
       nonClaims = ContractDescriptorValidation.copyList(nonClaims, "nonClaims");
       reportCapabilities =
           ContractDescriptorValidation.copyList(reportCapabilities, "reportCapabilities");
-      requiredMissingCapabilities =
-          ContractDescriptorValidation.copyList(
-              requiredMissingCapabilities, "requiredMissingCapabilities");
       defaultPolicyPack =
           ContractDescriptorValidation.requireValue(defaultPolicyPack, "defaultPolicyPack");
       standardsPosition =
@@ -335,13 +331,12 @@ public final class ContractResponse {
     }
   }
 
-  /** Descriptor for sanctioned implemented seams and adjacent future contexts. */
+  /** Descriptor for sanctioned implemented executable policy seams. */
   public record ExtensionSurfaceDescriptor(
       String model,
       String defaultPolicyPackId,
       List<String> implementedSeams,
       List<PolicySeamFacts> policySeams,
-      List<String> futureContexts,
       String description)
       implements ResponseDescriptorType {
     /** Validates one extension-surface descriptor payload. */
@@ -352,7 +347,6 @@ public final class ContractResponse {
       implementedSeams =
           ContractDescriptorValidation.copyList(implementedSeams, "implementedSeams");
       policySeams = ContractDescriptorValidation.copyList(policySeams, "policySeams");
-      futureContexts = ContractDescriptorValidation.copyList(futureContexts, "futureContexts");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }

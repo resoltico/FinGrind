@@ -237,9 +237,23 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(json.contains("\"posting-not-found\""));
     assertCapabilitiesCommandCatalog(payload);
     assertCapabilitiesRequestShapes(payload);
-    assertCapabilitiesRuntimeContract(payload);
     assertCapabilitiesRequestInput(payload);
     assertCapabilitiesResponseModel(payload);
+    assertFalse(payload.has("environment"));
+  }
+
+  @Test
+  void run_returnsEnvironment() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"environment", "--output", "json"});
+
+    assertEquals(0, exitCode);
+    JsonNode payload =
+        new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8)).path("payload");
+    assertEnvironmentRuntimeContract(payload);
   }
 
   private static List<String> commandNames(JsonNode commands) {
@@ -359,7 +373,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             "rekey-book",
             "backup-book",
             "restore-book",
-            "recover-rekey",
+            "inspect-rekey-rollback",
+            "delete-rekey-rollback",
+            "restore-rekey-rollback",
             "declare-account",
             "close-period"),
         commandNames(payload.path("commands").path("administration")));
@@ -450,168 +466,94 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .stringValue());
   }
 
-  private static void assertCapabilitiesRuntimeContract(JsonNode payload) {
+  private static void assertEnvironmentRuntimeContract(JsonNode payload) {
     assertEquals(
         ProtocolCatalog.storageDriver().wireValue(),
-        payload.path("environment").path("storage").path("storageDriver").stringValue());
+        payload.path("storage").path("storageDriver").stringValue());
     assertEquals(
         ProtocolCatalog.bookProtectionMode().wireValue(),
-        payload.path("environment").path("storage").path("bookProtectionMode").stringValue());
+        payload.path("storage").path("bookProtectionMode").stringValue());
     assertEquals(
         ProtocolCatalog.protectedBookFormat().cipher().wireValue(),
-        payload
-            .path("environment")
-            .path("storage")
-            .path("defaultProtectedBookFormat")
-            .path("cipher")
-            .stringValue());
+        payload.path("storage").path("defaultProtectedBookFormat").path("cipher").stringValue());
     assertEquals(
         ProtocolCatalog.protectedBookFormat().legacyMode(),
         payload
-            .path("environment")
             .path("storage")
             .path("defaultProtectedBookFormat")
             .path("legacyMode")
             .booleanValue());
     assertEquals(
         ProtocolCatalog.protectedBookFormat().pageSize(),
-        payload
-            .path("environment")
-            .path("storage")
-            .path("defaultProtectedBookFormat")
-            .path("pageSize")
-            .intValue());
+        payload.path("storage").path("defaultProtectedBookFormat").path("pageSize").intValue());
     assertEquals(
         ProtocolCatalog.protectedBookFormat().reservedBytes(),
         payload
-            .path("environment")
             .path("storage")
             .path("defaultProtectedBookFormat")
             .path("reservedBytes")
             .intValue());
     assertEquals(
         ProtocolCatalog.sqliteLibraryMode().wireValue(),
-        payload.path("environment").path("sqlite").path("libraryMode").stringValue());
+        payload.path("sqlite").path("libraryMode").stringValue());
     assertEquals(
         ProtocolCatalog.publicCliDistribution().wireValue(),
-        payload
-            .path("environment")
-            .path("distribution")
-            .path("publicCliDistribution")
-            .stringValue());
+        payload.path("distribution").path("publicCliDistribution").stringValue());
     assertEquals(
         FinGrindCli.runtimeDistribution(),
-        payload.path("environment").path("distribution").path("runtimeDistribution").stringValue());
+        payload.path("distribution").path("runtimeDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
-        readTextArray(
-            payload
-                .path("environment")
-                .path("distribution")
-                .path("supportedPublicCliBundleTargets")));
+        readTextArray(payload.path("distribution").path("supportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
-        readTextArray(
-            payload
-                .path("environment")
-                .path("distribution")
-                .path("unsupportedPublicCliBundleTargets")));
+        readTextArray(payload.path("distribution").path("unsupportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("libraryEnvironmentVariable")
-            .stringValue());
+        payload.path("sqlite").path("libraryEnvironmentVariable").stringValue());
     assertEquals(
         ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("operatorTrustSystemProperty")
-            .stringValue());
+        payload.path("sqlite").path("operatorTrustSystemProperty").stringValue());
     assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
-        payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").stringValue());
+        payload.path("sqlite").path("bundleHomeSystemProperty").stringValue());
     assertEquals(
         ProtocolCatalog.requiredSqliteCompileOptions(),
-        readTextArray(payload.path("environment").path("sqlite").path("requiredCompileOptions")));
+        readTextArray(payload.path("sqlite").path("requiredCompileOptions")));
     assertEquals(
         ProtocolCatalog.forbiddenSqliteCompileOptions(),
-        readTextArray(payload.path("environment").path("sqlite").path("forbiddenCompileOptions")));
-    assertTrue(
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("requiresSecureMemorySupport")
-            .booleanValue());
+        readTextArray(payload.path("sqlite").path("forbiddenCompileOptions")));
+    assertTrue(payload.path("sqlite").path("requiresSecureMemorySupport").booleanValue());
     assertEquals(
         "verified",
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("compileOptionsVerification")
-            .stringValue());
+        payload.path("sqlite").path("runtime").path("compileOptionsVerification").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        payload.path("environment").path("sqlite").path("requiredSqliteSourceId").stringValue());
+        payload.path("sqlite").path("requiredSqliteSourceId").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-        payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").stringValue());
+        payload.path("sqlite").path("requiredSqlite3mcVersion").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("loadedSqlite3mcVersion")
-            .stringValue());
+        payload.path("sqlite").path("runtime").path("loadedSqlite3mcVersion").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("loadedSqliteSourceId")
-            .stringValue());
+        payload.path("sqlite").path("runtime").path("loadedSqliteSourceId").stringValue());
     assertFalse(
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("loadedLibraryPath")
-            .stringValue()
-            .isBlank());
+        payload.path("sqlite").path("runtime").path("loadedLibraryPath").stringValue().isBlank());
     assertFalse(
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("runtimeProvenance")
-            .stringValue()
-            .isBlank());
+        payload.path("sqlite").path("runtime").path("runtimeProvenance").stringValue().isBlank());
     String runtimeProvenance =
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("runtimeProvenance")
-            .stringValue();
+        payload.path("sqlite").path("runtime").path("runtimeProvenance").stringValue();
     assertEquals(
         SqliteRuntimeTrustBasis.fromProvenance(
                 SqliteRuntimeProvenance.fromWireValue(runtimeProvenance))
             .wireValue(),
-        payload
-            .path("environment")
-            .path("sqlite")
-            .path("runtime")
-            .path("runtimeTrustBasis")
-            .stringValue());
+        payload.path("sqlite").path("runtime").path("runtimeTrustBasis").stringValue());
   }
 
   private static void assertCapabilitiesRequestInput(JsonNode payload) {
@@ -764,8 +706,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
     assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").stringValue());
     assertEquals(
-        keyFilePath.toAbsolutePath().normalize().toString(),
-        payload.path("bookKeyFile").stringValue());
+        CliPublicPaths.normalizedValue(keyFilePath), payload.path("bookKeyFile").stringValue());
     assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(

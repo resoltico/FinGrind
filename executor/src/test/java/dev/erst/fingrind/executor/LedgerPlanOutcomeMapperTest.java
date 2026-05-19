@@ -574,8 +574,7 @@ class LedgerPlanOutcomeMapperTest {
                 internalStepId("assert"),
                 new BookWorkflowAssertion.AccountBalanceEquals(
                     new AccountCode("1000"),
-                    null,
-                    null,
+                    EffectiveDateRange.unbounded(),
                     Money.parse("EUR", "10.00"),
                     BalanceSide.DEBIT))));
   }

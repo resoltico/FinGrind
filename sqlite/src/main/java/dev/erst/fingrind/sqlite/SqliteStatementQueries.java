@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
@@ -70,7 +69,6 @@ final class SqliteStatementQueries {
       String entityForm,
       String ownerModel,
       String reportingObligationStatus,
-      String taxRegistrationStatus,
       String businessActivityTags) {}
 
   private record BookPolicyRow(String accountingBasis) {}
@@ -218,7 +216,6 @@ final class SqliteStatementQueries {
                 OwnerModel.fromWireValue(entityProfileRow.ownerModel()),
                 ReportingObligationStatus.fromWireValue(
                     entityProfileRow.reportingObligationStatus()),
-                TaxRegistrationStatus.fromWireValue(entityProfileRow.taxRegistrationStatus()),
                 decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             FiscalYearStart.parse(coreRow.fiscalYearStart()),
@@ -329,8 +326,7 @@ final class SqliteStatementQueries {
                   SqlitePostingMapper.requiredText(statement, 0),
                   SqlitePostingMapper.requiredText(statement, 1),
                   SqlitePostingMapper.requiredText(statement, 2),
-                  SqlitePostingMapper.requiredText(statement, 3),
-                  SqlitePostingMapper.requiredText(statement, 4));
+                  SqlitePostingMapper.requiredText(statement, 3));
           if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite entity profile query returned more than one row.");

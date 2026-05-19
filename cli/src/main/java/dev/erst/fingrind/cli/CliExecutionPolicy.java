@@ -16,8 +16,8 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RecoverRekeyResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -198,12 +198,12 @@ final class CliExecutionPolicy {
     };
   }
 
-  static int exitCodeFor(RecoverRekeyResult result) {
+  static int exitCodeFor(RekeyRollbackResult result) {
     return switch (result) {
-      case RecoverRekeyResult.Inspected _ -> 0;
-      case RecoverRekeyResult.Restored _ -> 0;
-      case RecoverRekeyResult.Deleted _ -> 0;
-      case RecoverRekeyResult.Rejected _ -> 2;
+      case RekeyRollbackResult.Inspected _ -> 0;
+      case RekeyRollbackResult.Restored _ -> 0;
+      case RekeyRollbackResult.Deleted _ -> 0;
+      case RekeyRollbackResult.Rejected _ -> 2;
     };
   }
 

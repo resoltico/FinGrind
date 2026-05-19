@@ -29,7 +29,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -58,7 +57,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.40.0",
+                "0.41.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -74,7 +73,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.40.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.41.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -175,7 +174,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.40.0");
+    return new PdfDocumentFactory("FinGrind", "0.41.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -209,7 +208,6 @@ class PdfReportCoverageTest {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),

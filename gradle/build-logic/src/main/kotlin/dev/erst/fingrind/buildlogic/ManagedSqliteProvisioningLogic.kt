@@ -20,6 +20,7 @@ internal data class ManagedSqliteProvisioning(
     val checksumPath: Provider<RegularFile>,
     val trustedChecksumPath: Provider<RegularFile>,
     val toolchainFingerprintPath: Provider<RegularFile>,
+    val buildContractPath: Provider<RegularFile>,
     val prepareTask: TaskProvider<PrepareManagedSqliteTask>,
 )
 
@@ -71,6 +72,8 @@ internal object ManagedSqliteProvisioningLogic {
             )
         val toolchainFingerprintPath =
             project.layout.buildDirectory.file("managed-sqlite/$classifier/toolchain-fingerprint.json")
+        val buildContractPath =
+            project.layout.buildDirectory.file("managed-sqlite/$classifier/build-contract.json")
 
         val verifyManagedSqliteSource =
             project.tasks.register<VerifyManagedSqliteSourceTask>("verifyManagedSqliteSource") {
@@ -110,6 +113,9 @@ internal object ManagedSqliteProvisioningLogic {
                 requiredCompileOptions.set(
                     DistributionContractReader.requiredSqliteCompileOptions(repositoryRootDirectory),
                 )
+                forbiddenCompileOptions.set(
+                    DistributionContractReader.forbiddenSqliteCompileOptions(repositoryRootDirectory),
+                )
                 requiresSecureMemorySupport.set(
                     DistributionContractReader.requiresSecureMemorySupport(repositoryRootDirectory),
                 )
@@ -129,6 +135,7 @@ internal object ManagedSqliteProvisioningLogic {
                     DistributionContractReader.windowsLinkerHardeningFlags(repositoryRootDirectory),
                 )
                 toolchainFingerprintFile.set(toolchainFingerprintPath)
+                buildContractFile.set(buildContractPath)
                 outputFile.set(libraryPath)
                 checksumFile.set(checksumPath)
                 trustedChecksumFile.set(trustedChecksumPath)
@@ -141,6 +148,7 @@ internal object ManagedSqliteProvisioningLogic {
             checksumPath = checksumPath,
             trustedChecksumPath = trustedChecksumPath,
             toolchainFingerprintPath = toolchainFingerprintPath,
+            buildContractPath = buildContractPath,
             prepareTask = prepareManagedSqlite,
         )
     }

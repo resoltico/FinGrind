@@ -32,18 +32,18 @@ readonly verifier="${script_dir}/verify-sqlite-runtime-contract.py"
         ./gradlew :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain >/dev/null
 )
 
-capabilities_output="$(
+environment_output="$(
     cd "${repo_root}" &&
-        ./scripts/source-checkout-cli.sh capabilities --output json
+        ./scripts/source-checkout-cli.sh environment --output json
 )"
 if ! verifier_output="$(
-    printf '%s\n' "${capabilities_output}" |
+    printf '%s\n' "${environment_output}" |
         python3 "${verifier}" \
             --expected-runtime-distribution-key sourceCheckoutRuntimeDistribution \
             --expected-runtime-provenance source-checkout-managed \
             --label source-checkout-managed-runtime 2>&1
 )"; then
-    printf '%s\n' "${capabilities_output}"
+    printf '%s\n' "${environment_output}"
     printf '%s\n' "${verifier_output}" >&2
     exit 1
 fi

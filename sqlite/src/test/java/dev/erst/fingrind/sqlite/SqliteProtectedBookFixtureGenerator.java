@@ -62,7 +62,7 @@ public final class SqliteProtectedBookFixtureGenerator {
   private static void buildFixtureBook(Path fixturePath, Path keyPath) throws IOException {
     Files.deleteIfExists(fixturePath);
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
+        SqliteStoreFixtureSupport.openStore(
             new BookAccess(fixturePath, new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
       if (!(postingFactStore.openBook(
               INITIALIZED_AT, SqlitePostingFactFixtureSupport.bookIdentity())
@@ -138,7 +138,7 @@ public final class SqliteProtectedBookFixtureGenerator {
     MonetaryAmount amount =
         MonetaryAmount.of(SqlitePostingFactFixtureSupport.money("EUR", "10.00"));
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
+        SqliteStoreFixtureSupport.openStore(
             new BookAccess(fixturePath, new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
       if (!postingFactStore.inspectBook().initialized()) {
         throw new IllegalStateException("Generated protected-book fixture did not reopen cleanly.");

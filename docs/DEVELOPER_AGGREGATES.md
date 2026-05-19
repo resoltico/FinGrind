@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -53,21 +53,24 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Invariant: one closed protected book may be exported only as a verified backup pair, restored
   only from a verified backup pair, and recovered from rekey rollback artifacts only through one
   explicit maintenance workflow.
-- Mutation paths: `backup-book`, `restore-book`, `recover-rekey`, and `rekey-book` rollback-file
-  creation/cleanup.
+- Maintenance paths: read-only inspection through `inspect-rekey-rollback`; mutation paths:
+  `backup-book`, `restore-book`, `restore-rekey-rollback`, `delete-rekey-rollback`, and
+  `rekey-book` rollback-file creation/cleanup.
 - Immediate or derived: immediate.
 - Domain owners:
-  - `contract.bookkeeping.BackupBookResult`
-  - `contract.bookkeeping.RestoreBookResult`
-  - `contract.bookkeeping.RecoverRekeyResult`
-  - `contract.bookkeeping.RekeyRecoveryAction`
+  - `executor.ProtectedBookMaintenanceService`
+  - `executor.maintenance.ProtectedBookBackupOutcome`
+  - `executor.maintenance.ProtectedBookRestoreOutcome`
+  - `executor.maintenance.ProtectedBookRecoveryOutcome`
+  - `executor.maintenance.ProtectedBookMaintenanceRejection`
 - Storage participants:
-  - `sqlite.SqliteBookBackupService`
-  - `sqlite.SqliteBookRestoreService`
-  - `sqlite.SqliteRekeyRecoveryService`
+  - `executor.spi.ProtectedBookMaintenanceStore`
+  - `sqlite.SqliteProtectedBookMaintenanceStore`
+  - `sqlite.SqliteProtectedBookMaintenanceJournal`
   - `sqlite.SqliteRekeyRollbackFile`
-- Notes: maintenance workflows are book-file operations, not bookkeeping mutations. They keep
-  backup, restore, and rekey-recovery state explicit without inventing a second bookkeeping model.
+- Notes: maintenance workflows are protected-book artifact operations, not bookkeeping mutations.
+  They keep backup, restore, and rekey-recovery state explicit in their own context instead of
+  leaking verification and replacement rules into SQLite adapter code or published DTO families.
 
 ## Account Registry Boundary
 
@@ -166,6 +169,23 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - SQLite `audit_event` append-only triggers
 - Notes: posting provenance inside `posting_fact` is not a substitute for this stream; account
   mutation and rekey actions must also be durable audit facts.
+
+## Maintenance Journal
+
+- Invariant: one append-only maintenance journal records backup, restore, rollback inspection,
+  rollback restore, rollback deletion, and verification-driven maintenance failures beside the
+  protected book without mutating bookkeeping rows.
+- Maintenance paths: read-only inspection through `inspect-rekey-rollback`; mutation paths:
+  `backup-book`, `restore-book`, `restore-rekey-rollback`, `delete-rekey-rollback`, and
+  `rekey-book` rollback-file cleanup through the maintenance service/store boundary.
+- Immediate or derived: immediate on write, read-only on inspection.
+- Domain owners:
+  - `executor.spi.ProtectedBookMaintenanceEvent`
+  - `executor.spi.ProtectedBookMaintenanceEventKind`
+- Storage participants:
+  - `sqlite.SqliteProtectedBookMaintenanceJournal`
+- Notes: this journal is adjacent to the bookkeeping audit stream because it records protected-book
+  artifact maintenance rather than ledger mutations.
 
 ## Read Models And Reports
 

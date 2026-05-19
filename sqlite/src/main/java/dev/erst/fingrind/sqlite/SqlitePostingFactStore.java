@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
@@ -52,7 +51,13 @@ import java.util.function.Supplier;
  *
  * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-class SqlitePostingFactStore implements SqliteBookSession {
+class SqlitePostingFactStore
+    implements SqliteAdministrationSession,
+        SqliteReadSession,
+        SqlitePostingSession,
+        SqlitePeriodCloseSession,
+        SqlitePlanExecutionSession,
+        SqliteRekeySession {
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
   private final SqliteStoreContext context;
   final SqliteSessionSecret sessionSecret;
@@ -69,30 +74,6 @@ class SqlitePostingFactStore implements SqliteBookSession {
   SqlitePostingFactStore(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteStoreAccessMode accessMode) {
     this(bookPath, bookPassphrase, accessMode, SqliteNativeBootstrap::api);
-  }
-
-  SqlitePostingFactStore(BookAccess bookAccess) {
-    this(bookAccess, SqliteStoreAccessMode.READ_WRITE_CREATE);
-  }
-
-  SqlitePostingFactStore(BookAccess bookAccess, SqliteStoreAccessMode accessMode) {
-    this(bookAccess, accessMode, SqliteNativeBootstrap::api);
-  }
-
-  SqlitePostingFactStore(
-      BookAccess bookAccess,
-      SqliteStoreAccessMode accessMode,
-      Supplier<SqliteNativeApi> sqliteApiSupplier) {
-    this(
-        Objects.requireNonNull(bookAccess, "bookAccess").bookFilePath(),
-        SqliteStoreOperations.passphraseFor(bookAccess)
-            .fold(
-                resolvedPassphrase -> resolvedPassphrase,
-                failure -> {
-                  throw new ContractFailureException(failure);
-                }),
-        accessMode,
-        sqliteApiSupplier);
   }
 
   SqlitePostingFactStore(
@@ -341,13 +322,5 @@ class SqlitePostingFactStore implements SqliteBookSession {
   SqliteNativeDatabase activeNativeDatabase() {
     threadOwner.requireOwnerThread();
     return lifecycle.database();
-  }
-
-  static ContractDecision<SqliteBookPassphrase> passphraseFor(BookAccess bookAccess) {
-    return passphraseDecisionFor(bookAccess);
-  }
-
-  static ContractDecision<SqliteBookPassphrase> passphraseDecisionFor(BookAccess bookAccess) {
-    return SqliteStoreOperations.passphraseFor(bookAccess);
   }
 }

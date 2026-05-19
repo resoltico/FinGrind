@@ -3,10 +3,9 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRecoveryAction;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -50,9 +49,7 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runRekeyBookCommand(
-      BookAccess bookAccess,
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      OutputMode outputMode) {
+      BookAccess bookAccess, PassphraseSource replacementPassphraseSource, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
         outputMode,
@@ -85,15 +82,35 @@ final class CliAdministrativeCommandExecutor {
         responseWriter);
   }
 
-  int runRecoverRekeyCommand(
+  int runInspectRekeyRollbackCommand(Path bookFilePath, OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.inspectRekeyRollback(bookFilePath),
+        outputMode,
+        result -> responseWriter.writeInspectRekeyRollbackResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runRestoreRekeyRollbackCommand(
       Path bookFilePath,
-      RekeyRecoveryAction action,
       @Nullable Path rollbackArtifactPath,
+      PassphraseSource expectedPassphraseSource,
       OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.recoverRekey(bookFilePath, action, rollbackArtifactPath),
+        bookWorkflow.restoreRekeyRollback(
+            bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
         outputMode,
-        result -> responseWriter.writeRecoverRekeyResult(result, outputMode),
+        result -> responseWriter.writeRestoreRekeyRollbackResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runDeleteRekeyRollbackCommand(
+      Path bookFilePath, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.deleteRekeyRollback(bookFilePath, rollbackArtifactPath),
+        outputMode,
+        result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }
@@ -109,13 +126,9 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runClosePeriodCommand(
-      BookAccess bookAccess,
-      ReportingPeriod reportingPeriod,
-      AccountCode closingEquityAccountCode,
-      OutputMode outputMode) {
+      BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.closePeriod(
-            bookAccess, new ClosePeriodCommand(reportingPeriod, closingEquityAccountCode)),
+        bookWorkflow.closePeriod(bookAccess, new ClosePeriodCommand(reportingPeriod)),
         outputMode,
         result -> responseWriter.writeClosePeriodResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,

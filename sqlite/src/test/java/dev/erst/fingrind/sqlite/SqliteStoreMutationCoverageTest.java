@@ -34,8 +34,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void declareAccount_rollsBackRuntimeFailuresAfterTheTransactionBegins() {
     Path databasePath = tempDirectory.resolve("declare-runtime-rollback.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.openBook(FIXED_INSTANT, bookIdentity());
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
@@ -82,8 +81,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void declareAccount_redeclaresActiveAccountsWithoutMarkingThemAsReactivated() {
     Path databasePath = tempDirectory.resolve("declare-active-redeclare.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
       declareAccount(
           postingFactStore,
@@ -125,8 +123,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void closePeriod_rejectsMissingAndRawUninitializedBooks() {
     Path missingBookPath = tempDirectory.resolve("close-period-missing.sqlite");
-    try (SqlitePostingFactStore missingStore =
-        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath))) {
       assertEquals(
           new PeriodCloseOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
@@ -136,8 +133,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
 
     Path blankBookPath = tempDirectory.resolve("close-period-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
-    try (SqlitePostingFactStore blankStore =
-        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+    try (SqlitePostingFactStore blankStore = openStore(bookAccess(blankBookPath))) {
       assertEquals(
           new PeriodCloseOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
@@ -148,8 +144,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void closePeriod_rollsBackRejectedGeneratedPostingsBeforeAnyCloseFactIsStored() {
     Path databasePath = tempDirectory.resolve("close-period-generated-rejection.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
 
       IllegalStateException failure =
@@ -200,8 +195,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void closePeriod_wrapsNativeFailuresFromStaleDatabaseHandles() throws Exception {
     Path databasePath = tempDirectory.resolve("close-period-stale.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       try (StoreDatabaseSwap ignored =
           swapStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath))) {

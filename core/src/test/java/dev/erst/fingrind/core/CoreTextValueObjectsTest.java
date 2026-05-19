@@ -69,42 +69,6 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void organizationGraphIdentifiers_stripWhitespaceAndRejectBlankNullAndOversizedValues() {
-    assertEquals("org-1", new OrganizationId("  org-1  ").value());
-    assertEquals("entity-1", new AccountingEntityId("  entity-1  ").value());
-    assertEquals("group-1", new ReportingGroupId("  group-1  ").value());
-
-    assertThrows(NullPointerException.class, () -> new OrganizationId(nullOf()));
-    assertThrows(NullPointerException.class, () -> new AccountingEntityId(nullOf()));
-    assertThrows(NullPointerException.class, () -> new ReportingGroupId(nullOf()));
-
-    assertEquals(
-        "Organization id must not be blank.",
-        assertThrows(IllegalArgumentException.class, () -> new OrganizationId("   ")).getMessage());
-    assertEquals(
-        "Accounting entity id must not be blank.",
-        assertThrows(IllegalArgumentException.class, () -> new AccountingEntityId("   "))
-            .getMessage());
-    assertEquals(
-        "Reporting group id must not be blank.",
-        assertThrows(IllegalArgumentException.class, () -> new ReportingGroupId("   "))
-            .getMessage());
-
-    assertEquals(
-        "Organization id must not exceed 128 characters.",
-        assertThrows(IllegalArgumentException.class, () -> new OrganizationId("o".repeat(129)))
-            .getMessage());
-    assertEquals(
-        "Accounting entity id must not exceed 128 characters.",
-        assertThrows(IllegalArgumentException.class, () -> new AccountingEntityId("e".repeat(129)))
-            .getMessage());
-    assertEquals(
-        "Reporting group id must not exceed 128 characters.",
-        assertThrows(IllegalArgumentException.class, () -> new ReportingGroupId("g".repeat(129)))
-            .getMessage());
-  }
-
-  @Test
   void entityProfile_requiresAllFieldsAndDefensivelyCopiesActivityTags() {
     BookEntityName displayName = new BookEntityName("Acme Studio");
     List<BusinessActivityTag> tags =
@@ -116,7 +80,6 @@ class CoreTextValueObjectsTest {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-            TaxRegistrationStatus.REGISTERED,
             tags);
 
     assertEquals(displayName, profile.displayName());
@@ -124,7 +87,6 @@ class CoreTextValueObjectsTest {
     assertEquals(OwnerModel.MULTI_OWNER, profile.ownerModel());
     assertEquals(
         ReportingObligationStatus.BASIC_STANDARD_REPORTING, profile.reportingObligationStatus());
-    assertEquals(TaxRegistrationStatus.REGISTERED, profile.taxRegistrationStatus());
     assertEquals(
         List.of(new BusinessActivityTag("translation-services")), profile.businessActivityTags());
     tags.add(new BusinessActivityTag("consulting"));
@@ -140,7 +102,6 @@ class CoreTextValueObjectsTest {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                TaxRegistrationStatus.REGISTERED,
                 List.of()));
     assertThrows(
         NullPointerException.class,
@@ -150,7 +111,6 @@ class CoreTextValueObjectsTest {
                 nullOf(),
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                TaxRegistrationStatus.REGISTERED,
                 List.of()));
     assertThrows(
         NullPointerException.class,
@@ -160,28 +120,12 @@ class CoreTextValueObjectsTest {
                 EntityForm.COMPANY,
                 nullOf(),
                 ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                TaxRegistrationStatus.REGISTERED,
                 List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
             new EntityProfile(
-                displayName,
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                nullOf(),
-                TaxRegistrationStatus.REGISTERED,
-                List.of()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new EntityProfile(
-                displayName,
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                nullOf(),
-                List.of()));
+                displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, nullOf(), List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -190,7 +134,6 @@ class CoreTextValueObjectsTest {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                TaxRegistrationStatus.REGISTERED,
                 nullOf()));
   }
 
@@ -205,7 +148,6 @@ class CoreTextValueObjectsTest {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            TaxRegistrationStatus.UNSPECIFIED,
             List.of());
 
     BookIdentity bookIdentity =
@@ -268,7 +210,7 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void reportingBasisAndTaxWireVocabulariesParseStableValuesAndRejectUnknownValues() {
+  void reportingBasisAndAccountingWireVocabulariesParseStableValuesAndRejectUnknownValues() {
     assertEquals(
         "INTERNAL_MANAGEMENT_ONLY", ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY.wireValue());
     assertEquals(
@@ -296,27 +238,10 @@ class CoreTextValueObjectsTest {
 
     assertEquals("CASH", AccountingBasis.CASH.wireValue());
     assertEquals("ACCRUAL", AccountingBasis.ACCRUAL.wireValue());
-    assertEquals("HYBRID_POLICY_DEFINED", AccountingBasis.HYBRID_POLICY_DEFINED.wireValue());
-    assertEquals("EXTENSION_DEFINED", AccountingBasis.EXTENSION_DEFINED.wireValue());
     assertEquals(AccountingBasis.CASH, AccountingBasis.fromWireValue("CASH"));
-    assertEquals(
-        AccountingBasis.EXTENSION_DEFINED, AccountingBasis.fromWireValue("EXTENSION_DEFINED"));
-    assertEquals(
-        List.of("CASH", "ACCRUAL", "HYBRID_POLICY_DEFINED", "EXTENSION_DEFINED"),
-        AccountingBasis.wireValues());
+    assertEquals(AccountingBasis.ACCRUAL, AccountingBasis.fromWireValue("ACCRUAL"));
+    assertEquals(List.of("CASH", "ACCRUAL"), AccountingBasis.wireValues());
     assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash"));
-
-    assertEquals("REGISTERED", TaxRegistrationStatus.REGISTERED.wireValue());
-    assertEquals("NOT_REGISTERED", TaxRegistrationStatus.NOT_REGISTERED.wireValue());
-    assertEquals("UNSPECIFIED", TaxRegistrationStatus.UNSPECIFIED.wireValue());
-    assertEquals(
-        TaxRegistrationStatus.REGISTERED, TaxRegistrationStatus.fromWireValue("REGISTERED"));
-    assertEquals(
-        TaxRegistrationStatus.UNSPECIFIED, TaxRegistrationStatus.fromWireValue("UNSPECIFIED"));
-    assertEquals(
-        List.of("REGISTERED", "NOT_REGISTERED", "UNSPECIFIED"), TaxRegistrationStatus.wireValues());
-    assertThrows(
-        IllegalArgumentException.class, () -> TaxRegistrationStatus.fromWireValue("registered"));
   }
 
   @Test

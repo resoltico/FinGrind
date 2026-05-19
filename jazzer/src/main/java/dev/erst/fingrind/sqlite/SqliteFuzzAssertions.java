@@ -29,7 +29,8 @@ public final class SqliteFuzzAssertions {
           database,
           "select strict from pragma_table_list('journal_line') where name = 'journal_line'",
           1);
-      assertQueryInt(database, "select count(*) from book_meta where key = 'initialized_at'", 1);
+      assertQueryInt(
+          database, "select count(*) from book_meta where meta_key = 'initialized_at'", 1);
       assertQueryInt(
           database,
           """
@@ -109,12 +110,12 @@ public final class SqliteFuzzAssertions {
   }
 
   /** Opens one deterministic protected-book store for fuzz and replay flows. */
-  public static SqliteBookSession openStore(Path bookPath) {
-    return SqliteBookSessions.open(bookPath, bookPassphrase());
+  public static SqlitePostingSession openStore(Path bookPath) {
+    return SqliteBookSessions.openPosting(bookPath, bookPassphrase());
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */
-  public static void assertStoreConnectionHardening(SqliteBookSession postingFactStore) {
+  public static void assertStoreConnectionHardening(SqlitePostingSession postingFactStore) {
     try {
       SqliteNativeDatabase database =
           requireStoreImplementation(postingFactStore).activeNativeDatabase();
@@ -166,7 +167,7 @@ public final class SqliteFuzzAssertions {
     return text.replace("'", "''");
   }
 
-  static SqlitePostingFactStore requireStoreImplementation(SqliteBookSession session) {
+  static SqlitePostingFactStore requireStoreImplementation(SqlitePostingSession session) {
     if (session instanceof SqlitePostingFactStore store) {
       return store;
     }

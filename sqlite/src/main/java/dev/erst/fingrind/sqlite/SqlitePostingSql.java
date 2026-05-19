@@ -106,7 +106,7 @@ final class SqlitePostingSql {
       """
       select 1
       from book_meta
-      where key = ?
+      where meta_key = ?
       limit 1
       """;
 
@@ -114,7 +114,7 @@ final class SqlitePostingSql {
       """
       select value
       from book_meta
-      where key = ?
+      where meta_key = ?
       limit 1
       """;
 
@@ -122,7 +122,7 @@ final class SqlitePostingSql {
       """
       select value
       from book_meta
-      where key = ?
+      where meta_key = ?
       limit 1
       """;
 
@@ -140,7 +140,6 @@ final class SqlitePostingSql {
           entity_form,
           owner_model,
           reporting_obligation_status,
-          tax_registration_status,
           business_activity_tags
       from entity_profile
       where singleton_id = 1
@@ -163,6 +162,9 @@ final class SqlitePostingSql {
 
   static final String LOAD_CANONICAL_SCHEMA_OBJECTS =
       SqliteCanonicalSchemaManifest.loadObjectsQuery();
+
+  static final String LOAD_NON_CANONICAL_SCHEMA_OBJECTS =
+      SqliteCanonicalSchemaManifest.loadNonCanonicalObjectsQuery();
 
   static final String FIND_ACCOUNT_BY_CODE =
       BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
@@ -417,9 +419,9 @@ final class SqlitePostingSql {
       limit 1
       """;
 
-  static final String INSERT_BOOK_INITIALIZED_AT =
+  static final String INSERT_BOOK_META_VALUE =
       """
-      insert into book_meta (key, value)
+      insert into book_meta (meta_key, value)
       values (?, ?)
       """;
 
@@ -440,9 +442,8 @@ final class SqlitePostingSql {
           entity_form,
           owner_model,
           reporting_obligation_status,
-          tax_registration_status,
           business_activity_tags
-      ) values (1, ?, ?, ?, ?, ?)
+      ) values (1, ?, ?, ?, ?)
       """;
 
   static final String INSERT_BOOK_POLICY =

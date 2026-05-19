@@ -17,7 +17,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -97,7 +96,6 @@ final class MachineContractTemplatesCatalog {
                     EntityForm.FREELANCER,
                     OwnerModel.SOLE_OWNER,
                     ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                    TaxRegistrationStatus.NOT_REGISTERED,
                     List.of("translation-services"),
                     "EUR",
                     "01-01",

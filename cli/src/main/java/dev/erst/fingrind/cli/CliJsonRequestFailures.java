@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -104,21 +105,20 @@ final class CliJsonRequestFailures {
       return "Request file exceeded the supported "
           + tooLargeException.maxBytes()
           + "-byte UTF-8 limit: "
-          + requestFile.toAbsolutePath().normalize()
+          + publicPath(requestFile)
           + ".";
     }
     if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
         requestFile.toString())) {
       return "Failed to read request JSON from standard input.";
     }
-    String normalizedPath = requestFile.toAbsolutePath().normalize().toString();
     if (exception instanceof NoSuchFileException) {
-      return "Request file does not exist: " + normalizedPath + ".";
+      return "Request file does not exist: " + publicPath(requestFile) + ".";
     }
     if (exception instanceof AccessDeniedException) {
-      return "Request file is not readable: " + normalizedPath + ".";
+      return "Request file is not readable: " + publicPath(requestFile) + ".";
     }
-    return "Failed to read request file: " + normalizedPath + ".";
+    return "Failed to read request file: " + publicPath(requestFile) + ".";
   }
 
   private static String requestTransportFailureHint(Path requestFile, Exception exception) {
@@ -151,5 +151,9 @@ final class CliJsonRequestFailures {
         throw new IllegalArgumentException("column must be positive");
       }
     }
+  }
+
+  private static String publicPath(Path path) {
+    return PublicPathHint.fromPath(path).value();
   }
 }

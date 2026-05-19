@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingObligationStatus;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -61,7 +60,6 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.UNSPECIFIED,
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
@@ -72,27 +70,23 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
 
     assertEquals(List.of("translation-services", "platform-sales"), payload.businessActivityTags());
-    assertEquals("UNSPECIFIED", payload.taxRegistrationStatus());
   }
 
   @Test
-  void bookIdentityPayload_mapsRegisteredTaxStatusWithoutTaxProfileScaffolding() {
-    BookIdentity registeredIdentity =
+  void bookIdentityPayload_mapsEmptyBusinessActivityTags() {
+    BookIdentity bareIdentity =
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Registered Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.REGISTERED,
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
             AccountingBasis.ACCRUAL);
 
-    var payload = CliBookPayloadMapper.bookIdentityPayload(registeredIdentity);
-
-    assertEquals("REGISTERED", payload.taxRegistrationStatus());
+    var payload = CliBookPayloadMapper.bookIdentityPayload(bareIdentity);
     assertEquals(List.of(), payload.businessActivityTags());
   }
 }

@@ -334,9 +334,14 @@ class SqliteNativeBridgeTestSupport {
   }
 
   static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeConnections.openKeyFileAccess(bookAccess)) {
+    try (SqliteNativeDatabase database = openNativeDatabase(bookAccess)) {
       action.run(database);
     }
+  }
+
+  static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
+    return SqliteNativeConnections.openKeyFileAccess(
+        bookAccess.bookFilePath(), SqliteStoreFixtureSupport.requireKeyFilePath(bookAccess));
   }
 
   /** Performs one checked action against a temporary native SQLite handle. */

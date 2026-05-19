@@ -62,7 +62,8 @@ final class SqliteBookStateReader {
 
   private boolean hasCanonicalInitializedBookSemantics(SqliteNativeDatabase activeDatabase) {
     try {
-      return SqliteBookIntegrityVerifier.passesIntegrityCheck(activeDatabase)
+      return SqliteBookIntegrityVerifier.hasNoUnexpectedSchemaObjects(activeDatabase)
+          && SqliteBookIntegrityVerifier.passesIntegrityCheck(activeDatabase)
           && SqliteBookIntegrityVerifier.passesForeignKeyCheck(activeDatabase)
           && SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(activeDatabase)
           && SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(activeDatabase)

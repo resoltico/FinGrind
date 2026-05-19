@@ -43,7 +43,7 @@ class SqliteNativeInteropTest {
       assertBridgeFailure(
           () ->
               SqliteNativeConnections.close(
-                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
+                  NullTestSupport.nullOf(MemorySegment.class), null, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.executeScript(
@@ -99,8 +99,7 @@ class SqliteNativeInteropTest {
   @Test
   void invalidSqlAndConstraintFailures_mapToSQLiteFailures() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("interop.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("interop.sqlite")))) {
       database.executeStatement("create table sample (id integer primary key)");
       try (Arena arena = Arena.ofConfined()) {
         MemorySegment sqlPointer = arena.allocateFrom("select from");
@@ -153,8 +152,7 @@ class SqliteNativeInteropTest {
   @Test
   void executeScript_surfacesTypedSqliteFailureForInvalidSql() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("script-failure.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("script-failure.sqlite")))) {
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
@@ -172,8 +170,7 @@ class SqliteNativeInteropTest {
   @Test
   void executeStatement_rejectsRowProducingSql() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
       assertEquals(
@@ -184,8 +181,7 @@ class SqliteNativeInteropTest {
   @Test
   void mapper_readsPostingLineageOnlyFromCoupledPriorPostingIdAndReasonColumns() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
       try (SqliteNativeStatement missingPrior =
           SqliteNativeStatements.prepare(
               database,
@@ -261,8 +257,7 @@ class SqliteNativeInteropTest {
   @Test
   void committedPosting_mapsToPublishedPostingAtTheBoundary() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("posting-fact-wrapper.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("posting-fact-wrapper.sqlite")))) {
       try (SqliteNativeStatement postingRow =
           SqliteNativeStatements.prepare(
               database,
@@ -305,8 +300,7 @@ class SqliteNativeInteropTest {
   @Test
   void databaseAndStatementClose_areIdempotent() throws Exception {
     try (SqliteNativeDatabase database =
-        SqliteNativeConnections.openKeyFileAccess(
-            bookAccess(tempDirectory.resolve("close.sqlite")))) {
+        openNativeDatabase(bookAccess(tempDirectory.resolve("close.sqlite")))) {
       try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, "select 1")) {
         assertDoesNotThrow(statement::close);
         assertDoesNotThrow(statement::close);
@@ -459,6 +453,11 @@ class SqliteNativeInteropTest {
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
+  }
+
+  private static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
+    return SqliteNativeConnections.openKeyFileAccess(
+        bookAccess.bookFilePath(), SqliteStoreFixtureSupport.requireKeyFilePath(bookAccess));
   }
 
   private static MethodHandle strlenHandle() throws NoSuchMethodException, IllegalAccessException {

@@ -49,6 +49,20 @@ record Capabilities(OutputMode outputMode) implements CliCommand.OutputModeComma
 }
 
 /** Requests one canonical request scaffold JSON document. */
+record EnvironmentCommand(OutputMode outputMode) implements CliCommand.OutputModeCommand {
+  EnvironmentCommand {
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .discovery()
+        .writeEnvironment(outputMode);
+  }
+}
+
+/** Requests one canonical request scaffold JSON document. */
 record PrintRequestTemplate(@Nullable OperationId commandTopic)
     implements CliCommand.JsonFailureCommand {
   PrintRequestTemplate() {

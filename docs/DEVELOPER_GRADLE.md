@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -22,8 +22,9 @@ FinGrind's machine-level setup rule is simple:
 - use `./gradlew` for every repo build command
 - treat `gradle` on `PATH` as outside the supported FinGrind workflow
 - let the wrapper download the official Gradle distribution pinned by the repository
-- keep the repo-owned Python tools installed for the active shell's Python surface when you run
-  root verification, because `check` now includes Ruff over `scripts/**/*.py`
+- bootstrap the pinned repo-owned `uv` launcher on the active shell's Python surface when you run
+  root verification, because `check` now includes Ruff over `scripts/**/*.py` and SQLFluff over
+  the canonical SQLite schema
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
@@ -157,9 +158,14 @@ The consumer scripts are intentionally thin now:
 Root verification now has one explicit Python-tooling contract:
 - the pinned CI interpreter version is `fingrindPythonVersion` from
   [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
+- the pinned repo-owned `uv` launcher version is `fingrindUvVersion` from
+  [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
 - the pinned lint-tool manifest is
   [../requirements-python-tools.txt](../requirements-python-tools.txt)
+- Gradle executes those helper tools through `python -m uv tool run --with-requirements ...`
+  instead of importing whatever ambient packages happen to be installed
 - the repo-owned Ruff configuration is [../ruff.toml](../ruff.toml)
+- the repo-owned SQLFluff configuration is [../gradle/sqlfluff/sqlfluff.cfg](../gradle/sqlfluff/sqlfluff.cfg)
 - contributors can override the executable Gradle uses with
   `-PfingrindPythonExecutable=/absolute/path/to/python3` when the desired interpreter is not the
   default `python3` on Unix-like hosts or `python` on Windows
@@ -402,6 +408,10 @@ These are the Gradle-level invariants worth preserving:
 - root `./check.sh`, `scripts/docker-smoke.sh`, `scripts/validate-devcontainer.sh`, and
   `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-keyed cache-root
   `GRADLE_USER_HOME` isolation
+- root `./check.sh` and `./scripts/run-quality-gates.sh` resolve the repo-owned Python helper-tool
+  runtime automatically; when the shell only exposes an older `python3`, they fall back to a
+  `uv`-managed Python `3.12+` interpreter and pass it into Gradle as
+  `fingrindPythonExecutable`
 
 If a proposed change breaks one of those invariants, document the reason in code comments and in
 the changelog instead of letting the system drift silently.

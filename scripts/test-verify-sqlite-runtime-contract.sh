@@ -49,27 +49,25 @@ distribution_key = sys.argv[1]
 runtime_provenance = sys.argv[2]
 document = {
     "payload": {
-        "environment": {
-            "distribution": {
-                "runtimeDistribution": runtime_surface[distribution_key],
+        "distribution": {
+            "runtimeDistribution": runtime_surface[distribution_key],
+        },
+        "sqlite": {
+            "libraryMode": runtime_surface["sqliteLibraryMode"],
+            "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+            "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+            "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
+            "forbiddenCompileOptions": managed_sqlite["forbiddenCompileOptions"],
+            "requiresSecureMemorySupport": managed_sqlite["requiresSecureMemorySupport"],
+            "runtime": {
+                "compileOptionsVerification": "verified",
+                "status": "ready",
+                "runtimeProvenance": runtime_provenance,
+                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
+                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
             },
-            "sqlite": {
-                "libraryMode": runtime_surface["sqliteLibraryMode"],
-                "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
-                "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
-                "forbiddenCompileOptions": managed_sqlite["forbiddenCompileOptions"],
-                "requiresSecureMemorySupport": managed_sqlite["requiresSecureMemorySupport"],
-                "runtime": {
-                    "compileOptionsVerification": "verified",
-                    "status": "ready",
-                    "runtimeProvenance": runtime_provenance,
-                    "loadedLibraryPath": "/tmp/libsqlite3.so.0",
-                    "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                    "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
-                    "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
-                },
-            }
         }
     }
 }
@@ -99,27 +97,25 @@ runtime_surface = contract["runtimeSurface"]
 managed_sqlite = contract["managedSqlite"]
 document = {
     "payload": {
-        "environment": {
-            "distribution": {
-                "runtimeDistribution": runtime_surface["directJavaRuntimeDistribution"],
+        "distribution": {
+            "runtimeDistribution": runtime_surface["directJavaRuntimeDistribution"],
+        },
+        "sqlite": {
+            "libraryMode": runtime_surface["sqliteLibraryMode"],
+            "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+            "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+            "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
+            "forbiddenCompileOptions": [],
+            "requiresSecureMemorySupport": False,
+            "runtime": {
+                "compileOptionsVerification": "not-verified",
+                "status": "missing",
+                "runtimeProvenance": "environment-configured",
+                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
+                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
             },
-            "sqlite": {
-                "libraryMode": runtime_surface["sqliteLibraryMode"],
-                "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
-                "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
-                "forbiddenCompileOptions": [],
-                "requiresSecureMemorySupport": False,
-                "runtime": {
-                    "compileOptionsVerification": "not-verified",
-                    "status": "missing",
-                    "runtimeProvenance": "environment-configured",
-                    "loadedLibraryPath": "/tmp/libsqlite3.so.0",
-                    "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                    "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
-                    "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
-                },
-            }
         }
     }
 }

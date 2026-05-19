@@ -28,7 +28,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -220,7 +219,6 @@ class BookkeepingStatementServiceCoverageTest {
                 EntityForm.FREELANCER,
                 OwnerModel.SOLE_OWNER,
                 ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                TaxRegistrationStatus.UNSPECIFIED,
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("02-29"),

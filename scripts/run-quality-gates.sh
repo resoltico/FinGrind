@@ -22,6 +22,7 @@ readonly gradlew="${repo_root}/gradlew"
 readonly build_logic_dir="${repo_root}/gradle/build-logic"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly repo_hygiene_verifier="${repo_root}/scripts/verify-repo-hygiene.sh"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 
 print_usage() {
     printf '%s\n' \
@@ -61,11 +62,18 @@ done
     printf 'error: missing repo verification lock helper at %s\n' "${repo_lock_support}" >&2
     exit 1
 }
+[[ -f "${python_runtime_support}" ]] || {
+    printf 'error: missing Python runtime support helper at %s\n' "${python_runtime_support}" >&2
+    exit 1
+}
 
 # shellcheck source=/dev/null
 source "${repo_lock_support}"
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
 trap cleanup_lock EXIT
 acquire_lock
+prepare_python_runtime_env
 
 "${repo_hygiene_verifier}"
 "${gradlew}" check coverage "$@"

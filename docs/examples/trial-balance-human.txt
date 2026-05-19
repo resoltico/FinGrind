@@ -1,18 +1,11 @@
 Trial Balance
 =============
 
-Entity                : Acme Studio
-Entity form           : Company
-Owner model           : Multi Owner
-Reporting obligation  : Internal Management Only
-Tax registration      : Not Registered
-Business activity     : (none)
-Functional currency   : EUR
-Fiscal year start     : 01-01
-Accounting basis      : Accrual
-Posting coverage      : All posting kinds
-Comparative reference : book start to 2025-04-08
-Effective date to     : 2026-04-08
+Entity            : Acme Studio
+Profile           : Company | Multi Owner | Internal Management Only
+Accounting        : EUR | FY start 01-01 | Accrual
+Posting coverage  : All posting kinds
+Effective date to : 2026-04-08
 
 Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------

@@ -32,7 +32,6 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.TaxRegistrationStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -293,9 +292,9 @@ class PdfValueFormatterTest {
         "Company / Multi Owner",
         PdfValueFormatter.displayEntityProfile(EntityForm.COMPANY, OwnerModel.MULTI_OWNER));
     assertEquals(
-        "Internal Management Only / Unspecified",
+        "Internal Management Only",
         PdfValueFormatter.displayReportingProfile(
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY, TaxRegistrationStatus.UNSPECIFIED));
+            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY));
     assertEquals(
         "translation-services, advisory",
         PdfValueFormatter.displayBusinessActivityTags(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import stat
 
-from .assertions import assert_capabilities_payload
+from .assertions import assert_discovery_payloads
 from .cli import run_cli
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .support import (
@@ -44,7 +44,11 @@ def verify_runtime_contract(
         run_cli(config, operation_ids["capabilities"], "--output", "json"),
         f"{config.label} capabilities output was not valid JSON",
     )
-    assert_capabilities_payload(config, contract, capabilities_payload)
+    environment_payload = parse_json_output(
+        run_cli(config, operation_ids["environment"], "--output", "json"),
+        f"{config.label} environment output was not valid JSON",
+    )
+    assert_discovery_payloads(config, contract, capabilities_payload, environment_payload)
 
 
 def verify_book_key_generation(

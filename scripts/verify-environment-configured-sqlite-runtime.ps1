@@ -83,22 +83,22 @@ try {
 
     Push-Location $repoRoot
     try {
-        $capabilitiesOutput = (& $directJavaWrapper capabilities --output json | Out-String)
+        $environmentOutput = (& $directJavaWrapper environment --output json | Out-String)
         if ($LASTEXITCODE -ne 0) {
-            Fail "direct Java runtime capabilities probe failed"
+            Fail "direct Java runtime environment probe failed"
         }
     } finally {
         Pop-Location
     }
 
-    $verifierOutput = ($capabilitiesOutput |
+    $verifierOutput = ($environmentOutput |
             & $pythonCommand $verifier `
                 --expected-runtime-distribution-key directJavaRuntimeDistribution `
                 --expected-runtime-provenance environment-configured `
                 --label environment-configured-runtime 2>&1 |
             Out-String)
     if ($LASTEXITCODE -ne 0) {
-        Write-Host $capabilitiesOutput
+        Write-Host $environmentOutput
         [Console]::Error.WriteLine($verifierOutput.TrimEnd())
         exit 1
     }

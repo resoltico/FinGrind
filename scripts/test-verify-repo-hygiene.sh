@@ -83,6 +83,23 @@ set -e
 "${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
     "repo hygiene verifier should pass after cleanup"
 
+printf '' > "${fixture_root}/.git/index.lock"
+
+set +e
+lock_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
+lock_status=$?
+set -e
+[[ ${lock_status} -ne 0 ]] || die \
+    "repo hygiene verifier should fail when Git coordination lock files are present"
+[[ "${lock_output}" == *'git coordination lock files are present'* ]] || die \
+    "repo hygiene verifier did not report Git coordination lock files"
+[[ "${lock_output}" == *'.git/index.lock'* ]] || die \
+    "repo hygiene verifier did not report the Git index lock path"
+rm -f "${fixture_root}/.git/index.lock"
+
+"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+    "repo hygiene verifier should pass after removing the Git coordination lock file"
+
 mkdir -p \
     "${fixture_root}/build/report" \
     "${fixture_root}/cli/build/cache" \

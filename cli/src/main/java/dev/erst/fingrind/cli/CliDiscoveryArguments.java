@@ -60,6 +60,10 @@ final class CliDiscoveryArguments {
     return parseDiscoveryCommand(arguments, Capabilities::new);
   }
 
+  static CliCommand parseEnvironment(List<String> arguments) {
+    return parseDiscoveryCommand(arguments, EnvironmentCommand::new);
+  }
+
   static CliCommand parsePrintRequestTemplate(List<String> arguments) {
     if (arguments.size() == 1) {
       return new PrintRequestTemplate(null);

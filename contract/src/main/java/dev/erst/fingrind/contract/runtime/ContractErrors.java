@@ -24,6 +24,7 @@ public final class ContractErrors {
     BOOK_KEY_FILE_ALREADY_EXISTS,
     INVALID_BOOK_KEY_FILE,
     INVALID_BOOK_PASSPHRASE_SOURCE,
+    BOOK_MAINTENANCE_IN_PROGRESS,
     INTERACTIVE_PROMPT_UNAVAILABLE,
     INTERACTIVE_PROMPT_FAILED,
     PROTECTED_BOOK_VERIFICATION_FAILED;
@@ -41,6 +42,7 @@ public final class ContractErrors {
         case BOOK_KEY_FILE_ALREADY_EXISTS -> "book-key-file-already-exists";
         case INVALID_BOOK_KEY_FILE -> "invalid-book-key-file";
         case INVALID_BOOK_PASSPHRASE_SOURCE -> "invalid-book-passphrase-source";
+        case BOOK_MAINTENANCE_IN_PROGRESS -> "book-maintenance-in-progress";
         case INTERACTIVE_PROMPT_UNAVAILABLE -> "interactive-prompt-unavailable";
         case INTERACTIVE_PROMPT_FAILED -> "interactive-prompt-failed";
         case PROTECTED_BOOK_VERIFICATION_FAILED -> "protected-book-verification-failed";
@@ -70,6 +72,8 @@ public final class ContractErrors {
             "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.";
         case INVALID_BOOK_PASSPHRASE_SOURCE ->
             "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.";
+        case BOOK_MAINTENANCE_IN_PROGRESS ->
+            "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.";
         case INTERACTIVE_PROMPT_UNAVAILABLE ->
             "Interactive passphrase entry refused because no supported controlling terminal is available.";
         case INTERACTIVE_PROMPT_FAILED ->

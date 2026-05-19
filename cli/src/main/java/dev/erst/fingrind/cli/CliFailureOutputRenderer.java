@@ -141,7 +141,9 @@ final class CliFailureOutputRenderer {
           appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
           appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails details ->
+      case CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails details ->
           appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.PeriodCloseStartDetails details ->
           appendPeriodCloseRejectionDetails(rows, details);
@@ -157,9 +159,13 @@ final class CliFailureOutputRenderer {
           appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.BlockingArtifactsDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ArtifactBusyDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.BackupFileDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ArtifactVerificationFailureDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.RollbackArtifactDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
@@ -241,16 +247,24 @@ final class CliFailureOutputRenderer {
       }
       case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
-      case CliRejectionJsonModels.ClosingEquityAccountClassificationMismatchDetails details -> {
-        rows.add(List.of("Account code", details.accountCode()));
+      case CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails details -> {
         rows.add(
             List.of(
                 "Required financial position classification",
                 details.requiredFinancialPositionLineClassification()));
         rows.add(
             List.of(
-                "Actual financial position classification",
-                details.actualFinancialPositionLineClassification()));
+                "Inactive candidate account codes",
+                CliTextFormat.joined(details.inactiveCandidateAccountCodes())));
+      }
+      case CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails details -> {
+        rows.add(
+            List.of(
+                "Required financial position classification",
+                details.requiredFinancialPositionLineClassification()));
+        rows.add(
+            List.of(
+                "Candidate account codes", CliTextFormat.joined(details.candidateAccountCodes())));
       }
     }
   }
@@ -294,10 +308,19 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Book file", details.bookFile()));
         rows.add(List.of("Blocking artifacts", CliTextFormat.joined(details.blockingArtifacts())));
       }
+      case CliRejectionJsonModels.ArtifactBusyDetails details -> {
+        rows.add(List.of("Artifact role", details.artifactRole()));
+        rows.add(List.of("Artifact path", details.artifactPath()));
+      }
       case CliRejectionJsonModels.BackupFileDetails details ->
           rows.add(List.of("Backup file", details.backupFile()));
       case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
           rows.add(List.of("Backup key file", details.backupBookKeyFile()));
+      case CliRejectionJsonModels.ArtifactVerificationFailureDetails details -> {
+        rows.add(List.of("Artifact role", details.artifactRole()));
+        rows.add(List.of("Artifact path", details.artifactPath()));
+        rows.add(List.of("Verification failure", details.verificationFailure()));
+      }
       case CliRejectionJsonModels.RollbackArtifactDetails details ->
           rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
       case CliRejectionJsonModels.RollbackArtifactMismatchDetails details -> {

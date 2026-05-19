@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: USER_EXAMPLES
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -107,7 +107,6 @@ fingrind \
   --entity-form COMPANY \
   --owner-model MULTI_OWNER \
   --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
-  --tax-registration-status NOT_REGISTERED \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --accounting-basis ACCRUAL \
@@ -117,7 +116,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","taxRegistrationStatus":"NOT_REGISTERED","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -207,24 +206,32 @@ fingrind \
 After restore completes, reopen `./books/acme.sqlite` with that same backup key file because the
 restored encrypted book keeps the backup pair's secret.
 
-## Recover One Interrupted Rekey
+## Inspect Or Repair One Interrupted Rekey
 
 Inspect stale same-directory rollback artifacts first:
 
 ```bash
 fingrind \
-  recover-rekey \
-  --book-file ./books/acme.sqlite \
-  --recovery-action inspect
+  inspect-rekey-rollback \
+  --book-file ./books/acme.sqlite
 ```
 
 If the inspection confirms the rollback artifact you want to restore, recover it explicitly:
 
 ```bash
 fingrind \
-  recover-rekey \
+  restore-rekey-rollback \
   --book-file ./books/acme.sqlite \
-  --recovery-action restore \
+  --rollback-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
+  --book-key-file ./secrets/acme.book-key
+```
+
+Delete one stale rollback artifact without changing the live book:
+
+```bash
+fingrind \
+  delete-rekey-rollback \
+  --book-file ./books/acme.sqlite \
   --rollback-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite
 ```
 
@@ -478,7 +485,7 @@ These report commands keep JSON as the default machine surface, while `--output 
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
 is selected on stdout, the success envelope also publishes the normalized PDF under
-`artifacts[]`. Diagnostics emit an info message with the same normalized written path. If the
+`artifacts[]`. Human and CSV stdout flows emit an info diagnostic with the same normalized written path. If the
 artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
 diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.

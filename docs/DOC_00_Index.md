@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.40.0"
+version: "0.41.0"
 domain: INDEX
-updated: "2026-05-18"
+updated: "2026-05-19"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
-  questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
+  questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
 ---
 
 # API Index
@@ -71,7 +71,6 @@ route:
 | `EntityForm` | `DOC_01_Core.md` | `EntityForm` |
 | `OwnerModel` | `DOC_01_Core.md` | `OwnerModel` |
 | `ReportingObligationStatus` | `DOC_01_Core.md` | `ReportingObligationStatus` |
-| `TaxRegistrationStatus` | `DOC_01_Core.md` | `TaxRegistrationStatus` |
 | `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
 | `EntityProfile` | `DOC_01_Core.md` | `EntityProfile` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
@@ -109,9 +108,6 @@ route:
 | `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
 | `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
 | `WireValue` | `DOC_01_Core.md` | `WireValue` |
-| `AccountingEntityId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
-| `OrganizationId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
-| `ReportingGroupId` | `DOC_01_Core.md` | `AccountingEntityId`, `OrganizationId`, And `ReportingGroupId` |
 | `ProtocolCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolCatalog` |
 | `ProtocolOperation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
@@ -268,8 +264,10 @@ route:
 | `RekeyBookResult` | `DOC_02_AdministrationAndReports.md` | `RekeyBookResult` |
 | `BackupBookResult` | `DOC_02_AdministrationAndReports.md` | `BackupBookResult` |
 | `RestoreBookResult` | `DOC_02_AdministrationAndReports.md` | `RestoreBookResult` |
-| `RecoverRekeyResult` | `DOC_02_AdministrationAndReports.md` | `RecoverRekeyResult` And `RekeyRecoveryAction` |
-| `RekeyRecoveryAction` | `DOC_02_AdministrationAndReports.md` | `RecoverRekeyResult` And `RekeyRecoveryAction` |
+| `RekeyRollbackResult` | `DOC_02_AdministrationAndReports.md` | `RekeyRollbackResult` |
+| `BookMaintenanceArtifactRole` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `BookMaintenanceVerificationFailure` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `PublicPathHint` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
 | `BookInspection` | `DOC_02_AdministrationAndReports.md` | `BookInspection` |
 | `BookMigrationPolicy` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookMigrationPolicyMode` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
@@ -428,14 +426,23 @@ route:
 | `UnsupportedManagedSqliteLibraryIdentityException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
 | `UnsupportedSqliteCompileOptionsException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
 | `SqliteStorageFailureException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
-| `SqliteBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqliteBookSessionMode` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqlitePassphraseIntent` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqlitePassphraseResolver` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqliteBookBackupService` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookBackupService`, `SqliteBookRestoreService`, And `SqliteRekeyRecoveryService` |
-| `SqliteBookRestoreService` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookBackupService`, `SqliteBookRestoreService`, And `SqliteRekeyRecoveryService` |
-| `SqliteRekeyRecoveryService` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookBackupService`, `SqliteBookRestoreService`, And `SqliteRekeyRecoveryService` |
+| `SqliteAdministrationSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteReadSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePostingSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePeriodCloseSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePlanExecutionSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteRekeySession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteBookSessionMode` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePassphraseIntent` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePassphraseResolver` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `ProtectedBookMaintenanceEvent` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceEvent` And `ProtectedBookMaintenanceEventKind` |
+| `ProtectedBookMaintenanceEventKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceEvent` And `ProtectedBookMaintenanceEventKind` |
+| `ProtectedBookMaintenanceService` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
+| `ProtectedBookMaintenancePublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookMaintenanceVerificationFailure` |
+| `ProtectedBookMaintenanceVerificationFailure` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookMaintenanceVerificationFailure` |
+| `ProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
+| `SqliteProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
 | `ChartOfAccounts` | `DOC_03_BookSessionsAndAdapters.md` | `ChartOfAccounts` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

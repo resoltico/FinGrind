@@ -62,7 +62,6 @@ class PeriodCloseServiceTest {
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
   private static final ReportingPeriod PERIOD = new ReportingPeriod(PERIOD_DATE, PERIOD_DATE);
   private static final ReportingPeriod FULL_PERIOD = new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
-  private static final AccountCode RETAINED_EARNINGS_ACCOUNT_CODE = new AccountCode("3200");
 
   @Test
   void closePeriod_rejectsUninitializedBook() {
@@ -89,8 +88,8 @@ class PeriodCloseServiceTest {
 
       assertEquals(
           new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountMissing(
-                  RETAINED_EARNINGS_ACCOUNT_CODE)),
+              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                  FinancialPositionLineClassification.RETAINED_EARNINGS, List.of())),
           outcome);
     }
   }
@@ -106,37 +105,50 @@ class PeriodCloseServiceTest {
 
       assertEquals(
           new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountInactive(
-                  new AccountCode("3200"))),
+              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  List.of(new AccountCode("3200")))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_rejectsSelectedAccountWithoutCloseClassification() {
+  void closePeriod_rejectsAmbiguousRetainedEarningsCandidates() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
       declareAccount(
-          bookSession, "3200", "General Equity", AccountType.EQUITY, AccountRole.ORDINARY);
+          bookSession,
+          "3200",
+          "Retained Earnings A",
+          AccountType.EQUITY,
+          AccountRole.ORDINARY,
+          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
       declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD, new AccountCode("3200"));
+      declareAccount(
+          bookSession,
+          "3210",
+          "Retained Earnings Duplicate",
+          AccountType.EQUITY,
+          AccountRole.ORDINARY,
+          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+
+      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
 
       assertEquals(
           new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountClassificationMismatch(
-                  new AccountCode("3200"),
+              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
                   FinancialPositionLineClassification.RETAINED_EARNINGS,
-                  FinancialPositionLineClassification.OTHER_EQUITY)),
+                  List.of(new AccountCode("3200"), new AccountCode("3210")))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_allowsSelectingOneRetainedEarningsAccountFromMultipleBuckets() {
+  void closePeriod_acceptsOnePolicySelectedRetainedEarningsCandidate() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
@@ -150,21 +162,19 @@ class PeriodCloseServiceTest {
       declareAccount(
           bookSession,
           "3210",
-          "Retained Earnings B",
+          "General Equity",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+          financialPositionTaxonomy(FinancialPositionLineClassification.OTHER_EQUITY));
       declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
 
       dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(
-                  PeriodCloseOutcome.Closed.class,
-                  closePeriod(bookSession, FULL_PERIOD, new AccountCode("3210")))
+          assertInstanceOf(PeriodCloseOutcome.Closed.class, closePeriod(bookSession, FULL_PERIOD))
               .closedPeriod();
 
-      assertEquals(new AccountCode("3210"), closedPeriod.closingEquityAccountCode());
+      assertEquals(new AccountCode("3200"), closedPeriod.closingEquityAccountCode());
     }
   }
 
@@ -336,7 +346,7 @@ class PeriodCloseServiceTest {
     PeriodCloseOutcome outcome =
         new PeriodCloseService(
                 book, book, book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
-            .closePeriod(PERIOD, RETAINED_EARNINGS_ACCOUNT_CODE);
+            .closePeriod(PERIOD);
     dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
         assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
 
@@ -517,27 +527,12 @@ class PeriodCloseServiceTest {
 
   private static PeriodCloseOutcome closePeriod(
       InMemoryBookSession bookSession, ReportingPeriod reportingPeriod) {
-    return closePeriod(bookSession, FIXED_CLOCK, reportingPeriod, RETAINED_EARNINGS_ACCOUNT_CODE);
+    return closePeriod(bookSession, FIXED_CLOCK, reportingPeriod);
   }
 
   private static PeriodCloseOutcome closePeriod(
       InMemoryBookSession bookSession, Clock clock, ReportingPeriod reportingPeriod) {
-    return closePeriod(bookSession, clock, reportingPeriod, RETAINED_EARNINGS_ACCOUNT_CODE);
-  }
-
-  private static PeriodCloseOutcome closePeriod(
-      InMemoryBookSession bookSession,
-      ReportingPeriod reportingPeriod,
-      AccountCode closingEquityAccountCode) {
-    return closePeriod(bookSession, FIXED_CLOCK, reportingPeriod, closingEquityAccountCode);
-  }
-
-  private static PeriodCloseOutcome closePeriod(
-      InMemoryBookSession bookSession,
-      Clock clock,
-      ReportingPeriod reportingPeriod,
-      AccountCode closingEquityAccountCode) {
-    return service(bookSession, clock).closePeriod(reportingPeriod, closingEquityAccountCode);
+    return service(bookSession, clock).closePeriod(reportingPeriod);
   }
 
   private static Clock clockAt(LocalDate date) {

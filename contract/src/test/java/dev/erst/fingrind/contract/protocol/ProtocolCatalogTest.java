@@ -79,7 +79,13 @@ class ProtocolCatalogTest {
   @Test
   void operationGroups_areDerivedFromCatalogCategories() {
     assertEquals(
-        List.of("help", "version", "capabilities", "print-request-template", "print-plan-template"),
+        List.of(
+            "help",
+            "version",
+            "capabilities",
+            "environment",
+            "print-request-template",
+            "print-plan-template"),
         ProtocolCatalog.operationNames(OperationCategory.DISCOVERY));
     assertEquals(
         List.of(
@@ -88,7 +94,9 @@ class ProtocolCatalogTest {
             "rekey-book",
             "backup-book",
             "restore-book",
-            "recover-rekey",
+            "inspect-rekey-rollback",
+            "delete-rekey-rollback",
+            "restore-rekey-rollback",
             "declare-account",
             "close-period"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
@@ -224,7 +232,6 @@ class ProtocolCatalogTest {
                 baseline.deliberateExclusions(),
                 baseline.nonClaims(),
                 baseline.reportCapabilities(),
-                baseline.requiredMissingCapabilities(),
                 baseline.defaultPolicyPack(),
                 baseline.standardsPosition(),
                 baseline.reportingPosition(),
@@ -248,8 +255,72 @@ class ProtocolCatalogTest {
                 extensionSurface.defaultPolicyPackId(),
                 List.of("close-policy"),
                 extensionSurface.policySeams(),
-                extensionSurface.futureContexts(),
                 extensionSurface.description()));
+  }
+
+  @Test
+  void publishedFactFamilies_ignoreNonImplementedCapabilitiesWhenDerivingCurrentInventory() {
+    AccountingBaselineFacts baseline = ProtocolCatalog.accountingBaseline();
+    ReportCapabilityFacts implementedReport =
+        new ReportCapabilityFacts(
+            "financial-position",
+            CapabilityStatus.IMPLEMENTED,
+            true,
+            "bookkeeping",
+            List.of(),
+            "Financial position is currently built in.");
+    ReportCapabilityFacts plannedReport =
+        new ReportCapabilityFacts(
+            "statement-of-cash-flows",
+            CapabilityStatus.PLANNED,
+            false,
+            "cash-flow-reporting",
+            List.of("typed-operating-investing-financing-classification"),
+            "Cash-flow reporting remains outside the current executable baseline.");
+    AccountingBaselineFacts facts =
+        new AccountingBaselineFacts(
+            baseline.scope(),
+            baseline.currentTarget(),
+            baseline.nextTarget(),
+            baseline.doctrineSources(),
+            List.of("financial-position"),
+            baseline.deliberateExclusions(),
+            baseline.nonClaims(),
+            List.of(implementedReport, plannedReport),
+            baseline.defaultPolicyPack(),
+            baseline.standardsPosition(),
+            baseline.reportingPosition(),
+            baseline.chartModelPosition(),
+            baseline.smallEntityPosition(),
+            baseline.operationalPosition(),
+            baseline.taxPosition(),
+            baseline.organizationalPosition(),
+            baseline.isoClarification());
+
+    assertEquals(List.of("financial-position"), facts.builtInStatements());
+
+    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
+    PolicySeamFacts implementedSeam =
+        new PolicySeamFacts(
+            "close-policy",
+            CapabilityStatus.IMPLEMENTED,
+            "bookkeeping-policy-pack",
+            "Close policy is one current executable seam.");
+    PolicySeamFacts futureSeam =
+        new PolicySeamFacts(
+            "tax-policy",
+            CapabilityStatus.FUTURE_CONTEXT,
+            "tax",
+            "Tax remains one future adjacent bounded context.");
+    ExtensionSurfaceFacts seamFacts =
+        new ExtensionSurfaceFacts(
+            extensionSurface.model(),
+            extensionSurface.defaultPolicyPackId(),
+            List.of("close-policy"),
+            List.of(implementedSeam, futureSeam),
+            extensionSurface.description());
+
+    assertEquals(List.of("close-policy"), seamFacts.implementedSeams());
   }
 
   @Test

@@ -30,8 +30,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void ledgerPlanTransaction_commitsOuterTransactionAndPersistsNestedMutations() {
     Path databasePath = tempDirectory.resolve("ledger-plan-commit.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
@@ -76,8 +75,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
               () -> new PostingId("posting-1")));
       postingFactStore.commitLedgerPlanTransaction();
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertTrue(postingFactStore.inspectBook().initialized());
       assertTrue(postingFactStore.findAccount(new AccountCode("1000")).isPresent());
       assertTrue(postingFactStore.findPosting(new PostingId("posting-1")).isPresent());
@@ -87,8 +85,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void ledgerPlanTransaction_rollsBackOuterTransactionAndRejectsInvalidLifecycleCalls() {
     Path databasePath = tempDirectory.resolve("ledger-plan-rollback.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertThrows(IllegalStateException.class, postingFactStore::commitLedgerPlanTransaction);
       postingFactStore.beginLedgerPlanTransaction();
       assertThrows(IllegalStateException.class, postingFactStore::beginLedgerPlanTransaction);
@@ -104,8 +101,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertFalse(postingFactStore.inspectBook().initialized());
       assertInitializedQueryViewFailure(
           () -> postingFactStore.findAccount(new AccountCode("1000")));
@@ -115,10 +111,8 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void ledgerPlanTransaction_defersExistingHandleValidationUntilDatabaseWork() throws Exception {
     Path beginFailurePath = tempDirectory.resolve("ledger-plan-deferred-begin.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(beginFailurePath))) {
-      try (SqliteNativeDatabase closedDatabase =
-          SqliteNativeConnections.openKeyFileAccess(bookAccess(beginFailurePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(beginFailurePath))) {
+      try (SqliteNativeDatabase closedDatabase = openNativeDatabase(bookAccess(beginFailurePath))) {
         closedDatabase.close();
         setStoreDatabase(postingFactStore, closedDatabase);
       }
@@ -127,8 +121,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     }
     Path commitFailurePath = tempDirectory.resolve("ledger-plan-commit-failure.sqlite");
     initializeBookOnDisk(commitFailurePath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(commitFailurePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(commitFailurePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       closeStoreDatabase(postingFactStore);
       IllegalStateException exception =
@@ -144,8 +137,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
   void ledgerPlanTransaction_wrapsNativeCommitFailureWhenTransactionEndsExternally() {
     Path databasePath = tempDirectory.resolve("ledger-plan-native-commit-failure.sqlite");
     AccountCode deferredAccount = new AccountCode("3000");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       postingFactStore.beginLedgerPlanTransaction();
       declareAccount(
@@ -167,8 +159,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
     }
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(Optional.empty(), postingFactStore.findAccount(deferredAccount));
     }
   }
@@ -179,20 +170,17 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     AccountCode revenue = new AccountCode("2000");
     Set<AccountCode> requestedAccounts = Set.of(cash, revenue);
     Path missingPath = tempDirectory.resolve("find-accounts-missing.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(missingPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingPath))) {
       assertEquals(Map.of(), postingFactStore.findAccounts(Set.of()));
       assertInitializedQueryViewFailure(() -> postingFactStore.findAccounts(requestedAccounts));
     }
     Path blankPath = tempDirectory.resolve("find-accounts-blank.sqlite");
     createEmptySqliteFile(blankPath);
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(blankPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankPath))) {
       assertInitializedQueryViewFailure(() -> postingFactStore.findAccounts(requestedAccounts));
     }
     Path initializedPath = tempDirectory.resolve("find-accounts-initialized.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(initializedPath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(initializedPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           Map.of(
@@ -266,8 +254,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       throws Exception {
     Path parentDirectory = tempDirectory.resolve("abandoned-plan").resolve("nested");
     Path databasePath = parentDirectory.resolve("ledger-plan-close-cleanup.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
     }
@@ -519,8 +506,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void ledgerPlanTransaction_rollbackToleratesClosedStoreWithActiveOuterTransaction() {
     Path databasePath = tempDirectory.resolve("ledger-plan-closed-rollback.sqlite");
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(bookAccess(databasePath))) {
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
       postingFactStore.close();
       assertDoesNotThrow(postingFactStore::rollbackLedgerPlanTransaction);

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import java.nio.file.Path;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.util.Objects;
 
 /** Result family for restoring one encrypted-book backup pair onto one live book path. */
@@ -8,7 +8,10 @@ public sealed interface RestoreBookResult
     permits RestoreBookResult.Restored, RestoreBookResult.Rejected {
 
   /** Successful restore outcome. */
-  record Restored(Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath)
+  record Restored(
+      PublicPathHint bookFilePath,
+      PublicPathHint backupFilePath,
+      PublicPathHint backupBookKeyFilePath)
       implements RestoreBookResult {
     public Restored {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
