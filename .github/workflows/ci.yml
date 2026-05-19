@@ -52,7 +52,23 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Install repo-owned Python tools
-        run: python -m pip install --user -r requirements-python-tools.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python - <<'PY'
+          import os
+          import site
+          scripts_dir = "Scripts" if os.name == "nt" else "bin"
+          print(os.path.join(site.USER_BASE, scripts_dir))
+          PY
+          )"
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s/uv\n' "${uv_bin_dir}" >> "${GITHUB_ENV}"
+          "${uv_bin_dir}/uv" --version
+          python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run the canonical root verification gate
         run: ./check.sh --no-daemon --console=plain
@@ -105,7 +121,19 @@ jobs:
 
       - name: Install repo-owned Python tools
         shell: pwsh
-        run: python -m pip install --user -r requirements-python-tools.txt
+        run: |
+          $uvVersionLine = Select-String -Path gradle/fingrind-build.properties -Pattern '^fingrindUvVersion='
+          if (-not $uvVersionLine) {
+            throw 'missing fingrindUvVersion in gradle/fingrind-build.properties'
+          }
+          $uvVersion = $uvVersionLine.Line.Split('=')[1]
+          python -m pip install --user "uv==$uvVersion"
+          $userBase = python -c "import site; print(site.USER_BASE)"
+          $uvBinDir = Join-Path $userBase 'Scripts'
+          Add-Content -Path $env:GITHUB_PATH -Value $uvBinDir
+          Add-Content -Path $env:GITHUB_ENV -Value "ORG_GRADLE_PROJECT_fingrindUvExecutable=$uvBinDir\uv.exe"
+          & (Join-Path $uvBinDir 'uv.exe') --version
+          python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run root quality gates on Windows
         shell: pwsh

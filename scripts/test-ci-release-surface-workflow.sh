@@ -30,10 +30,16 @@ grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
     "CI workflow no longer advertises the canonical root verification gate"
 grep -Fq './check.sh --no-daemon --console=plain' "${workflow_file}" || die \
     "CI workflow no longer runs the canonical root verification gate"
+grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
+    "CI workflow no longer resolves the pinned uv launcher version from build metadata"
+grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
+    "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
 grep -Fq 'Run root quality gates on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps the Windows root gate as an explicit fail-fast step"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
+grep -Fq 'uv.exe' "${workflow_file}" || die \
+    "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
 grep -Fq '.\scripts\verify-environment-configured-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows environment-configured runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \

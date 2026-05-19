@@ -33,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of direct ambient-package imports: `fingrindUvVersion` now pins the launcher bootstrap, Ruff is
   pinned at `0.15.13`, SQLFluff `4.2.1` now lints the canonical SQLite schema through the
   repo-owned `gradle/sqlfluff/sqlfluff.cfg` contract, the shell verification entrypoints now
-  auto-resolve a Python `3.12+` runtime through `uv` when the ambient `python3` is older, and the
-  developer references point contributors at the new bootstrap contract.
+  auto-resolve a Python `3.12+` runtime through `uv` when the ambient `python3` is older, hosted
+  CI now bootstraps the pinned `uv` launcher explicitly before Gradle-owned Python tool tasks run,
+  and the developer references point contributors at the new bootstrap contract.
 - The canonical SQLite schema renamed `book_meta.key` to `book_meta.meta_key` and tightened the
   recursive account-cycle trigger query so the SQLFluff-checked schema, generated schema
   reference, and SQLite adapter vocabulary stay aligned.
