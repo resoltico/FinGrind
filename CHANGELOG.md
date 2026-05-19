@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release-verifier headroom now matches the live CI fan-out observed during the `0.41.0` release:
+  the PR Gate and merge-handoff verifiers now wait longer by default before declaring timeout, and
+  the release protocol documents the same explicit timeout override path for both pre-merge and
+  post-merge verification.
+
 ## [0.41.0] - 2026-05-19
 
 ### Changed

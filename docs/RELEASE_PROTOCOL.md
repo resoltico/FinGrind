@@ -292,6 +292,14 @@ canonical owner of that waiting logic.
 If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the failure, push to the
 release branch, and run the verifier again — do not merge a red PR.
 
+The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
+arrives after the slower sibling jobs finish. If GitHub Actions queueing is unusually slow, extend
+the wait explicitly instead of guessing:
+
+```bash
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
+```
+
 ### Step 4
 
 Merge PR and verify the merge handoff.
@@ -327,7 +335,7 @@ fan-out where `Windows bundle smoke` does not start until `Check` finishes. If G
 queueing is unusually slow, extend the wait explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=2400 ./scripts/verify-release-merge-handoff.sh
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-merge-handoff.sh
 ```
 
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`
