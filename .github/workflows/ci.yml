@@ -108,9 +108,9 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-        with:
-          arch: x64
+      - name: Configure MSVC developer command environment
+        shell: pwsh
+        run: .\scripts\setup-msvc-dev-cmd.ps1 -Arch x64
 
       - name: Exclude build directories from Windows Defender
         shell: powershell

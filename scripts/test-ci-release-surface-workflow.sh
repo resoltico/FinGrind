@@ -42,6 +42,8 @@ grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
 grep -Fq 'uv.exe' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
+grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${workflow_file}" || die \
+    "CI workflow no longer bootstraps the Windows MSVC environment through the repo-owned PowerShell owner"
 if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
     die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
 fi
@@ -57,6 +59,9 @@ if grep -Fq '.\gradlew.bat -q :cli:run "--args=capabilities --output json"' "${w
 fi
 if grep -Fq '.\scripts\source-checkout-cli.ps1 capabilities --output json' "${workflow_file}"; then
     die "CI workflow still carries the retired ad hoc Windows source-checkout runtime probe"
+fi
+if grep -Fq 'ilammy/msvc-dev-cmd' "${workflow_file}"; then
+    die "CI workflow still depends on the deprecated third-party msvc-dev-cmd action"
 fi
 
 printf 'CI release-surface workflow regression: success\n'

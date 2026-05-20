@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files with host-readable permissions instead of preserving the private temp-file mode across the
   final move, and tightened the public container verifier plus its regression harness to report
   unreadable mounted PDF artifacts as a first-class release-surface failure.
+- Replaced the aging third-party Windows MSVC developer-command GitHub Action with a repo-owned
+  PowerShell bootstrap that locates `VsDevCmd.bat`, exports the full developer-command
+  environment for subsequent steps, and removes the Node 20 deprecation warning from the CI and
+  release publication workflows.
 
 ## [0.43.0] - 2026-05-20
 
