@@ -75,6 +75,15 @@ public final class CliFuzzHarnessTestSupport {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-jpy-1",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-jpy-1",
             "actorType": "AGENT",
@@ -110,6 +119,15 @@ public final class CliFuzzHarnessTestSupport {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-bhd-1",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-bhd-1",
             "actorType": "AGENT",
@@ -257,6 +275,15 @@ public final class CliFuzzHarnessTestSupport {
             "priorPostingId": "posting-missing",
             "reason": "operator reversal"
           },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-5",
+                "sourceDocumentType": "credit-note"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-5",
             "actorType": "HUMAN",
@@ -341,6 +368,15 @@ public final class CliFuzzHarnessTestSupport {
                     }
                   }
                 ],
+                "evidence": {
+                  "sourceDocuments": [
+                    {
+                      "sourceDocumentId": "document-idem-jpy-plan-1",
+                      "sourceDocumentType": "invoice"
+                    }
+                  ],
+                  "approvals": []
+                },
                 "provenance": {
                   "actorId": "agent-jpy-plan-1",
                   "actorType": "AGENT",
@@ -415,6 +451,15 @@ public final class CliFuzzHarnessTestSupport {
                     }
                   }
                 ],
+                "evidence": {
+                  "sourceDocuments": [
+                    {
+                      "sourceDocumentId": "document-idem-bhd-plan-1",
+                      "sourceDocumentType": "invoice"
+                    }
+                  ],
+                  "approvals": []
+                },
                 "provenance": {
                   "actorId": "agent-bhd-plan-1",
                   "actorType": "AGENT",
@@ -458,6 +503,9 @@ public final class CliFuzzHarnessTestSupport {
         {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
+          "ownerModel": "MULTI_OWNER",
+          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "accountingBasis": "ACCRUAL"

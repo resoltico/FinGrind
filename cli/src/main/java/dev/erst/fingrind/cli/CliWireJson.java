@@ -37,6 +37,14 @@ final class CliWireJson {
     }
   }
 
+  static String jsonText(Object value) {
+    try {
+      return WRITER.writeValueAsString(value);
+    } catch (RuntimeException exception) {
+      throw unwrapWireValueFailure(exception);
+    }
+  }
+
   private static byte[] writeBytes(ObjectWriter writer, Object value) {
     try {
       return writer.writeValueAsBytes(value);

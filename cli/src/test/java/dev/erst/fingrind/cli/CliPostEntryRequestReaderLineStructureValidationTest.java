@@ -16,7 +16,8 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
@@ -42,7 +43,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                   }
                 }
                 """
-                    .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"))
+                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -57,7 +58,8 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
@@ -69,7 +71,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                     "causationId": "cause-1"
                   }
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -84,7 +86,8 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
@@ -97,7 +100,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                     "causationId": "cause-1"
                   }
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -112,7 +115,8 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
@@ -125,7 +129,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                     "causationId": "cause-1"
                   }
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

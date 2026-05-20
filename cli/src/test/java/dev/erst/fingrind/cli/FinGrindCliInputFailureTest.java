@@ -276,7 +276,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path requestFile =
         writeNamedRequest(
             "invalid-journal-request.json",
-            """
+            CliRequestReaderTestSupport.withEvidence(
+                """
             {
               "postingKind": "STANDARD",
               "effectiveDate": "2026-04-07",
@@ -290,14 +291,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               }
             }
             """
-                .formatted(
-                    CliRequestReaderTestSupport.journalLinesJson(
-                        "1000",
-                        "DEBIT",
-                        CliRequestReaderTestSupport.eurMoneyJson("1000"),
-                        "2000",
-                        "DEBIT",
-                        CliRequestReaderTestSupport.moneyJson("USD", "500"))));
+                    .formatted(
+                        CliRequestReaderTestSupport.journalLinesJson(
+                            "1000",
+                            "DEBIT",
+                            CliRequestReaderTestSupport.eurMoneyJson("1000"),
+                            "2000",
+                            "DEBIT",
+                            CliRequestReaderTestSupport.moneyJson("USD", "500")))));
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
@@ -481,8 +482,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "json"
             });
     assertEquals(1, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
+    assertJsonContains(outputStream, "\"code\":\"invalid-request\"");
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
@@ -531,10 +531,20 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--entity-name",
               "Acme Studio",
+              "--entity-form",
+              "COMPANY",
+              "--owner-model",
+              "MULTI_OWNER",
+              "--reporting-obligation-status",
+              "INTERNAL_MANAGEMENT_ONLY",
+              "--business-activity-tag",
+              "translation-services",
               "--functional-currency",
               "EUR",
               "--fiscal-year-start",
               "01-01",
+              "--accounting-basis",
+              "ACCRUAL",
               "--output",
               "human",
               "--bogus"

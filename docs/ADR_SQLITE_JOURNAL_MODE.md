@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: ADR_SQLITE_JOURNAL_MODE
 updated: "2026-05-20"
 route:

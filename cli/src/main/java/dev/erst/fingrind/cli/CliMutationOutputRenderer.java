@@ -113,10 +113,37 @@ final class CliMutationOutputRenderer {
             List.of(
                 List.of("Account code", account.accountCode().value()),
                 List.of("Account name", account.accountName().value()),
-                List.of("Account type", account.accountType().wireValue()),
-                List.of("Account role", account.accountRole().wireValue()),
-                List.of("Normal balance", account.normalBalance().wireValue()),
-                List.of("Active", Boolean.toString(account.active())),
+                List.of(
+                    "Parent account",
+                    account
+                        .accountTaxonomy()
+                        .parentAccountCode()
+                        .map(parent -> parent.value())
+                        .orElse("(none)")),
+                List.of(
+                    "Account type",
+                    CliQueryOutputFormatter.displayLineTypeLabel(account.accountType())),
+                List.of(
+                    "Account role",
+                    CliQueryOutputFormatter.displayAccountRoleLabel(account.accountRole())),
+                List.of(
+                    "Financial-position line",
+                    account
+                        .accountTaxonomy()
+                        .financialPositionLineClassification()
+                        .map(CliQueryOutputFormatter::displayFinancialPositionLineClassification)
+                        .orElse("(none)")),
+                List.of(
+                    "Profit-and-loss line",
+                    account
+                        .accountTaxonomy()
+                        .profitAndLossLineClassification()
+                        .map(CliQueryOutputFormatter::displayProfitAndLossLineClassification)
+                        .orElse("(none)")),
+                List.of(
+                    "Normal balance",
+                    CliQueryOutputFormatter.displayNormalBalanceLabel(account.normalBalance())),
+                List.of("Active", CliQueryOutputFormatter.displayBooleanLabel(account.active())),
                 List.of("Declared at", CliHumanDisplay.instant(account.declaredAt())))));
   }
 

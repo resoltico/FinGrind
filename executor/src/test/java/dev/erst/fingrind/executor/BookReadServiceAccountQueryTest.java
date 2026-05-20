@@ -10,7 +10,9 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.localReadSer
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountPage;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.foundPosting;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.postingPage;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
@@ -26,14 +28,20 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingLookupOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -49,12 +57,110 @@ class BookReadServiceAccountQueryTest {
 
   @Test
   void inspectBook_delegatesToSessionInspection() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
       BookInspection inspection =
-          BookInspectionPublishedLanguageTranslator.toPublished(bookSession.inspectBook());
+          new BookInspection.Initialized(
+              BookFormatContract.APPLICATION_ID,
+              12,
+              12,
+              BookReadServiceTestSupport.FIXED_INSTANT,
+              bookIdentity(),
+              new BookInspection.CloseReadiness(
+                  false,
+                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  null,
+                  "closing-equity-account-candidate-missing",
+                  "No active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS'.",
+                  List.of()));
       assertEquals(inspection, service.inspectBook());
     }
+  }
+
+  @Test
+  void inspectBook_projectsNonInitializedInspectionWithoutCloseReadiness() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookReadService service = readService(bookSession);
+
+      assertEquals(new BookInspection.Missing(12), service.inspectBook());
+    }
+  }
+
+  @Test
+  void inspectBook_reportsAcceptedCloseReadinessWhenOneRetainedEarningsAccountIsActive() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      bookSession.declareAccount(
+          new AccountCode("3200"),
+          new AccountName("Retained Earnings"),
+          AccountType.EQUITY,
+          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          BookReadServiceTestSupport.FIXED_INSTANT);
+
+      BookReadService service = readService(bookSession);
+      assertEquals(
+          new BookInspection.CloseReadiness(
+              true,
+              FinancialPositionLineClassification.RETAINED_EARNINGS,
+              new AccountCode("3200"),
+              null,
+              null,
+              List.of()),
+          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
+    }
+  }
+
+  @Test
+  void
+      inspectBook_reportsAmbiguousCloseReadinessCandidatesWhenMultipleRetainedEarningsAccountsExist() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      bookSession.declareAccount(
+          new AccountCode("3200"),
+          new AccountName("Retained Earnings A"),
+          AccountType.EQUITY,
+          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          BookReadServiceTestSupport.FIXED_INSTANT);
+      bookSession.declareAccount(
+          new AccountCode("3210"),
+          new AccountName("Retained Earnings B"),
+          AccountType.EQUITY,
+          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          BookReadServiceTestSupport.FIXED_INSTANT);
+
+      BookReadService service = readService(bookSession);
+      assertEquals(
+          new BookInspection.CloseReadiness(
+              false,
+              FinancialPositionLineClassification.RETAINED_EARNINGS,
+              null,
+              "closing-equity-account-candidate-ambiguous",
+              "More than one active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS': 3200, 3210.",
+              List.of(new AccountCode("3200"), new AccountCode("3210"))),
+          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
+    }
+  }
+
+  @Test
+  void requireInitializedBookIdentity_rejectsMissingAndNonInitializedBooks() {
+    assertEquals(
+        "Book identity is unavailable because the book is missing.",
+        assertThrows(
+                IllegalStateException.class,
+                () ->
+                    BookReadService.requireInitializedBookIdentity(
+                        new BookLifecycleInspection.Missing(12)))
+            .getMessage());
+    assertEquals(
+        "Book identity is unavailable for non-initialized book status blank-sqlite.",
+        assertThrows(
+                IllegalStateException.class,
+                () ->
+                    BookReadService.requireInitializedBookIdentity(
+                        new BookLifecycleInspection.Existing(
+                            BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 12)))
+            .getMessage());
   }
 
   @Test

@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -466,6 +467,7 @@ class BookkeepingStatementModelTest {
                     Money.parse("EUR", "1.00")))),
         PostingLineageModel.direct(),
         PostingKind.PERIOD_CLOSE,
+        generatedEvidence("period-close-eur", "period-close-plan"),
         new CommittedProvenance(
             new RequestProvenance(
                 new dev.erst.fingrind.core.ActorId("actor-1"),

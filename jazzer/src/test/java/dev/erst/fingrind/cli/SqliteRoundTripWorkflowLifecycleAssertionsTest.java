@@ -86,6 +86,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                                 Money.parse("EUR", "11.00")))),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
                 command));
@@ -100,6 +101,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                         new ReversalReference(new PostingId("posting-0")),
                         new ReversalReason("unexpected reversal")),
                     PostingKind.STANDARD,
+                    baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
                 command));
@@ -112,6 +114,25 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    new dev.erst.fingrind.core.AccountingEvidence(
+                        java.util.List.of(
+                            new dev.erst.fingrind.core.SourceDocumentReference(
+                                new dev.erst.fingrind.core.SourceDocumentId("document-idem-2"),
+                                new dev.erst.fingrind.core.SourceDocumentType("invoice"))),
+                        java.util.List.of()),
+                    baseFact.provenance()),
+                committed,
+                command));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+                new PostingFact(
+                    baseFact.postingId(),
+                    baseFact.journalEntry(),
+                    baseFact.postingLineage(),
+                    PostingKind.STANDARD,
+                    baseFact.evidence(),
                     new CommittedProvenance(
                         new RequestProvenance(
                             new ActorId("actor-2"),
@@ -133,6 +154,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    baseFact.evidence(),
                     new CommittedProvenance(
                         baseFact.provenance().requestProvenance(),
                         baseFact.provenance().recordedAt().plusSeconds(1),

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
     assertTrue(Files.exists(bookFilePath));
   }
 
@@ -71,7 +70,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
   }
 
   @Test
@@ -97,11 +96,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(2, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"failureCode\":\"administration-book-not-initialized\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
+    assertJsonContains(outputStream, "\"failureCode\":\"administration-book-not-initialized\"");
   }
 
   @Test
@@ -172,10 +168,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               requestFile.toString()
             });
     assertEquals(2, exitCode);
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"posting-book-not-initialized\""));
+    assertJsonContains(outputStream, "\"code\":\"posting-book-not-initialized\"");
     assertFalse(Files.exists(bookFilePath));
   }
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import re
 from io import StringIO
 from typing import Any
@@ -356,6 +357,8 @@ def assert_operator_queries_and_reports(
         "runningNetAmount",
         "runningBalanceSide",
         "counterpartAccounts",
+        "sourceDocuments",
+        "approvals",
     ]
     require(
         account_ledger_header == expected_account_ledger_header,
@@ -386,6 +389,8 @@ def assert_operator_queries_and_reports(
             "runningNetAmount": "",
             "runningBalanceSide": "",
             "counterpartAccounts": "",
+            "sourceDocuments": "",
+            "approvals": "",
         },
         f"{config.label} account-ledger CSV output did not render the opening-balance row",
     )
@@ -404,7 +409,15 @@ def assert_operator_queries_and_reports(
         and opening_entry["creditAmount"] == "0.00"
         and opening_entry["runningNetAmount"] == "10.00"
         and opening_entry["runningBalanceSide"] == "DEBIT"
-        and opening_entry["counterpartAccounts"] == "2000",
+        and opening_entry["counterpartAccounts"] == "2000"
+        and json.loads(opening_entry["sourceDocuments"])
+        == [
+            {
+                "sourceDocumentId": f"{config.actor_prefix}-sale-document-1",
+                "sourceDocumentType": "invoice",
+            }
+        ]
+        and json.loads(opening_entry["approvals"]) == [],
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
@@ -432,7 +445,15 @@ def assert_operator_queries_and_reports(
         and adjustment_entry["creditAmount"] == "4.00"
         and adjustment_entry["runningNetAmount"] == "6.00"
         and adjustment_entry["runningBalanceSide"] == "DEBIT"
-        and adjustment_entry["counterpartAccounts"] == "2000",
+        and adjustment_entry["counterpartAccounts"] == "2000"
+        and json.loads(adjustment_entry["sourceDocuments"])
+        == [
+            {
+                "sourceDocumentId": f"{config.actor_prefix}-adjustment-document-1",
+                "sourceDocumentType": "invoice",
+            }
+        ]
+        and json.loads(adjustment_entry["approvals"]) == [],
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )
     require_match(
@@ -465,6 +486,8 @@ def assert_operator_queries_and_reports(
             "runningNetAmount": "",
             "runningBalanceSide": "",
             "counterpartAccounts": "",
+            "sourceDocuments": "",
+            "approvals": "",
         },
         f"{config.label} account-ledger CSV output did not render the closing-balance row",
     )

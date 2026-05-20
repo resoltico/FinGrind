@@ -22,6 +22,13 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-contract templates and scaffold examples. */
 final class MachineContractTemplatesCatalog {
+  private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
+  private static final String SAMPLE_SOURCE_DOCUMENT_ID = "invoice-1001";
+  private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "invoice";
+  private static final String SAMPLE_ACTOR_ID = "operator-demo-1";
+  private static final String SAMPLE_COMMAND_ID = "command-demo-1";
+  private static final String SAMPLE_IDEMPOTENCY_KEY = "idem-demo-1";
+  private static final String SAMPLE_CAUSATION_ID = "cause-demo-1";
   private static final String DECLARE_ACCOUNT_CASH_JSON =
       """
       {
@@ -57,18 +64,23 @@ final class MachineContractTemplatesCatalog {
   static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         PostingKind.STANDARD,
-        ScaffoldPlaceholders.EFFECTIVE_DATE,
+        SAMPLE_EFFECTIVE_DATE,
         List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
                 "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
             new ContractTemplates.JournalLineTemplateDescriptor(
                 "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
+        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+            List.of(
+                new ContractTemplates.SourceDocumentTemplateDescriptor(
+                    SAMPLE_SOURCE_DOCUMENT_ID, SAMPLE_SOURCE_DOCUMENT_TYPE)),
+            List.of()),
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            ScaffoldPlaceholders.ACTOR_ID,
+            SAMPLE_ACTOR_ID,
             ActorType.AGENT,
-            ScaffoldPlaceholders.COMMAND_ID,
-            ScaffoldPlaceholders.IDEMPOTENCY_KEY,
-            ScaffoldPlaceholders.CAUSATION_ID,
+            SAMPLE_COMMAND_ID,
+            SAMPLE_IDEMPOTENCY_KEY,
+            SAMPLE_CAUSATION_ID,
             null),
         null);
   }

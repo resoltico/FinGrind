@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -380,6 +382,7 @@ class PostingAcceptancePolicyTest {
                 openingPosting.journalEntry(),
                 openingPosting.postingLineage(),
                 PostingKind.OPENING_BALANCE,
+                openingPosting.evidence(),
                 openingPosting.provenance()),
             ordinaryPosting);
 
@@ -474,6 +477,7 @@ class PostingAcceptancePolicyTest {
                     line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
             PostingLineageModel.direct(),
             PostingKind.PERIOD_CLOSE,
+            generatedEvidence("idem-close", "period-close-plan"),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("actor-1"),
@@ -539,6 +543,7 @@ class PostingAcceptancePolicyTest {
         postingKind,
         new JournalEntry(LocalDate.parse("2026-04-07"), lines),
         PostingLineageModel.direct(),
+        accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
@@ -559,6 +564,7 @@ class PostingAcceptancePolicyTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

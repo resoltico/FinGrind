@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: USER_EXAMPLES
 updated: "2026-05-20"
 route:
@@ -45,6 +45,9 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
+  --owner-model MULTI_OWNER \
+  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --accounting-basis ACCRUAL \
@@ -85,6 +88,9 @@ cat ./secrets/acme.book-key | \
     --book-file ./books/acme.sqlite \
     --entity-name "Acme Studio" \
     --entity-form COMPANY \
+    --owner-model MULTI_OWNER \
+    --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
+    --business-activity-tag consulting-services \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
     --accounting-basis ACCRUAL \
@@ -94,7 +100,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -107,6 +113,7 @@ fingrind \
   --entity-form COMPANY \
   --owner-model MULTI_OWNER \
   --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --accounting-basis ACCRUAL \
@@ -116,7 +123,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","businessActivityTags":[],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -286,11 +293,11 @@ fingrind \
 ```
 
 That generated scaffold is byte-identical to the checked-in
-[examples/request-template.json](./examples/request-template.json) fixture. Both intentionally use
-the scaffold placeholder `replace-before-commit-effective-date` and default to
-`"postingKind": "STANDARD"`.
-The scaffold is agent-first: `actorType` is `AGENT`, and `effectiveDate`, `actorId`,
-`commandId`, `idempotencyKey`, and `causationId` must all be replaced before submission.
+[examples/request-template.json](./examples/request-template.json) fixture. Both intentionally
+publish one runnable sample document and default to `"postingKind": "STANDARD"`.
+The scaffold is agent-first: `actorType` is `AGENT`, `evidence.approvals` starts as an empty
+array that callers may populate when one posting requires explicit approval references, and the
+demo evidence plus provenance values should be replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.
 
 For the concrete walkthrough below, reuse the checked-in example request:
@@ -317,8 +324,8 @@ One successful preflight response:
 {"status":"ok","payload":{"idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08"}}
 ```
 
-That response is advisory, not a durable commit guarantee. `post-entry` still re-runs its
-authoritative commit-time checks inside the write transaction.
+That response is advisory, not a durable commit guarantee. `post-entry` re-runs its authoritative
+commit-time checks inside the write transaction.
 
 One successful commit response:
 
@@ -343,11 +350,10 @@ fingrind \
 ```
 
 Like `print-request-template`, this scaffold is byte-identical to the checked-in
-[examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture and uses the
-same `replace-before-commit-effective-date` placeholder inside its nested posting scaffold.
-Its nested posting scaffold also defaults to `"postingKind": "STANDARD"`, and its provenance uses
-the same `replace-before-commit-*` placeholders, which must be replaced before the plan is
-submitted.
+[examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture.
+Its nested posting scaffold defaults to `"postingKind": "STANDARD"`, and the emitted workflow is
+runnable as a demo flow on a fresh book. Replace the sample evidence and provenance values before
+real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -573,7 +579,8 @@ cat ./reversal-request.json
 ```
 
 That file is a template. Replace `reversal.priorPostingId` with a real `postingId` returned by an
-earlier commit in the same book, then preflight or commit it:
+earlier commit in the same book, keep `evidence.sourceDocuments[]` pointed at the reversal's own
+supporting document, then preflight or commit it:
 
 ```bash
 fingrind \
@@ -600,7 +607,7 @@ fingrind \
 One invalid-request response:
 
 ```json
-{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
+{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its sample evidence and provenance values before real-world use, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
 ```
 
 ## Invalid Cursor Is Rejected Deterministically
@@ -642,6 +649,9 @@ fingrind \
   --book-file ./prompt.sqlite \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
+  --owner-model MULTI_OWNER \
+  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --accounting-basis ACCRUAL \

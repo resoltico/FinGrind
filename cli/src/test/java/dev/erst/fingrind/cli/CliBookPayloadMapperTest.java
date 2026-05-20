@@ -36,7 +36,8 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals("Acme Studio", bookContext.bookIdentity().entityName());
     assertEquals("COMPANY", bookContext.bookIdentity().entityForm());
-    assertEquals(List.of(), bookContext.bookIdentity().businessActivityTags());
+    assertEquals(
+        List.of("translation-services"), bookContext.bookIdentity().businessActivityTags());
 
     assertNull(unbounded.accountCodeFilter());
     assertNull(unbounded.effectiveDateFrom());
@@ -73,20 +74,15 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void bookIdentityPayload_mapsEmptyBusinessActivityTags() {
-    BookIdentity bareIdentity =
-        new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Registered Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                List.of()),
-            CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+  void evidencePayload_mapsApprovalEvidence() {
+    CliBookQueryJsonModels.AccountingEvidencePayload payload =
+        CliBookPayloadMapper.evidencePayload(CliFixtureSupport.accountingEvidenceWithApproval("1"));
 
-    var payload = CliBookPayloadMapper.bookIdentityPayload(bareIdentity);
-    assertEquals(List.of(), payload.businessActivityTags());
+    assertEquals(1, payload.sourceDocuments().size());
+    assertEquals("document-1", payload.sourceDocuments().get(0).sourceDocumentId());
+    assertEquals("invoice", payload.sourceDocuments().get(0).sourceDocumentType());
+    assertEquals(1, payload.approvals().size());
+    assertEquals("approval-1", payload.approvals().get(0).approvalId());
+    assertEquals("manager-signoff", payload.approvals().get(0).approvalType());
   }
 }

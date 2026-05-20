@@ -27,10 +27,12 @@ import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -94,7 +96,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BookFormatContract.FORMAT_VERSION,
             BookFormatContract.FORMAT_VERSION,
             Instant.parse("2026-04-07T10:15:30Z"),
-            bookIdentity());
+            bookIdentity(),
+            closeReadyInspection());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             bookIdentity(),
@@ -155,7 +158,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.FORMAT_VERSION,
                 BookFormatContract.FORMAT_VERSION,
                 Instant.parse("2026-04-07T10:15:30Z"),
-                bookIdentity()),
+                bookIdentity(),
+                closeReadyInspection()),
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 0x12345678,
@@ -231,6 +235,118 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new BookInspection.Initialized(
-                BookFormatContract.APPLICATION_ID, 1, 1, nullOf(), bookIdentity()));
+                BookFormatContract.APPLICATION_ID,
+                1,
+                1,
+                nullOf(),
+                bookIdentity(),
+                closeReadyInspection()));
+  }
+
+  @Test
+  void closeReadiness_readyStateRejectsBlockingMetadata() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                true,
+                FinancialPositionLineClassification.OWNER_CAPITAL,
+                new AccountCode("3200"),
+                "closing-equity-account-candidate-missing",
+                "Blocked",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                true,
+                FinancialPositionLineClassification.OWNER_CAPITAL,
+                new AccountCode("3200"),
+                null,
+                "Blocked",
+                List.of()));
+  }
+
+  @Test
+  void closeReadiness_blockedStateRejectsClosingEquityAccountCode() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                false,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                new AccountCode("3200"),
+                "closing-equity-account-candidate-missing",
+                "Missing retained earnings account.",
+                List.of()));
+  }
+
+  @Test
+  void closeReadiness_blockedStateRequiresBlockingMetadata() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                false,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                null,
+                " ",
+                "Missing retained earnings account.",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                false,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                null,
+                "closing-equity-account-candidate-missing",
+                " ",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                false,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                null,
+                null,
+                "Missing retained earnings account.",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.CloseReadiness(
+                false,
+                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                null,
+                "closing-equity-account-candidate-missing",
+                null,
+                List.of()));
+  }
+
+  @Test
+  void closeReadiness_copiesCandidateAccountCodes() {
+    List<AccountCode> candidates = new ArrayList<>(List.of(new AccountCode("3200")));
+    BookInspection.CloseReadiness readiness =
+        new BookInspection.CloseReadiness(
+            false,
+            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            null,
+            "closing-equity-account-candidate-ambiguous",
+            "Multiple retained earnings candidates are active.",
+            candidates);
+    candidates.clear();
+    assertEquals(List.of(new AccountCode("3200")), readiness.candidateAccountCodes());
+  }
+
+  private static BookInspection.CloseReadiness closeReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        true,
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new AccountCode("3200"),
+        null,
+        null,
+        List.of());
   }
 }

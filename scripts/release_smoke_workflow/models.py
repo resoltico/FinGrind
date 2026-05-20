@@ -41,6 +41,9 @@ class ReleaseSmokeConfig:
     open_book_mode: str
     entity_name: str
     entity_form: str
+    owner_model: str
+    reporting_obligation_status: str
+    business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
     accounting_basis: str
@@ -63,6 +66,9 @@ class ReleaseSmokeScenario:
     actor_prefix: str
     entity_name: str
     entity_form: str
+    owner_model: str
+    reporting_obligation_status: str
+    business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
     accounting_basis: str

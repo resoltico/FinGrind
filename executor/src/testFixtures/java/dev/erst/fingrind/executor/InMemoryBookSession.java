@@ -309,6 +309,7 @@ public final class InMemoryBookSession
             postingFact.journalEntry(),
             postingFact.postingLineage(),
             postingFact.postingKind(),
+            postingFact.evidence(),
             postingFact.provenance()),
         postingFact::postingId);
   }

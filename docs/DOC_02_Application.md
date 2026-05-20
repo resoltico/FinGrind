@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: CONTRACT_EXECUTOR_INDEX
 updated: "2026-05-20"
 route:

@@ -113,6 +113,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       MonetaryAmount creditAmount,
       MonetaryAmount runningBalance,
       String runningBalanceSide,
+      AccountingEvidencePayload evidence,
       List<String> counterpartAccounts) {
     public AccountLedgerEntryPayload {
       postingId = requireText(postingId, "postingId");
@@ -126,6 +127,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       Objects.requireNonNull(creditAmount, "creditAmount");
       Objects.requireNonNull(runningBalance, "runningBalance");
       runningBalanceSide = requireText(runningBalanceSide, "runningBalanceSide");
+      Objects.requireNonNull(evidence, "evidence");
       counterpartAccounts = copyList(counterpartAccounts, "counterpartAccounts");
     }
   }

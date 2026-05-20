@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.spi;
 
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingId;
@@ -15,6 +16,7 @@ public record PostingDraft(
     JournalEntry journalEntry,
     PostingLineageModel postingLineage,
     PostingKind postingKind,
+    AccountingEvidence evidence,
     CommittedProvenance provenance)
     implements PostingRequestModel {
   /** Validates the durable commit draft before one book session materializes it. */
@@ -22,6 +24,7 @@ public record PostingDraft(
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
     Objects.requireNonNull(postingKind, "postingKind");
+    Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
   }
 
@@ -37,6 +40,7 @@ public record PostingDraft(
 
   /** Materializes one durable posting fact after the store accepts this draft for commit. */
   public CommittedPosting materialize(PostingId postingId) {
-    return new CommittedPosting(postingId, journalEntry, postingLineage, postingKind, provenance);
+    return new CommittedPosting(
+        postingId, journalEntry, postingLineage, postingKind, evidence, provenance);
   }
 }

@@ -33,6 +33,12 @@ final class SqlitePostingSql {
   static final int COL_LINE_CURRENCY_CODE = 2;
   static final int COL_LINE_AMOUNT_MINOR = 3;
 
+  static final int COL_SOURCE_DOCUMENT_ID = 0;
+  static final int COL_SOURCE_DOCUMENT_TYPE = 1;
+
+  static final int COL_APPROVAL_ID = 0;
+  static final int COL_APPROVAL_TYPE = 1;
+
   static final int COL_ACCOUNT_CODE = 0;
   static final int COL_ACCOUNT_NAME = 1;
   static final int COL_ACCOUNT_TYPE = 2;
@@ -191,6 +197,22 @@ final class SqlitePostingSql {
       order by line_order
       """;
 
+  static final String LOAD_SOURCE_DOCUMENTS =
+      """
+      select source_document_id, source_document_type
+      from posting_source_document
+      where posting_id = ?
+      order by source_document_order
+      """;
+
+  static final String LOAD_APPROVALS =
+      """
+      select approval_id, approval_type
+      from posting_approval
+      where posting_id = ?
+      order by approval_order
+      """;
+
   static final String LOAD_ACCOUNT_LINES_FOR_BALANCE =
       """
       select
@@ -252,6 +274,26 @@ final class SqlitePostingSql {
           currency_code,
           amount_minor
       ) values (?, ?, ?, ?, ?, ?)
+      """;
+
+  static final String INSERT_POSTING_SOURCE_DOCUMENT =
+      """
+      insert into posting_source_document (
+          posting_id,
+          source_document_order,
+          source_document_id,
+          source_document_type
+      ) values (?, ?, ?, ?)
+      """;
+
+  static final String INSERT_POSTING_APPROVAL =
+      """
+      insert into posting_approval (
+          posting_id,
+          approval_order,
+          approval_id,
+          approval_type
+      ) values (?, ?, ?, ?)
       """;
 
   static final String INSERT_AUDIT_EVENT =

@@ -167,6 +167,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                                   dev.erst.fingrind.executor.bookkeeping.PostingLineageModel
                                       .direct(),
                                   PostingKind.STANDARD,
+                                  generatedEvidence("generated-close-idem", "period-close-plan"),
                                   postingFact(
                                           "generated-close-posting",
                                           "generated-close-idem",

@@ -2,5 +2,14 @@
   "postingKind": "STANDARD",
   "effectiveDate": 1,
   "lines": [],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-invalid_wrong_type",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {}
 }

@@ -43,6 +43,29 @@ public interface CliAdministrationJsonModels {
     }
   }
 
+  record CloseReadinessPayload(
+      boolean ready,
+      String requiredFinancialPositionLineClassification,
+      @Nullable String closingEquityAccountCode,
+      @Nullable String blockingCode,
+      @Nullable String blockingMessage,
+      java.util.List<String> candidateAccountCodes) {
+    public CloseReadinessPayload {
+      requiredFinancialPositionLineClassification =
+          requireText(
+              requiredFinancialPositionLineClassification,
+              "requiredFinancialPositionLineClassification");
+      closingEquityAccountCode =
+          CliJsonModelValidation.requireOptionalText(
+              closingEquityAccountCode, "closingEquityAccountCode");
+      blockingCode = CliJsonModelValidation.requireOptionalText(blockingCode, "blockingCode");
+      blockingMessage =
+          CliJsonModelValidation.requireOptionalText(blockingMessage, "blockingMessage");
+      candidateAccountCodes =
+          CliJsonModelValidation.copyList(candidateAccountCodes, "candidateAccountCodes");
+    }
+  }
+
   record OpenBookPayload(String bookFile, String initializedAt, BookIdentityPayload bookIdentity)
       implements CliSuccessPayload {
     public OpenBookPayload {
@@ -183,7 +206,8 @@ public interface CliAdministrationJsonModels {
       int supportedBookFormatVersion,
       MigrationPolicyPayload migrationPolicy,
       String initializedAt,
-      BookIdentityPayload bookIdentity)
+      BookIdentityPayload bookIdentity,
+      CloseReadinessPayload closeReadiness)
       implements CliSuccessPayload {
     public InitializedBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -193,6 +217,7 @@ public interface CliAdministrationJsonModels {
       java.util.Objects.requireNonNull(migrationPolicy, "migrationPolicy");
       initializedAt = requireText(initializedAt, "initializedAt");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
+      java.util.Objects.requireNonNull(closeReadiness, "closeReadiness");
     }
   }
 }

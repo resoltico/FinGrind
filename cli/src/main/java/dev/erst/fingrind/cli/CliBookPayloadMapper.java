@@ -14,7 +14,10 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.SourceDocumentReference;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -56,7 +59,8 @@ final class CliBookPayloadMapper {
               initialized.supportedBookFormatVersion(),
               migrationPolicyPayload(initialized.migrationPolicy()),
               initialized.initializedAt().toString(),
-              bookIdentityPayload(initialized.bookIdentity()));
+              bookIdentityPayload(initialized.bookIdentity()),
+              closeReadinessPayload(initialized.closeReadiness()));
     };
   }
 
@@ -83,6 +87,19 @@ final class CliBookPayloadMapper {
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue(),
         bookIdentity.accountingBasis().wireValue());
+  }
+
+  static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(
+      BookInspection.CloseReadiness closeReadiness) {
+    return new CliAdministrationJsonModels.CloseReadinessPayload(
+        closeReadiness.ready(),
+        closeReadiness.requiredFinancialPositionLineClassification().wireValue(),
+        closeReadiness.closingEquityAccountCode() == null
+            ? null
+            : closeReadiness.closingEquityAccountCode().value(),
+        closeReadiness.blockingCode(),
+        closeReadiness.blockingMessage(),
+        closeReadiness.candidateAccountCodes().stream().map(AccountCode::value).toList());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
@@ -126,6 +143,7 @@ final class CliBookPayloadMapper {
             .map(value -> value.value())
             .orElse(null),
         postingFact.provenance().sourceChannel().wireValue(),
+        evidencePayload(postingFact.evidence()),
         postingFact
             .postingLineage()
             .reversalReference()
@@ -219,6 +237,27 @@ final class CliBookPayloadMapper {
         line.accountCode().value(),
         line.side().wireValue(),
         MonetaryAmount.of(line.amount().money()));
+  }
+
+  static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(
+      AccountingEvidence evidence) {
+    return new CliBookQueryJsonModels.AccountingEvidencePayload(
+        evidence.sourceDocuments().stream()
+            .map(CliBookPayloadMapper::sourceDocumentPayload)
+            .toList(),
+        evidence.approvals().stream().map(CliBookPayloadMapper::approvalPayload).toList());
+  }
+
+  private static CliBookQueryJsonModels.SourceDocumentPayload sourceDocumentPayload(
+      SourceDocumentReference sourceDocument) {
+    return new CliBookQueryJsonModels.SourceDocumentPayload(
+        sourceDocument.sourceDocumentId().value(), sourceDocument.sourceDocumentType().value());
+  }
+
+  private static CliBookQueryJsonModels.ApprovalPayload approvalPayload(
+      ApprovalReference approval) {
+    return new CliBookQueryJsonModels.ApprovalPayload(
+        approval.approvalId().value(), approval.approvalType().value());
   }
 
   private static String absolutePath(Path bookFilePath) {

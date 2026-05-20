@@ -60,6 +60,7 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
             postingFact.journalEntry(),
             postingFact.postingLineage(),
             postingFact.postingKind(),
+            postingFact.evidence(),
             postingFact.provenance()),
         postingFact::postingId);
   }

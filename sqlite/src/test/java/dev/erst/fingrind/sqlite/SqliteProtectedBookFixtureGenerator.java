@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,23 +66,30 @@ public final class SqliteProtectedBookFixtureGenerator {
   static void regenerate(Path fixturesDirectory) throws IOException {
     Objects.requireNonNull(fixturesDirectory, "fixturesDirectory");
     Files.createDirectories(fixturesDirectory);
-    Path fixturePath = fixturesDirectory.resolve(CURRENT_DEFAULT_FIXTURE_NAME);
-    Path metadataPath = fixturesDirectory.resolve(CURRENT_DEFAULT_METADATA_NAME);
-    Path keyPath = fixturesDirectory.resolve("current-default-protected-book.regen.key");
+    Path secureTemporaryDirectory =
+        Files.createTempDirectory(
+            "fingrind-protected-book-fixture-",
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
+    Path keyPath = secureTemporaryDirectory.resolve("current-default-protected-book.regen.key");
+    Path fixturePath = secureTemporaryDirectory.resolve(CURRENT_DEFAULT_FIXTURE_NAME);
+    Path metadataPath = secureTemporaryDirectory.resolve(CURRENT_DEFAULT_METADATA_NAME);
     try {
       deleteGeneratedFixtureArtifacts(fixturesDirectory);
       SqliteStoreFixtureSupport.writeSecureKeyFile(
           keyPath, SqliteStoreFixtureSupport.TEST_BOOK_KEY);
       buildFixtureBook(fixturePath, keyPath);
       writeFixtureMetadata(fixturePath, metadataPath, keyPath);
-      writeUnsupportedFormatFixture(fixturesDirectory, fixturePath, keyPath);
-      writeForeignSqliteFixture(fixturesDirectory);
-      writeCorruptedFixture(fixturesDirectory, fixturePath);
-      writeTruncatedFixture(fixturesDirectory, fixturePath);
-      writeRollbackArtifactFixture(fixturesDirectory, fixturePath);
-      writeSidecarFixtures(fixturesDirectory);
+      writeUnsupportedFormatFixture(secureTemporaryDirectory, fixturePath, keyPath);
+      writeForeignSqliteFixture(secureTemporaryDirectory);
+      writeCorruptedFixture(secureTemporaryDirectory, fixturePath);
+      writeTruncatedFixture(secureTemporaryDirectory, fixturePath);
+      writeRollbackArtifactFixture(secureTemporaryDirectory, fixturePath);
+      writeSidecarFixtures(secureTemporaryDirectory);
+      stageGeneratedFixtureArtifacts(secureTemporaryDirectory, fixturesDirectory);
     } finally {
+      deleteGeneratedFixtureArtifacts(secureTemporaryDirectory);
       Files.deleteIfExists(keyPath);
+      Files.deleteIfExists(secureTemporaryDirectory);
     }
   }
 
@@ -101,6 +109,33 @@ public final class SqliteProtectedBookFixtureGenerator {
     deleteIfExists(fixturesDirectory.resolve(JOURNAL_FIXTURE_NAME));
     deleteIfExists(fixturesDirectory.resolve(WAL_FIXTURE_NAME));
     deleteIfExists(fixturesDirectory.resolve(SHM_FIXTURE_NAME));
+  }
+
+  private static void stageGeneratedFixtureArtifacts(Path sourceDirectory, Path targetDirectory)
+      throws IOException {
+    copyArtifact(sourceDirectory, targetDirectory, CURRENT_DEFAULT_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, CURRENT_DEFAULT_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, UNSUPPORTED_FORMAT_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, UNSUPPORTED_FORMAT_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, FOREIGN_SQLITE_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, FOREIGN_SQLITE_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, CORRUPTED_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, CORRUPTED_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, TRUNCATED_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, TRUNCATED_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, ROLLBACK_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, ROLLBACK_METADATA_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, JOURNAL_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, WAL_FIXTURE_NAME);
+    copyArtifact(sourceDirectory, targetDirectory, SHM_FIXTURE_NAME);
+  }
+
+  private static void copyArtifact(Path sourceDirectory, Path targetDirectory, String fileName)
+      throws IOException {
+    Files.copy(
+        sourceDirectory.resolve(fileName),
+        targetDirectory.resolve(fileName),
+        StandardCopyOption.REPLACE_EXISTING);
   }
 
   private static void writeUnsupportedFormatFixture(

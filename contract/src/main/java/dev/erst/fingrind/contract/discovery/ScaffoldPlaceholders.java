@@ -10,9 +10,22 @@ public final class ScaffoldPlaceholders {
   public static final String COMMAND_ID = "replace-before-commit-command-id";
   public static final String IDEMPOTENCY_KEY = "replace-before-commit-idempotency-key";
   public static final String CAUSATION_ID = "replace-before-commit-causation-id";
+  public static final String SOURCE_DOCUMENT_ID = "replace-before-commit-source-document-id";
+  public static final String SOURCE_DOCUMENT_TYPE = "replace-before-commit-source-document-type";
+  public static final String APPROVAL_ID = "replace-before-commit-approval-id";
+  public static final String APPROVAL_TYPE = "replace-before-commit-approval-type";
 
   private static final Set<String> RESERVED_VALUES =
-      Set.of(EFFECTIVE_DATE, ACTOR_ID, COMMAND_ID, IDEMPOTENCY_KEY, CAUSATION_ID);
+      Set.of(
+          EFFECTIVE_DATE,
+          ACTOR_ID,
+          COMMAND_ID,
+          IDEMPOTENCY_KEY,
+          CAUSATION_ID,
+          SOURCE_DOCUMENT_ID,
+          SOURCE_DOCUMENT_TYPE,
+          APPROVAL_ID,
+          APPROVAL_TYPE);
 
   private ScaffoldPlaceholders() {}
 

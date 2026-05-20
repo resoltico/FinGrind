@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-05-20"
 route:
@@ -44,7 +44,9 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `9`, owned by `BookFormatContract`
+- the current supported book format is `12`, owned by `BookFormatContract`
+- accepted posting facts persist first-class accounting evidence through
+  `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model

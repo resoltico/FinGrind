@@ -2,6 +2,15 @@
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-08",
   "lines": [],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-invalid-1",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "agent-invalid-1",
     "actorType": "AGENT",

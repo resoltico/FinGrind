@@ -10,7 +10,7 @@ import java.util.Objects;
 final class CliBookIdentityDisplay {
   private CliBookIdentityDisplay() {}
 
-  static List<List<String>> rows(BookIdentity bookIdentity) {
+  static List<List<String>> detailRows(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Entity", bookIdentity.entityName().value()));
@@ -40,8 +40,12 @@ final class CliBookIdentityDisplay {
     return List.copyOf(rows);
   }
 
+  static List<List<String>> rows(BookIdentity bookIdentity) {
+    return detailRows(bookIdentity);
+  }
+
   static List<List<String>> summaryRows(BookIdentity bookIdentity) {
-    return rows(bookIdentity);
+    return detailRows(bookIdentity);
   }
 
   private static String businessActivityTags(List<BusinessActivityTag> businessActivityTags) {

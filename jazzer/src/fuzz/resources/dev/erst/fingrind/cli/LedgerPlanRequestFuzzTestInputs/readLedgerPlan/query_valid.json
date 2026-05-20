@@ -7,6 +7,9 @@
       "openBook": {
         "entityName": "Plan Seed Query",
         "entityForm": "COMPANY",
+        "ownerModel": "MULTI_OWNER",
+        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01",
         "accountingBasis": "ACCRUAL"
@@ -60,6 +63,15 @@
             }
           }
         ],
+        "evidence": {
+          "sourceDocuments": [
+            {
+              "sourceDocumentId": "document-idem-query-1",
+              "sourceDocumentType": "invoice"
+            }
+          ],
+          "approvals": []
+        },
         "provenance": {
           "actorId": "agent-1",
           "actorType": "AGENT",

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: DEVELOPER_DOMAIN_MODEL
 updated: "2026-05-20"
 route:
@@ -105,6 +105,7 @@ This context owns:
 - account classification through `AccountType`
 - the current hierarchical-chart and opaque-account-code policy through `AccountCodePolicy`
 - posting acceptance rules
+- first-class source-document and approval evidence attached to accepted accounting facts
 - local book lifecycle inspection snapshots and local query/commit rejection families
 - committed posting shape used inside execution and storage
 - durable append-only audit events for book opens, account mutations, posting commits, reversals,

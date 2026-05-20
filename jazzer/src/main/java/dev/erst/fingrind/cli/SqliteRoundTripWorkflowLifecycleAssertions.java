@@ -127,6 +127,9 @@ final class SqliteRoundTripWorkflowLifecycleAssertions {
     if (!postingFact.reversalReference().equals(command.reversalReference())) {
       throw new IllegalStateException("Reloaded reversal differs from the parsed command.");
     }
+    if (!postingFact.evidence().equals(command.evidence())) {
+      throw new IllegalStateException("Reloaded evidence differs from the parsed command.");
+    }
     if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
       throw new IllegalStateException(
           "Reloaded request provenance differs from the parsed command.");

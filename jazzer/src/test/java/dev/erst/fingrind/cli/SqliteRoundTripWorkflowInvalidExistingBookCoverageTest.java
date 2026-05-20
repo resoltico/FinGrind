@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -34,7 +37,8 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                                 1,
                                 1,
                                 CliFuzzFixtures.fixedClock().instant(),
-                                CliFuzzFixtures.bookIdentity())),
+                                CliFuzzFixtures.bookIdentity(),
+                                closeReadyInspection())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         initializedInspection, "unexpectedly inspected as initialized");
@@ -117,5 +121,15 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                   throw new IllegalStateException("commit runtime");
                 },
                 null));
+  }
+
+  private static BookInspection.CloseReadiness closeReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        true,
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new AccountCode("3200"),
+        null,
+        null,
+        List.of());
   }
 }

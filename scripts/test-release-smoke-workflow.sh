@@ -120,10 +120,12 @@ prepare_python_runtime_env
 
 python3 -m py_compile "${workflow_py}" "${workflow_package_dir}"/*.py >/dev/null
 python3 - <<'PY' "${repo_root}"
+import csv
 import json
 import pathlib
 import sys
 import tempfile
+from io import StringIO
 
 sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / "scripts"))
 from release_smoke_workflow.cli import (  # noqa: E402
@@ -131,6 +133,10 @@ from release_smoke_workflow.cli import (  # noqa: E402
     run_cli_with_split_streams,
 )
 from release_smoke_workflow.assertions import assert_operator_queries_and_reports  # noqa: E402
+from release_smoke_workflow.fixtures import (  # noqa: E402
+    prepare_fixture_directories,
+    write_acceptance_fixtures,
+)
 from release_smoke_workflow.models import ReleaseSmokeConfig, SmokePath  # noqa: E402
 from release_smoke_workflow.scenario import (  # noqa: E402
     ARGUMENT_PATH_MODE_ABSOLUTE,
@@ -141,6 +147,137 @@ from release_smoke_workflow.support import (  # noqa: E402
     extract_pdf_exported_path,
     normalize_reported_path,
 )
+
+
+def structured_account_ledger_csv(actor_prefix: str) -> str:
+    header = [
+        "recordKind",
+        "currencyCode",
+        "bucketDebitTotal",
+        "bucketCreditTotal",
+        "bucketNetAmount",
+        "bucketBalanceSide",
+        "postingId",
+        "postingKind",
+        "reversalState",
+        "reversalTarget",
+        "effectiveDate",
+        "recordedAt",
+        "debitAmount",
+        "creditAmount",
+        "runningNetAmount",
+        "runningBalanceSide",
+        "counterpartAccounts",
+        "sourceDocuments",
+        "approvals",
+    ]
+    rows = [
+        {
+            "recordKind": "opening-balance",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "0.00",
+            "bucketCreditTotal": "0.00",
+            "bucketNetAmount": "0.00",
+            "bucketBalanceSide": "ZERO",
+            "postingId": "",
+            "postingKind": "",
+            "reversalState": "",
+            "reversalTarget": "",
+            "effectiveDate": "",
+            "recordedAt": "",
+            "debitAmount": "",
+            "creditAmount": "",
+            "runningNetAmount": "",
+            "runningBalanceSide": "",
+            "counterpartAccounts": "",
+            "sourceDocuments": "",
+            "approvals": "",
+        },
+        {
+            "recordKind": "ledger-entry",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "",
+            "bucketCreditTotal": "",
+            "bucketNetAmount": "",
+            "bucketBalanceSide": "",
+            "postingId": "019e2ae5-5f56-7025-8449-984160a327f3",
+            "postingKind": "STANDARD",
+            "reversalState": "direct",
+            "reversalTarget": "",
+            "effectiveDate": "2026-04-07",
+            "recordedAt": "2026-04-07T10:00:00Z",
+            "debitAmount": "10.00",
+            "creditAmount": "0.00",
+            "runningNetAmount": "10.00",
+            "runningBalanceSide": "DEBIT",
+            "counterpartAccounts": "2000",
+            "sourceDocuments": json.dumps(
+                [
+                    {
+                        "sourceDocumentId": f"{actor_prefix}-sale-document-1",
+                        "sourceDocumentType": "invoice",
+                    }
+                ],
+                separators=(",", ":"),
+            ),
+            "approvals": "[]",
+        },
+        {
+            "recordKind": "ledger-entry",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "",
+            "bucketCreditTotal": "",
+            "bucketNetAmount": "",
+            "bucketBalanceSide": "",
+            "postingId": "019e2ae5-6557-7410-8611-f55876f12ca5",
+            "postingKind": "STANDARD",
+            "reversalState": "direct",
+            "reversalTarget": "",
+            "effectiveDate": "2026-04-08",
+            "recordedAt": "2026-04-08T10:00:00Z",
+            "debitAmount": "0.00",
+            "creditAmount": "4.00",
+            "runningNetAmount": "6.00",
+            "runningBalanceSide": "DEBIT",
+            "counterpartAccounts": "2000",
+            "sourceDocuments": json.dumps(
+                [
+                    {
+                        "sourceDocumentId": f"{actor_prefix}-adjustment-document-1",
+                        "sourceDocumentType": "invoice",
+                    }
+                ],
+                separators=(",", ":"),
+            ),
+            "approvals": "[]",
+        },
+        {
+            "recordKind": "closing-balance",
+            "currencyCode": "EUR",
+            "bucketDebitTotal": "10.00",
+            "bucketCreditTotal": "4.00",
+            "bucketNetAmount": "6.00",
+            "bucketBalanceSide": "DEBIT",
+            "postingId": "",
+            "postingKind": "",
+            "reversalState": "",
+            "reversalTarget": "",
+            "effectiveDate": "",
+            "recordedAt": "",
+            "debitAmount": "",
+            "creditAmount": "",
+            "runningNetAmount": "",
+            "runningBalanceSide": "",
+            "counterpartAccounts": "",
+            "sourceDocuments": "",
+            "approvals": "",
+        },
+    ]
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=header, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue()
 
 bundle = build_release_smoke_scenario(
     pathlib.Path("/tmp/workspace odd/Rīga büro/2026 Q2 close"),
@@ -162,6 +299,44 @@ assert (
     == "keys odd/Rīga büro/nested/--entity [docker-acceptance]-replacement.key"
 )
 assert docker.actor_prefix == "docker-acceptance"
+
+with tempfile.TemporaryDirectory() as fixture_dir:
+    fixture_workspace = pathlib.Path(fixture_dir)
+    fixture_scenario = build_release_smoke_scenario(
+        fixture_workspace,
+        ARGUMENT_PATH_MODE_ABSOLUTE,
+        "fixture-regression",
+    )
+    prepare_fixture_directories(fixture_scenario)
+    write_acceptance_fixtures(fixture_scenario)
+    sale_request = json.loads(
+        fixture_scenario.request_sale.local_path.read_text(encoding="utf-8")
+    )
+    adjustment_request = json.loads(
+        fixture_scenario.request_adjustment.local_path.read_text(encoding="utf-8")
+    )
+    for request_payload, expected_command_id, expected_document_id in [
+        (
+            sale_request,
+            "fixture-regression-sale",
+            "fixture-regression-sale-document-1",
+        ),
+        (
+            adjustment_request,
+            "fixture-regression-adjustment",
+            "fixture-regression-adjustment-document-1",
+        ),
+    ]:
+        assert request_payload["evidence"] == {
+            "sourceDocuments": [
+                {
+                    "sourceDocumentId": expected_document_id,
+                    "sourceDocumentType": "invoice",
+                }
+            ],
+            "approvals": [],
+        }
+        assert request_payload["provenance"]["commandId"] == expected_command_id
 
 dummy = SmokePath(
     relative_path=pathlib.Path("dummy"),
@@ -213,6 +388,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
         entity_form="COMPANY",
+        owner_model="MULTI_OWNER",
+        reporting_obligation_status="INTERNAL_MANAGEMENT_ONLY",
+        business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
         accounting_basis="ACCRUAL",
@@ -274,6 +452,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
         entity_form="COMPANY",
+        owner_model="MULTI_OWNER",
+        reporting_obligation_status="INTERNAL_MANAGEMENT_ONLY",
+        business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
         accounting_basis="ACCRUAL",
@@ -304,13 +485,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=report_stderr,
-        account_ledger_csv_output=(
-            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts\n"
-            "opening-balance,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
-            "ledger-entry,EUR,,,,,019e2ae5-5f56-7025-8449-984160a327f3,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
-            "ledger-entry,EUR,,,,,019e2ae5-6557-7410-8611-f55876f12ca5,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
-            "closing-balance,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
-        ),
+        account_ledger_csv_output=structured_account_ledger_csv("bridge"),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )
 
@@ -368,6 +543,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
         entity_form="COMPANY",
+        owner_model="MULTI_OWNER",
+        reporting_obligation_status="INTERNAL_MANAGEMENT_ONLY",
+        business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
         accounting_basis="ACCRUAL",
@@ -390,13 +568,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=docker_report_stderr,
-        account_ledger_csv_output=(
-            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts\n"
-            "opening-balance,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,\n"
-            "ledger-entry,EUR,,,,,019e2ae5-5f56-7025-8449-984160a327f3,STANDARD,direct,,2026-04-07,2026-04-07T10:00:00Z,10.00,0.00,10.00,DEBIT,2000\n"
-            "ledger-entry,EUR,,,,,019e2ae5-6557-7410-8611-f55876f12ca5,STANDARD,direct,,2026-04-08,2026-04-08T10:00:00Z,0.00,4.00,6.00,DEBIT,2000\n"
-            "closing-balance,EUR,10.00,4.00,6.00,DEBIT,,,,,,,,,,,\n"
-        ),
+        account_ledger_csv_output=structured_account_ledger_csv("bridge"),
         period_summary_human_output="Period Summary\nPosting count : 2\n",
     )
 PY

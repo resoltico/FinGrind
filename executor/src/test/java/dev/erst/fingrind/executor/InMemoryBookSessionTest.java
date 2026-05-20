@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
@@ -640,6 +641,7 @@ class InMemoryBookSessionTest {
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey, recordedAt));
   }
 
@@ -651,6 +653,7 @@ class InMemoryBookSessionTest {
             new ReversalReference(new PostingId(priorPostingId)),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
+        accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }
 

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: CORE_DECIMAL_BOUNDARIES
 updated: "2026-05-20"
 route:

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
@@ -51,7 +50,6 @@ import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -105,11 +103,8 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   planFile.toString()
                 });
     assertEquals(3, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"failureCode\":\"assertion-failed\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
+    assertJsonContains(outputStream, "\"failureCode\":\"assertion-failed\"");
   }
 
   @Test
@@ -390,10 +385,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   "--posting-id",
                   "posting-missing"
                 }));
-    assertTrue(
-        getPostingOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"posting-not-found\""));
+    assertJsonContains(getPostingOutput, "\"code\":\"posting-not-found\"");
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
@@ -410,10 +402,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   "--book-key-file",
                   bookKeyFilePath.toString()
                 }));
-    assertTrue(
-        listPostingsOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"unknown-account\""));
+    assertJsonContains(listPostingsOutput, "\"code\":\"unknown-account\"");
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
@@ -432,9 +421,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   "--account-code",
                   "1000"
                 }));
-    assertTrue(
-        balanceOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"query-book-not-initialized\""));
+    assertJsonContains(balanceOutput, "\"code\":\"query-book-not-initialized\"");
   }
 }

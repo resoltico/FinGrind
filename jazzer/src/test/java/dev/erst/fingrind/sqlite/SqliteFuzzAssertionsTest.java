@@ -245,6 +245,15 @@ class SqliteFuzzAssertionsTest {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-1",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-1",
             "actorType": "AGENT",

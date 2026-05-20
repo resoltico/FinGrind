@@ -61,6 +61,15 @@
             }
           }
         ],
+        "evidence": {
+          "sourceDocuments": [
+            {
+              "sourceDocumentId": "document-query-1",
+              "sourceDocumentType": "invoice"
+            }
+          ],
+          "approvals": []
+        },
         "provenance": {
           "actorId": "agent-query-1",
           "actorType": "AGENT",

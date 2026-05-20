@@ -22,7 +22,17 @@ final class CliHumanDisplay {
   }
 
   static String path(Path path) {
-    return CliPublicPaths.normalizedValue(Objects.requireNonNull(path, "path"));
+    Path normalizedPath = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
+    int segmentCount = normalizedPath.getNameCount();
+    if (segmentCount == 0) {
+      return normalizedPath.toString();
+    }
+    if (segmentCount == 1) {
+      return normalizedPath.getFileName().toString();
+    }
+    String tail =
+        normalizedPath.getName(segmentCount - 2) + "/" + normalizedPath.getFileName().toString();
+    return segmentCount == 2 ? tail : ".../" + tail;
   }
 
   static String path(PublicPathHint pathHint) {

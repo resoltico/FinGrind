@@ -5,18 +5,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-05-20
+
+### Added
+
+- Added a public `10/10 Accounting Foundation` ADR and refreshed the developer/core theory-holder
+  references so the repository now states the exact truth-ownership doctrine plus the hard-break
+  bounded-context order from the current bookkeeping kernel toward the broader accounting
+  foundation.
+
 ### Changed
 
+- Posting requests, committed posting facts, posting-history/report payloads, and ledger-plan
+  posting facts now carry first-class accounting evidence. Source-document references are required
+  on caller-authored postings, approvals remain first-class optional references, the canonical
+  request templates and examples include the evidence scaffold, and the protected-book schema moved
+  to format `12` with dedicated `posting_source_document` and `posting_approval` child tables.
+- `open-book` now requires explicit owner-model, reporting-obligation, and business-activity
+  doctrine instead of leaving new books semantically under-specified, and `inspect-book` plus the
+  human report headers now publish those identity facts together with one direct close-readiness
+  summary instead of waiting for `close-period` rejection to surface that doctrine.
 - The tagged container publication workflow now runs the same mounted-book and native-provenance
   verifier the Step 9 operator release protocol uses, so automated post-publish checks and manual
   public-surface verification enforce one shared container contract instead of two different
   depths.
+- `print-request-template` and `print-plan-template` now emit runnable agent-first sample
+  documents with demo evidence and provenance values instead of `replace-before-commit-*`
+  placeholders, and the quick-start/example corpus now uses that same sample-first contract.
+- `execute-plan` now returns one aggregate summary plus the optional full execution journal
+  instead of duplicating per-step digests under both `payload.summary` and `payload.journal`, and
+  command help now folds advisory notes into example guidance instead of rendering them as peer
+  grammar sections.
+- Human discovery and machine output are more sharply separated: `help` is the front-door task
+  guide, `capabilities` is the reference/machine-contract inventory, JSON responses are emitted as
+  pretty-printed documents, and long human-facing book paths are compacted so inspection and
+  report surfaces stay readable on narrower terminals.
 
 ### Fixed
 
+- Fixed the bundle and container release-smoke acceptance fixtures so their canonical sale and
+  adjustment requests now include the same mandatory evidence bundle the public posting contract,
+  shipped request template, and bundle-smoke verifier require.
 - Fixed the public container verifier's native-provenance probe so it checks published files
   through an explicit shell entrypoint inside the container rather than routing `test -s` through
   the FinGrind CLI entrypoint and reporting a false missing-file failure.
+- Fixed the source-checkout launcher verifier, checked-in examples, and replay/fuzz fixtures so
+  they now exercise the same explicit open-book identity and posting-evidence contract the public
+  CLI enforces, instead of asserting older optional-profile or placeholder-era request shapes.
+- Fixed the Step 9 public-container verifier and its regression harness so the mounted-book smoke
+  path now seeds the same explicit open-book identity doctrine and mandatory posting evidence that
+  the released CLI contract requires.
+- Fixed report and query CSV evidence serialization so nested source-document and approval JSON is
+  emitted in a deterministic field order, and refreshed the checked-in human/report example
+  fixtures to match the current expanded book-identity header contract.
 
 ## [0.42.0] - 2026-05-20
 
@@ -2108,7 +2149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.42.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.43.0...HEAD
+[0.43.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.43.0
 [0.42.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.42.0
 [0.41.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.41.0
 [0.40.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.40.0

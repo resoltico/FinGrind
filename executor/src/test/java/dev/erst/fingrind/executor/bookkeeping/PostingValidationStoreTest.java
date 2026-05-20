@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -55,6 +56,7 @@ class PostingValidationStoreTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         postingKind,
+        accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

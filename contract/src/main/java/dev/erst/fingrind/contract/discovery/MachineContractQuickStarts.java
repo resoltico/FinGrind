@@ -41,7 +41,7 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --entity-form FREELANCER --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --entity-form FREELANCER --owner-model SOLE_OWNER --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
@@ -75,9 +75,9 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE),
                         paths.requestFile())),
             WorkflowStepDescriptor.note(
-                "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in "
+                "The emitted request document is runnable as-is for the demo workflow. Replace the sample evidence and provenance values in "
                     + paths.requestFile()
-                    + " before submitting the request."),
+                    + " before using it for real-world bookkeeping."),
             WorkflowStepDescriptor.note(
                 "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
             WorkflowStepDescriptor.command(

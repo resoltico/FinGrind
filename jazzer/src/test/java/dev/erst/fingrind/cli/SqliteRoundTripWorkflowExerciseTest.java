@@ -22,6 +22,7 @@ class SqliteRoundTripWorkflowExerciseTest {
             PostingLineage.reversal(
                 new ReversalReference(new PostingId("missing-posting")),
                 new ReversalReason("Missing prior posting")),
+            baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());
 

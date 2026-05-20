@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -16,6 +18,7 @@ import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -172,6 +175,23 @@ public final class BookkeepingReadService {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
         () -> new BookkeepingReadOutcome.Reported<>(statementService.changesInEquity(query)));
+  }
+
+  /**
+   * Returns the current close-policy selection for the initialized book's closing-equity account.
+   */
+  public PeriodClosePlanner.ClosingEquitySelection closingEquitySelection(
+      BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    return new PeriodClosePlanner(policyPack.closePolicy())
+        .closingEquityAccount(bookIdentity, bookStore.allAccounts());
+  }
+
+  /** Returns the required closing-equity classification for the selected book's close policy. */
+  public FinancialPositionLineClassification requiredClosingEquityClassification(
+      BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    return policyPack.closePolicy().closingEquityLineClassification(bookIdentity);
   }
 
   private Optional<BookkeepingQueryRejection> accountRejection(Optional<AccountCode> accountCode) {

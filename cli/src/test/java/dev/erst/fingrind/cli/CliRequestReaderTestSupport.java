@@ -52,6 +52,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                   "amount": %s
                 }
               ],
+              "evidence": %s,
               "provenance": {
                 "actorId": "actor-1",
                 "actorType": "AGENT",
@@ -63,7 +64,11 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             %s
             }
             """
-        .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"), reversalBlock);
+        .formatted(
+            eurMoneyJson("1000"),
+            eurMoneyJson("1000"),
+            evidenceJson().indent(14).stripLeading(),
+            reversalBlock);
   }
 
   static String validLegacyCorrectionRequestJson() {
@@ -83,6 +88,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "amount": %s
             }
           ],
+          "evidence": %s,
           "correction": {
             "kind": "AMENDMENT",
             "priorPostingId": "posting-0"
@@ -97,7 +103,34 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           }
         }
         """
-        .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"));
+        .formatted(
+            eurMoneyJson("1000"), eurMoneyJson("1000"), evidenceJson().indent(10).stripLeading());
+  }
+
+  static String withEvidence(String json) {
+    if (json.contains("\"evidence\"")) {
+      return json;
+    }
+    String evidenceField =
+        """
+            "evidence": %s
+            """
+            .formatted(evidenceJson().indent(12).stripLeading());
+    int provenanceIndex = json.indexOf("\"provenance\"");
+    if (provenanceIndex >= 0) {
+      return json.substring(0, provenanceIndex)
+          + evidenceField
+          + ",\n"
+          + json.substring(provenanceIndex);
+    }
+    int closingBraceIndex = json.lastIndexOf('}');
+    if (closingBraceIndex < 0) {
+      throw new IllegalArgumentException("JSON fixture must end with a closing brace.");
+    }
+    String prefix = json.substring(0, closingBraceIndex).stripTrailing();
+    String suffix = json.substring(closingBraceIndex);
+    String separator = prefix.endsWith("{") ? "" : ",";
+    return prefix + separator + "\n  " + evidenceField + "\n" + suffix;
   }
 
   static LedgerAssertion assertionAt(LedgerPlan plan, int index) {

@@ -232,16 +232,6 @@ class CliFailureOutputRendererTest {
             1,
             0,
             1,
-            List.of(
-                new CliPlanJsonModels.LedgerStepDigestPayload(
-                    "step-1",
-                    LedgerJournalKind.POST_ENTRY,
-                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
-                    null,
-                    LedgerStepStatus.REJECTED,
-                    List.of("result=no"),
-                    "rejected-code",
-                    "Rejected message.")),
             "step-1",
             "rejected-code",
             "Rejected message."),

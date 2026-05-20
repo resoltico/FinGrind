@@ -188,7 +188,11 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                               database,
                               "select null as posting_id",
                               statement -> {},
-                              postingId -> List.of()));
+                              postingId ->
+                                  new SqliteStatementQueries.PostingAttachments(
+                                      List.of(),
+                                      SqlitePostingFactFixtureSupport.accountingEvidence(
+                                          "idem-1"))));
                 }));
   }
 }

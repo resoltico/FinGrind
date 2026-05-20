@@ -174,6 +174,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
+              ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
                       new dev.erst.fingrind.core.ActorId("actor-1"),
@@ -200,6 +201,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "12.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
+              ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
                       new dev.erst.fingrind.core.ActorId("actor-2"),

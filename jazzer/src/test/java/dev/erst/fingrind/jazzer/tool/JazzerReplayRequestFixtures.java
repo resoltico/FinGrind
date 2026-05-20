@@ -26,6 +26,15 @@ final class JazzerReplayRequestFixtures {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-1",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-1",
             "actorType": "AGENT",
@@ -261,6 +270,15 @@ final class JazzerReplayRequestFixtures {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-3",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "   ",
             "actorType": "AGENT",
@@ -298,6 +316,15 @@ final class JazzerReplayRequestFixtures {
           "reversal": {
             "priorPostingId": "posting-missing",
             "reason": "operator reversal"
+          },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-5",
+                "sourceDocumentType": "credit-note"
+              }
+            ],
+            "approvals": []
           },
           "provenance": {
             "actorId": "actor-5",

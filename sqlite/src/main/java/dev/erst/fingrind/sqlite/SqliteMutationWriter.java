@@ -128,6 +128,28 @@ final class SqliteMutationWriter {
               .orElse(null));
       statement.step();
     }
+    for (int index = 0; index < postingFact.evidence().sourceDocuments().size(); index++) {
+      var sourceDocument = postingFact.evidence().sourceDocuments().get(index);
+      try (SqliteNativeStatement statement =
+          activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_SOURCE_DOCUMENT)) {
+        statement.bindText(1, postingFact.postingId().value());
+        statement.bindInt(2, index);
+        statement.bindText(3, sourceDocument.sourceDocumentId().value());
+        statement.bindText(4, sourceDocument.sourceDocumentType().value());
+        statement.step();
+      }
+    }
+    for (int index = 0; index < postingFact.evidence().approvals().size(); index++) {
+      var approval = postingFact.evidence().approvals().get(index);
+      try (SqliteNativeStatement statement =
+          activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_APPROVAL)) {
+        statement.bindText(1, postingFact.postingId().value());
+        statement.bindInt(2, index);
+        statement.bindText(3, approval.approvalId().value());
+        statement.bindText(4, approval.approvalType().value());
+        statement.step();
+      }
+    }
   }
 
   static void insertJournalLines(

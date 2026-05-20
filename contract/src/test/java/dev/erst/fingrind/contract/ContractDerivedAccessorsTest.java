@@ -65,6 +65,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             PostingKind.STANDARD,
             requestJournalEntry,
             reversal,
+            ContractFixtures.accountingEvidence("idem-1"),
             requestProvenance,
             SourceChannel.CLI);
     PostingFact postingFact =
@@ -73,6 +74,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             requestJournalEntry,
             reversal,
             PostingKind.STANDARD,
+            ContractFixtures.accountingEvidence("idem-1"),
             new CommittedProvenance(
                 requestProvenance, Instant.parse("2026-04-07T10:15:30Z"), SourceChannel.CLI));
     PostingRequest postingRequest =
@@ -85,6 +87,11 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
           @Override
           public PostingLineage postingLineage() {
             return reversal;
+          }
+
+          @Override
+          public dev.erst.fingrind.core.AccountingEvidence evidence() {
+            return ContractFixtures.accountingEvidence("idem-1");
           }
 
           @Override

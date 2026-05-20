@@ -72,7 +72,7 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "Edit the emitted JSON before submission. Posting templates include effectiveDate and replace-before-commit-* provenance placeholders; declare-account templates do not."))),
+                    "The emitted JSON is a runnable sample document. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
@@ -86,6 +86,6 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s > plan.json"
                         .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "Edit plan.json and replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value before submission."))));
+                    "The emitted plan is a runnable sample workflow for a fresh book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))));
   }
 }

@@ -69,6 +69,30 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
+  void commitAndFinders_roundTripPostingWithApprovalEvidence() {
+    Path databasePath = tempDirectory.resolve("books").resolve("entity-a-approval.sqlite");
+    CommittedPosting postingFact =
+        postingFactWithEvidence(
+            "posting-approval-1",
+            "idem-approval-1",
+            Optional.empty(),
+            Optional.empty(),
+            accountingEvidenceWithApproval("idem-approval-1"));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      assertEquals(
+          new PostingCommitResult.Committed(postingFact),
+          commitPosting(postingFactStore, postingFact));
+      assertEquals(
+          Optional.of(postingFact),
+          postingFactStore.findExistingPosting(new IdempotencyKey("idem-approval-1")));
+      assertEquals(
+          Optional.of(postingFact),
+          postingFactStore.findPosting(new PostingId("posting-approval-1")));
+    }
+  }
+
+  @Test
   void commitAndFindByIdempotency_preservesReversalReference() {
     Path databasePath = tempDirectory.resolve("nested").resolve("entity-b.sqlite");
     CommittedPosting originalFact =

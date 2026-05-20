@@ -11,14 +11,18 @@ class CliHumanDisplayTest {
   @Test
   void path_and_date_labels_coverNormalizedPath_redactedHints_andOpenRangeBranches() {
     assertEquals(
-        Path.of("tmp/../fingrind/book.sqlite").toAbsolutePath().normalize().toString(),
-        CliHumanDisplay.path(Path.of("tmp/../fingrind/book.sqlite")));
+        ".../fingrind/book.sqlite", CliHumanDisplay.path(Path.of("tmp/../fingrind/book.sqlite")));
+    assertEquals("/", CliHumanDisplay.path(Path.of("/")));
+    assertEquals("book.sqlite", CliHumanDisplay.path(Path.of("/book.sqlite")));
+    assertEquals("tmp/book.sqlite", CliHumanDisplay.path(Path.of("/tmp/book.sqlite")));
     assertEquals(
         "<redacted>/book.sqlite",
         CliHumanDisplay.path(new PublicPathHint("<redacted>/book.sqlite")));
     assertEquals("book start", CliQueryOutputFormatter.lowerDateBoundaryLabel(null));
     assertEquals(
         "latest committed posting date", CliQueryOutputFormatter.upperDateBoundaryLabel(null));
+    assertEquals(
+        "tmp/book.sqlite", CliQueryOutputFormatter.absolutePath(Path.of("/tmp/book.sqlite")));
   }
 
   @Test

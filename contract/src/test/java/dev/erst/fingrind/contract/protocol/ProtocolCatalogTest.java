@@ -593,10 +593,15 @@ class ProtocolCatalogTest {
     assertEquals("netAmount", ProtocolLedgerPlanFields.Assertion.NET_AMOUNT);
     assertEquals("balanceSide", ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE);
     assertEquals(
-        List.of("postingKind", "effectiveDate", "lines", "provenance", "reversal"),
+        List.of("postingKind", "effectiveDate", "lines", "evidence", "provenance", "reversal"),
         ProtocolPostEntryFields.topLevelFields());
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
+    assertEquals(List.of("sourceDocuments", "approvals"), ProtocolPostEntryFields.evidenceFields());
+    assertEquals(
+        List.of("sourceDocumentId", "sourceDocumentType"),
+        ProtocolPostEntryFields.sourceDocumentFields());
+    assertEquals(List.of("approvalId", "approvalType"), ProtocolPostEntryFields.approvalFields());
     assertEquals(
         List.of(
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),

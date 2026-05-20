@@ -236,6 +236,38 @@ class ContractTemplatesValidationTest {
   }
 
   @Test
+  void evidenceAndApprovalTemplates_validateCanonicalShapes() {
+    ContractTemplates.ApprovalTemplateDescriptor approval =
+        new ContractTemplates.ApprovalTemplateDescriptor("approval-1", "manager-signoff");
+    ContractTemplates.AccountingEvidenceTemplateDescriptor evidence =
+        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+            java.util.List.of(
+                new ContractTemplates.SourceDocumentTemplateDescriptor(
+                    "document-idem-1", "invoice")),
+            java.util.List.of(approval));
+
+    assertEquals("approval-1", approval.approvalId());
+    assertEquals("manager-signoff", approval.approvalType());
+    assertEquals(1, evidence.sourceDocuments().size());
+    assertEquals(1, evidence.approvals().size());
+  }
+
+  @Test
+  void evidenceAndApprovalTemplates_rejectInvalidEvidencePayloads() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ContractTemplates.ApprovalTemplateDescriptor("approval 1", "manager-signoff"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ContractTemplates.ApprovalTemplateDescriptor("approval-1", "manager signoff"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+                java.util.List.of(), java.util.List.of()));
+  }
+
+  @Test
   void shapeRequirementHelpers_reportMissingRuleRegistration() {
     IllegalStateException missingStepRule =
         assertThrows(
@@ -286,6 +318,11 @@ class ContractTemplatesValidationTest {
                 "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
             new ContractTemplates.JournalLineTemplateDescriptor(
                 "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
+        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+            java.util.List.of(
+                new ContractTemplates.SourceDocumentTemplateDescriptor(
+                    "document-idem-1", "invoice")),
+            java.util.List.of()),
         new ContractTemplates.ProvenanceTemplateDescriptor(
             "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
         null);

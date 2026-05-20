@@ -2,6 +2,10 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -14,6 +18,9 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -23,16 +30,19 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   private SqliteRoundTripWorkflowCommandDerivation() {}
 
   static PostEntryCommand syntheticDirectCommand(PostEntryCommand command, String scenario) {
+    String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
         PostingKind.STANDARD,
         command.journalEntry(),
         PostingLineage.direct(),
-        derivedRequestProvenance(command.requestProvenance(), scenario),
+        derivedEvidence(command.evidence(), stableToken),
+        buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
   }
 
   static PostEntryCommand derivedExactReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
+    String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
         command.postingKind(),
         new JournalEntry(
@@ -40,12 +50,14 @@ final class SqliteRoundTripWorkflowCommandDerivation {
             exactReversalLines(command.journalEntry().lines())),
         PostingLineage.reversal(
             new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
-        derivedRequestProvenance(command.requestProvenance(), scenario),
+        derivedEvidence(command.evidence(), stableToken),
+        buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
   }
 
   static PostEntryCommand derivedNearMissReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
+    String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
         command.postingKind(),
         new JournalEntry(
@@ -53,7 +65,8 @@ final class SqliteRoundTripWorkflowCommandDerivation {
             nonNegatingReversalLines(command.journalEntry().lines())),
         PostingLineage.reversal(
             new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
-        derivedRequestProvenance(command.requestProvenance(), scenario),
+        derivedEvidence(command.evidence(), stableToken),
+        buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
   }
 
@@ -87,15 +100,22 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   }
 
   static RequestProvenance derivedRequestProvenance(RequestProvenance provenance, String scenario) {
-    String stableToken =
-        UUID.nameUUIDFromBytes(
-                (provenance.commandId().value()
-                        + "|"
-                        + provenance.idempotencyKey().value()
-                        + "|"
-                        + scenario)
-                    .getBytes(StandardCharsets.UTF_8))
-            .toString();
+    return buildDerivedRequestProvenance(provenance, derivedStableToken(provenance, scenario));
+  }
+
+  private static String derivedStableToken(RequestProvenance provenance, String scenario) {
+    return UUID.nameUUIDFromBytes(
+            (provenance.commandId().value()
+                    + "|"
+                    + provenance.idempotencyKey().value()
+                    + "|"
+                    + scenario)
+                .getBytes(StandardCharsets.UTF_8))
+        .toString();
+  }
+
+  private static RequestProvenance buildDerivedRequestProvenance(
+      RequestProvenance provenance, String stableToken) {
     return new RequestProvenance(
         provenance.actorId(),
         provenance.actorType(),
@@ -103,6 +123,26 @@ final class SqliteRoundTripWorkflowCommandDerivation {
         new IdempotencyKey(stableToken),
         new CausationId("cause-" + stableToken),
         provenance.correlationId().map(ignored -> new CorrelationId("corr-" + stableToken)));
+  }
+
+  private static AccountingEvidence derivedEvidence(
+      AccountingEvidence evidence, String stableToken) {
+    return new AccountingEvidence(
+        evidence.sourceDocuments().stream()
+            .map(
+                sourceDocument ->
+                    new SourceDocumentReference(
+                        new SourceDocumentId(
+                            sourceDocument.sourceDocumentId().value() + "-" + stableToken),
+                        new SourceDocumentType(sourceDocument.sourceDocumentType().value())))
+            .toList(),
+        evidence.approvals().stream()
+            .map(
+                approval ->
+                    new ApprovalReference(
+                        new ApprovalId(approval.approvalId().value() + "-" + stableToken),
+                        new ApprovalType(approval.approvalType().value())))
+            .toList());
   }
 
   private static JournalLine incrementLineAmount(JournalLine line) {

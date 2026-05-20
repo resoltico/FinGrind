@@ -22,6 +22,15 @@
   "reversal": {
     "priorPostingId": "posting-old"
   },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-2",
+        "sourceDocumentType": "credit-note"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "actor-2",
     "actorType": "HUMAN",

@@ -203,7 +203,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(
         List.of(new BookAccess.PassphraseSource.KeyFile(replacementBookKeyFilePath)),
         workflow.rekeyReplacementPassphraseSources());
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("\"replacementPassphraseSource\""));
+    assertTrue(output.contains("\"replacementBookKeyFile\""));
   }
 
   @Test
@@ -302,7 +304,10 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(
         List.of(new BookAccess.PassphraseSource.KeyFile(currentBookKeyFilePath)),
         workflow.restoreRekeyRollbackExpectedPassphraseSources());
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("\"backupFile\""));
+    assertTrue(output.contains("\"backupBookKeyFile\""));
+    assertTrue(output.contains("\"rollbackArtifact\""));
   }
 
   @Test

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookInspection.CloseReadiness;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ final class CliBookInspectionOutputRenderer {
                 "Book State",
                 CliTextFormat.renderKeyValueBlock(
                     List.of(
-                        List.of("Book file", CliQueryOutputFormatter.absolutePath(bookFilePath)),
+                        List.of("Book file", CliHumanDisplay.path(bookFilePath)),
                         List.of("State", displayStatus(status)),
                         List.of(
                             "Initialized",
@@ -38,6 +39,7 @@ final class CliBookInspectionOutputRenderer {
             section(
                 "Format Compatibility",
                 CliTextFormat.renderKeyValueBlock(formatRows(inspection), HUMAN_WRAP_WIDTH)),
+            closeReadinessSection(inspection),
             identitySection(inspection)));
   }
 
@@ -104,6 +106,45 @@ final class CliBookInspectionOutputRenderer {
     List<List<String>> rows =
         new ArrayList<>(CliBookIdentityDisplay.rows(initialized.bookIdentity()));
     rows.add(List.of("Initialized at", CliHumanDisplay.instant(initialized.initializedAt())));
+    return List.copyOf(rows);
+  }
+
+  private static String closeReadinessSection(BookInspection inspection) {
+    if (!(inspection instanceof BookInspection.Initialized initialized)) {
+      return "";
+    }
+    return section(
+        "Close Readiness",
+        CliTextFormat.renderKeyValueBlock(
+            closeReadinessRows(initialized.closeReadiness()), HUMAN_WRAP_WIDTH));
+  }
+
+  private static List<List<String>> closeReadinessRows(CloseReadiness closeReadiness) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(List.of("Ready", CliQueryOutputFormatter.displayBooleanLabel(closeReadiness.ready())));
+    rows.add(
+        List.of(
+            "Required closing-equity classification",
+            CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+                closeReadiness.requiredFinancialPositionLineClassification())));
+    rows.add(
+        List.of(
+            "Closing equity account",
+            closeReadiness.closingEquityAccountCode() == null
+                ? "(none)"
+                : closeReadiness.closingEquityAccountCode().value()));
+    if (!closeReadiness.ready()) {
+      rows.add(List.of("Blocking code", closeReadiness.blockingCode()));
+      rows.add(List.of("Blocking reason", closeReadiness.blockingMessage()));
+      rows.add(
+          List.of(
+              "Candidate accounts",
+              closeReadiness.candidateAccountCodes().isEmpty()
+                  ? "(none)"
+                  : closeReadiness.candidateAccountCodes().stream()
+                      .map(dev.erst.fingrind.core.AccountCode::value)
+                      .collect(java.util.stream.Collectors.joining(", "))));
+    }
     return List.copyOf(rows);
   }
 

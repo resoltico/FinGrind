@@ -70,6 +70,7 @@ final class SqliteRoundTripWorkflowTestSupport {
         command.journalEntry(),
         command.postingLineage(),
         PostingKind.STANDARD,
+        command.evidence(),
         new CommittedProvenance(
             command.requestProvenance(),
             CliFuzzFixtures.fixedClock().instant(),
@@ -108,6 +109,15 @@ final class SqliteRoundTripWorkflowTestSupport {
               }
             }
           ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-idem-1",
+                "sourceDocumentType": "invoice"
+              }
+            ],
+            "approvals": []
+          },
           "provenance": {
             "actorId": "actor-1",
             "actorType": "AGENT",

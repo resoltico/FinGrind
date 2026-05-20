@@ -68,6 +68,7 @@ class ContractTestSupport {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

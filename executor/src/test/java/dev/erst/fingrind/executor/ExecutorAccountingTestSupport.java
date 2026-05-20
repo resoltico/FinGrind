@@ -16,8 +16,10 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityForm;
@@ -29,6 +31,9 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -178,7 +183,7 @@ public final class ExecutorAccountingTestSupport {
             entityForm,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            List.of()),
+            List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingBasis.ACCRUAL);
@@ -216,7 +221,19 @@ public final class ExecutorAccountingTestSupport {
         detectedBookFormatVersion,
         supportedBookFormatVersion,
         initializedAt,
-        bookIdentity());
+        bookIdentity(),
+        closeReadyInspection());
+  }
+
+  /** Returns one canonical close-readiness fixture for initialized inspection snapshots. */
+  public static BookInspection.CloseReadiness closeReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        true,
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new AccountCode("3200"),
+        null,
+        null,
+        List.of());
   }
 
   /** Returns one canonical book-opened outcome fixture. */
@@ -232,6 +249,28 @@ public final class ExecutorAccountingTestSupport {
   /** Returns the report coverage used by fixtures that intentionally exclude closing postings. */
   public static PostingCoverage standardOnly() {
     return PostingCoverage.NON_CLOSING_POSTINGS;
+  }
+
+  /** Returns one canonical evidence bundle for tests that create accepted accounting facts. */
+  public static AccountingEvidence accountingEvidence(String token) {
+    Objects.requireNonNull(token, "token");
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
+  }
+
+  /** Returns one canonical internal evidence bundle for system-generated accounting facts. */
+  public static AccountingEvidence generatedEvidence(String token, String sourceDocumentType) {
+    Objects.requireNonNull(token, "token");
+    Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("generated-" + token),
+                new SourceDocumentType(sourceDocumentType))),
+        List.of());
   }
 
   /** Builds one published account page rooted in the canonical test book identity. */

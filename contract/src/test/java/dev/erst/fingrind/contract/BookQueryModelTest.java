@@ -37,6 +37,7 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -399,8 +400,20 @@ class BookQueryModelTest {
         () -> new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 0, -1, 1));
     assertThrows(
         NullPointerException.class,
-        () -> new BookInspection.Initialized(1, 1, 1, nullOf(), ContractFixtures.bookIdentity()));
+        () ->
+            new BookInspection.Initialized(
+                1, 1, 1, nullOf(), ContractFixtures.bookIdentity(), closeReadyInspection()));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
+  }
+
+  private static BookInspection.CloseReadiness closeReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        true,
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new AccountCode("3200"),
+        null,
+        null,
+        List.of());
   }
 
   @Test
@@ -453,6 +466,7 @@ class BookQueryModelTest {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        ContractFixtures.accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }
 

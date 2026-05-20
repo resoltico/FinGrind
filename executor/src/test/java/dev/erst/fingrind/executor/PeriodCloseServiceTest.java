@@ -3,8 +3,10 @@ package dev.erst.fingrind.executor;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.FIXED_INSTANT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.line;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -378,6 +380,7 @@ class PeriodCloseServiceTest {
                             moneyLine("3200", JournalLine.EntrySide.DEBIT, "BHD", "7.000"))),
                     PostingLineageModel.direct(),
                     PostingKind.PERIOD_CLOSE,
+                    generatedPeriodCloseEvidence("BHD"),
                     periodCloseProvenance("BHD")),
                 new PostingDraft(
                     new JournalEntry(
@@ -387,6 +390,7 @@ class PeriodCloseServiceTest {
                             moneyLine("3200", JournalLine.EntrySide.CREDIT, "USD", "30.00"))),
                     PostingLineageModel.direct(),
                     PostingKind.PERIOD_CLOSE,
+                    generatedPeriodCloseEvidence("USD"),
                     periodCloseProvenance("USD")))),
         book.recordedDraft);
   }
@@ -653,6 +657,7 @@ class PeriodCloseServiceTest {
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
+        postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-" + postingId),
@@ -690,6 +695,7 @@ class PeriodCloseServiceTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
+            accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
                     new dev.erst.fingrind.core.ActorId("actor-" + postingId),
@@ -701,6 +707,30 @@ class PeriodCloseServiceTest {
                 FIXED_INSTANT,
                 SourceChannel.CLI));
     assertInstanceOf(PostingCommitResult.Committed.class, bookSession.commit(posting));
+  }
+
+  private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
+      String token, PostingKind postingKind) {
+    if (postingKind == PostingKind.PERIOD_CLOSE) {
+      return generatedEvidence(token, "period-close-plan");
+    }
+    return accountingEvidence("idem-" + token);
+  }
+
+  private static dev.erst.fingrind.core.AccountingEvidence generatedPeriodCloseEvidence(
+      String currencyCode) {
+    return new dev.erst.fingrind.core.AccountingEvidence(
+        List.of(
+            new dev.erst.fingrind.core.SourceDocumentReference(
+                new dev.erst.fingrind.core.SourceDocumentId(
+                    "periodClose:%s:%s:%s:%d"
+                        .formatted(
+                            PERIOD.effectiveDateFrom(),
+                            PERIOD.effectiveDateTo(),
+                            currencyCode,
+                            FIXED_INSTANT.toEpochMilli())),
+                new dev.erst.fingrind.core.SourceDocumentType("period-close-plan"))),
+        List.of());
   }
 
   /** Deterministic posting id generator for generated close postings. */

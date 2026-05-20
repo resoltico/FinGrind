@@ -33,7 +33,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.REQUEST_FILE,
                             ProtocolOptions.RESULT_DETAIL)),
                 ProtocolExampleStep.note(
-                    "Replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value in plan.json before execution."))),
+                    "plan.json is runnable as emitted for a fresh demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PREFLIGHT_ENTRY,
             OperationCategory.WRITE,
@@ -61,7 +61,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission."))),
+                    "request.json is runnable as emitted for a demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.POST_ENTRY,
             OperationCategory.WRITE,
@@ -89,6 +89,6 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission."))));
+                    "request.json is runnable as emitted for a demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))));
   }
 }

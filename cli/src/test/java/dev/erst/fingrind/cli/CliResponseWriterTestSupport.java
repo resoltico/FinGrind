@@ -51,6 +51,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -72,6 +73,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
         PostingKind.STANDARD,
+        CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -80,6 +82,32 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 java.util.Optional.of(new CorrelationId("corr-1"))),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            SourceChannel.CLI));
+  }
+
+  static PostingFact postingFactWithApproval() {
+    return new PostingFact(
+        new PostingId("posting-1"),
+        new JournalEntry(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"), JournalLine.EntrySide.DEBIT, money("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
+        PostingLineage.reversal(
+            new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
+        PostingKind.STANDARD,
+        CliFixtureSupport.accountingEvidenceWithApproval("idem-1"),
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-1"),
+                ActorType.AGENT,
+                new CommandId("command-1"),
+                new IdempotencyKey("idem-1"),
+                new CausationId("cause-1"),
+                Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
   }

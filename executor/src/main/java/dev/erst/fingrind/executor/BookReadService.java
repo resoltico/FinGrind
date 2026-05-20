@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
@@ -17,6 +18,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookInspection;
@@ -26,10 +28,12 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import java.util.List;
 import java.util.Objects;
 
 /** Application service that owns every read-only book workflow behind one unified seam. */
@@ -44,8 +48,18 @@ public final class BookReadService {
 
   /** Inspects the selected book file without mutating it. */
   public BookInspection inspectBook() {
-    return BookInspectionPublishedLanguageTranslator.toPublished(
-        bookkeepingReadService.inspectBook());
+    var inspection = bookkeepingReadService.inspectBook();
+    if (inspection
+        instanceof dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized) {
+      return new BookInspection.Initialized(
+          initialized.applicationId(),
+          initialized.detectedBookFormatVersion(),
+          initialized.supportedBookFormatVersion(),
+          initialized.initializedAt(),
+          initialized.bookIdentity(),
+          closeReadiness(initialized.bookIdentity()));
+    }
+    return BookInspectionPublishedLanguageTranslator.toPublished(inspection);
   }
 
   /** Lists one paginated slice of the current account registry for the selected book. */
@@ -208,6 +222,34 @@ public final class BookReadService {
 
   private BookIdentity currentBookIdentity() {
     return requireInitializedBookIdentity(bookkeepingReadService.inspectBook());
+  }
+
+  private BookInspection.CloseReadiness closeReadiness(BookIdentity bookIdentity) {
+    var requiredClassification =
+        bookkeepingReadService.requiredClosingEquityClassification(bookIdentity);
+    PeriodClosePlanner.ClosingEquitySelection selection =
+        bookkeepingReadService.closingEquitySelection(bookIdentity);
+    return switch (selection) {
+      case PeriodClosePlanner.AcceptedClosingEquitySelection accepted ->
+          new BookInspection.CloseReadiness(
+              true,
+              requiredClassification,
+              accepted.account().accountCode(),
+              null,
+              null,
+              List.of());
+      case PeriodClosePlanner.RejectedClosingEquitySelection rejected -> {
+        BookAdministrationRejection published =
+            BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection());
+        yield new BookInspection.CloseReadiness(
+            false,
+            requiredClassification,
+            null,
+            BookAdministrationRejection.wireCode(published),
+            RejectionNarrative.message(published),
+            rejected.candidateAccountCodes());
+      }
+    };
   }
 
   static BookIdentity requireInitializedBookIdentity(

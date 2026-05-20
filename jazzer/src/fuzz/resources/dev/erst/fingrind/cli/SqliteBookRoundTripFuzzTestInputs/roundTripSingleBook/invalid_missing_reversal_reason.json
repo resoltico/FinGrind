@@ -22,6 +22,15 @@
   "reversal": {
     "priorPostingId": "posting-missing"
   },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-6",
+        "sourceDocumentType": "credit-note"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "actor-6",
     "actorType": "SYSTEM",

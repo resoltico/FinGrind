@@ -30,6 +30,7 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -62,6 +63,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.io.IOException;
 import java.time.Clock;
@@ -83,7 +87,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.42.0", CLOCK);
+      new PdfReportService("FinGrind", "0.43.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(
@@ -218,6 +222,7 @@ class PdfReportServiceTest {
                 new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000000")),
                 new ReversalReason("duplicate-charge")),
             PostingKind.STANDARD,
+            evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("office-worker"),
@@ -353,6 +358,7 @@ class PdfReportServiceTest {
                         CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "10.00")))),
             PostingLineage.direct(),
             PostingKind.STANDARD,
+            evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("office-worker"),
@@ -703,10 +709,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.42.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.43.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.42.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.43.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -723,7 +729,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.42.0", information.getCreator());
+      assertEquals("FinGrind 0.43.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -796,6 +802,7 @@ class PdfReportServiceTest {
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
         PostingKind.STANDARD,
+        evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("office-worker"),
@@ -806,6 +813,14 @@ class PdfReportServiceTest {
                 Optional.of(new CorrelationId("corr-%03d".formatted(index)))),
             Instant.parse("2026-04-19T10:15:30Z").plusSeconds(index),
             SourceChannel.CLI));
+  }
+
+  private static AccountingEvidence evidence(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
   }
 
   private static DeclaredAccount declaredAccount(

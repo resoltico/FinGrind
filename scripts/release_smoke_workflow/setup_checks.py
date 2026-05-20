@@ -104,6 +104,20 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected entity form",
     )
     require(
+        payload_field(open_payload, "payload", "bookIdentity", "ownerModel") == config.owner_model,
+        f"{config.label} open-book did not echo the expected owner model",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "reportingObligationStatus")
+        == config.reporting_obligation_status,
+        f"{config.label} open-book did not echo the expected reporting obligation status",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "businessActivityTags")
+        == config.business_activity_tags,
+        f"{config.label} open-book did not echo the expected business activity tags",
+    )
+    require(
         payload_field(open_payload, "payload", "bookIdentity", "functionalCurrency")
         == config.functional_currency,
         f"{config.label} open-book did not echo the expected functional currency",
@@ -188,6 +202,12 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.entity_name,
             "--entity-form",
             config.entity_form,
+            "--owner-model",
+            config.owner_model,
+            "--reporting-obligation-status",
+            config.reporting_obligation_status,
+            "--business-activity-tag",
+            *config.business_activity_tags,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",
@@ -207,6 +227,12 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.entity_name,
             "--entity-form",
             config.entity_form,
+            "--owner-model",
+            config.owner_model,
+            "--reporting-obligation-status",
+            config.reporting_obligation_status,
+            "--business-activity-tag",
+            *config.business_activity_tags,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",

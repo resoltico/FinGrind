@@ -25,6 +25,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityForm;
@@ -62,10 +63,12 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Shared CLI fixture helpers and sample payloads for split command tests. */
 class CliIoFixtureSupport {
   protected static final String TEST_BOOK_KEY = "cli-test-book-key";
+  private static final ObjectMapper TEST_JSON_MAPPER = new ObjectMapper();
   @TempDir protected Path tempDirectory;
 
   protected static PublicPathHint hint(Path path) {
@@ -164,7 +167,7 @@ class CliIoFixtureSupport {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            List.of()),
+            List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingBasis.ACCRUAL);
@@ -189,6 +192,8 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
+      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -212,6 +217,8 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
+      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -235,6 +242,8 @@ class CliIoFixtureSupport {
       bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.REPORTING_OBLIGATION_STATUS,
       bookIdentity().entityProfile().reportingObligationStatus().wireValue(),
+      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
+      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -242,6 +251,23 @@ class CliIoFixtureSupport {
       ProtocolOptions.ACCOUNTING_BASIS,
       bookIdentity().accountingBasis().wireValue()
     };
+  }
+
+  protected static String canonicalJsonText(ByteArrayOutputStream outputStream) {
+    return canonicalJsonText(outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  protected static String canonicalJsonText(String document) {
+    return TEST_JSON_MAPPER.writeValueAsString(TEST_JSON_MAPPER.readTree(document));
+  }
+
+  protected static void assertJsonContains(ByteArrayOutputStream outputStream, String fragment) {
+    assertJsonContains(outputStream.toString(StandardCharsets.UTF_8), fragment);
+  }
+
+  protected static void assertJsonContains(String document, String fragment) {
+    String canonical = canonicalJsonText(document);
+    assertTrue(canonical.contains(fragment), canonical);
   }
 
   protected static OpenBookResult.Opened openedBookResult(Instant initializedAt) {
@@ -258,7 +284,18 @@ class CliIoFixtureSupport {
         detectedBookFormatVersion,
         supportedBookFormatVersion,
         initializedAt,
-        bookIdentity());
+        bookIdentity(),
+        closeReadyInspection());
+  }
+
+  protected static BookInspection.CloseReadiness closeReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        true,
+        FinancialPositionLineClassification.OWNER_CAPITAL,
+        new AccountCode("3200"),
+        null,
+        null,
+        List.of());
   }
 
   protected static PostingCoverage allPostingKinds() {
@@ -323,6 +360,7 @@ class CliIoFixtureSupport {
                   }
                 }
               ],
+              "evidence": %s,
               "provenance": {
                 "actorId": "actor-1",
                 "actorType": "AGENT",
@@ -331,7 +369,22 @@ class CliIoFixtureSupport {
                 "causationId": "cause-1"
               }
             }
-            """;
+            """
+        .formatted(evidenceJson().indent(14).stripLeading());
+  }
+
+  protected static String evidenceJson() {
+    return """
+        {
+          "sourceDocuments": [
+            {
+              "sourceDocumentId": "document-1",
+              "sourceDocumentType": "invoice"
+            }
+          ],
+          "approvals": []
+        }
+        """;
   }
 
   protected static String validPlanJson() {

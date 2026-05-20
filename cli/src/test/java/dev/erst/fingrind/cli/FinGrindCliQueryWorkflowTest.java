@@ -146,7 +146,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                   "--account-code",
                   "1000"
                 }));
-    assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"1000\""));
+    assertJsonContains(balanceOutput, "\"accountCode\":\"1000\"");
     assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balances\""));
   }
 }

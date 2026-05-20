@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -31,6 +32,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -221,6 +225,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
+                evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
                         new ActorId("actor-1"),
@@ -245,6 +250,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
+                evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
                         new ActorId("actor-1"),
@@ -378,6 +384,7 @@ class PdfValueFormatterTest {
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("undo test posting")),
             PostingKind.STANDARD,
+            evidence("idem-1"),
             direct.provenance());
 
     assertEquals("(not a reversal)", PdfValueFormatter.reversalTarget(direct));
@@ -391,6 +398,7 @@ class PdfValueFormatterTest {
         journalEntry(),
         postingLineage,
         PostingKind.STANDARD,
+        evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -401,6 +409,14 @@ class PdfValueFormatterTest {
                 Optional.empty()),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
+  }
+
+  private static AccountingEvidence evidence(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
   }
 
   private static JournalEntry journalEntry() {
