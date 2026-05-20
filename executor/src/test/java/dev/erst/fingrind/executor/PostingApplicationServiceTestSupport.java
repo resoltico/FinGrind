@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -113,6 +114,7 @@ final class PostingApplicationServiceTestSupport {
         PostingKind.STANDARD,
         journalEntry,
         postingLineage(reversalReference, reason),
+        accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
   }
@@ -127,6 +129,7 @@ final class PostingApplicationServiceTestSupport {
         journalEntry(),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }
 

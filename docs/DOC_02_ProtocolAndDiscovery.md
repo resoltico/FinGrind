@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-05-20"
 route:
@@ -434,15 +434,15 @@ public final class MachineContract
   `./bin/fingrind` or `.\bin\fingrind.ps1`; request-file commands additionally inline the
   canonical request template, accepted field tables, and enum vocabularies so a caller can form a
   valid payload from the CLI alone
-- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
-  documents with explicit replace-before-submit placeholders for `effectiveDate` and provenance,
-  while the CLI raw-template commands now route both help snippets and `print-request-template`
-  / `print-plan-template` through the same canonical serializer so checked-in template fixtures
-  remain byte-identical to live command output without publishing stale commit-ready dates
+- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic runnable sample
+  documents with demo evidence and provenance values, while the CLI raw-template commands now
+  route both help snippets and `print-request-template` / `print-plan-template` through the same
+  canonical serializer so checked-in template fixtures remain byte-identical to live command
+  output without drifting into stale placeholder doctrine
 
 ## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 
-These public contract owners keep scaffold-placeholder and help-workflow guidance typed.
+These public contract owners keep scaffold-reservation and help-workflow guidance typed.
 
 ```java
 public final class ScaffoldPlaceholders
@@ -452,8 +452,9 @@ public enum WorkflowStepKind
 public sealed interface WorkflowStepDescriptor
 ```
 
-- `ScaffoldPlaceholders`: owns the canonical `replace-before-commit-*` sentinel values shared by
-  template publication, parser rejection, docs, and tests
+- `ScaffoldPlaceholders`: owns the canonical reserved sentinel vocabulary that the CLI request
+  validators reject when callers try to smuggle internal scaffolding tokens into committed
+  bookkeeping payloads
 - `WorkflowSurface`: publishes the stable machine-readable quick-start surface keys such as the
   self-contained POSIX-shell and Windows-PowerShell bundle flows
 - `WorkflowDescriptor`: groups one platform-specific quick-start sequence under its published
@@ -586,7 +587,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 10`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 12`
 
 ## `ProtectedBookFormatContract`
 

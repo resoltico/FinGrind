@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceMath;
@@ -22,6 +23,9 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
@@ -243,7 +247,26 @@ public final class PeriodClosePlanner {
         new JournalEntry(reportingPeriod.effectiveDateTo(), lines),
         PostingLineageModel.direct(),
         PostingKind.PERIOD_CLOSE,
+        periodCloseEvidence(reportingPeriod, currencyUnit, closedAt),
         new CommittedProvenance(requestProvenance, closedAt, PERIOD_CLOSE_SOURCE_CHANNEL));
+  }
+
+  private static AccountingEvidence periodCloseEvidence(
+      ReportingPeriod reportingPeriod, CurrencyUnit currencyUnit, Instant closedAt) {
+    String closeToken =
+        reportingPeriod.effectiveDateFrom()
+            + ":"
+            + reportingPeriod.effectiveDateTo()
+            + ":"
+            + currencyUnit.code()
+            + ":"
+            + closedAt.toEpochMilli();
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken),
+                new SourceDocumentType("period-close-plan"))),
+        List.of());
   }
 
   /** One complete close plan containing durable drafts and their published close totals. */
@@ -279,15 +302,30 @@ public final class PeriodClosePlanner {
   /** Deterministic close rejection caused by missing or ambiguous closing-equity candidates. */
   public static final class RejectedClosingEquitySelection implements ClosingEquitySelection {
     private final BookkeepingAdministrationRejection rejection;
+    private final List<AccountCode> candidateAccountCodes;
 
-    /** Creates one rejected selection carrying the deterministic close refusal. */
-    public RejectedClosingEquitySelection(BookkeepingAdministrationRejection rejection) {
+    /** Creates one rejected selection for missing active closing-equity candidates. */
+    public RejectedClosingEquitySelection(
+        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing rejection) {
       this.rejection = Objects.requireNonNull(rejection, "rejection");
+      this.candidateAccountCodes = rejection.inactiveCandidateAccountCodes();
+    }
+
+    /** Creates one rejected selection for ambiguous active closing-equity candidates. */
+    public RejectedClosingEquitySelection(
+        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous rejection) {
+      this.rejection = Objects.requireNonNull(rejection, "rejection");
+      this.candidateAccountCodes = rejection.candidateAccountCodes();
     }
 
     /** Returns the deterministic refusal that prevented close-account selection. */
     public BookkeepingAdministrationRejection rejection() {
       return rejection;
+    }
+
+    /** Returns the relevant account candidates named by the deterministic refusal. */
+    public List<AccountCode> candidateAccountCodes() {
+      return candidateAccountCodes;
     }
   }
 

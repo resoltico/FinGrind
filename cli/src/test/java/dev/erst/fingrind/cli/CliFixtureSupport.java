@@ -33,8 +33,12 @@ import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -56,6 +60,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -99,6 +106,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
         PostingKind.STANDARD,
+        accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -123,6 +131,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     new AccountCode("1000"), JournalLine.EntrySide.CREDIT, money("EUR", "5.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-2"),
@@ -133,6 +142,24 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 Optional.empty()),
             Instant.parse("2026-04-07T10:20:30Z"),
             SourceChannel.CLI));
+  }
+
+  protected static AccountingEvidence accountingEvidence(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
+  }
+
+  protected static AccountingEvidence accountingEvidenceWithApproval(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of(
+            new ApprovalReference(
+                new ApprovalId("approval-" + token), new ApprovalType("manager-signoff"))));
   }
 
   protected static CurrencyBalance eurDebitBalance() {

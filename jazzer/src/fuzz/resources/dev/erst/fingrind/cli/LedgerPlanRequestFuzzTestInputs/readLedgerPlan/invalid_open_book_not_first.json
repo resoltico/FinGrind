@@ -11,6 +11,9 @@
       "openBook": {
         "entityName": "Late Open Seed",
         "entityForm": "COMPANY",
+        "ownerModel": "MULTI_OWNER",
+        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01",
         "accountingBasis": "ACCRUAL"

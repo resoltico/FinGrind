@@ -5,8 +5,12 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -22,6 +26,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
@@ -57,7 +64,7 @@ final class SqlitePostingMapper {
   }
 
   static CommittedPosting committedPosting(
-      SqliteNativeStatement postingRow, List<JournalLine> lines) {
+      SqliteNativeStatement postingRow, List<JournalLine> lines, AccountingEvidence evidence) {
     PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));
     JournalEntry journalEntry =
         new JournalEntry(
@@ -81,6 +88,7 @@ final class SqlitePostingMapper {
         journalEntry,
         readPostingLineageModel(postingRow),
         PostingKind.fromWireValue(requiredText(postingRow, SqlitePostingSql.COL_POSTING_KIND)),
+        evidence,
         provenance);
   }
 
@@ -123,6 +131,37 @@ final class SqlitePostingMapper {
 
   static Optional<ReversalReference> readReversalReference(SqliteNativeStatement postingRow) {
     return readPostingLineageModel(postingRow).reversalReference();
+  }
+
+  static AccountingEvidence accountingEvidence(
+      SqliteNativeStatement sourceDocumentRows, SqliteNativeStatement approvalRows) {
+    return new AccountingEvidence(
+        sourceDocumentReferences(sourceDocumentRows), approvalReferences(approvalRows));
+  }
+
+  static List<SourceDocumentReference> sourceDocumentReferences(
+      SqliteNativeStatement sourceDocumentRows) {
+    List<SourceDocumentReference> sourceDocuments = new ArrayList<>();
+    while (sourceDocumentRows.step() == SqliteNativeResultCodes.ROW) {
+      sourceDocuments.add(
+          new SourceDocumentReference(
+              new SourceDocumentId(
+                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_ID)),
+              new SourceDocumentType(
+                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_TYPE))));
+    }
+    return List.copyOf(sourceDocuments);
+  }
+
+  static List<ApprovalReference> approvalReferences(SqliteNativeStatement approvalRows) {
+    List<ApprovalReference> approvals = new ArrayList<>();
+    while (approvalRows.step() == SqliteNativeResultCodes.ROW) {
+      approvals.add(
+          new ApprovalReference(
+              new ApprovalId(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_ID)),
+              new ApprovalType(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_TYPE))));
+    }
+    return List.copyOf(approvals);
   }
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {

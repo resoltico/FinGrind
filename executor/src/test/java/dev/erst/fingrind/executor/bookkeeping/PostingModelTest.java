@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,6 +51,7 @@ class PostingModelTest {
             PostingKind.STANDARD,
             testJournalEntry(),
             PostingLineageModel.reversal(reversalReference, reversalReason),
+            accountingEvidence("idem-1"),
             requestProvenance,
             dev.erst.fingrind.core.SourceChannel.CLI);
 

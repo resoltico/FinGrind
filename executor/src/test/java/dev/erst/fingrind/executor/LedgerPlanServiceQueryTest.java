@@ -106,6 +106,30 @@ class LedgerPlanServiceQueryTest {
           getPostingFacts.stream()
               .anyMatch(
                   fact ->
+                      fact instanceof LedgerFact.Group group
+                          && "evidence".equals(group.name())
+                          && group.facts().stream()
+                              .anyMatch(
+                                  child ->
+                                      child instanceof LedgerFact.Count count
+                                          && "sourceDocumentCount".equals(count.name())
+                                          && count.value() == 1)
+                          && group.facts().stream()
+                              .anyMatch(
+                                  child ->
+                                      child instanceof LedgerFact.Group sourceDocument
+                                          && "sourceDocument".equals(sourceDocument.name())
+                                          && groupFact(
+                                              child,
+                                              "sourceDocument",
+                                              "sourceDocumentId",
+                                              "document-idem-setup",
+                                              "sourceDocumentType",
+                                              "invoice"))));
+      assertTrue(
+          getPostingFacts.stream()
+              .anyMatch(
+                  fact ->
                       groupFact(
                           fact,
                           "line",
@@ -138,7 +162,27 @@ class LedgerPlanServiceQueryTest {
                                                                   new PostingId("posting-1"))
                                                               .orElseThrow()))
                                               .postingId()
-                                              .value()))));
+                                              .value()))
+                          && group.facts().stream()
+                              .anyMatch(
+                                  child ->
+                                      child instanceof LedgerFact.Group evidence
+                                          && "evidence".equals(evidence.name())
+                                          && evidence.facts().stream()
+                                              .anyMatch(
+                                                  nested ->
+                                                      nested
+                                                              instanceof
+                                                              LedgerFact.Group sourceDocument
+                                                          && "sourceDocument"
+                                                              .equals(sourceDocument.name())
+                                                          && groupFact(
+                                                              nested,
+                                                              "sourceDocument",
+                                                              "sourceDocumentId",
+                                                              "document-idem-setup",
+                                                              "sourceDocumentType",
+                                                              "invoice")))));
 
       List<LedgerFact> balanceFacts = result.journal().steps().get(3).facts();
       assertTrue(

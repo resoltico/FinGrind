@@ -7,6 +7,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -16,6 +18,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -53,7 +56,9 @@ final class CliQueryOutputFormatter {
         postingDebitTotal(postingFact),
         postingCreditTotal(postingFact),
         postingAccounts(postingFact),
-        reversalTargetCsv(postingFact));
+        reversalTargetCsv(postingFact),
+        postingSourceDocumentsCsv(postingFact),
+        postingApprovalsCsv(postingFact));
   }
 
   static List<String> balanceHumanRow(CurrencyBalance balance) {
@@ -175,6 +180,35 @@ final class CliQueryOutputFormatter {
     return counterparts.isEmpty() ? "(self)" : CliTextFormat.joined(counterparts);
   }
 
+  static String postingSourceDocumentsHuman(PostingFact postingFact) {
+    return sourceDocumentLabels(postingFact.evidence());
+  }
+
+  static String postingApprovalsHuman(PostingFact postingFact) {
+    return approvalLabels(postingFact.evidence());
+  }
+
+  static String postingSourceDocumentsCsv(PostingFact postingFact) {
+    return evidenceJson(
+        postingFact.evidence().sourceDocuments().stream()
+            .map(
+                sourceDocument ->
+                    new SourceDocumentCsvValue(
+                        sourceDocument.sourceDocumentId().value(),
+                        sourceDocument.sourceDocumentType().value()))
+            .toList());
+  }
+
+  static String postingApprovalsCsv(PostingFact postingFact) {
+    return evidenceJson(
+        postingFact.evidence().approvals().stream()
+            .map(
+                approval ->
+                    new ApprovalCsvValue(
+                        approval.approvalId().value(), approval.approvalType().value()))
+            .toList());
+  }
+
   static String joinedBalances(List<CurrencyBalance> balances) {
     if (balances.isEmpty()) {
       return "(none)";
@@ -183,6 +217,39 @@ final class CliQueryOutputFormatter {
         .map(CliQueryOutputFormatter::displayBalanceHuman)
         .collect(Collectors.joining(", "));
   }
+
+  private static String sourceDocumentLabels(AccountingEvidence evidence) {
+    return CliTextFormat.joined(
+        evidence.sourceDocuments().stream()
+            .map(CliQueryOutputFormatter::sourceDocumentLabel)
+            .toList());
+  }
+
+  private static String approvalLabels(AccountingEvidence evidence) {
+    if (evidence.approvals().isEmpty()) {
+      return "(none)";
+    }
+    return CliTextFormat.joined(
+        evidence.approvals().stream().map(CliQueryOutputFormatter::approvalLabel).toList());
+  }
+
+  private static String sourceDocumentLabel(SourceDocumentReference sourceDocument) {
+    return sourceDocument.sourceDocumentType().value()
+        + " "
+        + sourceDocument.sourceDocumentId().value();
+  }
+
+  private static String approvalLabel(ApprovalReference approval) {
+    return approval.approvalType().value() + " " + approval.approvalId().value();
+  }
+
+  private static String evidenceJson(List<?> values) {
+    return CliWireJson.jsonText(values);
+  }
+
+  private record SourceDocumentCsvValue(String sourceDocumentId, String sourceDocumentType) {}
+
+  private record ApprovalCsvValue(String approvalId, String approvalType) {}
 
   static String displayBalance(CurrencyBalance balance) {
     return balance.netAmount().currencyUnit().code()

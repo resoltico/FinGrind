@@ -22,7 +22,17 @@ final class CliHumanDisplay {
   }
 
   static String path(Path path) {
-    return CliPublicPaths.normalizedValue(Objects.requireNonNull(path, "path"));
+    Path normalizedPath = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
+    int segmentCount = normalizedPath.getNameCount();
+    if (segmentCount == 0) {
+      return humanPathText(normalizedPath);
+    }
+    if (segmentCount == 1) {
+      return normalizedPath.getFileName().toString();
+    }
+    String tail =
+        normalizedPath.getName(segmentCount - 2) + "/" + normalizedPath.getFileName().toString();
+    return segmentCount == 2 ? tail : ".../" + tail;
   }
 
   static String path(PublicPathHint pathHint) {
@@ -47,5 +57,9 @@ final class CliHumanDisplay {
     return Arrays.stream(wireValue.split("_+"))
         .map(token -> token.substring(0, 1) + token.substring(1).toLowerCase(java.util.Locale.ROOT))
         .collect(java.util.stream.Collectors.joining(" "));
+  }
+
+  private static String humanPathText(Path path) {
+    return path.toString().replace('\\', '/');
   }
 }

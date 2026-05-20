@@ -22,8 +22,12 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -38,9 +42,13 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -73,15 +81,28 @@ final class CliPostingRequestParser {
                 ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
                 ScaffoldPlaceholders.EFFECTIVE_DATE,
                 null));
+    PostingKind postingKind =
+        parseWireValue(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
+            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+            PostingKind.wireValues(),
+            PostingKind::fromWireValue);
     List<JournalLine> lines =
         readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES));
     PostingLineage reversal =
         readReversal(nullableField(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL));
+    JournalEntry journalEntry = new JournalEntry(effectiveDate, lines);
     String actorId =
         requiredRealProvenanceText(
             provenanceNode,
             ProtocolPostEntryFields.Provenance.ACTOR_ID,
             ScaffoldPlaceholders.ACTOR_ID);
+    ActorType actorType =
+        parseWireValue(
+            requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_TYPE),
+            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
+            ActorType.wireValues(),
+            ActorType::fromWireValue);
     String commandId =
         requiredRealProvenanceText(
             provenanceNode,
@@ -97,27 +118,25 @@ final class CliPostingRequestParser {
             provenanceNode,
             ProtocolPostEntryFields.Provenance.CAUSATION_ID,
             ScaffoldPlaceholders.CAUSATION_ID);
-    return new PostEntryCommand(
-        parseWireValue(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
-            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
-            PostingKind.wireValues(),
-            PostingKind::fromWireValue),
-        new JournalEntry(effectiveDate, lines),
-        reversal,
+    Optional<CorrelationId> correlationId =
+        optionalText(provenanceNode, ProtocolPostEntryFields.Provenance.CORRELATION_ID)
+            .map(CorrelationId::new);
+    ObjectNode evidenceNode = requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.EVIDENCE);
+    rejectUnexpectedFields(
+        evidenceNode,
+        ProtocolPostEntryFields.TopLevel.EVIDENCE,
+        CliJsonRequestSchemas.EVIDENCE_FIELDS);
+    AccountingEvidence evidence = readEvidence(evidenceNode);
+    RequestProvenance requestProvenance =
         new RequestProvenance(
             new ActorId(actorId),
-            parseWireValue(
-                requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_TYPE),
-                ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-                ActorType.wireValues(),
-                ActorType::fromWireValue),
+            actorType,
             new CommandId(commandId),
             new IdempotencyKey(idempotencyKey),
             new CausationId(causationId),
-            optionalText(provenanceNode, ProtocolPostEntryFields.Provenance.CORRELATION_ID)
-                .map(CorrelationId::new)),
-        SourceChannel.CLI);
+            correlationId);
+    return new PostEntryCommand(
+        postingKind, journalEntry, reversal, evidence, requestProvenance, SourceChannel.CLI);
   }
 
   static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
@@ -201,6 +220,68 @@ final class CliPostingRequestParser {
             new PostingId(
                 requiredText(reversalObject, ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID))),
         new ReversalReason(requiredText(reversalObject, ProtocolPostEntryFields.Reversal.REASON)));
+  }
+
+  private static AccountingEvidence readEvidence(ObjectNode evidenceNode) {
+    List<SourceDocumentReference> sourceDocuments =
+        readSourceDocuments(
+            requiredArray(evidenceNode, ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS));
+    List<ApprovalReference> approvals =
+        readApprovals(requiredArray(evidenceNode, ProtocolPostEntryFields.Evidence.APPROVALS));
+    return new AccountingEvidence(sourceDocuments, approvals);
+  }
+
+  private static List<SourceDocumentReference> readSourceDocuments(JsonNode sourceDocumentsNode) {
+    List<SourceDocumentReference> sourceDocuments = new ArrayList<>();
+    int index = 0;
+    for (JsonNode sourceDocumentNode : sourceDocumentsNode) {
+      String context = ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS + "[" + index + "]";
+      ObjectNode sourceDocumentObject = requireObjectNode(sourceDocumentNode, context);
+      rejectUnexpectedFields(
+          sourceDocumentObject, context, CliJsonRequestSchemas.SOURCE_DOCUMENT_FIELDS);
+      sourceDocuments.add(
+          new SourceDocumentReference(
+              new SourceDocumentId(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_ID,
+                      ScaffoldPlaceholders.SOURCE_DOCUMENT_ID,
+                      context + ".")),
+              new SourceDocumentType(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
+                      ScaffoldPlaceholders.SOURCE_DOCUMENT_TYPE,
+                      context + "."))));
+      index++;
+    }
+    return List.copyOf(sourceDocuments);
+  }
+
+  private static List<ApprovalReference> readApprovals(JsonNode approvalsNode) {
+    List<ApprovalReference> approvals = new ArrayList<>();
+    int index = 0;
+    for (JsonNode approvalNode : approvalsNode) {
+      String context = ProtocolPostEntryFields.Evidence.APPROVALS + "[" + index + "]";
+      ObjectNode approvalObject = requireObjectNode(approvalNode, context);
+      rejectUnexpectedFields(approvalObject, context, CliJsonRequestSchemas.APPROVAL_FIELDS);
+      approvals.add(
+          new ApprovalReference(
+              new ApprovalId(
+                  requiredRealText(
+                      approvalObject,
+                      ProtocolPostEntryFields.Approval.APPROVAL_ID,
+                      ScaffoldPlaceholders.APPROVAL_ID,
+                      context + ".")),
+              new ApprovalType(
+                  requiredRealText(
+                      approvalObject,
+                      ProtocolPostEntryFields.Approval.APPROVAL_TYPE,
+                      ScaffoldPlaceholders.APPROVAL_TYPE,
+                      context + "."))));
+      index++;
+    }
+    return List.copyOf(approvals);
   }
 
   private static String requiredRealProvenanceText(

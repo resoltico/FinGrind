@@ -37,6 +37,7 @@ class PostingFactTest {
             journalEntry(),
             PostingLineage.direct(),
             PostingKind.STANDARD,
+            ContractFixtures.accountingEvidence("idem-1"),
             provenance("idem-1"));
     assertEquals("posting-1", postingFact.postingId().value());
   }
@@ -51,6 +52,7 @@ class PostingFactTest {
                 journalEntry(),
                 PostingLineage.direct(),
                 PostingKind.STANDARD,
+                ContractFixtures.accountingEvidence("idem-1"),
                 provenance("idem-1")));
   }
 
@@ -64,6 +66,7 @@ class PostingFactTest {
                 journalEntry(),
                 nullOf(),
                 PostingKind.STANDARD,
+                ContractFixtures.accountingEvidence("idem-1"),
                 provenance("idem-1")));
   }
 

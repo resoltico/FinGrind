@@ -41,6 +41,28 @@ public interface CliBookQueryJsonModels {
     }
   }
 
+  record AccountingEvidencePayload(
+      List<SourceDocumentPayload> sourceDocuments, List<ApprovalPayload> approvals) {
+    public AccountingEvidencePayload {
+      sourceDocuments = copyList(sourceDocuments, "sourceDocuments");
+      approvals = copyList(approvals, "approvals");
+    }
+  }
+
+  record SourceDocumentPayload(String sourceDocumentId, String sourceDocumentType) {
+    public SourceDocumentPayload {
+      sourceDocumentId = requireText(sourceDocumentId, "sourceDocumentId");
+      sourceDocumentType = requireText(sourceDocumentType, "sourceDocumentType");
+    }
+  }
+
+  record ApprovalPayload(String approvalId, String approvalType) {
+    public ApprovalPayload {
+      approvalId = requireText(approvalId, "approvalId");
+      approvalType = requireText(approvalType, "approvalType");
+    }
+  }
+
   record PostingPayload(
       String postingId,
       String postingKind,
@@ -54,6 +76,7 @@ public interface CliBookQueryJsonModels {
       String causationId,
       @Nullable String correlationId,
       String sourceChannel,
+      AccountingEvidencePayload evidence,
       @Nullable ReversalPayload reversal,
       List<JournalLinePayload> lines)
       implements CliSuccessPayload {
@@ -70,6 +93,7 @@ public interface CliBookQueryJsonModels {
       causationId = requireText(causationId, "causationId");
       correlationId = requireOptionalText(correlationId, "correlationId");
       sourceChannel = requireText(sourceChannel, "sourceChannel");
+      Objects.requireNonNull(evidence, "evidence");
       lines = copyList(lines, "lines");
     }
   }

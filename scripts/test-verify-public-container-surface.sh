@@ -166,6 +166,9 @@ TEXT
             open-book)
                 entity_name=''
                 entity_form=''
+                owner_model=''
+                reporting_obligation_status=''
+                business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
                 accounting_basis=''
@@ -181,6 +184,18 @@ TEXT
                             ;;
                         --entity-form)
                             entity_form="${2}"
+                            shift 2
+                            ;;
+                        --owner-model)
+                            owner_model="${2}"
+                            shift 2
+                            ;;
+                        --reporting-obligation-status)
+                            reporting_obligation_status="${2}"
+                            shift 2
+                            ;;
+                        --business-activity-tag)
+                            business_activity_tag="${2}"
                             shift 2
                             ;;
                         --functional-currency)
@@ -202,6 +217,9 @@ TEXT
                 done
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
                 [[ "${entity_form}" == 'COMPANY' ]] || exit 1
+                [[ "${owner_model}" == 'MULTI_OWNER' ]] || exit 1
+                [[ "${reporting_obligation_status}" == 'INTERNAL_MANAGEMENT_ONLY' ]] || exit 1
+                [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
                 [[ "${accounting_basis}" == 'ACCRUAL' ]] || exit 1
@@ -225,6 +243,9 @@ TEXT
                 done
                 [[ -n "${request_file}" ]] || exit 1
                 grep -Fq '"postingKind": "STANDARD"' "${request_file}" || exit 1
+                grep -Fq '"sourceDocumentId": "release-protocol-invoice-1"' "${request_file}" || exit 1
+                grep -Fq '"sourceDocumentType": "invoice"' "${request_file}" || exit 1
+                grep -Fq '"approvals": []' "${request_file}" || exit 1
                 printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
                 ;;
             trial-balance)

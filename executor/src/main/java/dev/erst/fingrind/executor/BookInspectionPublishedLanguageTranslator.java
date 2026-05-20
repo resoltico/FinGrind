@@ -21,14 +21,8 @@ public final class BookInspectionPublishedLanguageTranslator {
           existing.detectedBookFormatVersion(),
           existing.supportedBookFormatVersion());
     }
-    BookLifecycleInspection.Initialized initialized =
-        (BookLifecycleInspection.Initialized) inspection;
-    return new BookInspection.Initialized(
-        initialized.applicationId(),
-        initialized.detectedBookFormatVersion(),
-        initialized.supportedBookFormatVersion(),
-        initialized.initializedAt(),
-        initialized.bookIdentity());
+    throw new IllegalStateException(
+        "Initialized inspections require BookReadService close-readiness enrichment.");
   }
 
   private static BookInspection.Status toPublishedExistingStatus(

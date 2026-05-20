@@ -5,7 +5,7 @@ Entity               : Acme Studio
 Entity form          : Company
 Owner model          : Multi Owner
 Reporting obligation : Internal Management Only
-Business activity    : (none)
+Business activity    : translation-services
 Functional currency  : EUR
 Fiscal year start    : 01-01
 Accounting basis     : Accrual

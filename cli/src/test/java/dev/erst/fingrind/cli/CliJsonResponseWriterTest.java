@@ -91,7 +91,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeFailure("invalid-request", "bad request");
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"error\""));
+    assertJsonContains(outputStream, "\"status\":\"error\"");
   }
 
   @Test

@@ -23,6 +23,15 @@
     "priorPostingId": "posting-missing",
     "reason": "operator reversal"
   },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-5",
+        "sourceDocumentType": "credit-note"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "actor-5",
     "actorType": "HUMAN",

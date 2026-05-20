@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: USER_QUICK_START
 updated: "2026-05-20"
 route:
@@ -69,7 +69,7 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL
 ```
 
 ## 4. Declare The Accounts You Need
@@ -113,10 +113,9 @@ Start from the canonical posting template:
 fingrind print-request-template > ./request.json
 ```
 
-That scaffold intentionally uses `actorType: "AGENT"` together with
-`replace-before-commit-effective-date` plus `replace-before-commit-*` provenance placeholders.
-Replace every placeholder before you send the request. Reusing one committed `idempotencyKey`
-against the same book is rejected.
+That scaffold is a runnable sample document. It intentionally uses `actorType: "AGENT"` together
+with demo evidence and provenance values. Replace the sample business context before real-world
+use. Reusing one committed `idempotencyKey` against the same book is rejected.
 
 Replace the contents of `./request.json` with one balanced entry, for example:
 
@@ -142,6 +141,15 @@ Replace the contents of `./request.json` with one balanced entry, for example:
       }
     }
   ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "quick-start-invoice-1",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "quick-start",
     "actorType": "AGENT",

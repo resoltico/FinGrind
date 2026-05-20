@@ -32,9 +32,8 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         0,
         openCli.run(openBookStandardInputArguments(bookFilePath)),
         openOutput.toString(StandardCharsets.UTF_8));
-    assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
-    assertTrue(
-        openOutput.toString(StandardCharsets.UTF_8).contains("\"entityName\":\"Acme Studio\""));
+    assertJsonContains(openOutput, "\"initializedAt\"");
+    assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
         cli(
@@ -47,7 +46,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             new String[] {
               "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
             }));
-    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(listOutput, "\"status\":\"ok\"");
   }
 
   @Test
@@ -89,9 +88,8 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         0,
         openCli.run(openBookPromptArguments(bookFilePath)),
         openOutput.toString(StandardCharsets.UTF_8));
-    assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
-    assertTrue(
-        openOutput.toString(StandardCharsets.UTF_8).contains("\"entityName\":\"Acme Studio\""));
+    assertJsonContains(openOutput, "\"initializedAt\"");
+    assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
         cli(
@@ -105,7 +103,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             new String[] {
               "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
             }));
-    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(listOutput, "\"status\":\"ok\"");
   }
 
   @Test

@@ -62,6 +62,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "MULTI_OWNER",
                   "--reporting-obligation-status",
                   "INTERNAL_MANAGEMENT_ONLY",
+                  "--business-activity-tag",
+                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -175,6 +177,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "MULTI_OWNER",
                       "--reporting-obligation-status",
                       "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -190,7 +194,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_acceptsRegisteredTaxStatusWithoutTaxProfileScaffolding() {
+  void parse_openBook_acceptsExplicitOwnershipAndReportingDoctrineWithoutTaxProfileScaffolding() {
     OpenBook openBook =
         assertInstanceOf(
             OpenBook.class,
@@ -205,6 +209,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "Acme Studio",
                   "--entity-form",
                   "COMPANY",
+                  "--owner-model",
+                  "MULTI_OWNER",
+                  "--reporting-obligation-status",
+                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--business-activity-tag",
+                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -214,8 +224,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 }));
 
     assertEquals(
-        ReportingObligationStatus.UNSPECIFIED,
+        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
         openBook.command().bookIdentity().entityProfile().reportingObligationStatus());
+    assertEquals(
+        OwnerModel.MULTI_OWNER, openBook.command().bookIdentity().entityProfile().ownerModel());
   }
 
   @Test
@@ -237,6 +249,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--tax-profile-file",
                       taxProfileFile.toString(),
                       "--functional-currency",
@@ -272,6 +290,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "MULTI_OWNER",
                       "--reporting-obligation-status",
                       "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -356,6 +376,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "MULTI_OWNER",
                   "--reporting-obligation-status",
                   "INTERNAL_MANAGEMENT_ONLY",
+                  "--business-activity-tag",
+                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -370,7 +392,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_defaultsOptionalPolicyFieldsAndCollectsBusinessActivityTags() {
+  void parse_openBook_requiresOwnershipAndReportingDoctrineAndCollectsBusinessActivityTags() {
     OpenBook command =
         assertInstanceOf(
             OpenBook.class,
@@ -385,6 +407,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "Acme Studio",
                   "--entity-form",
                   "COMPANY",
+                  "--owner-model",
+                  "MULTI_OWNER",
+                  "--reporting-obligation-status",
+                  "INTERNAL_MANAGEMENT_ONLY",
                   "--business-activity-tag",
                   "translation,localization",
                   "--business-activity-tag",
@@ -397,9 +423,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "ACCRUAL"
                 }));
 
-    assertEquals(OwnerModel.UNKNOWN, command.command().bookIdentity().entityProfile().ownerModel());
     assertEquals(
-        ReportingObligationStatus.UNSPECIFIED,
+        OwnerModel.MULTI_OWNER, command.command().bookIdentity().entityProfile().ownerModel());
+    assertEquals(
+        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
         command.command().bookIdentity().entityProfile().reportingObligationStatus());
     assertEquals(
         List.of("translation,localization", "cafe services"),
@@ -596,6 +623,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "MULTI_OWNER",
                   "--reporting-obligation-status",
                   "INTERNAL_MANAGEMENT_ONLY",
+                  "--business-activity-tag",
+                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -667,6 +696,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "MULTI_OWNER",
                   "--reporting-obligation-status",
                   "INTERNAL_MANAGEMENT_ONLY",
+                  "--business-activity-tag",
+                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -702,6 +733,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "MULTI_OWNER",
                       "--reporting-obligation-status",
                       "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -739,6 +772,84 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "--accounting-basis",
                       "ACCRUAL"
                     }));
+    CliArgumentsException missingOwnerModel =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--entity-form",
+                      "COMPANY",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--functional-currency",
+                      "EUR",
+                      "--accounting-basis",
+                      "ACCRUAL"
+                    }));
+    CliArgumentsException missingReportingObligationStatus =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--entity-form",
+                      "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--business-activity-tag",
+                      "translation-services",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--accounting-basis",
+                      "ACCRUAL"
+                    }));
+    CliArgumentsException missingBusinessActivityTag =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--entity-form",
+                      "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--accounting-basis",
+                      "ACCRUAL"
+                    }));
     CliArgumentsException missingFunctionalCurrency =
         assertThrows(
             CliArgumentsException.class,
@@ -754,6 +865,36 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
+                      "--fiscal-year-start",
+                      "01-01"
+                    }));
+    CliArgumentsException missingEntityForm =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
+                      "--functional-currency",
+                      "EUR",
                       "--fiscal-year-start",
                       "01-01",
                       "--accounting-basis",
@@ -774,28 +915,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--functional-currency",
                       "EUR",
-                      "--accounting-basis",
-                      "ACCRUAL"
-                    }));
-    CliArgumentsException missingEntityForm =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01",
                       "--accounting-basis",
                       "ACCRUAL"
                     }));
@@ -814,6 +941,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
+                      "--owner-model",
+                      "MULTI_OWNER",
+                      "--reporting-obligation-status",
+                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--business-activity-tag",
+                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -822,14 +955,24 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
+    assertEquals("--entity-form", missingEntityForm.argument());
+    assertEquals("A --entity-form argument is required.", missingEntityForm.getMessage());
+    assertEquals("--owner-model", missingOwnerModel.argument());
+    assertEquals("A --owner-model argument is required.", missingOwnerModel.getMessage());
+    assertEquals("--reporting-obligation-status", missingReportingObligationStatus.argument());
+    assertEquals(
+        "A --reporting-obligation-status argument is required.",
+        missingReportingObligationStatus.getMessage());
+    assertEquals("--business-activity-tag", missingBusinessActivityTag.argument());
+    assertEquals(
+        "At least one --business-activity-tag argument is required.",
+        missingBusinessActivityTag.getMessage());
     assertEquals("--functional-currency", missingFunctionalCurrency.argument());
     assertEquals(
         "A --functional-currency argument is required.", missingFunctionalCurrency.getMessage());
     assertEquals("--fiscal-year-start", missingFiscalYearStart.argument());
     assertEquals(
         "A --fiscal-year-start argument is required.", missingFiscalYearStart.getMessage());
-    assertEquals("--entity-form", missingEntityForm.argument());
-    assertEquals("A --entity-form argument is required.", missingEntityForm.getMessage());
     assertEquals("--accounting-basis", missingAccountingBasis.argument());
     assertEquals("A --accounting-basis argument is required.", missingAccountingBasis.getMessage());
   }

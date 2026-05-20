@@ -17,7 +17,6 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
-import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepKind;
@@ -359,7 +358,7 @@ class MachineContractTest {
             .anyMatch(
                 step ->
                     step instanceof WorkflowStepDescriptor.Note(String text)
-                        && text.contains("effectiveDate")));
+                        && text.contains("sample evidence and provenance values")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
@@ -394,12 +393,12 @@ class MachineContractTest {
     assertEquals(
         environment.distribution().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliBundleTargets());
-    assertEquals(ScaffoldPlaceholders.EFFECTIVE_DATE, template.effectiveDate());
+    assertEquals("2026-01-15", template.effectiveDate());
     assertEquals(dev.erst.fingrind.core.PostingKind.STANDARD, template.postingKind());
     assertEquals("1000", template.lines().get(0).accountCode());
-    assertEquals(ScaffoldPlaceholders.ACTOR_ID, template.provenance().actorId());
+    assertEquals("operator-demo-1", template.provenance().actorId());
     assertEquals(ActorType.AGENT, template.provenance().actorType());
-    assertEquals(ScaffoldPlaceholders.IDEMPOTENCY_KEY, template.provenance().idempotencyKey());
+    assertEquals("idem-demo-1", template.provenance().idempotencyKey());
     assertEquals("1000", declareAccountTemplate.accountCode());
     assertEquals(AccountRole.ORDINARY, declareAccountTemplate.accountRole());
     assertEquals("posting-1", reversalTemplate.priorPostingId());

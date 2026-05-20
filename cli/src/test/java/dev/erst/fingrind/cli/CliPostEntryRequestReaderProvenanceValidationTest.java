@@ -16,13 +16,14 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": []
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -37,14 +38,15 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [],
                   "provenance": "not-an-object"
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -59,14 +61,15 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [],
                   "provenance": null
                 }
-                """
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedBookInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,10 +61,15 @@ class BookInspectionPublishedLanguageTranslatorTest {
                 BookFormatContract.FORMAT_VERSION)));
 
     Instant initializedAt = Instant.parse("2026-05-07T10:15:30Z");
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                BookInspectionPublishedLanguageTranslator.toPublished(
+                    initializedLifecycleInspection(9, 4, 5, initializedAt)));
     assertEquals(
-        initializedBookInspection(9, 4, 5, initializedAt),
-        BookInspectionPublishedLanguageTranslator.toPublished(
-            initializedLifecycleInspection(9, 4, 5, initializedAt)));
+        "Initialized inspections require BookReadService close-readiness enrichment.",
+        exception.getMessage());
   }
 
   @Test

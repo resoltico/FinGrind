@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -22,6 +23,9 @@ public interface PostingRequest {
   default java.util.Optional<ReversalReason> reversalReason() {
     return postingLineage().reversalReason();
   }
+
+  /** Returns the first-class evidence bundle carried by this posting attempt. */
+  AccountingEvidence evidence();
 
   /** Returns the caller-supplied request provenance for this posting attempt. */
   RequestProvenance requestProvenance();

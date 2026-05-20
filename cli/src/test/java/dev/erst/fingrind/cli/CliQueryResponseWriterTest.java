@@ -150,56 +150,23 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         new CliResponseWriter(utf8PrintStream(balanceRejectionOutput));
     balanceRejectionWriter.writeAccountBalanceResult(
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
-    assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
-    assertTrue(
-        inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
-    assertTrue(
-        inspectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"entityName\":\"Acme Studio\""));
-    assertTrue(
-        inspectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"functionalCurrency\":\"EUR\""));
-    assertTrue(
-        inspectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"fiscalYearStart\":\"01-01\""));
-    assertTrue(
-        missingInspectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"canInitializeWithOpenBook\":true"));
+    assertJsonContains(inspectionOutput, "\"bookFile\"");
+    assertJsonContains(inspectionOutput, "\"state\":\"initialized\"");
+    assertJsonContains(inspectionOutput, "\"entityName\":\"Acme Studio\"");
+    assertJsonContains(inspectionOutput, "\"functionalCurrency\":\"EUR\"");
+    assertJsonContains(inspectionOutput, "\"fiscalYearStart\":\"01-01\"");
+    assertJsonContains(missingInspectionOutput, "\"canInitializeWithOpenBook\":true");
     assertFalse(
         missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
-    assertTrue(
-        getPostingOutput.toString(StandardCharsets.UTF_8).contains("\"reason\":\"full reversal\""));
-    assertTrue(
-        getPostingOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"priorPostingId\":\"posting-0\""));
-    assertTrue(
-        getPostingRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"posting-not-found\""));
-    assertTrue(
-        getPostingRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"postingId\":\"posting-9\""));
-    assertTrue(listPostingsOutput.toString(StandardCharsets.UTF_8).contains("\"postings\":["));
-    assertTrue(
-        listPostingsRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"accountCode\":\"9999\""));
-    assertTrue(
-        balanceOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"effectiveDateFrom\":\"2026-04-01\""));
-    assertTrue(
-        balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balanceSide\":\"DEBIT\""));
-    assertTrue(
-        balanceRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"query-book-not-initialized\""));
+    assertJsonContains(getPostingOutput, "\"reason\":\"full reversal\"");
+    assertJsonContains(getPostingOutput, "\"priorPostingId\":\"posting-0\"");
+    assertJsonContains(getPostingRejectionOutput, "\"code\":\"posting-not-found\"");
+    assertJsonContains(getPostingRejectionOutput, "\"postingId\":\"posting-9\"");
+    assertJsonContains(listPostingsOutput, "\"postings\":[");
+    assertJsonContains(listPostingsRejectionOutput, "\"accountCode\":\"9999\"");
+    assertJsonContains(balanceOutput, "\"effectiveDateFrom\":\"2026-04-01\"");
+    assertJsonContains(balanceOutput, "\"balanceSide\":\"DEBIT\"");
+    assertJsonContains(balanceRejectionOutput, "\"code\":\"query-book-not-initialized\"");
   }
 
   @Test
@@ -222,6 +189,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(postingRegisterHuman.contains("2026-04-07 | Reversal | posting-1"));
     assertTrue(postingRegisterHuman.contains("Posting role     : Reversal"));
     assertTrue(postingRegisterHuman.contains("Reverses posting : posting-0"));
+    assertTrue(postingRegisterHuman.contains("Source documents : invoice document-idem-1"));
+    assertTrue(postingRegisterHuman.contains("Approvals        : (none)"));
     assertTrue(postingRegisterHuman.contains("10.00"));
     assertTrue(postingRegisterHuman.contains("posting-1"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
@@ -232,10 +201,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget"));
+            "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocuments,approvals"));
     assertTrue(
         postingRegisterCsv.contains(
             "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,reversal,EUR,10.00,10.00"));
+    assertTrue(
+        postingRegisterCsv.contains(
+            "\"[{\"\"sourceDocumentId\"\":\"\"document-idem-1\"\",\"\"sourceDocumentType\"\":\"\"invoice\"\"}]\""));
+    assertTrue(postingRegisterCsv.contains("[]"));
     ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
         .writeAccountBalanceResult(
@@ -262,48 +235,30 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeReportResults_supportJsonHumanAndCsvOutputModes() throws IOException {
-    TrialBalanceReport trialBalanceReport =
-        new TrialBalanceReport(
-            bookIdentity(),
-            Optional.of(LocalDate.parse("2026-04-30")),
-            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(
-                new TrialBalanceRow(
-                    declaredCashAccount(),
-                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))),
-            List.of());
-    AccountLedgerReport accountLedgerReport =
-        new AccountLedgerReport(
-            bookIdentity(),
-            declaredCashAccount(),
-            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            allPostingKinds(),
-            List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
-            List.of(
-                new AccountLedgerEntry(
-                    postingFact(),
-                    currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
-                    money("EUR", "10.00"),
-                    BalanceSide.DEBIT)),
-            List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
-    PeriodSummaryReport periodSummaryReport =
-        new PeriodSummaryReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            allPostingKinds(),
-            1,
-            2,
-            2,
-            List.of(
-                new PeriodCurrencySummary(
-                    currencyBalance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
-            List.of(
-                new PeriodAccountActivityRow(
-                    declaredCashAccount(),
-                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
+  void writeQueryResults_renderApprovalEvidenceWhenPresent() {
+    PostingFact postingFact = postingFactWithApproval();
+
+    ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
+        .writeListPostingsResult(
+            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            OutputMode.HUMAN);
+    String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(postingRegisterHuman.contains("Approvals        : manager-signoff approval-idem-1"));
+
+    ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
+        .writeListPostingsResult(
+            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            OutputMode.CSV);
+    String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(postingRegisterCsv.contains("document-idem-1"));
+    assertTrue(postingRegisterCsv.contains("approval-idem-1"));
+  }
+
+  @Test
+  void writeTrialBalanceResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+    TrialBalanceReport trialBalanceReport = sampleTrialBalanceReport();
     ByteArrayOutputStream trialBalanceJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceJsonOutput))
         .writeTrialBalanceResult(
@@ -342,6 +297,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(trialBalanceHuman.contains("2026-04-30"));
     assertTrue(trialBalanceHuman.contains("Account"));
     assertTrue(trialBalanceHuman.contains("6.00"));
+  }
+
+  @Test
+  void writeAccountLedgerResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+    AccountLedgerReport accountLedgerReport = sampleAccountLedgerReport();
+
     ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerHumanOutput))
         .writeAccountLedgerResult(
@@ -352,6 +313,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(accountLedgerHuman.contains("Opening balances"));
     assertTrue(accountLedgerHuman.contains("EUR 10.00 Debit"));
     assertTrue(accountLedgerHuman.contains("Running balance"));
+    assertTrue(accountLedgerHuman.contains("Source documents"));
     assertTrue(accountLedgerHuman.contains("posting-1"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
@@ -375,6 +337,17 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("reversalState")
             .stringValue());
     assertEquals(
+        "document-idem-1",
+        accountLedgerJson
+            .path("payload")
+            .path("entries")
+            .get(0)
+            .path("evidence")
+            .path("sourceDocuments")
+            .get(0)
+            .path("sourceDocumentId")
+            .stringValue());
+    assertEquals(
         "2000",
         accountLedgerJson
             .path("payload")
@@ -393,10 +366,20 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts"));
+            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocuments,approvals"));
     assertTrue(
         accountLedgerCsv.contains(
             "ledger-entry,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "\"[{\"\"sourceDocumentId\"\":\"\"document-idem-1\"\",\"\"sourceDocumentType\"\":\"\"invoice\"\"}]\""));
+    assertTrue(accountLedgerCsv.contains("[]"));
+  }
+
+  @Test
+  void writePeriodSummaryResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+    PeriodSummaryReport periodSummaryReport = samplePeriodSummaryReport();
+
     ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
         .writePeriodSummaryResult(
@@ -590,6 +573,53 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .toString(StandardCharsets.UTF_8)
             .startsWith(
                 "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,totalBasis,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+  }
+
+  private static TrialBalanceReport sampleTrialBalanceReport() {
+    return new TrialBalanceReport(
+        bookIdentity(),
+        Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
+        allPostingKinds(),
+        List.of(
+            new TrialBalanceRow(
+                declaredCashAccount(),
+                currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))),
+        List.of());
+  }
+
+  private static AccountLedgerReport sampleAccountLedgerReport() {
+    return new AccountLedgerReport(
+        bookIdentity(),
+        declaredCashAccount(),
+        EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        allPostingKinds(),
+        List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+        List.of(
+            new AccountLedgerEntry(
+                postingFact(),
+                currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
+                money("EUR", "10.00"),
+                BalanceSide.DEBIT)),
+        List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
+  }
+
+  private static PeriodSummaryReport samplePeriodSummaryReport() {
+    return new PeriodSummaryReport(
+        bookIdentity(),
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        allPostingKinds(),
+        1,
+        2,
+        2,
+        List.of(
+            new PeriodCurrencySummary(
+                currencyBalance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
+        List.of(
+            new PeriodAccountActivityRow(
+                declaredCashAccount(),
+                currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
   }
 
   @Test

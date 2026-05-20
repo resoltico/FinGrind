@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: CONTRACT_EXECUTOR_WRITE
 updated: "2026-05-20"
 route:
@@ -35,12 +35,13 @@ public record PostEntryCommand(
     PostingKind postingKind,
     JournalEntry journalEntry,
     PostingLineage postingLineage,
+    AccountingEvidence evidence,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
 ```
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
-  caller-authored posting family
+  caller-authored posting family plus first-class accounting evidence
 - Money policy: journal lines arrive with exact `PositiveMoney` amounts whose currency, scale, and
   minor-unit representation have already been validated by the shared-kernel money model
 
@@ -66,7 +67,7 @@ public sealed interface CommitEntryResult extends PostEntryResult
 public interface PostingRequest
 ```
 
-- Surface: `journalEntry()`, `postingLineage()`, `requestProvenance()`
+- Surface: `journalEntry()`, `postingLineage()`, `evidence()`, `requestProvenance()`
 - Purpose: keep shared write validation independent of transport adapters
 
 ## `PostingDraft`
@@ -78,6 +79,7 @@ accepts the write.
 public record PostingDraft(
     JournalEntry journalEntry,
     PostingLineage postingLineage,
+    AccountingEvidence evidence,
     CommittedProvenance provenance)
 ```
 
@@ -97,11 +99,11 @@ public interface PostingRequestModel
 ```
 
 - `PostingCommand`: one translated bookkeeping write request with journal entry, lineage,
-  provenance, and source channel
+  accounting evidence, provenance, and source channel
 - `PostingLineageModel`: the local direct-versus-reversal lineage family used by bookkeeping
   policies and stores
 - `PostingRequestModel`: the shared local shape consumed by bookkeeping validation and materialized
-  posting facts
+  posting facts, including first-class evidence
 
 ## `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator`
 

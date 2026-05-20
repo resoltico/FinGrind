@@ -8,7 +8,11 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -23,6 +27,9 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -39,6 +46,9 @@ public final class ContractTemplates {
   public sealed interface TemplateDescriptorType
       permits PostingRequestTemplateDescriptor,
           JournalLineTemplateDescriptor,
+          AccountingEvidenceTemplateDescriptor,
+          SourceDocumentTemplateDescriptor,
+          ApprovalTemplateDescriptor,
           ProvenanceTemplateDescriptor,
           ReversalTemplateDescriptor,
           LedgerPlanTemplateDescriptor,
@@ -53,6 +63,7 @@ public final class ContractTemplates {
       PostingKind postingKind,
       String effectiveDate,
       List<JournalLineTemplateDescriptor> lines,
+      AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
       @Nullable ReversalTemplateDescriptor reversal)
       implements TemplateDescriptorType {
@@ -68,6 +79,7 @@ public final class ContractTemplates {
       if (lines.size() < 2) {
         throw new IllegalArgumentException("lines must contain at least two journal lines.");
       }
+      evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
     }
   }
@@ -107,6 +119,59 @@ public final class ContractTemplates {
       causationId = ContractDescriptorValidation.requireText(causationId, "causationId");
       correlationId =
           ContractDescriptorValidation.requireOptionalText(correlationId, "correlationId");
+    }
+  }
+
+  /** Canonical request-template evidence descriptor. */
+  public record AccountingEvidenceTemplateDescriptor(
+      List<SourceDocumentTemplateDescriptor> sourceDocuments,
+      List<ApprovalTemplateDescriptor> approvals)
+      implements TemplateDescriptorType {
+    /** Validates one evidence-template descriptor payload. */
+    public AccountingEvidenceTemplateDescriptor {
+      sourceDocuments = ContractDescriptorValidation.copyList(sourceDocuments, "sourceDocuments");
+      approvals = ContractDescriptorValidation.copyList(approvals, "approvals");
+      new AccountingEvidence(
+          sourceDocuments.stream()
+              .map(
+                  sourceDocument ->
+                      new SourceDocumentReference(
+                          new SourceDocumentId(sourceDocument.sourceDocumentId()),
+                          new SourceDocumentType(sourceDocument.sourceDocumentType())))
+              .toList(),
+          approvals.stream()
+              .map(
+                  approval ->
+                      new ApprovalReference(
+                          new ApprovalId(approval.approvalId()),
+                          new ApprovalType(approval.approvalType())))
+              .toList());
+    }
+  }
+
+  /** Canonical request-template source-document descriptor. */
+  public record SourceDocumentTemplateDescriptor(String sourceDocumentId, String sourceDocumentType)
+      implements TemplateDescriptorType {
+    /** Validates one source-document template descriptor payload. */
+    public SourceDocumentTemplateDescriptor {
+      sourceDocumentId =
+          ContractDescriptorValidation.requireText(sourceDocumentId, "sourceDocumentId");
+      sourceDocumentType =
+          ContractDescriptorValidation.requireText(sourceDocumentType, "sourceDocumentType");
+      new SourceDocumentId(sourceDocumentId);
+      new SourceDocumentType(sourceDocumentType);
+    }
+  }
+
+  /** Canonical request-template approval descriptor. */
+  public record ApprovalTemplateDescriptor(String approvalId, String approvalType)
+      implements TemplateDescriptorType {
+    /** Validates one approval template descriptor payload. */
+    public ApprovalTemplateDescriptor {
+      approvalId = ContractDescriptorValidation.requireText(approvalId, "approvalId");
+      approvalType = ContractDescriptorValidation.requireText(approvalType, "approvalType");
+      new ApprovalId(approvalId);
+      new ApprovalType(approvalType);
     }
   }
 

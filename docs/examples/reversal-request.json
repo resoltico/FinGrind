@@ -19,6 +19,15 @@
       }
     }
   ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-reversal-1",
+        "sourceDocumentType": "credit-note"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "agent-reversal-1",
     "actorType": "AGENT",

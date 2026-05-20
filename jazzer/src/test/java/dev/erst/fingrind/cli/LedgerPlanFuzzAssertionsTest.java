@@ -61,18 +61,27 @@ class LedgerPlanFuzzAssertionsTest {
                           "minorUnits": "1000"
                         }
                       },
-                      {
-                        "accountCode": "2000",
-                        "side": "CREDIT",
-                        "amount": {
-                          "currencyCode": "EUR",
-                          "minorUnits": "1000"
-                        }
-                      }
-                    ],
-                    "provenance": {
-                      "actorId": "agent-1",
-                      "actorType": "AGENT",
+	                    {
+	                      "accountCode": "2000",
+	                      "side": "CREDIT",
+	                      "amount": {
+	                        "currencyCode": "EUR",
+	                        "minorUnits": "1000"
+	                      }
+	                    }
+	                  ],
+	                  "evidence": {
+	                    "sourceDocuments": [
+	                      {
+	                        "sourceDocumentId": "document-idem-assertion",
+	                        "sourceDocumentType": "invoice"
+	                      }
+	                    ],
+	                    "approvals": []
+	                  },
+	                  "provenance": {
+	                    "actorId": "agent-1",
+	                    "actorType": "AGENT",
                       "commandId": "command-1",
                       "idempotencyKey": "idem-assertion",
                       "causationId": "cause-1"
@@ -624,18 +633,27 @@ class LedgerPlanFuzzAssertionsTest {
                       "minorUnits": "1000"
                     }
                   },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  }
-                ],
-                "provenance": {
-                  "actorId": "agent-1",
-                  "actorType": "AGENT",
+	                  {
+	                    "accountCode": "2000",
+	                    "side": "CREDIT",
+	                    "amount": {
+	                      "currencyCode": "EUR",
+	                      "minorUnits": "1000"
+	                    }
+	                  }
+	                ],
+	                "evidence": {
+	                  "sourceDocuments": [
+	                    {
+	                      "sourceDocumentId": "document-idem-query-1",
+	                      "sourceDocumentType": "invoice"
+	                    }
+	                  ],
+	                  "approvals": []
+	                },
+	                "provenance": {
+	                  "actorId": "agent-1",
+	                  "actorType": "AGENT",
                   "commandId": "command-query-1",
                   "idempotencyKey": "idem-query-1",
                   "causationId": "cause-query-1"
@@ -697,18 +715,27 @@ class LedgerPlanFuzzAssertionsTest {
                       "minorUnits": "1000"
                     }
                   },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  }
-                ],
-                "provenance": {
-                  "actorId": "agent-1",
-                  "actorType": "AGENT",
+	                  {
+	                    "accountCode": "2000",
+	                    "side": "CREDIT",
+	                    "amount": {
+	                      "currencyCode": "EUR",
+	                      "minorUnits": "1000"
+	                    }
+	                  }
+	                ],
+	                "evidence": {
+	                  "sourceDocuments": [
+	                    {
+	                      "sourceDocumentId": "document-idem-spectrum-1",
+	                      "sourceDocumentType": "invoice"
+	                    }
+	                  ],
+	                  "approvals": []
+	                },
+	                "provenance": {
+	                  "actorId": "agent-1",
+	                  "actorType": "AGENT",
                   "commandId": "command-spectrum-1",
                   "idempotencyKey": "idem-spectrum-1",
                   "causationId": "cause-spectrum-1"
@@ -730,18 +757,27 @@ class LedgerPlanFuzzAssertionsTest {
                       "minorUnits": "1000"
                     }
                   },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  }
-                ],
-                "provenance": {
-                  "actorId": "agent-1",
-                  "actorType": "AGENT",
+	                  {
+	                    "accountCode": "2000",
+	                    "side": "CREDIT",
+	                    "amount": {
+	                      "currencyCode": "EUR",
+	                      "minorUnits": "1000"
+	                    }
+	                  }
+	                ],
+	                "evidence": {
+	                  "sourceDocuments": [
+	                    {
+	                      "sourceDocumentId": "document-idem-spectrum-2",
+	                      "sourceDocumentType": "invoice"
+	                    }
+	                  ],
+	                  "approvals": []
+	                },
+	                "provenance": {
+	                  "actorId": "agent-1",
+	                  "actorType": "AGENT",
                   "commandId": "command-spectrum-2",
                   "idempotencyKey": "idem-spectrum-2",
                   "causationId": "cause-spectrum-2"
@@ -828,6 +864,9 @@ class LedgerPlanFuzzAssertionsTest {
         {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
+          "ownerModel": "MULTI_OWNER",
+          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "accountingBasis": "ACCRUAL"

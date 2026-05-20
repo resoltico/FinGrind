@@ -19,6 +19,15 @@
       }
     }
   ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-4",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "actor-4",
     "actorType": "AGENT",

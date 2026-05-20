@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 11;
+pragma user_version = 12;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -282,6 +282,42 @@ begin
     select raise(fail, 'period-close postings cannot reverse earlier postings.')
     where new.prior_posting_id is not null or new.reason is not null;
 end;
+
+create table if not exists posting_source_document (
+    posting_id text not null,
+    source_document_order integer not null check (source_document_order >= 0),
+    source_document_id text not null check (
+        length(source_document_id) between 1 and 255
+        and source_document_id glob '[A-Za-z0-9]*'
+        and source_document_id not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    source_document_type text not null check (
+        length(source_document_type) between 1 and 64
+        and source_document_type glob '[A-Za-z0-9]*'
+        and source_document_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    primary key (posting_id, source_document_order),
+    unique (posting_id, source_document_id),
+    foreign key (posting_id) references posting_fact (posting_id)
+) strict;
+
+create table if not exists posting_approval (
+    posting_id text not null,
+    approval_order integer not null check (approval_order >= 0),
+    approval_id text not null check (
+        length(approval_id) between 1 and 255
+        and approval_id glob '[A-Za-z0-9]*'
+        and approval_id not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    approval_type text not null check (
+        length(approval_type) between 1 and 64
+        and approval_type glob '[A-Za-z0-9]*'
+        and approval_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    primary key (posting_id, approval_order),
+    unique (posting_id, approval_id),
+    foreign key (posting_id) references posting_fact (posting_id)
+) strict;
 
 create table if not exists journal_line (
     posting_id text not null,

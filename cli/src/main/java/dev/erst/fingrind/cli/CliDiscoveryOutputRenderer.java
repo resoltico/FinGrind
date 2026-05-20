@@ -98,18 +98,15 @@ final class CliDiscoveryOutputRenderer {
             ? "(none)"
             : CliTextFormat.wrapLineBlock(command.options(), HUMAN_WRAP_WIDTH);
     String requestGuidance = renderRequestGuidance(helpDescriptor, command.name());
-    String examples = renderCommandExamples(operation);
-    String requirements = renderWorkflowRequirements(operation);
     return CliTextFormat.renderTitledBlock(
         command.name().wireName(),
         joinSections(
             summary,
-            section("Syntax", usage),
+            section("Invocation", usage),
             section("Options", options),
-            section("Behavior", behavior),
+            section("Output Contract", behavior),
             requestGuidance,
-            requirements,
-            section("Examples", examples)));
+            section("Examples", renderCommandExamples(operation))));
   }
 
   static String renderCapabilitiesHuman(CapabilitiesDescriptor capabilitiesDescriptor) {
@@ -131,15 +128,15 @@ final class CliDiscoveryOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "Human guide",
-                    "Use this page for one compact overview of command families, request input rules, and machine-surface entry points."),
+                    "Use this page",
+                    "Inspect shared machine-surface entry points and request-document rules without the human task guide."),
                 List.of(
-                    "One command contract",
+                    "One command help",
                     "Run '"
                         + CliInvocationText.commandExample(OperationId.HELP)
                         + " <command> --output json' when you only need one command descriptor."),
                 List.of(
-                    "Full machine contract",
+                    "Machine inventory",
                     "Run '"
                         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
                         + " --output json' for the canonical machine-readable inventory."),
@@ -149,13 +146,26 @@ final class CliDiscoveryOutputRenderer {
                         + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
                         + " --output json' for live runtime and SQLite provenance facts.")),
             HUMAN_WRAP_WIDTH);
-    String commands =
+    String machineSurfaces =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Discovery", joinCommandNames(commandCatalog.discovery())),
-                List.of("Administration", joinCommandNames(commandCatalog.administration())),
-                List.of("Query and reports", joinCommandNames(commandCatalog.query())),
-                List.of("Write", joinCommandNames(commandCatalog.write()))),
+                List.of("Discovery guide", CliInvocationText.commandExample(OperationId.HELP)),
+                List.of(
+                    "Canonical inventory",
+                    CliInvocationText.commandExample(OperationId.CAPABILITIES) + " --output json"),
+                List.of(
+                    "Live runtime evidence",
+                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json"),
+                List.of(
+                    "Command families",
+                    Integer.toString(commandCatalog.discovery().size())
+                        + " discovery, "
+                        + commandCatalog.administration().size()
+                        + " administration, "
+                        + commandCatalog.query().size()
+                        + " query/report, "
+                        + commandCatalog.write().size()
+                        + " write")),
             HUMAN_WRAP_WIDTH);
     String requestInput =
         CliTextFormat.renderKeyValueBlock(
@@ -181,7 +191,7 @@ final class CliDiscoveryOutputRenderer {
         joinSections(
             header,
             section("Use This For", useThisFor),
-            section("Command Groups", commands),
+            section("Machine Surfaces", machineSurfaces),
             section("Shared CLI Contract", requestInput)));
   }
 
@@ -432,20 +442,23 @@ final class CliDiscoveryOutputRenderer {
             .map(ProtocolExampleStep::text)
             .map(CliInvocationText::rewriteInvocationPrefix)
             .toList();
-    return commandExamples.isEmpty()
-        ? "(none)"
-        : CliTextFormat.wrapLineBlock(commandExamples, HUMAN_WRAP_WIDTH);
-  }
-
-  private static String renderWorkflowRequirements(ProtocolOperation operation) {
     List<String> notes =
         operation.exampleSteps().stream()
             .filter(ProtocolExampleStep.Note.class::isInstance)
             .map(ProtocolExampleStep::text)
             .toList();
-    return notes.isEmpty()
-        ? ""
-        : section("Requirements", CliTextFormat.renderBulletedBlock(notes, HUMAN_WRAP_WIDTH));
+    List<String> sections = new ArrayList<>();
+    sections.add(
+        commandExamples.isEmpty()
+            ? "(none)"
+            : CliTextFormat.wrapLineBlock(commandExamples, HUMAN_WRAP_WIDTH));
+    if (!notes.isEmpty()) {
+      sections.add(
+          "Notes:"
+              + System.lineSeparator()
+              + CliTextFormat.renderBulletedBlock(notes, HUMAN_WRAP_WIDTH));
+    }
+    return String.join(System.lineSeparator() + System.lineSeparator(), sections);
   }
 
   private static String indent(String text, String prefix) {
@@ -485,7 +498,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
         helpDescriptor.requestShapes().postEntry();
     return section(
-        "Request Input",
+        "Request Document",
         requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -504,7 +517,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccountShape =
         helpDescriptor.requestShapes().declareAccount();
     return section(
-        "Request Input",
+        "Request Document",
         requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -523,7 +536,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
         helpDescriptor.requestShapes().ledgerPlan();
     return section(
-        "Request Input",
+        "Request Document",
         requestFileGuidance(
             "Provide one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
@@ -558,7 +571,8 @@ final class CliDiscoveryOutputRenderer {
     List<String> paragraphs = new ArrayList<>();
     paragraphs.add(CliTextFormat.wrap(introduction, HUMAN_WRAP_WIDTH));
     paragraphs.add(
-        CliTextFormat.wrap("Generate a scaffold with: " + shortcutCommand, HUMAN_WRAP_WIDTH));
+        CliTextFormat.wrap(
+            "Generate a runnable sample document with: " + shortcutCommand, HUMAN_WRAP_WIDTH));
     paragraphs.add(
         CliTextFormat.wrap(
             "Inspect the machine-readable contract with: "
@@ -569,7 +583,7 @@ final class CliDiscoveryOutputRenderer {
             HUMAN_WRAP_WIDTH));
     if (!acceptedValuesRows.isEmpty()) {
       paragraphs.add(
-          "Accepted values:"
+          "Accepted value vocabularies:"
               + System.lineSeparator()
               + CliTextFormat.renderKeyValueBlock(
                   List.copyOf(acceptedValuesRows), HUMAN_WRAP_WIDTH));

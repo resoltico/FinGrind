@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -27,6 +28,9 @@ public sealed interface PostingRequestModel
   default java.util.Optional<ReversalReason> reversalReason() {
     return postingLineage().reversalReason();
   }
+
+  /** Returns the first-class evidence bundle carried by this posting attempt. */
+  AccountingEvidence evidence();
 
   /** Returns the caller-supplied request provenance. */
   RequestProvenance requestProvenance();

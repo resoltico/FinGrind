@@ -49,6 +49,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         command.postingKind(),
         command.journalEntry(),
         fromPublished(command.postingLineage()),
+        command.evidence(),
         command.requestProvenance(),
         command.sourceChannel());
   }
@@ -61,6 +62,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         postingFact.journalEntry(),
         fromPublished(postingFact.postingLineage()),
         postingFact.postingKind(),
+        postingFact.evidence(),
         postingFact.provenance());
   }
 
@@ -95,6 +97,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         posting.journalEntry(),
         toPublished(posting.postingLineage()),
         posting.postingKind(),
+        posting.evidence(),
         posting.provenance());
   }
 

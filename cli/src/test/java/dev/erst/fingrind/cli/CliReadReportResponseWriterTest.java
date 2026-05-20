@@ -81,33 +81,33 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
         writer ->
             writer.writeGetPostingResult(
                 foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"postingId\":\"posting-1\"");
+        "\"sourceDocumentId\":\"document-idem-1\"");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
                 foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "Posting id");
+        "Source documents");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"postingId\":\"posting-1\"");
+        "\"sourceDocumentType\":\"invoice\"");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "2026-04-07 | Reversal | posting-1");
+        "Source documents");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocuments,approvals");
   }
 
   @Test
@@ -202,13 +202,13 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "Counterpart accounts");
+        "Source documents");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts");
+        "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocuments,approvals");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
@@ -345,6 +345,8 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     writeAction.accept(new CliResponseWriter(utf8PrintStream(outputStream)));
     String document = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(document.contains(expectedFragment), document);
+    String comparable =
+        document.stripLeading().startsWith("{") ? canonicalJsonText(document) : document;
+    assertTrue(comparable.contains(expectedFragment), comparable);
   }
 }

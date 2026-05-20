@@ -434,7 +434,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_treatsMissingAndExplicitNullBusinessActivityTagsAsEmpty() {
+  void readLedgerPlan_rejectsMissingAndExplicitNullBusinessActivityTags() {
     CliRequestReader missingFieldReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -448,6 +448,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
                         "accountingBasis": "ACCRUAL"
@@ -470,6 +472,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
                         "businessActivityTags": null,
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -481,23 +485,17 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    LedgerPlan missingFieldPlan = missingFieldReader.readLedgerPlan(Path.of("-"));
-    LedgerPlan explicitNullPlan = explicitNullReader.readLedgerPlan(Path.of("-"));
+    CliRequestException missingFieldException =
+        assertThrows(
+            CliRequestException.class, () -> missingFieldReader.readLedgerPlan(Path.of("-")));
+    CliRequestException explicitNullException =
+        assertThrows(
+            CliRequestException.class, () -> explicitNullReader.readLedgerPlan(Path.of("-")));
 
-    assertTrue(
-        ((LedgerStep.OpenBook) missingFieldPlan.steps().getFirst())
-            .command()
-            .bookIdentity()
-            .entityProfile()
-            .businessActivityTags()
-            .isEmpty());
-    assertTrue(
-        ((LedgerStep.OpenBook) explicitNullPlan.steps().getFirst())
-            .command()
-            .bookIdentity()
-            .entityProfile()
-            .businessActivityTags()
-            .isEmpty());
+    assertEquals(
+        "Missing required field: businessActivityTags", missingFieldException.getMessage());
+    assertEquals(
+        "Missing required field: businessActivityTags", explicitNullException.getMessage());
   }
 
   @Test
@@ -515,6 +513,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
                         "businessActivityTags": "translation-services",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -538,6 +538,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
                         "businessActivityTags": ["translation-services", 2],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -555,16 +557,14 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(
             CliRequestException.class, () -> nonStringElementReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Field must be an array when present: businessActivityTags",
-        nonArrayException.getMessage());
+    assertEquals("Field must be an array: businessActivityTags", nonArrayException.getMessage());
     assertEquals(
         "Field must contain only strings: businessActivityTags[1]",
         nonStringElementException.getMessage());
   }
 
   @Test
-  void readLedgerPlan_defaultsOptionalOpenBookPolicyFields() {
+  void readLedgerPlan_rejectsEmptyBusinessActivityTags() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -578,6 +578,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+                        "businessActivityTags": [],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
                         "accountingBasis": "ACCRUAL"
@@ -588,15 +591,76 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    LedgerStep.OpenBook openBookStep = (LedgerStep.OpenBook) plan.steps().getFirst();
     assertEquals(
-        dev.erst.fingrind.core.OwnerModel.UNKNOWN,
-        openBookStep.command().bookIdentity().entityProfile().ownerModel());
+        "Field must contain at least one value: businessActivityTags", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsMissingOpenBookPolicyFields() {
+    CliRequestReader missingOwnerModelReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+                        "businessActivityTags": ["translation-services"],
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+    CliRequestReader missingReportingStatusReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "open",
+                      "kind": "open-book",
+                      "openBook": {
+                        "entityName": "Acme Studio",
+                        "entityForm": "COMPANY",
+                        "ownerModel": "MULTI_OWNER",
+                        "businessActivityTags": ["translation-services"],
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01",
+                        "accountingBasis": "ACCRUAL"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException missingOwnerModelException =
+        assertThrows(
+            CliRequestException.class, () -> missingOwnerModelReader.readLedgerPlan(Path.of("-")));
+    CliRequestException missingReportingStatusException =
+        assertThrows(
+            CliRequestException.class,
+            () -> missingReportingStatusReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Missing required field: ownerModel", missingOwnerModelException.getMessage());
     assertEquals(
-        dev.erst.fingrind.core.ReportingObligationStatus.UNSPECIFIED,
-        openBookStep.command().bookIdentity().entityProfile().reportingObligationStatus());
+        "Missing required field: reportingObligationStatus",
+        missingReportingStatusException.getMessage());
   }
 
   @Test

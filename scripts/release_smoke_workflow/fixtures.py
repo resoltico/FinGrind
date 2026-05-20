@@ -47,6 +47,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
                     },
                 },
             ],
+            "evidence": posting_evidence(actor_prefix, "sale"),
             "provenance": {
                 "actorId": actor_prefix,
                 "actorType": "AGENT",
@@ -79,6 +80,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
                     },
                 },
             ],
+            "evidence": posting_evidence(actor_prefix, "adjustment"),
             "provenance": {
                 "actorId": actor_prefix,
                 "actorType": "AGENT",
@@ -127,3 +129,15 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
 
 def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def posting_evidence(actor_prefix: str, evidence_suffix: str) -> dict[str, Any]:
+    return {
+        "sourceDocuments": [
+            {
+                "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
+                "sourceDocumentType": "invoice",
+            }
+        ],
+        "approvals": [],
+    }

@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.MachineContract;
-import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
@@ -60,10 +59,10 @@ class MachineContractPlanTemplateTest {
     assertEquals(AccountRole.ORDINARY, declareRevenueTemplate.accountRole());
     assertEquals("post-journal", postJournal.stepId());
     assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
-    assertEquals(ScaffoldPlaceholders.EFFECTIVE_DATE, postJournalTemplate.effectiveDate());
+    assertEquals("2026-01-15", postJournalTemplate.effectiveDate());
     assertEquals("1000", postJournalTemplate.lines().get(0).accountCode());
     assertEquals("2000", postJournalTemplate.lines().get(1).accountCode());
-    assertEquals(ScaffoldPlaceholders.ACTOR_ID, postJournalTemplate.provenance().actorId());
+    assertEquals("operator-demo-1", postJournalTemplate.provenance().actorId());
     assertEquals(ActorType.AGENT, postJournalTemplate.provenance().actorType());
     assertEquals("assert-cash-balance", assertCashBalance.stepId());
     assertEquals(LedgerStepKind.ASSERT, assertCashBalance.kind());
@@ -72,7 +71,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.42.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.43.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

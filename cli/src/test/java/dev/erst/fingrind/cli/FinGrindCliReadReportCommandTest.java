@@ -168,7 +168,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget");
+        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocuments,approvals");
     assertCommandOutputContains(
         new String[] {
           "account-balance",
@@ -205,7 +205,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "human"
         },
-        "Counterpart accounts");
+        "Source documents");
     assertCommandOutputContains(
         new String[] {
           "period-summary",
@@ -374,7 +374,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "json"
         },
-        "\"status\":\"ok\"");
+        "\"status\" : \"ok\"");
   }
 
   @Test

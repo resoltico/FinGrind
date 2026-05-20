@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: HUMAN_REQUESTS
 updated: "2026-05-20"
 route:
@@ -51,9 +51,9 @@ Or, in a source checkout, inspect the checked-in exact scaffold:
 cat docs/examples/request-template.json
 ```
 
-The scaffold is intentionally agent-first: `provenance.actorType` is `AGENT`, and
-`effectiveDate`, `actorId`, `commandId`, `idempotencyKey`, and `causationId` are emitted as
-replace-before-submit placeholders. Replace every placeholder before committing. On one book, an
+The scaffold is intentionally agent-first: `provenance.actorType` is `AGENT`, and the emitted
+document is a runnable sample with demo `effectiveDate`, source-document identity, and
+provenance values. Replace that sample business context before real-world use. On one book, an
 `idempotencyKey` becomes single-use per book after the first committed posting.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
@@ -72,8 +72,12 @@ Current posting-request rules:
   zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit
   range
 - `lines[].amount` must decode to one strictly positive posted amount
-- `postingKind`, `effectiveDate`, `lines`, and `provenance` are required
+- `postingKind`, `effectiveDate`, `lines`, `evidence`, and `provenance` are required
 - `lines` must contain at least one journal line
+- `evidence.sourceDocuments` must contain at least one source-document object
+- every `evidence.sourceDocuments[]` entry requires `sourceDocumentId` and `sourceDocumentType`
+- `evidence.approvals` is required as an array and may be empty
+- every `evidence.approvals[]` entry requires `approvalId` and `approvalType`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
   letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every entry must contain at least one `DEBIT` line and at least one `CREDIT` line
@@ -159,7 +163,7 @@ Current ledger-plan rules:
   `functionalCurrency`, `fiscalYearStart`, and `accountingBasis`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
-  posting request
+  posting request, including required `evidence.sourceDocuments[]` and `evidence.approvals[]`
 - `list-accounts`, `list-postings`, and `account-balance` use nested `query`
 - `list-accounts.query` is optional; when present it accepts optional `limit` plus optional opaque
   `cursor`, and omitted `limit` defaults to the standard page size
@@ -174,13 +178,14 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the canonical `execute-plan` scaffold shape, but the emitted
-  placeholder values must be replaced before the request is accepted
+- `print-plan-template` emits the canonical `execute-plan` scaffold shape as one runnable demo
+  workflow; replace the sample evidence and provenance values before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
-  one bounded summary by default, and return one complete journal when `--result-detail full`
-  is selected; ordinary business steps keep their canonical `kind`, assertion entries optionally
-  add `detailKind`, and unexpected begin, initialization-check, commit, or rollback failures end
-  the journal with `kind: "plan-boundary"` plus `boundaryPhase`
+  one bounded aggregate summary by default, and return one complete journal when
+  `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,
+  assertion entries optionally add `detailKind`, and unexpected begin, initialization-check,
+  commit, or rollback failures end the journal with `kind: "plan-boundary"` plus
+  `boundaryPhase`
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
@@ -189,8 +194,8 @@ Current ledger-plan rules:
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
   `hasMore`, and repeated grouped `account` facts
 - successful `list-postings` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
-  `hasMore`, and repeated grouped `posting` facts with nested `provenance`, `line`, and optional
-  `reversal` groups
+  `hasMore`, and repeated grouped `posting` facts with nested `provenance`, `evidence`, `line`,
+  and optional `reversal` groups
 
 Human rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
 top-level `message`, optional `hint`, and any typed rejection details that identify the failing
@@ -223,10 +228,9 @@ deterministic repair data.
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
-  captures of `print-request-template` and `print-plan-template`; both intentionally keep the
-  scaffold placeholders `replace-before-commit-effective-date` and
-  `replace-before-commit-*` provenance values so callers must supply a real posting date plus
-  real actor, command, idempotency, and causation values before commit
+  captures of `print-request-template` and `print-plan-template`; both intentionally publish
+  runnable sample documents whose demo evidence and provenance values should be replaced before
+  real-world use
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
@@ -242,8 +246,8 @@ Dynamic fields:
 - `committed.payload.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
 - `ok.payload.resultDetail` echoes whether the caller requested `summary` or `full`
-- `ok.payload.summary.startedAt`, `finishedAt`, step counts, compact `steps[]` digests, and
-  optional failure details are stamped from the FinGrind execution clock
+- `ok.payload.summary.startedAt`, `finishedAt`, aggregate step counts, and optional failure
+  details are stamped from the FinGrind execution clock
 - `ok.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
@@ -254,14 +258,16 @@ Dynamic fields:
   and `accountingBasis`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
+- successful `post-entry` and `get-posting` plan steps emit nested `evidence` groups with source
+  document counts plus grouped source-document and approval facts
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
   `balance` buckets
 - `execute-plan` accepts at most 100 steps, so returned plan summaries and optional full journals
   are complete but bounded
 
-Successful `preflight-entry` output is advisory. It confirms that the current request passed validation against
-the current book state, but it is not a durable commit guarantee: `post-entry` still performs its
-authoritative transactional checks before committing.
+Successful `preflight-entry` output is advisory. It confirms that the current request passed
+validation against the current book state, but it is not a durable commit guarantee:
+`post-entry` performs its authoritative transactional checks before committing.
 
 Discovery output also has two intentionally different JSON scopes:
 - `help --output json` returns a concise overview payload with command summaries, getting-started
@@ -354,6 +360,8 @@ Shared posting payload:
 - `causationId`
 - optional `correlationId`
 - `sourceChannel`
+- `evidence.sourceDocuments[]`, where each entry carries `sourceDocumentId` and `sourceDocumentType`
+- `evidence.approvals[]`, where each entry carries `approvalId` and `approvalType`
 - optional `reversal.priorPostingId` and `reversal.reason`
 - `lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
 
@@ -488,8 +496,8 @@ Shared report context payload:
   `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 - `payload.entries[]`, where each row includes `postingId`, `postingKind`, `reversalState`,
   optional `reversalTarget`, optional `reversalReason`, `effectiveDate`, `recordedAt`, typed
-  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`, and
-  `counterpartAccounts[]`
+  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`,
+  `evidence.sourceDocuments[]`, optional `evidence.approvals[]`, and `counterpartAccounts[]`
 
 `period-summary` success returns:
 - `payload.context`, using the shared report context payload
@@ -544,8 +552,6 @@ Shared report context payload:
 - `payload.summary.stepCount`
 - `payload.summary.succeededStepCount`
 - `payload.summary.failedStepCount`
-- `payload.summary.steps[]`, where each compact step digest includes `stepId`, `kind`, `status`,
-  compact `facts[]`, optional `detailKind`, and optional `failureCode` / `failureMessage`
 - optional `payload.summary.failedStepId`
 - optional `payload.summary.failureCode`
 - optional `payload.summary.failureMessage`
@@ -556,10 +562,6 @@ Shared report context payload:
 - `finishedAt`
 - `steps[]`, where each entry includes `stepId`, `kind`, `status`, `startedAt`, `finishedAt`,
   typed `facts[]`, optional `detailKind`, and optional `failure`
-
-Summary-step `facts[]` are compact string digests for fast operators and agents. Full journal
-steps keep the typed machine-fact structure. When the summary has to flatten grouped facts, it
-uses dotted prefixes such as `account.accountCode` or `balance.netAmount`.
 
 Commands that advertise `--output` default successful stdout to human text on an interactive
 terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and

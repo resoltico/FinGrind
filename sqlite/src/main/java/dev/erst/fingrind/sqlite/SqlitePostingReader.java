@@ -64,7 +64,7 @@ final class SqlitePostingReader {
   Optional<CommittedPosting> findOneCommittedPosting(
       SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQueries.Binder binder) {
     return SqliteStatementQueries.findOneCommittedPosting(
-        activeDatabase, sql, binder, postingId -> loadLines(activeDatabase, postingId));
+        activeDatabase, sql, binder, postingId -> loadAttachments(activeDatabase, postingId));
   }
 
   List<CommittedPosting> loadCommittedPostings(
@@ -113,13 +113,34 @@ final class SqlitePostingReader {
       SqliteNativeDatabase activeDatabase, SqliteNativeStatement statement) {
     PostingId postingId =
         new PostingId(SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
-    return SqlitePostingMapper.committedPosting(statement, loadLines(activeDatabase, postingId));
+    SqliteStatementQueries.PostingAttachments attachments =
+        loadAttachments(activeDatabase, postingId);
+    return SqlitePostingMapper.committedPosting(
+        statement, attachments.lines(), attachments.evidence());
   }
 
   private List<JournalLine> loadLines(SqliteNativeDatabase activeDatabase, PostingId postingId) {
     try (SqliteNativeStatement statement = activeDatabase.prepare(SqlitePostingSql.LOAD_LINES)) {
       statement.bindText(1, postingId.value());
       return SqlitePostingMapper.journalLines(statement);
+    }
+  }
+
+  private SqliteStatementQueries.PostingAttachments loadAttachments(
+      SqliteNativeDatabase activeDatabase, PostingId postingId) {
+    return new SqliteStatementQueries.PostingAttachments(
+        loadLines(activeDatabase, postingId), loadEvidence(activeDatabase, postingId));
+  }
+
+  private dev.erst.fingrind.core.AccountingEvidence loadEvidence(
+      SqliteNativeDatabase activeDatabase, PostingId postingId) {
+    try (SqliteNativeStatement sourceDocumentRows =
+            activeDatabase.prepare(SqlitePostingSql.LOAD_SOURCE_DOCUMENTS);
+        SqliteNativeStatement approvalRows =
+            activeDatabase.prepare(SqlitePostingSql.LOAD_APPROVALS)) {
+      sourceDocumentRows.bindText(1, postingId.value());
+      approvalRows.bindText(1, postingId.value());
+      return SqlitePostingMapper.accountingEvidence(sourceDocumentRows, approvalRows);
     }
   }
 

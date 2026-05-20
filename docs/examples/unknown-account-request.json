@@ -19,6 +19,15 @@
       }
     }
   ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-unknown-1",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "agent-unknown-1",
     "actorType": "AGENT",

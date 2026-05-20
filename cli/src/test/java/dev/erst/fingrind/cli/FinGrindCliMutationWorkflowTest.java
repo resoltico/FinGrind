@@ -42,7 +42,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
-    assertTrue(rekeyOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
+    assertJsonContains(rekeyOutput, "\"bookFile\"");
     ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
     FinGrindCli oldKeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
@@ -74,7 +74,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               replacementBookKeyFilePath.toString()
             }));
-    assertTrue(newKeyOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(newKeyOutput, "\"status\":\"ok\"");
   }
 
   @Test
@@ -126,9 +126,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
     assertEquals(0, cli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
-    assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
-    assertTrue(
-        openOutput.toString(StandardCharsets.UTF_8).contains("\"entityName\":\"Acme Studio\""));
+    assertJsonContains(openOutput, "\"initializedAt\"");
+    assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
     ByteArrayOutputStream declareCashOutput = new ByteArrayOutputStream();
     cli =
         cli(
@@ -147,8 +146,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               declareCashFile.toString()
             }));
-    assertTrue(
-        declareCashOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"1000\""));
+    assertJsonContains(declareCashOutput, "\"accountCode\":\"1000\"");
     ByteArrayOutputStream declareRevenueOutput = new ByteArrayOutputStream();
     cli =
         cli(
@@ -179,8 +177,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Cash\""));
-    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Revenue\""));
+    assertJsonContains(listOutput, "\"accountName\":\"Cash\"");
+    assertJsonContains(listOutput, "\"accountName\":\"Revenue\"");
     ByteArrayOutputStream preflightOutput = new ByteArrayOutputStream();
     cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(preflightOutput), fixedClock());
@@ -196,7 +194,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             }));
-    assertTrue(preflightOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(preflightOutput, "\"status\":\"ok\"");
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
     assertEquals(

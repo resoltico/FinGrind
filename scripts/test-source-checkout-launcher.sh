@@ -114,6 +114,9 @@ readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
 readonly entity_name='Launcher Smoke Co'
 readonly entity_form='COMPANY'
+readonly owner_model='MULTI_OWNER'
+readonly reporting_obligation_status='INTERNAL_MANAGEMENT_ONLY'
+readonly business_activity_tag='translation-services'
 readonly functional_currency='EUR'
 readonly fiscal_year_start='01-01'
 readonly accounting_basis='ACCRUAL'
@@ -164,11 +167,19 @@ if runtime["runtimeProvenance"] != "source-checkout-managed":
     )
 PY
 
-"${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" >"${key_stdout}" 2>"${key_stderr}" ||
+"${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 
 [[ ! -s "${key_stderr}" ]] || die "source-checkout launcher key generation wrote diagnostics"
-grep -Fq '"status":"ok"' "${key_stdout}" || die "source-checkout launcher key generation did not return ok"
+python3 - "${key_stdout}" <<'PY'
+import json
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+if document["status"] != "ok":
+    raise SystemExit("source-checkout launcher key generation did not return ok")
+PY
 python3 - "${key_file}" <<'PY'
 import os
 import pathlib
@@ -189,9 +200,13 @@ PY
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
     --entity-form "${entity_form}" \
+    --owner-model "${owner_model}" \
+    --reporting-obligation-status "${reporting_obligation_status}" \
+    --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --accounting-basis "${accounting_basis}" >"${open_stdout}" 2>"${open_stderr}" ||
+    --accounting-basis "${accounting_basis}" \
+    --output json >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
 [[ ! -s "${open_stderr}" ]] || die "source-checkout launcher open-book wrote diagnostics"
@@ -208,7 +223,7 @@ if parent_mode != 0o700:
         "source-checkout launcher open-book did not create an owner-only parent directory"
     )
 PY
-python3 - "${open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
+python3 - "${open_stdout}" "${entity_name}" "${entity_form}" "${owner_model}" "${reporting_obligation_status}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
 import sys
@@ -222,11 +237,17 @@ if book_identity["entityName"] != sys.argv[2]:
     raise SystemExit("source-checkout launcher open-book returned the wrong entity name")
 if book_identity["entityForm"] != sys.argv[3]:
     raise SystemExit("source-checkout launcher open-book returned the wrong entity form")
-if book_identity["functionalCurrency"] != sys.argv[4]:
+if book_identity["ownerModel"] != sys.argv[4]:
+    raise SystemExit("source-checkout launcher open-book returned the wrong owner model")
+if book_identity["reportingObligationStatus"] != sys.argv[5]:
+    raise SystemExit("source-checkout launcher open-book returned the wrong reporting obligation")
+if book_identity["businessActivityTags"] != [sys.argv[6]]:
+    raise SystemExit("source-checkout launcher open-book returned the wrong business activity tags")
+if book_identity["functionalCurrency"] != sys.argv[7]:
     raise SystemExit("source-checkout launcher open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[5]:
+if book_identity["fiscalYearStart"] != sys.argv[8]:
     raise SystemExit("source-checkout launcher open-book returned the wrong fiscal year start")
-if book_identity["accountingBasis"] != sys.argv[6]:
+if book_identity["accountingBasis"] != sys.argv[9]:
     raise SystemExit("source-checkout launcher open-book returned the wrong accounting basis")
 PY
 
@@ -289,13 +310,17 @@ PY
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
     --entity-form "${entity_form}" \
+    --owner-model "${owner_model}" \
+    --reporting-obligation-status "${reporting_obligation_status}" \
+    --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --accounting-basis "${accounting_basis}" >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
+    --accounting-basis "${accounting_basis}" \
+    --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer direct-Java open-book failed"
 
 [[ ! -s "${raw_open_stderr}" ]] || die "developer direct-Java open-book wrote diagnostics"
-python3 - "${raw_open_stdout}" "${entity_name}" "${entity_form}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
+python3 - "${raw_open_stdout}" "${entity_name}" "${entity_form}" "${owner_model}" "${reporting_obligation_status}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" "${accounting_basis}" <<'PY'
 import json
 import pathlib
 import sys
@@ -309,11 +334,17 @@ if book_identity["entityName"] != sys.argv[2]:
     raise SystemExit("developer direct-Java open-book returned the wrong entity name")
 if book_identity["entityForm"] != sys.argv[3]:
     raise SystemExit("developer direct-Java open-book returned the wrong entity form")
-if book_identity["functionalCurrency"] != sys.argv[4]:
+if book_identity["ownerModel"] != sys.argv[4]:
+    raise SystemExit("developer direct-Java open-book returned the wrong owner model")
+if book_identity["reportingObligationStatus"] != sys.argv[5]:
+    raise SystemExit("developer direct-Java open-book returned the wrong reporting obligation")
+if book_identity["businessActivityTags"] != [sys.argv[6]]:
+    raise SystemExit("developer direct-Java open-book returned the wrong business activity tags")
+if book_identity["functionalCurrency"] != sys.argv[7]:
     raise SystemExit("developer direct-Java open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[5]:
+if book_identity["fiscalYearStart"] != sys.argv[8]:
     raise SystemExit("developer direct-Java open-book returned the wrong fiscal year start")
-if book_identity["accountingBasis"] != sys.argv[6]:
+if book_identity["accountingBasis"] != sys.argv[9]:
     raise SystemExit("developer direct-Java open-book returned the wrong accounting basis")
 PY
 
@@ -364,9 +395,13 @@ java -jar "${raw_jar}" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
     --entity-form "${entity_form}" \
+    --owner-model "${owner_model}" \
+    --reporting-obligation-status "${reporting_obligation_status}" \
+    --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --accounting-basis "${accounting_basis}" >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
+    --accounting-basis "${accounting_basis}" \
+    --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
 raw_jar_open_exit=$?
 set -e
 

@@ -26,10 +26,12 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -50,6 +52,9 @@ import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -67,7 +72,7 @@ final class ContractFixtures {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            List.of()),
+            List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingBasis.ACCRUAL);
@@ -216,6 +221,7 @@ final class ContractFixtures {
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "10.00")))),
         PostingLineage.direct(),
+        accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
@@ -224,6 +230,14 @@ final class ContractFixtures {
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
         SourceChannel.CLI);
+  }
+
+  static AccountingEvidence accountingEvidence(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
   }
 
   static EnvironmentDescriptor environmentDescriptor() {

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingId;
@@ -15,6 +16,7 @@ public record PostingFact(
     JournalEntry journalEntry,
     PostingLineage postingLineage,
     PostingKind postingKind,
+    AccountingEvidence evidence,
     CommittedProvenance provenance) {
   /** Validates the canonical fact shape stored by book-session adapters. */
   public PostingFact {
@@ -22,6 +24,7 @@ public record PostingFact(
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
     Objects.requireNonNull(postingKind, "postingKind");
+    Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
   }
 

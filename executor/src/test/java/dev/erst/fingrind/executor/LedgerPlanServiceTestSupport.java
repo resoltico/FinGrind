@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -220,6 +221,7 @@ final class LedgerPlanServiceTestSupport {
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "10.00")))),
         dev.erst.fingrind.contract.bookkeeping.PostingLineage.direct(),
+        accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,

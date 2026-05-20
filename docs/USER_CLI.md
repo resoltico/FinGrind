@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: USER_CLI
 updated: "2026-05-20"
 route:
@@ -46,9 +46,8 @@ or piped into another process. With no topic it emits the canonical posting scaf
 `preflight-entry` are accepted posting-scaffold topics.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
 account declarations, one posting step, and one balance assertion.
-Both scaffold commands emit `actorType: "AGENT"` plus
-`replace-before-commit-effective-date` and `replace-before-commit-*` provenance placeholders that
-must be replaced before submission. Idempotency keys are single-use per book once one posting
+Both scaffold commands emit agent-first runnable sample documents. Replace the sample evidence and
+provenance values before real-world use. Idempotency keys are single-use per book once one posting
 commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 The easiest path is one missing private parent directory that FinGrind can create securely, or one
@@ -128,7 +127,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|declare-account]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>[--owner-model &lt;owner-model&gt;]</code><br><code>[--reporting-obligation-status &lt;reporting-obligation-status&gt;]</code><br><code>[--business-activity-tag &lt;business-activity-tag&gt; ...]</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--accounting-basis &lt;accounting-basis&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>--owner-model &lt;owner-model&gt;</code><br><code>--reporting-obligation-status &lt;reporting-obligation-status&gt;</code><br><code>--business-activity-tag &lt;business-activity-tag&gt; ...</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--accounting-basis &lt;accounting-basis&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
     <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
@@ -199,9 +198,8 @@ tar -xzf "${bundle_archive}"
   print-request-template > ./request.json
 ```
 
-Edit `./request.json` and replace `replace-before-commit-effective-date` plus every
-`replace-before-commit-*` provenance placeholder before using it with `preflight-entry` or
-`post-entry`.
+Edit `./request.json` and replace the sample evidence and provenance values before using it with
+`preflight-entry` or `post-entry`.
 
 One public Windows bundle flow:
 
@@ -214,9 +212,8 @@ Expand-Archive $bundleArchive -DestinationPath . -Force
   print-request-template > .\request.json
 ```
 
-Edit `.\request.json` and replace `replace-before-commit-effective-date` plus every
-`replace-before-commit-*` provenance placeholder before using it with `preflight-entry` or
-`post-entry`.
+Edit `.\request.json` and replace the sample evidence and provenance values before using it with
+`preflight-entry` or `post-entry`.
 
 In the examples below, `fingrind` means the extracted bundle launcher.
 Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
@@ -476,13 +473,11 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   renderer.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send
   `provenance.recordedAt` or `provenance.sourceChannel`.
-- `print-request-template` and `print-plan-template` intentionally emit
-  `replace-before-commit-effective-date` plus `replace-before-commit-*` provenance placeholders so
-  callers must provide a real posting date plus real actor, command, idempotency, and causation
-  identifiers before submission.
+- `print-request-template` and `print-plan-template` intentionally emit runnable sample documents
+  with demo evidence and provenance values so callers can execute the demo flow directly and then
+  replace that sample business context before real-world use.
 - `print-plan-template` is the fastest machine bootstrap for a new book because it already includes
-  `open-book` and a matching assertion step, but it remains a scaffold until those placeholders
-  are replaced.
+  `open-book` and a matching assertion step.
 - `--book-passphrase-prompt` either reads from a supported controlling terminal or fails
   deterministically with `interactive-prompt-unavailable` and a repair hint that points to
   `--book-key-file` or `--book-passphrase-stdin`.

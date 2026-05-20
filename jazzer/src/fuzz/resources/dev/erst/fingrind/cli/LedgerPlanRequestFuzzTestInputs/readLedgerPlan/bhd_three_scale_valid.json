@@ -7,6 +7,9 @@
       "openBook": {
         "entityName": "Plan Seed BHD",
         "entityForm": "COMPANY",
+        "ownerModel": "MULTI_OWNER",
+        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "BHD",
         "fiscalYearStart": "01-01",
         "accountingBasis": "ACCRUAL"
@@ -60,6 +63,15 @@
             }
           }
         ],
+        "evidence": {
+          "sourceDocuments": [
+            {
+              "sourceDocumentId": "document-seed-plan-bhd-idem-1",
+              "sourceDocumentType": "invoice"
+            }
+          ],
+          "approvals": []
+        },
         "provenance": {
           "actorId": "seed-plan-bhd-actor-1",
           "actorType": "AGENT",

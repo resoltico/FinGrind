@@ -24,7 +24,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
   }
 
   @Test
@@ -37,7 +37,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z")));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
   }
 
   @Test
@@ -49,15 +49,15 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
             new IdempotencyKey("idem-1"),
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
     String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(json.contains("\"status\":\"rejected\""));
-    assertTrue(json.contains("\"code\":\"reversal-target-not-found\""));
-    assertTrue(json.contains("\"priorPostingId\":\"posting-1\""));
+    assertJsonContains(json, "\"status\":\"rejected\"");
+    assertJsonContains(json, "\"code\":\"reversal-target-not-found\"");
+    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
   }
 
   @Test
   void writePostEntryResult_writesDuplicateIdempotencyRejectionWithoutDetails() {
     String json = rejectedJson(new PostingRejection.DuplicateIdempotencyKey());
-    assertTrue(json.contains("\"code\":\"duplicate-idempotency-key\""));
+    assertJsonContains(json, "\"code\":\"duplicate-idempotency-key\"");
     assertTrue(json.contains("same idempotency key"));
     assertFalse(json.contains("\"details\""));
   }
@@ -66,18 +66,18 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   void writePostEntryResult_writesReversalAlreadyExistsRejection() {
     String json =
         rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")));
-    assertTrue(json.contains("\"code\":\"reversal-already-exists\""));
+    assertJsonContains(json, "\"code\":\"reversal-already-exists\"");
     assertTrue(json.contains("already has a full reversal"));
-    assertTrue(json.contains("\"priorPostingId\":\"posting-1\""));
+    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
   }
 
   @Test
   void writePostEntryResult_writesReversalDoesNotNegateTargetRejection() {
     String json =
         rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1")));
-    assertTrue(json.contains("\"code\":\"reversal-does-not-negate-target\""));
+    assertJsonContains(json, "\"code\":\"reversal-does-not-negate-target\"");
     assertTrue(json.contains("does not negate posting"));
-    assertTrue(json.contains("\"priorPostingId\":\"posting-1\""));
+    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
   }
 
   @Test
@@ -89,9 +89,9 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 List.of(
                     new PostingRejection.UnknownAccount(new AccountCode("1000")),
                     new PostingRejection.InactiveAccount(new AccountCode("2000")))));
-    assertTrue(bookJson.contains("\"code\":\"posting-book-not-initialized\""));
-    assertTrue(accountStateJson.contains("\"code\":\"account-state-violations\""));
-    assertTrue(accountStateJson.contains("\"accountCode\":\"1000\""));
-    assertTrue(accountStateJson.contains("\"code\":\"inactive-account\""));
+    assertJsonContains(bookJson, "\"code\":\"posting-book-not-initialized\"");
+    assertJsonContains(accountStateJson, "\"code\":\"account-state-violations\"");
+    assertJsonContains(accountStateJson, "\"accountCode\":\"1000\"");
+    assertJsonContains(accountStateJson, "\"code\":\"inactive-account\"");
   }
 }

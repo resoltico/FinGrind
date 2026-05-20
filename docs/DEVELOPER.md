@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: DEVELOPER
 updated: "2026-05-20"
 route:
@@ -178,7 +178,7 @@ FinGrind's current public model is:
   taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `9`, owned by `BookFormatContract`
+- the current supported on-disk format is `12`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution advances by replacing the current

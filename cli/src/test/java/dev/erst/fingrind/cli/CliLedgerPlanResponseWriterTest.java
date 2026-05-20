@@ -203,7 +203,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void ledgerPlanPayload_summary_includesConciseFactDigestsForEveryFactKind() {
+  void ledgerPlanPayload_summary_keepsAggregateCountsWithoutJournalDuplication() {
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerJournalEntry.Succeeded summaryEntry =
@@ -230,16 +230,12 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
                 new LedgerExecutionJournal(startedAt, finishedAt, List.of(summaryEntry))),
             PlanResultDetail.SUMMARY);
 
-    CliPlanJsonModels.LedgerStepDigestPayload step = payload.summary().steps().getFirst();
-    assertEquals(
-        List.of(
-            "accountCode=1000",
-            "active=true",
-            "bucketCount=2",
-            "netAmount=EUR 10.00",
-            "balance.netAmount=EUR 10.00",
-            "balance.balanceSide=DEBIT"),
-        step.facts());
+    assertEquals(1, payload.summary().stepCount());
+    assertEquals(1, payload.summary().succeededStepCount());
+    assertEquals(0, payload.summary().failedStepCount());
+    assertNull(payload.summary().failedStepId());
+    assertNull(payload.summary().failureCode());
+    assertNull(payload.summary().failureMessage());
     assertNull(payload.journal());
   }
 }

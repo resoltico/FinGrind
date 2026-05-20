@@ -82,6 +82,9 @@ public final class ContractRequestShapes {
   public record PostEntryRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
       List<RequestFieldDescriptor> lineFields,
+      List<RequestFieldDescriptor> evidenceFields,
+      List<RequestFieldDescriptor> sourceDocumentFields,
+      List<RequestFieldDescriptor> approvalFields,
       List<RequestFieldDescriptor> provenanceFields,
       List<RequestFieldDescriptor> reversalFields,
       List<EnumVocabularyDescriptor> enumVocabularies,
@@ -91,6 +94,10 @@ public final class ContractRequestShapes {
     public PostEntryRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
       lineFields = ContractDescriptorValidation.copyList(lineFields, "lineFields");
+      evidenceFields = ContractDescriptorValidation.copyList(evidenceFields, "evidenceFields");
+      sourceDocumentFields =
+          ContractDescriptorValidation.copyList(sourceDocumentFields, "sourceDocumentFields");
+      approvalFields = ContractDescriptorValidation.copyList(approvalFields, "approvalFields");
       provenanceFields =
           ContractDescriptorValidation.copyList(provenanceFields, "provenanceFields");
       reversalFields = ContractDescriptorValidation.copyList(reversalFields, "reversalFields");

@@ -19,6 +19,15 @@
       }
     }
   ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-seed-posting-jpy-idem-1",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "seed-posting-jpy-1",
     "actorType": "AGENT",

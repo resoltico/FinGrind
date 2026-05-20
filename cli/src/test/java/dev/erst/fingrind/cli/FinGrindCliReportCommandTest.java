@@ -131,10 +131,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(2, exitCode);
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"query-book-not-initialized\""));
+    assertJsonContains(outputStream, "\"code\":\"query-book-not-initialized\"");
     assertFalse(Files.exists(pdfOutputPath));
   }
 
@@ -514,7 +511,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    assertJsonContains(outputStream, "\"status\":\"ok\"");
     assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("pdf-export-warning"));
     assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
   }

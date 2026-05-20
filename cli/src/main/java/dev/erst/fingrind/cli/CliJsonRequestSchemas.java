@@ -30,6 +30,10 @@ final class CliJsonRequestSchemas {
           ProtocolOpenBookFields.ACCOUNTING_BASIS);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
+  static final Set<String> EVIDENCE_FIELDS = Set.copyOf(ProtocolPostEntryFields.evidenceFields());
+  static final Set<String> SOURCE_DOCUMENT_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.sourceDocumentFields());
+  static final Set<String> APPROVAL_FIELDS = Set.copyOf(ProtocolPostEntryFields.approvalFields());
   static final Set<String> PROVENANCE_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.provenanceFields());
   static final Set<String> JOURNAL_LINE_FIELDS =

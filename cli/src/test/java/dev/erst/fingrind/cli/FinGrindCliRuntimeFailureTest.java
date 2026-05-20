@@ -129,10 +129,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               requestFile.toString()
             });
     assertEquals(4, exitCode);
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"storage-runtime-failure\""));
+    assertJsonContains(outputStream, "\"code\":\"storage-runtime-failure\"");
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
   }
 
@@ -296,8 +293,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               requestFile.toString()
             });
     assertEquals(4, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
+    assertJsonContains(outputStream, "\"code\":\"runtime-failure\"");
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
@@ -329,8 +325,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               requestFile.toString()
             });
     assertEquals(4, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
+    assertJsonContains(outputStream, "\"code\":\"runtime-failure\"");
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
   }
 }

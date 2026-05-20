@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: CORE
 updated: "2026-05-20"
 route:
@@ -152,6 +152,57 @@ public enum AccountingBasis implements WireValue {
 - Purpose: make cash-versus-accrual posture explicit at the book boundary
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
+
+## `AccountingEvidence`
+
+`AccountingEvidence` is the first-class bundle of source documents and approvals attached to one
+posting request or one committed posting fact.
+
+```java
+public record AccountingEvidence(
+    List<SourceDocumentReference> sourceDocuments,
+    List<ApprovalReference> approvals)
+```
+
+- Purpose: make evidence a durable accounting fact instead of external operator folklore
+- Validation: rejects `null` collections, rejects empty `sourceDocuments`, and rejects duplicate
+  source documents or approvals by identifier
+- Surface: `sourceDocuments()` and `approvals()` preserve caller order after validation
+
+## `ApprovalId`
+
+`ApprovalId` is the stable identifier for one approval artifact referenced by accounting evidence.
+
+```java
+public record ApprovalId(String value)
+```
+
+- Purpose: carry one durable approval identity through request, storage, and query surfaces
+- Validation: rejects `null`, blank text, and values outside the public approval-id grammar
+
+## `ApprovalType`
+
+`ApprovalType` is the stable public classifier for one approval artifact referenced by accounting
+evidence.
+
+```java
+public record ApprovalType(String value)
+```
+
+- Purpose: distinguish approval evidence kinds without inventing adapter-owned enums prematurely
+- Validation: rejects `null`, blank text, and values outside the public approval-type grammar
+
+## `ApprovalReference`
+
+`ApprovalReference` is the typed evidence link to one approval artifact.
+
+```java
+public record ApprovalReference(ApprovalId approvalId, ApprovalType approvalType)
+```
+
+- Purpose: keep approval evidence structured and durable across request and committed-posting
+  surfaces
+- Validation: rejects `null` approval id or approval type
 
 ## `EntityProfile`
 
@@ -689,6 +740,47 @@ public record RequestProvenance(
 - Purpose: carry caller identity and lineage without commit-time audit fields
 - Validation: rejects `null` required fields and `null` optionals
 - Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
+
+## `SourceDocumentId`
+
+`SourceDocumentId` is the stable identifier for one source document referenced by accounting
+evidence.
+
+```java
+public record SourceDocumentId(String value)
+```
+
+- Purpose: carry one durable source-document identity through request, storage, and query
+  surfaces
+- Validation: rejects `null`, blank text, and values outside the public source-document-id grammar
+
+## `SourceDocumentType`
+
+`SourceDocumentType` is the stable public classifier for one source document referenced by
+accounting evidence.
+
+```java
+public record SourceDocumentType(String value)
+```
+
+- Purpose: distinguish source-document kinds without promoting adapter-specific file semantics into
+  the core model
+- Validation: rejects `null`, blank text, and values outside the public source-document-type
+  grammar
+
+## `SourceDocumentReference`
+
+`SourceDocumentReference` is the typed evidence link to one source document.
+
+```java
+public record SourceDocumentReference(
+    SourceDocumentId sourceDocumentId,
+    SourceDocumentType sourceDocumentType)
+```
+
+- Purpose: keep source-document evidence structured and durable across request and
+  committed-posting surfaces
+- Validation: rejects `null` source-document id or source-document type
 
 ## `ReversalReason`
 

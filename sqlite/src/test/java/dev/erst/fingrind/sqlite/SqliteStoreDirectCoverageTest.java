@@ -154,6 +154,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                                       line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
                               PostingKind.PERIOD_CLOSE,
+                              generatedEvidence("period-close-1", "period-close-plan"),
                               periodCloseProvenance("EUR")))),
                   () -> new PostingId("period-close-1")));
 
@@ -231,6 +232,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                                   line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                           dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
                           PostingKind.PERIOD_CLOSE,
+                          generatedEvidence("period-close-1", "period-close-plan"),
                           periodCloseProvenance("EUR")))),
               () -> new PostingId("period-close-1")));
       commitPosting(
@@ -327,6 +329,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               PostingKind.PERIOD_CLOSE,
+              generatedEvidence("period-close-1", "period-close-plan"),
               periodCloseProvenance("EUR"));
       commitPosting(postingFactStore, operatingPosting);
       commitPosting(postingFactStore, periodClosePosting);

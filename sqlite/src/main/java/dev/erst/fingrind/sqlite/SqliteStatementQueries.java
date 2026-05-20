@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -43,9 +44,17 @@ final class SqliteStatementQueries {
 
   /** Loads journal lines for one posting identifier while mapping a posting row. */
   @FunctionalInterface
-  interface PostingLineLoader {
-    /** Returns the journal lines that belong to the supplied posting. */
-    List<JournalLine> load(PostingId postingId);
+  interface PostingAttachmentLoader {
+    /** Returns the journal lines and evidence that belong to the supplied posting. */
+    PostingAttachments load(PostingId postingId);
+  }
+
+  /** Fully loaded posting attachments required to materialize one committed posting. */
+  record PostingAttachments(List<JournalLine> lines, AccountingEvidence evidence) {
+    PostingAttachments {
+      lines = List.copyOf(Objects.requireNonNull(lines, "lines"));
+      Objects.requireNonNull(evidence, "evidence");
+    }
   }
 
   /** Runs one mapped query against a prepared statement. */
@@ -76,7 +85,10 @@ final class SqliteStatementQueries {
   private SqliteStatementQueries() {}
 
   static Optional<CommittedPosting> findOneCommittedPosting(
-      SqliteNativeDatabase activeDatabase, String sql, Binder binder, PostingLineLoader loadLines) {
+      SqliteNativeDatabase activeDatabase,
+      String sql,
+      Binder binder,
+      PostingAttachmentLoader loadAttachments) {
     return withStatement(
         activeDatabase,
         sql,
@@ -88,8 +100,10 @@ final class SqliteStatementQueries {
           PostingId postingId =
               new PostingId(
                   SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
+          PostingAttachments attachments = loadAttachments.load(postingId);
           return Optional.of(
-              SqlitePostingMapper.committedPosting(statement, loadLines.load(postingId)));
+              SqlitePostingMapper.committedPosting(
+                  statement, attachments.lines(), attachments.evidence()));
         });
   }
 

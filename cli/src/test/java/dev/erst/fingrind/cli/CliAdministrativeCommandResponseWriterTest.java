@@ -257,13 +257,13 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     responseWriter.writeOpenBookResult(
         Path.of("book.sqlite"), openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(json.contains("\"status\":\"ok\""));
-    assertTrue(json.contains("\"bookFile\""));
-    assertTrue(json.contains("\"initializedAt\":\"2026-04-07T10:15:30Z\""));
+    assertJsonContains(json, "\"status\":\"ok\"");
+    assertJsonContains(json, "\"bookFile\"");
+    assertJsonContains(json, "\"initializedAt\":\"2026-04-07T10:15:30Z\"");
     assertTrue(json.contains("\"bookIdentity\""));
-    assertTrue(json.contains("\"entityName\":\"Acme Studio\""));
-    assertTrue(json.contains("\"functionalCurrency\":\"EUR\""));
-    assertTrue(json.contains("\"fiscalYearStart\":\"01-01\""));
+    assertJsonContains(json, "\"entityName\":\"Acme Studio\"");
+    assertJsonContains(json, "\"functionalCurrency\":\"EUR\"");
+    assertJsonContains(json, "\"fiscalYearStart\":\"01-01\"");
   }
 
   @Test
@@ -272,9 +272,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         openBookRejectedJson(new BookAdministrationRejection.BookAlreadyInitialized());
     String schemaConflictJson =
         openBookRejectedJson(new BookAdministrationRejection.BookContainsSchema());
-    assertTrue(alreadyInitializedJson.contains("\"code\":\"book-already-initialized\""));
+    assertJsonContains(alreadyInitializedJson, "\"code\":\"book-already-initialized\"");
     assertTrue(alreadyInitializedJson.contains("already initialized"));
-    assertTrue(schemaConflictJson.contains("\"code\":\"book-contains-schema\""));
+    assertJsonContains(schemaConflictJson, "\"code\":\"book-contains-schema\"");
     assertTrue(schemaConflictJson.contains("already contains schema objects"));
   }
 
@@ -286,9 +286,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
         new BookAccess.PassphraseSource.KeyFile(Path.of("keys").resolve("rotated.key")));
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(successJson.contains("\"status\":\"ok\""));
-    assertTrue(successJson.contains("\"bookFile\""));
-    assertTrue(successJson.contains("\"replacementPassphraseSource\":\"key-file\""));
+    assertJsonContains(successJson, "\"status\":\"ok\"");
+    assertJsonContains(successJson, "\"bookFile\"");
+    assertJsonContains(successJson, "\"replacementPassphraseSource\":\"key-file\"");
     assertTrue(successJson.contains("\"replacementBookKeyFile\""));
     ByteArrayOutputStream rejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter rejectionWriter = new CliResponseWriter(utf8PrintStream(rejectionOutput));
@@ -296,8 +296,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
         BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
     String rejectionJson = rejectionOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(rejectionJson.contains("\"status\":\"rejected\""));
-    assertTrue(rejectionJson.contains("\"code\":\"administration-book-not-initialized\""));
+    assertJsonContains(rejectionJson, "\"status\":\"rejected\"");
+    assertJsonContains(rejectionJson, "\"code\":\"administration-book-not-initialized\"");
   }
 
   @Test
@@ -331,7 +331,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
         BookAccess.PassphraseSource.StandardInput.INSTANCE);
     String standardInputJson = standardInputJsonOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(standardInputJson.contains("\"replacementPassphraseSource\":\"standard-input\""));
+    assertJsonContains(standardInputJson, "\"replacementPassphraseSource\":\"standard-input\"");
     assertFalse(standardInputJson.contains("\"replacementBookKeyFile\""));
 
     ByteArrayOutputStream interactivePromptJsonOutput = new ByteArrayOutputStream();
@@ -341,8 +341,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
         BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
     String interactivePromptJson = interactivePromptJsonOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        interactivePromptJson.contains("\"replacementPassphraseSource\":\"interactive-prompt\""));
+    assertJsonContains(
+        interactivePromptJson, "\"replacementPassphraseSource\":\"interactive-prompt\"");
     assertFalse(interactivePromptJson.contains("\"replacementBookKeyFile\""));
   }
 
@@ -392,8 +392,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.JSON);
     String restoreJson = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(restoreJson.contains("\"status\":\"ok\""));
-    assertTrue(restoreJson.contains("\"rollbackArtifact\""));
+    assertJsonContains(restoreJson, "\"status\":\"ok\"");
+    assertJsonContains(restoreJson, "\"rollbackArtifact\"");
   }
 
   @Test
@@ -423,8 +423,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.JSON);
     String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(json.contains("\"status\":\"rejected\""));
-    assertTrue(json.contains("\"code\":\"rollback-artifact-selection-required\""));
+    assertJsonContains(json, "\"status\":\"rejected\"");
+    assertJsonContains(json, "\"code\":\"rollback-artifact-selection-required\"");
     assertTrue(
         readJson(outputStream)
             .path("details")
@@ -594,12 +594,12 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new ListAccountsResult.Listed(
             accountPage(java.util.List.of(declaredAccount), 50, java.util.Optional.empty())));
     String declareSuccessJson = declareSuccessOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(declareSuccessJson.contains("\"accountName\":\"Cash\""));
-    assertTrue(declareSuccessJson.contains("\"declaredAt\":\"2026-04-07T10:15:30Z\""));
+    assertJsonContains(declareSuccessJson, "\"accountName\":\"Cash\"");
+    assertJsonContains(declareSuccessJson, "\"declaredAt\":\"2026-04-07T10:15:30Z\"");
     String listSuccessJson = listSuccessOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(listSuccessJson.contains("\"limit\":50"));
+    assertJsonContains(listSuccessJson, "\"limit\":50");
     assertFalse(listSuccessJson.contains("\"nextCursor\""));
-    assertTrue(listSuccessJson.contains("\"accountName\":\"Cash\""));
+    assertJsonContains(listSuccessJson, "\"accountName\":\"Cash\"");
     ByteArrayOutputStream declareRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter declareRejectionWriter =
         new CliResponseWriter(utf8PrintStream(declareRejectionOutput));
@@ -619,20 +619,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new CliResponseWriter(utf8PrintStream(listRejectionOutput));
     listRejectionWriter.writeListAccountsResult(
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()));
-    assertTrue(
-        declareRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"administration-book-not-initialized\""));
+    assertJsonContains(declareRejectionOutput, "\"code\":\"administration-book-not-initialized\"");
     String declareConflictJson = declareConflictOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(declareConflictJson.contains("\"code\":\"account-role-conflict\""));
-    assertTrue(declareConflictJson.contains("\"accountCode\":\"1000\""));
-    assertTrue(declareConflictJson.contains("\"existingAccountRole\":\"ORDINARY\""));
-    assertTrue(declareConflictJson.contains("\"requestedAccountRole\":\"CONTRA\""));
+    assertJsonContains(declareConflictJson, "\"code\":\"account-role-conflict\"");
+    assertJsonContains(declareConflictJson, "\"accountCode\":\"1000\"");
+    assertJsonContains(declareConflictJson, "\"existingAccountRole\":\"ORDINARY\"");
+    assertJsonContains(declareConflictJson, "\"requestedAccountRole\":\"CONTRA\"");
     assertTrue(declareConflictJson.contains("already exists with account role"));
-    assertTrue(
-        listRejectionOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"query-book-not-initialized\""));
+    assertJsonContains(listRejectionOutput, "\"code\":\"query-book-not-initialized\"");
   }
 
   @Test
@@ -642,9 +636,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     successWriter.writeClosePeriodResult(
         new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.JSON);
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(successJson.contains("\"status\":\"ok\""));
-    assertTrue(successJson.contains("\"closeOrder\":1"));
-    assertTrue(successJson.contains("\"closingPostingIds\":[\"posting-close-1\"]"));
+    assertJsonContains(successJson, "\"status\":\"ok\"");
+    assertJsonContains(successJson, "\"closeOrder\":1");
+    assertJsonContains(successJson, "\"closingPostingIds\":[\"posting-close-1\"]");
 
     ByteArrayOutputStream missingOutput = new ByteArrayOutputStream();
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
@@ -654,14 +648,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
                 List.of(new AccountCode("3200")))),
         OutputMode.JSON);
-    assertTrue(
-        missingOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"closing-equity-account-candidate-missing\""));
-    assertTrue(
-        missingOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"requiredFinancialPositionLineClassification\":\"RETAINED_EARNINGS\""));
+    assertJsonContains(missingOutput, "\"code\":\"closing-equity-account-candidate-missing\"");
+    assertJsonContains(
+        missingOutput, "\"requiredFinancialPositionLineClassification\":\"RETAINED_EARNINGS\"");
 
     ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
     CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
@@ -670,8 +659,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-01"))),
         OutputMode.JSON);
     String horizonJson = horizonOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(horizonJson.contains("\"code\":\"period-close-must-start-at\""));
-    assertTrue(horizonJson.contains("\"requiredEffectiveDateFrom\":\"2026-04-01\""));
+    assertJsonContains(horizonJson, "\"code\":\"period-close-must-start-at\"");
+    assertJsonContains(horizonJson, "\"requiredEffectiveDateFrom\":\"2026-04-01\"");
 
     ByteArrayOutputStream typeConflictOutput = new ByteArrayOutputStream();
     CliResponseWriter typeConflictWriter =
@@ -684,8 +673,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 dev.erst.fingrind.core.AccountType.LIABILITY)),
         OutputMode.JSON);
     String typeConflictJson = typeConflictOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(typeConflictJson.contains("\"existingAccountType\":\"EQUITY\""));
-    assertTrue(typeConflictJson.contains("\"requestedAccountType\":\"LIABILITY\""));
+    assertJsonContains(typeConflictJson, "\"existingAccountType\":\"EQUITY\"");
+    assertJsonContains(typeConflictJson, "\"requestedAccountType\":\"LIABILITY\"");
 
     ByteArrayOutputStream ambiguousOutput = new ByteArrayOutputStream();
     CliResponseWriter ambiguousWriter = new CliResponseWriter(utf8PrintStream(ambiguousOutput));
@@ -695,10 +684,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 dev.erst.fingrind.core.FinancialPositionLineClassification.OTHER_EQUITY,
                 List.of(new AccountCode("3200"), new AccountCode("3210")))),
         OutputMode.JSON);
-    assertTrue(
-        ambiguousOutput
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"closing-equity-account-candidate-ambiguous\""));
+    assertJsonContains(ambiguousOutput, "\"code\":\"closing-equity-account-candidate-ambiguous\"");
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
@@ -714,23 +700,23 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         rejectedJson(
             new PostingRejection.ClosedPeriodViolation(
                 LocalDate.parse("2026-04-30"), LocalDate.parse("2026-05-01")));
-    assertTrue(closedPeriodJson.contains("\"closedThroughEffectiveDate\":\"2026-04-30\""));
-    assertTrue(closedPeriodJson.contains("\"attemptedEffectiveDate\":\"2026-05-01\""));
+    assertJsonContains(closedPeriodJson, "\"closedThroughEffectiveDate\":\"2026-04-30\"");
+    assertJsonContains(closedPeriodJson, "\"attemptedEffectiveDate\":\"2026-05-01\"");
 
     String retainedEarningsJson =
         rejectedJson(new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")));
-    assertTrue(retainedEarningsJson.contains("\"accountCode\":\"3200\""));
+    assertJsonContains(retainedEarningsJson, "\"accountCode\":\"3200\"");
 
     String missingPriorPostingJson =
         rejectedJson(new PostingRejection.ReversalTargetNotFound(new PostingId("posting-9")));
-    assertTrue(missingPriorPostingJson.contains("\"priorPostingId\":\"posting-9\""));
+    assertJsonContains(missingPriorPostingJson, "\"priorPostingId\":\"posting-9\"");
 
     String existingReversalJson =
         rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-8")));
-    assertTrue(existingReversalJson.contains("\"priorPostingId\":\"posting-8\""));
+    assertJsonContains(existingReversalJson, "\"priorPostingId\":\"posting-8\"");
 
     String negateTargetJson =
         rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-7")));
-    assertTrue(negateTargetJson.contains("\"priorPostingId\":\"posting-7\""));
+    assertJsonContains(negateTargetJson, "\"priorPostingId\":\"posting-7\"");
   }
 }

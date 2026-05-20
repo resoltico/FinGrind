@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -58,6 +59,7 @@ class PostingAcceptancePolicyInternalTest {
                         line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
                         line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                 PostingLineageModel.direct(),
+                generatedEvidence("period-close-command", "period-close-plan"),
                 new RequestProvenance(
                     new ActorId("actor-1"),
                     ActorType.SYSTEM,
@@ -82,6 +84,7 @@ class PostingAcceptancePolicyInternalTest {
                 line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.PERIOD_CLOSE,
+        generatedEvidence(idempotencyKey, "period-close-plan"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

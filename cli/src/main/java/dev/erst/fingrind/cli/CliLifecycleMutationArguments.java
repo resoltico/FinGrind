@@ -108,9 +108,10 @@ final class CliLifecycleMutationArguments {
                 new EntityProfile(
                     requireOpenBookEntityName(argumentValues.entityName),
                     requireOpenBookEntityForm(argumentValues.entityForm),
-                    argumentValues.resolvedOwnerModel(),
-                    argumentValues.resolvedReportingObligationStatus(),
-                    argumentValues.businessActivityTags),
+                    requireOpenBookOwnerModel(argumentValues.ownerModel),
+                    requireOpenBookReportingObligationStatus(
+                        argumentValues.reportingObligationStatus),
+                    requireOpenBookBusinessActivityTags(argumentValues.businessActivityTags)),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
                 requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
                 requireOpenBookAccountingBasis(argumentValues.accountingBasis))),
@@ -238,6 +239,35 @@ final class CliLifecycleMutationArguments {
     return accountingBasis;
   }
 
+  private static OwnerModel requireOpenBookOwnerModel(@Nullable OwnerModel ownerModel) {
+    if (ownerModel == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.OWNER_MODEL,
+          "A " + ProtocolOptions.OWNER_MODEL + " argument is required.");
+    }
+    return ownerModel;
+  }
+
+  private static ReportingObligationStatus requireOpenBookReportingObligationStatus(
+      @Nullable ReportingObligationStatus reportingObligationStatus) {
+    if (reportingObligationStatus == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.REPORTING_OBLIGATION_STATUS,
+          "A " + ProtocolOptions.REPORTING_OBLIGATION_STATUS + " argument is required.");
+    }
+    return reportingObligationStatus;
+  }
+
+  private static List<BusinessActivityTag> requireOpenBookBusinessActivityTags(
+      List<BusinessActivityTag> businessActivityTags) {
+    if (businessActivityTags.isEmpty()) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BUSINESS_ACTIVITY_TAG,
+          "At least one " + ProtocolOptions.BUSINESS_ACTIVITY_TAG + " argument is required.");
+    }
+    return List.copyOf(businessActivityTags);
+  }
+
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
     private final List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
@@ -249,16 +279,6 @@ final class CliLifecycleMutationArguments {
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable AccountingBasis accountingBasis;
     private @Nullable OutputMode outputMode;
-
-    private OwnerModel resolvedOwnerModel() {
-      return ownerModel == null ? OwnerModel.UNKNOWN : ownerModel;
-    }
-
-    private ReportingObligationStatus resolvedReportingObligationStatus() {
-      return reportingObligationStatus == null
-          ? ReportingObligationStatus.UNSPECIFIED
-          : reportingObligationStatus;
-    }
   }
 
   static CliCommand parseRekeyBookCommand(List<String> arguments) {

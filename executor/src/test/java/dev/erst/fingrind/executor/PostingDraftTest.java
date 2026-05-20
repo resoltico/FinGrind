@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,6 +37,7 @@ class PostingDraftTest {
             journalEntry(),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
+            accountingEvidence("idem-1"),
             committedProvenance("idem-1"));
     CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
     assertTrue(postingDraft.reversalReference().isEmpty());
@@ -53,7 +55,11 @@ class PostingDraftTest {
         NullPointerException.class,
         () ->
             new PostingDraft(
-                journalEntry(), null, PostingKind.STANDARD, committedProvenance("idem-1")));
+                journalEntry(),
+                null,
+                PostingKind.STANDARD,
+                accountingEvidence("idem-1"),
+                committedProvenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {

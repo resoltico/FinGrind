@@ -1,14 +1,53 @@
 package dev.erst.fingrind.contract.runtime;
 
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Machine-readable compatibility and lifecycle snapshot for one selected book file. */
 public sealed interface BookInspection
     permits BookInspection.Missing, BookInspection.Existing, BookInspection.Initialized {
+  /** Close-period configuration readiness published for one initialized book. */
+  record CloseReadiness(
+      boolean ready,
+      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
+      @Nullable AccountCode closingEquityAccountCode,
+      @Nullable String blockingCode,
+      @Nullable String blockingMessage,
+      List<AccountCode> candidateAccountCodes) {
+    public CloseReadiness {
+      Objects.requireNonNull(
+          requiredFinancialPositionLineClassification,
+          "requiredFinancialPositionLineClassification");
+      candidateAccountCodes = List.copyOf(candidateAccountCodes);
+      if (ready) {
+        Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
+        if (blockingCode != null || blockingMessage != null) {
+          throw new IllegalArgumentException(
+              "Ready close-readiness must not carry blocking metadata.");
+        }
+      } else {
+        if (closingEquityAccountCode != null) {
+          throw new IllegalArgumentException(
+              "Blocked close-readiness must not carry one closing-equity account code.");
+        }
+        if (blockingCode == null || blockingCode.isBlank()) {
+          throw new IllegalArgumentException(
+              "Blocked close-readiness must carry one blockingCode.");
+        }
+        if (blockingMessage == null || blockingMessage.isBlank()) {
+          throw new IllegalArgumentException(
+              "Blocked close-readiness must carry one blockingMessage.");
+        }
+      }
+    }
+  }
+
   /** Stable lifecycle and compatibility state reported for one book file. */
   enum Status implements WireValue {
     MISSING,
@@ -135,7 +174,8 @@ public sealed interface BookInspection
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
       Instant initializedAt,
-      BookIdentity bookIdentity)
+      BookIdentity bookIdentity,
+      CloseReadiness closeReadiness)
       implements BookInspection {
     /** Validates one initialized-book inspection snapshot. */
     public Initialized {
@@ -143,6 +183,7 @@ public sealed interface BookInspection
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
       Objects.requireNonNull(initializedAt, "initializedAt");
       Objects.requireNonNull(bookIdentity, "bookIdentity");
+      Objects.requireNonNull(closeReadiness, "closeReadiness");
     }
 
     @Override

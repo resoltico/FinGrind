@@ -31,10 +31,8 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.InteractionLimits;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -208,9 +206,13 @@ final class CliLedgerPlanParser {
                 CliArgumentValueParser.parseEntityFormOption(
                     requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_FORM),
                     "openBook." + ProtocolOpenBookFields.ENTITY_FORM),
-                optionalOwnerModel(openBookNode),
-                optionalReportingObligationStatus(openBookNode),
-                businessActivityTags(openBookNode)),
+                CliArgumentValueParser.parseOwnerModelOption(
+                    requiredText(openBookNode, ProtocolOpenBookFields.OWNER_MODEL),
+                    "openBook." + ProtocolOpenBookFields.OWNER_MODEL),
+                CliArgumentValueParser.parseReportingObligationStatusOption(
+                    requiredText(openBookNode, ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS),
+                    "openBook." + ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS),
+                requiredBusinessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
@@ -222,36 +224,8 @@ final class CliLedgerPlanParser {
                 "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)));
   }
 
-  private static OwnerModel optionalOwnerModel(ObjectNode openBookNode) {
-    return optionalText(openBookNode, ProtocolOpenBookFields.OWNER_MODEL)
-        .map(
-            value ->
-                CliArgumentValueParser.parseOwnerModelOption(
-                    value, "openBook." + ProtocolOpenBookFields.OWNER_MODEL))
-        .orElse(OwnerModel.UNKNOWN);
-  }
-
-  private static ReportingObligationStatus optionalReportingObligationStatus(
-      ObjectNode openBookNode) {
-    return optionalText(openBookNode, ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS)
-        .map(
-            value ->
-                CliArgumentValueParser.parseReportingObligationStatusOption(
-                    value, "openBook." + ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS))
-        .orElse(ReportingObligationStatus.UNSPECIFIED);
-  }
-
-  private static List<BusinessActivityTag> businessActivityTags(ObjectNode openBookNode) {
-    JsonNode rawNode =
-        CliJsonFieldAccess.nullableField(
-            openBookNode, ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
-    if (rawNode == null || rawNode.isNull()) {
-      return List.of();
-    }
-    if (!rawNode.isArray()) {
-      throw new IllegalArgumentException(
-          "Field must be an array when present: " + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
-    }
+  private static List<BusinessActivityTag> requiredBusinessActivityTags(ObjectNode openBookNode) {
+    JsonNode rawNode = requiredArray(openBookNode, ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
     List<BusinessActivityTag> tags = new ArrayList<>();
     int index = 0;
     for (JsonNode tagNode : rawNode) {
@@ -268,6 +242,11 @@ final class CliLedgerPlanParser {
               tagNode.stringValue(),
               ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS + "[" + index + "]"));
       index++;
+    }
+    if (tags.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Field must contain at least one value: "
+              + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
     }
     return List.copyOf(tags);
   }

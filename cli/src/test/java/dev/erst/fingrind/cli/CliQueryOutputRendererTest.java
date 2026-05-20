@@ -162,7 +162,12 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
             new BookInspection.Initialized(
-                123, 1, 1, Instant.parse("2026-04-07T10:15:30Z"), taggedIdentity));
+                123,
+                1,
+                1,
+                Instant.parse("2026-04-07T10:15:30Z"),
+                taggedIdentity,
+                closeReadyInspection()));
 
     assertTrue(inspection.contains("Business activity"));
     assertTrue(inspection.contains("translation,localization, cafe services"));
@@ -187,10 +192,61 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
             new BookInspection.Initialized(
-                123, 1, 1, Instant.parse("2026-04-07T10:15:30Z"), registeredIdentity));
+                123,
+                1,
+                1,
+                Instant.parse("2026-04-07T10:15:30Z"),
+                registeredIdentity,
+                closeReadyInspection()));
 
     assertTrue(inspection.contains("Reporting obligation"));
     assertTrue(inspection.contains("Internal Management Only"));
+  }
+
+  @Test
+  void renderBookInspectionHuman_showsNoCandidateAccountsWhenBlockedWithoutCandidates() {
+    String inspection =
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+            Path.of("office/report.sqlite"),
+            new BookInspection.Initialized(
+                123,
+                1,
+                1,
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                new BookInspection.CloseReadiness(
+                    false,
+                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    null,
+                    "closing-equity-account-candidate-missing",
+                    "No active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS'.",
+                    List.of())));
+
+    assertTrue(inspection.contains("Candidate accounts"));
+    assertTrue(inspection.contains("(none)"));
+  }
+
+  @Test
+  void renderBookInspectionHuman_listsCandidateAccountsWhenBlockedWithCandidates() {
+    String inspection =
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+            Path.of("office/report.sqlite"),
+            new BookInspection.Initialized(
+                123,
+                1,
+                1,
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                new BookInspection.CloseReadiness(
+                    false,
+                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    null,
+                    "closing-equity-account-candidate-ambiguous",
+                    "More than one active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS': 3200, 3210.",
+                    List.of(new AccountCode("3200"), new AccountCode("3210")))));
+
+    assertTrue(inspection.contains("Candidate accounts"));
+    assertTrue(inspection.contains("3200, 3210"));
   }
 
   @Test
@@ -293,6 +349,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   @Test
   void renderMutationViewsAcrossOperatorFormats() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
+    DeclaredAccount childAccount =
+        new DeclaredAccount(
+            new AccountCode("1100"),
+            new AccountName("Petty Cash"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            new AccountTaxonomy(
+                Optional.of(new AccountCode("1000")),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty()),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
     String generatedKeyHuman =
         CliMutationOutputRenderer.renderGeneratedBookKeyFileHuman(
             new SqliteBookKeyFileGenerator.GeneratedKeyFile(
@@ -306,6 +374,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")),
             new BookAccess.PassphraseSource.KeyFile(Path.of("office/keys/rotated.key")));
     String declaredAccountHuman = CliMutationOutputRenderer.renderDeclaredAccountHuman(cashAccount);
+    String childAccountHuman = CliMutationOutputRenderer.renderDeclaredAccountHuman(childAccount);
     String preflightHuman =
         CliMutationOutputRenderer.renderPreflightAcceptedHuman(
             new PostEntryResult.PreflightAccepted(
@@ -331,6 +400,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(rekeyBookHuman.contains("Replacement secret source"));
     assertTrue(rekeyBookHuman.contains("Replacement key file"));
     assertTrue(declaredAccountHuman.contains("Account Declared"));
+    assertTrue(declaredAccountHuman.contains("Parent account"));
+    assertTrue(declaredAccountHuman.contains("(none)"));
+    assertTrue(childAccountHuman.contains("Parent account"));
+    assertTrue(childAccountHuman.contains("1000"));
     assertTrue(preflightHuman.contains("Entry Preflight Accepted"));
     assertTrue(committedHuman.contains("Entry Committed"));
     assertTrue(committedHuman.contains("posting-committed"));
@@ -1159,6 +1232,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         reversalPosting.journalEntry(),
         PostingLineage.direct(),
         reversalPosting.postingKind(),
+        reversalPosting.evidence(),
         reversalPosting.provenance());
   }
 }

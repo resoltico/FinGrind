@@ -9,8 +9,12 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -29,6 +33,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
@@ -69,6 +76,36 @@ class LedgerPlanFactMapperTest {
                     fact instanceof BookWorkflowFact.Text text
                         && "nextCursor".equals(text.name())
                         && page.nextCursor().orElseThrow().wireValue().equals(text.value())));
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && "posting".equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                child ->
+                                    child instanceof BookWorkflowFact.Group evidence
+                                        && "evidence".equals(evidence.name())
+                                        && evidence.facts().stream()
+                                            .anyMatch(
+                                                nested ->
+                                                    nested
+                                                            instanceof
+                                                            BookWorkflowFact.Group approval
+                                                        && "approval".equals(approval.name())
+                                                        && approval.facts().stream()
+                                                            .anyMatch(
+                                                                field ->
+                                                                    field
+                                                                            instanceof
+                                                                            BookWorkflowFact.Text
+                                                                                text
+                                                                        && "approvalType"
+                                                                            .equals(text.name())
+                                                                        && "manager-signoff"
+                                                                            .equals(
+                                                                                text.value()))))));
     assertTrue(
         facts.stream()
             .anyMatch(
@@ -154,6 +191,13 @@ class LedgerPlanFactMapperTest {
             new ReversalReference(new PostingId("prior-posting")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
+        new AccountingEvidence(
+            List.of(
+                new SourceDocumentReference(
+                    new SourceDocumentId("document-idem-1"), new SourceDocumentType("invoice"))),
+            List.of(
+                new ApprovalReference(
+                    new ApprovalId("approval-idem-1"), new ApprovalType("manager-signoff")))),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

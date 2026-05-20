@@ -292,9 +292,17 @@ class SqliteNativeInteropTest {
                     Money.parse("EUR", "10.00")));
         assertEquals(
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
-                .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)),
+                .toPublished(
+                    SqlitePostingMapper.committedPosting(
+                        postingRow,
+                        lines,
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"))),
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
-                .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)));
+                .toPublished(
+                    SqlitePostingMapper.committedPosting(
+                        postingRow,
+                        lines,
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"))));
       }
     }
   }

@@ -23,6 +23,15 @@
     "priorPostingId": "posting-legacy-9",
     "reason": "replay candidate"
   },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-posting-invalid-9",
+        "sourceDocumentType": "credit-note"
+      }
+    ],
+    "approvals": []
+  },
   "provenance": {
     "actorId": "actor-posting-invalid-9",
     "actorType": "HUMAN",

@@ -180,6 +180,7 @@ final class CliReportPayloadMapper {
         MonetaryAmount.of(entry.movement().creditTotal()),
         MonetaryAmount.of(entry.runningNetAmount()),
         entry.runningBalanceSide().wireValue(),
+        CliBookPayloadMapper.evidencePayload(entry.postingFact().evidence()),
         CliBookPayloadMapper.counterpartAccounts(account, entry.postingFact()));
   }
 

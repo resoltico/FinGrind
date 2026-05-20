@@ -17,11 +17,19 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Covers replay helpers, invariant verifiers, and deterministic Jazzer model seams. */
@@ -340,6 +348,7 @@ class JazzerReplayInternalsTest {
                     command.journalEntry(),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
+                    command.evidence(),
                     new CommittedProvenance(
                         command.requestProvenance(),
                         CliFuzzFixtures.fixedClock().instant(),
@@ -354,6 +363,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     command.journalEntry(),
                     reversalCommand.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -367,6 +377,29 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     command.journalEntry(),
                     command.postingLineage(),
+                    new AccountingEvidence(
+                        List.of(
+                            new SourceDocumentReference(
+                                new SourceDocumentId("document-evidence-mismatch"),
+                                new SourceDocumentType("invoice"))),
+                        List.of(
+                            new ApprovalReference(
+                                new ApprovalId("approval-evidence-mismatch"),
+                                new ApprovalType("manager-signoff")))),
+                    command.requestProvenance(),
+                    CliFuzzFixtures.fixedClock().instant(),
+                    command.sourceChannel()),
+                committed(command, "posting-1"),
+                command));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+                postingFact(
+                    "posting-1",
+                    command.journalEntry(),
+                    command.postingLineage(),
+                    command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -380,6 +413,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     command.journalEntry(),
                     command.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
                     command.sourceChannel()),
@@ -512,6 +546,7 @@ class JazzerReplayInternalsTest {
         postingId,
         command.journalEntry(),
         command.postingLineage(),
+        command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),
         command.sourceChannel());
@@ -521,6 +556,7 @@ class JazzerReplayInternalsTest {
       String postingId,
       dev.erst.fingrind.core.JournalEntry journalEntry,
       PostingLineage postingLineage,
+      dev.erst.fingrind.core.AccountingEvidence evidence,
       dev.erst.fingrind.core.RequestProvenance requestProvenance,
       java.time.Instant recordedAt,
       dev.erst.fingrind.core.SourceChannel sourceChannel) {
@@ -529,6 +565,7 @@ class JazzerReplayInternalsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
+        evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
 

@@ -3,9 +3,13 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +30,9 @@ final class MachineContractPostEntrySchemas {
     return new ContractRequestShapes.PostEntryRequestShapeDescriptor(
         MachineContractSchemaSupport.requestFieldDescriptors(topLevelFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(lineFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(evidenceFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(sourceDocumentFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(approvalFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(provenanceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(reversalFields()),
         List.of(
@@ -45,6 +52,22 @@ final class MachineContractPostEntrySchemas {
   private static Map<String, Object> provenanceSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Caller-supplied provenance captured before commit.", provenanceFields());
+  }
+
+  private static Map<String, Object> evidenceSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "First-class source-document and approval references linked to this posting.",
+        evidenceFields());
+  }
+
+  private static Map<String, Object> sourceDocumentSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "One retained source document linked to this posting.", sourceDocumentFields());
+  }
+
+  private static Map<String, Object> approvalSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "One retained approval linked to this posting.", approvalFields());
   }
 
   private static Map<String, Object> reversalSchema() {
@@ -69,6 +92,10 @@ final class MachineContractPostEntrySchemas {
             "Balanced non-empty array of journal lines for one currency.",
             MachineContractSchemaSupport.arraySchema(
                 "Balanced non-empty array of journal lines for one currency.", lineSchema(), 2)),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.TopLevel.EVIDENCE,
+            "First-class source-document and approval references linked to this posting.",
+            evidenceSchema()),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.PROVENANCE,
             "Caller-supplied request provenance captured before commit.",
@@ -101,6 +128,58 @@ final class MachineContractPostEntrySchemas {
             "Exact positive money object for this journal line. Every line in one entry must resolve to the same currency unit.",
             MachineContractSchemaSupport.moneyObjectSchema(
                 "Exact positive money object for this journal line.", true)));
+  }
+
+  private static List<MachineContractFieldSpec> evidenceFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS,
+            "Non-empty ordered source-document references linked to this posting.",
+            MachineContractSchemaSupport.arraySchema(
+                "Non-empty ordered source-document references linked to this posting.",
+                sourceDocumentSchema(),
+                1)),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Evidence.APPROVALS,
+            "Ordered approval references linked to this posting. The list may be empty when no approval exists for the posting.",
+            MachineContractSchemaSupport.arraySchema(
+                "Ordered approval references linked to this posting.", approvalSchema(), 0)));
+  }
+
+  private static List<MachineContractFieldSpec> sourceDocumentFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_ID,
+            "Stable identifier of one retained source document.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Stable identifier of one retained source document.",
+                SourceDocumentId.pattern(),
+                SourceDocumentId.maxLength())),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
+            "Caller-authored source-document classification token.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Caller-authored source-document classification token.",
+                SourceDocumentType.pattern(),
+                SourceDocumentType.maxLength())));
+  }
+
+  private static List<MachineContractFieldSpec> approvalFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Approval.APPROVAL_ID,
+            "Stable identifier of one retained approval fact.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Stable identifier of one retained approval fact.",
+                ApprovalId.pattern(),
+                ApprovalId.maxLength())),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Approval.APPROVAL_TYPE,
+            "Caller-authored approval classification token.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Caller-authored approval classification token.",
+                ApprovalType.pattern(),
+                ApprovalType.maxLength())));
   }
 
   private static List<MachineContractFieldSpec> provenanceFields() {

@@ -44,6 +44,15 @@ final class JazzerReplayLedgerPlanFixtures {
                     }
                   }
                 ],
+                "evidence": {
+                  "sourceDocuments": [
+                    {
+                      "sourceDocumentId": "document-idem-plan-1",
+                      "sourceDocumentType": "invoice"
+                    }
+                  ],
+                  "approvals": []
+                },
                 "provenance": {
                   "actorId": "agent-1",
                   "actorType": "AGENT",
@@ -116,6 +125,15 @@ final class JazzerReplayLedgerPlanFixtures {
                     }
                   }
                 ],
+                "evidence": {
+                  "sourceDocuments": [
+                    {
+                      "sourceDocumentId": "document-idem-query-1",
+                      "sourceDocumentType": "invoice"
+                    }
+                  ],
+                  "approvals": []
+                },
                 "provenance": {
                   "actorId": "agent-1",
                   "actorType": "AGENT",

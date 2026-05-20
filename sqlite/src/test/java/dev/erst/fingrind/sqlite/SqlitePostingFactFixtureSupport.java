@@ -10,8 +10,12 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
@@ -38,6 +42,9 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -92,11 +99,22 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason) {
+    return postingFactWithEvidence(
+        postingId, idempotencyKey, reversalReference, reason, accountingEvidence(idempotencyKey));
+  }
+
+  static CommittedPosting postingFactWithEvidence(
+      String postingId,
+      String idempotencyKey,
+      Optional<ReversalReference> reversalReference,
+      Optional<ReversalReason> reason,
+      AccountingEvidence evidence) {
     return new CommittedPosting(
         new PostingId(postingId),
         journalEntry(reversalReference),
         postingLineage(reversalReference, reason),
         PostingKind.STANDARD,
+        evidence,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -120,6 +138,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -130,6 +149,33 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 Optional.of(new CorrelationId("corr-1"))),
             recordedAt,
             SourceChannel.CLI));
+  }
+
+  static AccountingEvidence accountingEvidence(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of());
+  }
+
+  static AccountingEvidence accountingEvidenceWithApproval(String token) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+        List.of(
+            new ApprovalReference(
+                new ApprovalId("approval-" + token), new ApprovalType("manager-signoff"))));
+  }
+
+  static AccountingEvidence generatedEvidence(String token, String sourceDocumentType) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("generated-" + token),
+                new SourceDocumentType(sourceDocumentType))),
+        List.of());
   }
 
   static PostingLineageModel postingLineage(

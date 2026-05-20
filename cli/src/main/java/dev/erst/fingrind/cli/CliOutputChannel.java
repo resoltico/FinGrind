@@ -36,15 +36,11 @@ final class CliOutputChannel {
   }
 
   void writeEnvelope(Record envelope) {
-    writeJson(envelope);
-  }
-
-  private void writePrettyEnvelope(Record envelope) {
     writePrettyJson(envelope);
   }
 
   void writePrettySuccess(ProtocolSuccessPayload payload) {
-    writePrettyEnvelope(CliResponsePayloadMapper.successEnvelope(payload));
+    writePrettyJson(CliResponsePayloadMapper.successEnvelope(payload));
   }
 
   void writeMutationRejection(

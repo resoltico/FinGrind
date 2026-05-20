@@ -410,37 +410,7 @@ class CliFuzzFixturesTest {
   }
 
   private static String basicValidRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1"
-          }
-        }
-        """;
+    return SqliteRoundTripWorkflowTestSupport.basicValidRequest();
   }
 
   private static String basicValidLedgerPlan() {
@@ -464,6 +434,9 @@ class CliFuzzFixturesTest {
         {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
+          "ownerModel": "MULTI_OWNER",
+          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "accountingBasis": "ACCRUAL"

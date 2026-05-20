@@ -51,6 +51,10 @@ final class CliPostingOutputRenderer {
             "Source channel",
             displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
     header.add(
+        List.of(
+            "Source documents", CliQueryOutputFormatter.postingSourceDocumentsHuman(postingFact)));
+    header.add(List.of("Approvals", CliQueryOutputFormatter.postingApprovalsHuman(postingFact)));
+    header.add(
         List.of("Reverses posting", CliQueryOutputFormatter.reversalTargetHuman(postingFact)));
     header.add(
         List.of(
@@ -136,6 +140,13 @@ final class CliPostingOutputRenderer {
                                         "Accounts",
                                         CliQueryOutputFormatter.postingAccountsHuman(posting)),
                                     List.of(
+                                        "Source documents",
+                                        CliQueryOutputFormatter.postingSourceDocumentsHuman(
+                                            posting)),
+                                    List.of(
+                                        "Approvals",
+                                        CliQueryOutputFormatter.postingApprovalsHuman(posting)),
+                                    List.of(
                                         "Reverses posting",
                                         CliQueryOutputFormatter.reversalTargetHuman(posting))))))
                 .collect(
@@ -164,7 +175,9 @@ final class CliPostingOutputRenderer {
             "debitTotal",
             "creditTotal",
             "accountCodes",
-            "reversalTarget"),
+            "reversalTarget",
+            "sourceDocuments",
+            "approvals"),
         page.postings().stream()
             .map(
                 posting -> {

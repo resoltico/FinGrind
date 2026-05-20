@@ -12,6 +12,7 @@ public final class ProtocolPostEntryFields {
         TopLevel.POSTING_KIND,
         TopLevel.EFFECTIVE_DATE,
         TopLevel.LINES,
+        TopLevel.EVIDENCE,
         TopLevel.PROVENANCE,
         TopLevel.REVERSAL);
   }
@@ -32,6 +33,21 @@ public final class ProtocolPostEntryFields {
         Provenance.CORRELATION_ID);
   }
 
+  /** Returns evidence request fields in stable wire order. */
+  public static List<String> evidenceFields() {
+    return List.of(Evidence.SOURCE_DOCUMENTS, Evidence.APPROVALS);
+  }
+
+  /** Returns source-document evidence fields in stable wire order. */
+  public static List<String> sourceDocumentFields() {
+    return List.of(SourceDocument.SOURCE_DOCUMENT_ID, SourceDocument.SOURCE_DOCUMENT_TYPE);
+  }
+
+  /** Returns approval evidence fields in stable wire order. */
+  public static List<String> approvalFields() {
+    return List.of(Approval.APPROVAL_ID, Approval.APPROVAL_TYPE);
+  }
+
   /** Returns reversal request fields in stable wire order. */
   public static List<String> reversalFields() {
     return List.of(Reversal.PRIOR_POSTING_ID, Reversal.REASON);
@@ -42,6 +58,7 @@ public final class ProtocolPostEntryFields {
     public static final String POSTING_KIND = "postingKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
     public static final String LINES = "lines";
+    public static final String EVIDENCE = "evidence";
     public static final String PROVENANCE = "provenance";
     public static final String REVERSAL = "reversal";
     public static final String CORRECTION = "correction";
@@ -71,6 +88,30 @@ public final class ProtocolPostEntryFields {
     public static final String SOURCE_CHANNEL = "sourceChannel";
 
     private Provenance() {}
+  }
+
+  /** Evidence request fields. */
+  public static final class Evidence {
+    public static final String SOURCE_DOCUMENTS = "sourceDocuments";
+    public static final String APPROVALS = "approvals";
+
+    private Evidence() {}
+  }
+
+  /** Source-document evidence fields. */
+  public static final class SourceDocument {
+    public static final String SOURCE_DOCUMENT_ID = "sourceDocumentId";
+    public static final String SOURCE_DOCUMENT_TYPE = "sourceDocumentType";
+
+    private SourceDocument() {}
+  }
+
+  /** Approval evidence fields. */
+  public static final class Approval {
+    public static final String APPROVAL_ID = "approvalId";
+    public static final String APPROVAL_TYPE = "approvalType";
+
+    private Approval() {}
   }
 
   /** Reversal request fields. */

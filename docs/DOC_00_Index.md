@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.42.0"
+version: "0.43.0"
 domain: INDEX
 updated: "2026-05-20"
 route:
@@ -72,6 +72,10 @@ route:
 | `OwnerModel` | `DOC_01_Core.md` | `OwnerModel` |
 | `ReportingObligationStatus` | `DOC_01_Core.md` | `ReportingObligationStatus` |
 | `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
+| `AccountingEvidence` | `DOC_01_Core.md` | `AccountingEvidence` |
+| `ApprovalId` | `DOC_01_Core.md` | `ApprovalId` |
+| `ApprovalReference` | `DOC_01_Core.md` | `ApprovalReference` |
+| `ApprovalType` | `DOC_01_Core.md` | `ApprovalType` |
 | `EntityProfile` | `DOC_01_Core.md` | `EntityProfile` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
@@ -104,6 +108,9 @@ route:
 | `PostingId` | `DOC_01_Core.md` | `PostingId` |
 | `ReportingPeriod` | `DOC_01_Core.md` | `ReportingPeriod` |
 | `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
+| `SourceDocumentId` | `DOC_01_Core.md` | `SourceDocumentId` |
+| `SourceDocumentReference` | `DOC_01_Core.md` | `SourceDocumentReference` |
+| `SourceDocumentType` | `DOC_01_Core.md` | `SourceDocumentType` |
 | `ReversalReason` | `DOC_01_Core.md` | `ReversalReason` |
 | `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
 | `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
@@ -168,6 +175,9 @@ route:
 | `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.Evidence` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.SourceDocument` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.Approval` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.JournalLine` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Provenance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Reversal` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -235,6 +245,9 @@ route:
 | `ContractTemplates.TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.OpenBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.AccountingEvidenceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.ApprovalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.JournalLineTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ReversalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |

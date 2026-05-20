@@ -21,6 +21,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
@@ -100,7 +101,7 @@ public final class CliFuzzFixtures {
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
             ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            List.of()),
+            List.of(new BusinessActivityTag("translation-services"))),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),
         AccountingBasis.ACCRUAL);

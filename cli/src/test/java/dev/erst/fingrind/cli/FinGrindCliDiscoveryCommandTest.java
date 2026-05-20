@@ -77,13 +77,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     int exitCode = cli.run(new String[] {"help", "post-entry", "--output", "human"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(help.contains("Syntax"));
+    assertTrue(help.contains("Invocation"));
     assertTrue(help.contains("Examples"));
-    assertTrue(help.contains("Requirements"));
-    assertTrue(help.contains("Request Input"));
+    assertTrue(help.contains("Output Contract"));
+    assertTrue(help.contains("Request Document"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
-    assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
+    assertTrue(help.contains("Generate a runnable sample document with:"));
   }
 
   @Test
@@ -131,7 +131,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
-    assertTrue(help.contains("Syntax"));
+    assertTrue(help.contains("Invocation"));
     assertTrue(help.contains("Examples"));
   }
 
@@ -144,8 +144,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("declare-account"));
-    assertTrue(help.contains("Posting templates include effectiveDate"));
-    assertTrue(help.contains("declare-account templates do not."));
+    assertTrue(help.contains("runnable sample document"));
+    assertTrue(containsCollapsedText(help, "sample evidence and provenance values"));
   }
 
   @Test
@@ -734,7 +734,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     int exitCode = cli.run(new String[] {"print-request-template"});
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(json.contains("\"replace-before-commit-effective-date\""));
+    assertTrue(json.contains("\"2026-01-15\""));
     assertTrue(json.contains("\"effectiveDate\""));
     assertTrue(json.contains("\"provenance\""));
     assertFalse(json.contains("recordedAt"));

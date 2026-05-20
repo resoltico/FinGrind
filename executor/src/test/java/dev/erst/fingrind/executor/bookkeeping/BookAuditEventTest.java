@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -262,6 +263,7 @@ class BookAuditEventTest {
                     Money.parse("EUR", "1.00")))),
         postingLineage,
         PostingKind.STANDARD,
+        accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

@@ -4,10 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -68,5 +76,41 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                 Optional.empty()),
             "derived-no-correlation");
     assertTrue(withoutCorrelation.correlationId().isEmpty());
+
+    PostEntryCommand approvalBearingCommand =
+        new PostEntryCommand(
+            command.postingKind(),
+            command.journalEntry(),
+            command.postingLineage(),
+            new AccountingEvidence(
+                List.of(
+                    new SourceDocumentReference(
+                        new SourceDocumentId("document-approval-seed"),
+                        new SourceDocumentType("invoice"))),
+                List.of(
+                    new ApprovalReference(
+                        new ApprovalId("approval-seed"), new ApprovalType("manager-signoff")))),
+            command.requestProvenance(),
+            command.sourceChannel());
+    PostEntryCommand derivedCommand =
+        SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
+            approvalBearingCommand, "approval-derivation");
+    assertEquals(1, derivedCommand.evidence().approvals().size());
+    assertTrue(
+        derivedCommand
+            .evidence()
+            .sourceDocuments()
+            .getFirst()
+            .sourceDocumentId()
+            .value()
+            .startsWith("document-approval-seed-"));
+    assertTrue(
+        derivedCommand
+            .evidence()
+            .approvals()
+            .getFirst()
+            .approvalId()
+            .value()
+            .startsWith("approval-seed-"));
   }
 }

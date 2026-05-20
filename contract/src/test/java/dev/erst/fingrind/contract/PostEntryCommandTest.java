@@ -38,6 +38,7 @@ class PostEntryCommandTest {
             PostingLineage.reversal(
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("operator reversal")),
+            ContractFixtures.accountingEvidence("idem-1"),
             requestProvenance("idem-1"),
             SourceChannel.CLI);
     assertEquals(LocalDate.parse("2026-04-07"), command.journalEntry().effectiveDate());
@@ -53,6 +54,7 @@ class PostEntryCommandTest {
                 PostingKind.STANDARD,
                 nullOf(),
                 PostingLineage.direct(),
+                ContractFixtures.accountingEvidence("idem-1"),
                 requestProvenance("idem-1"),
                 SourceChannel.CLI));
   }
@@ -66,6 +68,7 @@ class PostEntryCommandTest {
                 PostingKind.STANDARD,
                 journalEntry(),
                 nullOf(),
+                ContractFixtures.accountingEvidence("idem-1"),
                 requestProvenance("idem-1"),
                 SourceChannel.CLI));
   }

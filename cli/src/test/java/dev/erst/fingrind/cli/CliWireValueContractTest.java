@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
@@ -57,6 +58,17 @@ class CliWireValueContractTest {
     assertTrue(Arrays.asList(SourceChannel.values()).contains(SourceChannel.CLI));
   }
 
+  @Test
+  void jsonText_unwrapsFinGrindEnumWireValueFailures() {
+    CliWireJson.WireValueSerializationException exception =
+        assertThrows(
+            CliWireJson.WireValueSerializationException.class,
+            () -> CliWireJson.jsonText(new BrokenPayload(BrokenEnum.BROKEN)));
+
+    String message = java.util.Objects.requireNonNullElse(exception.getMessage(), "");
+    assertTrue(message.contains("must implement WireValue"));
+  }
+
   private static Stream<Enum<?>[]> wireEnumFamilies() {
     return Stream.<Enum<?>[]>of(
         ActorType.values(),
@@ -80,5 +92,12 @@ class CliWireValueContractTest {
         PlanTransactionMode.values(),
         PlanFailurePolicy.values(),
         SqliteRuntime.Status.values());
+  }
+
+  private record BrokenPayload(BrokenEnum status) {}
+
+  /** Deliberately not a WireValue to prove contract enforcement. */
+  private enum BrokenEnum {
+    BROKEN
   }
 }

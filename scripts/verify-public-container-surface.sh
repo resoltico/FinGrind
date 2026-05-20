@@ -29,6 +29,9 @@ readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
 readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
 readonly fixture_entity_name='Release Protocol Fixture'
 readonly fixture_entity_form='COMPANY'
+readonly fixture_owner_model='MULTI_OWNER'
+readonly fixture_reporting_obligation_status='INTERNAL_MANAGEMENT_ONLY'
+readonly fixture_business_activity_tag='consulting-services'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
 readonly fixture_accounting_basis='ACCRUAL'
@@ -106,6 +109,15 @@ cat > "${report_root}/posting.json" <<'JSON'
 {
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-08",
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "release-protocol-invoice-1",
+        "sourceDocumentType": "invoice"
+      }
+    ],
+    "approvals": []
+  },
   "lines": [
     {
       "accountCode":"1000",
@@ -186,6 +198,9 @@ verify_mounted_book_surface() {
         --book-key-file /work/book.key \
         --entity-name "${fixture_entity_name}" \
         --entity-form "${fixture_entity_form}" \
+        --owner-model "${fixture_owner_model}" \
+        --reporting-obligation-status "${fixture_reporting_obligation_status}" \
+        --business-activity-tag "${fixture_business_activity_tag}" \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" \
         --accounting-basis "${fixture_accounting_basis}" >/dev/null

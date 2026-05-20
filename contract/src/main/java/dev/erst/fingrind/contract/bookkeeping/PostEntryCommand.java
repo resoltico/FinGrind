@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -11,6 +12,7 @@ public record PostEntryCommand(
     PostingKind postingKind,
     JournalEntry journalEntry,
     PostingLineage postingLineage,
+    AccountingEvidence evidence,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
     implements PostingRequest {
@@ -19,6 +21,7 @@ public record PostEntryCommand(
     Objects.requireNonNull(postingKind, "postingKind");
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
+    Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(requestProvenance, "requestProvenance");
     Objects.requireNonNull(sourceChannel, "sourceChannel");
   }

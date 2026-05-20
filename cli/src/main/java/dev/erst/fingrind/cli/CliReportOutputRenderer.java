@@ -183,7 +183,9 @@ final class CliReportOutputRenderer {
             "creditAmount",
             "runningNetAmount",
             "runningBalanceSide",
-            "counterpartAccounts"),
+            "counterpartAccounts",
+            "sourceDocuments",
+            "approvals"),
         java.util.stream.Stream.concat(
                 java.util.stream.Stream.concat(
                     report.openingBalances().stream()
@@ -196,6 +198,8 @@ final class CliReportOutputRenderer {
                                     CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
                                     CliQueryOutputFormatter.displayMoney(balance.netAmount()),
                                     balance.balanceSide().wireValue(),
+                                    "",
+                                    "",
                                     "",
                                     "",
                                     "",
@@ -231,7 +235,11 @@ final class CliReportOutputRenderer {
                                     CliQueryOutputFormatter.displayMoney(entry.runningNetAmount()),
                                     entry.runningBalanceSide().wireValue(),
                                     CliQueryOutputFormatter.counterpartAccounts(
-                                        report.account(), entry.postingFact())))),
+                                        report.account(), entry.postingFact()),
+                                    CliQueryOutputFormatter.postingSourceDocumentsCsv(
+                                        entry.postingFact()),
+                                    CliQueryOutputFormatter.postingApprovalsCsv(
+                                        entry.postingFact())))),
                 report.closingBalances().stream()
                     .map(
                         balance ->
@@ -242,6 +250,8 @@ final class CliReportOutputRenderer {
                                 CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
                                 CliQueryOutputFormatter.displayMoney(balance.netAmount()),
                                 balance.balanceSide().wireValue(),
+                                "",
+                                "",
                                 "",
                                 "",
                                 "",
@@ -711,7 +721,13 @@ final class CliReportOutputRenderer {
                     CliQueryOutputFormatter.displayBalanceSideLabel(entry.runningBalanceSide())),
                 List.of(
                     "Counterpart accounts",
-                    CliQueryOutputFormatter.counterpartAccounts(account, entry.postingFact()))));
+                    CliQueryOutputFormatter.counterpartAccounts(account, entry.postingFact())),
+                List.of(
+                    "Source documents",
+                    CliQueryOutputFormatter.postingSourceDocumentsHuman(entry.postingFact())),
+                List.of(
+                    "Approvals",
+                    CliQueryOutputFormatter.postingApprovalsHuman(entry.postingFact()))));
     return summary
         + System.lineSeparator()
         + "-".repeat(summary.length())

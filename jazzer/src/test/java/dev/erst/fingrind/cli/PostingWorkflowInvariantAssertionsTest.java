@@ -132,6 +132,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     reversalCommand.journalEntry(),
                     command.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -145,6 +146,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     command.journalEntry(),
                     reversalCommand.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -158,6 +160,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     command.journalEntry(),
                     command.postingLineage(),
+                    command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -171,6 +174,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     command.journalEntry(),
                     command.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
                     command.sourceChannel()),
@@ -184,6 +188,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     command.journalEntry(),
                     command.postingLineage(),
+                    command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     alternateSourceChannel()),
@@ -367,6 +372,7 @@ class PostingWorkflowInvariantAssertionsTest {
         postingId,
         command.journalEntry(),
         command.postingLineage(),
+        command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),
         command.sourceChannel());
@@ -376,6 +382,7 @@ class PostingWorkflowInvariantAssertionsTest {
       String postingId,
       dev.erst.fingrind.core.JournalEntry journalEntry,
       PostingLineage postingLineage,
+      dev.erst.fingrind.core.AccountingEvidence evidence,
       RequestProvenance requestProvenance,
       Instant recordedAt,
       SourceChannel sourceChannel) {
@@ -384,6 +391,7 @@ class PostingWorkflowInvariantAssertionsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
+        evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
 

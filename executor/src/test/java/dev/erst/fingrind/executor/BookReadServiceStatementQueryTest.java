@@ -6,7 +6,9 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedB
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.line;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -571,6 +573,7 @@ class BookReadServiceStatementQueryTest {
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
+        postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
                 new dev.erst.fingrind.core.ActorId("actor-" + postingId),
@@ -595,6 +598,7 @@ class BookReadServiceStatementQueryTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
+            accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
                     new dev.erst.fingrind.core.ActorId("actor-" + postingId),
@@ -608,6 +612,14 @@ class BookReadServiceStatementQueryTest {
     assertInstanceOf(
         dev.erst.fingrind.executor.spi.PostingCommitResult.Committed.class,
         bookSession.commit(posting));
+  }
+
+  private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
+      String token, PostingKind postingKind) {
+    if (postingKind == PostingKind.PERIOD_CLOSE) {
+      return generatedEvidence(token, "period-close-plan");
+    }
+    return accountingEvidence("idem-" + token);
   }
 
   private static FinancialPositionRow positionRow(

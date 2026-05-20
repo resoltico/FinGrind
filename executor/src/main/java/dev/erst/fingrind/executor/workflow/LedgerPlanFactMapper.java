@@ -1,10 +1,13 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -66,6 +69,7 @@ public final class LedgerPlanFactMapper {
     facts.add(
         BookWorkflowFact.text("recordedAt", postingFact.provenance().recordedAt().toString()));
     facts.add(BookWorkflowFact.group("provenance", provenanceFacts(postingFact.provenance())));
+    facts.add(BookWorkflowFact.group("evidence", evidenceFacts(postingFact.evidence())));
     postingFact
         .journalEntry()
         .lines()
@@ -137,6 +141,36 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.text("recordedAt", provenance.recordedAt().toString()));
     facts.add(BookWorkflowFact.text("sourceChannel", provenance.sourceChannel().wireValue()));
     return List.copyOf(facts);
+  }
+
+  private static List<BookWorkflowFact> evidenceFacts(AccountingEvidence evidence) {
+    List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.count("sourceDocumentCount", evidence.sourceDocuments().size()));
+    facts.add(BookWorkflowFact.count("approvalCount", evidence.approvals().size()));
+    evidence
+        .sourceDocuments()
+        .forEach(
+            sourceDocument ->
+                facts.add(
+                    BookWorkflowFact.group("sourceDocument", sourceDocumentFacts(sourceDocument))));
+    evidence
+        .approvals()
+        .forEach(
+            approval -> facts.add(BookWorkflowFact.group("approval", approvalFacts(approval))));
+    return List.copyOf(facts);
+  }
+
+  private static List<BookWorkflowFact> sourceDocumentFacts(
+      SourceDocumentReference sourceDocument) {
+    return List.of(
+        BookWorkflowFact.text("sourceDocumentId", sourceDocument.sourceDocumentId().value()),
+        BookWorkflowFact.text("sourceDocumentType", sourceDocument.sourceDocumentType().value()));
+  }
+
+  private static List<BookWorkflowFact> approvalFacts(ApprovalReference approval) {
+    return List.of(
+        BookWorkflowFact.text("approvalId", approval.approvalId().value()),
+        BookWorkflowFact.text("approvalType", approval.approvalType().value()));
   }
 
   private static List<BookWorkflowFact> journalLineFacts(JournalLine line) {
