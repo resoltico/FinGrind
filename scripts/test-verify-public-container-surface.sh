@@ -353,6 +353,22 @@ esac
 EOF
 chmod +x "${fixture_root}/bin/docker"
 
+cat > "${fixture_root}/bin/head" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${FAKE_HEAD_MODE:-pass-through}" == 'deny-pdf-read' ]]; then
+    target_path="${*: -1}"
+    if [[ "${target_path}" == */trial-balance.pdf ]]; then
+        printf "head: cannot open '%s' for reading: Permission denied\n" "${target_path}" >&2
+        exit 1
+    fi
+fi
+
+exec /usr/bin/head "$@"
+EOF
+chmod +x "${fixture_root}/bin/head"
+
 PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
     bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
 
@@ -406,5 +422,22 @@ fi
 printf '%s\n' "${permission_failure_output}" | grep -Fq \
     'published container wrote trial-balance.pdf without host-readable permissions' || die \
     "public container surface verifier did not report unreadable mounted PDF permissions"
+
+set +e
+head_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_HEAD_MODE='deny-pdf-read' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+head_failure_exit=$?
+set -e
+
+if [[ ${head_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted a mounted PDF whose bytes could not be read"
+fi
+printf '%s\n' "${head_failure_output}" | grep -Fq \
+    'published container wrote trial-balance.pdf without host-readable permissions' || die \
+    "public container surface verifier misclassified one mounted PDF read failure"
 
 printf 'public container surface verifier regression: success\n'

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -154,23 +154,85 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void defaultFileOperationsIgnoreUnsupportedPermissionNormalization() throws IOException {
+  void defaultFileOperationsFallbackToPortablePermissionNormalizationWhenPosixIsUnsupported()
+      throws IOException {
+    AtomicReference<Path> observedPath = new AtomicReference<>();
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw new UnsupportedOperationException("posix unsupported");
+            },
+            observedPath::set);
+    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
+
+    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
+
+    assertEquals(trialBalancePdf, observedPath.get());
+  }
+
+  @Test
+  void defaultFileOperationsApplyPortableHostReadablePermissionsOnDefaultFileSystems()
+      throws IOException {
     CliPdfReportExporter.DefaultFileOperations fileOperations =
         new CliPdfReportExporter.DefaultFileOperations(
             path -> {
               throw new UnsupportedOperationException("posix unsupported");
             });
     Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
+    Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
 
-    assertDoesNotThrow(() -> fileOperations.normalizePublishedPdfPermissions(trialBalancePdf));
-    assertTrue(Files.notExists(trialBalancePdf));
+    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
+
+    assertTrue(Files.isReadable(trialBalancePdf));
+    assertTrue(trialBalancePdf.toFile().canRead());
+    assertTrue(trialBalancePdf.toFile().canWrite());
   }
 
   @Test
-  void defaultFileOperationsPropagateIoFailuresFromPermissionNormalization() {
+  void defaultFileOperationsRejectPortablePermissionNormalizationWhenMutationFails() {
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw new UnsupportedOperationException("posix unsupported");
+            });
+    Path missingPdf = tempDirectory.resolve("missing/trial-balance.pdf");
+
+    IOException exception =
+        assertThrows(
+            IOException.class, () -> fileOperations.normalizePublishedPdfPermissions(missingPdf));
+
+    String message = exception.getMessage();
+    assertNotNull(message);
+    assertTrue(message.contains("published PDF artifact"));
+  }
+
+  @Test
+  void defaultFileOperationsPropagateIoFailuresFromDirectPermissionNormalization() {
     IOException failure = new IOException("permission normalization failed");
     CliPdfReportExporter.DefaultFileOperations fileOperations =
         new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw failure;
+            });
+
+    IOException exception =
+        assertThrows(
+            IOException.class,
+            () ->
+                fileOperations.normalizePublishedPdfPermissions(
+                    tempDirectory.resolve("trial-balance.pdf")));
+
+    assertSame(failure, exception);
+  }
+
+  @Test
+  void defaultFileOperationsPropagateIoFailuresFromPortablePermissionNormalization() {
+    IOException failure = new IOException("portable permission normalization failed");
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw new UnsupportedOperationException("posix unsupported");
+            },
             path -> {
               throw failure;
             });

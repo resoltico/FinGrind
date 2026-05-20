@@ -8,8 +8,10 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.report.pdf.PdfReportService;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -21,6 +23,13 @@ import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
 final class CliPdfReportExporter {
+  private static final Set<PosixFilePermission> PUBLISHED_PDF_POSIX_PERMISSIONS =
+      Set.of(
+          PosixFilePermission.OWNER_READ,
+          PosixFilePermission.OWNER_WRITE,
+          PosixFilePermission.GROUP_READ,
+          PosixFilePermission.OTHERS_READ);
+
   private final PdfReportService pdfReportService;
   private final FileOperations fileOperations;
 
@@ -28,14 +37,8 @@ final class CliPdfReportExporter {
     this(
         pdfReportService,
         new DefaultFileOperations(
-            path ->
-                Files.setPosixFilePermissions(
-                    path,
-                    Set.of(
-                        PosixFilePermission.OWNER_READ,
-                        PosixFilePermission.OWNER_WRITE,
-                        PosixFilePermission.GROUP_READ,
-                        PosixFilePermission.OTHERS_READ))));
+            CliPdfReportExporter::normalizePublishedPdfPermissionsOnPosixFileSystems,
+            CliPdfReportExporter::normalizePublishedPdfPermissionsOnPortableHostFileSystems));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -119,6 +122,35 @@ final class CliPdfReportExporter {
     java.util.Objects.requireNonNull(exception, "exception");
   }
 
+  private static void normalizePublishedPdfPermissionsOnPosixFileSystems(Path path)
+      throws IOException {
+    Files.setPosixFilePermissions(path, PUBLISHED_PDF_POSIX_PERMISSIONS);
+  }
+
+  private static void normalizePublishedPdfPermissionsOnPortableHostFileSystems(Path path)
+      throws IOException {
+    if (!path.getFileSystem().equals(FileSystems.getDefault())) {
+      return;
+    }
+    File pdfFile = path.toFile();
+    requirePermissionMutation(
+        pdfFile.setReadable(false, false), path, "clear existing read permissions");
+    requirePermissionMutation(
+        pdfFile.setWritable(false, false), path, "clear existing write permissions");
+    requirePermissionMutation(
+        pdfFile.setReadable(true, false), path, "grant read permissions to all users");
+    requirePermissionMutation(
+        pdfFile.setWritable(true, true), path, "grant write permission to the owner");
+  }
+
+  private static void requirePermissionMutation(boolean mutationApplied, Path path, String action)
+      throws IOException {
+    if (!mutationApplied) {
+      throw new IOException(
+          "Failed to " + action + " for published PDF artifact: " + path.toAbsolutePath());
+    }
+  }
+
   /** One filesystem adapter used by PDF export and its focused unit tests. */
   interface FileOperations {
     /** Creates parent directories for the target PDF artifact. */
@@ -153,14 +185,33 @@ final class CliPdfReportExporter {
     void normalize(Path path) throws IOException;
   }
 
+  /** One portable fallback seam for mounted-volume PDF permission normalization. */
+  @FunctionalInterface
+  interface PortablePublishedPdfPermissionNormalizer {
+    /** Applies one host-readable mounted-volume PDF permission fallback to one artifact path. */
+    void normalize(Path path) throws IOException;
+  }
+
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
   static final class DefaultFileOperations implements FileOperations {
     private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
+    private final PortablePublishedPdfPermissionNormalizer portablePublishedPdfPermissionNormalizer;
 
     DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
+      this(
+          publishedPdfPermissionNormalizer,
+          CliPdfReportExporter::normalizePublishedPdfPermissionsOnPortableHostFileSystems);
+    }
+
+    DefaultFileOperations(
+        PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer,
+        PortablePublishedPdfPermissionNormalizer portablePublishedPdfPermissionNormalizer) {
       this.publishedPdfPermissionNormalizer =
           Objects.requireNonNull(
               publishedPdfPermissionNormalizer, "publishedPdfPermissionNormalizer");
+      this.portablePublishedPdfPermissionNormalizer =
+          Objects.requireNonNull(
+              portablePublishedPdfPermissionNormalizer, "portablePublishedPdfPermissionNormalizer");
     }
 
     @Override
@@ -193,7 +244,7 @@ final class CliPdfReportExporter {
       try {
         publishedPdfPermissionNormalizer.normalize(path);
       } catch (UnsupportedOperationException exception) {
-        Objects.requireNonNull(exception, "exception");
+        portablePublishedPdfPermissionNormalizer.normalize(path);
       }
     }
   }

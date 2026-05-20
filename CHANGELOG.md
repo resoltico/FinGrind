@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed PDF artifact export permissions on POSIX hosts so `--pdf-out` now publishes mounted report
   files with host-readable permissions instead of preserving the private temp-file mode across the
-  final move, and tightened the public container verifier plus its regression harness to report
-  unreadable mounted PDF artifacts as a first-class release-surface failure.
+  final move, added a portable default-filesystem fallback for mounted paths without a POSIX
+  attribute view, and tightened the public container verifier plus its regression harness so host
+  read failures are reported as unreadable mounted PDF artifacts rather than being misclassified as
+  non-PDF content failures.
 - Replaced the aging third-party Windows MSVC developer-command GitHub Action with a repo-owned
   PowerShell bootstrap that locates `VsDevCmd.bat`, exports the full developer-command
   environment for subsequent steps, parses cleanly under PowerShell before execution, and removes
