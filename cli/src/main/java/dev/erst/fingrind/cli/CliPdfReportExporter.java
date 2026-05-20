@@ -27,7 +27,15 @@ final class CliPdfReportExporter {
   CliPdfReportExporter(PdfReportService pdfReportService) {
     this(
         pdfReportService,
-        new DefaultFileOperations(DefaultFileOperations::setPublishedPdfPermissions));
+        new DefaultFileOperations(
+            path ->
+                Files.setPosixFilePermissions(
+                    path,
+                    Set.of(
+                        PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE,
+                        PosixFilePermission.GROUP_READ,
+                        PosixFilePermission.OTHERS_READ))));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -185,23 +193,8 @@ final class CliPdfReportExporter {
       try {
         publishedPdfPermissionNormalizer.normalize(path);
       } catch (UnsupportedOperationException exception) {
-        ignorePermissionNormalizationOnNonPosixFilesystems(exception);
+        Objects.requireNonNull(exception, "exception");
       }
     }
-
-    private static void setPublishedPdfPermissions(Path path) throws IOException {
-      Files.setPosixFilePermissions(
-          path,
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.GROUP_READ,
-              PosixFilePermission.OTHERS_READ));
-    }
-  }
-
-  private static void ignorePermissionNormalizationOnNonPosixFilesystems(
-      UnsupportedOperationException exception) {
-    java.util.Objects.requireNonNull(exception, "exception");
   }
 }
