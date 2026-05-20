@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -189,7 +189,7 @@ avoids silent version skew between the main product modules and Jazzer support c
 The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
 the default repository and scopes the Sonatype Maven snapshots repository to `org.jacoco` only.
 FinGrind pins JaCoCo directly to the exact Java-26-ready snapshot artifact
-`0.8.15-20260513.074320-106` in the version catalog instead of resolving through the mutable
+`0.8.15-20260519.201139-107` in the version catalog instead of resolving through the mutable
 `0.8.15-SNAPSHOT` alias. That keeps the catalog, the effective build, IDE resolution, and CI on one
 deterministic coordinate.
 

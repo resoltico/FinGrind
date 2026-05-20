@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 9;
+pragma user_version = 11;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -219,7 +219,8 @@ begin
 end;
 
 create table if not exists posting_fact (
-    posting_id text primary key,
+    posting_order integer primary key,
+    posting_id text not null unique,
     posting_kind text not null check (
         posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE')
     ),
@@ -247,6 +248,41 @@ create table if not exists posting_fact (
     )
 ) strict;
 
+create trigger if not exists posting_fact_validate_opening_balance_window_on_insert
+before insert on posting_fact
+when new.posting_kind = 'OPENING_BALANCE'
+begin
+    select raise(fail, 'opening-balance postings must be committed before all other postings.')
+    where exists (
+        select 1
+        from posting_fact
+    );
+end;
+
+create trigger if not exists posting_fact_validate_closed_period_on_insert
+before insert on posting_fact
+when new.posting_kind <> 'PERIOD_CLOSE'
+begin
+    select raise(fail, 'posting effective date is already closed.')
+    where exists (
+        select 1
+        from period_close
+        where period_close.effective_date_to >= new.effective_date
+    );
+end;
+
+create trigger if not exists posting_fact_validate_period_close_provenance_on_insert
+before insert on posting_fact
+when new.posting_kind = 'PERIOD_CLOSE'
+begin
+    select raise(fail, 'period-close postings must be system-authored.')
+    where new.actor_type <> 'SYSTEM';
+    select raise(fail, 'period-close postings must use the system source channel.')
+    where new.source_channel <> 'SYSTEM';
+    select raise(fail, 'period-close postings cannot reverse earlier postings.')
+    where new.prior_posting_id is not null or new.reason is not null;
+end;
+
 create table if not exists journal_line (
     posting_id text not null,
     line_order integer not null check (line_order >= 0),
@@ -266,6 +302,34 @@ create table if not exists journal_line (
     foreign key (account_code) references account (account_code)
 ) strict;
 
+create trigger if not exists journal_line_validate_active_account_on_insert
+before insert on journal_line
+begin
+    select raise(fail, 'journal-line accounts must be active.')
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.account_code
+            and account.active = 0
+    );
+end;
+
+create trigger if not exists journal_line_validate_opening_balance_account_type_on_insert
+before insert on journal_line
+begin
+    select raise(fail, 'opening-balance postings may touch only asset, liability, or equity accounts.')
+    where exists (
+        select 1
+        from posting_fact
+        inner join account on account.account_code = new.account_code
+        where
+            posting_fact.posting_id = new.posting_id
+            and posting_fact.posting_kind = 'OPENING_BALANCE'
+            and account.account_type not in ('ASSET', 'LIABILITY', 'EQUITY')
+    );
+end;
+
 create table if not exists period_close (
     period_close_order integer primary key,
     effective_date_from text not null,
@@ -274,6 +338,22 @@ create table if not exists period_close (
     closed_at text not null,
     check (effective_date_from <= effective_date_to)
 ) strict;
+
+create trigger if not exists period_close_validate_closing_equity_account_on_insert
+before insert on period_close
+begin
+    select raise(fail, 'period-close target must be one active equity account.')
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.closing_equity_account_code
+            and (
+                account.account_type <> 'EQUITY'
+                or account.active = 0
+            )
+    );
+end;
 
 create table if not exists period_close_total (
     period_close_order integer not null,
@@ -295,6 +375,44 @@ create table if not exists period_close_posting (
     foreign key (posting_id) references posting_fact (posting_id)
 ) strict;
 
+create trigger if not exists period_close_posting_validate_period_close_posting_on_insert
+before insert on period_close_posting
+begin
+    select raise(fail, 'period-close links must reference period-close postings.')
+    where exists (
+        select 1
+        from posting_fact
+        where
+            posting_fact.posting_id = new.posting_id
+            and posting_fact.posting_kind <> 'PERIOD_CLOSE'
+    );
+    select raise(fail, 'period-close links must reference system-authored postings.')
+    where exists (
+        select 1
+        from posting_fact
+        where
+            posting_fact.posting_id = new.posting_id
+            and posting_fact.actor_type <> 'SYSTEM'
+    );
+    select raise(fail, 'period-close links must reference system-source postings.')
+    where exists (
+        select 1
+        from posting_fact
+        where
+            posting_fact.posting_id = new.posting_id
+            and posting_fact.source_channel <> 'SYSTEM'
+    );
+    select raise(fail, 'period-close posting effective date must match the closed-through date.')
+    where exists (
+        select 1
+        from period_close
+        inner join posting_fact on posting_fact.posting_id = new.posting_id
+        where
+            period_close.period_close_order = new.period_close_order
+            and posting_fact.effective_date <> period_close.effective_date_to
+    );
+end;
+
 create table if not exists audit_event (
     audit_event_order integer primary key,
     recorded_at text not null check (length(trim(recorded_at)) > 0),
@@ -306,6 +424,12 @@ create table if not exists audit_event (
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
             'BOOK_REKEYED',
+            'BACKUP_CREATED',
+            'BACKUP_RESTORED',
+            'REKEY_ROLLBACK_RESTORED',
+            'REKEY_ROLLBACK_DELETED',
+            'BACKUP_CREATED_COMPENSATED',
+            'REKEY_ROLLBACK_DELETED_COMPENSATED',
             'PERIOD_CLOSED'
         )
     ),
@@ -317,7 +441,16 @@ create table if not exists audit_event (
     foreign key (period_close_order) references period_close (period_close_order),
     check (
         (
-            event_kind in ('BOOK_OPENED', 'BOOK_REKEYED')
+            event_kind in (
+                'BOOK_OPENED',
+                'BOOK_REKEYED',
+                'BACKUP_CREATED',
+                'BACKUP_RESTORED',
+                'REKEY_ROLLBACK_RESTORED',
+                'REKEY_ROLLBACK_DELETED',
+                'BACKUP_CREATED_COMPENSATED',
+                'REKEY_ROLLBACK_DELETED_COMPENSATED'
+            )
             and account_code is null
             and posting_id is null
             and period_close_order is null

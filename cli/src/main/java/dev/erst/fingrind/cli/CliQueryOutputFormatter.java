@@ -331,6 +331,22 @@ final class CliQueryOutputFormatter {
         .orElse("");
   }
 
+  static String postingCurrencyHuman(PostingFact postingFact) {
+    return postingCurrency(postingFact);
+  }
+
+  static String postingDebitTotalHuman(PostingFact postingFact) {
+    return postingDebitTotal(postingFact);
+  }
+
+  static String postingCreditTotalHuman(PostingFact postingFact) {
+    return postingCreditTotal(postingFact);
+  }
+
+  static String postingAccountsHuman(PostingFact postingFact) {
+    return postingAccounts(postingFact);
+  }
+
   static String lowerDateBoundaryMeaning(@Nullable LocalDate effectiveDateFrom) {
     return effectiveDateFrom == null ? "book-start" : "selected-date";
   }

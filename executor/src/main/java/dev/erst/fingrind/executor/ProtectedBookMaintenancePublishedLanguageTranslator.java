@@ -12,7 +12,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -79,6 +79,10 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
           new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
               publicHint(blockingArtifacts.backupFilePath()),
               publicHints(blockingArtifacts.blockingArtifactPaths()));
+      case ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
+          new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
+              publicHint(sourceMatchesLiveBook.bookFilePath()),
+              publicHint(sourceMatchesLiveBook.backupFilePath()));
       case ProtectedBookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new BookMaintenanceRejection.ArtifactBusy(
               toPublished(artifactBusy.artifactRole()), publicHint(artifactBusy.artifactPath()));
@@ -131,7 +135,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
   }
 
   private static BookMaintenanceVerificationFailure toPublished(
-      ProtectedBookMaintenanceVerificationFailure verificationFailure) {
+      ProtectedBookVerificationFailure verificationFailure) {
     Objects.requireNonNull(verificationFailure, "verificationFailure");
     return switch (verificationFailure) {
       case MISSING -> BookMaintenanceVerificationFailure.MISSING;

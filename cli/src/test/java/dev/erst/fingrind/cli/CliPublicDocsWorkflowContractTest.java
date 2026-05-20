@@ -4,21 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ObjectNode;
 
 /** Executes the published quick-start and example workflows against the live CLI surface. */
-class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
 
   @Test
   void quickStartGuide_describesTheAgentScaffoldAndPublishedWorkflowRuns() throws IOException {
@@ -281,100 +275,5 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
         queryPlanResult.path("payload").path("journal").path("steps").get(4).path("facts");
     assertEquals("count", queryFacts.get(0).path("name").stringValue());
     assertEquals(1, queryFacts.get(0).path("value").asInt());
-  }
-
-  private JsonNode runJsonCommand(String... arguments) throws IOException {
-    return OBJECT_MAPPER.readTree(runPlainCommand(arguments));
-  }
-
-  private JsonNode runJsonCommandExpectingExit(int expectedExitCode, String... arguments)
-      throws IOException {
-    return OBJECT_MAPPER.readTree(runPlainCommand(expectedExitCode, arguments));
-  }
-
-  private JsonNode runRawJsonCommand(String... arguments) throws IOException {
-    return OBJECT_MAPPER.readTree(runPlainCommand(arguments));
-  }
-
-  private String runPlainCommand(String... arguments) {
-    return runPlainCommand(0, arguments);
-  }
-
-  private String runPlainCommand(int expectedExitCode, String... arguments) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(arguments);
-    assertEquals(
-        expectedExitCode,
-        exitCode,
-        () ->
-            "command failed: "
-                + String.join(" ", arguments)
-                + "\n"
-                + outputStream.toString(StandardCharsets.UTF_8));
-    return outputStream.toString(StandardCharsets.UTF_8);
-  }
-
-  private Path copyExampleFixture(String fileName) throws IOException {
-    Path source = repositoryRoot().resolve("docs/examples").resolve(fileName);
-    Path destination = tempDirectory.resolve(fileName);
-    Files.copy(source, destination);
-    return destination;
-  }
-
-  private static void replaceReversalPriorPostingId(Path requestFile, String postingId)
-      throws IOException {
-    ObjectNode root =
-        (ObjectNode) OBJECT_MAPPER.readTree(Files.readString(requestFile, StandardCharsets.UTF_8));
-    ((ObjectNode) root.path("reversal")).put("priorPostingId", postingId);
-    Files.writeString(
-        requestFile,
-        OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + "\n",
-        StandardCharsets.UTF_8);
-  }
-
-  private static void assertPostingIdsContain(
-      JsonNode postings, String expectedPostingId, String expectedReversalPostingId) {
-    boolean foundPosting = false;
-    boolean foundReversalPosting = false;
-    for (JsonNode posting : postings) {
-      String postingId = posting.path("postingId").stringValue();
-      if (expectedPostingId.equals(postingId)) {
-        foundPosting = true;
-      }
-      if (expectedReversalPostingId.equals(postingId)) {
-        foundReversalPosting = true;
-      }
-    }
-    assertTrue(foundPosting, () -> "Missing posting id " + expectedPostingId + " in listing");
-    assertTrue(
-        foundReversalPosting,
-        () -> "Missing reversal posting id " + expectedReversalPostingId + " in listing");
-  }
-
-  private static String extractFencedBlock(String document, String marker, String language) {
-    int markerIndex = document.indexOf(marker);
-    assertTrue(markerIndex >= 0, () -> "Missing marker: " + marker);
-    String fence = "```" + language + "\n";
-    int fenceStart = document.indexOf(fence, markerIndex);
-    assertTrue(fenceStart >= 0, () -> "Missing fenced block after marker: " + marker);
-    int contentStart = fenceStart + fence.length();
-    int fenceEnd = document.indexOf("\n```", contentStart);
-    assertTrue(fenceEnd >= 0, () -> "Missing closing fence after marker: " + marker);
-    return document.substring(contentStart, fenceEnd).strip() + "\n";
-  }
-
-  private static String normalizeLineEndings(String text) {
-    return text.replace("\r\n", "\n").replace('\r', '\n');
-  }
-
-  private static Path repositoryRoot() {
-    Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-    while (!Files.exists(
-        Objects.requireNonNull(directory, "directory").resolve("settings.gradle.kts"))) {
-      directory = directory.getParent();
-    }
-    return directory;
   }
 }

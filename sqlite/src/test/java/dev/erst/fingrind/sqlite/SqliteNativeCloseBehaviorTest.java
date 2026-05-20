@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
@@ -24,10 +26,12 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
       staticVarHandle("ACTIVE_CONNECTIONS", AtomicInteger.class);
   private static final VarHandle ACTIVE_CONNECTIONS_BY_BOOK_PATH =
       staticVarHandle("ACTIVE_CONNECTIONS_BY_BOOK_PATH", ConcurrentMap.class);
+  private static final VarHandle MARKER_CONNECTIONS_BY_BOOK_PATH =
+      staticVarHandle("MARKER_CONNECTIONS_BY_BOOK_PATH", ConcurrentMap.class);
   private static final MethodHandle ROLLBACK_OPENING_CONNECTION =
       bootstrapHelper(
           "rollbackOpeningConnection",
-          MethodType.methodType(void.class, Path.class, AtomicInteger.class));
+          MethodType.methodType(void.class, Path.class, AtomicInteger.class, AtomicInteger.class));
 
   @Test
   void close_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
@@ -88,6 +92,42 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
       assertEquals("Failed to close the SQLite native library bridge.", exception.getMessage());
       assertEquals("boom", Objects.requireNonNull(exception.getCause()).getMessage());
     }
+  }
+
+  @Test
+  void readOnlyOpen_tracksActiveConnectionsWithoutPublishingActivityMarker() throws Exception {
+    Path bookPath = tempDirectory.resolve("read-only-no-marker.sqlite");
+    Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
+    Path activityMarkerPath = activityMarkerPath(normalizedBookPath);
+
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "create read-only marker fixture", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase ignored =
+            SqliteNativeConnections.open(
+                bookPath,
+                passphrase,
+                SqliteNativeOpenMode.READ_WRITE_CREATE,
+                SqliteNativeBootstrap.api())) {}
+
+    int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "read-only no marker", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase ignored =
+            SqliteNativeConnections.open(
+                bookPath,
+                passphrase,
+                SqliteNativeOpenMode.READ_ONLY,
+                SqliteNativeBootstrap.api())) {
+      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
+      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+      assertFalse(Files.exists(activityMarkerPath));
+    }
+
+    assertEquals(initialActiveConnections, SqliteNativeBootstrap.activeConnectionCount());
+    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+    assertFalse(Files.exists(activityMarkerPath));
   }
 
   @Test
@@ -167,6 +207,75 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void recordConnectionClosed_rejectsMissingMarkerRegistryEntries() {
+    Path bookPath =
+        tempDirectory.resolve("missing-marker-entry.sqlite").toAbsolutePath().normalize();
+    Path markerPath = activityMarkerPath(bookPath);
+    AtomicInteger activeConnections = activeConnections();
+    ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
+    ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
+    int baselineConnections = activeConnections.get();
+
+    SqliteNativeBootstrap.recordOpeningConnection(bookPath);
+    try {
+      markerConnectionsByBookPath.remove(bookPath);
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeBootstrap.recordConnectionClosed(bookPath));
+
+      assertEquals(
+          "SQLite activity-marker registry missing the normalized book path entry for "
+              + bookPath
+              + ".",
+          exception.getMessage());
+      assertEquals(baselineConnections + 1, activeConnections.get());
+      assertEquals(
+          1, java.util.Objects.requireNonNull(activeConnectionsByBookPath.get(bookPath)).get());
+      assertTrue(Files.exists(markerPath));
+    } finally {
+      activeConnections.set(baselineConnections);
+      activeConnectionsByBookPath.remove(bookPath);
+      markerConnectionsByBookPath.remove(bookPath);
+      SqliteBookActivityMarkers.deleteCurrentProcessMarker(bookPath);
+    }
+  }
+
+  @Test
+  void recordConnectionClosed_rejectsMarkerCounterUnderflow() {
+    Path bookPath = tempDirectory.resolve("marker-underflow.sqlite").toAbsolutePath().normalize();
+    AtomicInteger activeConnections = activeConnections();
+    ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
+    ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
+    int baselineConnections = activeConnections.get();
+
+    SqliteNativeBootstrap.recordOpeningConnection(bookPath);
+    try {
+      markerConnectionsByBookPath.put(bookPath, new AtomicInteger());
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeBootstrap.recordConnectionClosed(bookPath));
+
+      assertEquals(
+          "SQLite activity-marker connection count underflow for normalized book path "
+              + bookPath
+              + ".",
+          exception.getMessage());
+      assertEquals(baselineConnections + 1, activeConnections.get());
+      assertEquals(
+          1, java.util.Objects.requireNonNull(activeConnectionsByBookPath.get(bookPath)).get());
+    } finally {
+      activeConnections.set(baselineConnections);
+      activeConnectionsByBookPath.remove(bookPath);
+      markerConnectionsByBookPath.remove(bookPath);
+      SqliteBookActivityMarkers.deleteCurrentProcessMarker(bookPath);
+    }
+  }
+
+  @Test
   void recordOpeningConnection_rollsBackCountersWhenMarkerPublicationFails() throws Exception {
     Path bookPath = tempDirectory.resolve("marker-rollback.sqlite").toAbsolutePath().normalize();
     Path markerPath = activityMarkerPath(bookPath);
@@ -191,20 +300,101 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     Path bookPath = tempDirectory.resolve("rollback-helper.sqlite").toAbsolutePath().normalize();
     AtomicInteger activeConnections = activeConnections();
     ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
+    ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
     int baselineConnections = activeConnections.get();
     AtomicInteger activeBookConnections = new AtomicInteger(2);
 
     activeConnections.set(baselineConnections + 2);
     activeConnectionsByBookPath.put(bookPath, activeBookConnections);
     try {
-      invokeRollbackOpeningConnection(bookPath, activeBookConnections);
+      invokeRollbackOpeningConnection(bookPath, activeBookConnections, null);
 
       assertEquals(baselineConnections + 1, activeConnections.get());
       assertEquals(1, activeBookConnections.get());
       assertEquals(activeBookConnections, activeConnectionsByBookPath.get(bookPath));
+      assertFalse(markerConnectionsByBookPath.containsKey(bookPath));
     } finally {
       activeConnections.set(baselineConnections);
       activeConnectionsByBookPath.remove(bookPath);
+      markerConnectionsByBookPath.remove(bookPath);
+    }
+  }
+
+  @Test
+  void rollbackOpeningConnection_preservesOneMarkerRegistryEntryWhenMarkerCountRemainsPositive() {
+    Path bookPath =
+        tempDirectory
+            .resolve("rollback-helper-marker-positive.sqlite")
+            .toAbsolutePath()
+            .normalize();
+    AtomicInteger activeConnections = activeConnections();
+    ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
+    ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
+    int baselineConnections = activeConnections.get();
+    AtomicInteger activeBookConnections = new AtomicInteger(2);
+    AtomicInteger markerConnections = new AtomicInteger(2);
+
+    activeConnections.set(baselineConnections + 2);
+    activeConnectionsByBookPath.put(bookPath, activeBookConnections);
+    markerConnectionsByBookPath.put(bookPath, markerConnections);
+    try {
+      invokeRollbackOpeningConnection(bookPath, activeBookConnections, markerConnections);
+
+      assertEquals(baselineConnections + 1, activeConnections.get());
+      assertEquals(1, activeBookConnections.get());
+      assertEquals(1, markerConnections.get());
+      assertEquals(markerConnections, markerConnectionsByBookPath.get(bookPath));
+    } finally {
+      activeConnections.set(baselineConnections);
+      activeConnectionsByBookPath.remove(bookPath);
+      markerConnectionsByBookPath.remove(bookPath);
+    }
+  }
+
+  @Test
+  void rollbackOpeningConnection_removesMarkerAndBookEntriesWhenTheLastCountsRollBack() {
+    Path bookPath =
+        tempDirectory.resolve("rollback-helper-marker.sqlite").toAbsolutePath().normalize();
+    AtomicInteger activeConnections = activeConnections();
+    ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
+    ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
+    int baselineConnections = activeConnections.get();
+    AtomicInteger activeBookConnections = new AtomicInteger(1);
+    AtomicInteger markerConnections = new AtomicInteger(1);
+
+    activeConnections.set(baselineConnections + 1);
+    activeConnectionsByBookPath.put(bookPath, activeBookConnections);
+    markerConnectionsByBookPath.put(bookPath, markerConnections);
+    try {
+      invokeRollbackOpeningConnection(bookPath, activeBookConnections, markerConnections);
+
+      assertEquals(baselineConnections, activeConnections.get());
+      assertFalse(activeConnectionsByBookPath.containsKey(bookPath));
+      assertFalse(markerConnectionsByBookPath.containsKey(bookPath));
+    } finally {
+      activeConnections.set(baselineConnections);
+      activeConnectionsByBookPath.remove(bookPath);
+      markerConnectionsByBookPath.remove(bookPath);
+    }
+  }
+
+  @Test
+  void close_threeArgumentOverload_delegatesToDefaultMarkerPublishingClosePath() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-overload.sqlite");
+    Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
+    Path activityMarkerPath = activityMarkerPath(normalizedBookPath);
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+    int baselineConnections = SqliteNativeBootstrap.activeConnectionCount();
+
+    try (ManagedOpenedDatabase database =
+        ManagedOpenedDatabase.open(bookPath, sqliteApi, "close overload")) {
+      assertEquals(baselineConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
+      assertTrue(Files.exists(activityMarkerPath));
+
+      assertDoesNotThrow(database::closeWithThreeArgumentOverload);
+
+      assertEquals(baselineConnections, SqliteNativeBootstrap.activeConnectionCount());
+      assertFalse(Files.exists(activityMarkerPath));
     }
   }
 
@@ -219,6 +409,11 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   @SuppressWarnings("unchecked")
   private static ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath() {
     return (ConcurrentMap<Path, AtomicInteger>) ACTIVE_CONNECTIONS_BY_BOOK_PATH.get();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath() {
+    return (ConcurrentMap<Path, AtomicInteger>) MARKER_CONNECTIONS_BY_BOOK_PATH.get();
   }
 
   private static AtomicInteger activeConnections() {
@@ -248,9 +443,12 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   }
 
   private static void invokeRollbackOpeningConnection(
-      Path normalizedBookPath, AtomicInteger activeBookConnections) {
+      Path normalizedBookPath,
+      AtomicInteger activeBookConnections,
+      @Nullable AtomicInteger markerConnections) {
     try {
-      ROLLBACK_OPENING_CONNECTION.invokeExact(normalizedBookPath, activeBookConnections);
+      ROLLBACK_OPENING_CONNECTION.invokeExact(
+          normalizedBookPath, activeBookConnections, markerConnections);
     } catch (RuntimeException runtimeException) {
       throw runtimeException;
     } catch (Error error) {
@@ -281,5 +479,50 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
             0,
             closeCalls,
             delegateClose));
+  }
+
+  /**
+   * AutoCloseable wrapper that exercises the three-argument close overload without double-close.
+   */
+  private static final class ManagedOpenedDatabase implements AutoCloseable {
+    private final SqliteNativeDatabase database;
+    private final Path normalizedBookPath;
+    private final SqliteNativeApi sqliteApi;
+    private boolean closed;
+
+    private ManagedOpenedDatabase(
+        SqliteNativeDatabase database, Path normalizedBookPath, SqliteNativeApi sqliteApi) {
+      this.database = Objects.requireNonNull(database, "database");
+      this.normalizedBookPath = Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+      this.sqliteApi = Objects.requireNonNull(sqliteApi, "sqliteApi");
+    }
+
+    private static ManagedOpenedDatabase open(
+        Path bookPath, SqliteNativeApi sqliteApi, String passphraseDescription) {
+      try (SqliteBookPassphrase passphrase =
+          SqliteBookPassphrase.fromCharacters(passphraseDescription, TEST_BOOK_KEY.toCharArray())) {
+        return new ManagedOpenedDatabase(
+            SqliteNativeConnections.open(
+                bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi),
+            bookPath.toAbsolutePath().normalize(),
+            sqliteApi);
+      }
+    }
+
+    private void closeWithThreeArgumentOverload() {
+      if (closed) {
+        return;
+      }
+      SqliteNativeConnections.close(database.handle(), normalizedBookPath, sqliteApi);
+      closed = true;
+    }
+
+    @Override
+    public void close() {
+      if (!closed) {
+        database.close();
+        closed = true;
+      }
+    }
   }
 }

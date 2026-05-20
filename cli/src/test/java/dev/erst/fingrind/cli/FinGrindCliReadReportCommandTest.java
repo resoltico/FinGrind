@@ -471,7 +471,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     @Override
     public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-        Path bookFilePath, @org.jspecify.annotations.Nullable Path rollbackArtifactPath) {
+        BookAccess bookAccess, @org.jspecify.annotations.Nullable Path rollbackArtifactPath) {
       throw new AssertionError("deleteRekeyRollback should not be called in this test");
     }
 

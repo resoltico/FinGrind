@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -66,11 +66,14 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Storage participants:
   - `executor.spi.ProtectedBookMaintenanceStore`
   - `sqlite.SqliteProtectedBookMaintenanceStore`
-  - `sqlite.SqliteProtectedBookMaintenanceJournal`
   - `sqlite.SqliteRekeyRollbackFile`
-- Notes: maintenance workflows are protected-book artifact operations, not bookkeeping mutations.
+- Notes: maintenance workflows are protected-book artifact operations, not bookkeeping mutations;
+  `inspect-rekey-rollback` is query-only and no longer publishes sibling activity markers during
+  read-only native opens.
   They keep backup, restore, and rekey-recovery state explicit in their own context instead of
   leaking verification and replacement rules into SQLite adapter code or published DTO families.
+  Successful maintenance audit facts now live inside the encrypted `audit_event` stream rather than
+  in one adjacent plaintext maintenance journal.
 
 ## Account Registry Boundary
 
@@ -104,6 +107,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `core.JournalEntry`
   - `core.Money`, `core.PositiveMoney`, `core.CurrencyBalance`, `core.BalanceMath`
   - `executor.bookkeeping.PostingAcceptancePolicy`
+  - `executor.bookkeeping.posting.BookkeepingPostingService`
   - `executor.PostingApplicationService`
 - Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
@@ -121,6 +125,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `core.ReversalReference`
   - `executor.bookkeeping.PostingAcceptancePolicy`
   - `executor.bookkeeping.PostingLineageModel`
+  - `executor.bookkeeping.posting.BookkeepingPostingService`
 - Storage participants:
   - `sqlite.SqlitePostingSql`
 - Notes: reversal is additive lineage, not in-place correction.
@@ -133,6 +138,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Domain owners:
   - `core.IdempotencyKey`
   - `executor.bookkeeping.PostingAcceptancePolicy`
+  - `executor.bookkeeping.posting.BookkeepingPostingService`
 - Storage participants:
   - `sqlite.SqliteStoreMutationOperations`
   - SQLite unique constraint on `posting_fact.idempotency_key`
@@ -157,8 +163,9 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 
 - Invariant: one append-only audit stream records durable administrative and posting events in the
   same book, and audit rows cannot be updated or deleted in place.
-- Mutation paths: `open-book`, `declare-account`, `post-entry`, `execute-plan`, and `rekey-book`
-  through the bookkeeping/store mutation paths that actually change the book.
+- Mutation paths: `open-book`, `declare-account`, `post-entry`, `execute-plan`, `rekey-book`,
+  `backup-book`, `restore-book`, `restore-rekey-rollback`, and `delete-rekey-rollback` through
+  the bookkeeping/store mutation paths that actually change the book.
 - Immediate or derived: immediate on write, read-only on inspection.
 - Domain owners:
   - `executor.bookkeeping.BookAuditEvent`
@@ -170,22 +177,23 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 - Notes: posting provenance inside `posting_fact` is not a substitute for this stream; account
   mutation and rekey actions must also be durable audit facts.
 
-## Maintenance Journal
+## Protected-Book Maintenance Audit
 
-- Invariant: one append-only maintenance journal records backup, restore, rollback inspection,
-  rollback restore, rollback deletion, and verification-driven maintenance failures beside the
-  protected book without mutating bookkeeping rows.
-- Maintenance paths: read-only inspection through `inspect-rekey-rollback`; mutation paths:
-  `backup-book`, `restore-book`, `restore-rekey-rollback`, `delete-rekey-rollback`, and
-  `rekey-book` rollback-file cleanup through the maintenance service/store boundary.
-- Immediate or derived: immediate on write, read-only on inspection.
+- Invariant: successful backup, restore, rollback restore, and rollback deletion facts are durable
+  encrypted audit events inside the protected book, and maintenance workflows retract those audit
+  facts when the paired external file mutation fails before publication completes.
+- Maintenance paths: mutation workflows `backup-book`, `restore-book`, `restore-rekey-rollback`,
+  `delete-rekey-rollback`, and `rekey-book` rollback-file cleanup through the maintenance
+  service/store boundary.
+- Immediate or derived: immediate on successful mutation; absent for side-effect-free inspection.
 - Domain owners:
-  - `executor.spi.ProtectedBookMaintenanceEvent`
-  - `executor.spi.ProtectedBookMaintenanceEventKind`
+  - `executor.maintenance.ProtectedBookMaintenanceAuditKind`
+  - `executor.bookkeeping.BookAuditEvent`
 - Storage participants:
-  - `sqlite.SqliteProtectedBookMaintenanceJournal`
-- Notes: this journal is adjacent to the bookkeeping audit stream because it records protected-book
-  artifact maintenance rather than ledger mutations.
+  - `sqlite.SqliteProtectedBookMaintenanceStore`
+  - `sqlite.audit_event`
+- Notes: maintenance audit belongs to the encrypted bookkeeping audit stream because the selected
+  protected book is the durable state owner for successful maintenance facts.
 
 ## Read Models And Reports
 

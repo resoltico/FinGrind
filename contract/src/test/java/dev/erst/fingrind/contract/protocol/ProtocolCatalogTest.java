@@ -484,10 +484,6 @@ class ProtocolCatalogTest {
     assertEquals(0, ProtocolCatalog.protectedBookFormat().plaintextHeaderSize());
     assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
-    assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
-    assertEquals(
-        "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
-        ProtocolCatalog.sqliteOperatorTrustSystemProperty());
     assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
     assertEquals("3.53.1", ProtocolCatalog.requiredMinimumSqliteVersion());
     assertEquals("2.3.4", ProtocolCatalog.requiredSqlite3mcVersion());

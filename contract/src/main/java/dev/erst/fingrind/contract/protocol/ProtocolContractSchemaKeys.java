@@ -85,10 +85,10 @@ final class ProtocolContractSchemaKeys {
             requireText(runtimeSurfaceNode, "bookProtectionMode"),
             requireText(runtimeSurfaceNode, "defaultBookCipher"),
             requireText(runtimeSurfaceNode, "sqliteLibraryMode"),
-            requireText(runtimeSurfaceNode, "sqliteLibraryEnvironmentVariable"),
-            requireText(runtimeSurfaceNode, "sqliteOperatorTrustSystemProperty"),
             requireText(runtimeSurfaceNode, "sqliteBundleHomeSystemProperty")),
         new ProtectedBookFormat(
+            requireText(protectedBookFormatNode, "applicationId"),
+            requireText(protectedBookFormatNode, "formatVersion"),
             requireText(protectedBookFormatNode, "cipher"),
             requireText(protectedBookFormatNode, "legacyMode"),
             requireText(protectedBookFormatNode, "pageSize"),
@@ -180,12 +180,12 @@ final class ProtocolContractSchemaKeys {
       String bookProtectionMode,
       String defaultBookCipher,
       String sqliteLibraryMode,
-      String sqliteLibraryEnvironmentVariable,
-      String sqliteOperatorTrustSystemProperty,
       String sqliteBundleHomeSystemProperty) {}
 
   /** Canonical external field names for the protected-book-format contract resource. */
   record ProtectedBookFormat(
+      String applicationId,
+      String formatVersion,
       String cipher,
       String legacyMode,
       String pageSize,

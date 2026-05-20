@@ -317,6 +317,6 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   }
 
   private static BookkeepingReadStore readView(SqlitePostingFactStore postingFactStore) {
-    return postingFactStore;
+    return SqliteCapabilitySessions.read(postingFactStore);
   }
 }

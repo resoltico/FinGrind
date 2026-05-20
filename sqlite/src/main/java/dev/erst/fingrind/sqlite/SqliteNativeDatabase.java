@@ -10,23 +10,28 @@ import org.jspecify.annotations.Nullable;
 class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
   private final @Nullable Path normalizedBookPath;
+  private final boolean publishesActivityMarker;
   private final SqliteNativeApi sqliteApi;
   private final SqliteThreadOwner threadOwner =
       new SqliteThreadOwner("SQLite native database handle");
   private boolean closed;
 
   SqliteNativeDatabase(MemorySegment databaseHandle) {
-    this(databaseHandle, null, SqliteNativeBootstrap.api());
+    this(databaseHandle, null, false, SqliteNativeBootstrap.api());
   }
 
   SqliteNativeDatabase(MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
-    this(databaseHandle, null, sqliteApi);
+    this(databaseHandle, null, false, sqliteApi);
   }
 
   SqliteNativeDatabase(
-      MemorySegment databaseHandle, @Nullable Path normalizedBookPath, SqliteNativeApi sqliteApi) {
+      MemorySegment databaseHandle,
+      @Nullable Path normalizedBookPath,
+      boolean publishesActivityMarker,
+      SqliteNativeApi sqliteApi) {
     this.databaseHandle = Objects.requireNonNull(databaseHandle, "databaseHandle");
     this.normalizedBookPath = normalizedBookPath;
+    this.publishesActivityMarker = publishesActivityMarker;
     this.sqliteApi = Objects.requireNonNull(sqliteApi, "sqliteApi");
   }
 
@@ -78,7 +83,8 @@ class SqliteNativeDatabase implements AutoCloseable {
     if (closed) {
       return;
     }
-    SqliteNativeConnections.close(databaseHandle, normalizedBookPath, sqliteApi);
+    SqliteNativeConnections.close(
+        databaseHandle, normalizedBookPath, publishesActivityMarker, sqliteApi);
     closed = true;
   }
 

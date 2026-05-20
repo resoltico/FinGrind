@@ -18,50 +18,63 @@ final class CliAccountPageOutputRenderer {
                 List.of("Returned accounts", Integer.toString(page.accounts().size())),
                 List.of("Limit", Integer.toString(page.limit())),
                 List.of("Next cursor", nextCursor)));
-    String table =
-        CliTextFormat.renderTable(
-            List.of(
-                "Account",
-                "Name",
-                "Parent account",
-                "Account type",
-                "Account role",
-                "Financial-position line",
-                "Profit-and-loss line",
-                "Normal balance",
-                "Active",
-                "Declared at"),
-            page.accounts().stream()
+    String accounts =
+        page.accounts().isEmpty()
+            ? "(none)"
+            : page.accounts().stream()
                 .map(
                     account ->
-                        List.of(
-                            account.accountCode().value(),
-                            account.accountName().value(),
-                            account
-                                .accountTaxonomy()
-                                .parentAccountCode()
-                                .map(parent -> parent.value())
-                                .orElse("(none)"),
-                            CliQueryOutputFormatter.displayLineTypeLabel(account.accountType()),
-                            CliQueryOutputFormatter.displayAccountRoleLabel(account.accountRole()),
-                            account
-                                .accountTaxonomy()
-                                .financialPositionLineClassification()
-                                .map(
-                                    CliQueryOutputFormatter
-                                        ::displayFinancialPositionLineClassification)
-                                .orElse("(none)"),
-                            account
-                                .accountTaxonomy()
-                                .profitAndLossLineClassification()
-                                .map(
-                                    CliQueryOutputFormatter::displayProfitAndLossLineClassification)
-                                .orElse("(none)"),
-                            CliQueryOutputFormatter.displayNormalBalanceLabel(
-                                account.normalBalance()),
-                            CliQueryOutputFormatter.displayBooleanLabel(account.active()),
-                            CliHumanDisplay.instant(account.declaredAt())))
-                .toList());
+                        CliTextFormat.renderSummaryBlock(
+                            account.accountCode().value() + " | " + account.accountName().value(),
+                            CliTextFormat.renderKeyValueBlock(
+                                List.of(
+                                    List.of(
+                                        "Parent account",
+                                        account
+                                            .accountTaxonomy()
+                                            .parentAccountCode()
+                                            .map(parent -> parent.value())
+                                            .orElse("(none)")),
+                                    List.of(
+                                        "Account type",
+                                        CliQueryOutputFormatter.displayLineTypeLabel(
+                                            account.accountType())),
+                                    List.of(
+                                        "Account role",
+                                        CliQueryOutputFormatter.displayAccountRoleLabel(
+                                            account.accountRole())),
+                                    List.of(
+                                        "Financial-position line",
+                                        account
+                                            .accountTaxonomy()
+                                            .financialPositionLineClassification()
+                                            .map(
+                                                CliQueryOutputFormatter
+                                                    ::displayFinancialPositionLineClassification)
+                                            .orElse("(none)")),
+                                    List.of(
+                                        "Profit-and-loss line",
+                                        account
+                                            .accountTaxonomy()
+                                            .profitAndLossLineClassification()
+                                            .map(
+                                                CliQueryOutputFormatter
+                                                    ::displayProfitAndLossLineClassification)
+                                            .orElse("(none)")),
+                                    List.of(
+                                        "Normal balance",
+                                        CliQueryOutputFormatter.displayNormalBalanceLabel(
+                                            account.normalBalance())),
+                                    List.of(
+                                        "Active",
+                                        CliQueryOutputFormatter.displayBooleanLabel(
+                                            account.active())),
+                                    List.of(
+                                        "Declared at",
+                                        CliHumanDisplay.instant(account.declaredAt()))))))
+                .collect(
+                    java.util.stream.Collectors.joining(
+                        System.lineSeparator() + System.lineSeparator()));
     return CliTextFormat.renderTitledBlock(
         "Accounts",
         header
@@ -70,7 +83,7 @@ final class CliAccountPageOutputRenderer {
             + summary
             + System.lineSeparator()
             + System.lineSeparator()
-            + table);
+            + accounts);
   }
 
   static String renderCsv(AccountPage page) {

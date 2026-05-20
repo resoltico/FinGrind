@@ -1,4 +1,3 @@
 recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts
-opening-balance,EUR,0.00,0.00,0.00,ZERO,,,,,,,,,,,
-ledger-entry,EUR,,,,,019e33ac-e83f-7eaa-9ae3-0f4623ef44ae,STANDARD,direct,,2026-04-08,2026-05-17T02:03:50.154822Z,10.00,0.00,10.00,DEBIT,2000
+ledger-entry,EUR,,,,,018f0000-0000-7000-8000-000000000001,STANDARD,direct,,2026-04-08,2026-04-07T12:00:00Z,10.00,0.00,10.00,DEBIT,2000
 closing-balance,EUR,10.00,0.00,10.00,DEBIT,,,,,,,,,,,

@@ -109,14 +109,6 @@ def load_contract_values(
                 runtime_surface_document,
                 required_string(runtime_surface_schema, "sqliteLibraryMode"),
             ),
-            "sqliteLibraryEnvironmentVariable": required_value(
-                runtime_surface_document,
-                required_string(runtime_surface_schema, "sqliteLibraryEnvironmentVariable"),
-            ),
-            "sqliteOperatorTrustSystemProperty": required_value(
-                runtime_surface_document,
-                required_string(runtime_surface_schema, "sqliteOperatorTrustSystemProperty"),
-            ),
             "sqliteBundleHomeSystemProperty": required_value(
                 runtime_surface_document,
                 required_string(runtime_surface_schema, "sqliteBundleHomeSystemProperty"),

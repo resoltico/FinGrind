@@ -7,12 +7,15 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 
 /** Same-directory process-liveness markers for active protected-book access across processes. */
 final class SqliteBookActivityMarkers {
   private static final String ACTIVITY_PREFIX_SEGMENT = ".fingrind-activity-";
   private static final String ACTIVITY_FILE_SUFFIX = ".marker";
+  private static final Duration UNKNOWN_START_EXTERNAL_MARKER_GRACE_PERIOD = Duration.ofHours(12);
 
   private SqliteBookActivityMarkers() {}
 
@@ -106,7 +109,10 @@ final class SqliteBookActivityMarkers {
       if (markerIdentity.isCurrentProcess()) {
         continue;
       }
-      if (markerIdentity.isLive()) {
+      Instant markerLastModified =
+          Files.getLastModifiedTime(sibling, LinkOption.NOFOLLOW_LINKS).toInstant();
+      if (markerIdentity.isLiveWhenUnlocked(
+          markerLastModified, UNKNOWN_START_EXTERNAL_MARKER_GRACE_PERIOD)) {
         return true;
       }
       Files.deleteIfExists(sibling);

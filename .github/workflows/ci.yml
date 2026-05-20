@@ -145,9 +145,9 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
-      - name: Verify environment-configured SQLite CLI runtime on Windows
+      - name: Verify direct-Java SQLite CLI runtime on Windows
         shell: pwsh
-        run: .\scripts\verify-environment-configured-sqlite-runtime.ps1
+        run: .\scripts\verify-direct-java-sqlite-runtime.ps1
 
       - name: Verify source-checkout SQLite CLI runtime on Windows
         shell: pwsh

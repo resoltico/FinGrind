@@ -879,6 +879,19 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--rollback-file",
                   "book.rekey-rollback.sqlite"
                 }));
+    DeleteRekeyRollback deleteRekeyRollback =
+        assertInstanceOf(
+            DeleteRekeyRollback.class,
+            CliArguments.parse(
+                new String[] {
+                  "delete-rekey-rollback",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--rollback-file",
+                  "book.rekey-rollback.sqlite"
+                }));
 
     assertEquals(Path.of("book.sqlite"), backupBook.bookAccess().bookFilePath());
     assertEquals(Path.of("backup/entity.sqlite"), backupBook.backupFilePath());
@@ -896,6 +909,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertInstanceOf(
         BookAccess.PassphraseSource.KeyFile.class, restoreRekeyRollback.expectedPassphraseSource());
     assertEquals(OutputMode.JSON, restoreRekeyRollback.outputMode());
+
+    assertEquals(Path.of("book.sqlite"), deleteRekeyRollback.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.rekey-rollback.sqlite"), deleteRekeyRollback.rollbackArtifactPath());
+    assertInstanceOf(
+        BookAccess.PassphraseSource.KeyFile.class,
+        deleteRekeyRollback.bookAccess().passphraseSource());
+    assertEquals(OutputMode.JSON, deleteRekeyRollback.outputMode());
   }
 
   @Test
@@ -939,6 +959,46 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
+  void parse_deleteRekeyRollback_acceptsStandardInputAndPromptPassphraseSources() {
+    DeleteRekeyRollback standardInputDelete =
+        assertInstanceOf(
+            DeleteRekeyRollback.class,
+            CliArguments.parse(
+                new String[] {
+                  "delete-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-stdin"
+                }));
+    DeleteRekeyRollback promptDelete =
+        assertInstanceOf(
+            DeleteRekeyRollback.class,
+            CliArguments.parse(
+                new String[] {
+                  "delete-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-prompt"
+                }));
+
+    assertInstanceOf(
+        BookAccess.PassphraseSource.StandardInput.class,
+        standardInputDelete.bookAccess().passphraseSource());
+    assertInstanceOf(
+        BookAccess.PassphraseSource.InteractivePrompt.class,
+        promptDelete.bookAccess().passphraseSource());
+  }
+
+  @Test
+  void parse_deleteRekeyRollback_requiresOnePassphraseSource() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {"delete-rekey-rollback", "--book-file", "book.sqlite"}));
+
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals(
+        "Delete rekey rollback requires exactly one book passphrase source: --book-key-file <path>, --book-passphrase-stdin, or --book-passphrase-prompt.",
+        exception.getMessage());
+  }
+
+  @Test
   void parse_inspectRekeyRollback_rejectsPassphraseSourceArguments() {
     CliArgumentsException exception =
         assertThrows(
@@ -954,7 +1014,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
     assertEquals("--book-key-file", exception.argument());
     assertEquals(
-        "Book passphrase source arguments are accepted only when restore-rekey-rollback is selected.",
+        "Book passphrase source arguments are accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
         exception.getMessage());
   }
 

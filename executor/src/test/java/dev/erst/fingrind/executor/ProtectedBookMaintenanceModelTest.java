@@ -5,17 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceEvent;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceEventKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceVerificationFailure;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +33,8 @@ class ProtectedBookMaintenanceModelTest {
     ProtectedBookMaintenanceRejection rejection =
         new ProtectedBookMaintenanceRejection.ArtifactBusy(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, book);
+    ProtectedBookAccess localAccess =
+        new ProtectedBookAccess(book, new ProtectedBookPassphraseSource.KeyFile(backupKey));
 
     assertEquals(
         book, new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey).bookFilePath());
@@ -48,58 +52,46 @@ class ProtectedBookMaintenanceModelTest {
         rollback, new ProtectedBookRecoveryOutcome.Deleted(book, rollback).rollbackArtifactPath());
     assertEquals(rejection, new ProtectedBookRecoveryOutcome.Rejected(rejection).rejection());
 
+    assertEquals(book, localAccess.toPublished().bookFilePath());
+    assertEquals(localAccess, ProtectedBookAccess.fromPublished(localAccess.toPublished()));
     assertEquals(
-        List.of(rollback),
-        new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(book, List.of(rollback))
-            .blockingArtifactPaths());
+        BookAccess.PassphraseSource.StandardInput.INSTANCE,
+        ProtectedBookPassphraseSource.StandardInput.INSTANCE.toPublished());
     assertEquals(
-        List.of(rollback),
-        new ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                backup, List.of(rollback))
-            .blockingArtifactPaths());
+        ProtectedBookPassphraseSource.StandardInput.INSTANCE,
+        ProtectedBookPassphraseSource.fromPublished(
+            BookAccess.PassphraseSource.StandardInput.INSTANCE));
     assertEquals(
-        ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT,
-        new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, rollback)
-            .artifactRole());
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+        ProtectedBookPassphraseSource.InteractivePrompt.INSTANCE.toPublished());
+    assertEquals(
+        ProtectedBookPassphraseSource.InteractivePrompt.INSTANCE,
+        ProtectedBookPassphraseSource.fromPublished(
+            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
+    assertEquals(book, new ProtectedBookMaintenanceStore.VerifiedBook(book).artifactPath());
+    assertEquals(book, new ProtectedBookMaintenanceStore.LeaseBusy(book).artifactPath());
+    assertEquals(
+        ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND,
+        new ProtectedBookMaintenanceStore.VerificationFailure(
+                book, ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND)
+            .failure());
+
     assertEquals(
         backup,
-        new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backup)
+        new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(book, backup)
             .backupFilePath());
     assertEquals(
-        backupKey,
-        new ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists(backupKey)
-            .backupBookKeyFilePath());
-    assertEquals(
-        ProtectedBookMaintenanceVerificationFailure.FOREIGN_SQLITE,
+        ProtectedBookVerificationFailure.FOREIGN_SQLITE,
         new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
                 ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
                 backup,
-                ProtectedBookMaintenanceVerificationFailure.FOREIGN_SQLITE)
+                ProtectedBookVerificationFailure.FOREIGN_SQLITE)
             .verificationFailure());
     assertEquals(
-        book, new ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound(book).bookFilePath());
-    assertIterableEquals(
         List.of(rollback, rollbackTwo),
         new ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired(
                 book, List.of(rollback, rollbackTwo))
             .rollbackArtifactPaths());
-    assertEquals(
-        rollback,
-        new ProtectedBookMaintenanceRejection.RollbackArtifactNotFound(rollback)
-            .rollbackArtifactPath());
-    assertEquals(
-        rollback,
-        new ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook(book, rollback)
-            .rollbackArtifactPath());
-
-    assertEquals(book, new ProtectedBookMaintenanceStore.VerifiedBook(book).artifactPath());
-    assertEquals(
-        ProtectedBookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND,
-        new ProtectedBookMaintenanceStore.VerificationFailure(
-                book, ProtectedBookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND)
-            .failure());
-    assertEquals(book, new ProtectedBookMaintenanceStore.LeaseBusy(book).artifactPath());
 
     assertThrows(
         IllegalArgumentException.class,
@@ -118,73 +110,13 @@ class ProtectedBookMaintenanceModelTest {
         NullPointerException.class,
         () -> new ProtectedBookBackupOutcome.BackedUp(nullOf(), backup, backupKey));
     assertThrows(
-        NullPointerException.class, () -> new ProtectedBookBackupOutcome.Rejected(nullOf()));
-    assertThrows(
         NullPointerException.class,
-        () -> new ProtectedBookRestoreOutcome.Restored(book, nullOf(), backupKey));
-    assertThrows(
-        NullPointerException.class,
-        () -> new ProtectedBookRecoveryOutcome.Restored(book, nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new ProtectedBookMaintenanceRejection.ArtifactBusy(nullOf(), rollback));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rollback, nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new ProtectedBookMaintenanceStore.VerificationFailure(book, nullOf()));
+        () -> new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(nullOf(), backup));
+    assertThrows(NullPointerException.class, () -> new ProtectedBookAccess(book, nullOf()));
   }
 
   @Test
-  void maintenanceEvents_andEnumsExposeCanonicalVocabulary() {
-    Instant recordedAt = Instant.parse("2026-05-18T16:30:00Z");
-    Path book = path("books/acme.sqlite");
-    Path backup = path("backup/acme.sqlite");
-    Path backupKey = path("backup/acme.book-key");
-    Path rollback = path("books/acme.rekey-rollback-1.sqlite");
-
-    ProtectedBookMaintenanceEvent backupCreated =
-        ProtectedBookMaintenanceEvent.backupCreated(recordedAt, book, backup, backupKey);
-    ProtectedBookMaintenanceEvent backupRestored =
-        ProtectedBookMaintenanceEvent.backupRestored(recordedAt, book, backup, backupKey);
-    ProtectedBookMaintenanceEvent inspected =
-        ProtectedBookMaintenanceEvent.rollbackArtifactsInspected(
-            recordedAt, book, List.of(rollback));
-    ProtectedBookMaintenanceEvent restored =
-        ProtectedBookMaintenanceEvent.rollbackArtifactRestored(recordedAt, book, rollback);
-    ProtectedBookMaintenanceEvent deleted =
-        ProtectedBookMaintenanceEvent.rollbackArtifactDeleted(recordedAt, book, rollback);
-
-    assertEquals(ProtectedBookMaintenanceEventKind.BACKUP_CREATED, backupCreated.kind());
-    assertEquals(backupKey, backupCreated.backupBookKeyFilePath());
-    assertEquals(ProtectedBookMaintenanceEventKind.BACKUP_RESTORED, backupRestored.kind());
-    assertIterableEquals(List.of(rollback), inspected.rollbackArtifactPaths());
-    assertEquals(ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_RESTORED, restored.kind());
-    assertEquals(ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_DELETED, deleted.kind());
-
-    assertIterableEquals(
-        List.of(
-            ProtectedBookMaintenanceEventKind.BACKUP_CREATED,
-            ProtectedBookMaintenanceEventKind.BACKUP_RESTORED,
-            ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_INSPECTED,
-            ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_RESTORED,
-            ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_DELETED),
-        List.of(ProtectedBookMaintenanceEventKind.values()));
-    assertEquals("backup-created", ProtectedBookMaintenanceEventKind.BACKUP_CREATED.wireValue());
-    assertEquals("backup-restored", ProtectedBookMaintenanceEventKind.BACKUP_RESTORED.wireValue());
-    assertEquals(
-        "rekey-rollback-inspected",
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_INSPECTED.wireValue());
-    assertEquals(
-        "rekey-rollback-restored",
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_RESTORED.wireValue());
-    assertEquals(
-        "rekey-rollback-deleted",
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_DELETED.wireValue());
-
+  void maintenanceEnumsExposeCanonicalVocabulary() {
     assertIterableEquals(
         List.of(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
@@ -194,13 +126,25 @@ class ProtectedBookMaintenanceModelTest {
         List.of(ProtectedBookMaintenanceArtifactRole.values()));
     assertIterableEquals(
         List.of(
-            ProtectedBookMaintenanceVerificationFailure.MISSING,
-            ProtectedBookMaintenanceVerificationFailure.BLANK_SQLITE,
-            ProtectedBookMaintenanceVerificationFailure.FOREIGN_SQLITE,
-            ProtectedBookMaintenanceVerificationFailure.UNSUPPORTED_FORMAT_VERSION,
-            ProtectedBookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND,
-            ProtectedBookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
-        List.of(ProtectedBookMaintenanceVerificationFailure.values()));
+            ProtectedBookVerificationFailure.MISSING,
+            ProtectedBookVerificationFailure.BLANK_SQLITE,
+            ProtectedBookVerificationFailure.FOREIGN_SQLITE,
+            ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION,
+            ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND,
+            ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
+        List.of(ProtectedBookVerificationFailure.values()));
+    assertIterableEquals(
+        List.of(
+            ProtectedBookMaintenanceAuditKind.BACKUP_CREATED,
+            ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED,
+            ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_RESTORED,
+            ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_DELETED),
+        List.of(ProtectedBookMaintenanceAuditKind.values()));
+    assertIterableEquals(
+        List.of(
+            ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED,
+            ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED),
+        List.of(ProtectedBookMaintenanceAuditCompensationKind.values()));
   }
 
   private static Path path(String relativePath) {

@@ -157,6 +157,8 @@ final class CliFailureOutputRenderer {
           appendQueryOrPlanRejectionDetails(rows, details);
       case CliRejectionJsonModels.BookFileDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
+      case CliRejectionJsonModels.BookAndBackupFileDetails details ->
+          appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.BlockingArtifactsDetails details ->
           appendMaintenanceRejectionDetails(rows, details);
       case CliRejectionJsonModels.ArtifactBusyDetails details ->
@@ -304,6 +306,10 @@ final class CliFailureOutputRenderer {
     switch (rejectionDetails) {
       case CliRejectionJsonModels.BookFileDetails details ->
           rows.add(List.of("Book file", details.bookFile()));
+      case CliRejectionJsonModels.BookAndBackupFileDetails details -> {
+        rows.add(List.of("Book file", details.bookFile()));
+        rows.add(List.of("Backup file", details.backupFile()));
+      }
       case CliRejectionJsonModels.BlockingArtifactsDetails details -> {
         rows.add(List.of("Book file", details.bookFile()));
         rows.add(List.of("Blocking artifacts", CliTextFormat.joined(details.blockingArtifacts())));

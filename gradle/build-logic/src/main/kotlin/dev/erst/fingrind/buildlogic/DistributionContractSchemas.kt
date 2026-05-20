@@ -20,10 +20,6 @@ internal object DistributionContractSchemas {
                 bookProtectionMode = schemaKey(document, "runtimeSurface", "bookProtectionMode"),
                 defaultBookCipher = schemaKey(document, "runtimeSurface", "defaultBookCipher"),
                 sqliteLibraryMode = schemaKey(document, "runtimeSurface", "sqliteLibraryMode"),
-                sqliteLibraryEnvironmentVariable =
-                    schemaKey(document, "runtimeSurface", "sqliteLibraryEnvironmentVariable"),
-                sqliteOperatorTrustSystemProperty =
-                    schemaKey(document, "runtimeSurface", "sqliteOperatorTrustSystemProperty"),
                 sqliteBundleHomeSystemProperty =
                     schemaKey(document, "runtimeSurface", "sqliteBundleHomeSystemProperty"),
             ),

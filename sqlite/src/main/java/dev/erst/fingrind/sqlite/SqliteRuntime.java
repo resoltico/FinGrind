@@ -5,8 +5,11 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.runtime.SqliteRuntimeArtifactEvidence;
 import dev.erst.fingrind.contract.runtime.SqliteRuntimeStateValidator;
 import dev.erst.fingrind.core.WireValue;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -18,15 +21,13 @@ import org.jspecify.annotations.Nullable;
 /** Public runtime metadata for the packaged SQLite adapter. */
 public final class SqliteRuntime {
   private static final Pattern PATH_TOKEN = Pattern.compile("([A-Za-z]:\\\\[^\\s]+|/[^\\s]+)");
+  private static final String TOOLCHAIN_FINGERPRINT_FILE_NAME = "toolchain-fingerprint.json";
+  private static final String BUILD_CONTRACT_FILE_NAME = "build-contract.json";
   public static final String STORAGE_DRIVER = ProtocolCatalog.storageDriver().wireValue();
   public static final String STORAGE_ENGINE = ProtocolCatalog.storageEngine().wireValue();
   public static final String BOOK_PROTECTION_MODE =
       ProtocolCatalog.bookProtectionMode().wireValue();
   public static final String DEFAULT_BOOK_CIPHER = ProtocolCatalog.defaultBookCipher().wireValue();
-  public static final String LIBRARY_ENVIRONMENT_VARIABLE =
-      ProtocolCatalog.sqliteLibraryEnvironmentVariable();
-  public static final String OPERATOR_TRUST_SYSTEM_PROPERTY =
-      ProtocolCatalog.sqliteOperatorTrustSystemProperty();
   public static final String BUNDLE_HOME_SYSTEM_PROPERTY =
       ProtocolCatalog.sqliteBundleHomeSystemProperty();
   public static final String LIBRARY_MODE = ProtocolCatalog.sqliteLibraryMode().wireValue();
@@ -79,7 +80,7 @@ public final class SqliteRuntime {
     return probeConfiguredTarget(
         () ->
             SqliteNativeRuntimePolicy.configuredLibraryTarget(
-                System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE),
+                System.getenv("FINGRIND_SQLITE_LIBRARY"),
                 System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
 
@@ -119,7 +120,8 @@ public final class SqliteRuntime {
           null,
           null,
           null,
-          failureDetail(throwable));
+          failureDetail(throwable),
+          null);
     }
     if (!nativeAccessEnabled) {
       return new Probe(
@@ -135,7 +137,8 @@ public final class SqliteRuntime {
           null,
           null,
           null,
-          SqliteNativeAccessGate.failureMessage(nativeAccessModule));
+          SqliteNativeAccessGate.failureMessage(nativeAccessModule),
+          null);
     }
     return probe(
         () -> configuredLibraryTarget.mode(),
@@ -173,6 +176,8 @@ public final class SqliteRuntime {
     String libraryMode = libraryModeSupplier.get();
     SqliteRuntimeProvenance runtimeProvenance = runtimeProvenanceSupplier.get();
     String loadedLibraryPath = publicLoadedLibraryPath(loadedLibraryPathSupplier.get());
+    SqliteRuntimeArtifactEvidence runtimeArtifactEvidence =
+        artifactEvidence(loadedLibraryPathSupplier.get());
     String loadedSqliteVersion = null;
     String loadedSqlite3mcVersion = null;
     String loadedSqliteSourceId = null;
@@ -193,7 +198,8 @@ public final class SqliteRuntime {
           loadedSqliteVersion,
           loadedSqlite3mcVersion,
           loadedSqliteSourceId,
-          null);
+          null,
+          runtimeArtifactEvidence);
     } catch (UnsupportedSqliteVersionException exception) {
       return new Probe(
           libraryMode,
@@ -208,7 +214,8 @@ public final class SqliteRuntime {
           exception.loadedVersion(),
           exception.loadedSqlite3mcVersion(),
           exception.loadedSourceId(),
-          failureDetail.apply(exception));
+          failureDetail.apply(exception),
+          runtimeArtifactEvidence);
     } catch (UnsupportedSqliteMultipleCiphersVersionException exception) {
       return new Probe(
           libraryMode,
@@ -223,7 +230,8 @@ public final class SqliteRuntime {
           exception.loadedSqliteVersion(),
           exception.loadedVersion(),
           exception.loadedSourceId(),
-          failureDetail.apply(exception));
+          failureDetail.apply(exception),
+          runtimeArtifactEvidence);
     } catch (UnsupportedSqliteSourceIdException exception) {
       return new Probe(
           libraryMode,
@@ -238,7 +246,8 @@ public final class SqliteRuntime {
           exception.loadedSqliteVersion(),
           exception.loadedSqlite3mcVersion(),
           exception.loadedSourceId(),
-          failureDetail.apply(exception));
+          failureDetail.apply(exception),
+          runtimeArtifactEvidence);
     } catch (UnsupportedSqliteCompileOptionsException exception) {
       return new Probe(
           libraryMode,
@@ -253,7 +262,8 @@ public final class SqliteRuntime {
           exception.loadedSqliteVersion(),
           exception.loadedSqlite3mcVersion(),
           exception.loadedSourceId(),
-          failureDetail.apply(exception));
+          failureDetail.apply(exception),
+          runtimeArtifactEvidence);
     } catch (RuntimeException | Error throwable) {
       return new Probe(
           libraryMode,
@@ -268,7 +278,8 @@ public final class SqliteRuntime {
           loadedSqliteVersion,
           loadedSqlite3mcVersion,
           loadedSqliteSourceId,
-          failureDetail.apply(throwable));
+          failureDetail.apply(throwable),
+          runtimeArtifactEvidence);
     }
   }
 
@@ -286,7 +297,8 @@ public final class SqliteRuntime {
       @Nullable String loadedSqliteVersion,
       @Nullable String loadedSqlite3mcVersion,
       @Nullable String loadedSqliteSourceId,
-      @Nullable String issue) {
+      @Nullable String issue,
+      @Nullable SqliteRuntimeArtifactEvidence runtimeArtifactEvidence) {
     public Probe {
       libraryMode = requireText(libraryMode, "libraryMode");
       if (!LIBRARY_MODE.equals(libraryMode)) {
@@ -373,6 +385,25 @@ public final class SqliteRuntime {
       return normalized;
     }
     return "<redacted>/" + normalized.substring(lastSeparator + 1);
+  }
+
+  private static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(
+      String loadedLibraryPath) {
+    Path libraryPath = Path.of(Objects.requireNonNull(loadedLibraryPath, "loadedLibraryPath"));
+    Path parentDirectory = libraryPath.getParent();
+    if (parentDirectory == null) {
+      return null;
+    }
+    Path toolchainFingerprintPath = parentDirectory.resolve(TOOLCHAIN_FINGERPRINT_FILE_NAME);
+    Path buildContractPath = parentDirectory.resolve(BUILD_CONTRACT_FILE_NAME);
+    if (!Files.isRegularFile(toolchainFingerprintPath) || !Files.isRegularFile(buildContractPath)) {
+      return null;
+    }
+    return new SqliteRuntimeArtifactEvidence(
+        publicLoadedLibraryPath(toolchainFingerprintPath.toString()),
+        SqliteManagedLibraryIdentity.actualSha256(toolchainFingerprintPath),
+        publicLoadedLibraryPath(buildContractPath.toString()),
+        SqliteManagedLibraryIdentity.actualSha256(buildContractPath));
   }
 
   private static String redactPathDetails(String message) {

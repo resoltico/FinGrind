@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -54,6 +54,7 @@ That means:
   file; `inspect-rekey-rollback` reports stale same-directory rollback artifacts;
   `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
   `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
+  after verifying one initialized live book and recording one encrypted in-book maintenance audit
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
@@ -130,8 +131,8 @@ License and attribution stance:
   forbidden compile options, and secure-memory requirement; build logic, runtime discovery, bundle
   metadata, and shell verification derive from that resource instead of keeping private literals
 - [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native shared library from that
-  source with the canonical managed-SQLite compile contract, then injects it through
-  `FINGRIND_SQLITE_LIBRARY`
+  source with the canonical managed-SQLite compile contract and stages it in the prepared
+  source-checkout build layout
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not drift away from the managed runtime contract
 - the Docker image compiles the same vendored SQLite3MC source during image build and now derives
@@ -154,9 +155,7 @@ License and attribution stance:
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first. When the resulting
-  JAR stays under the prepared checkout layout it then resolves the managed library automatically;
-  only custom direct-Java launches outside that layout need an explicit
-  `FINGRIND_SQLITE_LIBRARY`
+  JAR stays under the prepared checkout layout it then resolves the managed library automatically
 
 ## Adapter Composition
 
@@ -198,9 +197,9 @@ The SQLite adapter is split into focused collaborators:
 - [`ProtectedBookMaintenanceService`](../executor/src/main/java/dev/erst/fingrind/executor/ProtectedBookMaintenanceService.java),
   [`ProtectedBookMaintenanceStore`](../executor/src/main/java/dev/erst/fingrind/executor/spi/ProtectedBookMaintenanceStore.java),
   [`SqliteProtectedBookMaintenanceStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceStore.java),
-  and [`SqliteProtectedBookMaintenanceJournal`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceJournal.java):
+  and [`BookAuditEvent`](../executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/BookAuditEvent.java):
   executor-owned maintenance doctrine plus SQLite-backed verification, reversible replacement, and
-  append-only maintenance-journal persistence
+  encrypted in-book maintenance-audit persistence
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
@@ -210,7 +209,9 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteNativeRuntimePolicy`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimePolicy.java):
   split native-bridge owners for bootstrap, configured-library selection, version and
   compile-option enforcement, key/rekey application, key validation, statement execution, and
-  SQLite-native error decoding
+  SQLite-native error decoding; writable native opens publish sibling activity markers, while
+  read-only opens retain in-process connection accounting without creating filesystem marker
+  artifacts
 - [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
   loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
@@ -285,11 +286,8 @@ The SQLite adapter is split into focused collaborators:
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
 - bundle-managed runtimes verify the exact loaded native library against the publisher
   `.trusted.sha256` sidecar and the local-consistency `.sha256` sidecar, source-checkout-managed
-  runtimes verify one checkout-local build identity through those same sidecars, and
-  `environment-configured` runtimes require explicit operator trust plus the sibling `.sha256`
-  sidecar only
-- runtime probes distinguish bundle-managed, source-checkout-managed, and
-  environment-configured library provenance and
+  runtimes verify one checkout-local build identity through those same sidecars
+- runtime probes distinguish bundle-managed and source-checkout-managed library provenance and
   report `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.forbiddenCompileOptions`,
   `environment.sqlite.requiresSecureMemorySupport`,
@@ -429,10 +427,10 @@ Reasons for the current design:
 Managed runtime targets currently build SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 from the
 vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint, generated
 source-checkout launcher, and developer direct-Java wrappers all grant native access only to the
-`fingrind` module. Gradle `Test` and `JavaExec` tasks keep their classpath-era native-access flag
-because those developer tasks execute in the unnamed module rather than through the published
-automatic module. Controlled surfaces resolve the managed library through `fingrind.bundle.home`,
-source-checkout discovery, or `FINGRIND_SQLITE_LIBRARY` as the explicit escape hatch.
+`fingrind` module. Selected Gradle `Test` and `JavaExec` task owners keep explicit classpath-era
+native-access flags because those developer tasks execute in the unnamed module rather than
+through the published automatic module. Controlled surfaces resolve the managed library through
+`fingrind.bundle.home` or source-checkout discovery only.
 
 Distribution note:
 - public bundle archives and the public container image both package a private `jlink` runtime so
@@ -445,8 +443,7 @@ Native bridge notes:
   session
 - native library lookup has no platform-default fallback; it uses extracted bundle home for the
   public launcher, prepared-checkout discovery for generated launchers and developer direct-Java
-  wrappers, and
-  `FINGRIND_SQLITE_LIBRARY` only as the explicit direct-Java override
+  wrappers
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
 - runtime initialization also validates the required compile-option hardening before the managed

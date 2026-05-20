@@ -24,29 +24,27 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly environment_verifier_ps1="${repo_root}/scripts/verify-environment-configured-sqlite-runtime.ps1"
+readonly direct_java_verifier_ps1="${repo_root}/scripts/verify-direct-java-sqlite-runtime.ps1"
 readonly source_checkout_verifier_ps1="${repo_root}/scripts/verify-source-checkout-sqlite-runtime.ps1"
 
-[[ -f "${environment_verifier_ps1}" ]] || die \
-    "missing PowerShell environment-configured runtime verifier at ${environment_verifier_ps1}"
+[[ -f "${direct_java_verifier_ps1}" ]] || die \
+    "missing PowerShell direct-Java runtime verifier at ${direct_java_verifier_ps1}"
 [[ -f "${source_checkout_verifier_ps1}" ]] || die \
     "missing PowerShell source-checkout runtime verifier at ${source_checkout_verifier_ps1}"
-grep -Fq 'direct-java-cli.ps1' "${environment_verifier_ps1}" || die \
-    "PowerShell environment-configured runtime verifier no longer delegates to the direct-Java wrapper owner"
-grep -Fq 'JAVA_TOOL_OPTIONS' "${environment_verifier_ps1}" || die \
-    "PowerShell environment-configured runtime verifier no longer publishes the operator-trust JVM property seam"
+grep -Fq 'direct-java-cli.ps1' "${direct_java_verifier_ps1}" || die \
+    "PowerShell direct-Java runtime verifier no longer delegates to the direct-Java wrapper owner"
 grep -Fq 'source-checkout-cli.ps1' "${source_checkout_verifier_ps1}" || die \
     "PowerShell source-checkout runtime verifier no longer delegates to the source-checkout launcher owner"
-grep -Fq 'verify-sqlite-runtime-contract.py' "${environment_verifier_ps1}" || die \
-    "PowerShell environment-configured runtime verifier no longer delegates to the canonical Python verifier"
+grep -Fq 'verify-sqlite-runtime-contract.py' "${direct_java_verifier_ps1}" || die \
+    "PowerShell direct-Java runtime verifier no longer delegates to the canonical Python verifier"
 grep -Fq 'verify-sqlite-runtime-contract.py' "${source_checkout_verifier_ps1}" || die \
     "PowerShell source-checkout runtime verifier no longer delegates to the canonical Python verifier"
-grep -Fq 'environment --output json' "${environment_verifier_ps1}" || die \
-    "PowerShell environment-configured runtime verifier no longer probes the canonical environment command"
+grep -Fq 'environment --output json' "${direct_java_verifier_ps1}" || die \
+    "PowerShell direct-Java runtime verifier no longer probes the canonical environment command"
 grep -Fq 'environment --output json' "${source_checkout_verifier_ps1}" || die \
     "PowerShell source-checkout runtime verifier no longer probes the canonical environment command"
-if grep -Fq ':cli:run "--args=capabilities --output json"' "${environment_verifier_ps1}"; then
-    die "PowerShell environment-configured runtime verifier regressed to the retired Gradle run seam"
+if grep -Fq ':cli:run "--args=capabilities --output json"' "${direct_java_verifier_ps1}"; then
+    die "PowerShell direct-Java runtime verifier regressed to the retired Gradle run seam"
 fi
 
 if ! command -v pwsh >/dev/null 2>&1; then
@@ -54,7 +52,7 @@ if ! command -v pwsh >/dev/null 2>&1; then
     exit 0
 fi
 
-pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${environment_verifier_ps1}"
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${direct_java_verifier_ps1}"
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${source_checkout_verifier_ps1}"
 
 printf 'PowerShell SQLite runtime verifier regression: success\n'

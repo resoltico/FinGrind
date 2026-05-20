@@ -91,6 +91,8 @@ public final class InMemoryBookSession
   private final Map<PostingId, CommittedPosting> postingsByPostingId = mutableMap();
   private final Map<PostingId, CommittedPosting> reversalsByPriorPostingId = mutableMap();
   private final List<ClosedPeriod> closedPeriods = new ArrayList<>();
+  private final PostingAcceptancePolicy postingAcceptancePolicy =
+      PostingAcceptancePolicy.currentKernel();
   private @Nullable Snapshot transactionSnapshot;
   private boolean initialized;
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
@@ -264,7 +266,7 @@ public final class InMemoryBookSession
     return withLock(
         () -> {
           Optional<BookkeepingPostingRejection> rejection =
-              PostingAcceptancePolicy.rejectionFor(postingDraft, this);
+              postingAcceptancePolicy.rejectionFor(postingDraft, this);
           if (rejection.isPresent()) {
             return new PostingCommitResult.Rejected(rejection.orElseThrow());
           }

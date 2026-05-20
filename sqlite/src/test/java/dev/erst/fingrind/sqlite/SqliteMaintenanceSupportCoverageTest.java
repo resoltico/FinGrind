@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -58,6 +59,17 @@ class SqliteMaintenanceSupportCoverageTest {
   }
 
   @Test
+  void copyFreshBook_copiesAndHardensTheTargetArtifact() throws Exception {
+    Path sourcePath = tempDirectory.resolve("copy-source.sqlite");
+    Path targetPath = tempDirectory.resolve("copy-target").resolve("book.sqlite");
+    java.nio.file.Files.writeString(sourcePath, "source-book");
+
+    SqliteBookMaintenanceFiles.copyFreshBook(sourcePath, targetPath);
+
+    assertEquals("source-book", java.nio.file.Files.readString(targetPath));
+  }
+
+  @Test
   void replaceBook_cleansStagedCopiesWhenRestoreFails() throws Exception {
     Path missingSource = tempDirectory.resolve("missing.sqlite");
     Path targetPath = tempDirectory.resolve("restore").resolve("book.sqlite");
@@ -78,6 +90,21 @@ class SqliteMaintenanceSupportCoverageTest {
               .filter(path -> path.getFileName().toString().startsWith("book.sqlite.restore-"))
               .count());
     }
+  }
+
+  @Test
+  void replaceBook_replacesTheTargetArtifactOnSuccess() throws Exception {
+    Path sourcePath = tempDirectory.resolve("replace-source.sqlite");
+    Path targetPath = tempDirectory.resolve("replace-target").resolve("book.sqlite");
+    Path targetParent = java.util.Objects.requireNonNull(targetPath.getParent(), "targetParent");
+    java.nio.file.Files.createDirectories(targetParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(targetParent);
+    java.nio.file.Files.writeString(sourcePath, "replacement-book");
+    java.nio.file.Files.writeString(targetPath, "previous-book");
+
+    SqliteBookMaintenanceFiles.replaceBook(sourcePath, targetPath);
+
+    assertEquals("replacement-book", java.nio.file.Files.readString(targetPath));
   }
 
   @Test
@@ -115,6 +142,75 @@ class SqliteMaintenanceSupportCoverageTest {
       assertTrue(targetPath.exists);
       assertTrue(targetPath.regularFile);
     }
+  }
+
+  @Test
+  void cleanupAbandonedStageArtifacts_returnsForParentlessOrMissingParentsAndDeletesMatchingFiles()
+      throws Exception {
+    assertDoesNotThrow(
+        () ->
+            SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(
+                Path.of("parentless.sqlite")));
+    assertDoesNotThrow(
+        () ->
+            SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(
+                tempDirectory.resolve("missing-parent").resolve("book.sqlite")));
+
+    Path parentDirectory = tempDirectory.resolve("cleanup-stage");
+    java.nio.file.Files.createDirectories(parentDirectory);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
+    Path basePath = parentDirectory.resolve("book.sqlite");
+    Path backupStage = parentDirectory.resolve("book.sqlite.backup-one.sqlite");
+    Path backupKeyStage = parentDirectory.resolve("book.sqlite.backup-key-one.tmp");
+    Path restoreStage = parentDirectory.resolve("book.sqlite.restore-one.tmp");
+    Path previousStage = parentDirectory.resolve("book.sqlite.previous-one.sqlite");
+    Path unrelated = parentDirectory.resolve("book.sqlite.unrelated.txt");
+    java.nio.file.Files.writeString(backupStage, "backup");
+    java.nio.file.Files.writeString(backupKeyStage, "backup-key");
+    java.nio.file.Files.writeString(restoreStage, "restore");
+    java.nio.file.Files.writeString(previousStage, "previous");
+    java.nio.file.Files.writeString(unrelated, "keep");
+
+    SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(basePath);
+
+    assertFalse(java.nio.file.Files.exists(backupStage));
+    assertFalse(java.nio.file.Files.exists(backupKeyStage));
+    assertFalse(java.nio.file.Files.exists(restoreStage));
+    assertFalse(java.nio.file.Files.exists(previousStage));
+    assertTrue(java.nio.file.Files.exists(unrelated));
+  }
+
+  @Test
+  void cleanupAbandonedStageArtifacts_wrapsDirectoryListingFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\cleanup");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.failNewDirectoryStreamWith(new IOException("cleanup-boom"));
+      AclFixturePath basePath = fileSystem.path("\\cleanup\\book.sqlite");
+      basePath.exists = true;
+      basePath.regularFile = true;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(basePath));
+
+      assertTrue(NullTestSupport.messageOf(exception).contains("stage artifacts"));
+      assertEquals("cleanup-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
+  }
+
+  @Test
+  void moveReplacing_usesTheDirectAtomicPathWhenSupported() throws Exception {
+    Path sourcePath = tempDirectory.resolve("move-source.sqlite");
+    Path targetPath = tempDirectory.resolve("move-target.sqlite");
+    java.nio.file.Files.writeString(sourcePath, "moved");
+
+    invokeMoveReplacing(sourcePath, targetPath);
+
+    assertFalse(java.nio.file.Files.exists(sourcePath));
+    assertEquals("moved", java.nio.file.Files.readString(targetPath));
   }
 
   @Test

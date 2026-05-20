@@ -159,6 +159,12 @@ class RejectionNarrativeTest {
             .contains("safe to restore"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
+            .contains("will not restore a book from itself"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactBusy(
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.LIVE_BOOK,
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))

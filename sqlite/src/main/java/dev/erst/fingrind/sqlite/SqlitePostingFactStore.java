@@ -27,6 +27,7 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -47,17 +48,12 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * SQLite-backed book session that keeps one in-process database handle per opened book.
+ * Internal SQLite-backed book session core that keeps one in-process database handle per opened
+ * book.
  *
- * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
+ * <p>This core is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-class SqlitePostingFactStore
-    implements SqliteAdministrationSession,
-        SqliteReadSession,
-        SqlitePostingSession,
-        SqlitePeriodCloseSession,
-        SqlitePlanExecutionSession,
-        SqliteRekeySession {
+class SqlitePostingFactStore implements AutoCloseable {
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
   private final SqliteStoreContext context;
   final SqliteSessionSecret sessionSecret;
@@ -81,7 +77,13 @@ class SqlitePostingFactStore
       SqliteBookPassphrase bookPassphrase,
       SqliteStoreAccessMode accessMode,
       Supplier<SqliteNativeApi> sqliteApiSupplier) {
-    this(bookPath, bookPassphrase, accessMode, sqliteApiSupplier, SqliteCommitFaultHook.NONE);
+    this(
+        bookPath,
+        bookPassphrase,
+        accessMode,
+        sqliteApiSupplier,
+        SqliteCommitFaultHook.NONE,
+        PostingAcceptancePolicy.currentKernel());
   }
 
   SqlitePostingFactStore(
@@ -90,6 +92,22 @@ class SqlitePostingFactStore
       SqliteStoreAccessMode accessMode,
       Supplier<SqliteNativeApi> sqliteApiSupplier,
       SqliteCommitFaultHook commitFaultHook) {
+    this(
+        bookPath,
+        bookPassphrase,
+        accessMode,
+        sqliteApiSupplier,
+        commitFaultHook,
+        PostingAcceptancePolicy.currentKernel());
+  }
+
+  SqlitePostingFactStore(
+      Path bookPath,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteStoreAccessMode accessMode,
+      Supplier<SqliteNativeApi> sqliteApiSupplier,
+      SqliteCommitFaultHook commitFaultHook,
+      PostingAcceptancePolicy postingAcceptancePolicy) {
     this.context =
         new SqliteStoreContext(
             Objects.requireNonNull(bookPath, "bookPath"),
@@ -101,7 +119,10 @@ class SqlitePostingFactStore
     this.readOperations = new SqliteStoreReadOperations(context, lifecycle);
     this.mutationOperations =
         new SqliteStoreMutationOperations(
-            context, lifecycle, Objects.requireNonNull(commitFaultHook, "commitFaultHook"));
+            context,
+            lifecycle,
+            Objects.requireNonNull(commitFaultHook, "commitFaultHook"),
+            Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy"));
   }
 
   /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
@@ -117,117 +138,98 @@ class SqlitePostingFactStore
         .fold(ignored -> ContractDecision.accepted(this), ContractDecision::rejected);
   }
 
-  @Override
-  public BookLifecycleInspection inspectBook() {
+  BookLifecycleInspection inspectBook() {
     threadOwner.requireOwnerThread();
     return readOperations.inspectBook();
   }
 
-  @Override
-  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     threadOwner.requireOwnerThread();
     return readOperations.findAccount(accountCode);
   }
 
-  @Override
-  public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     threadOwner.requireOwnerThread();
     return readOperations.findAccounts(accountCodes);
   }
 
-  @Override
-  public List<RegisteredAccount> allAccounts() {
+  List<RegisteredAccount> allAccounts() {
     threadOwner.requireOwnerThread();
     return readOperations.allAccounts();
   }
 
-  @Override
-  public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listAccounts(query);
   }
 
-  @Override
-  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     threadOwner.requireOwnerThread();
     return readOperations.findExistingPosting(idempotencyKey);
   }
 
-  @Override
-  public Optional<CommittedPosting> findPosting(PostingId postingId) {
+  Optional<CommittedPosting> findPosting(PostingId postingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findPosting(postingId);
   }
 
-  @Override
-  public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findReversalFor(priorPostingId);
   }
 
-  @Override
-  public PostingHistoryPage listPostings(PostingHistoryQuery query) {
+  PostingHistoryPage listPostings(PostingHistoryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listPostings(query);
   }
 
-  @Override
-  public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
     threadOwner.requireOwnerThread();
     return readOperations.postings(effectiveDateRange);
   }
 
-  @Override
-  public Optional<LocalDate> earliestPostingEffectiveDate() {
+  Optional<LocalDate> earliestPostingEffectiveDate() {
     threadOwner.requireOwnerThread();
     return readOperations.earliestPostingEffectiveDate();
   }
 
-  @Override
-  public Optional<LocalDate> closedThroughEffectiveDate() {
+  Optional<LocalDate> closedThroughEffectiveDate() {
     threadOwner.requireOwnerThread();
     return readOperations.closedThroughEffectiveDate();
   }
 
-  @Override
-  public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+  Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.accountBalance(query);
   }
 
-  @Override
-  public List<AccountCurrencyTotals> accountTotals(
+  List<AccountCurrencyTotals> accountTotals(
       EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
     threadOwner.requireOwnerThread();
     return readOperations.accountTotals(effectiveDateRange, postingCoverage);
   }
 
-  @Override
-  public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+  TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.trialBalance(query);
   }
 
-  @Override
-  public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
+  AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
     threadOwner.requireOwnerThread();
     return readOperations.accountLedger(query, account);
   }
 
-  @Override
-  public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
+  PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.periodSummary(query);
   }
 
-  @Override
-  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+  BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
     threadOwner.requireOwnerThread();
     return mutationOperations.openBook(initializedAt, bookIdentity);
   }
 
-  @Override
-  public AccountDeclarationOutcome declareAccount(
+  AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
@@ -239,15 +241,12 @@ class SqlitePostingFactStore
         accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
   }
 
-  @Override
-  public PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+  PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
     threadOwner.requireOwnerThread();
     return mutationOperations.commit(postingDraft, postingIdGenerator);
   }
 
-  @Override
-  public PeriodCloseOutcome closePeriod(
+  PeriodCloseOutcome closePeriod(
       PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
     threadOwner.requireOwnerThread();
     return mutationOperations.closePeriod(periodCloseDraft, postingIdGenerator);
@@ -258,8 +257,7 @@ class SqlitePostingFactStore
     return mutationOperations.rekeyBook(replacementPassphrase, rekeyedAt);
   }
 
-  @Override
-  public ContractDecision<RekeyBookResult> rekeyBook(
+  ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess.PassphraseSource replacementPassphraseSource,
       SqlitePassphraseResolver passphraseResolver,
       Instant rekeyedAt) {
@@ -275,20 +273,17 @@ class SqlitePostingFactStore
             ContractDecision::rejected);
   }
 
-  @Override
-  public void beginLedgerPlanTransaction() {
+  void beginLedgerPlanTransaction() {
     threadOwner.requireOwnerThread();
     lifecycle.beginLedgerPlanTransaction();
   }
 
-  @Override
-  public void commitLedgerPlanTransaction() {
+  void commitLedgerPlanTransaction() {
     threadOwner.requireOwnerThread();
     lifecycle.commitLedgerPlanTransaction();
   }
 
-  @Override
-  public void rollbackLedgerPlanTransaction() {
+  void rollbackLedgerPlanTransaction() {
     threadOwner.requireOwnerThread();
     lifecycle.rollbackLedgerPlanTransaction();
   }

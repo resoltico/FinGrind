@@ -343,7 +343,10 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
             () ->
                 SqliteNativeApiLoader.loadApi(
                     new SqliteLibraryTarget(
-                        "managed", tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
+                        "managed",
+                        dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance
+                            .SOURCE_CHECKOUT_MANAGED,
+                        tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
     assertNotNull(exception.getMessage());
   }
 

@@ -132,7 +132,8 @@ final class SqliteNativeStatements {
         });
   }
 
-  static int step(MemorySegment statementHandle, SqliteNativeApi sqliteApi) {
+  static int step(
+      MemorySegment statementHandle, MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invokeSqlite(
         "Failed to step a SQLite statement.",
         () -> {
@@ -142,7 +143,8 @@ final class SqliteNativeStatements {
               || resultCode == SqliteNativeResultCodes.DONE) {
             return resultCode;
           }
-          throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+          int extendedResultCode = extendedErrorCode(databaseHandle, sqliteApi);
+          throw SqliteNativeErrors.failure(extendedResultCode, sqliteApi);
         });
   }
 

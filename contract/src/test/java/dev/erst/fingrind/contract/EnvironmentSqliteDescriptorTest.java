@@ -150,7 +150,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.UNAVAILABLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     null,
@@ -236,8 +236,6 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 new EnvironmentSqliteDescriptor(
                     SqliteLibraryMode.MANAGED_ONLY,
-                    "FINGRIND_SQLITE_LIBRARY",
-                    "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
                     List.of("USE_URI"),
@@ -254,7 +252,8 @@ class EnvironmentSqliteDescriptorTest {
                         null,
                         null,
                         null,
-                        "missing native library")));
+                        "missing native library"),
+                    null));
     assertEquals(
         "runtimeTrustBasis must be absent when runtimeProvenance is absent.",
         trustBasisWithoutProvenance.getMessage());
@@ -264,8 +263,6 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 new EnvironmentSqliteDescriptor(
                     SqliteLibraryMode.MANAGED_ONLY,
-                    "FINGRIND_SQLITE_LIBRARY",
-                    "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
                     List.of("USE_URI"),
@@ -277,20 +274,19 @@ class EnvironmentSqliteDescriptorTest {
                         SqliteCompileOptionsVerificationStatus.VERIFIED,
                         SqliteRuntimeStatus.READY,
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                        SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+                        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
                         "/tmp/libsqlite3.dylib",
                         "3.53.1",
                         "2.3.4",
                         ProtocolCatalog.requiredSqliteSourceId(),
-                        null)));
+                        null),
+                    null));
     assertEquals(
         "runtimeTrustBasis must match runtimeProvenance source-checkout-managed.",
         mismatchedTrustBasis.getMessage());
     EnvironmentSqliteDescriptor descriptor =
         new EnvironmentSqliteDescriptor(
             SqliteLibraryMode.MANAGED_ONLY,
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
             "fingrind.sqlite.bundle.home",
             List.of("THREADSAFE=1", "SECURE_DELETE"),
             List.of("USE_URI"),
@@ -307,7 +303,8 @@ class EnvironmentSqliteDescriptorTest {
                 "3.53.1",
                 "2.3.4",
                 ProtocolCatalog.requiredSqliteSourceId(),
-                null));
+                null),
+            null);
     assertEquals(
         SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
   }
@@ -321,7 +318,7 @@ class EnvironmentSqliteDescriptorTest {
                 descriptor(
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     null,
@@ -351,7 +348,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     null,
                     null,
                     null,
@@ -366,7 +363,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     null,
@@ -381,7 +378,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     "2.3.4",
@@ -396,7 +393,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     null,
@@ -411,7 +408,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     null,
@@ -423,14 +420,15 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor descriptor =
         descriptor(
             SqliteRuntimeStatus.FAILED,
-            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
             "/tmp/libsqlite3.dylib",
             null,
             null,
             null,
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, runtimeStatus(descriptor));
-    assertEquals(SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE, runtimeTrustBasis(descriptor));
+    assertEquals(
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
     assertEquals("native bridge failed", runtimeIssue(descriptor));
   }
 
@@ -443,7 +441,7 @@ class EnvironmentSqliteDescriptorTest {
                 descriptor(
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
@@ -473,7 +471,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     null,
                     "3.53.1",
                     "2.3.4",
@@ -488,7 +486,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
                     "2.3.4",
@@ -503,7 +501,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     null,
@@ -518,7 +516,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
@@ -533,7 +531,7 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 descriptor(
                     SqliteRuntimeStatus.INCOMPATIBLE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
@@ -545,15 +543,16 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor descriptor =
         descriptor(
             SqliteRuntimeStatus.INCOMPATIBLE,
-            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
             "different-source-id",
             "source id mismatch");
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, runtimeStatus(descriptor));
-    assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, runtimeProvenance(descriptor));
-    assertEquals(SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE, runtimeTrustBasis(descriptor));
+    assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, runtimeProvenance(descriptor));
+    assertEquals(
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
     assertEquals("different-source-id", loadedSqliteSourceId(descriptor));
     assertEquals("source id mismatch", runtimeIssue(descriptor));
   }
@@ -581,8 +580,8 @@ class EnvironmentSqliteDescriptorTest {
 
     EnvironmentSqliteDescriptor.FailedRuntime failed =
         new EnvironmentSqliteDescriptor.FailedRuntime(
-            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-            SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+            SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
             "/tmp/libsqlite3.dylib",
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, failed.status());
@@ -592,8 +591,8 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible =
         new EnvironmentSqliteDescriptor.IncompatibleRuntime(
             SqliteCompileOptionsVerificationStatus.FAILED,
-            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-            SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+            SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
@@ -612,8 +611,8 @@ class EnvironmentSqliteDescriptorTest {
             () ->
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-                    SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                    SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
@@ -707,8 +706,6 @@ class EnvironmentSqliteDescriptorTest {
       @Nullable String runtimeIssue) {
     return new EnvironmentSqliteDescriptor(
         SqliteLibraryMode.MANAGED_ONLY,
-        "FINGRIND_SQLITE_LIBRARY",
-        "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
         "fingrind.sqlite.bundle.home",
         List.of("THREADSAFE=1", "SECURE_DELETE"),
         List.of("USE_URI"),
@@ -727,6 +724,7 @@ class EnvironmentSqliteDescriptorTest {
             loadedSqliteVersion,
             loadedSqlite3mcVersion,
             loadedSqliteSourceId,
-            runtimeIssue));
+            runtimeIssue),
+        null);
   }
 }

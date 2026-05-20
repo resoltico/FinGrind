@@ -67,6 +67,60 @@ public enum BookAuditEventKind implements WireValue {
       rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
     }
   },
+  BACKUP_CREATED("BACKUP_CREATED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
+  BACKUP_RESTORED("BACKUP_RESTORED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
+  REKEY_ROLLBACK_RESTORED("REKEY_ROLLBACK_RESTORED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
+  REKEY_ROLLBACK_DELETED("REKEY_ROLLBACK_DELETED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
+  BACKUP_CREATED_COMPENSATED("BACKUP_CREATED_COMPENSATED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
+  REKEY_ROLLBACK_DELETED_COMPENSATED("REKEY_ROLLBACK_DELETED_COMPENSATED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer periodCloseOrder) {
+      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+    }
+  },
   PERIOD_CLOSED("PERIOD_CLOSED") {
     @Override
     void validatePayload(

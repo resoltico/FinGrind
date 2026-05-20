@@ -8,31 +8,48 @@ import java.util.List;
 
 /** Renders book-inspection payloads for human output. */
 final class CliBookInspectionOutputRenderer {
+  private static final int HUMAN_WRAP_WIDTH = 96;
+
   private CliBookInspectionOutputRenderer() {}
 
   static String renderHuman(Path bookFilePath, BookInspection inspection) {
     BookInspection.Status status = inspection.status();
+    return CliTextFormat.renderTitledBlock(
+        "Book Inspection",
+        joinSections(
+            section(
+                "Book State",
+                CliTextFormat.renderKeyValueBlock(
+                    List.of(
+                        List.of("Book file", CliQueryOutputFormatter.absolutePath(bookFilePath)),
+                        List.of("State", displayStatus(status)),
+                        List.of(
+                            "Initialized",
+                            CliQueryOutputFormatter.displayBooleanLabel(status.initialized())),
+                        List.of(
+                            "Compatible with current binary",
+                            CliQueryOutputFormatter.displayBooleanLabel(
+                                status.compatibleWithCurrentBinary())),
+                        List.of(
+                            CliOperationText.initializeWithOpenBookLabel(),
+                            CliQueryOutputFormatter.displayBooleanLabel(
+                                status.canInitializeWithOpenBook()))),
+                    HUMAN_WRAP_WIDTH)),
+            section(
+                "Format Compatibility",
+                CliTextFormat.renderKeyValueBlock(formatRows(inspection), HUMAN_WRAP_WIDTH)),
+            identitySection(inspection)));
+  }
+
+  private static List<List<String>> formatRows(BookInspection inspection) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Book file", CliQueryOutputFormatter.absolutePath(bookFilePath)));
-    rows.add(List.of("State", displayStatus(status)));
-    rows.add(
-        List.of("Initialized", CliQueryOutputFormatter.displayBooleanLabel(status.initialized())));
-    rows.add(
-        List.of(
-            "Compatible with current binary",
-            CliQueryOutputFormatter.displayBooleanLabel(status.compatibleWithCurrentBinary())));
-    rows.add(
-        List.of(
-            CliOperationText.initializeWithOpenBookLabel(),
-            CliQueryOutputFormatter.displayBooleanLabel(status.canInitializeWithOpenBook())));
     rows.add(
         List.of(
             "Supported book format version",
             Integer.toString(inspection.supportedBookFormatVersion())));
     rows.addAll(migrationPolicyRows(inspection.migrationPolicy()));
-    rows.addAll(detailRows(inspection));
-    return CliTextFormat.renderTitledBlock(
-        "Book Inspection", CliTextFormat.renderKeyValueBlock(rows));
+    rows.addAll(formatDetailRows(inspection));
+    return List.copyOf(rows);
   }
 
   private static List<List<String>> migrationPolicyRows(BookMigrationPolicy migrationPolicy) {
@@ -49,7 +66,7 @@ final class CliBookInspectionOutputRenderer {
             CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.newerFormatsAccepted())));
   }
 
-  private static List<List<String>> detailRows(BookInspection inspection) {
+  private static List<List<String>> formatDetailRows(BookInspection inspection) {
     return switch (inspection) {
       case BookInspection.Missing _ -> List.of();
       case BookInspection.Existing existing ->
@@ -58,18 +75,34 @@ final class CliBookInspectionOutputRenderer {
               List.of(
                   "Detected book format version",
                   Integer.toString(existing.detectedBookFormatVersion())));
-      case BookInspection.Initialized initialized -> initializedDetailRows(initialized);
+      case BookInspection.Initialized initialized -> initializedFormatRows(initialized);
     };
   }
 
-  private static List<List<String>> initializedDetailRows(BookInspection.Initialized initialized) {
+  private static List<List<String>> initializedFormatRows(BookInspection.Initialized initialized) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("SQLite applicationId", Integer.toString(initialized.applicationId())));
     rows.add(
         List.of(
             "Detected book format version",
             Integer.toString(initialized.detectedBookFormatVersion())));
-    rows.addAll(CliBookIdentityDisplay.rows(initialized.bookIdentity()));
+    return List.copyOf(rows);
+  }
+
+  private static String identitySection(BookInspection inspection) {
+    if (inspection instanceof BookInspection.Initialized initialized) {
+      return section(
+          "Book Identity",
+          CliTextFormat.renderKeyValueBlock(
+              initializedIdentityRows(initialized), HUMAN_WRAP_WIDTH));
+    }
+    return "";
+  }
+
+  private static List<List<String>> initializedIdentityRows(
+      BookInspection.Initialized initialized) {
+    List<List<String>> rows =
+        new ArrayList<>(CliBookIdentityDisplay.rows(initialized.bookIdentity()));
     rows.add(List.of("Initialized at", CliHumanDisplay.instant(initialized.initializedAt())));
     return List.copyOf(rows);
   }
@@ -90,5 +123,20 @@ final class CliBookInspectionOutputRenderer {
     return switch (mode) {
       case HARD_BREAK_REJECT_OLDER_FORMATS -> "Hard-break line; reject older formats";
     };
+  }
+
+  private static String section(String title, String body) {
+    return title
+        + System.lineSeparator()
+        + "-".repeat(title.length())
+        + System.lineSeparator()
+        + body;
+  }
+
+  private static String joinSections(String... sections) {
+    return java.util.Arrays.stream(sections)
+        .filter(section -> !section.isBlank())
+        .collect(
+            java.util.stream.Collectors.joining(System.lineSeparator() + System.lineSeparator()));
   }
 }

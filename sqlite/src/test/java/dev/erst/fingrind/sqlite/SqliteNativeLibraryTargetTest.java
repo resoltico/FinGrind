@@ -30,72 +30,46 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
                     null, null, List::of, () -> null));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle launcher"));
-    assertTrue(message.contains("FINGRIND_SQLITE_LIBRARY"));
     assertThrows(
-        IllegalStateException.class, () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null));
+        IllegalStateException.class,
+        () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of, () -> null));
   }
 
   @Test
-  void configuredLibraryTarget_requiresManagedPathAndNormalizesIt() {
-    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
-    try {
-      System.setProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "true");
-      SqliteLibraryTarget libraryTarget =
-          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
-      assertEquals("managed-only", libraryTarget.mode());
-      assertTrue(
-          Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
-      assertEquals("managed-only", SqliteRuntime.LIBRARY_MODE);
-      assertTrue(libraryTarget.toString().contains("managed-only"));
-      assertEquals(
-          libraryTarget,
-          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
-      assertEquals(
-          libraryTarget.hashCode(),
-          SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
-              .hashCode());
-      assertThrows(
-          IllegalStateException.class,
-          () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   "));
-      assertThrows(IllegalArgumentException.class, () -> new SqliteLibraryTarget(" ", "x"));
-    } finally {
-      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
-    }
+  void configuredLibraryTarget_rejectsRetiredConfiguredLibraryOverride() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    "./build/../sqlite/libsqlite3.so.0"));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("FINGRIND_SQLITE_LIBRARY"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SqliteLibraryTarget(" ", SqliteRuntimeProvenance.BUNDLE_MANAGED, "x"));
   }
 
   @Test
-  void configuredLibraryTarget_prefersExplicitEnvironmentLibraryOverBundleHome() {
-    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
-    try {
-      System.setProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "true");
-      SqliteLibraryTarget libraryTarget =
-          SqliteNativeRuntimePolicy.configuredLibraryTarget(
-              "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
-      assertEquals("managed-only", libraryTarget.mode());
-      assertTrue(
-          Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
-    } finally {
-      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
-    }
+  void configuredLibraryTarget_rejectsRetiredConfiguredLibraryOverrideEvenWhenBundleHomeExists() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString()));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
   }
 
   @Test
-  void configuredLibraryTarget_requiresExplicitOperatorTrustApproval() {
-    String originalOperatorTrust = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
-    try {
-      System.clearProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY);
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteNativeRuntimePolicy.configuredLibraryTarget(
-                      "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString()));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY));
-    } finally {
-      restoreSystemProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, originalOperatorTrust);
-    }
+  void configuredLibraryTarget_blankConfiguredPathFallsBackToSupportedResolutionPaths() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    "   ", null, List::of, () -> null));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("bundle launcher"));
   }
 
   @Test
@@ -167,6 +141,37 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void configuredLibraryTarget_singleArgumentOverload_resolvesManagedLibraryFromDefaultDetection()
+      throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind-single-arg");
+    Path managedLibraryPath =
+        sourceCheckoutRoot
+            .resolve("build")
+            .resolve("managed-sqlite")
+            .resolve(expectedManagedSqliteClassifier())
+            .resolve(expectedNativeLibraryFileName());
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(managedLibraryPath.getParent());
+    Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
+    String originalSourceCheckoutRoot = System.getProperty("fingrind.source-checkout.root");
+    String originalSourceCheckoutBuildRoot =
+        System.getProperty("fingrind.source-checkout.build-root");
+    try {
+      System.setProperty(
+          "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
+      System.clearProperty("fingrind.source-checkout.build-root");
+      SqliteLibraryTarget libraryTarget = SqliteNativeRuntimePolicy.configuredLibraryTarget(null);
+      assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
+      assertEquals(
+          managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
+    } finally {
+      restoreSystemProperty("fingrind.source-checkout.build-root", originalSourceCheckoutBuildRoot);
+      restoreSystemProperty("fingrind.source-checkout.root", originalSourceCheckoutRoot);
+    }
+  }
+
+  @Test
   void configuredLibraryTarget_resolvesManagedLibraryFromExternalizedSourceCheckoutBuildRoot()
       throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
@@ -225,7 +230,6 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
                 SqliteNativeRuntimePolicy.configuredLibraryTarget(null, bundleHomePath.toString()));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle home"));
-    assertTrue(message.contains("FINGRIND_SQLITE_LIBRARY"));
   }
 
   @Test
@@ -250,8 +254,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
                     null, "   ", List::of, () -> null));
     assertTrue(Objects.requireNonNull(missingEverywhere.getMessage()).contains("bundle launcher"));
     assertTrue(
-        Objects.requireNonNull(blankConfiguredPath.getMessage())
-            .contains("FINGRIND_SQLITE_LIBRARY"));
+        Objects.requireNonNull(blankConfiguredPath.getMessage()).contains("bundle launcher"));
     assertTrue(Objects.requireNonNull(blankBundleHome.getMessage()).contains("bundle launcher"));
   }
 

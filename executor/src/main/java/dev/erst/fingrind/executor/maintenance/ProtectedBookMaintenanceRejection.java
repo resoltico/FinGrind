@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.maintenance;
 
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceVerificationFailure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -9,6 +8,7 @@ import java.util.Objects;
 public sealed interface ProtectedBookMaintenanceRejection
     permits ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts,
         ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts,
+        ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook,
         ProtectedBookMaintenanceRejection.ArtifactBusy,
         ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists,
         ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists,
@@ -44,6 +44,15 @@ public sealed interface ProtectedBookMaintenanceRejection
     }
   }
 
+  /** Rejection for restore commands whose backup source equals the selected live book path. */
+  record BackupSourceMatchesLiveBook(Path bookFilePath, Path backupFilePath)
+      implements ProtectedBookMaintenanceRejection {
+    public BackupSourceMatchesLiveBook {
+      Objects.requireNonNull(bookFilePath, "bookFilePath");
+      Objects.requireNonNull(backupFilePath, "backupFilePath");
+    }
+  }
+
   /** Rejection for maintenance commands whose selected artifact is actively in use. */
   record ArtifactBusy(ProtectedBookMaintenanceArtifactRole artifactRole, Path artifactPath)
       implements ProtectedBookMaintenanceRejection {
@@ -73,7 +82,7 @@ public sealed interface ProtectedBookMaintenanceRejection
   record ArtifactVerificationFailed(
       ProtectedBookMaintenanceArtifactRole artifactRole,
       Path artifactPath,
-      ProtectedBookMaintenanceVerificationFailure verificationFailure)
+      ProtectedBookVerificationFailure verificationFailure)
       implements ProtectedBookMaintenanceRejection {
     public ArtifactVerificationFailed {
       Objects.requireNonNull(artifactRole, "artifactRole");

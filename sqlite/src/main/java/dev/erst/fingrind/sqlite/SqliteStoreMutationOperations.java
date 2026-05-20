@@ -41,19 +41,30 @@ final class SqliteStoreMutationOperations {
   private final SqliteStoreLifecycle lifecycle;
   private final SqliteCommitFaultHook commitFaultHook;
   private final SqliteRekeyService rekeyService;
+  private final PostingAcceptancePolicy postingAcceptancePolicy;
 
   SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
-    this(context, lifecycle, SqliteCommitFaultHook.NONE);
+    this(context, lifecycle, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel());
   }
 
   SqliteStoreMutationOperations(
       SqliteStoreContext context,
       SqliteStoreLifecycle lifecycle,
       SqliteCommitFaultHook commitFaultHook) {
+    this(context, lifecycle, commitFaultHook, PostingAcceptancePolicy.currentKernel());
+  }
+
+  SqliteStoreMutationOperations(
+      SqliteStoreContext context,
+      SqliteStoreLifecycle lifecycle,
+      SqliteCommitFaultHook commitFaultHook,
+      PostingAcceptancePolicy postingAcceptancePolicy) {
     this.context = Objects.requireNonNull(context, "context");
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
     this.commitFaultHook = Objects.requireNonNull(commitFaultHook, "commitFaultHook");
     this.rekeyService = new SqliteRekeyService(context, lifecycle);
+    this.postingAcceptancePolicy =
+        Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
   }
 
   BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
@@ -165,7 +176,7 @@ final class SqliteStoreMutationOperations {
           try {
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             Optional<BookkeepingPostingRejection> ordinaryOutcome =
-                PostingAcceptancePolicy.rejectionFor(
+                postingAcceptancePolicy.rejectionFor(
                     postingDraft,
                     new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
             if (ordinaryOutcome.isPresent()) {
@@ -216,7 +227,7 @@ final class SqliteStoreMutationOperations {
             List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
             for (PostingDraft closingPostingDraft : periodCloseDraft.closingPostings()) {
               Optional<BookkeepingPostingRejection> rejection =
-                  PostingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
+                  postingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
               if (rejection.isPresent()) {
                 throw new IllegalStateException(
                     "Generated period-close posting failed bookkeeping acceptance: "

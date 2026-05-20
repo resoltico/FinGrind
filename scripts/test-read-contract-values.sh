@@ -60,8 +60,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "bookProtectionMode": "bookProtectionMode",
                 "defaultBookCipher": "defaultBookCipher",
                 "sqliteLibraryMode": "sqliteLibraryMode",
-                "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
-                "sqliteOperatorTrustSystemProperty": "sqliteOperatorTrustSystemProperty",
                 "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty",
             },
             "protectedBookFormat": {
@@ -143,8 +141,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "bookProtectionMode": "required",
             "defaultBookCipher": "chacha20",
             "sqliteLibraryMode": "managed-only",
-            "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
-            "sqliteOperatorTrustSystemProperty": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
             "sqliteBundleHomeSystemProperty": "fingrind.bundle.home",
         },
     )

@@ -25,8 +25,6 @@ internal data class ManagedSqliteProvisioning(
 )
 
 internal object ManagedSqliteProvisioningLogic {
-    private const val SQLITE_LIBRARY_ENVIRONMENT = "FINGRIND_SQLITE_LIBRARY"
-
     fun register(
         project: Project,
         repositoryRootDirectory: Path,
@@ -163,14 +161,12 @@ internal object ManagedSqliteProvisioningLogic {
             systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
             systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
             systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())
-            enableNativeAccess()
         }
         project.tasks.withType<JavaExec>().configureEach {
             dependsOn(provisioning.prepareTask)
             systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
             systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
             systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())
-            enableNativeAccess()
         }
     }
 

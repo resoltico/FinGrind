@@ -14,6 +14,8 @@ import java.util.List;
 
 /** Renders semantic reporting payloads such as trial balances, ledgers, and period summaries. */
 final class CliReportOutputRenderer {
+  private static final int HUMAN_TABLE_WIDTH = 120;
+
   private CliReportOutputRenderer() {}
 
   static String renderTrialBalanceHuman(TrialBalanceReport report) {
@@ -32,7 +34,8 @@ final class CliReportOutputRenderer {
                         CliQueryOutputFormatter.upperDateBoundaryLabel(
                             report.effectiveDateTo().orElse(null))))));
     String table =
-        CliTextFormat.renderTable(
+        CliTextFormat.renderAdaptiveTable(
+            HUMAN_TABLE_WIDTH,
             List.of(
                 "Account",
                 "Name",
@@ -57,7 +60,8 @@ final class CliReportOutputRenderer {
                 comparativeReferenceLine(report.comparativeEffectiveDateRange())
                     + System.lineSeparator()
                     + System.lineSeparator()
-                    + CliTextFormat.renderTable(
+                    + CliTextFormat.renderAdaptiveTable(
+                        HUMAN_TABLE_WIDTH,
                         List.of(
                             "Account",
                             "Name",
@@ -155,30 +159,9 @@ final class CliReportOutputRenderer {
                     List.of(
                         "Closing balances",
                         CliQueryOutputFormatter.joinedBalances(report.closingBalances())))));
-    String table =
-        CliTextFormat.renderTable(
-            List.of(
-                "Effective date",
-                "Recorded at",
-                "Posting id",
-                "Posting kind",
-                "Posting role",
-                "Reverses posting",
-                "Currency",
-                "Debit",
-                "Credit",
-                "Running balance",
-                "Balance side",
-                "Counterpart accounts"),
-            report.entries().stream()
-                .map(
-                    entry -> CliQueryOutputFormatter.accountLedgerHumanRow(report.account(), entry))
-                .toList(),
-            5,
-            6,
-            7);
+    String entries = renderAccountLedgerEntries(report);
     return CliTextFormat.renderTitledBlock(
-        "Account Ledger", header + System.lineSeparator() + System.lineSeparator() + table);
+        "Account Ledger", joinSections(header, section("Entries", entries)));
   }
 
   static String renderAccountLedgerCsv(AccountLedgerReport report) {
@@ -286,7 +269,8 @@ final class CliReportOutputRenderer {
                     List.of("Posting line count", Integer.toString(report.postingLineCount())),
                     List.of("Accounts touched", Integer.toString(report.accountsTouched())))));
     String currencyTotals =
-        CliTextFormat.renderTable(
+        CliTextFormat.renderAdaptiveTable(
+            HUMAN_TABLE_WIDTH,
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
             report.currencyTotals().stream()
                 .map(summary -> CliQueryOutputFormatter.balanceHumanRow(summary.totals()))
@@ -295,7 +279,8 @@ final class CliReportOutputRenderer {
             2,
             3);
     String accountActivity =
-        CliTextFormat.renderTable(
+        CliTextFormat.renderAdaptiveTable(
+            HUMAN_TABLE_WIDTH,
             List.of(
                 "Account",
                 "Name",
@@ -662,8 +647,12 @@ final class CliReportOutputRenderer {
       List<List<String>> rows) {
     List<List<String>> identityRows =
         new java.util.ArrayList<>(identityRows(bookIdentity, postingCoverage, List.of()));
-    identityRows.add(
-        List.of("Comparative reference", comparativeReferenceLine(comparativeEffectiveDateRange)));
+    if (comparativeEffectiveDateRange.effectiveDateFrom().isPresent()
+        || comparativeEffectiveDateRange.effectiveDateTo().isPresent()) {
+      identityRows.add(
+          List.of(
+              "Comparative reference", comparativeReferenceLine(comparativeEffectiveDateRange)));
+    }
     identityRows.addAll(rows);
     return List.copyOf(identityRows);
   }
@@ -675,6 +664,59 @@ final class CliReportOutputRenderer {
     identityRows.add(List.of("Posting coverage", displayPostingCoverage(postingCoverage)));
     identityRows.addAll(rows);
     return List.copyOf(identityRows);
+  }
+
+  private static String renderAccountLedgerEntries(AccountLedgerReport report) {
+    if (report.entries().isEmpty()) {
+      return "(none)";
+    }
+    List<String> entryBlocks =
+        report.entries().stream()
+            .map(entry -> renderAccountLedgerEntry(report.account(), entry))
+            .toList();
+    return String.join(System.lineSeparator() + System.lineSeparator(), entryBlocks);
+  }
+
+  private static String renderAccountLedgerEntry(
+      dev.erst.fingrind.contract.bookkeeping.DeclaredAccount account,
+      dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry entry) {
+    String summary =
+        entry.postingFact().journalEntry().effectiveDate()
+            + " | "
+            + CliQueryOutputFormatter.displayPostingKind(entry.postingFact().postingKind())
+            + " | "
+            + entry.postingFact().postingId().value();
+    String details =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Recorded at",
+                    CliHumanDisplay.instant(entry.postingFact().provenance().recordedAt())),
+                List.of(
+                    "Posting role",
+                    CliQueryOutputFormatter.displayPostingRoleHuman(entry.postingFact())),
+                List.of(
+                    "Reverses posting",
+                    CliQueryOutputFormatter.reversalTargetHuman(entry.postingFact())),
+                List.of("Currency", entry.movement().netAmount().currencyUnit().code()),
+                List.of(
+                    "Debit", CliQueryOutputFormatter.displayMoney(entry.movement().debitTotal())),
+                List.of(
+                    "Credit", CliQueryOutputFormatter.displayMoney(entry.movement().creditTotal())),
+                List.of(
+                    "Running balance",
+                    CliQueryOutputFormatter.displayMoney(entry.runningNetAmount())),
+                List.of(
+                    "Balance side",
+                    CliQueryOutputFormatter.displayBalanceSideLabel(entry.runningBalanceSide())),
+                List.of(
+                    "Counterpart accounts",
+                    CliQueryOutputFormatter.counterpartAccounts(account, entry.postingFact()))));
+    return summary
+        + System.lineSeparator()
+        + "-".repeat(summary.length())
+        + System.lineSeparator()
+        + details;
   }
 
   private static String comparativeReferenceLine(EffectiveDateRange comparativeEffectiveDateRange) {
@@ -703,7 +745,8 @@ final class CliReportOutputRenderer {
                             section.accountType()),
                         section.rows().isEmpty()
                             ? ""
-                            : CliTextFormat.renderTable(
+                            : CliTextFormat.renderAdaptiveTable(
+                                HUMAN_TABLE_WIDTH,
                                 List.of(
                                     "Line code",
                                     "Line name",
@@ -824,7 +867,8 @@ final class CliReportOutputRenderer {
                             section.accountType()),
                         section.rows().isEmpty()
                             ? ""
-                            : CliTextFormat.renderTable(
+                            : CliTextFormat.renderAdaptiveTable(
+                                HUMAN_TABLE_WIDTH,
                                 List.of(
                                     "Line code",
                                     "Line name",
@@ -1133,7 +1177,8 @@ final class CliReportOutputRenderer {
     if (rows.isEmpty()) {
       return "";
     }
-    return CliTextFormat.renderTable(
+    return CliTextFormat.renderAdaptiveTable(
+        HUMAN_TABLE_WIDTH,
         List.of(
             "Line code",
             "Line name",

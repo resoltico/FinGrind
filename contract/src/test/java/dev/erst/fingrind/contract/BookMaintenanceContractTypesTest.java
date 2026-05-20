@@ -37,6 +37,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(bookFile), List.of(hint(rollbackArtifact))),
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                 hint(backupFile), List.of(hint(rollbackArtifact))),
+            new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
+                hint(bookFile), hint(backupFile)),
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
             new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile)),
@@ -58,7 +60,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 Collectors.toUnmodifiableMap(
                     ContractResponse.RejectionDescriptor::code, descriptor -> descriptor));
 
-    assertEquals(10, descriptorsByCode.size());
+    assertEquals(11, descriptorsByCode.size());
     for (BookMaintenanceRejection rejection : rejections) {
       String code = BookMaintenanceRejection.wireCode(rejection);
       ContractResponse.RejectionDescriptor descriptor = descriptorsByCode.get(code);
@@ -95,6 +97,12 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         () ->
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new BookMaintenanceRejection.BackupSourceMatchesLiveBook(nullOf(), hint(backupFile)));
+    assertThrows(
+        NullPointerException.class,
+        () -> new BookMaintenanceRejection.BackupSourceMatchesLiveBook(hint(bookFile), nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> new BookMaintenanceRejection.BackupDestinationAlreadyExists(nullOf()));

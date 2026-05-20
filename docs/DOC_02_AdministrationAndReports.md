@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
@@ -66,6 +66,10 @@ public sealed interface BookkeepingLookupOutcome<T>
   `accountLedger(...)`, `periodSummary(...)`, `financialPosition(...)`,
   `incomeStatement(...)`, and `changesInEquity(...)`
 - Lookup variants: `Found`, `Missing`, `Rejected`
+- Statement computation owners: `BookkeepingStatementService` now coordinates
+  `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and
+  `ChangesInEquityStatementCalculator` instead of carrying all statement doctrine in one read
+  service collaborator
 - Boundary: this service stays inside the bookkeeping context and returns only local lifecycle,
   lookup, query-rejection, and report-view outcomes
 
@@ -550,7 +554,7 @@ public record ChangesInEquityView(...)
 - Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
   published-language translator renders it into public report DTOs
 
-## `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService`
+## `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService`
 
 These executor-owned local bookkeeping types own period-close generation and durable close
 semantics before the public administration surface is projected.
@@ -558,17 +562,19 @@ semantics before the public administration surface is projected.
 ```java
 public record PeriodCloseDraft(...)
 public sealed interface PeriodCloseOutcome
+public final class PeriodClosePlanner
 public final class PeriodCloseService
 ```
 
 - `PeriodCloseDraft`: store-ready close payload containing the reporting period, the close time,
   and every generated posting draft
 - `PeriodCloseOutcome`: closed family of accepted-versus-rejected local close outcomes
-- `PeriodCloseService`: application service that validates closing-equity configuration for the
-  active entity-form policy,
-  allows the first close to begin before the earliest posting date, enforces strict day-after
-  contiguity once one close is recorded, rejects close ranges that cross the configured fiscal
-  year boundary, and generates `PostingKind.PERIOD_CLOSE` postings
+- `PeriodClosePlanner`: bookkeeping-domain planner that selects the policy-owned closing-equity
+  account, validates close-horizon rules, and generates the `PostingKind.PERIOD_CLOSE` drafts plus
+  published closed totals for one contiguous reporting period
+- `PeriodCloseService`: application service that coordinates lifecycle inspection, account
+  catalog/store access, planner output, and durable close persistence instead of owning the close
+  recipe itself
 
 ## `BookAdministrationRejection`
 

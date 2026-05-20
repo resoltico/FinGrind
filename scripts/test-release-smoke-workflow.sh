@@ -289,7 +289,17 @@ with tempfile.TemporaryDirectory() as temp_dir:
     assert_operator_queries_and_reports(
         config,
         list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
-        list_postings_human_output="Effective date | Recorded at\n2026-04-07 | 2026-04-07T10:00:00Z | 10.00\n",
+        list_postings_human_output=(
+            "Postings\n"
+            "========\n\n"
+            "Returned postings : 2\n\n"
+            "2026-04-08 | Direct | posting-2\n"
+            "Recorded at      : 2026-04-08 10:00:00 UTC\n"
+            "Debit total      : 4.00\n\n"
+            "2026-04-07 | Direct | posting-1\n"
+            "Recorded at      : 2026-04-07 10:00:00 UTC\n"
+            "Debit total      : 10.00\n"
+        ),
         account_balance_human_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
         trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
@@ -365,7 +375,17 @@ with tempfile.TemporaryDirectory() as temp_dir:
     assert_operator_queries_and_reports(
         docker_config,
         list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
-        list_postings_human_output="Effective date | Recorded at\n2026-04-07 | 2026-04-07T10:00:00Z | 10.00\n",
+        list_postings_human_output=(
+            "Postings\n"
+            "========\n\n"
+            "Returned postings : 2\n\n"
+            "2026-04-08 | Direct | posting-2\n"
+            "Recorded at      : 2026-04-08 10:00:00 UTC\n"
+            "Debit total      : 4.00\n\n"
+            "2026-04-07 | Direct | posting-1\n"
+            "Recorded at      : 2026-04-07 10:00:00 UTC\n"
+            "Debit total      : 10.00\n"
+        ),
         account_balance_human_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
         trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",

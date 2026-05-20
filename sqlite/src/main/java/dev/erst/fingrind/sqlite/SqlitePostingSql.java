@@ -402,11 +402,103 @@ final class SqlitePostingSql {
       limit 1
       """;
 
+  static final String FIND_LATE_OPENING_BALANCE_POSTING =
+      """
+      select opening.posting_id
+      from posting_fact as opening
+      where
+          opening.posting_kind = 'OPENING_BALANCE'
+          and exists (
+              select 1
+              from posting_fact as ordinary
+              where
+                  ordinary.posting_kind <> 'OPENING_BALANCE'
+                  and ordinary.posting_order < opening.posting_order
+          )
+      limit 1
+      """;
+
+  static final String FIND_OPENING_BALANCE_NOMINAL_ACCOUNT =
+      """
+      select posting_fact.posting_id
+      from journal_line
+      inner join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      inner join account on account.account_code = journal_line.account_code
+      where
+          posting_fact.posting_kind = 'OPENING_BALANCE'
+          and account.account_type not in ('ASSET', 'LIABILITY', 'EQUITY')
+      limit 1
+      """;
+
+  static final String FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT =
+      """
+      select journal_line.posting_id
+      from journal_line
+      inner join account on account.account_code = journal_line.account_code
+      where account.active = 0
+      limit 1
+      """;
+
+  static final String FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD =
+      """
+      select posting_fact.posting_id
+      from posting_fact
+      inner join period_close
+        on posting_fact.effective_date <= period_close.effective_date_to
+      inner join period_close_posting
+        on period_close_posting.period_close_order = period_close.period_close_order
+      inner join posting_fact as close_posting
+        on close_posting.posting_id = period_close_posting.posting_id
+      where
+          posting_fact.posting_kind <> 'PERIOD_CLOSE'
+          and posting_fact.posting_order > close_posting.posting_order
+      limit 1
+      """;
+
+  static final String FIND_UNLINKED_PERIOD_CLOSE_POSTING =
+      """
+      select posting_fact.posting_id
+      from posting_fact
+      left join period_close_posting on period_close_posting.posting_id = posting_fact.posting_id
+      where
+          posting_fact.posting_kind = 'PERIOD_CLOSE'
+          and period_close_posting.posting_id is null
+      limit 1
+      """;
+
+  static final String FIND_INVALID_PERIOD_CLOSE_LINK =
+      """
+      select period_close_posting.posting_id
+      from period_close_posting
+      inner join period_close
+        on period_close.period_close_order = period_close_posting.period_close_order
+      inner join posting_fact
+        on posting_fact.posting_id = period_close_posting.posting_id
+      where
+          posting_fact.posting_kind <> 'PERIOD_CLOSE'
+          or posting_fact.actor_type <> 'SYSTEM'
+          or posting_fact.source_channel <> 'SYSTEM'
+          or posting_fact.effective_date <> period_close.effective_date_to
+      limit 1
+      """;
+
+  static final String FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT =
+      """
+      select period_close.period_close_order
+      from period_close
+      inner join account on account.account_code = period_close.closing_equity_account_code
+      where
+          account.account_type <> 'EQUITY'
+          or account.active = 0
+      limit 1
+      """;
+
   static final String LOAD_PERSISTED_MONEY_AUDIT_ROWS =
       """
       select currency_code, amount_minor
       from journal_line
-      order by posting_id, line_order
+      inner join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      order by posting_fact.posting_order, journal_line.line_order
       """;
 
   static final String FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY =

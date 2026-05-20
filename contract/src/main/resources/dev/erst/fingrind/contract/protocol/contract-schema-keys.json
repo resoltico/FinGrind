@@ -10,11 +10,11 @@
     "bookProtectionMode": "bookProtectionMode",
     "defaultBookCipher": "defaultBookCipher",
     "sqliteLibraryMode": "sqliteLibraryMode",
-    "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
-    "sqliteOperatorTrustSystemProperty": "sqliteOperatorTrustSystemProperty",
     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
   },
   "protectedBookFormat": {
+    "applicationId": "applicationId",
+    "formatVersion": "formatVersion",
     "cipher": "cipher",
     "legacyMode": "legacyMode",
     "pageSize": "pageSize",

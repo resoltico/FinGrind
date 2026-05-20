@@ -69,6 +69,28 @@ class BookAuditEventTest {
         new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, null, null),
         BookAuditEvent.bookRekeyed(FIXED_INSTANT));
     assertEquals(
+        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED, null, null, null),
+        BookAuditEvent.backupCreated(FIXED_INSTANT));
+    assertEquals(
+        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_RESTORED, null, null, null),
+        BookAuditEvent.backupRestored(FIXED_INSTANT));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null),
+        BookAuditEvent.backupCreatedCompensated(FIXED_INSTANT));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_RESTORED, null, null, null),
+        BookAuditEvent.rekeyRollbackRestored(FIXED_INSTANT));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED, null, null, null),
+        BookAuditEvent.rekeyRollbackDeleted(FIXED_INSTANT));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null),
+        BookAuditEvent.rekeyRollbackDeletedCompensated(FIXED_INSTANT));
+    assertEquals(
         new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.PERIOD_CLOSED, null, null, 7),
         BookAuditEvent.periodClosed(FIXED_INSTANT, 7));
   }
@@ -213,6 +235,12 @@ class BookAuditEventTest {
             "POSTING_COMMITTED",
             "POSTING_REVERSED",
             "BOOK_REKEYED",
+            "BACKUP_CREATED",
+            "BACKUP_RESTORED",
+            "REKEY_ROLLBACK_RESTORED",
+            "REKEY_ROLLBACK_DELETED",
+            "BACKUP_CREATED_COMPENSATED",
+            "REKEY_ROLLBACK_DELETED_COMPENSATED",
             "PERIOD_CLOSED"),
         BookAuditEventKind.wireValues());
   }

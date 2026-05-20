@@ -93,9 +93,6 @@ object DistributionContractReader {
     fun sqliteLibraryMode(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sqliteLibraryMode }
 
-    fun sqliteOperatorTrustSystemProperty(projectRootDirectory: Path): String =
-        runtimeSurfaceProperty(projectRootDirectory) { it.sqliteOperatorTrustSystemProperty }
-
     fun sqliteBundleHomeSystemProperty(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sqliteBundleHomeSystemProperty }
 
@@ -244,8 +241,6 @@ object DistributionContractReader {
         val bookProtectionMode: String,
         val defaultBookCipher: String,
         val sqliteLibraryMode: String,
-        val sqliteLibraryEnvironmentVariable: String,
-        val sqliteOperatorTrustSystemProperty: String,
         val sqliteBundleHomeSystemProperty: String,
     )
 

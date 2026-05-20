@@ -16,8 +16,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -62,6 +65,12 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     assertTrue(currentFromMarker.isCurrentProcess());
     assertTrue(currentFromLease.isLive());
     assertTrue(unknownStartCurrent.isLive());
+    assertTrue(
+        currentFromLease.isLiveWhenUnlocked(
+            Instant.now().minus(Duration.ofMinutes(1)), Duration.ofMinutes(5)));
+    assertFalse(
+        mismatchedStartCurrent.isLiveWhenUnlocked(
+            Instant.now().minus(Duration.ofMinutes(1)), Duration.ofMinutes(5)));
     assertFalse(mismatchedStartCurrent.isLive());
     assertFalse(missingProcess.isLive());
     Object differentType = "not-a-process-identity";
@@ -326,6 +335,35 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
             StandardOpenOption.WRITE);
 
         assertTrue(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+      } finally {
+        Files.deleteIfExists(liveMarkerPath);
+        helperProcess.destroyForcibly();
+        helperProcess.waitFor();
+      }
+    }
+  }
+
+  @Test
+  void hasExternalLiveMarker_deletesExpiredUnknownStartMarkerEvenWhenThePidRemainsLive()
+      throws Exception {
+    Path bookPath = writeProtectedBookPath("expired-unknown-start-marker.sqlite");
+    try (Process helperProcess = startHelperProcess("sleep", "30")) {
+      Path liveMarkerPath =
+          markerPath(
+              bookPath,
+              SqliteProcessIdentity.activityMarkerFileToken(
+                  helperProcess.pid(), SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS));
+      try {
+        Files.writeString(
+            liveMarkerPath,
+            "pid=" + helperProcess.pid() + "\nstartEpochMillis=-1\n",
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE);
+        Files.setLastModifiedTime(
+            liveMarkerPath, FileTime.from(Instant.now().minus(Duration.ofHours(13))));
+
+        assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+        assertFalse(Files.exists(liveMarkerPath));
       } finally {
         Files.deleteIfExists(liveMarkerPath);
         helperProcess.destroyForcibly();

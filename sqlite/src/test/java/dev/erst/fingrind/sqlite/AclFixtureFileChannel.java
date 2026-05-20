@@ -12,7 +12,8 @@ import java.nio.channels.WritableByteChannel;
 final class AclFixtureFileChannel extends FileChannel {
   private final AclFixtureSeekableByteChannel delegate;
 
-  AclFixtureFileChannel(AclFixtureSeekableByteChannel delegate) {
+  AclFixtureFileChannel(AclFixturePath path, AclFixtureSeekableByteChannel delegate) {
+    java.util.Objects.requireNonNull(path, "path");
     this.delegate = java.util.Objects.requireNonNull(delegate, "delegate");
   }
 
@@ -87,17 +88,36 @@ final class AclFixtureFileChannel extends FileChannel {
   }
 
   @Override
-  public FileLock lock(long position, long size, boolean shared) {
-    throw new UnsupportedOperationException("file locks are not used by this test fixture");
+  public FileLock lock(long position, long size, boolean shared) throws IOException {
+    return new FixtureFileLock(this, position, size, shared);
   }
 
   @Override
-  public FileLock tryLock(long position, long size, boolean shared) {
-    throw new UnsupportedOperationException("file locks are not used by this test fixture");
+  public FileLock tryLock(long position, long size, boolean shared) throws IOException {
+    return new FixtureFileLock(this, position, size, shared);
   }
 
   @Override
   protected void implCloseChannel() throws IOException {
     delegate.close();
+  }
+
+  /** Minimal lock handle so the ACL fixture can exercise file-lock paths. */
+  private static final class FixtureFileLock extends FileLock {
+    private boolean valid = true;
+
+    FixtureFileLock(FileChannel channel, long position, long size, boolean shared) {
+      super(channel, position, size, shared);
+    }
+
+    @Override
+    public boolean isValid() {
+      return valid;
+    }
+
+    @Override
+    public void release() {
+      valid = false;
+    }
   }
 }

@@ -25,7 +25,9 @@ public final class SqliteBookSessions {
   /** Opens and primes one administration session for explicit result handling. */
   public static ContractDecision<SqliteAdministrationSession> openResolvedAdministration(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteBookSessionMode sessionMode) {
-    return project(openResolvedStore(bookPath, bookPassphrase, sessionMode), session -> session);
+    return project(
+        openResolvedStore(bookPath, bookPassphrase, sessionMode),
+        SqliteCapabilitySessions::administration);
   }
 
   /**
@@ -48,7 +50,7 @@ public final class SqliteBookSessions {
       SqlitePassphraseIntent passphraseIntent) {
     return project(
         openResolvedStore(bookAccess, sessionMode, passphraseResolver, passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::administration);
   }
 
   /** Opens one read session for the supplied passphrase. */
@@ -61,7 +63,7 @@ public final class SqliteBookSessions {
       Path bookPath, SqliteBookPassphrase bookPassphrase) {
     return project(
         openResolvedStore(bookPath, bookPassphrase, SqliteBookSessionMode.READ_ONLY),
-        session -> session);
+        SqliteCapabilitySessions::read);
   }
 
   /** Opens one read session by resolving one contract-level protected-book access tuple. */
@@ -80,7 +82,7 @@ public final class SqliteBookSessions {
     return project(
         openResolvedStore(
             bookAccess, SqliteBookSessionMode.READ_ONLY, passphraseResolver, passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::read);
   }
 
   /** Opens one posting session using the default create-if-missing intent. */
@@ -98,7 +100,9 @@ public final class SqliteBookSessions {
   /** Opens and primes one posting session for explicit result handling. */
   public static ContractDecision<SqlitePostingSession> openResolvedPosting(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteBookSessionMode sessionMode) {
-    return project(openResolvedStore(bookPath, bookPassphrase, sessionMode), session -> session);
+    return project(
+        openResolvedStore(bookPath, bookPassphrase, sessionMode),
+        SqliteCapabilitySessions::posting);
   }
 
   /** Opens one posting session by resolving one contract-level protected-book access tuple. */
@@ -119,7 +123,7 @@ public final class SqliteBookSessions {
       SqlitePassphraseIntent passphraseIntent) {
     return project(
         openResolvedStore(bookAccess, sessionMode, passphraseResolver, passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::posting);
   }
 
   /** Opens one period-close session. */
@@ -142,7 +146,7 @@ public final class SqliteBookSessions {
             SqliteBookSessionMode.READ_WRITE_EXISTING,
             passphraseResolver,
             passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::periodClose);
   }
 
   /** Opens one plan-execution session. */
@@ -162,7 +166,7 @@ public final class SqliteBookSessions {
     return project(
         openResolvedStore(
             bookAccess, SqliteBookSessionMode.PLAN_EXECUTION, passphraseResolver, passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::planExecution);
   }
 
   /** Opens one rekey session. */
@@ -184,7 +188,7 @@ public final class SqliteBookSessions {
             SqliteBookSessionMode.READ_WRITE_EXISTING,
             passphraseResolver,
             passphraseIntent),
-        session -> session);
+        SqliteCapabilitySessions::rekey);
   }
 
   static SqlitePostingFactStore openStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {

@@ -99,22 +99,48 @@ final class CliPostingOutputRenderer {
                 List.of(
                     "Next cursor",
                     page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
-    String table =
-        CliTextFormat.renderTable(
-            List.of(
-                "Effective date",
-                "Recorded at",
-                "Posting id",
-                "Posting kind",
-                "Posting role",
-                "Currency",
-                "Debit total",
-                "Credit total",
-                "Accounts",
-                "Reverses posting"),
-            page.postings().stream().map(CliQueryOutputFormatter::postingRegisterHumanRow).toList(),
-            5,
-            6);
+    String postings =
+        page.postings().isEmpty()
+            ? "(none)"
+            : page.postings().stream()
+                .map(
+                    posting ->
+                        CliTextFormat.renderSummaryBlock(
+                            posting.journalEntry().effectiveDate()
+                                + " | "
+                                + CliQueryOutputFormatter.displayPostingRoleHuman(posting)
+                                + " | "
+                                + posting.postingId().value(),
+                            CliTextFormat.renderKeyValueBlock(
+                                List.of(
+                                    List.of(
+                                        "Recorded at",
+                                        CliHumanDisplay.instant(posting.provenance().recordedAt())),
+                                    List.of(
+                                        "Posting kind",
+                                        CliQueryOutputFormatter.displayPostingKind(
+                                            posting.postingKind())),
+                                    List.of(
+                                        "Posting role",
+                                        CliQueryOutputFormatter.displayPostingRoleHuman(posting)),
+                                    List.of(
+                                        "Currency",
+                                        CliQueryOutputFormatter.postingCurrencyHuman(posting)),
+                                    List.of(
+                                        "Debit total",
+                                        CliQueryOutputFormatter.postingDebitTotalHuman(posting)),
+                                    List.of(
+                                        "Credit total",
+                                        CliQueryOutputFormatter.postingCreditTotalHuman(posting)),
+                                    List.of(
+                                        "Accounts",
+                                        CliQueryOutputFormatter.postingAccountsHuman(posting)),
+                                    List.of(
+                                        "Reverses posting",
+                                        CliQueryOutputFormatter.reversalTargetHuman(posting))))))
+                .collect(
+                    java.util.stream.Collectors.joining(
+                        System.lineSeparator() + System.lineSeparator()));
     return CliTextFormat.renderTitledBlock(
         "Postings",
         header
@@ -123,7 +149,7 @@ final class CliPostingOutputRenderer {
             + summary
             + System.lineSeparator()
             + System.lineSeparator()
-            + table);
+            + postings);
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {

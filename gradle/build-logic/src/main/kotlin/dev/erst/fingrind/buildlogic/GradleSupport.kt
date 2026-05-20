@@ -10,7 +10,11 @@ internal const val UNNAMED_NATIVE_ACCESS_ARGUMENT = "--enable-native-access=ALL-
 internal const val SUN_MISC_UNSAFE_MEMORY_ACCESS_ARGUMENT = "--sun-misc-unsafe-memory-access=allow"
 internal const val DISABLE_CLASS_DATA_SHARING_ARGUMENT = "-Xshare:off"
 
-internal fun JavaForkOptions.enableNativeAccess() {
+internal fun JavaForkOptions.enableSqliteNamedNativeAccess() {
+    jvmArgs("--enable-native-access=$SQLITE_NATIVE_ACCESS_MODULE")
+}
+
+internal fun JavaForkOptions.enableUnnamedNativeAccess() {
     jvmArgs(UNNAMED_NATIVE_ACCESS_ARGUMENT)
 }
 

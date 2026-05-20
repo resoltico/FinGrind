@@ -1,0 +1,5 @@
+{
+  "fixtureName" : "corrupted-protected-book.sqlite",
+  "fixtureKind" : "corrupted-protected-book",
+  "purpose" : "Committed encrypted fixture with one deliberate byte corruption."
+}

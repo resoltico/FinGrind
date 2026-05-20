@@ -118,8 +118,8 @@ final class CliRequestReader {
     if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
       return readBoundedBytes(inputStream);
     }
-    try (InputStream fileStream = Files.newInputStream(requestFile)) {
-      return readBoundedBytes(fileStream);
+    try (InputStream requestStream = Files.newInputStream(requestFile)) {
+      return readBoundedBytes(requestStream);
     }
   }
 

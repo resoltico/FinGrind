@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -82,12 +82,13 @@ This context owns:
 - the distinction between verified live books, verified backup sources, rollback artifacts, and
   restored targets
 - reversible replacement discipline for destructive restore-style workflows
-- durable protected-book maintenance event meaning
+- encrypted in-book maintenance audit meaning plus compensating audit retraction when one external
+  maintenance mutation fails after the audit is staged
 
 This context uses `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`,
 `ProtectedBookRecoveryOutcome`, `ProtectedBookMaintenanceRejection`,
-`ProtectedBookMaintenanceVerificationFailure`, and `ProtectedBookMaintenanceEvent` as its local
-language.
+`ProtectedBookVerificationFailure`, `ProtectedBookMaintenanceAuditKind`, `ProtectedBookAccess`,
+`MaintenanceDecision`, and `MaintenanceFailure` as its local language.
 
 The maintenance context is not bookkeeping. It does not own accounts, postings, or reports. It
 owns protected-book artifact verification and closed-copy maintenance workflows around one book.
@@ -176,7 +177,7 @@ Assertions and step ordering belong here, not inside the bookkeeping model.
 `cli/` and `sqlite/` are host/adaptor contexts:
 - `cli/` accepts or renders the published language
 - `sqlite/` persists and retrieves bookkeeping state, verifies protected-book artifacts, and
-  appends the maintenance journal beside the live book
+  records maintenance audit facts inside the encrypted live-book audit stream
 
 They do not redefine bookkeeping rules or public workflow vocabulary.
 
@@ -225,13 +226,16 @@ Interpretation:
 - the local maintenance service owns backup, restore, rollback selection, replacement, and
   verification semantics before any public maintenance DTO or rejection family is projected
 - the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics
-  before any public DTO or public rejection family is projected
+  before any public DTO or public rejection family is projected; statement doctrine is now split
+  across `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and
+  `ChangesInEquityStatementCalculator` while `BookkeepingStatementService` coordinates that local
+  read/report slice
 - `execute-plan` enters through the public workflow schema, then runs as internal workflow steps
   plus workflow-owned `BookWorkflowFact` observations before the public journal/result surface is
   projected back out
 - SQLite persists bookkeeping state, serves the executor-owned local inspection/read/write models
-  rather than public report DTOs directly, and implements the maintenance store and maintenance
-  journal without owning maintenance semantics
+  rather than public report DTOs directly, and implements the maintenance store plus encrypted
+  maintenance-audit persistence without owning maintenance semantics
 
 ## Ownership Rules
 

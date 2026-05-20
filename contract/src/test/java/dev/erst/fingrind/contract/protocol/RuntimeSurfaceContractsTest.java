@@ -56,8 +56,6 @@ class RuntimeSurfaceContractsTest {
                           "bookProtectionMode": "required",
                           "defaultBookCipher": "chacha20",
                           "sqliteLibraryMode": "managed-only",
-                          "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
-                          "sqliteOperatorTrustSystemProperty": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                           "sqliteBundleHomeSystemProperty": ""
                         }
                         """
@@ -88,8 +86,6 @@ class RuntimeSurfaceContractsTest {
                           "bookProtectionMode": "required",
                           "defaultBookCipher": "chacha20",
                           "sqliteLibraryMode": "managed-only",
-                          "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
-                          "sqliteOperatorTrustSystemProperty": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                           "sqliteBundleHomeSystemProperty": "fingrind.bundle.home"
                         }
                         """
@@ -117,8 +113,6 @@ class RuntimeSurfaceContractsTest {
                   "bookProtectionMode": "required",
                   "defaultBookCipher": "chacha20",
                   "sqliteLibraryMode": "managed-only",
-                  "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
-                  "sqliteOperatorTrustSystemProperty": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                   "sqliteBundleHomeSystemProperty": "fingrind.bundle.home"
                 }
                 """
@@ -137,10 +131,6 @@ class RuntimeSurfaceContractsTest {
     assertEquals(BookProtectionMode.REQUIRED, contract.bookProtectionMode());
     assertEquals(BookCipher.CHACHA20, contract.defaultBookCipher());
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, contract.sqliteLibraryMode());
-    assertEquals("FINGRIND_SQLITE_LIBRARY", contract.sqliteLibraryEnvironmentVariable());
-    assertEquals(
-        "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
-        contract.sqliteOperatorTrustSystemProperty());
     assertEquals("fingrind.bundle.home", contract.sqliteBundleHomeSystemProperty());
   }
 

@@ -29,6 +29,7 @@ final class AclFixturePath implements Path {
   private @Nullable IOException deleteIfExistsFailure;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
+  private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
   private @Nullable IOException newDirectoryStreamFailure;
   private @Nullable IOException directoryStreamCloseFailure;
   private final Deque<IOException> moveFailures = new ArrayDeque<>();
@@ -81,6 +82,26 @@ final class AclFixturePath implements Path {
       return null;
     }
     newByteChannelFailures.removeFirst();
+    return plannedFailure.exception();
+  }
+
+  AclFixturePath failWriteWith(IOException exception) {
+    writeFailures.addLast(
+        new PlannedIOException(0, Objects.requireNonNull(exception, "exception")));
+    return this;
+  }
+
+  @Nullable IOException writeFailure() {
+    PlannedIOException plannedFailure = writeFailures.peekFirst();
+    if (plannedFailure == null) {
+      return null;
+    }
+    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
+      writeFailures.removeFirst();
+      writeFailures.addFirst(plannedFailure.afterSuccessfulCall());
+      return null;
+    }
+    writeFailures.removeFirst();
     return plannedFailure.exception();
   }
 

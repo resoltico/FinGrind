@@ -9,6 +9,7 @@ import java.util.Objects;
 public sealed interface BookMaintenanceRejection
     permits BookMaintenanceRejection.BookHasBlockingArtifacts,
         BookMaintenanceRejection.BackupSourceHasBlockingArtifacts,
+        BookMaintenanceRejection.BackupSourceMatchesLiveBook,
         BookMaintenanceRejection.ArtifactBusy,
         BookMaintenanceRejection.BackupDestinationAlreadyExists,
         BookMaintenanceRejection.BackupKeyFileAlreadyExists,
@@ -53,6 +54,15 @@ public sealed interface BookMaintenanceRejection
       if (blockingArtifactPaths.isEmpty()) {
         throw new IllegalArgumentException("blockingArtifactPaths must not be empty.");
       }
+    }
+  }
+
+  /** Rejection for restore commands whose selected backup source equals the live book path. */
+  record BackupSourceMatchesLiveBook(PublicPathHint bookFilePath, PublicPathHint backupFilePath)
+      implements BookMaintenanceRejection {
+    public BackupSourceMatchesLiveBook {
+      Objects.requireNonNull(bookFilePath, "bookFilePath");
+      Objects.requireNonNull(backupFilePath, "backupFilePath");
     }
   }
 
@@ -140,6 +150,8 @@ public sealed interface BookMaintenanceRejection
           Descriptor.BOOK_HAS_BLOCKING_ARTIFACTS;
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ ->
           Descriptor.BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS;
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
+          Descriptor.BACKUP_SOURCE_MATCHES_LIVE_BOOK;
       case BookMaintenanceRejection.ArtifactBusy _ -> Descriptor.ARTIFACT_BUSY;
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           Descriptor.BACKUP_DESTINATION_ALREADY_EXISTS;
@@ -162,6 +174,7 @@ public sealed interface BookMaintenanceRejection
   enum Descriptor {
     BOOK_HAS_BLOCKING_ARTIFACTS,
     BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS,
+    BACKUP_SOURCE_MATCHES_LIVE_BOOK,
     ARTIFACT_BUSY,
     BACKUP_DESTINATION_ALREADY_EXISTS,
     BACKUP_KEY_FILE_ALREADY_EXISTS,
@@ -175,6 +188,7 @@ public sealed interface BookMaintenanceRejection
       return switch (this) {
         case BOOK_HAS_BLOCKING_ARTIFACTS -> "book-has-blocking-artifacts";
         case BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS -> "backup-source-has-blocking-artifacts";
+        case BACKUP_SOURCE_MATCHES_LIVE_BOOK -> "backup-source-matches-live-book";
         case ARTIFACT_BUSY -> "artifact-busy";
         case BACKUP_DESTINATION_ALREADY_EXISTS -> "backup-destination-already-exists";
         case BACKUP_KEY_FILE_ALREADY_EXISTS -> "backup-key-file-already-exists";
@@ -192,6 +206,8 @@ public sealed interface BookMaintenanceRejection
             "Maintenance command refused because the selected live book path has SQLite sidecars or stale rollback artifacts that prove the book is not in one clean closed-copy state.";
         case BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS ->
             "Restore command refused because the selected encrypted backup file has SQLite sidecars or rollback artifacts and is not one clean closed-copy source.";
+        case BACKUP_SOURCE_MATCHES_LIVE_BOOK ->
+            "Restore command refused because the selected backup source path equals the live book path and FinGrind will not replace a book from itself.";
         case ARTIFACT_BUSY ->
             "Maintenance command refused because the selected protected-book artifact is actively in use by another workflow or process and cannot be proven quiescent.";
         case BACKUP_DESTINATION_ALREADY_EXISTS ->
@@ -224,6 +240,17 @@ public sealed interface BookMaintenanceRejection
                     new ContractResponse.FieldDescriptor(
                         "blockingArtifacts",
                         "Ordered list of redacted sibling artifact hints that make the closed-copy workflow unsafe.")),
+                List.of());
+        case BACKUP_SOURCE_MATCHES_LIVE_BOOK ->
+            new ContractResponse.RejectionDescriptor(
+                code(),
+                description(),
+                List.of(
+                    new ContractResponse.FieldDescriptor(
+                        "bookFile", "Redacted public hint for the selected live book file."),
+                    new ContractResponse.FieldDescriptor(
+                        "backupFile",
+                        "Redacted public hint for the conflicting backup source file.")),
                 List.of());
         case ARTIFACT_BUSY ->
             new ContractResponse.RejectionDescriptor(

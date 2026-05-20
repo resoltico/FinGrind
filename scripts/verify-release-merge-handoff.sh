@@ -29,7 +29,7 @@ readonly verification_support="${script_repo_root}/scripts/release-check-verific
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
 # The post-merge CI fan-out starts secondary release-blocking jobs only after the main Check job
 # completes, so a full healthy handoff can legitimately take well past 15 minutes.
-readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-1800}"
+readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${verification_support}" ]] || die "missing release-check verification helper at ${verification_support}"

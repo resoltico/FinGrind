@@ -15,7 +15,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -94,6 +94,14 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
                     backup, List.of(rollback))));
     assertEquals(List.of(hint(rollback)), backupBlocking.blockingArtifactPaths());
 
+    BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook =
+        assertInstanceOf(
+            BookMaintenanceRejection.BackupSourceMatchesLiveBook.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(book, backup)));
+    assertEquals(hint(book), sourceMatchesLiveBook.bookFilePath());
+    assertEquals(hint(backup), sourceMatchesLiveBook.backupFilePath());
+
     BookMaintenanceRejection.ArtifactBusy busy =
         assertInstanceOf(
             BookMaintenanceRejection.ArtifactBusy.class,
@@ -117,8 +125,8 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
                 new ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists(backupKey)));
     assertEquals(hint(backupKey), keyExists.backupBookKeyFilePath());
 
-    for (ProtectedBookMaintenanceVerificationFailure localFailure :
-        ProtectedBookMaintenanceVerificationFailure.values()) {
+    for (ProtectedBookVerificationFailure localFailure :
+        ProtectedBookVerificationFailure.values()) {
       assertVerificationFailureProjection(rollback, localFailure);
     }
 
@@ -163,7 +171,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
   }
 
   private static void assertVerificationFailureProjection(
-      Path rollback, ProtectedBookMaintenanceVerificationFailure localFailure) {
+      Path rollback, ProtectedBookVerificationFailure localFailure) {
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
             BookMaintenanceRejection.ArtifactVerificationFailed.class,

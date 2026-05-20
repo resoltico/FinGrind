@@ -115,10 +115,9 @@ public final class SqliteFuzzAssertions {
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */
-  public static void assertStoreConnectionHardening(SqlitePostingSession postingFactStore) {
+  public static void assertStoreConnectionHardening(AutoCloseable postingSurface) {
     try {
-      SqliteNativeDatabase database =
-          requireStoreImplementation(postingFactStore).activeNativeDatabase();
+      SqliteNativeDatabase database = requireOwnedStore(postingSurface).activeNativeDatabase();
       assertQueryInt(database, "pragma foreign_keys", 1);
       assertQueryText(database, "pragma journal_mode", "delete");
       assertQueryInt(database, "pragma synchronous", 3);
@@ -167,11 +166,13 @@ public final class SqliteFuzzAssertions {
     return text.replace("'", "''");
   }
 
-  static SqlitePostingFactStore requireStoreImplementation(SqlitePostingSession session) {
-    if (session instanceof SqlitePostingFactStore store) {
-      return store;
+  static SqlitePostingFactStore requireOwnedStore(AutoCloseable session) {
+    try {
+      return SqliteCapabilitySessions.storeOf(session);
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalArgumentException(
+          "Unsupported owned SQLite store or capability wrapper: " + session.getClass().getName(),
+          exception);
     }
-    throw new IllegalArgumentException(
-        "Unsupported SQLite book session implementation: " + session.getClass().getName());
   }
 }

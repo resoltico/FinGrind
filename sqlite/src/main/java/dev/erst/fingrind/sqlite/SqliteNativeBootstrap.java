@@ -21,6 +21,8 @@ final class SqliteNativeBootstrap {
   private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
   private static final ConcurrentMap<Path, AtomicInteger> ACTIVE_CONNECTIONS_BY_BOOK_PATH =
       new ConcurrentHashMap<>();
+  private static final ConcurrentMap<Path, AtomicInteger> MARKER_CONNECTIONS_BY_BOOK_PATH =
+      new ConcurrentHashMap<>();
 
   private SqliteNativeBootstrap() {}
 
@@ -109,23 +111,39 @@ final class SqliteNativeBootstrap {
   }
 
   static void recordOpeningConnection(Path normalizedBookPath) {
+    recordOpeningConnection(normalizedBookPath, true);
+  }
+
+  static void recordOpeningConnection(Path normalizedBookPath, boolean publishesActivityMarker) {
     Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
     ACTIVE_CONNECTIONS.incrementAndGet();
     AtomicInteger activeBookConnections =
         ACTIVE_CONNECTIONS_BY_BOOK_PATH.computeIfAbsent(
             normalizedBookPath, ignored -> new AtomicInteger());
-    int openedConnections = activeBookConnections.incrementAndGet();
-    if (openedConnections == 1) {
+    activeBookConnections.incrementAndGet();
+    if (!publishesActivityMarker) {
+      return;
+    }
+    AtomicInteger markerConnections =
+        MARKER_CONNECTIONS_BY_BOOK_PATH.computeIfAbsent(
+            normalizedBookPath, ignored -> new AtomicInteger());
+    int openedMarkerConnections = markerConnections.incrementAndGet();
+    if (openedMarkerConnections == 1) {
       try {
         SqliteBookActivityMarkers.createCurrentProcessMarker(normalizedBookPath);
       } catch (RuntimeException exception) {
-        rollbackOpeningConnection(normalizedBookPath, activeBookConnections);
+        rollbackOpeningConnection(normalizedBookPath, activeBookConnections, markerConnections);
         throw exception;
       }
     }
   }
 
   static void recordConnectionClosed(@Nullable Path normalizedBookPath) {
+    recordConnectionClosed(normalizedBookPath, true);
+  }
+
+  static void recordConnectionClosed(
+      @Nullable Path normalizedBookPath, boolean publishesActivityMarker) {
     int remainingConnections = ACTIVE_CONNECTIONS.decrementAndGet();
     if (remainingConnections < 0) {
       ACTIVE_CONNECTIONS.incrementAndGet();
@@ -151,9 +169,37 @@ final class SqliteNativeBootstrap {
               + normalizedBookPath
               + ".");
     }
+    if (!publishesActivityMarker) {
+      if (remainingBookConnections == 0) {
+        ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
+      }
+      return;
+    }
+    AtomicInteger markerConnections = MARKER_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
+    if (markerConnections == null) {
+      activeBookConnections.incrementAndGet();
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      throw new IllegalStateException(
+          "SQLite activity-marker registry missing the normalized book path entry for "
+              + normalizedBookPath
+              + ".");
+    }
+    int remainingMarkerConnections = markerConnections.decrementAndGet();
+    if (remainingMarkerConnections < 0) {
+      markerConnections.incrementAndGet();
+      activeBookConnections.incrementAndGet();
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      throw new IllegalStateException(
+          "SQLite activity-marker connection count underflow for normalized book path "
+              + normalizedBookPath
+              + ".");
+    }
+    if (remainingMarkerConnections == 0) {
+      MARKER_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, markerConnections);
+      SqliteBookActivityMarkers.deleteCurrentProcessMarker(normalizedBookPath);
+    }
     if (remainingBookConnections == 0) {
       ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
-      SqliteBookActivityMarkers.deleteCurrentProcessMarker(normalizedBookPath);
     }
   }
 
@@ -193,7 +239,15 @@ final class SqliteNativeBootstrap {
   }
 
   private static void rollbackOpeningConnection(
-      Path normalizedBookPath, AtomicInteger activeBookConnections) {
+      Path normalizedBookPath,
+      AtomicInteger activeBookConnections,
+      @Nullable AtomicInteger markerConnections) {
+    if (markerConnections != null) {
+      int remainingMarkerConnections = markerConnections.decrementAndGet();
+      if (remainingMarkerConnections == 0) {
+        MARKER_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, markerConnections);
+      }
+    }
     int remainingBookConnections = activeBookConnections.decrementAndGet();
     if (remainingBookConnections == 0) {
       ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);

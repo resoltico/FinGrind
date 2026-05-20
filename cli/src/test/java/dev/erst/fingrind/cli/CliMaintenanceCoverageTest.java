@@ -548,6 +548,11 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         "Choose one encrypted backup copy",
         CliRejectionJsonModels.BlockingArtifactsDetails.class);
     assertMaintenanceEnvelope(
+        new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
+            hint(Path.of("books/entity.sqlite")), hint(Path.of("backup/entity.sqlite"))),
+        "backup copy path that differs",
+        CliRejectionJsonModels.BookAndBackupFileDetails.class);
+    assertMaintenanceEnvelope(
         new BookMaintenanceRejection.ArtifactBusy(
             dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.BACKUP_SOURCE,
             hint(Path.of("backup/entity.sqlite"))),
@@ -601,6 +606,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         new CliRejectionJsonModels.BookFileDetails("/tmp/book.sqlite"),
         "Book file",
         "/tmp/book.sqlite");
+    assertRenderedMaintenanceDetails(
+        new CliRejectionJsonModels.BookAndBackupFileDetails(
+            "/tmp/book.sqlite", "/tmp/backup.sqlite"),
+        "Book file",
+        "/tmp/book.sqlite",
+        "Backup file",
+        "/tmp/backup.sqlite");
     assertRenderedMaintenanceDetails(
         new CliRejectionJsonModels.BlockingArtifactsDetails(
             "/tmp/book.sqlite", List.of("/tmp/book.sqlite-wal", "/tmp/book.sqlite-shm")),
@@ -857,7 +869,11 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
 
     RekeyRollbackResult deleteResult =
         workflow
-            .deleteRekeyRollback(tempDirectory.resolve("recovery.sqlite"), null)
+            .deleteRekeyRollback(
+                new BookAccess(
+                    tempDirectory.resolve("recovery.sqlite"),
+                    new BookAccess.PassphraseSource.KeyFile(Path.of("book.key"))),
+                null)
             .requireAccepted();
     assertInstanceOf(RekeyRollbackResult.Rejected.class, deleteResult);
 

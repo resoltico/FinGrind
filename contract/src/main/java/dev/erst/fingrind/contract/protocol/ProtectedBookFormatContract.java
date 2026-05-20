@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 
 /** Protocol-owned persisted protected-book format facts for the active SQLite3MC contract. */
 public record ProtectedBookFormatContract(
+    int applicationId,
+    int formatVersion,
     BookCipher cipher,
     boolean legacyMode,
     int pageSize,
@@ -12,6 +14,8 @@ public record ProtectedBookFormatContract(
     int kdfIter,
     int plaintextHeaderSize) {
   public ProtectedBookFormatContract {
+    applicationId = requireNonNegative(applicationId, "applicationId");
+    formatVersion = requirePositive(formatVersion, "formatVersion");
     cipher = ContractDescriptorValidation.requireValue(cipher, "cipher");
     pageSize = requirePowerOfTwoPageSize(pageSize, "pageSize");
     reservedBytes = requireNonNegative(reservedBytes, "reservedBytes");

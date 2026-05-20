@@ -512,9 +512,25 @@ final class CliLifecycleMutationArguments {
 
   static CliCommand parseDeleteRekeyRollbackCommand(List<String> arguments) {
     ParsedRekeyRollbackArguments parsedArguments = parseRekeyRollbackArguments(arguments);
-    rejectUnexpectedPassphraseSource(parsedArguments.passphraseSourceKind());
+    if (parsedArguments.passphraseSourceKind() == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_KEY_FILE,
+          "Delete rekey rollback requires exactly one book passphrase source: "
+              + ProtocolOptions.BOOK_KEY_FILE
+              + " <path>, "
+              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ", or "
+              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
+              + ".");
+    }
+    BookAccess.PassphraseSource passphraseSource =
+        CliBookPassphraseParser.passphraseSource(
+            parsedArguments.passphraseSourceKind(), parsedArguments.bookKeyFilePath());
+    CliBookPathValidator.validateDistinctPaths(
+        parsedArguments.bookFilePath(), passphraseSource, null);
+    CliBookPathValidator.validateStandardInputUsage(passphraseSource, null);
     return new DeleteRekeyRollback(
-        parsedArguments.bookFilePath(),
+        new BookAccess(parsedArguments.bookFilePath(), passphraseSource),
         parsedArguments.rollbackArtifactPath(),
         CliArgumentValueParser.resolvedOutputMode(parsedArguments.outputMode()));
   }
@@ -629,6 +645,8 @@ final class CliLifecycleMutationArguments {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_KEY_FILE,
           "Book passphrase source arguments are accepted only when "
+              + DELETE_REKEY_ROLLBACK_COMMAND
+              + " or "
               + RESTORE_REKEY_ROLLBACK_COMMAND
               + " is selected.");
     }

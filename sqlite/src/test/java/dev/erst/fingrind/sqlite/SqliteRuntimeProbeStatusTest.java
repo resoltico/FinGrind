@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,6 +12,12 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.runtime.SqliteRuntimeArtifactEvidence;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -20,6 +27,11 @@ import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
+  private static final MethodHandle ARTIFACT_EVIDENCE =
+      runtimeHelper(
+          "artifactEvidence",
+          MethodType.methodType(SqliteRuntimeArtifactEvidence.class, String.class));
+
   @Test
   void sqliteRuntimeProbe_reportsManagedSupportedVersion() {
     SqliteRuntime.Probe runtimeProbe = SqliteRuntime.probe();
@@ -27,7 +39,6 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals("sqlite", SqliteRuntime.STORAGE_ENGINE);
     assertEquals("required", SqliteRuntime.BOOK_PROTECTION_MODE);
     assertEquals("chacha20", SqliteRuntime.DEFAULT_BOOK_CIPHER);
-    assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE);
     assertEquals("fingrind.bundle.home", SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY);
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
@@ -111,6 +122,28 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void artifactEvidence_requiresBothRuntimeProvenanceSidecars() throws Exception {
+    Path libraryParent = tempDirectory.resolve("runtime-evidence");
+    Files.createDirectories(libraryParent);
+    Path libraryPath = libraryParent.resolve("libsqlite3.so.0");
+    Files.writeString(libraryPath, "library");
+
+    assertNull(artifactEvidence(libraryPath.toString()));
+
+    Path toolchainFingerprintPath = libraryParent.resolve("toolchain-fingerprint.json");
+    Path buildContractPath = libraryParent.resolve("build-contract.json");
+    Files.writeString(toolchainFingerprintPath, "{\"toolchain\":\"test\"}");
+    assertNull(artifactEvidence(libraryPath.toString()));
+    Files.writeString(buildContractPath, "{\"contract\":\"test\"}");
+
+    SqliteRuntimeArtifactEvidence evidence = artifactEvidence(libraryPath.toString());
+    assertNotNull(evidence);
+    assertEquals("<redacted>/toolchain-fingerprint.json", evidence.toolchainFingerprintPath());
+    assertEquals("<redacted>/build-contract.json", evidence.buildContractPath());
+    assertNull(artifactEvidence("libsqlite3.so.0"));
+  }
+
+  @Test
   void trailingPunctuationStart_handlesAbsentPresentAndAllPunctuationSuffixes() {
     assertEquals(
         "/tmp/libsqlite3.dylib".length(),
@@ -183,7 +216,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
             () ->
                 new SqliteLibraryTarget(
                     SqliteRuntime.LIBRARY_MODE,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib"),
             unnamedModule,
             false);
@@ -371,7 +404,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
             "\t",
             "\n",
             "  ",
-            "  runtime unavailable  ");
+            "  runtime unavailable  ",
+            null);
     assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.1", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.requiredSqlite3mcVersion());
@@ -404,7 +438,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
                     null,
                     null,
                     null,
-                    "runtime unavailable"));
+                    "runtime unavailable",
+                    null));
     assertEquals(
         "runtimeTrustBasis must be absent when runtimeProvenance is absent.",
         missingProvenanceException.getMessage());
@@ -422,6 +457,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
             "3.53.1",
             "2.3.4",
             SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+            null,
             null);
     assertEquals(
         SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
@@ -437,15 +473,16 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
                     SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntime.Status.READY,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
                     SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                    null,
                     null));
     assertEquals(
-        "runtimeTrustBasis must match runtimeProvenance environment-configured.",
+        "runtimeTrustBasis must match runtimeProvenance source-checkout-managed.",
         mismatchedTrustBasisException.getMessage());
   }
 
@@ -913,7 +950,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
         loadedSqliteVersion,
         loadedSqlite3mcVersion,
         loadedSqliteSourceId,
-        issue);
+        issue,
+        null);
   }
 
   private static String requireLoadedLibraryPath(SqliteRuntime.Probe runtimeProbe) {
@@ -928,5 +966,29 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
 
   private static String requireIssue(SqliteRuntime.Probe runtimeProbe) {
     return Objects.requireNonNull(runtimeProbe.issue());
+  }
+
+  private static MethodHandle runtimeHelper(String methodName, MethodType methodType) {
+    try {
+      MethodHandles.Lookup lookup =
+          MethodHandles.privateLookupIn(SqliteRuntime.class, MethodHandles.lookup());
+      return lookup.findStatic(SqliteRuntime.class, methodName, methodType);
+    } catch (IllegalAccessException | NoSuchMethodException exception) {
+      throw new LinkageError("Failed to bind SQLite runtime helper: " + methodName, exception);
+    }
+  }
+
+  private static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(
+      String loadedLibraryPath) {
+    try {
+      return (SqliteRuntimeArtifactEvidence) ARTIFACT_EVIDENCE.invokeExact(loadedLibraryPath);
+    } catch (RuntimeException runtimeException) {
+      throw runtimeException;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new LinkageError(
+          "Failed to invoke SQLite runtime artifact evidence helper.", throwable);
+    }
   }
 }

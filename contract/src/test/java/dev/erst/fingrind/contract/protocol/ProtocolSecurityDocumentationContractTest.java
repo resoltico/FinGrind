@@ -151,14 +151,11 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
         document.contains("`source-checkout-managed` is source-verified-local-build"),
         "docs/DEVELOPER_SECURITY.md must describe source-checkout-managed as one local-build trust class rather than publisher-authenticated release identity.");
     assertTrue(
-        document.contains("`environment-configured` is an unsafe-local-override escape hatch"),
-        "docs/DEVELOPER_SECURITY.md must describe environment-configured as one explicit unsafe local override.");
-    assertTrue(
         document.contains("`runtimeTrustBasis`"),
         "docs/DEVELOPER_SECURITY.md must describe the machine-readable runtimeTrustBasis field.");
     assertTrue(
         document.contains(
-            "environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes, source-verified local-build runtimes, and unsafe local overrides"),
+            "environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes from source-verified local-build runtimes"),
         "docs/DEVELOPER_SECURITY.md must explain how machine consumers distinguish runtime trust classes.");
     EnvironmentSqliteDescriptor.ReadyRuntime readyRuntime =
         (EnvironmentSqliteDescriptor.ReadyRuntime) sqlite.runtime();
@@ -218,7 +215,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.41.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.42.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
@@ -236,8 +233,6 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),
@@ -254,7 +249,8 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
                 ProtocolCatalog.requiredMinimumSqliteVersion(),
                 ProtocolCatalog.requiredSqlite3mcVersion(),
                 ProtocolCatalog.requiredSqliteSourceId(),
-                null)));
+                null),
+            null));
   }
 
   private static String sharedPassphraseByteLimit(CapabilitiesDescriptor capabilities) {

@@ -211,6 +211,18 @@ class BookkeepingStatementServiceCoverageTest {
   }
 
   @Test
+  void assertAccountingEquation_acceptsBalancedSectionTotals() {
+    BookkeepingStatementService.assertAccountingEquation(
+        List.of(
+            new FinancialPositionSectionView(
+                AccountType.ASSET, List.of(), List.of(balance("EUR", "10.00", "0.00"))),
+            new FinancialPositionSectionView(
+                AccountType.LIABILITY, List.of(), List.of(balance("EUR", "0.00", "4.00"))),
+            new FinancialPositionSectionView(
+                AccountType.EQUITY, List.of(), List.of(balance("EUR", "0.00", "6.00")))));
+  }
+
+  @Test
   void comparativeWindows_followFiscalYearAnchorInsteadOfBlindCalendarSubtraction() {
     BookIdentity fiscalYearShiftedIdentity =
         new BookIdentity(

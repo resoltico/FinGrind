@@ -138,12 +138,12 @@ record RestoreRekeyRollback(
 
 /** Administrative CLI command that deletes one selected sibling rekey rollback artifact. */
 record DeleteRekeyRollback(
-    Path bookFilePath,
+    BookAccess bookAccess,
     @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
     OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   DeleteRekeyRollback {
-    Objects.requireNonNull(bookFilePath, "bookFilePath");
+    Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -151,7 +151,7 @@ record DeleteRekeyRollback(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runDeleteRekeyRollbackCommand(bookFilePath, rollbackArtifactPath, outputMode);
+        .runDeleteRekeyRollbackCommand(bookAccess, rollbackArtifactPath, outputMode);
   }
 }
 

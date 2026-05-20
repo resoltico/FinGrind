@@ -115,7 +115,7 @@ jobs:
       - name: Verify managed SQLite CLI runtimes
         run: |
           ./scripts/verify-source-checkout-sqlite-runtime.sh
-          ./scripts/verify-environment-configured-sqlite-runtime.sh
+          ./scripts/verify-direct-java-sqlite-runtime.sh
 
       - name: Smoke test the Docker image before publishing
         run: ./scripts/docker-smoke.sh

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -141,6 +141,11 @@ any owned lock as proof that another Git owner has the checkout open. If it repo
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves
 through the normal Gradle verification path; there is no mutable alias-verifier sidecar anymore.
+Because this baseline gate runs before `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD`,
+any bundle archive names, Docker smoke echoes, or distribution manifests produced in Step 1 will
+reflect the checkout's pre-sweep version string. That is expected. Treat Step 1 as a payload
+health check and Step 2's post-sweep `./check.sh` rerun as the authoritative release-version
+verification pass.
 
 Then verify every non-version item in this checklist. These repository and runtime conditions must
 be true before any release commit or tag:
@@ -239,6 +244,11 @@ Treat staging as a handoff checkpoint, not a formality. Before committing:
 
 If the staged diff is incomplete or includes unintended files, fix the branch before committing.
 Do not rely on memory alone to decide what is in the release.
+If either staged diff command fails because Git cannot read a blob or tree object, treat that as
+an unreadable object-store defect in the current checkout. Do not force the release forward from
+that repository. Bootstrap a clean release clone from the remote, move the exact release payload
+into it explicitly, rerun `./check.sh`, and continue the release from the clone after the staged
+diff checkpoint succeeds there.
 
 ### Step 3
 
@@ -292,6 +302,14 @@ canonical owner of that waiting logic.
 If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the failure, push to the
 release branch, and run the verifier again — do not merge a red PR.
 
+The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
+arrives after the slower sibling jobs finish. If GitHub Actions queueing is unusually slow, extend
+the wait explicitly instead of guessing:
+
+```bash
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
+```
+
 ### Step 4
 
 Merge PR and verify the merge handoff.
@@ -327,7 +345,7 @@ fan-out where `Windows bundle smoke` does not start until `Check` finishes. If G
 queueing is unusually slow, extend the wait explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=2400 ./scripts/verify-release-merge-handoff.sh
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-merge-handoff.sh
 ```
 
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`

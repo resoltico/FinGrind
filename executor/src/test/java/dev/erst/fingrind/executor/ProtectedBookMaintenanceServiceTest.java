@@ -1,11 +1,8 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
@@ -15,27 +12,29 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceEvent;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceEventKind;
+import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
+import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceVerificationFailure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,539 +42,324 @@ import org.junit.jupiter.api.io.TempDir;
 /** Unit tests for {@link ProtectedBookMaintenanceService}. */
 class ProtectedBookMaintenanceServiceTest {
   private static final Clock FIXED_CLOCK =
-      Clock.fixed(Instant.parse("2026-05-18T16:30:00Z"), ZoneOffset.UTC);
+      Clock.fixed(Instant.parse("2026-05-19T10:15:30Z"), ZoneOffset.UTC);
 
-  @TempDir Path tempDir;
+  @TempDir Path tempDirectory;
 
   @Test
-  void constructor_rejectsNullDependencies() {
+  void backupBook_rejectsOneInvalidStagedBackupArtifactWithoutRecordingAudit() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    assertThrows(
-        NullPointerException.class, () -> new ProtectedBookMaintenanceService(nullOf(), store));
-    assertThrows(
-        NullPointerException.class,
-        () -> new ProtectedBookMaintenanceService(FIXED_CLOCK, nullOf()));
-  }
-
-  @Test
-  void backupBook_coversDeterministicOutcomesAndStoreFailures() throws IOException {
     Path book = path("book.sqlite");
     Path backup = path("backup.sqlite");
     Path backupKey = path("backup.book-key");
-    Path blockingArtifact = path("book.sqlite-wal");
-    assertBackupBlockingArtifactsAreRejected(book, backup, backupKey, blockingArtifact);
-    assertExistingBackupDestinationIsRejected(book, backupKey);
-    assertExistingBackupKeyIsRejected(book);
-    assertBusyLiveBookIsRejectedForBackup(book, backup, backupKey);
-    assertInvalidLiveBookIsRejectedForBackup(book, backup, backupKey);
-    assertBackupVerificationFailurePropagates(book, backup, backupKey);
-    assertBackupPublicationFailurePropagates(book, backup, backupKey);
-    assertBackupSuccessPublishesPairAndRecordsEvent(book, backup, backupKey);
-  }
-
-  @Test
-  void restoreBook_coversDeterministicOutcomesAndStoreFailures() throws IOException {
-    Path book = path("live-book.sqlite");
-    Path backup = path("backup-source.sqlite");
-    Path backupKey = path("backup-source.book-key");
-    Path bookSidecar = path("live-book.sqlite-wal");
-    Path backupSidecar = path("backup-source.sqlite-wal");
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.bookBlockingArtifacts.put(
-          store.normalized(book), List.of(store.normalized(bookSidecar)));
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.BookHasBlockingArtifacts blocking =
-          assertInstanceOf(
-              BookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
-      assertEquals(List.of(hint(bookSidecar)), blocking.blockingArtifactPaths());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.backupBlockingArtifacts.put(
-          store.normalized(backup), List.of(store.normalized(backupSidecar)));
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blocking =
-          assertInstanceOf(
-              BookMaintenanceRejection.BackupSourceHasBlockingArtifacts.class,
-              rejected.rejection());
-      assertEquals(List.of(hint(backupSidecar)), blocking.blockingArtifactPaths());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.leaseOutcomes.put(
-          store.normalized(book),
-          new ProtectedBookMaintenanceStore.LeaseBusy(store.normalized(book)));
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.ArtifactBusy busy =
-          assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
-      assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.leaseOutcomes.put(
-          store.normalized(backup),
-          new ProtectedBookMaintenanceStore.LeaseBusy(store.normalized(backup)));
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.ArtifactBusy busy =
-          assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
-      assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactRole());
-      assertEquals(hint(backup), busy.artifactPath());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.enqueueVerificationFailure(
-          backup, ProtectedBookMaintenanceVerificationFailure.FOREIGN_SQLITE);
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.ArtifactVerificationFailed failed =
-          assertInstanceOf(
-              BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
-      assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, failed.artifactRole());
-      assertEquals(BookMaintenanceVerificationFailure.FOREIGN_SQLITE, failed.verificationFailure());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      ContractFailure failure = runtimeFailure("backupFilePath");
-      store.enqueueVerificationDecision(backup, ContractDecision.rejected(failure));
-
-      assertSame(failure, service(store).restoreBook(book, backup, backupKey).requireRejected());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.enqueueVerificationDecision(
-          backup,
-          ContractDecision.accepted(
-              new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(backup))));
-      store.enqueueVerificationFailure(
-          book, ProtectedBookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND);
-
-      RestoreBookResult.Rejected rejected =
-          assertInstanceOf(
-              RestoreBookResult.Rejected.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      BookMaintenanceRejection.ArtifactVerificationFailed failed =
-          assertInstanceOf(
-              BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
-      assertEquals(BookMaintenanceArtifactRole.RESTORED_TARGET, failed.artifactRole());
-      assertEquals(
-          BookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND, failed.verificationFailure());
-      assertTrue(store.lastReplacementRolledBack());
-      assertFalse(store.lastReplacementCommitted());
-    }
-
-    {
-      FakeMaintenanceStore store = new FakeMaintenanceStore();
-      store.enqueueVerificationDecision(
-          backup,
-          ContractDecision.accepted(
-              new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(backup))));
-      store.enqueueVerificationDecision(
-          book,
-          ContractDecision.accepted(
-              new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(book))));
-
-      RestoreBookResult.Restored restored =
-          assertInstanceOf(
-              RestoreBookResult.Restored.class,
-              service(store).restoreBook(book, backup, backupKey).requireAccepted());
-      assertEquals(hint(book), restored.bookFilePath());
-      assertEquals(hint(backup), restored.backupFilePath());
-      assertEquals(hint(backupKey), restored.backupBookKeyFilePath());
-      assertTrue(store.lastReplacementCommitted());
-      assertFalse(store.lastReplacementRolledBack());
-      assertEquals(1, store.recordedEvents.size());
-      assertEquals(
-          ProtectedBookMaintenanceEventKind.BACKUP_RESTORED,
-          store.recordedEvents.getFirst().kind());
-    }
-  }
-
-  @Test
-  void recoverRekey_coversInspectRestoreAndDeleteOutcomes() throws IOException {
-    Path book = path("book.sqlite");
-    Path rollback = path("book.rekey-rollback-1.sqlite");
-    Path secondRollback = path("book.rekey-rollback-2.sqlite");
-    Path bookSidecar = path("book.sqlite-wal");
-    Files.writeString(rollback, "rollback-one");
-    Files.writeString(secondRollback, "rollback-two");
-    assertRollbackInspectionReturnsArtifactsAndRecordsEvent(book, rollback, secondRollback);
-    assertRollbackRestoreRequiresExpectedPassphrase(book, rollback);
-    assertRollbackRestoreRejectsWhenNoArtifactsExist(book);
-    assertRollbackRestoreUsesImplicitSingleArtifact(book, rollback);
-    assertRollbackRestoreRequiresSelectionForMultipleArtifacts(book, rollback, secondRollback);
-    assertRollbackRestoreRejectsMissingNamedArtifact(book);
-    assertRollbackRestoreRejectsArtifactForWrongBook(book, rollback);
-    assertRollbackRestoreRejectsLiveBookSidecars(book, rollback, bookSidecar);
-    assertRollbackRestoreRejectsBusyLiveBook(book, rollback);
-    assertRollbackRestoreRejectsBusyRollbackArtifact(book, rollback);
-    assertRollbackRestoreRejectsInvalidRollbackArtifact(book, rollback);
-    assertRollbackRestoreRejectsInvalidRestoredTarget(book, rollback);
-    assertRollbackRestoreSucceedsAndRecordsEvent(book, rollback);
-    assertRollbackDeleteRejectsWhenNoArtifactsExist(book);
-    assertRollbackDeleteSucceedsAndRecordsEvent(book, rollback);
-  }
-
-  private void assertBackupBlockingArtifactsAreRejected(
-      Path book, Path backup, Path backupKey, Path blockingArtifact) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.bookBlockingArtifacts.put(
-        store.normalized(book), List.of(store.normalized(blockingArtifact)));
+    store.verifications.put(
+        store.normalized(backup),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(backup), ProtectedBookVerificationFailure.FOREIGN_SQLITE)));
 
     BackupBookResult.Rejected rejected =
         assertInstanceOf(
             BackupBookResult.Rejected.class,
             service(store).backupBook(access(book), backup, backupKey).requireAccepted());
-    BookMaintenanceRejection.BookHasBlockingArtifacts blocking =
-        assertInstanceOf(
-            BookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
-    assertEquals(hint(book), blocking.bookFilePath());
-    assertEquals(List.of(hint(blockingArtifact)), blocking.blockingArtifactPaths());
-  }
 
-  private void assertExistingBackupDestinationIsRejected(Path book, Path backupKey)
-      throws IOException {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    Path occupiedBackup = path("occupied-backup.sqlite");
-    Files.writeString(occupiedBackup, "occupied");
-
-    BackupBookResult.Rejected rejected =
-        assertInstanceOf(
-            BackupBookResult.Rejected.class,
-            service(store).backupBook(access(book), occupiedBackup, backupKey).requireAccepted());
-    BookMaintenanceRejection.BackupDestinationAlreadyExists destinationExists =
-        assertInstanceOf(
-            BookMaintenanceRejection.BackupDestinationAlreadyExists.class, rejected.rejection());
-    assertEquals(hint(occupiedBackup), destinationExists.backupFilePath());
-  }
-
-  private void assertExistingBackupKeyIsRejected(Path book) throws IOException {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    Path freshBackup = path("fresh-backup.sqlite");
-    Path occupiedBackupKey = path("occupied-backup.book-key");
-    Files.writeString(occupiedBackupKey, "occupied");
-
-    BackupBookResult.Rejected rejected =
-        assertInstanceOf(
-            BackupBookResult.Rejected.class,
-            service(store)
-                .backupBook(access(book), freshBackup, occupiedBackupKey)
-                .requireAccepted());
-    BookMaintenanceRejection.BackupKeyFileAlreadyExists keyExists =
-        assertInstanceOf(
-            BookMaintenanceRejection.BackupKeyFileAlreadyExists.class, rejected.rejection());
-    assertEquals(hint(occupiedBackupKey), keyExists.backupBookKeyFilePath());
-  }
-
-  private void assertBusyLiveBookIsRejectedForBackup(Path book, Path backup, Path backupKey) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.leaseOutcomes.put(
-        store.normalized(book),
-        new ProtectedBookMaintenanceStore.LeaseBusy(store.normalized(book)));
-
-    BackupBookResult.Rejected rejected =
-        assertInstanceOf(
-            BackupBookResult.Rejected.class,
-            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
-    BookMaintenanceRejection.ArtifactBusy busy =
-        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
-    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
-    assertEquals(hint(book), busy.artifactPath());
-  }
-
-  private void assertInvalidLiveBookIsRejectedForBackup(Path book, Path backup, Path backupKey) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.enqueueVerificationFailure(book, ProtectedBookMaintenanceVerificationFailure.MISSING);
-
-    BackupBookResult.Rejected rejected =
-        assertInstanceOf(
-            BackupBookResult.Rejected.class,
-            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
             BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
-    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, failed.artifactRole());
-    assertEquals(hint(book), failed.artifactPath());
-    assertEquals(BookMaintenanceVerificationFailure.MISSING, failed.verificationFailure());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, failed.artifactRole());
+    assertEquals(BookMaintenanceVerificationFailure.FOREIGN_SQLITE, failed.verificationFailure());
+    assertTrue(store.recordedAudits.isEmpty());
+    assertFalse(store.lastStagedBackupPairCommitted);
+    assertTrue(store.lastStagedBackupPairClosed);
   }
 
-  private void assertBackupVerificationFailurePropagates(Path book, Path backup, Path backupKey) {
+  @Test
+  void backupBook_recordsOneDeterministicAuditBeforePublishingOneVerifiedBackupPair() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    ContractFailure failure = runtimeFailure("bookFilePath");
-    store.enqueueVerificationDecision(book, ContractDecision.rejected(failure));
-
-    assertSame(
-        failure, service(store).backupBook(access(book), backup, backupKey).requireRejected());
-  }
-
-  private void assertBackupPublicationFailurePropagates(Path book, Path backup, Path backupKey) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    ContractFailure failure = runtimeFailure("backupFilePath");
-    store.publishBackupDecision = ContractDecision.rejected(failure);
-
-    assertSame(
-        failure, service(store).backupBook(access(book), backup, backupKey).requireRejected());
-  }
-
-  private void assertBackupSuccessPublishesPairAndRecordsEvent(
-      Path book, Path backup, Path backupKey) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
 
     BackupBookResult.BackedUp backedUp =
         assertInstanceOf(
             BackupBookResult.BackedUp.class,
             service(store).backupBook(access(book), backup, backupKey).requireAccepted());
+
     assertEquals(hint(book), backedUp.bookFilePath());
     assertEquals(hint(backup), backedUp.backupFilePath());
     assertEquals(hint(backupKey), backedUp.backupBookKeyFilePath());
-    BookAccess publishedSourceAccess =
-        Objects.requireNonNull(store.publishedSourceAccess, "publishedSourceAccess");
-    assertEquals(store.normalized(book), publishedSourceAccess.bookFilePath());
-    assertEquals(store.normalized(backup), store.publishedBackupFilePath);
-    assertEquals(store.normalized(backupKey), store.publishedBackupBookKeyFilePath);
-    assertEquals(1, store.recordedEvents.size());
-    ProtectedBookMaintenanceEvent event = store.recordedEvents.getFirst();
-    assertEquals(ProtectedBookMaintenanceEventKind.BACKUP_CREATED, event.kind());
-    assertEquals(store.normalized(book), event.bookFilePath());
-    assertEquals(store.normalized(backup), event.backupFilePath());
-    assertEquals(store.normalized(backupKey), event.backupBookKeyFilePath());
+    assertEquals(1, store.recordedAudits.size());
+    RecordedAudit audit = store.recordedAudits.getFirst();
+    assertEquals(store.normalized(book), audit.bookPath());
+    assertEquals(FIXED_CLOCK.instant(), audit.recordedAt());
+    assertEquals(ProtectedBookMaintenanceAuditKind.BACKUP_CREATED, audit.auditKind());
+    assertTrue(store.lastStagedBackupPairCommitted);
+    assertTrue(store.lastStagedBackupPairClosed);
   }
 
-  private void assertRollbackInspectionReturnsArtifactsAndRecordsEvent(
-      Path book, Path rollback, Path secondRollback) {
+  @Test
+  void backupBook_rejectsOneLiveBookWithBlockingArtifacts() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackArtifactsByBook.put(
-        store.normalized(book),
-        List.of(store.normalized(rollback), store.normalized(secondRollback)));
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    Path wal = path("book.sqlite-wal");
+    store.bookBlockingArtifacts.put(store.normalized(book), List.of(store.normalized(wal)));
 
-    RekeyRollbackResult.Inspected inspected =
+    BackupBookResult.Rejected rejected =
         assertInstanceOf(
-            RekeyRollbackResult.Inspected.class,
-            service(store).inspectRekeyRollback(book).requireAccepted());
-    assertEquals(hint(book), inspected.bookFilePath());
-    assertEquals(List.of(hint(rollback), hint(secondRollback)), inspected.rollbackArtifactPaths());
-    assertEquals(
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_INSPECTED,
-        store.recordedEvents.getFirst().kind());
-  }
+            BackupBookResult.Rejected.class,
+            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
 
-  private void assertRollbackRestoreRequiresExpectedPassphrase(Path book, Path rollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    assertThrows(
-        NullPointerException.class,
-        () -> service(store).restoreRekeyRollback(book, rollback, nullOf()));
-  }
-
-  private void assertRollbackRestoreRejectsWhenNoArtifactsExist(Path book) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, null, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    assertInstanceOf(BookMaintenanceRejection.NoRollbackArtifactsFound.class, rejected.rejection());
-  }
-
-  private void assertRollbackRestoreUsesImplicitSingleArtifact(Path book, Path rollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackArtifactsByBook.put(store.normalized(book), List.of(store.normalized(rollback)));
-    store.enqueueVerificationDecision(
-        rollback,
-        ContractDecision.accepted(
-            new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(rollback))));
-    store.enqueueVerificationDecision(
-        book,
-        ContractDecision.accepted(
-            new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(book))));
-
-    RekeyRollbackResult.Restored restored =
-        assertInstanceOf(
-            RekeyRollbackResult.Restored.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, null, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    assertEquals(hint(book), restored.bookFilePath());
-    assertEquals(hint(rollback), restored.rollbackArtifactPath());
-  }
-
-  private void assertRollbackRestoreRequiresSelectionForMultipleArtifacts(
-      Path book, Path rollback, Path secondRollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackArtifactsByBook.put(
-        store.normalized(book),
-        List.of(store.normalized(rollback), store.normalized(secondRollback)));
-
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, null, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired =
-        assertInstanceOf(
-            BookMaintenanceRejection.RollbackArtifactSelectionRequired.class, rejected.rejection());
-    assertEquals(
-        List.of(hint(rollback), hint(secondRollback)), selectionRequired.rollbackArtifactPaths());
-  }
-
-  private void assertRollbackRestoreRejectsMissingNamedArtifact(Path book) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    Path missingRollback = path("missing.rekey-rollback.sqlite");
-
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, missingRollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    BookMaintenanceRejection.RollbackArtifactNotFound notFound =
-        assertInstanceOf(
-            BookMaintenanceRejection.RollbackArtifactNotFound.class, rejected.rejection());
-    assertEquals(hint(missingRollback), notFound.rollbackArtifactPath());
-  }
-
-  private void assertRollbackRestoreRejectsArtifactForWrongBook(Path book, Path rollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), false);
-
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    assertInstanceOf(
-        BookMaintenanceRejection.RollbackArtifactNotForBook.class, rejected.rejection());
-  }
-
-  private void assertRollbackRestoreRejectsLiveBookSidecars(
-      Path book, Path rollback, Path bookSidecar) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.bookBlockingArtifacts.put(
-        store.normalized(book), List.of(store.normalized(rollback), store.normalized(bookSidecar)));
-
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    BookMaintenanceRejection.BookHasBlockingArtifacts blocking =
+    BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts =
         assertInstanceOf(
             BookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
-    assertEquals(List.of(hint(bookSidecar)), blocking.blockingArtifactPaths());
+    assertEquals(List.of(hint(wal)), blockingArtifacts.blockingArtifactPaths());
+    assertTrue(store.recordedAudits.isEmpty());
   }
 
-  private void assertRollbackRestoreRejectsBusyLiveBook(Path book, Path rollback) {
+  @Test
+  void backupBook_rejectsOneExistingBackupDestination() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.leaseOutcomes.put(
-        store.normalized(book),
-        new ProtectedBookMaintenanceStore.LeaseBusy(store.normalized(book)));
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    touch(backup);
 
-    RekeyRollbackResult.Rejected rejected =
+    BackupBookResult.Rejected rejected =
         assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
+            BackupBookResult.Rejected.class,
+            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
+
+    assertInstanceOf(
+        BookMaintenanceRejection.BackupDestinationAlreadyExists.class, rejected.rejection());
+  }
+
+  @Test
+  void backupBook_rejectsOneExistingBackupKeyDestination() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    touch(backupKey);
+
+    BackupBookResult.Rejected rejected =
+        assertInstanceOf(
+            BackupBookResult.Rejected.class,
+            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
+
+    assertInstanceOf(
+        BookMaintenanceRejection.BackupKeyFileAlreadyExists.class, rejected.rejection());
+  }
+
+  @Test
+  void backupBook_rejectsOneBusyLiveBookLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.busyManagedArtifacts.add(store.normalized(book));
+
+    BackupBookResult.Rejected rejected =
+        assertInstanceOf(
+            BackupBookResult.Rejected.class,
+            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
+
     BookMaintenanceRejection.ArtifactBusy busy =
         assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
     assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
   }
 
-  private void assertRollbackRestoreRejectsBusyRollbackArtifact(Path book, Path rollback) {
+  @Test
+  void backupBook_rejectsOneInvalidLiveBookBeforeBackupStaging() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.leaseOutcomes.put(
-        store.normalized(rollback),
-        new ProtectedBookMaintenanceStore.LeaseBusy(store.normalized(rollback)));
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.verifications.put(
+        store.normalized(book),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(book), ProtectedBookVerificationFailure.MISSING)));
 
-    RekeyRollbackResult.Rejected rejected =
+    BackupBookResult.Rejected rejected =
         assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
-    BookMaintenanceRejection.ArtifactBusy busy =
-        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
-    assertEquals(BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, busy.artifactRole());
-    assertEquals(hint(rollback), busy.artifactPath());
-  }
+            BackupBookResult.Rejected.class,
+            service(store).backupBook(access(book), backup, backupKey).requireAccepted());
 
-  private void assertRollbackRestoreRejectsInvalidRollbackArtifact(Path book, Path rollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.enqueueVerificationFailure(
-        rollback, ProtectedBookMaintenanceVerificationFailure.BLANK_SQLITE);
-
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
             BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
-    assertEquals(BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, failed.artifactRole());
-    assertEquals(BookMaintenanceVerificationFailure.BLANK_SQLITE, failed.verificationFailure());
+    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, failed.artifactRole());
+    assertEquals(BookMaintenanceVerificationFailure.MISSING, failed.verificationFailure());
   }
 
-  private void assertRollbackRestoreRejectsInvalidRestoredTarget(Path book, Path rollback) {
+  @Test
+  void restoreBook_rejectsOneBackupSourceThatMatchesTheSelectedLiveBookPath() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.enqueueVerificationDecision(
-        rollback,
-        ContractDecision.accepted(
-            new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(rollback))));
-    store.enqueueVerificationFailure(
-        book, ProtectedBookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED);
+    Path book = path("book.sqlite");
+    Path backupKey = path("backup.book-key");
 
-    RekeyRollbackResult.Rejected rejected =
+    RestoreBookResult.Rejected rejected =
         assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store)
-                .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
-                .requireAccepted());
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, book, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.BackupSourceMatchesLiveBook conflict =
+        assertInstanceOf(
+            BookMaintenanceRejection.BackupSourceMatchesLiveBook.class, rejected.rejection());
+    assertEquals(hint(book), conflict.bookFilePath());
+    assertEquals(hint(book), conflict.backupFilePath());
+    assertTrue(store.recordedAudits.isEmpty());
+  }
+
+  @Test
+  void restoreBook_restoresOneVerifiedBackupAndRecordsOneInBookAudit() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    Path staged = path("staged-restore.sqlite");
+    touch(backup);
+    touch(backupKey);
+    store.stagedReplacementPath = staged;
+
+    RestoreBookResult.Restored restored =
+        assertInstanceOf(
+            RestoreBookResult.Restored.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    assertEquals(hint(book), restored.bookFilePath());
+    assertEquals(hint(backup), restored.backupFilePath());
+    assertEquals(hint(backupKey), restored.backupBookKeyFilePath());
+    assertEquals(1, store.recordedAudits.size());
+    RecordedAudit audit = store.recordedAudits.getFirst();
+    assertEquals(store.normalized(staged), audit.bookPath());
+    assertEquals(FIXED_CLOCK.instant(), audit.recordedAt());
+    assertEquals(ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED, audit.auditKind());
+  }
+
+  @Test
+  void restoreBook_rejectsOneLiveBookWithBlockingArtifacts() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    Path wal = path("book.sqlite-wal");
+    store.bookBlockingArtifacts.put(store.normalized(book), List.of(store.normalized(wal)));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts =
+        assertInstanceOf(
+            BookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
+    assertEquals(List.of(hint(wal)), blockingArtifacts.blockingArtifactPaths());
+  }
+
+  @Test
+  void restoreBook_rejectsOneBackupSourceWithBlockingArtifacts() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    Path wal = path("backup.sqlite-wal");
+    store.backupBlockingArtifacts.put(store.normalized(backup), List.of(store.normalized(wal)));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts =
+        assertInstanceOf(
+            BookMaintenanceRejection.BackupSourceHasBlockingArtifacts.class, rejected.rejection());
+    assertEquals(List.of(hint(wal)), blockingArtifacts.blockingArtifactPaths());
+  }
+
+  @Test
+  void restoreBook_rejectsOneInvalidBackupSourceBeforeLeasing() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.verifications.put(
+        store.normalized(backup),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(backup), ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND)));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactVerificationFailed failed =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, failed.artifactRole());
+    assertEquals(
+        BookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND, failed.verificationFailure());
+  }
+
+  @Test
+  void restoreBook_rejectsOneBusyLiveBookLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.busyManagedArtifacts.add(store.normalized(book));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
+  }
+
+  @Test
+  void restoreBook_rejectsOneBusyBackupSourceLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.busyExistingArtifacts.add(store.normalized(backup));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactRole());
+  }
+
+  @Test
+  void restoreBook_rejectsOneInvalidStagedReplacementTarget() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    Path staged = path("staged-restore.sqlite");
+    store.stagedReplacementPath = staged;
+    store.verifications.put(
+        store.normalized(staged),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(staged),
+                ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED)));
+
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
             BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
@@ -583,116 +367,527 @@ class ProtectedBookMaintenanceServiceTest {
     assertEquals(
         BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
         failed.verificationFailure());
-    assertTrue(store.lastReplacementRolledBack());
   }
 
-  private void assertRollbackRestoreSucceedsAndRecordsEvent(Path book, Path rollback) {
+  @Test
+  void restoreBook_projectsOneStoreFailureWithoutWrappingItAgain() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-    store.enqueueVerificationDecision(
-        rollback,
-        ContractDecision.accepted(
-            new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(rollback))));
-    store.enqueueVerificationDecision(
-        book,
-        ContractDecision.accepted(
-            new ProtectedBookMaintenanceStore.VerifiedBook(store.normalized(book))));
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    ContractFailure failure = runtimeFailure("backupFilePath");
+    store.appendAuditFailure =
+        MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure));
+
+    assertEquals(failure, service(store).restoreBook(book, backup, backupKey).requireRejected());
+  }
+
+  @Test
+  void inspectRekeyRollback_isSideEffectFree() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+
+    RekeyRollbackResult.Inspected inspected =
+        assertInstanceOf(
+            RekeyRollbackResult.Inspected.class,
+            service(store).inspectRekeyRollback(book).requireAccepted());
+
+    assertEquals(hint(book), inspected.bookFilePath());
+    assertEquals(List.of(hint(rollback)), inspected.rollbackArtifactPaths());
+    assertTrue(store.recordedAudits.isEmpty());
+  }
+
+  @Test
+  void deleteRekeyRollback_requiresVerifiedBookAccessAndRecordsOneInBookAudit() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(book);
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+
+    RekeyRollbackResult.Deleted deleted =
+        assertInstanceOf(
+            RekeyRollbackResult.Deleted.class,
+            service(store).deleteRekeyRollback(access(book), rollback).requireAccepted());
+
+    assertEquals(hint(book), deleted.bookFilePath());
+    assertEquals(hint(rollback), deleted.rollbackArtifactPath());
+    assertEquals(1, store.recordedAudits.size());
+    RecordedAudit audit = store.recordedAudits.getFirst();
+    assertEquals(store.normalized(book), audit.bookPath());
+    assertEquals(FIXED_CLOCK.instant(), audit.recordedAt());
+    assertEquals(ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_DELETED, audit.auditKind());
+    assertTrue(store.lastRollbackDeletionCommitted);
+    assertTrue(store.lastRollbackDeletionClosed);
+  }
+
+  @Test
+  void deleteRekeyRollback_requiresOneRollbackArtifactToExist() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), null).requireAccepted());
+
+    assertInstanceOf(BookMaintenanceRejection.NoRollbackArtifactsFound.class, rejected.rejection());
+  }
+
+  @Test
+  void deleteRekeyRollback_requiresOneExplicitSelectionWhenManyRollbackArtifactsExist() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollbackOne = path("book.rekey-rollback-1.sqlite");
+    Path rollbackTwo = path("book.rekey-rollback-2.sqlite");
+    store.rollbackArtifacts.put(
+        store.normalized(book),
+        List.of(store.normalized(rollbackOne), store.normalized(rollbackTwo)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), null).requireAccepted());
+
+    assertInstanceOf(
+        BookMaintenanceRejection.RollbackArtifactSelectionRequired.class, rejected.rejection());
+  }
+
+  @Test
+  void deleteRekeyRollback_rejectsOneMissingExplicitRollbackArtifact() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path missingRollback = path("book.rekey-rollback-1.sqlite");
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), missingRollback).requireAccepted());
+
+    assertInstanceOf(BookMaintenanceRejection.RollbackArtifactNotFound.class, rejected.rejection());
+  }
+
+  @Test
+  void deleteRekeyRollback_rejectsOneRollbackArtifactThatDoesNotBelongToTheBook() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path foreignRollback = path("foreign.rekey-rollback-1.sqlite");
+    touch(foreignRollback);
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), foreignRollback).requireAccepted());
+
+    assertInstanceOf(
+        BookMaintenanceRejection.RollbackArtifactNotForBook.class, rejected.rejection());
+  }
+
+  @Test
+  void deleteRekeyRollback_rejectsOneInvalidLiveBookBeforeDeletingRollbackArtifact() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.verifications.put(
+        store.normalized(book),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(book), ProtectedBookVerificationFailure.BLANK_SQLITE)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), rollback).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactVerificationFailed failed =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, failed.artifactRole());
+    assertEquals(BookMaintenanceVerificationFailure.BLANK_SQLITE, failed.verificationFailure());
+  }
+
+  @Test
+  void deleteRekeyRollback_rejectsOneBusyLiveBookLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.busyExistingArtifacts.add(store.normalized(book));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), rollback).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
+  }
+
+  @Test
+  void deleteRekeyRollback_rejectsOneBusyRollbackArtifactLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.busyExistingArtifacts.add(store.normalized(rollback));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store).deleteRekeyRollback(access(book), rollback).requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, busy.artifactRole());
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsOneInvalidRollbackArtifact() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.verifications.put(
+        store.normalized(rollback),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(rollback), ProtectedBookVerificationFailure.BLANK_SQLITE)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, rollback, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactVerificationFailed failed =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, failed.artifactRole());
+    assertEquals(BookMaintenanceVerificationFailure.BLANK_SQLITE, failed.verificationFailure());
+    assertTrue(store.recordedAudits.isEmpty());
+  }
+
+  @Test
+  void restoreRekeyRollback_requiresOneRollbackArtifactToExistWhenNoSelectionIsProvided() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, null, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    assertInstanceOf(BookMaintenanceRejection.NoRollbackArtifactsFound.class, rejected.rejection());
+  }
+
+  @Test
+  void restoreRekeyRollback_requiresOneExplicitSelectionWhenManyRollbackArtifactsExist() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollbackOne = path("book.rekey-rollback-1.sqlite");
+    Path rollbackTwo = path("book.rekey-rollback-2.sqlite");
+    touch(rollbackOne);
+    touch(rollbackTwo);
+    store.rollbackArtifacts.put(
+        store.normalized(book),
+        List.of(store.normalized(rollbackOne), store.normalized(rollbackTwo)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, null, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    assertInstanceOf(
+        BookMaintenanceRejection.RollbackArtifactSelectionRequired.class, rejected.rejection());
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsOneLiveBookWithNonRollbackBlockingArtifacts() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    Path wal = path("book.sqlite-wal");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.bookBlockingArtifacts.put(
+        store.normalized(book), List.of(store.normalized(rollback), store.normalized(wal)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, rollback, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts =
+        assertInstanceOf(
+            BookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
+    assertEquals(List.of(hint(wal)), blockingArtifacts.blockingArtifactPaths());
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsOneBusyLiveBookLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.busyManagedArtifacts.add(store.normalized(book));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, rollback, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsOneBusyRollbackArtifactLease() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.busyExistingArtifacts.add(store.normalized(rollback));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, rollback, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, busy.artifactRole());
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsOneInvalidRestoredTargetVerification() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    Path staged = path("staged-rollback.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.stagedReplacementPath = staged;
+    store.verifications.put(
+        store.normalized(staged),
+        MaintenanceDecision.accepted(
+            new ProtectedBookMaintenanceStore.VerificationFailure(
+                store.normalized(staged),
+                ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION)));
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book, rollback, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactVerificationFailed failed =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.RESTORED_TARGET, failed.artifactRole());
+    assertEquals(
+        BookMaintenanceVerificationFailure.UNSUPPORTED_FORMAT_VERSION,
+        failed.verificationFailure());
+  }
+
+  @Test
+  void restoreRekeyRollback_restoresOneImplicitlySelectedVerifiedRollbackArtifact() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    Path staged = path("staged-rollback.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.stagedReplacementPath = staged;
 
     RekeyRollbackResult.Restored restored =
         assertInstanceOf(
             RekeyRollbackResult.Restored.class,
             service(store)
                 .restoreRekeyRollback(
-                    book, rollback, BookAccess.PassphraseSource.StandardInput.INSTANCE)
+                    book, null, new BookAccess.PassphraseSource.KeyFile(path("book.key")))
                 .requireAccepted());
+
     assertEquals(hint(book), restored.bookFilePath());
     assertEquals(hint(rollback), restored.rollbackArtifactPath());
-    assertTrue(store.lastReplacementCommitted());
-    assertEquals(
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_RESTORED,
-        store.recordedEvents.getFirst().kind());
+    assertEquals(1, store.recordedAudits.size());
+    RecordedAudit audit = store.recordedAudits.getFirst();
+    assertEquals(store.normalized(staged), audit.bookPath());
+    assertEquals(FIXED_CLOCK.instant(), audit.recordedAt());
+    assertEquals(ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_RESTORED, audit.auditKind());
   }
 
-  private void assertRollbackDeleteRejectsWhenNoArtifactsExist(Path book) {
+  @Test
+  void service_projectsOneStoreFailureWithoutWrappingItAgain() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
-    RekeyRollbackResult.Rejected rejected =
-        assertInstanceOf(
-            RekeyRollbackResult.Rejected.class,
-            service(store).deleteRekeyRollback(book, null).requireAccepted());
-    assertInstanceOf(BookMaintenanceRejection.NoRollbackArtifactsFound.class, rejected.rejection());
-  }
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    ContractFailure failure = runtimeFailure("backupFilePath");
+    store.stageBackupFailure =
+        MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure));
 
-  private void assertRollbackDeleteSucceedsAndRecordsEvent(Path book, Path rollback) {
-    FakeMaintenanceStore store = new FakeMaintenanceStore();
-    store.rollbackBelongs.put(store.normalized(rollback), true);
-
-    RekeyRollbackResult.Deleted deleted =
-        assertInstanceOf(
-            RekeyRollbackResult.Deleted.class,
-            service(store).deleteRekeyRollback(book, rollback).requireAccepted());
-    assertEquals(hint(book), deleted.bookFilePath());
-    assertEquals(hint(rollback), deleted.rollbackArtifactPath());
-    assertEquals(List.of(store.normalized(rollback)), store.deletedRollbackArtifacts);
     assertEquals(
-        ProtectedBookMaintenanceEventKind.REKEY_ROLLBACK_DELETED,
-        store.recordedEvents.getFirst().kind());
+        failure, service(store).backupBook(access(book), backup, backupKey).requireRejected());
   }
 
-  private ProtectedBookMaintenanceService service(FakeMaintenanceStore store) {
+  @Test
+  void backupBook_appendsOneCompensatingAuditWhenBackupPublicationFails() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    store.failBackupPairCommit = true;
+
+    ContractFailure failure =
+        service(store).backupBook(access(book), backup, backupKey).requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+    assertEquals(1, store.recordedAudits.size());
+    assertEquals(1, store.compensatedAudits.size());
+  }
+
+  @Test
+  void backupBook_surfacesOneAuditCompensationFailureAfterBackupPublicationFailure() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path backup = path("backup.sqlite");
+    Path backupKey = path("backup.book-key");
+    ContractFailure compensateFailure = runtimeFailure("bookFilePath");
+    store.failBackupPairCommit = true;
+    store.compensateAuditFailure =
+        MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(compensateFailure));
+
+    ContractFailure failure =
+        service(store).backupBook(access(book), backup, backupKey).requireRejected();
+
+    assertEquals(compensateFailure, failure);
+    assertEquals(1, store.recordedAudits.size());
+    assertTrue(store.compensatedAudits.isEmpty());
+  }
+
+  @Test
+  void deleteRekeyRollback_appendsOneCompensatingAuditWhenDeletionCommitFails() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path("book.sqlite");
+    Path rollback = path("book.rekey-rollback-1.sqlite");
+    touch(book);
+    touch(rollback);
+    store.rollbackArtifacts.put(store.normalized(book), List.of(store.normalized(rollback)));
+    store.failRollbackDeletionCommit = true;
+
+    ContractFailure failure =
+        service(store).deleteRekeyRollback(access(book), rollback).requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+    assertEquals(1, store.recordedAudits.size());
+    assertEquals(1, store.compensatedAudits.size());
+  }
+
+  private static ProtectedBookMaintenanceService service(FakeMaintenanceStore store) {
     return new ProtectedBookMaintenanceService(FIXED_CLOCK, store);
   }
 
-  private BookAccess access(Path book) {
-    return new BookAccess(book, BookAccess.PassphraseSource.StandardInput.INSTANCE);
+  private static BookAccess access(Path bookFilePath) {
+    return new BookAccess(
+        bookFilePath,
+        new BookAccess.PassphraseSource.KeyFile(
+            bookFilePath.resolveSibling("book-passphrase.key").toAbsolutePath().normalize()));
   }
 
-  private Path path(String fileName) {
-    return tempDir.resolve(fileName);
-  }
-
-  private static ContractFailure runtimeFailure(String argument) {
-    return ContractErrors.Descriptor.RUNTIME_FAILURE.failure("runtime failure", null, argument);
+  private Path path(String relativePath) {
+    return tempDirectory.resolve(relativePath).toAbsolutePath().normalize();
   }
 
   private static PublicPathHint hint(Path path) {
     return PublicPathHint.fromPath(path);
   }
 
-  /** In-memory maintenance store double that captures orchestration inputs and outcomes. */
+  private static ContractFailure runtimeFailure(String argument) {
+    return new ContractFailure(
+        ContractErrors.Descriptor.RUNTIME_FAILURE, "maintenance failure", "retry later", argument);
+  }
+
+  private void touch(Path path) {
+    try {
+      if (path.getParent() != null) {
+        Files.createDirectories(path.getParent());
+      }
+      if (!Files.exists(path)) {
+        Files.createFile(path);
+      }
+    } catch (IOException exception) {
+      throw new IllegalStateException("Unable to create test file: " + path, exception);
+    }
+  }
+
+  private record RecordedAudit(Path bookPath, Instant recordedAt, Enum<?> auditKind) {
+    private RecordedAudit {
+      Objects.requireNonNull(bookPath, "bookPath");
+      Objects.requireNonNull(recordedAt, "recordedAt");
+      Objects.requireNonNull(auditKind, "auditKind");
+    }
+  }
+
+  /** Deterministic protected-book maintenance store fixture for service-path tests. */
   private static final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
-    final ConcurrentMap<Path, List<Path>> bookBlockingArtifacts = new ConcurrentHashMap<>();
-    final ConcurrentMap<Path, List<Path>> backupBlockingArtifacts = new ConcurrentHashMap<>();
-    final ConcurrentMap<Path, LeaseAcquisition> leaseOutcomes = new ConcurrentHashMap<>();
-    final ConcurrentMap<Path, List<Path>> rollbackArtifactsByBook = new ConcurrentHashMap<>();
-    final ConcurrentMap<Path, Boolean> rollbackBelongs = new ConcurrentHashMap<>();
-    final ConcurrentMap<Path, Deque<ContractDecision<BookVerification>>> verificationDecisions =
+    private final Map<Path, List<Path>> rollbackArtifacts = new ConcurrentHashMap<>();
+    private final Map<Path, List<Path>> bookBlockingArtifacts = new ConcurrentHashMap<>();
+    private final Map<Path, List<Path>> backupBlockingArtifacts = new ConcurrentHashMap<>();
+    private final Map<Path, MaintenanceDecision<BookVerification>> verifications =
         new ConcurrentHashMap<>();
-    final List<ProtectedBookMaintenanceEvent> recordedEvents = new ArrayList<>();
-    final List<Path> deletedRollbackArtifacts = new ArrayList<>();
-    ContractDecision<Path> publishBackupDecision = ContractDecision.accepted(Path.of("/ignored"));
-    @Nullable BookAccess publishedSourceAccess;
-    @Nullable Path publishedBackupFilePath;
-    @Nullable Path publishedBackupBookKeyFilePath;
-    @Nullable FakePreparedBookReplacement lastReplacement;
+    private final Set<Path> busyManagedArtifacts = ConcurrentHashMap.newKeySet();
+    private final Set<Path> busyExistingArtifacts = ConcurrentHashMap.newKeySet();
+    private final List<RecordedAudit> recordedAudits = new ArrayList<>();
+    private final List<RecordedAudit> compensatedAudits = new ArrayList<>();
+    private @Nullable MaintenanceDecision<StagedBackupPair> stageBackupFailure;
+    private @Nullable MaintenanceDecision<MaintenanceCompletion> appendAuditFailure;
+    private @Nullable MaintenanceDecision<MaintenanceCompletion> compensateAuditFailure;
+    private @Nullable Path stagedReplacementPath;
+    private boolean failBackupPairCommit;
+    private boolean failRollbackDeletionCommit;
+    private boolean lastStagedBackupPairCommitted;
+    private boolean lastStagedBackupPairClosed;
+    private boolean lastRollbackDeletionCommitted;
+    private boolean lastRollbackDeletionClosed;
 
-    Path normalized(Path path) {
+    private Path normalized(Path path) {
       return path.toAbsolutePath().normalize();
-    }
-
-    void enqueueVerificationDecision(Path path, ContractDecision<BookVerification> decision) {
-      verificationDecisions
-          .computeIfAbsent(normalized(path), ignored -> new ArrayDeque<>())
-          .addLast(decision);
-    }
-
-    void enqueueVerificationFailure(
-        Path path, ProtectedBookMaintenanceVerificationFailure failure) {
-      enqueueVerificationDecision(
-          path, ContractDecision.accepted(new VerificationFailure(normalized(path), failure)));
     }
 
     @Override
     public Path normalize(Path path, String argumentName) {
+      Objects.requireNonNull(path, argumentName);
       return normalized(path);
     }
 
@@ -707,113 +902,193 @@ class ProtectedBookMaintenanceServiceTest {
     }
 
     @Override
-    public LeaseAcquisition acquireExclusiveLease(Path normalizedArtifactPath) {
-      return leaseOutcomes.getOrDefault(
-          normalizedArtifactPath, new FakeHeldLease(normalizedArtifactPath));
-    }
-
-    @Override
-    public ContractDecision<BookVerification> verifyInitializedBook(BookAccess bookAccess) {
-      Deque<ContractDecision<BookVerification>> queued =
-          verificationDecisions.get(normalized(bookAccess.bookFilePath()));
-      if (queued != null && !queued.isEmpty()) {
-        return queued.removeFirst();
+    public LeaseAcquisition acquireExistingArtifactLease(Path normalizedArtifactPath) {
+      if (busyExistingArtifacts.contains(normalizedArtifactPath)) {
+        return new LeaseBusy(normalizedArtifactPath);
       }
-      return ContractDecision.accepted(new VerifiedBook(normalized(bookAccess.bookFilePath())));
+      return new FakeLease(normalizedArtifactPath);
     }
 
     @Override
-    public ContractDecision<Path> publishBackupPair(
-        BookAccess sourceAccess,
+    public LeaseAcquisition acquireManagedArtifactLease(Path normalizedArtifactPath) {
+      if (busyManagedArtifacts.contains(normalizedArtifactPath)) {
+        return new LeaseBusy(normalizedArtifactPath);
+      }
+      return new FakeLease(normalizedArtifactPath);
+    }
+
+    @Override
+    public MaintenanceDecision<BookVerification> verifyInitializedBook(
+        ProtectedBookAccess bookAccess) {
+      return verifications.getOrDefault(
+          normalized(bookAccess.bookFilePath()),
+          MaintenanceDecision.accepted(new VerifiedBook(normalized(bookAccess.bookFilePath()))));
+    }
+
+    @Override
+    public MaintenanceDecision<StagedBackupPair> stageBackupPair(
+        ProtectedBookAccess sourceAccess,
         Path normalizedBackupFilePath,
         Path normalizedBackupBookKeyFilePath) {
-      publishedSourceAccess = sourceAccess;
-      publishedBackupFilePath = normalizedBackupFilePath;
-      publishedBackupBookKeyFilePath = normalizedBackupBookKeyFilePath;
-      return publishBackupDecision;
+      if (stageBackupFailure != null) {
+        return stageBackupFailure;
+      }
+      BookVerification stagedBackupVerification =
+          switch (verifications.getOrDefault(
+              normalized(normalizedBackupFilePath),
+              MaintenanceDecision.accepted(
+                  new VerifiedBook(normalized(normalizedBackupFilePath))))) {
+            case MaintenanceDecision.Accepted<BookVerification>(BookVerification verification) ->
+                verification;
+            case MaintenanceDecision.Failed<BookVerification>(MaintenanceFailure failure) ->
+                throw new AssertionError(
+                    "Expected accepted staged-backup verification but got " + failure);
+          };
+      return MaintenanceDecision.accepted(new FakeStagedBackupPair(stagedBackupVerification));
     }
 
     @Override
-    public PreparedBookReplacement prepareReplacement(
+    public StagedBookReplacement stageReplacement(
         Path normalizedSourceBookPath, Path normalizedTargetBookPath) {
-      lastReplacement = new FakePreparedBookReplacement(normalizedTargetBookPath);
-      return lastReplacement;
+      Path stagedBookPath =
+          stagedReplacementPath != null
+              ? normalized(stagedReplacementPath)
+              : normalized(normalizedSourceBookPath);
+      stagedReplacementPath = null;
+      return new FakeStagedBookReplacement(stagedBookPath);
     }
 
     @Override
     public List<Path> staleRollbackArtifacts(Path normalizedBookPath) {
-      return rollbackArtifactsByBook.getOrDefault(normalizedBookPath, List.of());
+      return rollbackArtifacts.getOrDefault(normalizedBookPath, List.of());
     }
 
     @Override
     public boolean isRollbackArtifactForBook(
         Path normalizedBookPath, Path normalizedRollbackArtifactPath) {
-      return rollbackBelongs.getOrDefault(normalizedRollbackArtifactPath, false);
+      return staleRollbackArtifacts(normalizedBookPath).contains(normalizedRollbackArtifactPath);
     }
 
     @Override
-    public void deleteRollbackArtifact(Path normalizedRollbackArtifactPath) {
-      deletedRollbackArtifacts.add(normalizedRollbackArtifactPath);
+    public StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(
+        Path normalizedRollbackArtifactPath) {
+      return new FakeStagedRollbackArtifactDeletion();
     }
 
     @Override
-    public void recordMaintenanceEvent(ProtectedBookMaintenanceEvent maintenanceEvent) {
-      recordedEvents.add(maintenanceEvent);
-    }
-
-    boolean lastReplacementCommitted() {
-      return Objects.requireNonNull(lastReplacement, "lastReplacement").committed;
-    }
-
-    boolean lastReplacementRolledBack() {
-      return Objects.requireNonNull(lastReplacement, "lastReplacement").rolledBack;
-    }
-  }
-
-  /** No-op lease double that carries only the normalized artifact path. */
-  private static final class FakeHeldLease implements ProtectedBookMaintenanceStore.HeldLease {
-    private final Path artifactPath;
-
-    private FakeHeldLease(Path artifactPath) {
-      this.artifactPath = artifactPath;
+    public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
+        ProtectedBookAccess bookAccess,
+        Instant recordedAt,
+        ProtectedBookMaintenanceAuditKind auditKind) {
+      if (appendAuditFailure != null) {
+        return appendAuditFailure;
+      }
+      recordedAudits.add(
+          new RecordedAudit(normalized(bookAccess.bookFilePath()), recordedAt, auditKind));
+      return MaintenanceDecision.accepted(MaintenanceCompletion.DONE);
     }
 
     @Override
-    public Path artifactPath() {
-      return artifactPath;
+    public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
+        ProtectedBookAccess bookAccess,
+        Instant recordedAt,
+        ProtectedBookMaintenanceAuditCompensationKind auditKind) {
+      if (compensateAuditFailure != null) {
+        return compensateAuditFailure;
+      }
+      compensatedAudits.add(
+          new RecordedAudit(normalized(bookAccess.bookFilePath()), recordedAt, auditKind));
+      return MaintenanceDecision.accepted(MaintenanceCompletion.DONE);
     }
 
-    @Override
-    public void close() {}
-  }
+    /** Deterministic held-lease fixture for one normalized artifact path. */
+    private static final class FakeLease implements HeldLease {
+      private final Path artifactPath;
 
-  /** Replacement-handle double that records commit and rollback decisions for assertions. */
-  private static final class FakePreparedBookReplacement
-      implements ProtectedBookMaintenanceStore.PreparedBookReplacement {
-    private final Path targetBookPath;
-    private boolean committed;
-    private boolean rolledBack;
+      private FakeLease(Path artifactPath) {
+        this.artifactPath = artifactPath;
+      }
 
-    private FakePreparedBookReplacement(Path targetBookPath) {
-      this.targetBookPath = targetBookPath;
+      @Override
+      public Path artifactPath() {
+        return artifactPath;
+      }
+
+      @Override
+      public void close() {}
     }
 
-    @Override
-    public Path targetBookPath() {
-      return targetBookPath;
+    /** Deterministic staged-backup fixture that can publish or fail on demand. */
+    private final class FakeStagedBackupPair implements StagedBackupPair {
+      private final BookVerification backupVerification;
+
+      private FakeStagedBackupPair(BookVerification backupVerification) {
+        this.backupVerification = backupVerification;
+      }
+
+      @Override
+      public MaintenanceDecision<BookVerification> verifyInitializedBackup() {
+        return MaintenanceDecision.accepted(backupVerification);
+      }
+
+      @Override
+      public void commit() {
+        if (failBackupPairCommit) {
+          throw new IllegalStateException("backup pair publish failed");
+        }
+        lastStagedBackupPairCommitted = true;
+      }
+
+      @Override
+      public void rollback() {}
+
+      @Override
+      public void close() {
+        lastStagedBackupPairClosed = true;
+      }
     }
 
-    @Override
-    public void commit() {
-      committed = true;
+    /** Deterministic staged-replacement fixture for restore-style maintenance flows. */
+    private static final class FakeStagedBookReplacement implements StagedBookReplacement {
+      private final Path stagedBookPath;
+
+      private FakeStagedBookReplacement(Path stagedBookPath) {
+        this.stagedBookPath = stagedBookPath;
+      }
+
+      @Override
+      public Path stagedBookPath() {
+        return stagedBookPath;
+      }
+
+      @Override
+      public void commit() {}
+
+      @Override
+      public void rollback() {}
+
+      @Override
+      public void close() {}
     }
 
-    @Override
-    public void rollback() {
-      rolledBack = true;
-    }
+    /** Deterministic staged rollback-artifact deletion fixture. */
+    private final class FakeStagedRollbackArtifactDeletion
+        implements StagedRollbackArtifactDeletion {
+      @Override
+      public void commit() {
+        if (failRollbackDeletionCommit) {
+          throw new IllegalStateException("rollback deletion failed");
+        }
+        lastRollbackDeletionCommitted = true;
+      }
 
-    @Override
-    public void close() {}
+      @Override
+      public void rollback() {}
+
+      @Override
+      public void close() {
+        lastRollbackDeletionClosed = true;
+      }
+    }
   }
 }

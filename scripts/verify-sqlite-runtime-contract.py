@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--expected-runtime-provenance",
-        choices=("environment-configured", "source-checkout-managed"),
+        choices=("source-checkout-managed",),
         required=True,
     )
     parser.add_argument("--label", required=True)

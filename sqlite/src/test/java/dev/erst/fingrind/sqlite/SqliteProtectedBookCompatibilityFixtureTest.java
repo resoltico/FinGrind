@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -27,6 +29,22 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite";
   private static final String CURRENT_DEFAULT_FIXTURE_METADATA_RESOURCE =
       "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.metadata.json";
+  private static final String UNSUPPORTED_FORMAT_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/unsupported-format-protected-book.sqlite";
+  private static final String FOREIGN_SQLITE_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/foreign-sqlite.sqlite";
+  private static final String CORRUPTED_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/corrupted-protected-book.sqlite";
+  private static final String TRUNCATED_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/truncated-protected-book.sqlite";
+  private static final String ROLLBACK_ARTIFACT_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite.rekey-rollback-fixture.sqlite";
+  private static final String JOURNAL_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite-journal";
+  private static final String WAL_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite-wal";
+  private static final String SHM_FIXTURE_RESOURCE =
+      "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite-shm";
   private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
   @Test
@@ -125,23 +143,96 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
     }
   }
 
+  @Test
+  void unsupportedFormatFixture_reportsOneUnsupportedFormatInspection() throws Exception {
+    Path fixtureCopy =
+        copyFixture(
+            UNSUPPORTED_FORMAT_FIXTURE_RESOURCE, "unsupported-format-protected-book.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(fixtureCopy))) {
+      assertEquals(
+          new BookLifecycleInspection.Existing(
+              BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+              SqliteBookContract.APPLICATION_ID,
+              SqliteBookContract.FORMAT_VERSION + 1,
+              SqliteBookContract.FORMAT_VERSION),
+          postingFactStore.inspectBook());
+    }
+  }
+
+  @Test
+  void foreignSqliteFixture_reportsOneForeignSqliteInspection() throws Exception {
+    Path fixtureCopy = copyFixture(FOREIGN_SQLITE_FIXTURE_RESOURCE, "foreign-sqlite.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(fixtureCopy))) {
+      assertEquals(
+          new BookLifecycleInspection.Existing(
+              BookLifecycleInspection.Status.FOREIGN_SQLITE,
+              0,
+              0,
+              SqliteBookContract.FORMAT_VERSION),
+          postingFactStore.inspectBook());
+    }
+  }
+
+  @Test
+  void corruptedAndTruncatedFixtures_failProtectedBookVerification() throws Exception {
+    assertProtectedBookVerificationFailure(
+        copyFixture(CORRUPTED_FIXTURE_RESOURCE, "corrupted-protected-book.sqlite"));
+    assertProtectedBookVerificationFailure(
+        copyFixture(TRUNCATED_FIXTURE_RESOURCE, "truncated-protected-book.sqlite"));
+  }
+
+  @Test
+  void rollbackAndSidecarFixtures_coverCommittedRecoveryAndBlockingArtifactFamilies()
+      throws Exception {
+    Path workingBook =
+        copyFixture(CURRENT_DEFAULT_FIXTURE_RESOURCE, "current-default-protected-book.sqlite");
+    Path rollbackArtifact =
+        copyFixture(
+            ROLLBACK_ARTIFACT_FIXTURE_RESOURCE,
+            "current-default-protected-book.sqlite.rekey-rollback-fixture.sqlite");
+    Path journalSidecar =
+        copyFixture(JOURNAL_FIXTURE_RESOURCE, "current-default-protected-book.sqlite-journal");
+    Path walSidecar =
+        copyFixture(WAL_FIXTURE_RESOURCE, "current-default-protected-book.sqlite-wal");
+    Path shmSidecar =
+        copyFixture(SHM_FIXTURE_RESOURCE, "current-default-protected-book.sqlite-shm");
+
+    assertTrue(SqliteRekeyRollbackFile.isRollbackArtifactForBook(workingBook, rollbackArtifact));
+    assertEquals(
+        List.of(journalSidecar, shmSidecar, walSidecar, rollbackArtifact),
+        SqliteBookMaintenanceFiles.blockingArtifactsForBook(workingBook));
+  }
+
   private Path copyFixture(String targetFileName) throws IOException {
+    return copyFixture(CURRENT_DEFAULT_FIXTURE_RESOURCE, targetFileName);
+  }
+
+  private Path copyFixture(String resourcePath, String targetFileName) throws IOException {
     Path targetPath = tempDirectory.resolve(targetFileName);
     try (InputStream resourceStream =
-        SqliteProtectedBookCompatibilityFixtureTest.class.getResourceAsStream(
-            CURRENT_DEFAULT_FIXTURE_RESOURCE)) {
+        SqliteProtectedBookCompatibilityFixtureTest.class.getResourceAsStream(resourcePath)) {
       if (resourceStream == null) {
-        throw new IOException(
-            "Missing committed protected-book fixture: " + CURRENT_DEFAULT_FIXTURE_RESOURCE);
+        throw new IOException("Missing committed protected-book fixture: " + resourcePath);
       }
       Files.copy(resourceStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
       return targetPath;
     }
   }
 
+  private void assertProtectedBookVerificationFailure(Path fixtureCopy) {
+    try (SqlitePostingFactStore wrongKeyStore = openStore(bookAccess(fixtureCopy))) {
+      IllegalStateException exception =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              IllegalStateException.class, wrongKeyStore::inspectBook);
+      assertProtectedBookVerificationFailure(exception);
+    }
+  }
+
   private static ProtectedBookFormatContract fixtureMetadataFormat() throws IOException {
     JsonNode formatNode = fixtureMetadataDocument().path("protectedBookFormat");
     return new ProtectedBookFormatContract(
+        ProtocolCatalog.protectedBookFormat().applicationId(),
+        ProtocolCatalog.protectedBookFormat().formatVersion(),
         BookCipher.fromWireValue(requiredTextField(formatNode, "cipher")),
         formatNode.path("legacyMode").booleanValue(),
         formatNode.path("pageSize").intValue(),

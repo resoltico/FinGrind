@@ -24,10 +24,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
+  private static final Pattern APPLICATION_ID_PRAGMA =
+      Pattern.compile("^pragma\\s+application_id\\s*=\\s*(\\d+)\\s*;\\s*$", Pattern.MULTILINE);
+  private static final Pattern USER_VERSION_PRAGMA =
+      Pattern.compile("^pragma\\s+user_version\\s*=\\s*(\\d+)\\s*;\\s*$", Pattern.MULTILINE);
+
   @Test
   void ensureParentDirectory_acceptsBareBookFileNames() {
     AtomicReference<Path> ensuredPath = new AtomicReference<>();
@@ -84,6 +91,25 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             StandardCharsets.UTF_8);
     assertTrue(schema.contains("source_channel text not null,"));
     assertFalse(schema.contains("source_channel text not null check"));
+  }
+
+  @Test
+  void schemaResource_pragmasMatchCanonicalBookFormatContract() throws Exception {
+    String schema =
+        new String(
+            java.util.Objects.requireNonNull(
+                    SqliteBookSchemaBootstrap.class.getResourceAsStream("book_schema.sql"),
+                    "Missing schema resource.")
+                .readAllBytes(),
+            StandardCharsets.UTF_8);
+    Matcher applicationIdMatcher = APPLICATION_ID_PRAGMA.matcher(schema);
+    Matcher userVersionMatcher = USER_VERSION_PRAGMA.matcher(schema);
+    assertTrue(
+        applicationIdMatcher.find(), "book_schema.sql must declare one application_id pragma.");
+    assertTrue(userVersionMatcher.find(), "book_schema.sql must declare one user_version pragma.");
+    assertEquals(
+        SqliteBookContract.APPLICATION_ID, Integer.parseInt(applicationIdMatcher.group(1)));
+    assertEquals(SqliteBookContract.FORMAT_VERSION, Integer.parseInt(userVersionMatcher.group(1)));
   }
 
   @Test
@@ -447,6 +473,326 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void canonicalStrictSchema_rejectsLateOpeningBalanceInsertions() {
+    Path bookPath = tempDirectory.resolve("late-opening-balance.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "1000", "Cash", "ASSET", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database,
+                      "3000",
+                      "Opening Equity",
+                      "EQUITY",
+                      "CREDIT",
+                      1,
+                      "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(
+                      database,
+                      "posting-standard",
+                      "STANDARD",
+                      "2026-04-07",
+                      "2026-04-07T10:15:30Z",
+                      new PostingFactSqlLiterals(
+                          "actor-standard",
+                          "AGENT",
+                          "command-standard",
+                          "idem-standard",
+                          "cause-standard",
+                          "null",
+                          "null",
+                          SourceChannel.CLI.wireValue(),
+                          "null"));
+                  insertJournalLineRow(
+                      database, "posting-standard", 0, "1000", "DEBIT", "EUR", 1000);
+                  insertJournalLineRow(
+                      database, "posting-standard", 1, "3000", "CREDIT", "EUR", 1000);
+
+                  SqliteNativeException lateOpeningBalance =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-opening-balance",
+                                  "OPENING_BALANCE",
+                                  "2026-04-01",
+                                  "2026-04-07T10:15:31Z",
+                                  new PostingFactSqlLiterals(
+                                      "actor-opening",
+                                      "AGENT",
+                                      "command-opening",
+                                      "idem-opening",
+                                      "cause-opening",
+                                      "null",
+                                      "null",
+                                      SourceChannel.CLI.wireValue(),
+                                      "null")));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, lateOpeningBalance.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", lateOpeningBalance.resultName());
+                  assertEquals(1, queryInt(database, "select count(*) from posting_fact"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_rejectsInactiveAccountAndOpeningBalanceNominalUsage() {
+    Path inactiveAccountPath = tempDirectory.resolve("inactive-account-journal-line.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(inactiveAccountPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "1000", "Cash", "ASSET", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database,
+                      "1100",
+                      "Dormant Cash",
+                      "ASSET",
+                      "DEBIT",
+                      0,
+                      "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(database, "posting-inactive", "idem-inactive");
+
+                  SqliteNativeException inactiveAccountLine =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertJournalLineRow(
+                                  database, "posting-inactive", 0, "1100", "DEBIT", "EUR", 1000));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, inactiveAccountLine.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", inactiveAccountLine.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+                }));
+
+    Path nominalOpeningBalancePath = tempDirectory.resolve("opening-balance-nominal.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(nominalOpeningBalancePath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "1000", "Cash", "ASSET", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(
+                      database,
+                      "posting-opening-balance",
+                      "OPENING_BALANCE",
+                      "2026-04-01",
+                      "2026-04-07T10:15:30Z",
+                      new PostingFactSqlLiterals(
+                          "actor-opening",
+                          "AGENT",
+                          "command-opening",
+                          "idem-opening",
+                          "cause-opening",
+                          "null",
+                          "null",
+                          SourceChannel.CLI.wireValue(),
+                          "null"));
+
+                  SqliteNativeException nominalOpeningBalanceLine =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertJournalLineRow(
+                                  database,
+                                  "posting-opening-balance",
+                                  0,
+                                  "4000",
+                                  "CREDIT",
+                                  "EUR",
+                                  1000));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER,
+                      nominalOpeningBalanceLine.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", nominalOpeningBalanceLine.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_rejectsClosedPeriodBackfillAndBrokenPeriodCloseLinks() {
+    Path invalidCloseTargetPath = tempDirectory.resolve("invalid-period-close-target.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(invalidCloseTargetPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
+
+                  SqliteNativeException invalidCloseTarget =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into period_close (
+                                      period_close_order,
+                                      effective_date_from,
+                                      effective_date_to,
+                                      closing_equity_account_code,
+                                      closed_at
+                                  ) values (
+                                      1,
+                                      '2026-04-01',
+                                      '2026-04-30',
+                                      '4000',
+                                      '2026-04-30T23:59:59Z'
+                                  )
+                                  """));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, invalidCloseTarget.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", invalidCloseTarget.resultName());
+                }));
+
+    Path closedPeriodPath = tempDirectory.resolve("closed-period-backfill.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(closedPeriodPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "1000", "Cash", "ASSET", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database,
+                      "3000",
+                      "Retained Earnings",
+                      "EQUITY",
+                      "CREDIT",
+                      1,
+                      "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(
+                      database,
+                      "posting-period-close",
+                      "PERIOD_CLOSE",
+                      "2026-04-30",
+                      "2026-04-30T23:59:59Z",
+                      new PostingFactSqlLiterals(
+                          "system:periodClose",
+                          "SYSTEM",
+                          "periodClose:2026-04",
+                          "periodClose:2026-04",
+                          "periodClose:2026-04",
+                          "'periodClose:2026-04'",
+                          "null",
+                          SourceChannel.SYSTEM.wireValue(),
+                          "null"));
+                  insertJournalLineRow(
+                      database, "posting-period-close", 0, "4000", "DEBIT", "EUR", 1000);
+                  insertJournalLineRow(
+                      database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+                  database.executeStatement(
+                      """
+                      insert into period_close (
+                          period_close_order,
+                          effective_date_from,
+                          effective_date_to,
+                          closing_equity_account_code,
+                          closed_at
+                      ) values (
+                          1,
+                          '2026-04-01',
+                          '2026-04-30',
+                          '3000',
+                          '2026-04-30T23:59:59Z'
+                      )
+                      """);
+                  database.executeStatement(
+                      """
+                      insert into period_close_posting (
+                          period_close_order,
+                          posting_id
+                      ) values (
+                          1,
+                          'posting-period-close'
+                      )
+                      """);
+                  insertPostingFactRow(
+                      database,
+                      "posting-post-close",
+                      "STANDARD",
+                      "2026-05-01",
+                      "2026-05-01T10:15:30Z",
+                      new PostingFactSqlLiterals(
+                          "actor-post-close",
+                          "AGENT",
+                          "command-post-close",
+                          "idem-post-close",
+                          "cause-post-close",
+                          "null",
+                          "null",
+                          SourceChannel.CLI.wireValue(),
+                          "null"));
+                  insertJournalLineRow(
+                      database, "posting-post-close", 0, "1000", "DEBIT", "EUR", 1000);
+                  insertJournalLineRow(
+                      database, "posting-post-close", 1, "3000", "CREDIT", "EUR", 1000);
+
+                  SqliteNativeException backfilledPosting =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-closed-period",
+                                  "STANDARD",
+                                  "2026-04-15",
+                                  "2026-05-01T10:15:31Z",
+                                  new PostingFactSqlLiterals(
+                                      "actor-closed-period",
+                                      "AGENT",
+                                      "command-closed-period",
+                                      "idem-closed-period",
+                                      "cause-closed-period",
+                                      "null",
+                                      "null",
+                                      SourceChannel.CLI.wireValue(),
+                                      "null")));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, backfilledPosting.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", backfilledPosting.resultName());
+
+                  SqliteNativeException brokenCloseLink =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into period_close_posting (
+                                      period_close_order,
+                                      posting_id
+                                  ) values (
+                                      1,
+                                      'posting-post-close'
+                                  )
+                                  """));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, brokenCloseLink.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", brokenCloseLink.resultName());
+                }));
+  }
+
+  @Test
   void loadInitializedAt_returnsEmptyWithoutMarkerAndValueWhenPresent() throws Exception {
     Path missingMarkerPath = tempDirectory.resolve("initialized-at-missing.sqlite");
     createSchemaOnlyBook(missingMarkerPath);
@@ -644,6 +990,31 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       String idempotencyKey,
       String causationId,
       String correlationIdSqlLiteral) {
+    insertPostingFactRow(
+        database,
+        postingId,
+        "STANDARD",
+        "2026-04-07",
+        "2026-04-07T10:15:30Z",
+        new PostingFactSqlLiterals(
+            actorId,
+            "AGENT",
+            commandId,
+            idempotencyKey,
+            causationId,
+            correlationIdSqlLiteral,
+            "null",
+            SourceChannel.CLI.wireValue(),
+            "null"));
+  }
+
+  private static void insertPostingFactRow(
+      SqliteNativeDatabase database,
+      String postingId,
+      String postingKind,
+      String effectiveDate,
+      String recordedAt,
+      PostingFactSqlLiterals sqlLiterals) {
     database.executeStatement(
         """
         insert into posting_fact (
@@ -662,27 +1033,44 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             prior_posting_id
         ) values (
             '%s',
-            'STANDARD',
-            '2026-04-07',
-            '2026-04-07T10:15:30Z',
             '%s',
-            'AGENT',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
             '%s',
             '%s',
             '%s',
             %s,
-            null,
+            %s,
             '%s',
-            null
+            %s
         )
         """
             .formatted(
                 postingId,
-                actorId,
-                commandId,
-                idempotencyKey,
-                causationId,
-                correlationIdSqlLiteral,
-                SourceChannel.CLI.wireValue()));
+                postingKind,
+                effectiveDate,
+                recordedAt,
+                sqlLiterals.actorId(),
+                sqlLiterals.actorType(),
+                sqlLiterals.commandId(),
+                sqlLiterals.idempotencyKey(),
+                sqlLiterals.causationId(),
+                sqlLiterals.correlationIdSqlLiteral(),
+                sqlLiterals.reasonSqlLiteral(),
+                sqlLiterals.sourceChannel(),
+                sqlLiterals.priorPostingIdSqlLiteral()));
   }
+
+  private record PostingFactSqlLiterals(
+      String actorId,
+      String actorType,
+      String commandId,
+      String idempotencyKey,
+      String causationId,
+      String correlationIdSqlLiteral,
+      String reasonSqlLiteral,
+      String sourceChannel,
+      String priorPostingIdSqlLiteral) {}
 }

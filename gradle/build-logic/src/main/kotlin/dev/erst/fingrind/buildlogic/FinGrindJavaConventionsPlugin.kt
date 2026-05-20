@@ -213,6 +213,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                     }
                 }
             }
+
             val testTasks = tasks.withType<Test>()
             val jacocoExecutionData =
                 providers.provider<List<java.io.File>> {

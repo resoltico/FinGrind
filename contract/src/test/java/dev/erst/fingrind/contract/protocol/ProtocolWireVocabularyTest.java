@@ -27,19 +27,18 @@ class ProtocolWireVocabularyTest {
     assertEquals("summary", PlanResultDetail.SUMMARY.toString());
     assertEquals("full", PlanResultDetail.FULL.toString());
     assertEquals(
-        List.of("bundle-managed", "source-checkout-managed", "environment-configured"),
-        SqliteRuntimeProvenance.wireValues());
+        List.of("bundle-managed", "source-checkout-managed"), SqliteRuntimeProvenance.wireValues());
     assertEquals("bundle-managed", SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue());
     assertEquals(
         "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
     assertEquals(
-        "environment-configured", SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.toString());
-    assertEquals(
-        List.of("publisher-authenticated", "source-verified-local-build", "unsafe-local-override"),
+        List.of("publisher-authenticated", "source-verified-local-build"),
         SqliteRuntimeTrustBasis.wireValues());
     assertEquals(
         "publisher-authenticated", SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED.wireValue());
-    assertEquals("unsafe-local-override", SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE.toString());
+    assertEquals(
+        "source-verified-local-build",
+        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD.toString());
     assertEquals(
         List.of(
             "macos-aarch64",
@@ -83,9 +82,6 @@ class ProtocolWireVocabularyTest {
     assertEquals(
         SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED));
-    assertEquals(
-        SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
-        SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED));
     assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,
         PublicCliBundleTarget.fromWireValue("windows-aarch64"));

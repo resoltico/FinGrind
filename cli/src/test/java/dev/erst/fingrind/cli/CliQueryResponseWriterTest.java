@@ -219,9 +219,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.HUMAN);
     String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(postingRegisterHuman.contains("Posting id"));
-    assertTrue(postingRegisterHuman.contains("Posting role"));
-    assertTrue(postingRegisterHuman.contains("Reverses posting"));
+    assertTrue(postingRegisterHuman.contains("2026-04-07 | Reversal | posting-1"));
+    assertTrue(postingRegisterHuman.contains("Posting role     : Reversal"));
+    assertTrue(postingRegisterHuman.contains("Reverses posting : posting-0"));
     assertTrue(postingRegisterHuman.contains("10.00"));
     assertTrue(postingRegisterHuman.contains("posting-1"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();

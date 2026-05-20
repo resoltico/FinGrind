@@ -96,7 +96,8 @@ final class SqliteNativeConnections {
     Objects.requireNonNull(sqliteApi, "sqliteApi");
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
     SqliteBookFileSecurity.requireRegularNonSymlinkFileIfExists(normalizedBookPath);
-    SqliteNativeBootstrap.recordOpeningConnection(normalizedBookPath);
+    SqliteNativeBootstrap.recordOpeningConnection(
+        normalizedBookPath, openMode.publishesActivityMarker());
     boolean connectionRegistrationOpen = true;
     try {
       SqliteBookMaintenanceLease.requireNoActiveLease(normalizedBookPath);
@@ -113,13 +114,14 @@ final class SqliteNativeConnections {
         }
         SqliteNativeDatabase openedDatabase =
             configureOpenedDatabase(
-                normalizedBookPath, databaseHandle, bookPassphrase, sqliteApi, arena);
+                normalizedBookPath, databaseHandle, bookPassphrase, openMode, sqliteApi, arena);
         connectionRegistrationOpen = false;
         return hardenOpenedDatabase(normalizedBookPath, openedDatabase, openMode);
       }
     } finally {
       if (connectionRegistrationOpen) {
-        SqliteNativeBootstrap.recordConnectionClosed(normalizedBookPath);
+        SqliteNativeBootstrap.recordConnectionClosed(
+            normalizedBookPath, openMode.publishesActivityMarker());
       }
     }
   }
@@ -143,6 +145,14 @@ final class SqliteNativeConnections {
 
   static void close(
       MemorySegment databaseHandle, @Nullable Path normalizedBookPath, SqliteNativeApi sqliteApi) {
+    close(databaseHandle, normalizedBookPath, true, sqliteApi);
+  }
+
+  static void close(
+      MemorySegment databaseHandle,
+      @Nullable Path normalizedBookPath,
+      boolean publishesActivityMarker,
+      SqliteNativeApi sqliteApi) {
     Objects.requireNonNull(sqliteApi, "sqliteApi");
     SqliteNativeInvocation.runSqlite(
         "Failed to close the SQLite native library bridge.",
@@ -152,7 +162,7 @@ final class SqliteNativeConnections {
           if (resultCode != SqliteNativeResultCodes.OK) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
           }
-          SqliteNativeBootstrap.recordConnectionClosed(normalizedBookPath);
+          SqliteNativeBootstrap.recordConnectionClosed(normalizedBookPath, publishesActivityMarker);
           SqliteNativeBootstrap.shutdownIfQuiescent(
               sqliteApi.sqlite3Shutdown(), SqliteNativeBootstrap.activeConnectionCount());
         });
@@ -235,6 +245,22 @@ final class SqliteNativeConnections {
       SqliteBookPassphrase bookPassphrase,
       SqliteNativeApi sqliteApi,
       Arena arena) {
+    return configureOpenedDatabase(
+        normalizedBookPath,
+        databaseHandle,
+        bookPassphrase,
+        SqliteNativeOpenMode.READ_WRITE_CREATE,
+        sqliteApi,
+        arena);
+  }
+
+  static SqliteNativeDatabase configureOpenedDatabase(
+      Path normalizedBookPath,
+      MemorySegment databaseHandle,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteNativeOpenMode openMode,
+      SqliteNativeApi sqliteApi,
+      Arena arena) {
     try {
       applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       int timeoutResult =
@@ -252,7 +278,8 @@ final class SqliteNativeConnections {
                       .invoke(databaseHandle, 1));
       requireOpenConfigurationSuccess(extendedCodeResult, sqliteApi);
       validateConfiguredKey(databaseHandle, sqliteApi);
-      return new SqliteNativeDatabase(databaseHandle, normalizedBookPath, sqliteApi);
+      return new SqliteNativeDatabase(
+          databaseHandle, normalizedBookPath, openMode.publishesActivityMarker(), sqliteApi);
     } catch (SqliteNativeException exception) {
       suppressCloseFailure(databaseHandle, sqliteApi, exception);
       throw exception;

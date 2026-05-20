@@ -106,9 +106,9 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runDeleteRekeyRollbackCommand(
-      Path bookFilePath, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
+      BookAccess bookAccess, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.deleteRekeyRollback(bookFilePath, rollbackArtifactPath),
+        bookWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
         outputMode,
         result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,

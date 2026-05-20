@@ -100,7 +100,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "Posting id");
+        "2026-04-07 | Reversal | posting-1");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(

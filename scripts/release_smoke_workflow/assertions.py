@@ -165,7 +165,7 @@ def assert_discovery_payloads(
 
     if config.expect_loaded_sqlite_details:
         expected_runtime_provenance = (
-            "bundle-managed" if config.expect_bundle_home_property else "environment-configured"
+            "bundle-managed" if config.expect_bundle_home_property else "source-checkout-managed"
         )
         require(
             require_string(runtime, "status") == "ready",
@@ -245,8 +245,23 @@ def assert_operator_queries_and_reports(
     )
     require_match(
         list_postings_human_output,
-        r"^Effective date[[:space:]]+\|[[:space:]]+Recorded at",
-        f"{config.label} human posting register did not render a table header",
+        r"^Postings$",
+        f"{config.label} human posting register did not render the report title",
+    )
+    require_match(
+        list_postings_human_output,
+        r"Returned postings[[:space:]]+:[[:space:]]+2",
+        f"{config.label} human posting register did not render the returned-posting count",
+    )
+    require_match(
+        list_postings_human_output,
+        r"2026-04-08",
+        f"{config.label} human posting register did not render the latest effective date",
+    )
+    require_match(
+        list_postings_human_output,
+        r"2026-04-07",
+        f"{config.label} human posting register did not render the earlier effective date",
     )
     require_match(
         list_postings_human_output,

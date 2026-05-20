@@ -42,6 +42,7 @@ dependencies {
     implementation(project(":report-pdf"))
     implementation(project(":sqlite"))
     implementation(libs.jackson.databind)
+    testImplementation(testFixtures(project(":sqlite")))
 }
 
 application {
@@ -125,6 +126,10 @@ val managedSqliteLibraryTrustedSha256Path =
 val managedSqliteToolchainFingerprintPath =
     rootProject.layout.buildDirectory.file(
         providers.provider { "managed-sqlite/${managedSqliteHostClassifier()}/toolchain-fingerprint.json" },
+    )
+val managedSqliteBuildContractPath =
+    rootProject.layout.buildDirectory.file(
+        providers.provider { "managed-sqlite/${managedSqliteHostClassifier()}/build-contract.json" },
     )
 val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
 val repositoryDockerBuildContextDirectory = layout.projectDirectory.dir("build/docker-context")
@@ -498,6 +503,9 @@ val stageCliBundle =
         from(managedSqliteToolchainFingerprintPath) {
             into("lib/native")
         }
+        from(managedSqliteBuildContractPath) {
+            into("lib/native")
+        }
         from(rootProject.file("LICENSE"))
         from(rootProject.file("LICENSE-APACHE-2.0"))
         from(rootProject.file("LICENSE-SIL-OFL-1.1"))
@@ -581,6 +589,7 @@ tasks.register<ReportBundleArchiveOutputsTask>("bundleCliArchive") {
 
 tasks.named<Test>("test") {
     jvmArgs(
+        "--enable-native-access=ALL-UNNAMED",
         "--add-opens=java.base/java.io=ALL-UNNAMED",
         "--add-exports=java.base/jdk.internal.io=ALL-UNNAMED",
     )
