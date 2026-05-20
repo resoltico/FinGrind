@@ -45,4 +45,34 @@ class CliTextFormatTest {
     assertEquals("1.000", CliTextFormat.displayMoney(Money.parse("KWD", "1.000")));
     assertEquals("alpha, beta", CliTextFormat.joined(List.of("alpha", "", "  ", "beta")));
   }
+
+  @Test
+  void wrapAndAdaptiveRenderers_coverCompactFallbackAndEdgeCases() {
+    assertTrue(
+        CliTextFormat.renderAdaptiveTable(12, List.of("Account", "Amount"), List.of())
+            .contains("(none)"));
+    assertEquals("", CliTextFormat.wrapLineBlock(List.of(), 12));
+    assertEquals("", CliTextFormat.renderBulletedBlock(List.of(), 12));
+    assertEquals("- alpha", CliTextFormat.renderBulletedBlock(List.of("alpha"), Integer.MAX_VALUE));
+    assertEquals("alph\na", CliTextFormat.wrap("alpha   ", 4));
+    assertEquals("alpha/\nbeta", CliTextFormat.wrap("alpha/beta", 6));
+    assertEquals("alpha\nbeta", CliTextFormat.wrap("alpha beta", 7));
+    assertEquals("super\nlongt\noken", CliTextFormat.wrap("superlongtoken", 5));
+    assertEquals("x", CliTextFormat.wrap("x\n      ", 4));
+    assertEquals("- alpha/\n  beta", CliTextFormat.renderBulletedBlock(List.of("alpha/beta"), 8));
+
+    String compactRows =
+        CliTextFormat.renderAdaptiveTable(
+            12,
+            List.of("Date", "Name", "Detail"),
+            List.of(List.of("", "", "detail value"), List.of("2026-04-07", "Cash", "10.00")));
+    assertTrue(compactRows.contains("Row 1"));
+    assertTrue(compactRows.contains("Detail : detail value"));
+    assertTrue(compactRows.contains("2026-04-07 | Cash"));
+
+    String singleColumnCompact =
+        CliTextFormat.renderAdaptiveTable(3, List.of("Only"), List.of(List.of("")));
+    assertTrue(singleColumnCompact.contains("Row 1"));
+    assertTrue(singleColumnCompact.contains("Only :"));
+  }
 }

@@ -248,6 +248,9 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, storeAccessMode(defaultStore));
       assertEquals(SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(existingStore));
       assertEquals(SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(resolverStore));
+      assertEquals(defaultStore, store(defaultStore));
+      assertEquals(existingStore, store(existingStore));
+      assertEquals(resolverStore, store(resolverStore));
     }
   }
 
@@ -264,7 +267,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
-  private static SqlitePostingFactStore store(Object session) {
-    return (SqlitePostingFactStore) session;
+  private static SqlitePostingFactStore store(AutoCloseable session) {
+    return SqliteCapabilitySessions.storeOf(session);
   }
 }

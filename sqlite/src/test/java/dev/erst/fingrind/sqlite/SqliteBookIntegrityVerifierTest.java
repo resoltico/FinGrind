@@ -166,6 +166,234 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
+  void persistedPostingLifecycleAudit_rejectsDurableLifecycleViolations() {
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-late-opening-balance.sqlite",
+        """
+        drop trigger posting_fact_validate_opening_balance_window_on_insert
+        """,
+        database -> {
+          insertPostingFactRow(database, "posting-standard", "idem-standard");
+          insertJournalLineRow(database, "posting-standard", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-standard", 1, "2000", "CREDIT", "EUR", 1000);
+          insertPostingFactRow(
+              database,
+              "posting-opening-balance",
+              "OPENING_BALANCE",
+              "2026-04-01",
+              "2026-04-07T10:15:31Z",
+              new PostingFactSqlLiterals(
+                  "actor-opening",
+                  "AGENT",
+                  "command-opening",
+                  "idem-opening",
+                  "cause-opening",
+                  "null",
+                  "null",
+                  "CLI",
+                  "null"));
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-opening-balance-nominal.sqlite",
+        """
+        drop trigger journal_line_validate_opening_balance_account_type_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
+          insertPostingFactRow(
+              database,
+              "posting-opening-balance",
+              "OPENING_BALANCE",
+              "2026-04-01",
+              "2026-04-07T10:15:30Z",
+              new PostingFactSqlLiterals(
+                  "actor-opening",
+                  "AGENT",
+                  "command-opening",
+                  "idem-opening",
+                  "cause-opening",
+                  "null",
+                  "null",
+                  "CLI",
+                  "null"));
+          insertJournalLineRow(
+              database, "posting-opening-balance", 0, "4000", "CREDIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-opening-balance", 1, "1000", "DEBIT", "EUR", 1000);
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-inactive-account-line.sqlite",
+        """
+        drop trigger journal_line_validate_active_account_on_insert
+        """,
+        database -> {
+          database.executeStatement("update account set active = 0 where account_code = '1000'");
+          insertPostingFactRow(database, "posting-inactive", "idem-inactive");
+          insertJournalLineRow(database, "posting-inactive", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-inactive", 1, "2000", "CREDIT", "EUR", 1000);
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-closed-period-backfill.sqlite",
+        """
+        drop trigger posting_fact_validate_closed_period_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+          insertPostingFactRow(
+              database,
+              "posting-period-close",
+              "PERIOD_CLOSE",
+              "2026-04-30",
+              "2026-04-30T23:59:59Z",
+              new PostingFactSqlLiterals(
+                  "system:periodClose",
+                  "SYSTEM",
+                  "periodClose:2026-04",
+                  "periodClose:2026-04",
+                  "periodClose:2026-04",
+                  "'periodClose:2026-04'",
+                  "null",
+                  "SYSTEM",
+                  "null"));
+          insertJournalLineRow(database, "posting-period-close", 0, "2000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+          database.executeStatement(
+              """
+              insert into period_close (
+                  period_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  closing_equity_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-04-01',
+                  '2026-04-30',
+                  '3000',
+                  '2026-04-30T23:59:59Z'
+              )
+              """);
+          database.executeStatement(
+              """
+              insert into period_close_posting (
+                  period_close_order,
+                  posting_id
+              ) values (
+                  1,
+                  'posting-period-close'
+              )
+              """);
+          insertPostingFactRow(
+              database,
+              "posting-closed-period",
+              "STANDARD",
+              "2026-04-15",
+              "2026-05-01T10:15:31Z",
+              new PostingFactSqlLiterals(
+                  "actor-closed-period",
+                  "AGENT",
+                  "command-closed-period",
+                  "idem-closed-period",
+                  "cause-closed-period",
+                  "null",
+                  "null",
+                  "CLI",
+                  "null"));
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-period-close-link.sqlite",
+        """
+        drop trigger period_close_posting_validate_period_close_posting_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+          insertPostingFactRow(database, "posting-standard", "idem-standard");
+          insertJournalLineRow(database, "posting-standard", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-standard", 1, "2000", "CREDIT", "EUR", 1000);
+          database.executeStatement(
+              """
+              insert into period_close (
+                  period_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  closing_equity_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-04-01',
+                  '2026-04-30',
+                  '3000',
+                  '2026-04-30T23:59:59Z'
+              )
+              """);
+          database.executeStatement(
+              """
+              insert into period_close_posting (
+                  period_close_order,
+                  posting_id
+              ) values (
+                  1,
+                  'posting-standard'
+              )
+              """);
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-unlinked-period-close.sqlite",
+        """
+        drop trigger posting_fact_validate_period_close_provenance_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+          insertPostingFactRow(
+              database,
+              "posting-period-close",
+              "PERIOD_CLOSE",
+              "2026-04-30",
+              "2026-04-30T23:59:59Z",
+              new PostingFactSqlLiterals(
+                  "system:periodClose",
+                  "SYSTEM",
+                  "periodClose:2026-04",
+                  "periodClose:2026-04",
+                  "periodClose:2026-04",
+                  "'periodClose:2026-04'",
+                  "null",
+                  "SYSTEM",
+                  "null"));
+          insertJournalLineRow(database, "posting-period-close", 0, "2000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+        });
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-invalid-period-close-target.sqlite",
+        """
+        drop trigger period_close_validate_closing_equity_account_on_insert
+        """,
+        database -> {
+          database.executeStatement("update account set active = 0 where account_code = '1000'");
+          database.executeStatement(
+              """
+              insert into period_close (
+                  period_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  closing_equity_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-04-01',
+                  '2026-04-30',
+                  '1000',
+                  '2026-04-30T23:59:59Z'
+              )
+              """);
+        });
+  }
+
+  @Test
   void foreignKeyCheck_rejectsOrphanedPersistedJournalRows() {
     Path bookPath = tempDirectory.resolve("persisted-journal-orphan.sqlite");
     initializeBookOnDisk(bookPath);
@@ -197,6 +425,19 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                       SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT,
                       SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT - 1),
               exception.getMessage());
+        });
+  }
+
+  @Test
+  void unexpectedSchemaObjects_areRejectedByTheIntegrityVerifier() {
+    Path bookPath = tempDirectory.resolve("unexpected-schema-object.sqlite");
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertTrue(SqliteBookIntegrityVerifier.hasNoUnexpectedSchemaObjects(database));
+          database.executeStatement("create table unexpected_table(singleton_id integer)");
+          assertFalse(SqliteBookIntegrityVerifier.hasNoUnexpectedSchemaObjects(database));
         });
   }
 
@@ -267,4 +508,86 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           assertFalse(SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(database));
         });
   }
+
+  private void assertRejectedPersistedPostingLifecycle(
+      String filename, String droppedTriggerSql, SqliteDatabaseAction corruptionAction) {
+    Path bookPath = tempDirectory.resolve(filename);
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          database.executeStatement(droppedTriggerSql);
+          corruptionAction.run(database);
+          assertFalse(SqliteBookIntegrityVerifier.hasValidPersistedPostingLifecycle(database));
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+  }
+
+  private static void insertPostingFactRow(
+      SqliteNativeDatabase database,
+      String postingId,
+      String postingKind,
+      String effectiveDate,
+      String recordedAt,
+      PostingFactSqlLiterals sqlLiterals) {
+    database.executeStatement(
+        """
+        insert into posting_fact (
+            posting_id,
+            posting_kind,
+            effective_date,
+            recorded_at,
+            actor_id,
+            actor_type,
+            command_id,
+            idempotency_key,
+            causation_id,
+            correlation_id,
+            reason,
+            source_channel,
+            prior_posting_id
+        ) values (
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            %s,
+            %s,
+            '%s',
+            %s
+        )
+        """
+            .formatted(
+                postingId,
+                postingKind,
+                effectiveDate,
+                recordedAt,
+                sqlLiterals.actorId(),
+                sqlLiterals.actorType(),
+                sqlLiterals.commandId(),
+                sqlLiterals.idempotencyKey(),
+                sqlLiterals.causationId(),
+                sqlLiterals.correlationIdSqlLiteral(),
+                sqlLiterals.reasonSqlLiteral(),
+                sqlLiterals.sourceChannel(),
+                sqlLiterals.priorPostingIdSqlLiteral()));
+  }
+
+  private record PostingFactSqlLiterals(
+      String actorId,
+      String actorType,
+      String commandId,
+      String idempotencyKey,
+      String causationId,
+      String correlationIdSqlLiteral,
+      String reasonSqlLiteral,
+      String sourceChannel,
+      String priorPostingIdSqlLiteral) {}
 }

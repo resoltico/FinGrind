@@ -1,12 +1,17 @@
 package dev.erst.fingrind.executor.spi;
 
-import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
+import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/** Narrow SPI for protected-book maintenance verification and closed-copy filesystem work. */
+/** Narrow SPI for protected-book maintenance verification and staged filesystem work. */
 public interface ProtectedBookMaintenanceStore {
   /** Returns one normalized absolute path for the supplied maintenance argument. */
   Path normalize(Path path, String argumentName);
@@ -17,20 +22,23 @@ public interface ProtectedBookMaintenanceStore {
   /** Lists every artifact that blocks one clean backup-source restore workflow. */
   List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath);
 
-  /** Acquires one exclusive maintenance lease for the selected protected-book artifact path. */
-  LeaseAcquisition acquireExclusiveLease(Path normalizedArtifactPath);
+  /** Acquires one exclusive maintenance lease for one existing protected-book artifact path. */
+  LeaseAcquisition acquireExistingArtifactLease(Path normalizedArtifactPath);
+
+  /** Acquires one exclusive maintenance lease for one managed protected-book artifact path. */
+  LeaseAcquisition acquireManagedArtifactLease(Path normalizedArtifactPath);
 
   /** Verifies that the supplied protected book opens as one initialized FinGrind book. */
-  ContractDecision<BookVerification> verifyInitializedBook(BookAccess bookAccess);
+  MaintenanceDecision<BookVerification> verifyInitializedBook(ProtectedBookAccess bookAccess);
 
-  /** Writes one backup key file and one encrypted backup copy from the verified source book. */
-  ContractDecision<Path> publishBackupPair(
-      BookAccess sourceAccess, Path normalizedBackupFilePath, Path normalizedBackupBookKeyFilePath);
+  /** Stages one encrypted backup pair without publishing it to the final destination yet. */
+  MaintenanceDecision<StagedBackupPair> stageBackupPair(
+      ProtectedBookAccess sourceAccess,
+      Path normalizedBackupFilePath,
+      Path normalizedBackupBookKeyFilePath);
 
-  /**
-   * Prepares one reversible replacement of the selected live book path with one verified source.
-   */
-  PreparedBookReplacement prepareReplacement(
+  /** Stages one reversible replacement of the selected live book path with one verified source. */
+  StagedBookReplacement stageReplacement(
       Path normalizedSourceBookPath, Path normalizedTargetBookPath);
 
   /** Lists every sibling rollback artifact that belongs to the supplied live book path. */
@@ -39,11 +47,20 @@ public interface ProtectedBookMaintenanceStore {
   /** Returns whether the selected rollback artifact belongs to the supplied live book path. */
   boolean isRollbackArtifactForBook(Path normalizedBookPath, Path normalizedRollbackArtifactPath);
 
-  /** Deletes one selected rollback artifact. */
-  void deleteRollbackArtifact(Path normalizedRollbackArtifactPath);
+  /** Stages one reversible rollback-artifact deletion. */
+  StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(Path normalizedRollbackArtifactPath);
 
-  /** Appends one durable protected-book maintenance event beside the selected live book path. */
-  void recordMaintenanceEvent(ProtectedBookMaintenanceEvent maintenanceEvent);
+  /** Appends one durable maintenance audit event into the selected initialized protected book. */
+  MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
+      ProtectedBookAccess bookAccess,
+      Instant recordedAt,
+      ProtectedBookMaintenanceAuditKind auditKind);
+
+  /** Appends one compensating maintenance audit event after external publish compensation. */
+  MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
+      ProtectedBookAccess bookAccess,
+      Instant recordedAt,
+      ProtectedBookMaintenanceAuditCompensationKind auditKind);
 
   /** Outcome of attempting to acquire one exclusive maintenance lease. */
   sealed interface LeaseAcquisition permits HeldLease, LeaseBusy {
@@ -78,7 +95,7 @@ public interface ProtectedBookMaintenanceStore {
   }
 
   /** Failed verification for one protected-book artifact. */
-  record VerificationFailure(Path artifactPath, ProtectedBookMaintenanceVerificationFailure failure)
+  record VerificationFailure(Path artifactPath, ProtectedBookVerificationFailure failure)
       implements BookVerification {
     public VerificationFailure {
       Objects.requireNonNull(artifactPath, "artifactPath");
@@ -86,15 +103,42 @@ public interface ProtectedBookMaintenanceStore {
     }
   }
 
-  /** Reversible filesystem replacement prepared for one restore-style workflow. */
-  interface PreparedBookReplacement extends AutoCloseable {
-    /** Final live target path of this prepared replacement. */
-    Path targetBookPath();
+  /** Staged encrypted backup pair that is either published atomically or discarded. */
+  interface StagedBackupPair extends AutoCloseable {
+    /** Verifies that the staged backup file already opens as one initialized protected book. */
+    MaintenanceDecision<BookVerification> verifyInitializedBackup();
 
-    /** Commits the prepared replacement and discards the previous-target rollback copy. */
+    /** Publishes the staged backup pair to its final destinations. */
     void commit();
 
-    /** Restores the previous target contents and discards the staged replacement. */
+    /** Discards the staged backup pair without publishing it. */
+    void rollback();
+
+    @Override
+    void close();
+  }
+
+  /** Reversible staged replacement prepared for one restore-style workflow. */
+  interface StagedBookReplacement extends AutoCloseable {
+    /** Staged replacement path that can be verified before the live target is replaced. */
+    Path stagedBookPath();
+
+    /** Commits the staged replacement and discards the previous-target rollback copy. */
+    void commit();
+
+    /** Discards the staged replacement and restores any prior target snapshot if one exists. */
+    void rollback();
+
+    @Override
+    void close();
+  }
+
+  /** Reversible staged deletion for one rollback artifact. */
+  interface StagedRollbackArtifactDeletion extends AutoCloseable {
+    /** Commits the staged rollback-artifact deletion. */
+    void commit();
+
+    /** Restores the rollback artifact under its original path. */
     void rollback();
 
     @Override

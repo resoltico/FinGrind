@@ -36,8 +36,6 @@ final class CliRuntimeContractDescriptors {
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
@@ -55,6 +53,7 @@ final class CliRuntimeContractDescriptors {
                 runtimeProbe.loadedSqliteVersion(),
                 runtimeProbe.loadedSqlite3mcVersion(),
                 runtimeProbe.loadedSqliteSourceId(),
-                runtimeProbe.issue())));
+                runtimeProbe.issue()),
+            runtimeProbe.runtimeArtifactEvidence()));
   }
 }

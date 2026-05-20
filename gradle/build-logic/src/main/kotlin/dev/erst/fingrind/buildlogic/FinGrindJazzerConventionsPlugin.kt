@@ -165,7 +165,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
                 dependsOn(jazzerAgentJar)
-                enableNativeAccess()
+                enableUnnamedNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
                 jvmArgs("-javaagent:${jazzerAgentJar.flatMap { it.archiveFile }.get().asFile.absolutePath}")
@@ -181,7 +181,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 classpath = mainSourceSet.runtimeClasspath
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
-                enableNativeAccess()
+                enableUnnamedNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
             }
@@ -372,7 +372,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 group = "verification"
                 useJUnitPlatform()
                 maxParallelForks = 1
-                enableNativeAccess()
+                enableUnnamedNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
                 systemProperty(jazzerTestProjectRootProperty, layout.projectDirectory.asFile.absolutePath)

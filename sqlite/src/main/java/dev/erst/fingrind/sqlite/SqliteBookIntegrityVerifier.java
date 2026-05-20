@@ -67,6 +67,27 @@ final class SqliteBookIntegrityVerifier {
         statement -> {});
   }
 
+  static boolean hasValidPersistedPostingLifecycle(SqliteNativeDatabase activeDatabase) {
+    return !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_LATE_OPENING_BALANCE_POSTING, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_OPENING_BALANCE_NOMINAL_ACCOUNT, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase,
+            SqlitePostingSql.FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD,
+            statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_UNLINKED_PERIOD_CLOSE_POSTING, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_LINK, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase,
+            SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT,
+            statement -> {});
+  }
+
   static String liveSchemaFingerprint(SqliteNativeDatabase activeDatabase) {
     StringBuilder material = new StringBuilder(1024);
     int rowCount = 0;

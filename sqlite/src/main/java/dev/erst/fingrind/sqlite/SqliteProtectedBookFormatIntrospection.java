@@ -36,6 +36,8 @@ final class SqliteProtectedBookFormatIntrospection {
     int pageSize = SqliteStatementQueries.querySingleInt(database, "pragma page_size");
     int reservedBytes = fileControlReserveBytes(database);
     return new ProtectedBookFormatContract(
+        ProtocolCatalog.protectedBookFormat().applicationId(),
+        ProtocolCatalog.protectedBookFormat().formatVersion(),
         cipherSettings.cipher(),
         cipherSettings.legacyMode(),
         pageSize,

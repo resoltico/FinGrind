@@ -1,27 +1,43 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.PostingDraft;
-import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 /** Bookkeeping acceptance policy shared by preflight and durable commit paths. */
 public final class PostingAcceptancePolicy {
-  private PostingAcceptancePolicy() {}
+  private static final PostingAcceptancePolicy CURRENT_KERNEL =
+      new PostingAcceptancePolicy(CoreBookkeepingPolicyPack.current());
+  private final PostingKindSelectionPolicy postingKindSelectionPolicy =
+      new PostingKindSelectionPolicy();
+  private final PostingCurrencyAcceptancePolicy postingCurrencyAcceptancePolicy =
+      new PostingCurrencyAcceptancePolicy();
+  private final PostingClosedPeriodPolicy postingClosedPeriodPolicy =
+      new PostingClosedPeriodPolicy();
+  private final OpeningBalanceAcceptancePolicy openingBalanceAcceptancePolicy =
+      new OpeningBalanceAcceptancePolicy();
+  private final PostingAccountStatePolicy postingAccountStatePolicy =
+      new PostingAccountStatePolicy();
+  private final ClosingEquityReservationPolicy closingEquityReservationPolicy;
+
+  /** Creates one posting-acceptance policy from the selected bookkeeping policy pack. */
+  public PostingAcceptancePolicy(BookkeepingPolicyPack policyPack) {
+    this.closingEquityReservationPolicy =
+        new ClosingEquityReservationPolicy(
+            BookkeepingPolicyPack.requirePolicyPack(policyPack).closePolicy());
+  }
+
+  /** Returns the built-in posting-acceptance policy for the current FinGrind kernel. */
+  public static PostingAcceptancePolicy currentKernel() {
+    return CURRENT_KERNEL;
+  }
 
   /** Returns the first deterministic rejection for the supplied posting attempt, if any. */
-  public static Optional<BookkeepingPostingRejection> rejectionFor(
+  public Optional<BookkeepingPostingRejection> rejectionFor(
       PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
@@ -32,29 +48,40 @@ public final class PostingAcceptancePolicy {
       return Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey());
     }
     Optional<BookkeepingPostingRejection> postingKindRejection =
-        postingKindRejection(postingRequest);
+        postingKindSelectionPolicy.rejectionFor(postingRequest);
     if (postingKindRejection.isPresent()) {
       return postingKindRejection;
     }
     BookIdentity bookIdentity = initializedBookIdentity(book);
     Optional<BookkeepingPostingRejection> currencyRejection =
-        functionalCurrencyRejection(postingRequest, bookIdentity);
+        postingCurrencyAcceptancePolicy.rejectionFor(postingRequest, bookIdentity);
     if (currencyRejection.isPresent()) {
       return currencyRejection;
     }
     Optional<BookkeepingPostingRejection> closedPeriodRejection =
-        closedPeriodRejection(postingRequest, book);
+        postingClosedPeriodPolicy.rejectionFor(postingRequest, book);
     if (closedPeriodRejection.isPresent()) {
       return closedPeriodRejection;
     }
     Optional<BookkeepingPostingRejection> openingBalanceWindowRejection =
-        openingBalanceWindowRejection(postingRequest, book);
+        openingBalanceAcceptancePolicy.windowRejection(postingRequest, book);
     if (openingBalanceWindowRejection.isPresent()) {
       return openingBalanceWindowRejection;
     }
-    Optional<BookkeepingPostingRejection> accountRejection = accountRejection(postingRequest, book);
+    Optional<BookkeepingPostingRejection> accountRejection =
+        postingAccountStatePolicy.rejectionFor(postingRequest, book);
     if (accountRejection.isPresent()) {
       return accountRejection;
+    }
+    Optional<BookkeepingPostingRejection> openingBalanceNominalRejection =
+        openingBalanceAcceptancePolicy.nominalAccountRejection(postingRequest, book);
+    if (openingBalanceNominalRejection.isPresent()) {
+      return openingBalanceNominalRejection;
+    }
+    Optional<BookkeepingPostingRejection> closingEquityReservationRejection =
+        closingEquityReservationPolicy.rejectionFor(postingRequest, bookIdentity, book);
+    if (closingEquityReservationRejection.isPresent()) {
+      return closingEquityReservationRejection;
     }
     return ReversalAcceptancePolicy.rejectionFor(postingRequest, book);
   }
@@ -70,140 +97,10 @@ public final class PostingAcceptancePolicy {
     };
   }
 
-  private static Optional<BookkeepingPostingRejection> postingKindRejection(
-      PostingRequestModel postingRequest) {
-    PostingKind postingKind = postingRequest.postingKind();
-    return postingKind.isCallerSelectable() || isInternalSystemPosting(postingRequest)
-        ? Optional.empty()
-        : Optional.of(new BookkeepingPostingRejection.PostingKindReserved(postingKind));
-  }
-
   static boolean isInternalSystemPosting(PostingRequestModel postingRequest) {
     return switch (postingRequest) {
       case PostingCommand command -> command.sourceChannel() == SourceChannel.SYSTEM;
       case PostingDraft draft -> draft.provenance().sourceChannel() == SourceChannel.SYSTEM;
     };
-  }
-
-  private static Optional<BookkeepingPostingRejection> functionalCurrencyRejection(
-      PostingRequestModel postingRequest, BookIdentity bookIdentity) {
-    return postingRequest.journalEntry().currencyUnit().equals(bookIdentity.functionalCurrency())
-        ? Optional.empty()
-        : Optional.of(
-            new BookkeepingPostingRejection.BookFunctionalCurrencyMismatch(
-                bookIdentity.functionalCurrency(), postingRequest.journalEntry().currencyUnit()));
-  }
-
-  private static Optional<BookkeepingPostingRejection> closedPeriodRejection(
-      PostingRequestModel postingRequest, PostingValidationStore book) {
-    LocalDate effectiveDate = postingRequest.journalEntry().effectiveDate();
-    return book.closedThroughEffectiveDate()
-        .filter(closedThrough -> !effectiveDate.isAfter(closedThrough))
-        .<BookkeepingPostingRejection>map(
-            closedThrough ->
-                new BookkeepingPostingRejection.ClosedPeriodViolation(
-                    closedThrough, effectiveDate));
-  }
-
-  private static Optional<BookkeepingPostingRejection> openingBalanceWindowRejection(
-      PostingRequestModel postingRequest, PostingValidationStore book) {
-    if (!postingRequest.postingKind().isOpeningBalance()) {
-      return Optional.empty();
-    }
-    return book.firstCommittedPosting()
-        .map(
-            firstBlockingPosting ->
-                new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
-                    firstBlockingPosting.postingKind(),
-                    firstBlockingPosting.journalEntry().effectiveDate()));
-  }
-
-  private static Optional<BookkeepingPostingRejection> accountRejection(
-      PostingRequestModel postingRequest, PostingValidationStore book) {
-    Set<AccountCode> requestedAccounts = new LinkedHashSet<>();
-    for (JournalLine line : postingRequest.journalEntry().lines()) {
-      requestedAccounts.add(line.accountCode());
-    }
-    Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
-    Set<BookkeepingPostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
-    for (AccountCode accountCode : requestedAccounts) {
-      RegisteredAccount account = declaredAccounts.get(accountCode);
-      if (account == null) {
-        violations.add(new BookkeepingPostingRejection.UnknownAccount(accountCode));
-        continue;
-      }
-      if (!account.active()) {
-        violations.add(new BookkeepingPostingRejection.InactiveAccount(accountCode));
-      }
-    }
-    if (!violations.isEmpty()) {
-      return Optional.of(
-          new BookkeepingPostingRejection.AccountStateViolations(List.copyOf(violations)));
-    }
-    Optional<BookkeepingPostingRejection> openingBalanceRejection =
-        openingBalanceNominalAccountRejection(postingRequest, requestedAccounts, declaredAccounts);
-    if (openingBalanceRejection.isPresent()) {
-      return openingBalanceRejection;
-    }
-    return closingEquityReservationRejection(
-        postingRequest, initializedBookIdentity(book), requestedAccounts, declaredAccounts);
-  }
-
-  private static Optional<BookkeepingPostingRejection> openingBalanceNominalAccountRejection(
-      PostingRequestModel postingRequest,
-      Set<AccountCode> requestedAccounts,
-      Map<AccountCode, RegisteredAccount> declaredAccounts) {
-    if (!postingRequest.postingKind().isOpeningBalance()) {
-      return Optional.empty();
-    }
-    AccountCode rejectedAccountCode = null;
-    AccountType rejectedAccountType = null;
-    for (AccountCode accountCode : requestedAccounts) {
-      RegisteredAccount account =
-          Objects.requireNonNull(declaredAccounts.get(accountCode), "account");
-      if (account.accountType() == AccountType.REVENUE
-          || account.accountType() == AccountType.EXPENSE) {
-        rejectedAccountCode = accountCode;
-        rejectedAccountType = account.accountType();
-        break;
-      }
-    }
-    return rejectedAccountCode == null
-        ? Optional.empty()
-        : Optional.of(
-            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
-                rejectedAccountCode,
-                Objects.requireNonNull(rejectedAccountType, "rejectedAccountType")));
-  }
-
-  private static Optional<BookkeepingPostingRejection> closingEquityReservationRejection(
-      PostingRequestModel postingRequest,
-      BookIdentity bookIdentity,
-      Set<AccountCode> requestedAccounts,
-      Map<AccountCode, RegisteredAccount> declaredAccounts) {
-    if (postingRequest.postingKind() != PostingKind.STANDARD) {
-      return Optional.empty();
-    }
-    var reservedClassification =
-        CoreBookkeepingPolicyPack.current()
-            .closePolicy()
-            .closingEquityLineClassification(bookIdentity);
-    AccountCode reservedAccountCode = null;
-    for (AccountCode accountCode : requestedAccounts) {
-      RegisteredAccount account =
-          Objects.requireNonNull(declaredAccounts.get(accountCode), "account");
-      if (account
-          .accountTaxonomy()
-          .financialPositionLineClassification()
-          .filter(classification -> classification == reservedClassification)
-          .isPresent()) {
-        reservedAccountCode = accountCode;
-        break;
-      }
-    }
-    return reservedAccountCode == null
-        ? Optional.empty()
-        : Optional.of(
-            new BookkeepingPostingRejection.ClosingEquityAccountReserved(reservedAccountCode));
   }
 }

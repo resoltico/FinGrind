@@ -245,6 +245,23 @@ class SqliteStoreMutationOperationsTest {
     }
   }
 
+  @Test
+  void mutationOperations_threeArgumentConstructor_usesTheCurrentKernelAcceptancePolicy() {
+    Path bookPath = tempDirectory.resolve("three-argument-mutation-operations.sqlite");
+    SqliteStoreContext context =
+        new SqliteStoreContext(
+            bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+    try (SqliteBookPassphrase bookPassphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "three-argument mutation operations", "book-key".toCharArray())) {
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, new SqliteSessionSecret(bookPassphrase));
+      assertDoesNotThrow(
+          () -> new SqliteStoreMutationOperations(context, lifecycle, SqliteCommitFaultHook.NONE));
+      assertDoesNotThrow(lifecycle::close);
+    }
+  }
+
   /** Test-only context seam that captures the reopened replacement handle before publication. */
   private static final class CapturingStoreContext extends SqliteStoreContext {
     private @Nullable SqliteNativeDatabase reopenedDatabase;

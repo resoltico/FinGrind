@@ -26,6 +26,8 @@ final class CliRejectionPayloadMapper {
       ProtocolCatalog.operationName(OperationId.LIST_POSTINGS);
   private static final String BACKUP_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.BACKUP_BOOK);
+  private static final String RESTORE_BOOK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.RESTORE_BOOK);
   private static final String CLOSE_PERIOD_OPERATION =
       ProtocolCatalog.operationName(OperationId.CLOSE_PERIOD);
   private static final String INSPECT_REKEY_ROLLBACK_OPERATION =
@@ -239,6 +241,10 @@ final class CliRejectionPayloadMapper {
           "Choose one encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
               + BACKUP_BOOK_OPERATION
               + ".";
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
+          "Choose one backup copy path that differs from the selected --book-file path, then rerun "
+              + RESTORE_BOOK_OPERATION
+              + ".";
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           "Close the process using the "
               + artifactBusy.artifactRole().wireValue()
@@ -420,6 +426,10 @@ final class CliRejectionPayloadMapper {
               blockingArtifacts.blockingArtifactPaths().stream()
                   .map(path -> path.value())
                   .toList());
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
+          new CliRejectionJsonModels.BookAndBackupFileDetails(
+              sourceMatchesLiveBook.bookFilePath().value(),
+              sourceMatchesLiveBook.backupFilePath().value());
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new CliRejectionJsonModels.ArtifactBusyDetails(
               artifactBusy.artifactRole().wireValue(), artifactBusy.artifactPath().value());

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
@@ -225,6 +226,68 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         selfLedgerHuman,
         periodSummaryHuman,
         periodSummaryCsv);
+  }
+
+  @Test
+  void renderHumanRowsAndEmptyLedgerSurfaces_coverCompactNoneBranches() {
+    PostingFact postingFact = reversalPostingFact();
+    DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
+    CurrencyBalance balance = eurDebitBalance();
+    AccountLedgerEntry ledgerEntry =
+        new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT);
+    PeriodAccountActivityRow activityRow = new PeriodAccountActivityRow(cashAccount, balance);
+
+    List<String> ledgerHumanRow =
+        CliQueryOutputFormatter.accountLedgerHumanRow(cashAccount, ledgerEntry);
+    assertEquals("2026-04-07", ledgerHumanRow.get(0));
+    assertEquals("posting-1", ledgerHumanRow.get(2));
+    assertEquals("Standard", ledgerHumanRow.get(3));
+    assertEquals("Reversal", ledgerHumanRow.get(4));
+    assertEquals("posting-0", ledgerHumanRow.get(5));
+    assertEquals("EUR", ledgerHumanRow.get(6));
+    assertEquals("10.00", ledgerHumanRow.get(7));
+    assertEquals("4.00", ledgerHumanRow.get(8));
+    assertEquals("6.00", ledgerHumanRow.get(9));
+    assertEquals("Debit", ledgerHumanRow.get(10));
+    assertEquals("2000", ledgerHumanRow.get(11));
+
+    List<String> periodActivityHumanRow =
+        CliQueryOutputFormatter.periodActivityHumanRow(activityRow);
+    assertEquals("1000", periodActivityHumanRow.get(0));
+    assertEquals("Cash, reserve", periodActivityHumanRow.get(1));
+    assertEquals("Asset", periodActivityHumanRow.get(2));
+    assertEquals("Ordinary", periodActivityHumanRow.get(3));
+    assertEquals("Debit", periodActivityHumanRow.get(4));
+    assertEquals("EUR", periodActivityHumanRow.get(5));
+    assertEquals("10.00", periodActivityHumanRow.get(6));
+    assertEquals("4.00", periodActivityHumanRow.get(7));
+    assertEquals("6.00", periodActivityHumanRow.get(8));
+    assertEquals("Debit", periodActivityHumanRow.get(9));
+
+    String emptyAccountsHuman =
+        CliAccountPageOutputRenderer.renderHuman(accountPage(List.of(), 50, Optional.empty()));
+    String emptyPostingsHuman =
+        CliPostingOutputRenderer.renderPostingRegisterHuman(
+            postingPage(List.of(), 10, Optional.empty()));
+    String emptyLedgerHuman =
+        CliReportOutputRenderer.renderAccountLedgerHuman(sampleAccountLedgerReport());
+    TrialBalanceReport comparativeWithoutReference =
+        new TrialBalanceReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(new TrialBalanceRow(cashAccount, balance)),
+            List.of(new TrialBalanceRow(cashAccount, balance)));
+    String comparativeTrialBalanceHuman =
+        CliReportOutputRenderer.renderTrialBalanceHuman(comparativeWithoutReference);
+
+    assertTrue(emptyAccountsHuman.contains("(none)"));
+    assertTrue(emptyPostingsHuman.contains("(none)"));
+    assertTrue(emptyLedgerHuman.contains("Entries"));
+    assertTrue(emptyLedgerHuman.contains("(none)"));
+    assertTrue(comparativeTrialBalanceHuman.contains("Comparative Trial Balance"));
+    assertTrue(comparativeTrialBalanceHuman.contains("(none)"));
   }
 
   @Test

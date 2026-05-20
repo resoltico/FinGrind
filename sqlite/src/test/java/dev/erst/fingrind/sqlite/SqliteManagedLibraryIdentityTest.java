@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,17 +43,21 @@ class SqliteManagedLibraryIdentityTest {
   }
 
   @Test
-  void requireVerified_acceptsMatchingEnvironmentConfiguredSiblingChecksum() throws Exception {
+  void requireVerified_rejectsManagedLibraryWithoutTrustedChecksum() throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
     writeSiblingChecksum(libraryPath);
 
-    assertDoesNotThrow(
-        () ->
-            SqliteManagedLibraryIdentity.requireVerified(
-                new SqliteLibraryTarget(
-                    "managed-only",
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-                    libraryPath.toString())));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteManagedLibraryIdentity.requireVerified(
+                    new SqliteLibraryTarget(
+                        "managed-only",
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        libraryPath.toString())));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage()).contains("trusted FinGrind digest file"));
   }
 
   @Test
@@ -131,7 +136,7 @@ class SqliteManagedLibraryIdentityTest {
                 SqliteManagedLibraryIdentity.verifiedSnapshot(
                     new SqliteLibraryTarget(
                         "managed-only",
-                        SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString())));
 
     assertTrue(
@@ -317,7 +322,7 @@ class SqliteManagedLibraryIdentityTest {
                   SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
                       new SqliteLibraryTarget(
                           "managed-only",
-                          SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                           libraryPath.toString()),
                       libraryPath,
                       SqliteManagedLibraryIdentity.checksumPath(libraryPath),
@@ -376,7 +381,7 @@ class SqliteManagedLibraryIdentityTest {
     SqliteLibraryTarget sourceTarget =
         new SqliteLibraryTarget(
             "managed-only",
-            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
             validLibraryPath.toString());
 
     IllegalArgumentException outsideLibrary =
@@ -423,7 +428,7 @@ class SqliteManagedLibraryIdentityTest {
                 SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
                     new SqliteLibraryTarget(
                         "managed-only",
-                        SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString()),
                     libraryPath,
                     missingChecksumPath,
@@ -432,6 +437,29 @@ class SqliteManagedLibraryIdentityTest {
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
             .contains("Failed to create the private managed SQLite verification snapshot"));
+  }
+
+  @Test
+  void verifiedSnapshot_copyOf_supportsSnapshotsWithoutTrustedChecksumSidecars() throws Exception {
+    Path libraryPath = writeLibrary("untrusted-snapshot.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+
+    SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot snapshot =
+        SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath),
+            null);
+
+    assertNull(snapshot.snapshotTrustedChecksumPath());
+    assertEquals(
+        snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
+    snapshot.deleteQuietly();
+    assertFalse(Files.exists(snapshot.snapshotLibraryPath()));
+    assertFalse(Files.exists(snapshot.snapshotChecksumPath()));
   }
 
   @Test
@@ -488,7 +516,7 @@ class SqliteManagedLibraryIdentityTest {
                   SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot.copyOf(
                       new SqliteLibraryTarget(
                           "managed-only",
-                          SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                           sourceLibraryPath.toString()),
                       sourceLibraryPath,
                       sourceChecksumPath,
@@ -700,7 +728,7 @@ class SqliteManagedLibraryIdentityTest {
         new SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot(
             new SqliteLibraryTarget(
                 "managed-only",
-                SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                 snapshotLibraryPath.toString()),
             snapshotDirectory,
             snapshotLibraryPath,

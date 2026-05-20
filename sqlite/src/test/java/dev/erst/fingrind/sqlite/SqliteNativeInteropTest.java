@@ -76,7 +76,9 @@ class SqliteNativeInteropTest {
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.step(
-                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
               SqliteNativeStatements.finalizeStatement(

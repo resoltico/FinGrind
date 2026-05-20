@@ -240,6 +240,25 @@ Account | Name    | Account type | Account role | Normal balance | Active | Curr
 TEXT
                 fi
                 ;;
+            test)
+                if [[ "${1:-}" != '-s' ]]; then
+                    printf 'unsupported docker test flag: %s\n' "${1:-}" >&2
+                    exit 1
+                fi
+                target_path="${2:-}"
+                [[ -n "${target_path}" ]] || exit 1
+                case "${target_path}" in
+                    /opt/fingrind/lib/native/toolchain-fingerprint.json|/opt/fingrind/lib/native/build-contract.json)
+                        if [[ "${mode}" == 'missing-provenance' ]]; then
+                            exit 1
+                        fi
+                        ;;
+                    *)
+                        printf 'unsupported docker test path: %s\n' "${target_path}" >&2
+                        exit 1
+                        ;;
+                esac
+                ;;
             *)
                 printf 'unsupported docker run subcommand: %s\n' "${subcommand}" >&2
                 exit 1
@@ -256,6 +275,23 @@ chmod +x "${fixture_root}/bin/docker"
 
 PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
     bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
+
+set +e
+provenance_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_MODE='missing-provenance' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+provenance_failure_exit=$?
+set -e
+
+if [[ ${provenance_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted a container without native provenance files"
+fi
+printf '%s\n' "${provenance_failure_output}" | grep -Fq \
+    'did not expose a non-empty native toolchain fingerprint' || die \
+    "public container surface verifier did not report the missing native provenance surface"
 
 set +e
 failure_output="$(

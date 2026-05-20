@@ -190,15 +190,16 @@ final class AclFixtureFileSystem extends FileSystem {
       testPath.exists = true;
       testPath.regularFile = true;
       testPath.posixPermissions = findPosixPermissions(attrs);
-      return new AclFixtureSeekableByteChannel();
+      return new AclFixtureSeekableByteChannel(testPath);
     }
 
     @Override
     public FileChannel newFileChannel(
         Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
         throws IOException {
-      SeekableByteChannel byteChannel = newByteChannel(path, options, attrs);
-      return new AclFixtureFileChannel((AclFixtureSeekableByteChannel) byteChannel);
+      AclFixturePath testPath = testPath(path);
+      SeekableByteChannel byteChannel = newByteChannel(testPath, options, attrs);
+      return new AclFixtureFileChannel(testPath, (AclFixtureSeekableByteChannel) byteChannel);
     }
 
     @Override

@@ -153,8 +153,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
-      deleteRekeyRollbackBookFilePaths.add(bookFilePath);
+        BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
+      deleteRekeyRollbackBookFilePaths.add(bookAccess.bookFilePath());
       deleteRekeyRollbackArtifactPaths.add(rollbackArtifactPath);
       return accepted(recoverRekeyResult);
     }
@@ -430,7 +430,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+        BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
       throw failure;
     }
 
@@ -570,7 +570,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-        Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+        BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -752,7 +752,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
       @Override
       public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-          Path bookFilePath, @Nullable Path rollbackArtifactPath) {
+          BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
         throw new AssertionError("deleteRekeyRollback should not be called in this test");
       }
 

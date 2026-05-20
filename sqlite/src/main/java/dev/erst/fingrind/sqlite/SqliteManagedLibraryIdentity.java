@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -82,23 +81,16 @@ final class SqliteManagedLibraryIdentity {
     if (!Files.isRegularFile(sourceChecksumPath)) {
       throw missingChecksumFile(sourceLibraryPath, sourceChecksumPath);
     }
-    @Nullable Path sourceTrustedChecksumPath = null;
-    if (libraryTarget.provenance() != SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED) {
-      sourceTrustedChecksumPath = trustedChecksumPath(sourceLibraryPath);
-      if (!Files.isRegularFile(sourceTrustedChecksumPath)) {
-        throw missingTrustedChecksumFile(sourceLibraryPath, sourceTrustedChecksumPath);
-      }
+    Path sourceTrustedChecksumPath = trustedChecksumPath(sourceLibraryPath);
+    if (!Files.isRegularFile(sourceTrustedChecksumPath)) {
+      throw missingTrustedChecksumFile(sourceLibraryPath, sourceTrustedChecksumPath);
     }
     VerifiedLibrarySnapshot verifiedLibrarySnapshot =
         VerifiedLibrarySnapshot.copyOf(
             libraryTarget, sourceLibraryPath, sourceChecksumPath, sourceTrustedChecksumPath);
     try {
-      if (libraryTarget.provenance() == SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED) {
-        requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
-      } else {
-        requireTrustedManagedLibrary(verifiedLibrarySnapshot.snapshotLibraryPath());
-        requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
-      }
+      requireTrustedManagedLibrary(verifiedLibrarySnapshot.snapshotLibraryPath());
+      requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
       return verifiedLibrarySnapshot;
     } catch (RuntimeException | Error exception) {
       verifiedLibrarySnapshot.deleteQuietly();

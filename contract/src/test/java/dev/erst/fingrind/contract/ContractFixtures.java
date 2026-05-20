@@ -241,8 +241,6 @@ final class ContractFixtures {
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),
@@ -259,6 +257,7 @@ final class ContractFixtures {
                 null,
                 null,
                 null,
-                "test fixture")));
+                "test fixture"),
+            null));
   }
 }

@@ -191,17 +191,19 @@ final class ProtocolAdministrationOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
+                ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Delete one selected stale sibling rekey rollback artifact.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite"
+                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite %s ./secrets/acme.book-key"
                         .formatted(
                             OperationId.DELETE_REKEY_ROLLBACK.wireName(),
                             ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.ROLLBACK_FILE)))),
+                            ProtocolOptions.ROLLBACK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE)))),
         ProtocolOperationDefinitions.operation(
             OperationId.RESTORE_REKEY_ROLLBACK,
             OperationCategory.ADMINISTRATION,

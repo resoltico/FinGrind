@@ -308,6 +308,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
   @Test
   void run_routesInspectAndDeleteRollbackCommandsThroughSelectedBookWorkflow() {
     Path bookFilePath = tempDirectory.resolve("books").resolve("rollback.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     Path rollbackArtifactPath =
         tempDirectory.resolve("books").resolve("rollback.rekey-rollback.sqlite");
     RecordingWorkflow workflow =
@@ -353,6 +354,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               "delete-rekey-rollback",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--rollback-file",
               rollbackArtifactPath.toString()
             }));

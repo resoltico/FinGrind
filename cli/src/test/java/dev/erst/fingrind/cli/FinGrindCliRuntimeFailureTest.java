@@ -148,7 +148,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
-                    "FINGRIND_SQLITE_LIBRARY is not configured.")));
+                    "FinGrind could not locate the managed SQLite runtime.")));
     int exitCode =
         cli.run(
             new String[] {

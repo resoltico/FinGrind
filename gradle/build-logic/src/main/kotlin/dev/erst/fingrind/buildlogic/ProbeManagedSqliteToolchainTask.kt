@@ -43,8 +43,8 @@ abstract class ProbeManagedSqliteToolchainTask
         val targetTriple =
             ManagedSqliteToolchainProbeSupport.targetTriple(
                 operatingSystemId.get(),
-                hostArchitecture.get(),
                 compilerExecutable,
+                ::runCommand,
             )
         val linkerVersion =
             ManagedSqliteToolchainProbeSupport.linkerVersion(
@@ -178,18 +178,61 @@ internal object ManagedSqliteToolchainProbeSupport {
 
     fun targetTriple(
         operatingSystemId: String,
-        hostArchitecture: String,
         compilerExecutable: String,
-    ): String =
-        when (operatingSystemId) {
-            "macos" -> darwinTargetTriple(hostArchitecture)
-            "linux" -> linuxTargetTriple(hostArchitecture)
-            "windows" -> windowsTargetTriple(hostArchitecture)
-            else ->
-                throw IllegalStateException(
-                    "Unsupported managed SQLite operating system id for target-triple derivation: $operatingSystemId.",
+        runCommand: (List<String>) -> CommandProbe,
+    ): String {
+        val rawProbeOutput =
+            if (operatingSystemId == "windows") {
+                requireProbeOutput(
+                    "compiler target triple",
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "-dumpmachine"))) },
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "-print-target-triple"))) },
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "--print-target-triple"))) },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable, "--version")),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable, "-v")),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf("cmd", "/c", "echo", "%VSCMD_ARG_TGT_ARCH%")),
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf("cmd", "/c", "echo", "%Platform%")),
+                        )
+                    },
                 )
-        }
+            } else {
+                requireProbeOutput(
+                    "compiler target triple",
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "-dumpmachine"))) },
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "-print-target-triple"))) },
+                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "--print-target-triple"))) },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable, "--version")),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                    {
+                        ProbeAttempt(
+                            runCommand(listOf(compilerExecutable, "-v")),
+                            acceptOutputOnFailure = true,
+                        )
+                    },
+                )
+            }
+        return normalizeTargetTriple(operatingSystemId, rawProbeOutput)
+    }
 
     fun linkerVersion(
         operatingSystemId: String,
@@ -256,40 +299,118 @@ internal object ManagedSqliteToolchainProbeSupport {
                     },
                 )
             else ->
-                bestEffortProbeOutput(
-                    { ProbeAttempt(runCommand(listOf(compilerExecutable, "--print-sysroot"))) },
-                    fallback = "system-default-sysroot",
+                normalizeSdkOrSysroot(
+                    requireProbeOutput(
+                        "sysroot or compiler search directories",
+                        { ProbeAttempt(runCommand(listOf(compilerExecutable, "--print-sysroot"))) },
+                        { ProbeAttempt(runCommand(listOf(compilerExecutable, "-print-sysroot"))) },
+                        { ProbeAttempt(runCommand(listOf(compilerExecutable, "-print-search-dirs"))) },
+                        {
+                            ProbeAttempt(
+                                runCommand(listOf(compilerExecutable, "-v")),
+                                acceptOutputOnFailure = true,
+                            )
+                        },
+                    ),
                 )
         }
 
-    private fun darwinTargetTriple(hostArchitecture: String): String =
-        when (hostArchitecture.lowercase()) {
-            "aarch64", "arm64" -> "aarch64-apple-darwin"
-            "x86_64", "amd64" -> "x86_64-apple-darwin"
-            else -> throw unsupportedHostArchitecture(hostArchitecture, "macos")
-        }
-
-    private fun linuxTargetTriple(hostArchitecture: String): String =
-        when (hostArchitecture.lowercase()) {
-            "aarch64", "arm64" -> "aarch64-unknown-linux-gnu"
-            "x86_64", "amd64" -> "x86_64-unknown-linux-gnu"
-            else -> throw unsupportedHostArchitecture(hostArchitecture, "linux")
-        }
-
-    private fun windowsTargetTriple(hostArchitecture: String): String =
-        when (hostArchitecture.lowercase()) {
-            "aarch64", "arm64" -> "aarch64-pc-windows-msvc"
-            "x86_64", "amd64" -> "x86_64-pc-windows-msvc"
-            else -> throw unsupportedHostArchitecture(hostArchitecture, "windows")
-        }
-
-    private fun unsupportedHostArchitecture(
-        hostArchitecture: String,
+    private fun normalizeTargetTriple(
         operatingSystemId: String,
-    ): IllegalStateException =
-        IllegalStateException(
-            "Unsupported managed SQLite host architecture $hostArchitecture for $operatingSystemId.",
+        rawProbeOutput: String,
+    ): String {
+        val normalizedLines =
+            rawProbeOutput
+                .lineSequence()
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .toList()
+        normalizedLines.firstOrNull { looksLikeTargetTriple(it, operatingSystemId) }?.let { return it }
+        val architectureToken =
+            normalizedLines
+                .asSequence()
+                .mapNotNull(::extractArchitectureToken)
+                .firstOrNull()
+                ?: throw IllegalStateException(
+                    "Failed to normalize the managed SQLite compiler target triple from probe output: $rawProbeOutput",
+                )
+        return when (operatingSystemId) {
+            "macos" ->
+                when (architectureToken) {
+                    "aarch64", "arm64" -> "aarch64-apple-darwin"
+                    "x86_64", "amd64" -> "x86_64-apple-darwin"
+                    else ->
+                        throw IllegalStateException(
+                            "Unsupported managed SQLite compiler architecture $architectureToken for macos.",
+                        )
+                }
+            "linux" ->
+                when (architectureToken) {
+                    "aarch64", "arm64" -> "aarch64-unknown-linux-gnu"
+                    "x86_64", "amd64" -> "x86_64-unknown-linux-gnu"
+                    else ->
+                        throw IllegalStateException(
+                            "Unsupported managed SQLite compiler architecture $architectureToken for linux.",
+                        )
+                }
+            "windows" ->
+                when (architectureToken) {
+                    "aarch64", "arm64" -> "aarch64-pc-windows-msvc"
+                    "x86_64", "amd64", "x64" -> "x86_64-pc-windows-msvc"
+                    else ->
+                        throw IllegalStateException(
+                            "Unsupported managed SQLite compiler architecture $architectureToken for windows.",
+                        )
+                }
+            else ->
+                throw IllegalStateException(
+                    "Unsupported managed SQLite operating system id for target-triple derivation: $operatingSystemId.",
+                )
+        }
+    }
+
+    private fun looksLikeTargetTriple(line: String, operatingSystemId: String): Boolean {
+        val normalized = line.trim().lowercase()
+        if (' ' in normalized) {
+            return false
+        }
+        if (!normalized.contains("-")) {
+            return false
+        }
+        return when (operatingSystemId) {
+            "macos" -> "darwin" in normalized
+            "linux" -> "linux" in normalized
+            "windows" -> "windows" in normalized || "mingw" in normalized || "msvc" in normalized
+            else -> false
+        }
+    }
+
+    private fun extractArchitectureToken(line: String): String? {
+        val normalized = line.trim().lowercase()
+        return when {
+            "aarch64" in normalized -> "aarch64"
+            "arm64" in normalized -> "arm64"
+            "x86_64" in normalized -> "x86_64"
+            Regex("""\bx64\b""").containsMatchIn(normalized) -> "x64"
+            "amd64" in normalized -> "amd64"
+            else -> null
+        }
+    }
+
+    private fun normalizeSdkOrSysroot(rawProbeOutput: String): String {
+        val normalizedLines =
+            rawProbeOutput
+                .lineSequence()
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .toList()
+        normalizedLines.firstOrNull { !it.startsWith("Configured with:") && !it.startsWith("Thread model:") }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { return it }
+        throw IllegalStateException(
+            "Failed to normalize the managed SQLite SDK/sysroot probe output: $rawProbeOutput",
         )
+    }
 
     private fun requireProbeOutput(label: String, vararg probes: () -> ProbeAttempt): String {
         val attempts = mutableListOf<ProbeAttempt>()
@@ -304,12 +425,6 @@ internal object ManagedSqliteToolchainProbeSupport {
         )
     }
 
-    private fun bestEffortProbeOutput(vararg probes: () -> ProbeAttempt, fallback: String): String {
-        probes.forEach { probeFactory ->
-            probeFactory().acceptedOutput()?.let { return it }
-        }
-        return fallback
-    }
 }
 
 internal data class ProbeAttempt(

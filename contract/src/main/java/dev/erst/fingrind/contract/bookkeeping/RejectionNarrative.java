@@ -106,6 +106,11 @@ public final class RejectionNarrative {
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
           "Backup source '%s' has blocking sibling artifacts and is not safe to restore from."
               .formatted(blockingArtifacts.backupFilePath().value());
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
+          "Backup source '%s' matches live book '%s'; FinGrind will not restore a book from itself."
+              .formatted(
+                  sourceMatchesLiveBook.backupFilePath().value(),
+                  sourceMatchesLiveBook.bookFilePath().value());
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           "Protected-book artifact '%s' with role '%s' is actively in use and cannot be maintained safely."
               .formatted(

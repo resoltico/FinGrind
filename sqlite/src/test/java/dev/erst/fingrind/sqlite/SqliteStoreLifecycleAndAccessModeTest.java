@@ -35,6 +35,8 @@ import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSupport {
+  private static final PostingAcceptancePolicy POSTING_ACCEPTANCE_POLICY =
+      PostingAcceptancePolicy.currentKernel();
   private static final Class<?> SESSION_STATE_CLASS = lifecycleNestedType("SessionState");
   private static final Class<?> IDLE_SESSION_CLASS = lifecycleNestedType("IdleSession");
   private static final Class<?> OPENED_SESSION_CLASS = lifecycleNestedType("OpenedSession");
@@ -465,7 +467,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
           Optional.of(
               new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                   .BookNotInitialized()),
-          PostingAcceptancePolicy.rejectionFor(
+          POSTING_ACCEPTANCE_POLICY.rejectionFor(
               postingDraft("posting-helper", "idem-helper", Optional.empty(), Optional.empty()),
               new SqliteTransactionValidationBook(
                   requireStoreDatabase(postingFactStore), postingFactStore.postingReader())));

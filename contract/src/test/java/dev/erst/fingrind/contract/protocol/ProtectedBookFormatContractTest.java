@@ -11,8 +11,11 @@ class ProtectedBookFormatContractTest {
   @Test
   void constructor_acceptsCanonicalValues() {
     ProtectedBookFormatContract contract =
-        new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 0);
+        new ProtectedBookFormatContract(
+            1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 0);
 
+    assertEquals(1_179_079_236, contract.applicationId());
+    assertEquals(11, contract.formatVersion());
     assertEquals(BookCipher.CHACHA20, contract.cipher());
     assertFalse(contract.legacyMode());
     assertEquals(4096, contract.pageSize());
@@ -26,16 +29,19 @@ class ProtectedBookFormatContractTest {
   void constructor_rejectsUnsupportedPageSizes() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 256, 32, 4096, 64007, 0));
+        () ->
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 256, 32, 4096, 64007, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ProtectedBookFormatContract(
-                BookCipher.CHACHA20, false, 4096, 32, 131072, 64007, 0));
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, 32, 131072, 64007, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 3000, 32, 4096, 64007, 0));
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 3000, 32, 4096, 64007, 0));
   }
 
   @Test
@@ -43,18 +49,32 @@ class ProtectedBookFormatContractTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 4096, -1, 4096, 64007, 0));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 4096, 32, 4096, 0, 0));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ProtectedBookFormatContract(BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, -1));
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, -1, 4096, 64007, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ProtectedBookFormatContract(
-                BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 101));
+                -1, 11, BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtectedBookFormatContract(
+                1_179_079_236, 0, BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, 32, 4096, 0, 0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, -1));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtectedBookFormatContract(
+                1_179_079_236, 11, BookCipher.CHACHA20, false, 4096, 32, 4096, 64007, 101));
   }
 }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: INDEX
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -251,6 +251,7 @@ route:
 | `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `BookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `BookFormatContract` |
 | `ProtectedBookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `ProtectedBookFormatContract` |
+| `SqliteRuntimeArtifactEvidence` | `DOC_02_ProtocolAndDiscovery.md` | `SqliteRuntimeArtifactEvidence` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookReadService` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
 | `DeclareAccountCommand` | `DOC_02_AdministrationAndReports.md` | `DeclareAccountCommand` |
@@ -323,9 +324,14 @@ route:
 | `ChangesInEquityCriteria` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
 | `ChangesInEquityRowView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
 | `ChangesInEquityView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
-| `PeriodCloseDraft` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
-| `PeriodCloseOutcome` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
-| `PeriodCloseService` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
+| `PeriodCloseDraft` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodCloseOutcome` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodClosePlanner.ClosingEquitySelection` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodClosePlanner.AcceptedClosingEquitySelection` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodClosePlanner.RejectedClosingEquitySelection` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodClosePlanner.PeriodClosePlan` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodClosePlanner` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
+| `PeriodCloseService` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService` |
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookQueryRejection` | `DOC_02_AdministrationAndReports.md` | `BookQueryRejection` |
 | `RejectionNarrative` | `DOC_02_AdministrationAndReports.md` | `RejectionNarrative` |
@@ -389,6 +395,17 @@ route:
 | `BookkeepingQueryRejection` | `DOC_03_BookSessionsAndAdapters.md` | `BookkeepingQueryRejection` |
 | `BookkeepingReadPublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `BookkeepingQueryRejection` |
 | `BookMaintenanceRejection` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceRejection` |
+| `ProtectedBookAccess` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` |
+| `MaintenanceDecision` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
+| `MaintenanceCompletion` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
+| `MaintenanceFailure` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
+| `ProtectedBookBackupOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
+| `ProtectedBookRestoreOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
+| `ProtectedBookRecoveryOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
+| `ProtectedBookMaintenanceArtifactRole` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenanceRejection` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookPassphraseSource` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` And `ProtectedBookPassphraseSource` |
+| `ProtectedBookMaintenanceWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
 | `AccountRegistryCursor` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `AccountRegistryQuery` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `AccountRegistryPage` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
@@ -436,11 +453,11 @@ route:
 | `SqlitePassphraseIntent` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqlitePassphraseResolver` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `ProtectedBookMaintenanceEvent` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceEvent` And `ProtectedBookMaintenanceEventKind` |
-| `ProtectedBookMaintenanceEventKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceEvent` And `ProtectedBookMaintenanceEventKind` |
+| `ProtectedBookMaintenanceAuditKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceAuditKind` |
+| `ProtectedBookMaintenanceAuditCompensationKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceAuditCompensationKind` |
 | `ProtectedBookMaintenanceService` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
-| `ProtectedBookMaintenancePublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookMaintenanceVerificationFailure` |
-| `ProtectedBookMaintenanceVerificationFailure` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookMaintenanceVerificationFailure` |
+| `ProtectedBookMaintenancePublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookVerificationFailure` |
+| `ProtectedBookVerificationFailure` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookVerificationFailure` |
 | `ProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
 | `SqliteProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore` |
 | `ChartOfAccounts` | `DOC_03_BookSessionsAndAdapters.md` | `ChartOfAccounts` |

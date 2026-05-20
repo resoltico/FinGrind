@@ -594,8 +594,6 @@ class MachineContractTest {
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),
@@ -612,6 +610,7 @@ class MachineContractTest {
                 ProtocolCatalog.requiredMinimumSqliteVersion(),
                 ProtocolCatalog.requiredSqlite3mcVersion(),
                 ProtocolCatalog.requiredSqliteSourceId(),
-                null)));
+                null),
+            null));
   }
 }

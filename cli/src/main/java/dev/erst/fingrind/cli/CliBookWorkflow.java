@@ -63,7 +63,7 @@ interface CliBookWorkflow {
 
   /** Deletes one selected sibling rekey rollback artifact. */
   ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      Path bookFilePath, @Nullable Path rollbackArtifactPath);
+      BookAccess bookAccess, @Nullable Path rollbackArtifactPath);
 
   /** Restores one selected sibling rekey rollback artifact onto the live book path. */
   ContractDecision<RekeyRollbackResult> restoreRekeyRollback(

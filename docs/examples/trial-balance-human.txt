@@ -1,13 +1,37 @@
 Trial Balance
 =============
 
-Entity            : Acme Studio
-Profile           : Company | Multi Owner | Internal Management Only
-Accounting        : EUR | FY start 01-01 | Accrual
-Posting coverage  : All posting kinds
-Effective date to : 2026-04-08
+Entity               : Acme Studio
+Entity form          : Company
+Owner model          : Multi Owner
+Reporting obligation : Internal Management Only
+Business activity    : (none)
+Functional currency  : EUR
+Fiscal year start    : 01-01
+Accounting basis     : Accrual
+Posting coverage     : All posting kinds
+Effective date to    : 2026-04-08
 
-Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | Asset        | Ordinary     | Debit          | Yes    |      EUR |       10.00 |         0.00 | 10.00      | Debit
-2000    | Revenue | Revenue      | Ordinary     | Credit         | Yes    |      EUR |        0.00 |        10.00 | 10.00      | Credit
+1000 | Cash
+-----------
+Account type   : Asset
+Account role   : Ordinary
+Normal balance : Debit
+Active         : Yes
+Currency       : EUR
+Debit total    : 10.00
+Credit total   : 0.00
+Net amount     : 10.00
+Balance side   : Debit
+
+2000 | Revenue
+--------------
+Account type   : Revenue
+Account role   : Ordinary
+Normal balance : Credit
+Active         : Yes
+Currency       : EUR
+Debit total    : 0.00
+Credit total   : 10.00
+Net amount     : 10.00
+Balance side   : Credit

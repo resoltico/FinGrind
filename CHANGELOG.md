@@ -5,6 +5,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-05-20
+
+### Changed
+
+- Protected-book maintenance now records successful backup, restore, and rollback recovery facts
+  inside the encrypted `audit_event` stream instead of through an adjacent plaintext maintenance
+  journal, `delete-rekey-rollback` now requires one explicit live-book passphrase source, and the
+  maintenance workflow compensates those in-book audit facts when backup publication or rollback
+  deletion fails before the external filesystem mutation completes.
+- The public CLI example corpus is now replayed from live commands through one deterministic
+  fixture harness, and the checked-in examples were refreshed to the normalized book-format-11,
+  exit-taxonomy, and report/discovery contracts the shipped binary actually emits.
+- Posting admission and period close are now carried by smaller local bookkeeping owners: posting
+  acceptance composes focused validation policies behind one explicit policy-pack seam, and period
+  close planning now lives in `PeriodClosePlanner` while `PeriodCloseService` coordinates
+  lifecycle/store access and durable close persistence.
+- Statement reporting is now split across dedicated financial-position, income-statement, and
+  changes-in-equity calculators, with `BookkeepingStatementService` reduced to a coordinator over
+  the local read/report slice instead of one multi-statement doctrine sink.
+- Human discovery, inspection, and report output now follow one wrapped front-door contract across
+  packaged, source-checkout, developer direct-Java, and raw modular launchers: grouped command
+  catalogs, stable section headings, trimmed whitespace, and narrower line widths are now the
+  published human-output baseline.
+- Read-only SQLite native opens now keep in-process active-connection accounting without
+  publishing sibling activity markers, so diagnostic and query paths no longer create marker
+  artifacts merely to inspect one protected book.
+- Upgraded the shared JUnit BOM to `6.1.0` and moved the Java-26-ready JaCoCo pin forward to the
+  exact 2026-05-19 snapshot artifact `0.8.15-20260519.201139-107`, with the developer docs kept on
+  the same published coordinates.
+
+### Fixed
+
+- Release-verifier headroom now matches the live CI fan-out observed during the `0.41.0` release:
+  the PR Gate and merge-handoff verifiers now wait longer by default before declaring timeout, and
+  the release protocol documents the same explicit timeout override path for both pre-merge and
+  post-merge verification.
+- Fixed release-surface and source-checkout launcher regressions that were asserting retired help
+  headings or one exact unwrapped launcher line; verification now proves the live grouped-help
+  contract the launchers actually publish.
+- Fixed bundle and release-smoke verification drift around human posting registers so acceptance
+  checks and checked-in workflow fixtures now follow the current card-style posting surface the
+  shipped binary emits.
+- The release protocol now states explicitly that the Step 1 baseline gate runs before the version
+  sweep, so any bundle and Docker artifact names emitted there reflect the pre-sweep checkout
+  version; the Step 2 post-sweep rerun remains the authoritative release-version proof.
+- The release protocol now treats any Step 2 staged-diff blob or tree read failure as a checkout
+  object-store defect that requires the release to move into a clean clone before publication can
+  continue.
+
 ## [0.41.0] - 2026-05-19
 
 ### Changed
@@ -12,8 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Protected-book maintenance now runs through an explicit executor-owned maintenance model instead
   of SQLite-owned workflow glue: `backup-book`, `restore-book`, and the public rekey-rollback
   inspection, restore, and deletion workflows now verify initialized sources, rollback artifacts,
-  and restored targets through one typed verification surface, emit durable maintenance journal
-  facts, and keep operator-selected artifact outputs distinct from redacted maintenance
+  and restored targets through one typed verification surface, emit durable encrypted maintenance
+  audit facts, and keep operator-selected artifact outputs distinct from redacted maintenance
   diagnostics.
 - CLI help, machine discovery, and canonical examples now describe the same command grammar more
   precisely: action-specific maintenance requirements are surfaced explicitly, operator guidance is
@@ -26,9 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assertions now preserve structured effective-date ranges instead of degrading them to nullable
   bounds.
 - Managed-SQLite runtime and release provenance contracts are tighter: discovery now distinguishes
-  source-checkout-managed and environment-configured trust more clearly, managed-toolchain probing
-  and compiler-flag rendering verify the release contract more aggressively, and the public
-  developer/runtime references align with that stronger trust vocabulary.
+  publisher-authenticated bundle runtimes from source-checkout-managed local-build runtimes more
+  clearly, managed-toolchain probing and compiler-flag rendering verify the release contract more
+  aggressively, and the public developer/runtime references align with that stronger trust
+  vocabulary.
 - Root Python helper-tool verification now runs through a pinned repo-owned `uv` launcher instead
   of direct ambient-package imports: `fingrindUvVersion` now pins the launcher bootstrap, Ruff is
   pinned at `0.15.13`, SQLFluff `4.2.1` now lints the canonical SQLite schema through the
@@ -123,14 +173,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exports no longer emit a harmless direct-buffer warning, single-record human views keep exact
   durable identifiers, and the checked-in examples and rendered human fixtures now match the live
   request and output contracts.
-- Tightened release-surface verification again so the environment-configured SQLite runtime
-  verifier exercises the operator-managed direct-Java path it claims to prove, and the contract
-  schema-key floor now includes the maintenance-operation payload keys introduced by the new
-  lifecycle commands.
+- Tightened release-surface verification again so the direct-Java SQLite runtime verifier exercises
+  the prepared-checkout runtime path it claims to prove, and the contract schema-key floor now
+  includes the maintenance-operation payload keys introduced by the new lifecycle commands.
 - Windows CI runtime verification no longer carries ad hoc inline PowerShell probes: the
-  environment-configured and source-checkout SQLite runtime checks now delegate to canonical
-  PowerShell verifier scripts that mirror the release-surface shell owners and their direct-Java
-  versus source-checkout launcher contracts.
+  direct-Java and source-checkout SQLite runtime checks now delegate to canonical PowerShell
+  verifier scripts that mirror the release-surface shell owners and their wrapper contracts.
 
 ## [0.39.0] - 2026-05-17
 
@@ -675,7 +723,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Hardened protected-book verification so the public `protected-book-verification-failed` contract now covers the SQLite verification families surfaced as `SQLITE_NOTADB`, `SQLITE_IOERR_BADKEY`, and `SQLITE_IOERR_CODEC` instead of letting some wrong-key or damaged-book cases escape as generic runtime crashes.
-- Enforced `memory_security=fill` on every opened SQLite handle, enabled secure SQLite3MC memory support in the managed native build and Docker compiler-flag renderer, and tightened the managed-runtime identity contract so publisher-owned bundle and source-checkout runtimes are authenticated against both an embedded trusted digest and the extracted sibling `.sha256` sidecar before native symbol lookup while custom `environment-configured` direct-Java paths remain explicitly operator-managed.
+- Enforced `memory_security=fill` on every opened SQLite handle, enabled secure SQLite3MC memory support in the managed native build and Docker compiler-flag renderer, and tightened the managed-runtime identity contract so publisher-owned bundle and source-checkout runtimes are authenticated against both an embedded trusted digest and the extracted sibling `.sha256` sidecar before native symbol lookup while custom environment-configured direct-Java paths remain explicitly operator-managed.
 - Fixed source-checkout managed-runtime discovery for relocated Gradle build roots by carrying the active root-project build directory through the generated launcher, developer raw-JAR wrapper, and JAR manifest instead of guessing at `repo/build/managed-sqlite`.
 - Rejected missing key-file paths in the key-file security seam, capped both key-file and `--book-passphrase-stdin` passphrase payloads at 4096 bytes, hardened Windows key-file parent directories to owner-only ACLs, converted unreadable stdin failures into deterministic `invalid-book-passphrase-source` errors, and rewrote the public quick-start/help/examples to keep encrypted books under `./books/` and secrets under `./secrets/`.
 - Added a public `SECURITY.md`, enabled GitHub private vulnerability reporting for the repository, and updated the security-model reference to describe the real session-scoped passphrase lifetime, checksum-backed runtime identity, attested release assets, and coordinated disclosure path.
@@ -2043,7 +2091,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.41.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.42.0...HEAD
+[0.42.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.42.0
 [0.41.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.41.0
 [0.40.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.40.0
 [0.39.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.39.0

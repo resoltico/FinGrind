@@ -65,7 +65,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-repo-hygiene.sh
     scripts/validate-devcontainer.sh
     scripts/verify-source-checkout-sqlite-runtime.sh
-    scripts/verify-environment-configured-sqlite-runtime.sh
+    scripts/verify-direct-java-sqlite-runtime.sh
 )
 
 readonly check_stage5_shell_only_script_paths=(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -116,12 +116,10 @@ profile as the only supported protected-book format.
 ## Runtime Identity And Provenance
 
 The runtime contract has to hold at compile time and at live runtime. FinGrind currently publishes
-three runtime-provenance values:
+two runtime-provenance values:
 - `bundle-managed`: the self-contained public bundle loaded its own packaged SQLite library
 - `source-checkout-managed`: a prepared source checkout resolved the managed library from the
   generated checkout layout
-- `environment-configured`: the current process received the managed library path through the
-  canonical environment-variable route
 
 Runtime identity rules:
 - `bundle-managed` is publisher-authenticated: the public bundle ships one publisher-owned trusted
@@ -131,16 +129,11 @@ Runtime identity rules:
 - `source-checkout-managed` is source-verified-local-build: FinGrind verifies the locally prepared
   library against the checkout-local `.trusted.sha256` and `.sha256` sidecars, but that proof is
   one source-checkout build identity check rather than one public-release publisher attestation
-- `environment-configured` is an unsafe-local-override escape hatch: FinGrind requires the
-  selected library to match its sibling `.sha256` file for local consistency, copies that pair
-  into one private verification snapshot before load, but does not claim publisher-authenticated
-  or source-checkout-managed identity for the operator-supplied binary
 - machine consumers read `environment.sqlite.runtime.runtimeProvenance` together with
   `environment.sqlite.runtime.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field
   reports `publisher-authenticated` for `bundle-managed`,
-  `source-verified-local-build` for `source-checkout-managed`, and
-  `unsafe-local-override` for `environment-configured`
-- environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes, source-verified local-build runtimes, and unsafe local overrides without requiring agents to infer that downgrade from prose alone
+  `source-verified-local-build` for `source-checkout-managed`
+- environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes from source-verified local-build runtimes without requiring agents to infer that distinction from prose alone
 - the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
   and the active root-project build directory, so relocated Gradle build roots resolve the same
   managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
@@ -150,10 +143,10 @@ Current verification paths:
   reports the canonical source-checkout runtime distribution with `source-checkout-managed`
   provenance; `scripts/verify-source-checkout-sqlite-runtime.ps1` proves that same contract on
   the Windows PowerShell release surface
-- `scripts/verify-environment-configured-sqlite-runtime.sh` proves the developer direct-Java
-  wrapper reports the canonical direct-Java runtime distribution with
-  `environment-configured` provenance; `scripts/verify-environment-configured-sqlite-runtime.ps1`
-  proves that same contract on the Windows PowerShell release surface
+- `scripts/verify-direct-java-sqlite-runtime.sh` proves the developer direct-Java wrapper reports
+  the canonical direct-Java runtime distribution with `source-checkout-managed` provenance;
+  `scripts/verify-direct-java-sqlite-runtime.ps1` proves that same contract on the Windows
+  PowerShell release surface
 - `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
   developer direct-Java wrapper both resolve the managed runtime without leaking native-access
   warnings
@@ -216,9 +209,7 @@ Current evidence that this model is implemented:
   as the protected facts they describe and are rejected for in-place update/delete mutation
 - `SqliteManagedLibraryIdentityTest` proves bundle-managed runtimes require the trusted
   `.trusted.sha256` sidecar plus the sibling `.sha256` sidecar, source-checkout-managed runtimes
-  verify one checkout-local build identity through those same sidecars, and
-  `environment-configured` runtimes require only the sibling `.sha256` sidecar for local
-  consistency
+  verify one checkout-local build identity through those same sidecars
 - `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the
   same-book rollback naming contract before one warning is reported
 - `scripts/test-verify-github-release.sh` proves release verification now requires attested

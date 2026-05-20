@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Shared runtime lookup and compatibility validation support for the SQLite native bridge. */
 final class SqliteNativeRuntimePolicy {
+  private static final String RETIRED_LIBRARY_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
   private static final String SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY =
       "fingrind.source-checkout.root";
   private static final String SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY =
@@ -184,10 +185,11 @@ final class SqliteNativeRuntimePolicy {
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(@Nullable String configuredLibraryPath) {
-    return new SqliteLibraryTarget(
-        SqliteRuntime.LIBRARY_MODE,
-        SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-        normalizeConfiguredLibraryPath(configuredLibraryPath));
+    return configuredLibraryTarget(
+        configuredLibraryPath,
+        null,
+        SqliteNativeRuntimePolicy::sourceCheckoutRoots,
+        SqliteNativeRuntimePolicy::sourceCheckoutBuildRoot);
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(
@@ -206,11 +208,7 @@ final class SqliteNativeRuntimePolicy {
       Supplier<@Nullable Path> sourceCheckoutBuildRootSupplier) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
-      requireOperatorTrustedEnvironmentApproval();
-      return new SqliteLibraryTarget(
-          SqliteRuntime.LIBRARY_MODE,
-          SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-          normalizedConfiguredPath);
+      throw retiredConfiguredRuntimeFailure(normalizedConfiguredPath);
     }
     String normalizedBundleHomePath = normalizeNullablePath(bundleHomePath);
     if (normalizedBundleHomePath != null) {
@@ -222,18 +220,6 @@ final class SqliteNativeRuntimePolicy {
       return sourceCheckoutLibraryTarget;
     }
     throw missingLibraryTargetFailure();
-  }
-
-  private static String normalizeConfiguredLibraryPath(@Nullable String configuredLibraryPath) {
-    if (configuredLibraryPath == null) {
-      throw missingLibraryTargetFailure();
-    }
-    String normalizedPath = configuredLibraryPath.strip();
-    if (normalizedPath.isEmpty()) {
-      throw new ManagedSqliteRuntimeUnavailableException(
-          SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " must not be blank.");
-    }
-    return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
   }
 
   private static @Nullable String normalizeNullableConfiguredLibraryPath(
@@ -259,19 +245,6 @@ final class SqliteNativeRuntimePolicy {
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
   }
 
-  private static void requireOperatorTrustedEnvironmentApproval() {
-    String configuredValue = System.getProperty(SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY, "");
-    if ("true".equalsIgnoreCase(configuredValue.strip())) {
-      return;
-    }
-    throw new ManagedSqliteRuntimeUnavailableException(
-        "Operator-configured SQLite runtime selection requires explicit trust approval. Set "
-            + SqliteRuntime.OPERATOR_TRUST_SYSTEM_PROPERTY
-            + "=true together with "
-            + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
-            + " when intentionally loading an operator-managed library outside the publisher-authenticated bundle or source-verified local-build runtime.");
-  }
-
   private static SqliteLibraryTarget bundledLibraryTarget(String normalizedBundleHomePath) {
     Path bundleLibraryPath =
         Path.of(normalizedBundleHomePath)
@@ -284,11 +257,7 @@ final class SqliteNativeRuntimePolicy {
               + normalizedBundleHomePath
               + " does not contain the managed SQLite library at "
               + bundleLibraryPath
-              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout. For custom direct-Java launches outside the checkout, set "
-              + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
-              + " to the managed "
-              + managedSqliteVersionLabel()
-              + " shared library produced by ./gradlew prepareManagedSqlite.");
+              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
     }
     return new SqliteLibraryTarget(
         SqliteRuntime.LIBRARY_MODE,
@@ -298,11 +267,19 @@ final class SqliteNativeRuntimePolicy {
 
   private static ManagedSqliteRuntimeUnavailableException missingLibraryTargetFailure() {
     return new ManagedSqliteRuntimeUnavailableException(
-        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout. For custom direct-Java launches outside the checkout, set "
-            + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
-            + " to the managed "
-            + managedSqliteVersionLabel()
-            + " shared library produced by ./gradlew prepareManagedSqlite.");
+        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
+  }
+
+  private static ManagedSqliteRuntimeUnavailableException retiredConfiguredRuntimeFailure(
+      String normalizedConfiguredPath) {
+    return new ManagedSqliteRuntimeUnavailableException(
+        "The operator-configured SQLite runtime override via "
+            + RETIRED_LIBRARY_ENVIRONMENT_VARIABLE
+            + " has been removed. FinGrind now loads only publisher-authenticated bundle runtimes or source-checkout-managed runtimes from a prepared checkout. Remove "
+            + RETIRED_LIBRARY_ENVIRONMENT_VARIABLE
+            + "="
+            + normalizedConfiguredPath
+            + " from the current environment and rerun from a supported launcher.");
   }
 
   private static @Nullable SqliteLibraryTarget sourceCheckoutLibraryTarget(
@@ -508,13 +485,6 @@ final class SqliteNativeRuntimePolicy {
       return null;
     }
     return Path.of(normalizedBuildRootPath).toAbsolutePath().normalize();
-  }
-
-  private static String managedSqliteVersionLabel() {
-    return "SQLite "
-        + SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION
-        + " / SQLite3 Multiple Ciphers "
-        + SqliteRuntime.REQUIRED_SQLITE3MC_VERSION;
   }
 
   static String supportedNativeLibraryFileName() {

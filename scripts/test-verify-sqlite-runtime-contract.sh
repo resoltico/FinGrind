@@ -83,7 +83,7 @@ PY
 }
 
 verify_payload sourceCheckoutRuntimeDistribution source-checkout-managed source-checkout-managed-runtime
-verify_payload directJavaRuntimeDistribution environment-configured environment-configured-runtime
+verify_payload directJavaRuntimeDistribution source-checkout-managed direct-java-runtime
 
 set +e
 failure_output="$(
@@ -110,7 +110,7 @@ document = {
             "runtime": {
                 "compileOptionsVerification": "not-verified",
                 "status": "missing",
-                "runtimeProvenance": "environment-configured",
+                "runtimeProvenance": "bundle-managed",
                 "loadedLibraryPath": "/tmp/libsqlite3.so.0",
                 "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
                 "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],

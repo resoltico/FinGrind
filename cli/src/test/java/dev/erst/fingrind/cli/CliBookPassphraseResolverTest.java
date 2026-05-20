@@ -13,11 +13,11 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.SqliteBookPassphraseTestSupport;
 import java.io.ByteArrayInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,21 +46,13 @@ class CliBookPassphraseResolverTest {
             new ByteArrayInputStream(new byte[0]), prompt -> failPrompt(prompt));
 
     try (SqliteBookPassphrase passphrase =
-            resolver
-                .resolve(
-                    new BookAccess(
-                        Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
-                .requireAccepted();
-        Arena arena = Arena.ofConfined()) {
+        resolver
+            .resolve(
+                new BookAccess(
+                    Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
+            .requireAccepted()) {
       assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
-      assertEquals(
-          "swordfish",
-          new String(
-              passphrase
-                  .copyToCString(arena)
-                  .asSlice(0, passphrase.byteLength())
-                  .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
-              StandardCharsets.UTF_8));
+      assertEquals("swordfish", SqliteBookPassphraseTestSupport.utf8String(passphrase));
     }
   }
 
@@ -72,21 +64,13 @@ class CliBookPassphraseResolverTest {
             prompt -> failPrompt(prompt));
 
     try (SqliteBookPassphrase passphrase =
-            resolver
-                .resolve(
-                    new BookAccess(
-                        Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
-                .requireAccepted();
-        Arena arena = Arena.ofConfined()) {
+        resolver
+            .resolve(
+                new BookAccess(
+                    Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
+            .requireAccepted()) {
       assertEquals("standard input", passphrase.sourceDescription());
-      assertEquals(
-          "stdin-passphrase",
-          new String(
-              passphrase
-                  .copyToCString(arena)
-                  .asSlice(0, passphrase.byteLength())
-                  .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
-              StandardCharsets.UTF_8));
+      assertEquals("stdin-passphrase", SqliteBookPassphraseTestSupport.utf8String(passphrase));
     }
   }
 
@@ -123,24 +107,15 @@ class CliBookPassphraseResolverTest {
     Path bookPath = tempDirectory.resolve("books").resolve("acme.sqlite");
 
     try (SqliteBookPassphrase passphrase =
-            resolver
-                .resolve(
-                    new BookAccess(
-                        bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
-                .requireAccepted();
-        Arena arena = Arena.ofConfined()) {
+        resolver
+            .resolve(
+                new BookAccess(bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+            .requireAccepted()) {
       assertTrue(
           passphrase
               .sourceDescription()
               .contains(bookPath.toAbsolutePath().normalize().toString()));
-      assertEquals(
-          "prompt-passphrase",
-          new String(
-              passphrase
-                  .copyToCString(arena)
-                  .asSlice(0, passphrase.byteLength())
-                  .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
-              StandardCharsets.UTF_8));
+      assertEquals("prompt-passphrase", SqliteBookPassphraseTestSupport.utf8String(passphrase));
     }
   }
 
@@ -241,25 +216,17 @@ class CliBookPassphraseResolverTest {
             });
 
     try (SqliteBookPassphrase passphrase =
-            resolver
-                .resolve(
-                    bookPath,
-                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
-                .requireAccepted();
-        Arena arena = Arena.ofConfined()) {
+        resolver
+            .resolve(
+                bookPath,
+                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
+            .requireAccepted()) {
       assertTrue(
           passphrase
               .sourceDescription()
               .contains(bookPath.toAbsolutePath().normalize().toString()));
-      assertEquals(
-          "confirmed-secret",
-          new String(
-              passphrase
-                  .copyToCString(arena)
-                  .asSlice(0, passphrase.byteLength())
-                  .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
-              StandardCharsets.UTF_8));
+      assertEquals("confirmed-secret", SqliteBookPassphraseTestSupport.utf8String(passphrase));
     }
   }
 

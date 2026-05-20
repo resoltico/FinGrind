@@ -6,12 +6,14 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.WireValue;
@@ -21,6 +23,8 @@ import java.util.Objects;
 
 /** Renders discovery descriptors in human-readable CLI text. */
 final class CliDiscoveryOutputRenderer {
+  private static final int HUMAN_WRAP_WIDTH = 96;
+
   private CliDiscoveryOutputRenderer() {}
 
   static String renderHelpHuman(HelpDescriptor helpDescriptor) {
@@ -28,105 +32,84 @@ final class CliDiscoveryOutputRenderer {
     if (isCommandScoped(helpDescriptor)) {
       return renderCommandHelpHuman(helpDescriptor);
     }
+    CommandCatalogDescriptor commandCatalog = groupedCommands(helpDescriptor.commands());
     String header =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Application", helpDescriptor.application()),
                 List.of("Version", helpDescriptor.version()),
-                List.of("Description", helpDescriptor.description())));
-    String commands =
-        CliTextFormat.renderTable(
-            List.of("Command", "Output", "Summary"),
-            helpDescriptor.commands().stream()
-                .map(
-                    command ->
-                        List.of(
-                            command.name().wireName(),
-                            command.outputModeSummary(),
-                            command.summary()))
-                .toList());
-    String gettingStarted =
-        String.join(
-            System.lineSeparator(),
+                List.of("Description", helpDescriptor.description())),
+            HUMAN_WRAP_WIDTH);
+    String startHere =
+        CliTextFormat.renderKeyValueBlock(
             List.of(
-                "Run '"
-                    + CliInvocationText.commandExample(OperationId.HELP)
-                    + " <command>' for command-specific usage, request-file guidance, and examples.",
-                "Run '"
-                    + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                    + " --output json' for the stable machine-readable command contract.",
-                "Run '"
-                    + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
-                    + " --output json' for live runtime, distribution, and SQLite provenance facts."));
-    String stdoutDefaults =
-        "Selectable commands default to human on one interactive terminal and json on redirected stdout. Override with --output when one command advertises selectable output modes.";
+                List.of(
+                    "Task guide",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.HELP)
+                        + " <command>' for syntax, request guidance, and runnable examples."),
+                List.of(
+                    "Machine contract",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json' for the canonical machine-readable command inventory."),
+                List.of(
+                    "Runtime evidence",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                        + " --output json' for live runtime, distribution, and SQLite provenance facts."),
+                List.of(
+                    "Output defaults",
+                    "Selectable commands use human on interactive terminals and json on redirected stdout. Use --output when a command advertises selectable formats.")),
+            HUMAN_WRAP_WIDTH);
+    String commandGroups =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Discovery", joinCommandNames(commandCatalog.discovery())),
+                List.of("Administration", joinCommandNames(commandCatalog.administration())),
+                List.of("Query and reports", joinCommandNames(commandCatalog.query())),
+                List.of("Write", joinCommandNames(commandCatalog.write()))),
+            HUMAN_WRAP_WIDTH);
     String exitCodes =
-        CliTextFormat.renderTable(
-            List.of("Code", "Meaning"),
+        CliTextFormat.renderKeyValueBlock(
             helpDescriptor.exitCodes().stream()
                 .map(exitCode -> List.of(Integer.toString(exitCode.code()), exitCode.meaning()))
                 .toList(),
-            0);
+            HUMAN_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Help",
         joinSections(
             header,
-            section("Commands", commands),
-            section("Stdout Defaults", stdoutDefaults),
-            section("Getting Started", gettingStarted),
+            section("Start Here", startHere),
+            section("Command Groups", commandGroups),
             section("Exit Codes", exitCodes)));
   }
 
   private static String renderCommandHelpHuman(HelpDescriptor helpDescriptor) {
     CommandDescriptor command = helpDescriptor.commands().getFirst();
     ProtocolOperation operation = ProtocolCatalog.operation(command.name());
-    String header =
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Application", helpDescriptor.application()),
-                List.of("Version", helpDescriptor.version()),
-                List.of("Description", helpDescriptor.description())));
-    String commandDetails =
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Command", command.name().wireName()),
-                List.of("Summary", command.summary()),
-                List.of("Stdout", command.stdoutContractSummary()),
-                List.of("Artifacts", artifactSummary(command)),
-                List.of(
-                    "Aliases",
-                    command.aliases().isEmpty()
-                        ? "(none)"
-                        : String.join(", ", command.aliases()))));
+    String summary = CliTextFormat.wrap(command.summary(), HUMAN_WRAP_WIDTH);
+    String behavior = CliTextFormat.renderKeyValueBlock(behaviorRows(command), HUMAN_WRAP_WIDTH);
     String usage =
         helpDescriptor.usage().isEmpty()
             ? "(none)"
-            : String.join(System.lineSeparator(), helpDescriptor.usage());
+            : CliTextFormat.wrapLineBlock(helpDescriptor.usage(), HUMAN_WRAP_WIDTH);
     String options =
         command.options().isEmpty()
             ? "(none)"
-            : String.join(System.lineSeparator(), command.options());
+            : CliTextFormat.wrapLineBlock(command.options(), HUMAN_WRAP_WIDTH);
     String requestGuidance = renderRequestGuidance(helpDescriptor, command.name());
     String examples = renderCommandExamples(operation);
-    String operatorNotes = renderOperatorNotes(operation);
-    String exitCodes =
-        CliTextFormat.renderTable(
-            List.of("Code", "Meaning"),
-            helpDescriptor.exitCodes().stream()
-                .map(exitCode -> List.of(Integer.toString(exitCode.code()), exitCode.meaning()))
-                .toList(),
-            0);
+    String requirements = renderWorkflowRequirements(operation);
     return CliTextFormat.renderTitledBlock(
-        "FinGrind Help",
+        command.name().wireName(),
         joinSections(
-            header,
-            section("Command", commandDetails),
-            section("Usage", usage),
+            summary,
+            section("Syntax", usage),
             section("Options", options),
+            section("Behavior", behavior),
             requestGuidance,
-            section("Examples", examples),
-            operatorNotes,
-            section("Exit Codes", exitCodes)));
+            requirements,
+            section("Examples", examples)));
   }
 
   static String renderCapabilitiesHuman(CapabilitiesDescriptor capabilitiesDescriptor) {
@@ -141,28 +124,39 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Book boundary", storageDescriptor.bookBoundary()),
                 List.of(
                     "Storage",
-                    String.join(
-                        ", ",
-                        storageDescriptor.engines().stream().map(Object::toString).toList()))));
+                    CliTextFormat.joined(
+                        storageDescriptor.engines().stream().map(Object::toString).toList()))),
+            HUMAN_WRAP_WIDTH);
+    String useThisFor =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Human guide",
+                    "Use this page for one compact overview of command families, request input rules, and machine-surface entry points."),
+                List.of(
+                    "One command contract",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.HELP)
+                        + " <command> --output json' when you only need one command descriptor."),
+                List.of(
+                    "Full machine contract",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json' for the canonical machine-readable inventory."),
+                List.of(
+                    "Runtime evidence",
+                    "Run '"
+                        + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                        + " --output json' for live runtime and SQLite provenance facts.")),
+            HUMAN_WRAP_WIDTH);
     String commands =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Discovery", joinCommandNames(commandCatalog.discovery())),
                 List.of("Administration", joinCommandNames(commandCatalog.administration())),
-                List.of("Query", joinCommandNames(commandCatalog.query())),
-                List.of("Write", joinCommandNames(commandCatalog.write()))));
-    String commandContracts =
-        CliTextFormat.renderTable(
-            List.of("Command", "Stdout", "Defaults", "Artifacts"),
-            commandCatalog.allCommands().stream()
-                .map(
-                    command ->
-                        List.of(
-                            command.name().wireName(),
-                            command.outputModeSummary(),
-                            selectableDefaultsSummary(command.selectableOutputDefaults()),
-                            artifactSummary(command)))
-                .toList());
+                List.of("Query and reports", joinCommandNames(commandCatalog.query())),
+                List.of("Write", joinCommandNames(commandCatalog.write()))),
+            HUMAN_WRAP_WIDTH);
     String requestInput =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -179,28 +173,16 @@ final class CliDiscoveryOutputRenderer {
                     "Direct-argument commands",
                     String.join(
                         ", ", capabilitiesDescriptor.requestInput().directArgumentCommands())),
-                List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics())));
-    String targetedRetrieval =
-        String.join(
-            System.lineSeparator(),
-            List.of(
-                "Use '"
-                    + CliInvocationText.commandExample(OperationId.HELP)
-                    + " <command> --output json' when you only need one command contract.",
-                "Use '"
-                    + CliInvocationText.commandExample(OperationId.VERSION)
-                    + " --output json' for a minimal application identity response.",
-                "Use '"
-                    + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
-                    + " --output json' for live runtime and SQLite provenance facts."));
+                List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics()),
+                List.of("PDF reports", pdfCapableReportSummary())),
+            HUMAN_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         joinSections(
             header,
+            section("Use This For", useThisFor),
             section("Command Groups", commands),
-            section("Command Contracts", commandContracts),
-            section("Request Input", requestInput),
-            section("Targeted Retrieval", targetedRetrieval)));
+            section("Shared CLI Contract", requestInput)));
   }
 
   static String renderEnvironmentHuman(EnvironmentDescriptor environmentDescriptor) {
@@ -235,21 +217,11 @@ final class CliDiscoveryOutputRenderer {
                             .unsupportedPublicCliBundleTargets()
                             .stream()
                             .map(WireValue::wireValue)
-                            .toList()))));
+                            .toList()))),
+            HUMAN_WRAP_WIDTH);
     String storage =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "Storage driver", environmentDescriptor.storage().storageDriver().wireValue()),
-                List.of(
-                    "Storage engine", environmentDescriptor.storage().storageEngine().wireValue()),
-                List.of(
-                    "Book protection",
-                    environmentDescriptor.storage().bookProtectionMode().wireValue()),
-                List.of(
-                    "Protected-book format",
-                    renderProtectedBookFormat(
-                        environmentDescriptor.storage().defaultProtectedBookFormat()))));
+            storageRows(environmentDescriptor.storage()), HUMAN_WRAP_WIDTH);
     String sqlite =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -264,7 +236,8 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Loaded SQLite version", loadedSqliteVersion(runtime)),
                 List.of("Loaded SQLite3MC version", loadedSqlite3mcVersion(runtime)),
                 List.of("Loaded SQLite source id", loadedSqliteSourceId(runtime)),
-                List.of("Issue", runtimeIssue(runtime))));
+                List.of("Issue", runtimeIssue(runtime))),
+            HUMAN_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Environment",
         joinSections(
@@ -345,22 +318,6 @@ final class CliDiscoveryOutputRenderer {
     };
   }
 
-  private static String renderProtectedBookFormat(
-      dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract format) {
-    return "cipher="
-        + format.cipher().wireValue()
-        + ", page-size="
-        + format.pageSize()
-        + ", reserved-bytes="
-        + format.reservedBytes()
-        + ", kdf-iter="
-        + format.kdfIter()
-        + ", plaintext-header-size="
-        + format.plaintextHeaderSize()
-        + ", legacy-mode="
-        + format.legacyMode();
-  }
-
   static String renderVersionHuman(VersionDescriptor versionDescriptor) {
     Objects.requireNonNull(versionDescriptor, "versionDescriptor");
     return CliTextFormat.renderTitledBlock(
@@ -368,7 +325,8 @@ final class CliDiscoveryOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Version", versionDescriptor.version()),
-                List.of("Description", versionDescriptor.description()))));
+                List.of("Description", versionDescriptor.description())),
+            HUMAN_WRAP_WIDTH));
   }
 
   private static String joinSections(String... sections) {
@@ -394,6 +352,79 @@ final class CliDiscoveryOutputRenderer {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
   }
 
+  private static String pdfCapableReportSummary() {
+    return String.join(
+            ", ",
+            CliInvocationText.commandExample(OperationId.ACCOUNT_BALANCE),
+            CliInvocationText.commandExample(OperationId.TRIAL_BALANCE),
+            CliInvocationText.commandExample(OperationId.ACCOUNT_LEDGER),
+            CliInvocationText.commandExample(OperationId.PERIOD_SUMMARY),
+            CliInvocationText.commandExample(OperationId.FINANCIAL_POSITION),
+            CliInvocationText.commandExample(OperationId.INCOME_STATEMENT))
+        + ", and "
+        + CliInvocationText.commandExample(OperationId.CHANGES_IN_EQUITY)
+        + " can emit pdf via --pdf-out <path>.";
+  }
+
+  private static CommandCatalogDescriptor groupedCommands(List<CommandDescriptor> commands) {
+    java.util.Map<OperationCategory, List<CommandDescriptor>> commandsByCategory =
+        commands.stream()
+            .collect(
+                java.util.stream.Collectors.groupingBy(
+                    command -> ProtocolCatalog.operation(command.name()).category()));
+    return new CommandCatalogDescriptor(
+        commandsByCategory.getOrDefault(OperationCategory.DISCOVERY, List.of()),
+        commandsByCategory.getOrDefault(OperationCategory.ADMINISTRATION, List.of()),
+        commandsByCategory.getOrDefault(OperationCategory.QUERY, List.of()),
+        commandsByCategory.getOrDefault(OperationCategory.WRITE, List.of()));
+  }
+
+  private static List<List<String>> behaviorRows(CommandDescriptor command) {
+    List<List<String>> rows = new ArrayList<>();
+    if (!command.aliases().isEmpty()) {
+      rows.add(List.of("Aliases", String.join(", ", command.aliases())));
+    }
+    rows.add(List.of("Stdout", command.stdoutContractSummary()));
+    rows.add(List.of("Machine framing", command.executionMode().wireValue()));
+    rows.add(List.of("Artifact outputs", artifactSummary(command)));
+    rows.add(
+        List.of(
+            "Selectable defaults", selectableDefaultsSummary(command.selectableOutputDefaults())));
+    return List.copyOf(rows);
+  }
+
+  private static List<List<String>> storageRows(EnvironmentStorageDescriptor storageDescriptor) {
+    return List.of(
+        List.of("Driver", storageDescriptor.storageDriver().wireValue()),
+        List.of("Engine", storageDescriptor.storageEngine().wireValue()),
+        List.of("Protection mode", storageDescriptor.bookProtectionMode().wireValue()),
+        List.of(
+            "Default protected-book format",
+            "v"
+                + storageDescriptor.defaultProtectedBookFormat().formatVersion()
+                + " / "
+                + storageDescriptor.defaultProtectedBookFormat().cipher().wireValue()),
+        List.of(
+            "Application id",
+            Integer.toString(storageDescriptor.defaultProtectedBookFormat().applicationId())),
+        List.of(
+            "Page size",
+            Integer.toString(storageDescriptor.defaultProtectedBookFormat().pageSize())),
+        List.of(
+            "Reserved bytes",
+            Integer.toString(storageDescriptor.defaultProtectedBookFormat().reservedBytes())),
+        List.of(
+            "Legacy page size",
+            Integer.toString(storageDescriptor.defaultProtectedBookFormat().legacyPageSize())),
+        List.of(
+            "KDF iterations",
+            Integer.toString(storageDescriptor.defaultProtectedBookFormat().kdfIter())),
+        List.of(
+            "Plaintext header bytes",
+            Integer.toString(
+                storageDescriptor.defaultProtectedBookFormat().plaintextHeaderSize())));
+  }
+
   private static String renderCommandExamples(ProtocolOperation operation) {
     List<String> commandExamples =
         operation.exampleSteps().stream()
@@ -403,10 +434,10 @@ final class CliDiscoveryOutputRenderer {
             .toList();
     return commandExamples.isEmpty()
         ? "(none)"
-        : String.join(System.lineSeparator(), commandExamples);
+        : CliTextFormat.wrapLineBlock(commandExamples, HUMAN_WRAP_WIDTH);
   }
 
-  private static String renderOperatorNotes(ProtocolOperation operation) {
+  private static String renderWorkflowRequirements(ProtocolOperation operation) {
     List<String> notes =
         operation.exampleSteps().stream()
             .filter(ProtocolExampleStep.Note.class::isInstance)
@@ -414,7 +445,7 @@ final class CliDiscoveryOutputRenderer {
             .toList();
     return notes.isEmpty()
         ? ""
-        : section("Operator Notes", String.join(System.lineSeparator(), notes));
+        : section("Requirements", CliTextFormat.renderBulletedBlock(notes, HUMAN_WRAP_WIDTH));
   }
 
   private static String indent(String text, String prefix) {
@@ -454,7 +485,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
         helpDescriptor.requestShapes().postEntry();
     return section(
-        "Request File",
+        "Request Input",
         requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -473,7 +504,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccountShape =
         helpDescriptor.requestShapes().declareAccount();
     return section(
-        "Request File",
+        "Request Input",
         requestFileGuidance(
             "Provide one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -492,7 +523,7 @@ final class CliDiscoveryOutputRenderer {
     ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
         helpDescriptor.requestShapes().ledgerPlan();
     return section(
-        "Request File",
+        "Request Input",
         requestFileGuidance(
             "Provide one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
@@ -525,19 +556,23 @@ final class CliDiscoveryOutputRenderer {
       OperationId operationId,
       List<List<String>> acceptedValuesRows) {
     List<String> paragraphs = new ArrayList<>();
-    paragraphs.add(introduction);
-    paragraphs.add("Generate a scaffold with: " + shortcutCommand);
+    paragraphs.add(CliTextFormat.wrap(introduction, HUMAN_WRAP_WIDTH));
     paragraphs.add(
-        "Inspect the machine-readable contract with: "
-            + CliInvocationText.commandExample(OperationId.HELP)
-            + " "
-            + ProtocolCatalog.operationName(operationId)
-            + " --output json");
+        CliTextFormat.wrap("Generate a scaffold with: " + shortcutCommand, HUMAN_WRAP_WIDTH));
+    paragraphs.add(
+        CliTextFormat.wrap(
+            "Inspect the machine-readable contract with: "
+                + CliInvocationText.commandExample(OperationId.HELP)
+                + " "
+                + ProtocolCatalog.operationName(operationId)
+                + " --output json",
+            HUMAN_WRAP_WIDTH));
     if (!acceptedValuesRows.isEmpty()) {
       paragraphs.add(
           "Accepted values:"
               + System.lineSeparator()
-              + CliTextFormat.renderKeyValueBlock(List.copyOf(acceptedValuesRows)));
+              + CliTextFormat.renderKeyValueBlock(
+                  List.copyOf(acceptedValuesRows), HUMAN_WRAP_WIDTH));
     }
     return String.join(System.lineSeparator() + System.lineSeparator(), paragraphs);
   }

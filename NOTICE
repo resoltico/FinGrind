@@ -130,9 +130,8 @@ SQLite
 
   FinGrind does not bundle a native SQLite library inside the CLI JAR itself.
   Standalone JAR execution uses Java 26 FFM and auto-discovers the managed
-  SQLite library from a prepared FinGrind checkout. Custom direct-Java launches
-  outside that prepared layout may instead set `FINGRIND_SQLITE_LIBRARY` to the
-  managed library produced by FinGrind's `prepareManagedSqlite` build step.
+  SQLite library from a prepared FinGrind checkout. Direct-Java launches
+  outside that prepared layout are unsupported.
 
 ================================================================================
 Trademark Notice

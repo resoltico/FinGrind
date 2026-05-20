@@ -124,7 +124,10 @@ readonly accounting_basis='ACCRUAL'
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
-grep -Fq 'Commands' "${help_stdout}" || die "source-checkout launcher help did not render command help"
+grep -Fq 'Start Here' "${help_stdout}" ||
+    die "source-checkout launcher help did not render the front-door guidance section"
+grep -Fq 'Command Groups' "${help_stdout}" ||
+    die "source-checkout launcher help did not render the grouped command catalog"
 if grep -Fq 'Unsupported runtime distribution: null' "${help_stdout}"; then
     die "source-checkout launcher baked a null runtime distribution into help output"
 fi
@@ -233,7 +236,7 @@ PY
     die "developer direct-Java help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
-grep -Fq 'Getting Started' "${raw_help_stdout}" ||
+grep -Fq 'Start Here' "${raw_help_stdout}" ||
     die "developer direct-Java help did not render the front-door guidance section"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
     die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
@@ -318,8 +321,11 @@ java -jar "${raw_jar}" help --output human >"${raw_jar_help_stdout}" 2>"${raw_ja
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
-grep -Fq 'java --enable-native-access=fingrind --module-path fingrind.jar --module fingrind/dev.erst.fingrind.cli.App help' "${raw_jar_help_stdout}" ||
-    die "raw java -jar help did not publish the explicit modular raw-jar launcher"
+grep -Fq 'java --enable-native-access=fingrind --module-path fingrind.jar --module' \
+    "${raw_jar_help_stdout}" || die \
+    "raw java -jar help did not publish the modular launcher prefix"
+grep -Fq 'fingrind/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \
+    "raw java -jar help did not publish the modular launcher command token"
 if grep -Fq './scripts/direct-java-cli.sh help' "${raw_jar_help_stdout}"; then
     die "raw java -jar help leaked the source-checkout direct-Java wrapper"
 fi

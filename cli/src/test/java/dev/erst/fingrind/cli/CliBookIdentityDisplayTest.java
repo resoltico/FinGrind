@@ -35,6 +35,6 @@ class CliBookIdentityDisplayTest {
 
     assertEquals(
         List.of("Business activity", "translation-services, platform-sales"),
-        CliBookIdentityDisplay.summaryRows(bookIdentity).getLast());
+        CliBookIdentityDisplay.summaryRows(bookIdentity).get(4));
   }
 }

@@ -27,6 +27,16 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
               SqliteBookState.INCOMPLETE_FINGRIND,
               SqliteBookContract.BOOK_STATE_READER.bookState(database));
         });
+    Path unexpectedSchemaPath = tempDirectory.resolve("book-state-unexpected-schema.sqlite");
+    initializeBookOnDisk(unexpectedSchemaPath);
+    withStandaloneDatabase(
+        bookAccess(unexpectedSchemaPath),
+        database -> {
+          database.executeStatement("create table unexpected_table(singleton_id integer)");
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
 
     Path unbalancedPath = tempDirectory.resolve("book-state-unbalanced.sqlite");
     initializeBookOnDisk(unbalancedPath);
@@ -80,6 +90,28 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
           insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000);
           insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 1000);
         });
+    assertIncompleteStateAfterCorruption(
+        "book-state-invalid-period-close-target.sqlite",
+        database -> {
+          database.executeStatement(
+              "drop trigger period_close_validate_closing_equity_account_on_insert");
+          database.executeStatement(
+              """
+              insert into period_close (
+                  period_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  closing_equity_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-04-01',
+                  '2026-04-30',
+                  '1000',
+                  '2026-04-30T23:59:59Z'
+              )
+              """);
+        });
 
     Path invalidMoneyPath = tempDirectory.resolve("book-state-invalid-money.sqlite");
     initializeBookOnDisk(invalidMoneyPath);
@@ -127,6 +159,20 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                         database,
                         SqlitePostingSql.PRAGMA_INTEGRITY_CHECK,
                         new IllegalStateException("forced integrity-check failure")))));
+
+    Path postingLifecycleProbePath =
+        tempDirectory.resolve("book-state-posting-lifecycle-probe.sqlite");
+    initializeBookOnDisk(postingLifecycleProbePath);
+    withStandaloneDatabase(
+        bookAccess(postingLifecycleProbePath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(
+                    InterceptingSqliteNativeDatabase.replacing(
+                        database,
+                        SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT,
+                        "select 1"))));
   }
 
   private static SqliteBookState withForeignKeyViolationState(SqliteNativeDatabase database) {

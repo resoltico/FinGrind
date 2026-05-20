@@ -8,6 +8,8 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
@@ -25,12 +27,27 @@ public final class PostingApplicationService {
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
       java.time.Clock clock) {
+    this(
+        validationStore,
+        commitStore,
+        postingIdGenerator,
+        clock,
+        CoreBookkeepingPolicyPack.current());
+  }
+
+  PostingApplicationService(
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      java.time.Clock clock,
+      BookkeepingPolicyPack policyPack) {
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
             Objects.requireNonNull(validationStore, "validationStore"),
             Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
-            Objects.requireNonNull(clock, "clock"));
+            Objects.requireNonNull(clock, "clock"),
+            BookkeepingPolicyPack.requirePolicyPack(policyPack));
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */

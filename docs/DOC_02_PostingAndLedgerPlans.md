@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -117,10 +117,10 @@ public sealed interface BookkeepingPostingRejection
 public final class BookkeepingPublishedLanguageTranslator
 ```
 
-- `PostingAcceptancePolicy`: validates initialization, caller-authored posting family,
-  functional-currency alignment, account state, duplicate idempotency, opening-balance
-  restrictions, reversal admissibility, and related bookkeeping rules against one
-  `PostingValidationStore`
+- `PostingAcceptancePolicy`: composes the bookkeeping-side admission rules for initialization,
+  duplicate idempotency, caller-authored posting family, functional-currency alignment,
+  closed-period checks, opening-balance restrictions, account state, closing-equity reservation,
+  and reversal admissibility against one `PostingValidationStore`
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
@@ -318,10 +318,11 @@ published-language projection.
 public final class BookkeepingPostingService
 ```
 
-- Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`,
+  `Clock`, and one explicit `BookkeepingPolicyPack`
 - Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
-- Boundary: this service stays inside the bookkeeping context and returns only local admission and
-  commit outcomes
+- Boundary: this service stays inside the bookkeeping context, applies one explicit bookkeeping
+  policy pack, and returns only local admission and commit outcomes
 
 ## `BookWorkflowExecutionService`
 

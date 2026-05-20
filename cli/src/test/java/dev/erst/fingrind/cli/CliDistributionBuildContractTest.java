@@ -67,6 +67,14 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/toolchain-fingerprint.json /opt/fingrind/lib/native/toolchain-fingerprint.json"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/build-contract.json /opt/fingrind/lib/native/build-contract.json"));
+    assertTrue(dockerfile.contains("Path(\"toolchain-fingerprint.json\").write_text("));
+    assertTrue(dockerfile.contains("Path(\"build-contract.json\").write_text("));
     assertFalse(dockerfile.contains("ENV FINGRIND_SQLITE_LIBRARY="));
     assertFalse(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
     assertFalse(dockerfile.contains("COPY gradle.properties /build/source-root/gradle.properties"));
@@ -135,6 +143,7 @@ class CliDistributionBuildContractTest {
     assertTrue(sqliteBuildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(sqliteBuildScript.contains("META-INF/fingrind"));
     assertTrue(sqliteBuildScript.contains("managed-sqlite-toolchain.json"));
+    assertTrue(sqliteBuildScript.contains("managed-sqlite-build-contract.json"));
     assertFalse(sqliteBuildScript.contains("managed-sqlite.sha256"));
   }
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.ArtifactOutputDescriptor;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -107,10 +108,10 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("help"));
-    assertTrue(rendered.contains("json | human"));
-    assertTrue(rendered.contains("json envelope"));
-    assertTrue(rendered.contains("raw json"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Start Here"));
+    assertTrue(rendered.contains("Command Groups"));
+    assertTrue(rendered.contains("Discovery"));
+    assertTrue(rendered.contains("Write"));
     assertFalse(rendered.contains("Quick Start"));
     assertFalse(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
     assertFalse(rendered.contains("demo"));
@@ -168,7 +169,7 @@ class CliDiscoveryOutputRendererTest {
     assertFalse(rendered.contains("Source Checkout Launcher (POSIX Shell)"));
     assertFalse(rendered.contains("Developer Raw JAR (Windows PowerShell)"));
     assertFalse(rendered.contains("Container Image (Docker CLI)"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Start Here"));
   }
 
   @Test
@@ -214,7 +215,71 @@ class CliDiscoveryOutputRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertFalse(rendered.contains("Quick Start"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Start Here"));
+  }
+
+  @Test
+  void renderHelpHuman_groupsAllRootCommandCategories() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            helpDescriptor(
+                identity(),
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(),
+                        "Show help"),
+                    new CommandDescriptor(
+                        OperationId.OPEN_BOOK,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(),
+                        "Open one book"),
+                    new CommandDescriptor(
+                        OperationId.TRIAL_BALANCE,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(),
+                        "Read one trial balance"),
+                    new CommandDescriptor(
+                        OperationId.POST_ENTRY,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(),
+                        "Post one entry")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertTrue(rendered.contains("Discovery"));
+    assertTrue(rendered.contains("Administration"));
+    assertTrue(rendered.contains("Query and reports"));
+    assertTrue(rendered.contains("Write"));
+    assertTrue(rendered.contains("help"));
+    assertTrue(rendered.contains("open-book"));
+    assertTrue(rendered.contains("trial-balance"));
+    assertTrue(rendered.contains("post-entry"));
   }
 
   @Test
@@ -257,7 +322,7 @@ class CliDiscoveryOutputRendererTest {
     assertFalse(rendered.contains("Guidance"));
     assertFalse(rendered.contains("Steps"));
     assertFalse(rendered.contains("Create ./request.json"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Start Here"));
   }
 
   @Test
@@ -355,8 +420,10 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(keyHelp.contains("Choose one missing private parent directory"));
     assertTrue(
         restoreHelp.contains("reopen the restored live book with that same backup key file"));
-    assertTrue(closeHelp.contains("FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL"));
-    assertTrue(closeHelp.contains("PARTNERSHIP requires PARTNER_CURRENT"));
+    assertTrue(closeHelp.contains("FREELANCER and SOLE_PROPRIETORSHIP"));
+    assertTrue(closeHelp.contains("OWNER_CAPITAL"));
+    assertTrue(closeHelp.contains("PARTNERSHIP requires"));
+    assertTrue(closeHelp.contains("PARTNER_CURRENT"));
     assertTrue(closeHelp.contains("2026-04-30"));
     assertFalse(closeHelp.contains("--closing-equity-account"));
   }
@@ -393,10 +460,10 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Command"));
-    assertTrue(rendered.contains("Usage"));
+    assertTrue(rendered.contains("post-entry"));
+    assertTrue(rendered.contains("Syntax"));
     assertTrue(rendered.contains("Examples"));
-    assertTrue(rendered.contains("Operator Notes"));
+    assertTrue(rendered.contains("Requirements"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
     assertTrue(
@@ -439,9 +506,8 @@ class CliDiscoveryOutputRendererTest {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.PREFLIGHT_ENTRY.wireName()));
-    assertTrue(
-        rendered.contains(
-            CliInvocationText.commandExample(OperationId.HELP) + " preflight-entry --output json"));
+    assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
+    assertTrue(rendered.contains("preflight-entry --output json"));
     assertFalse(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.HELP) + " post-entry --output json"));
@@ -481,7 +547,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("Aliases"));
     assertTrue(rendered.contains("--version"));
-    assertTrue(rendered.contains("Usage"));
+    assertTrue(rendered.contains("Syntax"));
     assertTrue(rendered.contains("Options"));
     assertTrue(rendered.contains("Examples"));
     assertTrue(rendered.contains("(none)"));
@@ -516,14 +582,13 @@ class CliDiscoveryOutputRendererTest {
                 canonical.currencyModel(),
                 requestShapes));
 
-    assertTrue(rendered.contains("Request File"));
+    assertTrue(rendered.contains("Request Input"));
     assertTrue(rendered.contains("Provide one JSON object through --request-file <path|->."));
     assertTrue(rendered.contains("Generate a scaffold with:"));
     assertTrue(rendered.contains("declare-account"));
     assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
-    assertTrue(
-        rendered.contains(
-            CliInvocationText.commandExample(OperationId.HELP) + " declare-account --output json"));
+    assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
+    assertTrue(rendered.contains("declare-account --output json"));
     assertFalse(rendered.contains("Top-Level Fields"));
     assertFalse(rendered.contains("Template"));
     assertFalse(rendered.contains("Shortcut: fingrind"));
@@ -565,9 +630,9 @@ class CliDiscoveryOutputRendererTest {
             "Generate a scaffold with: "
                 + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
     assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
-    assertTrue(
-        rendered.contains(
-            CliInvocationText.commandExample(OperationId.HELP) + " execute-plan --output json"));
+    assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
+    assertTrue(rendered.contains("execute-plan"));
+    assertTrue(rendered.contains("--output json"));
     assertFalse(rendered.contains("Required fields:"));
     assertFalse(rendered.contains("Step fields:"));
     assertFalse(rendered.contains("Query fields:"));
@@ -642,9 +707,9 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.currencyModel(),
                 executePlanCanonical.extensionSurface()));
 
-    assertFalse(postEntryRendered.contains("Request File"));
-    assertFalse(declareRendered.contains("Request File"));
-    assertFalse(executePlanRendered.contains("Request File"));
+    assertFalse(postEntryRendered.contains("Request Input"));
+    assertFalse(declareRendered.contains("Request Input"));
+    assertFalse(executePlanRendered.contains("Request Input"));
   }
 
   @Test
@@ -764,11 +829,11 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.currencyModel(),
                 executePlanCanonical.extensionSurface()));
 
-    assertFalse(postEntryWithoutPostShape.contains("Request File"));
-    assertFalse(declareWithoutRequestShapes.contains("Request File"));
-    assertFalse(declareWithoutDeclareShape.contains("Request File"));
-    assertFalse(executePlanWithoutRequestShapes.contains("Request File"));
-    assertFalse(executePlanWithoutLedgerShape.contains("Request File"));
+    assertFalse(postEntryWithoutPostShape.contains("Request Input"));
+    assertFalse(declareWithoutRequestShapes.contains("Request Input"));
+    assertFalse(declareWithoutDeclareShape.contains("Request Input"));
+    assertFalse(executePlanWithoutRequestShapes.contains("Request Input"));
+    assertFalse(executePlanWithoutLedgerShape.contains("Request Input"));
   }
 
   @Test
@@ -808,8 +873,8 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Commands"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Command Groups"));
+    assertTrue(rendered.contains("Start Here"));
     assertTrue(rendered.contains("help"));
     assertFalse(rendered.contains("Quick Start"));
   }
@@ -877,7 +942,7 @@ class CliDiscoveryOutputRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertFalse(rendered.contains("bundle bootstrap note body"));
-    assertTrue(rendered.contains("Getting Started"));
+    assertTrue(rendered.contains("Start Here"));
   }
 
   @Test
@@ -888,14 +953,12 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Command Groups"));
-    assertTrue(rendered.contains("Command Contracts"));
-    assertTrue(rendered.contains("Request Input"));
+    assertTrue(rendered.contains("Shared CLI Contract"));
     assertTrue(rendered.contains("Discovery"));
     assertTrue(rendered.contains("trial-balance"));
-    assertTrue(rendered.contains("json | human | csv"));
-    assertTrue(rendered.contains("Targeted Retrieval"));
     assertTrue(rendered.contains("Selectable stdout flag"));
-    assertTrue(rendered.contains("Targeted Retrieval"));
+    assertTrue(rendered.contains("PDF reports"));
+    assertFalse(rendered.contains("Targeted Retrieval"));
     assertFalse(rendered.contains("Timestamp"));
     assertFalse(rendered.contains("Reporting position"));
     assertFalse(rendered.contains("Implemented extension seams"));
@@ -937,7 +1000,48 @@ class CliDiscoveryOutputRendererTest {
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(customized);
 
-    assertTrue(rendered.contains("json | human"));
+    assertTrue(rendered.contains("help"));
+    assertTrue(rendered.contains("Shared CLI Contract"));
+    assertFalse(rendered.contains("Selectable defaults"));
+    assertFalse(rendered.contains("json interactive / json redirected"));
+  }
+
+  @Test
+  void renderHelpHuman_commandHelpRendersArtifactOutputsAndCollapsedSelectableDefaults() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            helpDescriptor(
+                identity(),
+                List.of("fingrind trial-balance --output json --pdf-out report.pdf"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.TRIAL_BALANCE,
+                        List.of(),
+                        List.of("--output <json|human>", "--pdf-out <path>"),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON),
+                        List.of(
+                            new ArtifactOutputDescriptor(
+                                "pdf", "--pdf-out <path>", "Write one PDF")),
+                        "Read one trial balance")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertTrue(rendered.contains("Artifact outputs"));
+    assertTrue(rendered.contains("pdf via --pdf-out <path>"));
+    assertTrue(rendered.contains("Selectable defaults"));
     assertFalse(rendered.contains("json interactive / json redirected"));
   }
 
@@ -1016,8 +1120,8 @@ class CliDiscoveryOutputRendererTest {
             environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.FAILED,
-                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
-                    SqliteRuntimeTrustBasis.UNSAFE_LOCAL_OVERRIDE,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                    SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
                     "<redacted>/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
@@ -1045,8 +1149,8 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
-    assertTrue(incompatibleRendered.contains("environment-configured"));
-    assertTrue(incompatibleRendered.contains("unsafe-local-override"));
+    assertTrue(incompatibleRendered.contains("source-checkout-managed"));
+    assertTrue(incompatibleRendered.contains("source-verified-local-build"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
     assertTrue(incompatibleRendered.contains("3.53.1"));
     assertTrue(incompatibleRendered.contains("2.3.4"));
@@ -1067,7 +1171,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.41.0"));
+    assertTrue(rendered.contains("0.42.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -1139,7 +1243,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.41.0",
+        "0.42.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -1173,8 +1277,6 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
             ProtocolCatalog.forbiddenSqliteCompileOptions(),
@@ -1182,6 +1284,7 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            runtime));
+            runtime,
+            null));
   }
 }

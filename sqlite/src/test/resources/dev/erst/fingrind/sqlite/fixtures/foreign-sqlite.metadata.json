@@ -1,0 +1,5 @@
+{
+  "fixtureName" : "foreign-sqlite.sqlite",
+  "fixtureKind" : "foreign-sqlite",
+  "purpose" : "Committed plain SQLite fixture that proves foreign-SQLite rejection."
+}

@@ -14,8 +14,6 @@ import org.jspecify.annotations.Nullable;
 /** Descriptor for the managed SQLite runtime contract exposed by the active environment. */
 public record EnvironmentSqliteDescriptor(
     SqliteLibraryMode libraryMode,
-    String libraryEnvironmentVariable,
-    String operatorTrustSystemProperty,
     String bundleHomeSystemProperty,
     List<String> requiredCompileOptions,
     List<String> forbiddenCompileOptions,
@@ -23,17 +21,12 @@ public record EnvironmentSqliteDescriptor(
     String requiredMinimumSqliteVersion,
     String requiredSqlite3mcVersion,
     String requiredSqliteSourceId,
-    RuntimeState runtime)
+    RuntimeState runtime,
+    @Nullable SqliteRuntimeArtifactEvidence runtimeArtifactEvidence)
     implements ContractDiscoveryDescriptor {
   /** Validates one environment SQLite descriptor payload. */
   public EnvironmentSqliteDescriptor {
     libraryMode = ContractDescriptorValidation.requireValue(libraryMode, "libraryMode");
-    libraryEnvironmentVariable =
-        ContractDescriptorValidation.requireText(
-            libraryEnvironmentVariable, "libraryEnvironmentVariable");
-    operatorTrustSystemProperty =
-        ContractDescriptorValidation.requireText(
-            operatorTrustSystemProperty, "operatorTrustSystemProperty");
     bundleHomeSystemProperty =
         ContractDescriptorValidation.requireText(
             bundleHomeSystemProperty, "bundleHomeSystemProperty");

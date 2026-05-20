@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -245,5 +246,37 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals("Unexpected field: declareAccount", exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_rejectsOversizedFileAndStandardInput() throws IOException {
+    String oversizedPayload =
+        "{\"padding\":\"" + "a".repeat(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) + "\"}";
+    Path oversizedRequest = writeNamedRequest("oversized-declare-account.json", oversizedPayload);
+
+    CliRequestReader fileReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
+    CliRequestException fileException =
+        assertThrows(
+            CliRequestException.class,
+            () -> fileReader.readDeclareAccountCommand(oversizedRequest));
+    assertEquals(
+        "Request file exceeded the supported "
+            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + "-byte UTF-8 limit: "
+            + CliPublicPaths.redactedValue(oversizedRequest)
+            + ".",
+        fileException.getMessage());
+
+    CliRequestReader stdinReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(oversizedPayload.getBytes(StandardCharsets.UTF_8)));
+    CliRequestException stdinException =
+        assertThrows(
+            CliRequestException.class, () -> stdinReader.readDeclareAccountCommand(Path.of("-")));
+    assertEquals(
+        "Request JSON from standard input exceeded the supported "
+            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + "-byte UTF-8 limit.",
+        stdinException.getMessage());
   }
 }

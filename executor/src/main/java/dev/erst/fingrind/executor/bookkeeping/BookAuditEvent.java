@@ -54,6 +54,40 @@ public record BookAuditEvent(
     return new BookAuditEvent(recordedAt, BookAuditEventKind.BOOK_REKEYED, null, null, null);
   }
 
+  /** Returns one audit event recording a successful protected-book backup export. */
+  public static BookAuditEvent backupCreated(Instant recordedAt) {
+    return new BookAuditEvent(recordedAt, BookAuditEventKind.BACKUP_CREATED, null, null, null);
+  }
+
+  /** Returns one audit event recording a successful protected-book backup restore. */
+  public static BookAuditEvent backupRestored(Instant recordedAt) {
+    return new BookAuditEvent(recordedAt, BookAuditEventKind.BACKUP_RESTORED, null, null, null);
+  }
+
+  /** Returns one audit event compensating a previously appended backup-created fact. */
+  public static BookAuditEvent backupCreatedCompensated(Instant recordedAt) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null);
+  }
+
+  /** Returns one audit event recording a successful protected-book rollback restore. */
+  public static BookAuditEvent rekeyRollbackRestored(Instant recordedAt) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.REKEY_ROLLBACK_RESTORED, null, null, null);
+  }
+
+  /** Returns one audit event recording a successful protected-book rollback deletion. */
+  public static BookAuditEvent rekeyRollbackDeleted(Instant recordedAt) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.REKEY_ROLLBACK_DELETED, null, null, null);
+  }
+
+  /** Returns one audit event compensating a previously appended rollback-deleted fact. */
+  public static BookAuditEvent rekeyRollbackDeletedCompensated(Instant recordedAt) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null);
+  }
+
   /** Returns one audit event recording that one reporting period was closed durably. */
   public static BookAuditEvent periodClosed(Instant recordedAt, int periodCloseOrder) {
     return new BookAuditEvent(

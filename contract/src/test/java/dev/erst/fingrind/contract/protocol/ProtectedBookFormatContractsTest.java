@@ -50,6 +50,8 @@ class ProtectedBookFormatContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
+                          "applicationId": 1179079236,
+                          "formatVersion": 11,
                           "cipher": "chacha20",
                           "legacyMode": "false",
                           "pageSize": 4096,
@@ -72,6 +74,8 @@ class ProtectedBookFormatContractsTest {
             new ByteArrayInputStream(
                 """
                 {
+                  "applicationId": 1179079236,
+                  "formatVersion": 11,
                   "cipher": "chacha20",
                   "legacyMode": false,
                   "pageSize": 4096,
@@ -84,6 +88,8 @@ class ProtectedBookFormatContractsTest {
                     .getBytes(StandardCharsets.UTF_8)),
             "/protected-book-format-contract.json");
 
+    assertEquals(1_179_079_236, contract.applicationId());
+    assertEquals(11, contract.formatVersion());
     assertEquals(BookCipher.CHACHA20, contract.cipher());
     assertFalse(contract.legacyMode());
     assertEquals(4096, contract.pageSize());

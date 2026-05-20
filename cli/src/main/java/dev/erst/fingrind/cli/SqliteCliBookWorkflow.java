@@ -123,8 +123,8 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
 
   @Override
   public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      Path bookFilePath, @Nullable Path rollbackArtifactPath) {
-    return maintenanceService.deleteRekeyRollback(bookFilePath, rollbackArtifactPath);
+      BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
+    return maintenanceService.deleteRekeyRollback(bookAccess, rollbackArtifactPath);
   }
 
   @Override

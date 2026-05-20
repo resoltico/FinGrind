@@ -74,7 +74,7 @@ final class SqliteNativeStatement implements AutoCloseable {
 
   int step() {
     try {
-      return SqliteNativeStatements.step(statementHandle, database.sqliteApi());
+      return SqliteNativeStatements.step(statementHandle, database.handle(), database.sqliteApi());
     } catch (RuntimeException | Error exception) {
       recordFailure(exception);
       throw exception;

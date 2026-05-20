@@ -52,15 +52,15 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("open-book"));
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
-    assertTrue(help.contains("Commands"));
-    assertTrue(help.contains("Getting Started"));
+    assertTrue(help.contains("Command Groups"));
+    assertTrue(help.contains("Start Here"));
     assertTrue(
-        help.contains(
-            "Run '"
-                + CliInvocationText.commandExample(OperationId.HELP)
-                + " <command>' for command-specific usage, request-file guidance, and examples."));
+        containsCollapsedText(
+            help, "Run '" + CliInvocationText.commandExample(OperationId.HELP) + " <command>'"));
+    assertTrue(containsCollapsedText(help, "syntax, request guidance, and runnable examples."));
     assertTrue(
-        help.contains(
+        containsCollapsedText(
+            help,
             "Run '"
                 + CliInvocationText.commandExample(OperationId.CAPABILITIES)
                 + " --output json'"));
@@ -77,10 +77,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     int exitCode = cli.run(new String[] {"help", "post-entry", "--output", "human"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(help.contains("Command"));
-    assertTrue(help.contains("Usage"));
+    assertTrue(help.contains("Syntax"));
     assertTrue(help.contains("Examples"));
-    assertTrue(help.contains("Operator Notes"));
+    assertTrue(help.contains("Requirements"));
+    assertTrue(help.contains("Request Input"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
     assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
@@ -131,7 +131,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
-    assertTrue(help.contains("Usage"));
+    assertTrue(help.contains("Syntax"));
     assertTrue(help.contains("Examples"));
   }
 
@@ -144,9 +144,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("declare-account"));
-    assertTrue(
-        help.contains(
-            "Posting templates include effectiveDate and replace-before-commit-* provenance placeholders; declare-account templates do not."));
+    assertTrue(help.contains("Posting templates include effectiveDate"));
+    assertTrue(help.contains("declare-account templates do not."));
   }
 
   @Test
@@ -276,6 +275,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     return false;
   }
 
+  private static boolean containsCollapsedText(String text, String expected) {
+    return collapseWhitespace(text).contains(collapseWhitespace(expected));
+  }
+
+  private static String collapseWhitespace(String text) {
+    return text.replaceAll("\\s+", " ").trim();
+  }
+
   private void assertRuntimeSpecificHelpSurface(String runtimeDistribution) {
     String priorDistribution =
         System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
@@ -311,12 +318,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       String launcher =
           CliInvocationText.launcherCommandFor(
               runtimeDistribution, System.getProperty("os.name", ""));
-      assertTrue(help.contains("Getting Started"), help);
-      assertTrue(help.contains(launcher + " help <command>"), help);
+      assertTrue(help.contains("Start Here"), help);
+      assertTrue(containsCollapsedText(help, launcher + " help <command>"), help);
       assertFalse(help.contains("Source Checkout Launcher"), help);
       assertFalse(help.contains("Developer Raw JAR"), help);
       assertFalse(help.contains("Container Image"), help);
-      assertTrue(commandHelp.contains(launcher + " open-book"), commandHelp);
+      assertTrue(containsCollapsedText(commandHelp, launcher + " open-book"), commandHelp);
       JsonNode failurePayload =
           assertDoesNotThrow(
               () ->
@@ -513,12 +520,6 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .toList(),
         readTextArray(payload.path("distribution").path("unsupportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-        payload.path("sqlite").path("libraryEnvironmentVariable").stringValue());
-    assertEquals(
-        ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
-        payload.path("sqlite").path("operatorTrustSystemProperty").stringValue());
-    assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
         payload.path("sqlite").path("bundleHomeSystemProperty").stringValue());
     assertEquals(
@@ -634,7 +635,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                 null,
                 null,
                 null,
-                "managed sqlite unavailable"),
+                "managed sqlite unavailable",
+                null),
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
     assertEquals(
         ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
@@ -659,12 +661,6 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(
         ProtocolCatalog.sourceCheckoutJava(),
         environmentDescriptor.distribution().sourceCheckoutJava());
-    assertEquals(
-        ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-        environmentDescriptor.sqlite().libraryEnvironmentVariable());
-    assertEquals(
-        ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
-        environmentDescriptor.sqlite().operatorTrustSystemProperty());
     assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
         environmentDescriptor.sqlite().bundleHomeSystemProperty());

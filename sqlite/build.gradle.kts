@@ -24,13 +24,7 @@ val managedSqliteBuildContractPath =
         "managed-sqlite/${hostBundleTarget.classifier}/build-contract.json",
     )
 val protectedBookFixturePath =
-    project.layout.projectDirectory.file(
-        "src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite",
-    )
-val protectedBookFixtureMetadataPath =
-    project.layout.projectDirectory.file(
-        "src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.metadata.json",
-    )
+    project.layout.projectDirectory.dir("src/test/resources/dev/erst/fingrind/sqlite/fixtures")
 
 dependencies {
     implementation(libs.jackson.databind)
@@ -54,7 +48,7 @@ tasks.named<ProcessResources>("processResources") {
 
 tasks.register<JavaExec>("refreshProtectedBookFixture") {
     group = "verification"
-    description = "Regenerates the committed protected-book compatibility fixture and metadata."
+    description = "Regenerates the committed protected-book compatibility fixture family."
     classpath =
         files(
             sourceSets["test"].output.classesDirs,
@@ -63,17 +57,15 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
             configurations.testRuntimeClasspath,
         )
     mainClass.set("dev.erst.fingrind.sqlite.SqliteProtectedBookFixtureGenerator")
-    args(
-        protectedBookFixturePath.asFile.absolutePath,
-        protectedBookFixtureMetadataPath.asFile.absolutePath,
-    )
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    args(protectedBookFixturePath.asFile.absolutePath)
 }
 
 val stageRefreshedProtectedBookFixtureForTestRuntime =
     tasks.register<Sync>("stageRefreshedProtectedBookFixtureForTestRuntime") {
         dependsOn(tasks.named("processTestResources"))
         mustRunAfter(tasks.named("refreshProtectedBookFixture"))
-        from(protectedBookFixturePath, protectedBookFixtureMetadataPath)
+        from(protectedBookFixturePath)
         into(layout.buildDirectory.dir("resources/test/dev/erst/fingrind/sqlite/fixtures"))
     }
 
@@ -83,6 +75,7 @@ tasks.named("refreshProtectedBookFixture") {
 
 tasks.named<Test>("test") {
     dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.named<Pmd>("pmdTest") {

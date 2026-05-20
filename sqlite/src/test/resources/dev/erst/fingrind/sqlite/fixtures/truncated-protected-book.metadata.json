@@ -1,0 +1,5 @@
+{
+  "fixtureName" : "truncated-protected-book.sqlite",
+  "fixtureKind" : "truncated-protected-book",
+  "purpose" : "Committed encrypted fixture truncated below one viable protected-book payload."
+}

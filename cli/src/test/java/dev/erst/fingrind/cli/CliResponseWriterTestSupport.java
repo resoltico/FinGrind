@@ -153,8 +153,6 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
             ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-            ProtocolCatalog.sqliteOperatorTrustSystemProperty(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
@@ -171,7 +169,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 loadedSqliteVersion,
                 loadedSqlite3mcVersion,
                 loadedSqliteSourceId,
-                diagnostics)));
+                diagnostics),
+            null));
   }
 
   static String rejectedJson(PostingRejection rejection) {

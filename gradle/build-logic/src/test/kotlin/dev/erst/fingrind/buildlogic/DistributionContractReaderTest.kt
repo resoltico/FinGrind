@@ -29,8 +29,6 @@ class DistributionContractReaderTest {
                     "bookProtectionMode": "protection",
                     "defaultBookCipher": "cipher",
                     "sqliteLibraryMode": "libraryMode",
-                    "sqliteLibraryEnvironmentVariable": "libraryEnv",
-                    "sqliteOperatorTrustSystemProperty": "operatorTrust",
                     "sqliteBundleHomeSystemProperty": "bundleHome"
                   },
                   "publicDistribution": {
@@ -86,8 +84,6 @@ class DistributionContractReaderTest {
                   "protection": "required",
                   "cipher": "chacha20",
                   "libraryMode": "managed-only",
-                  "libraryEnv": "FINGRIND_SQLITE_LIBRARY",
-                  "operatorTrust": "fingrind.sqlite.allowEnvironmentConfiguredRuntime",
                   "bundleHome": "fingrind.bundle.home"
                 }
                 """.trimIndent(),
@@ -329,8 +325,6 @@ class DistributionContractReaderTest {
                     "bookProtectionMode": "bookProtectionMode",
                     "defaultBookCipher": "defaultBookCipher",
                     "sqliteLibraryMode": "sqliteLibraryMode",
-                    "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
-                    "sqliteOperatorTrustSystemProperty": "sqliteOperatorTrustSystemProperty",
                     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
                   },
                   "publicDistribution": {

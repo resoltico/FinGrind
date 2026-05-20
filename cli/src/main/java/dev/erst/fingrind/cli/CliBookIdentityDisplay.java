@@ -41,33 +41,7 @@ final class CliBookIdentityDisplay {
   }
 
   static List<List<String>> summaryRows(BookIdentity bookIdentity) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Entity", bookIdentity.entityName().value()));
-    rows.add(
-        List.of(
-            "Profile",
-            String.join(
-                " | ",
-                CliHumanDisplay.wireLabel(bookIdentity.entityProfile().entityForm().wireValue()),
-                CliHumanDisplay.wireLabel(bookIdentity.entityProfile().ownerModel().wireValue()),
-                CliHumanDisplay.wireLabel(
-                    bookIdentity.entityProfile().reportingObligationStatus().wireValue()))));
-    rows.add(
-        List.of(
-            "Accounting",
-            String.join(
-                " | ",
-                bookIdentity.functionalCurrency().code(),
-                "FY start " + bookIdentity.fiscalYearStart().wireValue(),
-                CliHumanDisplay.wireLabel(bookIdentity.accountingBasis().wireValue()))));
-    if (!bookIdentity.entityProfile().businessActivityTags().isEmpty()) {
-      rows.add(
-          List.of(
-              "Business activity",
-              businessActivityTags(bookIdentity.entityProfile().businessActivityTags())));
-    }
-    return List.copyOf(rows);
+    return rows(bookIdentity);
   }
 
   private static String businessActivityTags(List<BusinessActivityTag> businessActivityTags) {

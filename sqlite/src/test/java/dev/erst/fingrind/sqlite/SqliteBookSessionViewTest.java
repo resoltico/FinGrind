@@ -3,12 +3,13 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
@@ -20,17 +21,22 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
@@ -121,31 +127,36 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void seamAccessors_returnStoreAsEachNarrowSessionView() {
     Path databasePath = tempDirectory.resolve("seam-accessors.sqlite");
-    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      assertNotNull((SqliteAdministrationSession) postingFactStore);
-      assertNotNull((SqliteReadSession) postingFactStore);
-      assertNotNull((SqlitePostingSession) postingFactStore);
-      assertNotNull((SqlitePeriodCloseSession) postingFactStore);
-      assertNotNull((SqlitePlanExecutionSession) postingFactStore);
-      assertNotNull((SqliteRekeySession) postingFactStore);
-      assertNotNull((BookAdministrationStore) postingFactStore);
-      assertNotNull((BookkeepingReadStore) postingFactStore);
-      assertNotNull((PostingValidationStore) postingFactStore);
-      assertNotNull((PostingCommitStore) postingFactStore);
-      assertNotNull((PeriodCloseStore) postingFactStore);
-      assertNotNull((LedgerPlanTransaction) postingFactStore);
-      assertSame(postingFactStore, (SqliteAdministrationSession) postingFactStore);
-      assertSame(postingFactStore, (SqliteReadSession) postingFactStore);
-      assertSame(postingFactStore, (SqlitePostingSession) postingFactStore);
-      assertSame(postingFactStore, (SqlitePeriodCloseSession) postingFactStore);
-      assertSame(postingFactStore, (SqlitePlanExecutionSession) postingFactStore);
-      assertSame(postingFactStore, (SqliteRekeySession) postingFactStore);
-      assertSame(postingFactStore, (BookAdministrationStore) postingFactStore);
-      assertSame(postingFactStore, (BookkeepingReadStore) postingFactStore);
-      assertSame(postingFactStore, (PostingValidationStore) postingFactStore);
-      assertSame(postingFactStore, (PostingCommitStore) postingFactStore);
-      assertSame(postingFactStore, (PeriodCloseStore) postingFactStore);
-      assertSame(postingFactStore, (LedgerPlanTransaction) postingFactStore);
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
+        SqliteAdministrationSession administrationSession =
+            SqliteCapabilitySessions.administration(postingFactStore);
+        SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore);
+        SqlitePostingSession postingSession = SqliteCapabilitySessions.posting(postingFactStore);
+        SqlitePeriodCloseSession periodCloseSession =
+            SqliteCapabilitySessions.periodClose(postingFactStore);
+        SqlitePlanExecutionSession planExecutionSession =
+            SqliteCapabilitySessions.planExecution(postingFactStore);
+        SqliteRekeySession rekeySession = SqliteCapabilitySessions.rekey(postingFactStore)) {
+      assertNotNull(administrationSession);
+      assertNotNull(readSession);
+      assertNotNull(postingSession);
+      assertNotNull(periodCloseSession);
+      assertNotNull(planExecutionSession);
+      assertNotNull(rekeySession);
+      assertNotNull((BookAdministrationStore) administrationSession);
+      assertNotNull((BookkeepingReadStore) readSession);
+      assertNotNull((PostingValidationStore) postingSession);
+      assertNotNull((PostingCommitStore) postingSession);
+      assertNotNull((PeriodCloseStore) periodCloseSession);
+      assertNotNull((LedgerPlanTransaction) planExecutionSession);
+      assertNotSame(postingFactStore, administrationSession);
+      assertNotSame(postingFactStore, readSession);
+      assertNotSame(postingFactStore, postingSession);
+      assertNotSame(postingFactStore, periodCloseSession);
+      assertNotSame(postingFactStore, planExecutionSession);
+      assertNotSame(postingFactStore, rekeySession);
+      assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
+      assertEquals(postingFactStore.inspectBook(), readSession.inspectBook());
     }
   }
 
@@ -467,21 +478,212 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
+  @Test
+  void capabilityWrappers_coverRemainingForwardersAndRejectForeignSessionLookup() {
+    Path databasePath = tempDirectory.resolve("capability-wrapper-coverage.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
+        SqliteAdministrationSession administrationSession =
+            SqliteCapabilitySessions.administration(postingFactStore);
+        SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore);
+        SqlitePostingSession postingSession = SqliteCapabilitySessions.posting(postingFactStore);
+        SqlitePeriodCloseSession periodCloseSession =
+            SqliteCapabilitySessions.periodClose(postingFactStore);
+        SqlitePlanExecutionSession planExecutionSession =
+            SqliteCapabilitySessions.planExecution(postingFactStore)) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      CommittedPosting openingPosting =
+          postingFact(
+              "posting-1",
+              "idem-1",
+              LocalDate.parse("2026-04-07"),
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+      assertEquals(
+          new PostingCommitResult.Committed(openingPosting),
+          commitPosting(postingFactStore, openingPosting));
+      AccountRegistryQuery accountPage = firstAccountPage();
+      PostingHistoryQuery postingsQuery =
+          new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
+      EffectiveDateRange allDates = EffectiveDateRange.unbounded();
+      TrialBalanceCriteria trialBalanceCriteria = trialBalanceCriteria(Optional.empty());
+      RegisteredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+      AccountBalanceCriteria cashBalanceCriteria =
+          AccountBalanceCriteria.unbounded(new AccountCode("1000"));
+
+      assertEquals(postingFactStore.allAccounts(), administrationSession.allAccounts());
+      assertEquals(
+          postingFactStore.listAccounts(accountPage),
+          administrationSession.listAccounts(accountPage));
+      assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
+      assertEquals(postingFactStore.inspectBook(), periodCloseSession.inspectBook());
+
+      Set<AccountCode> accountCodes = Set.of(new AccountCode("1000"), new AccountCode("2000"));
+      assertEquals(
+          postingFactStore.findAccounts(accountCodes), readSession.findAccounts(accountCodes));
+      assertEquals(postingFactStore.allAccounts(), readSession.allAccounts());
+      assertEquals(
+          postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")),
+          readSession.findExistingPosting(new IdempotencyKey("idem-1")));
+      assertEquals(
+          postingFactStore.findReversalFor(new PostingId("posting-1")),
+          readSession.findReversalFor(new PostingId("posting-1")));
+      assertEquals(
+          postingFactStore.accountTotals(allDates, allPostingKinds()),
+          readSession.accountTotals(allDates, allPostingKinds()));
+      assertEquals(
+          postingFactStore.trialBalance(trialBalanceCriteria),
+          readSession.trialBalance(trialBalanceCriteria));
+      assertEquals(
+          postingFactStore.accountLedger(
+              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount),
+          readSession.accountLedger(
+              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount));
+      PeriodSummaryCriteria oneDaySummary =
+          new PeriodSummaryCriteria(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"));
+      assertEquals(
+          postingFactStore.periodSummary(oneDaySummary), readSession.periodSummary(oneDaySummary));
+
+      assertEquals(postingFactStore.allAccounts(), postingSession.allAccounts());
+      assertEquals(
+          postingFactStore.listAccounts(accountPage), postingSession.listAccounts(accountPage));
+      assertEquals(
+          postingFactStore.accountBalance(cashBalanceCriteria),
+          postingSession.accountBalance(cashBalanceCriteria));
+      assertEquals(
+          postingFactStore.listPostings(postingsQuery), postingSession.listPostings(postingsQuery));
+      assertEquals(postingFactStore.postings(allDates), postingSession.postings(allDates));
+      assertEquals(
+          postingFactStore.earliestPostingEffectiveDate(),
+          postingSession.earliestPostingEffectiveDate());
+      assertEquals(
+          postingFactStore.closedThroughEffectiveDate(),
+          postingSession.closedThroughEffectiveDate());
+      assertEquals(
+          postingFactStore.accountTotals(allDates, allPostingKinds()),
+          postingSession.accountTotals(allDates, allPostingKinds()));
+      assertEquals(
+          postingFactStore.trialBalance(trialBalanceCriteria),
+          postingSession.trialBalance(trialBalanceCriteria));
+      assertEquals(
+          postingFactStore.accountLedger(
+              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount),
+          postingSession.accountLedger(
+              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount));
+      assertEquals(
+          postingFactStore.periodSummary(oneDaySummary),
+          postingSession.periodSummary(oneDaySummary));
+      assertEquals(
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()),
+          postingSession.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+      assertEquals(
+          postingFactStore.declareAccount(
+              new AccountCode("3000"),
+              new AccountName("Retained Earnings"),
+              dev.erst.fingrind.core.AccountType.EQUITY,
+              accountRole(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT),
+              accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY),
+              Instant.parse("2026-04-07T10:20:30Z")),
+          postingSession.declareAccount(
+              new AccountCode("3000"),
+              new AccountName("Retained Earnings"),
+              dev.erst.fingrind.core.AccountType.EQUITY,
+              accountRole(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT),
+              accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY),
+              Instant.parse("2026-04-07T10:20:30Z")));
+
+      assertEquals(postingFactStore.allAccounts(), periodCloseSession.allAccounts());
+      assertEquals(
+          postingFactStore.listAccounts(accountPage), periodCloseSession.listAccounts(accountPage));
+      assertEquals(postingFactStore.postings(allDates), periodCloseSession.postings(allDates));
+      assertEquals(
+          postingFactStore.earliestPostingEffectiveDate(),
+          periodCloseSession.earliestPostingEffectiveDate());
+      assertEquals(
+          postingFactStore.closedThroughEffectiveDate(),
+          periodCloseSession.closedThroughEffectiveDate());
+
+      planExecutionSession.beginLedgerPlanTransaction();
+      planExecutionSession.rollbackLedgerPlanTransaction();
+      planExecutionSession.beginLedgerPlanTransaction();
+      planExecutionSession.commitLedgerPlanTransaction();
+
+      assertEquals(
+          new PeriodCloseOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          periodCloseOnMissingBook());
+      assertEquals(
+          new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
+              new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
+                  .BookNotInitialized()),
+          rekeyOnMissingBook().requireAccepted());
+    }
+
+    assertThrows(
+        NullPointerException.class,
+        () -> SqliteCapabilitySessions.storeOf(NullTestSupport.nullOf(AutoCloseable.class)));
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteCapabilitySessions.storeOf((AutoCloseable) () -> {}));
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage())
+            .contains("owned SQLite store or capability wrapper"),
+        exception::getMessage);
+  }
+
+  private PeriodCloseOutcome periodCloseOnMissingBook() {
+    Path missingBookPath = tempDirectory.resolve("capability-period-close-missing.sqlite");
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
+        SqlitePeriodCloseSession periodCloseSession =
+            SqliteCapabilitySessions.periodClose(missingStore)) {
+      return periodCloseSession.closePeriod(emptyPeriodCloseDraft(), () -> new PostingId("unused"));
+    }
+  }
+
+  private ContractDecision<dev.erst.fingrind.contract.bookkeeping.RekeyBookResult>
+      rekeyOnMissingBook() {
+    Path missingBookPath = tempDirectory.resolve("capability-rekey-missing.sqlite");
+    BookAccess.PassphraseSource replacementSource =
+        BookAccess.PassphraseSource.StandardInput.INSTANCE;
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
+        SqliteRekeySession rekeySession = SqliteCapabilitySessions.rekey(missingStore)) {
+      return rekeySession.rekeyBook(
+          replacementSource,
+          (resolvedBookPath, passphraseSource, intent) ->
+              ContractDecision.accepted(
+                  SqliteBookPassphrase.fromCharacters(
+                      "capability-wrapper replacement", "rotated-key".toCharArray())),
+          Instant.parse("2026-04-09T10:15:30Z"));
+    }
+  }
+
+  private static PeriodCloseDraft emptyPeriodCloseDraft() {
+    return new PeriodCloseDraft(
+        new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+        new AccountCode("3200"),
+        List.of(),
+        Instant.parse("2026-04-07T10:15:30Z"),
+        List.of());
+  }
+
   private static BookAdministrationStore administrationView(
       SqlitePostingFactStore postingFactStore) {
-    return postingFactStore;
+    return SqliteCapabilitySessions.administration(postingFactStore);
   }
 
   private static PostingValidationStore validationView(SqlitePostingFactStore postingFactStore) {
-    return postingFactStore;
+    return SqliteCapabilitySessions.posting(postingFactStore);
   }
 
   private static PostingCommitStore commitView(SqlitePostingFactStore postingFactStore) {
-    return postingFactStore;
+    return SqliteCapabilitySessions.posting(postingFactStore);
   }
 
   private static BookkeepingReadStore readView(SqlitePostingFactStore postingFactStore) {
-    return postingFactStore;
+    return SqliteCapabilitySessions.read(postingFactStore);
   }
 
   private static CurrencyBalance balance(

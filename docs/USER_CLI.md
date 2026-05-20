@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: USER_CLI
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -60,7 +60,8 @@ pre-rekey file automatically if replacement-passphrase verification fails.
 verifies that pair before replacing the live book path and leaves the restored live book protected
 by that backup key file, `inspect-rekey-rollback` reports stale same-directory rollback artifacts,
 `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact, and
-`delete-rekey-rollback` removes one stale rollback artifact without touching the live book path.
+`delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
+after verifying one initialized live book through one explicit passphrase source.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable `accountRole`, immutable declared taxonomy, and derived
 `normalBalance`.
@@ -132,7 +133,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
     <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
     <tr><td><code>inspect-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect stale sibling rekey rollback artifacts for the selected book path.</td></tr>
-    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
+    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
     <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
     <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into one policy-selected closing equity account.</td></tr>
@@ -274,9 +275,7 @@ the public FinGrind download contract:
 
 That wrapper resolves the active CLI build directory and then runs the prepared application module.
 When the module stays under the prepared checkout layout, it auto-discovers the managed SQLite
-library and grants native access only to the `fingrind` module. Manual
-`FINGRIND_SQLITE_LIBRARY` export remains relevant only for custom direct-Java launches outside the
-prepared checkout.
+library and grants native access only to the `fingrind` module.
 
 `--request-file -` means read the request JSON from standard input.
 `--book-passphrase-stdin` means read the book passphrase from standard input instead.
@@ -432,7 +431,6 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `payload.distribution.runtimeDistribution`,
   `payload.distribution.supportedPublicCliBundleTargets`,
   `payload.distribution.unsupportedPublicCliBundleTargets`,
-  `payload.sqlite.libraryEnvironmentVariable`,
   `payload.sqlite.bundleHomeSystemProperty`,
   `payload.sqlite.requiredCompileOptions`,
   `payload.sqlite.forbiddenCompileOptions`,
@@ -467,11 +465,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - Gradle-driven local runs, the generated source-checkout launcher, and the container image use a
   managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
-  native access when they run from a prepared checkout. Custom direct-Java launches outside that
-  checkout shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
-  provenance reports `environment.sqlite.runtime.runtimeTrustBasis: "unsafe-local-override"` and is
-  only checked for local library-plus-sidecar consistency, not publisher-authenticated bundle
-  provenance.
+  native access when they run from a prepared checkout. Direct-Java launches outside that checkout
+  shape are unsupported.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
   `capabilities.commands.<group>[]` publishes the authoritative per-command stdout and artifact

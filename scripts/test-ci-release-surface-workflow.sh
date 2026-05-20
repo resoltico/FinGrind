@@ -45,15 +45,15 @@ grep -Fq 'uv.exe' "${workflow_file}" || die \
 if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
     die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
 fi
-grep -Fq '.\scripts\verify-environment-configured-sqlite-runtime.ps1' "${workflow_file}" || die \
-    "CI workflow no longer delegates Windows environment-configured runtime verification to the canonical PowerShell owner"
+grep -Fq '.\scripts\verify-direct-java-sqlite-runtime.ps1' "${workflow_file}" || die \
+    "CI workflow no longer delegates Windows direct-Java runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows source-checkout runtime verification to the canonical PowerShell owner"
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
     die "CI workflow still combines Windows root verification and build-logic verification in one non-fail-fast step"
 fi
 if grep -Fq '.\gradlew.bat -q :cli:run "--args=capabilities --output json"' "${workflow_file}"; then
-    die "CI workflow still carries the retired ad hoc Windows environment-configured runtime probe"
+    die "CI workflow carries the retired ad hoc Windows direct-Java runtime probe"
 fi
 if grep -Fq '.\scripts\source-checkout-cli.ps1 capabilities --output json' "${workflow_file}"; then
     die "CI workflow still carries the retired ad hoc Windows source-checkout runtime probe"

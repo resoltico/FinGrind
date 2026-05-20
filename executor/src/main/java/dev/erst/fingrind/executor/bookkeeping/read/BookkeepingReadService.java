@@ -46,7 +46,7 @@ public final class BookkeepingReadService {
   /**
    * Creates the local bookkeeping read service over one selected-book store seam and policy pack.
    */
-  BookkeepingReadService(BookkeepingReadStore bookStore, BookkeepingPolicyPack policyPack) {
+  public BookkeepingReadService(BookkeepingReadStore bookStore, BookkeepingPolicyPack policyPack) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
     this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
     this.statementService =

@@ -5,7 +5,12 @@ import java.nio.channels.SeekableByteChannel;
 
 /** Minimal writable channel for Files.createFile on the test ACL filesystem. */
 final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
+  private final AclFixturePath path;
   private boolean open = true;
+
+  AclFixtureSeekableByteChannel(AclFixturePath path) {
+    this.path = java.util.Objects.requireNonNull(path, "path");
+  }
 
   @Override
   public int read(ByteBuffer dst) {
@@ -13,7 +18,11 @@ final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
   }
 
   @Override
-  public int write(ByteBuffer src) {
+  public int write(ByteBuffer src) throws java.io.IOException {
+    java.io.IOException writeFailure = path.writeFailure();
+    if (writeFailure != null) {
+      throw writeFailure;
+    }
     int remaining = src.remaining();
     src.position(src.limit());
     return remaining;

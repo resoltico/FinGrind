@@ -5,6 +5,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -19,24 +20,27 @@ public final class BookkeepingPostingService {
   private final PostingCommitStore commitStore;
   private final PostingIdGenerator postingIdGenerator;
   private final Clock clock;
+  private final PostingAcceptancePolicy acceptancePolicy;
 
-  /** Creates the local bookkeeping posting service with its application-owned seams. */
+  /** Creates the local bookkeeping posting service with one explicit bookkeeping policy pack. */
   public BookkeepingPostingService(
       PostingValidationStore validationStore,
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
-      Clock clock) {
+      Clock clock,
+      BookkeepingPolicyPack policyPack) {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
     this.commitStore = Objects.requireNonNull(commitStore, "commitStore");
     this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
+    this.acceptancePolicy = new PostingAcceptancePolicy(policyPack);
   }
 
   /** Validates whether one posting command is admissible for later commit. */
   public PostingPreflightOutcome preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command, validationStore);
+        acceptancePolicy.rejectionFor(command, validationStore);
     if (rejection.isPresent()) {
       return new PostingPreflightOutcome.Rejected(rejection.orElseThrow());
     }

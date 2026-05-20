@@ -288,4 +288,10 @@ class SqliteBookFileSecurityTest {
       assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenDirectory(notDirectory));
     }
   }
+
+  @Test
+  void hardenOwnerOnlyFile_ignoresMissingParentDirectories() {
+    Path bookPath = tempDirectory.resolve("missing-parent-only-file").resolve("book.sqlite");
+    assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenOwnerOnlyFile(bookPath));
+  }
 }

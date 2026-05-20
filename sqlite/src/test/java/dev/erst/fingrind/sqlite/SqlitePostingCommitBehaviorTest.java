@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -135,7 +136,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
-  void commit_throwsWhenPostingIdAlreadyExistsWithDifferentIdempotencyKey() {
+  void commit_throwsWhenPostingIdUniqueConstraintConflictsWithDifferentIdempotencyKey() {
     Path databasePath = tempDirectory.resolve("duplicate-posting-id.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -148,9 +149,11 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
                   commitPosting(
                       postingFactStore,
                       postingFact("posting-1", "idem-2", Optional.empty(), Optional.empty())));
+      SqliteNativeException nativeFailure =
+          assertInstanceOf(SqliteNativeException.class, exception.getCause());
       assertTrue(
           NullTestSupport.messageOf(exception).contains("Failed to commit SQLite posting fact."));
-      assertTrue(NullTestSupport.messageOf(exception).contains("PRIMARYKEY"));
+      assertEquals("SQLITE_CONSTRAINT_UNIQUE", nativeFailure.resultName());
     }
   }
 
@@ -243,7 +246,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
-  void commit_primaryKeyConflictWithFirstReversalLeavesConstraintAsPrimaryFailure() {
+  void commit_postingIdUniqueConflictWithFirstReversalLeavesUniqueConstraintAsPrimaryFailure() {
     Path databasePath = tempDirectory.resolve("duplicate-posting-id-reversal.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -260,7 +263,9 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
                           "idem-2",
                           Optional.of(new ReversalReference(new PostingId("posting-1"))),
                           Optional.of(new ReversalReason("full reversal")))));
-      assertTrue(NullTestSupport.messageOf(exception).contains("PRIMARYKEY"));
+      SqliteNativeException nativeFailure =
+          assertInstanceOf(SqliteNativeException.class, exception.getCause());
+      assertEquals("SQLITE_CONSTRAINT_UNIQUE", nativeFailure.resultName());
     }
   }
 }

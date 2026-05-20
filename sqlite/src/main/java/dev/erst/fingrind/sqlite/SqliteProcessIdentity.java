@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -85,6 +86,20 @@ final class SqliteProcessIdentity {
     }
     if (startEpochMillis == UNKNOWN_START_EPOCH_MILLIS) {
       return true;
+    }
+    Optional<Instant> liveStartInstant = processHandle.get().info().startInstant();
+    return liveStartInstant.map(instant -> instant.toEpochMilli() == startEpochMillis).orElse(true);
+  }
+
+  boolean isLiveWhenUnlocked(Instant markerLastModified, Duration unknownStartGracePeriod) {
+    Objects.requireNonNull(markerLastModified, "markerLastModified");
+    Objects.requireNonNull(unknownStartGracePeriod, "unknownStartGracePeriod");
+    Optional<ProcessHandle> processHandle = ProcessHandle.of(pid);
+    if (processHandle.isEmpty()) {
+      return false;
+    }
+    if (startEpochMillis == UNKNOWN_START_EPOCH_MILLIS) {
+      return markerLastModified.plus(unknownStartGracePeriod).isAfter(Instant.now());
     }
     Optional<Instant> liveStartInstant = processHandle.get().info().startInstant();
     return liveStartInstant.map(instant -> instant.toEpochMilli() == startEpochMillis).orElse(true);

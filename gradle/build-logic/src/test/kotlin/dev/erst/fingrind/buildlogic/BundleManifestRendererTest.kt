@@ -33,8 +33,6 @@ class BundleManifestRendererTest {
                     "bookProtectionMode": "protection",
                     "defaultBookCipher": "cipher",
                     "sqliteLibraryMode": "libraryMode",
-                    "sqliteLibraryEnvironmentVariable": "libraryEnv",
-                    "sqliteOperatorTrustSystemProperty": "operatorTrust",
                     "sqliteBundleHomeSystemProperty": "bundleHome"
                   },
                   "publicDistribution": {

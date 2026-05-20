@@ -45,6 +45,16 @@ anonymous_docker() {
     docker --config "${docker_config_dir}" "$@"
 }
 
+require_nonempty_container_file() {
+    local image_ref=$1
+    local container_path=$2
+    local file_label=$3
+
+    if ! anonymous_docker run --rm "${image_ref}" test -s "${container_path}"; then
+        die "published container ${image_ref} did not expose a non-empty ${file_label} at ${container_path}"
+    fi
+}
+
 verify_ref() {
     local tag_ref=$1
     local image_ref="${image_name}:${tag_ref}"
@@ -163,6 +173,22 @@ verify_mounted_book_surface() {
     printf 'Verified mounted public workflow: %s\n' "${image_ref}"
 }
 
+verify_native_provenance_surface() {
+    local image_ref="${image_name}:${expected_version}"
+
+    require_nonempty_container_file \
+        "${image_ref}" \
+        /opt/fingrind/lib/native/toolchain-fingerprint.json \
+        "native toolchain fingerprint"
+    require_nonempty_container_file \
+        "${image_ref}" \
+        /opt/fingrind/lib/native/build-contract.json \
+        "native build contract"
+
+    printf 'Verified native provenance surface: %s\n' "${image_ref}"
+}
+
 verify_ref "${expected_version}"
 verify_ref latest
+verify_native_provenance_surface
 verify_mounted_book_surface

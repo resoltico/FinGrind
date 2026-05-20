@@ -26,10 +26,6 @@ final class RuntimeSurfaceContracts {
   private static final String BOOK_PROTECTION_MODE_KEY = SCHEMA_KEYS.bookProtectionMode();
   private static final String DEFAULT_BOOK_CIPHER_KEY = SCHEMA_KEYS.defaultBookCipher();
   private static final String SQLITE_LIBRARY_MODE_KEY = SCHEMA_KEYS.sqliteLibraryMode();
-  private static final String SQLITE_LIBRARY_ENVIRONMENT_VARIABLE_KEY =
-      SCHEMA_KEYS.sqliteLibraryEnvironmentVariable();
-  private static final String SQLITE_OPERATOR_TRUST_SYSTEM_PROPERTY_KEY =
-      SCHEMA_KEYS.sqliteOperatorTrustSystemProperty();
   private static final String SQLITE_BUNDLE_HOME_SYSTEM_PROPERTY_KEY =
       SCHEMA_KEYS.sqliteBundleHomeSystemProperty();
   private static final RuntimeSurfaceContract CURRENT = loadCurrent();
@@ -62,8 +58,6 @@ final class RuntimeSurfaceContracts {
         requireWireValue(document, BOOK_PROTECTION_MODE_KEY, BookProtectionMode::fromWireValue),
         requireWireValue(document, DEFAULT_BOOK_CIPHER_KEY, BookCipher::fromWireValue),
         requireWireValue(document, SQLITE_LIBRARY_MODE_KEY, SqliteLibraryMode::fromWireValue),
-        requireText(document, SQLITE_LIBRARY_ENVIRONMENT_VARIABLE_KEY),
-        requireText(document, SQLITE_OPERATOR_TRUST_SYSTEM_PROPERTY_KEY),
         requireText(document, SQLITE_BUNDLE_HOME_SYSTEM_PROPERTY_KEY));
   }
 

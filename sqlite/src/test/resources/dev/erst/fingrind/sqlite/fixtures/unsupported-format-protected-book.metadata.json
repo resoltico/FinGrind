@@ -1,0 +1,5 @@
+{
+  "fixtureName" : "unsupported-format-protected-book.sqlite",
+  "fixtureKind" : "unsupported-format-protected-book",
+  "purpose" : "Committed encrypted fixture that proves unsupported protected-book format rejection."
+}

@@ -11,6 +11,8 @@ final class ProtectedBookFormatContracts {
       ProtocolContractSchemaKeys.current().protectedBookFormat();
   private static final String RESOURCE_PATH =
       "/dev/erst/fingrind/contract/protocol/protected-book-format-contract.json";
+  private static final String APPLICATION_ID_KEY = SCHEMA_KEYS.applicationId();
+  private static final String FORMAT_VERSION_KEY = SCHEMA_KEYS.formatVersion();
   private static final String CIPHER_KEY = SCHEMA_KEYS.cipher();
   private static final String LEGACY_MODE_KEY = SCHEMA_KEYS.legacyMode();
   private static final String PAGE_SIZE_KEY = SCHEMA_KEYS.pageSize();
@@ -33,6 +35,8 @@ final class ProtectedBookFormatContracts {
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "protected-book format contract");
     return new ProtectedBookFormatContract(
+        JsonContractResourceSupport.requireInt(document, APPLICATION_ID_KEY),
+        JsonContractResourceSupport.requireInt(document, FORMAT_VERSION_KEY),
         BookCipher.fromWireValue(JsonContractResourceSupport.requireText(document, CIPHER_KEY)),
         JsonContractResourceSupport.requireBoolean(document, LEGACY_MODE_KEY),
         JsonContractResourceSupport.requireInt(document, PAGE_SIZE_KEY),

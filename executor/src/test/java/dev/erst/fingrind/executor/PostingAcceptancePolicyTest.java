@@ -45,12 +45,15 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for shared bookkeeping posting acceptance rules. */
 class PostingAcceptancePolicyTest {
+  private static final PostingAcceptancePolicy POSTING_ACCEPTANCE_POLICY =
+      PostingAcceptancePolicy.currentKernel();
+
   @Test
   void rejectionFor_rejectsMissingBookBeforeAnyOtherChecks() {
     RecordingValidationBook book = new RecordingValidationBook();
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command("idem-missing"), book);
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-missing"), book);
 
     assertEquals(Optional.of(new BookkeepingPostingRejection.BookNotInitialized()), rejection);
   }
@@ -62,7 +65,7 @@ class PostingAcceptancePolicyTest {
     book.existingPosting = Optional.of(existingPosting("posting-1", "idem-1"));
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command("idem-1"), book);
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-1"), book);
 
     assertEquals(Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey()), rejection);
     assertEquals(0, book.findAccountsCalls);
@@ -83,7 +86,7 @@ class PostingAcceptancePolicyTest {
             Instant.parse("2026-04-07T10:15:30Z")));
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 "idem-2",
                 List.of(
@@ -132,7 +135,7 @@ class PostingAcceptancePolicyTest {
     book.closedThrough = Optional.of(LocalDate.parse("2026-04-07"));
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command("idem-closed"), book);
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-closed"), book);
 
     assertEquals(
         Optional.of(
@@ -148,7 +151,7 @@ class PostingAcceptancePolicyTest {
     book.initialized = true;
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.PERIOD_CLOSE,
                 "idem-generated",
@@ -189,7 +192,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(revenue.accountCode(), revenue);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.PERIOD_CLOSE,
                 "idem-system-command",
@@ -208,7 +211,7 @@ class PostingAcceptancePolicyTest {
     book.initialized = true;
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.STANDARD,
                 "idem-usd",
@@ -251,7 +254,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(revenue.accountCode(), revenue);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
                 "idem-opening-revenue",
@@ -292,7 +295,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(expense.accountCode(), expense);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
                 "idem-opening-expense",
@@ -333,7 +336,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(capital.accountCode(), capital);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
                 "idem-opening-balance-sheet",
@@ -381,7 +384,7 @@ class PostingAcceptancePolicyTest {
             ordinaryPosting);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
                 "idem-opening-late",
@@ -423,7 +426,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(balancingAccount.accountCode(), balancingAccount);
 
     Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 "idem-retained",
                 List.of(
@@ -482,7 +485,7 @@ class PostingAcceptancePolicyTest {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 SourceChannel.SYSTEM));
 
-    assertEquals(Optional.empty(), PostingAcceptancePolicy.rejectionFor(closingCommand, book));
+    assertEquals(Optional.empty(), POSTING_ACCEPTANCE_POLICY.rejectionFor(closingCommand, book));
   }
 
   @Test
@@ -510,7 +513,7 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(revenue.accountCode(), revenue);
 
     assertEquals(
-        Optional.empty(), PostingAcceptancePolicy.rejectionFor(command("idem-open"), book));
+        Optional.empty(), POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-open"), book));
   }
 
   private static PostingCommand command(String idempotencyKey) {

@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.executor.BookAdministrationService;
-import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,7 +56,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 1 where 1 = 0",
                       1));
       assertTrue(String.valueOf(noRow.getMessage()).contains("Expected one SQLite row"));
@@ -67,7 +66,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 1 union all select 2",
                       1));
       assertTrue(String.valueOf(manyRows.getMessage()).contains("Expected one SQLite row only"));
@@ -77,7 +76,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 2",
                       1));
       assertTrue(
@@ -89,7 +88,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'wal'",
                       "delete"));
       assertTrue(
@@ -101,7 +100,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'wal' where 1 = 0",
                       "delete"));
       assertTrue(String.valueOf(noTextRow.getMessage()).contains("Expected one SQLite row"));
@@ -111,7 +110,7 @@ class SqliteFuzzAssertionsTest {
               IllegalStateException.class,
               () ->
                   SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'a' union all select 'b'",
                       "a"));
       assertTrue(
@@ -142,10 +141,10 @@ class SqliteFuzzAssertionsTest {
       IllegalArgumentException unsupported =
           assertThrows(
               IllegalArgumentException.class,
-              () -> SqliteFuzzAssertions.requireStoreImplementation(unsupportedSession));
+              () -> SqliteFuzzAssertions.requireOwnedStore(unsupportedSession));
       assertTrue(
           String.valueOf(unsupported.getMessage())
-              .contains("Unsupported SQLite book session implementation"));
+              .contains("Unsupported owned SQLite store or capability wrapper"));
     }
     assertEquals("a''b", SqliteFuzzAssertions.escapeSqlLiteral("a'b"));
   }
@@ -157,7 +156,7 @@ class SqliteFuzzAssertionsTest {
         new SqlitePostingFactStore(bookPath, SqliteFuzzAssertions.bookPassphrase())) {
       SqliteStoreTestAccess.publishNativeDatabase(
           store,
-          new ThrowingNativeDatabase(
+          new ThrowingHandleSqliteNativeDatabase(
               SqliteNativeBootstrap.api(),
               new SqliteNativeException(1, "synthetic prepare failure")));
 
@@ -168,6 +167,15 @@ class SqliteFuzzAssertionsTest {
 
       assertTrue(
           String.valueOf(hardeningFailure.getMessage()).contains("pragma-hardening invariant"));
+    }
+  }
+
+  @Test
+  void sqliteAssertions_requireOwnedStore_acceptsDirectStoreOwners() throws Exception {
+    Path bookPath = tempDirectory.resolve("direct-store-owner.sqlite");
+    try (SqlitePostingFactStore store =
+        new SqlitePostingFactStore(bookPath, SqliteFuzzAssertions.bookPassphrase())) {
+      assertEquals(store, SqliteFuzzAssertions.requireOwnedStore(store));
     }
   }
 
@@ -246,22 +254,5 @@ class SqliteFuzzAssertionsTest {
           }
         }
         """;
-  }
-
-  private static final class ThrowingNativeDatabase extends SqliteNativeDatabase {
-    private final SqliteNativeException failure;
-
-    private ThrowingNativeDatabase(SqliteNativeApi sqliteApi, SqliteNativeException failure) {
-      super(MemorySegment.NULL, sqliteApi);
-      this.failure = failure;
-    }
-
-    @Override
-    MemorySegment handle() {
-      throw failure;
-    }
-
-    @Override
-    public void close() {}
   }
 }

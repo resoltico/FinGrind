@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.41.0"
+version: "0.42.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-19"
+updated: "2026-05-20"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -292,9 +292,8 @@ public final class SqliteRuntimeStateValidator
   defaults, managed SQLite loading mode, runtime provenance, runtime trust basis, and runtime
   readiness in enum-owned wire vocabularies
 - `SqliteRuntimeTrustBasis`: publishes whether the selected runtime is
-  `publisher-authenticated`, `source-verified-local-build`, or `unsafe-local-override`, so
-  machine consumers can distinguish public bundle identity, checkout-local build identity, and
-  explicit operator overrides
+  `publisher-authenticated` or `source-verified-local-build`, so machine consumers can distinguish
+  public bundle identity from checkout-local build identity
 - `SqliteRuntimeStatus`: distinguishes `ready`, `unavailable`, `failed`, and `incompatible`, so
   discovery can separate missing-runtime failures from late probe failures after one concrete
   library target was already resolved
@@ -587,7 +586,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 9`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 10`
 
 ## `ProtectedBookFormatContract`
 
@@ -606,3 +605,20 @@ public record ProtectedBookFormatContract(...)
   protected-book format from partial scalar fields
 - Verification reach: the managed SQLite runtime probe, committed compatibility fixture metadata,
   and newly created protected books all compare back to this contract before repository gates pass
+
+## `SqliteRuntimeArtifactEvidence`
+
+`SqliteRuntimeArtifactEvidence` is the typed discovery payload that identifies the provenance
+sidecars for one loaded managed-SQLite runtime artifact.
+
+```java
+public record SqliteRuntimeArtifactEvidence(...)
+```
+
+- Purpose: publish the toolchain-fingerprint path and digest plus the build-contract path and
+  digest through one typed runtime descriptor instead of scattering native-artifact provenance
+  fields across CLI renderers, discovery payloads, and verification scripts
+- Boundary: discovery/runtime descriptors may carry this evidence only when one concrete managed
+  SQLite artifact was selected and verified
+- Trust split: the evidence identifies the selected artifact sidecars, while
+  `SqliteRuntimeTrustBasis` remains the owner of the trust posture vocabulary for that artifact

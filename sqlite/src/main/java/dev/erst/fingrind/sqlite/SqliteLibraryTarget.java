@@ -5,10 +5,6 @@ import java.util.Objects;
 
 /** Canonical SQLite runtime lookup target chosen from bundle, source checkout, or environment. */
 record SqliteLibraryTarget(String mode, SqliteRuntimeProvenance provenance, String lookupTarget) {
-  SqliteLibraryTarget(String mode, String lookupTarget) {
-    this(mode, SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, lookupTarget);
-  }
-
   SqliteLibraryTarget {
     mode = requireText(mode, "mode");
     Objects.requireNonNull(provenance, "provenance");

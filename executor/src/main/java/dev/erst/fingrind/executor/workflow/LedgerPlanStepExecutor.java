@@ -8,6 +8,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
@@ -39,6 +41,26 @@ final class LedgerPlanStepExecutor {
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
       Clock clock) {
+    this(
+        administrationStore,
+        accountCatalogStore,
+        readStore,
+        validationStore,
+        commitStore,
+        postingIdGenerator,
+        clock,
+        CoreBookkeepingPolicyPack.current());
+  }
+
+  LedgerPlanStepExecutor(
+      BookAdministrationStore administrationStore,
+      AccountCatalogStore accountCatalogStore,
+      BookkeepingReadStore readStore,
+      PostingValidationStore validationStore,
+      PostingCommitStore commitStore,
+      PostingIdGenerator postingIdGenerator,
+      Clock clock,
+      BookkeepingPolicyPack policyPack) {
     Objects.requireNonNull(administrationStore, "administrationStore");
     Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
     Objects.requireNonNull(readStore, "readStore");
@@ -46,11 +68,13 @@ final class LedgerPlanStepExecutor {
     Objects.requireNonNull(commitStore, "commitStore");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
+    BookkeepingPolicyPack requiredPolicyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
     this.bookAdministrationService =
         new BookAdministrationService(readStore, administrationStore, accountCatalogStore, clock);
-    this.bookkeepingReadService = new BookkeepingReadService(readStore);
+    this.bookkeepingReadService = new BookkeepingReadService(readStore, requiredPolicyPack);
     this.bookkeepingPostingService =
-        new BookkeepingPostingService(validationStore, commitStore, postingIdGenerator, clock);
+        new BookkeepingPostingService(
+            validationStore, commitStore, postingIdGenerator, clock, requiredPolicyPack);
   }
 
   BookLifecycleInspection inspectBook() {

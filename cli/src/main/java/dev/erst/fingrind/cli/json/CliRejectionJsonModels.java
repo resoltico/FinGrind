@@ -52,6 +52,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   /** Sealed category for protected-book maintenance rejection payloads. */
   sealed interface MaintenanceRejectionDetails extends RejectionDetails
       permits BookFileDetails,
+          BookAndBackupFileDetails,
           BlockingArtifactsDetails,
           ArtifactBusyDetails,
           ArtifactVerificationFailureDetails,
@@ -281,6 +282,14 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   record BookFileDetails(String bookFile) implements MaintenanceRejectionDetails {
     public BookFileDetails {
       bookFile = requireText(bookFile, "bookFile");
+    }
+  }
+
+  record BookAndBackupFileDetails(String bookFile, String backupFile)
+      implements MaintenanceRejectionDetails {
+    public BookAndBackupFileDetails {
+      bookFile = requireText(bookFile, "bookFile");
+      backupFile = requireText(backupFile, "backupFile");
     }
   }
 
