@@ -25,7 +25,9 @@ final class CliPdfReportExporter {
   private final FileOperations fileOperations;
 
   CliPdfReportExporter(PdfReportService pdfReportService) {
-    this(pdfReportService, new DefaultFileOperations());
+    this(
+        pdfReportService,
+        new DefaultFileOperations(DefaultFileOperations::setPublishedPdfPermissions));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -136,8 +138,23 @@ final class CliPdfReportExporter {
     void normalizePublishedPdfPermissions(Path path) throws IOException;
   }
 
+  /** One strategy seam that applies the published-PDF permission policy for one filesystem. */
+  @FunctionalInterface
+  interface PublishedPdfPermissionNormalizer {
+    /** Applies the mounted-volume PDF permission policy to one finished artifact path. */
+    void normalize(Path path) throws IOException;
+  }
+
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
-  private static final class DefaultFileOperations implements FileOperations {
+  static final class DefaultFileOperations implements FileOperations {
+    private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
+
+    DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
+      this.publishedPdfPermissionNormalizer =
+          Objects.requireNonNull(
+              publishedPdfPermissionNormalizer, "publishedPdfPermissionNormalizer");
+    }
+
     @Override
     public void createDirectories(Path directory) throws IOException {
       Files.createDirectories(directory);
@@ -166,16 +183,20 @@ final class CliPdfReportExporter {
     @Override
     public void normalizePublishedPdfPermissions(Path path) throws IOException {
       try {
-        Files.setPosixFilePermissions(
-            path,
-            Set.of(
-                PosixFilePermission.OWNER_READ,
-                PosixFilePermission.OWNER_WRITE,
-                PosixFilePermission.GROUP_READ,
-                PosixFilePermission.OTHERS_READ));
+        publishedPdfPermissionNormalizer.normalize(path);
       } catch (UnsupportedOperationException exception) {
         ignorePermissionNormalizationOnNonPosixFilesystems(exception);
       }
+    }
+
+    private static void setPublishedPdfPermissions(Path path) throws IOException {
+      Files.setPosixFilePermissions(
+          path,
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ,
+              PosixFilePermission.OTHERS_READ));
     }
   }
 

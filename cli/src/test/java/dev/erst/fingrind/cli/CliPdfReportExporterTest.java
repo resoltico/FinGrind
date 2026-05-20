@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -136,6 +139,50 @@ class CliPdfReportExporterTest {
 
       assertPdfFile(trialBalancePdf);
     }
+  }
+
+  @Test
+  void defaultFileOperationsDelegatePermissionNormalizationWhenSupported() throws IOException {
+    AtomicReference<Path> observedPath = new AtomicReference<>();
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(observedPath::set);
+    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
+
+    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
+
+    assertEquals(trialBalancePdf, observedPath.get());
+  }
+
+  @Test
+  void defaultFileOperationsIgnoreUnsupportedPermissionNormalization() throws IOException {
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw new UnsupportedOperationException("posix unsupported");
+            });
+    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
+
+    assertDoesNotThrow(() -> fileOperations.normalizePublishedPdfPermissions(trialBalancePdf));
+    assertTrue(Files.notExists(trialBalancePdf));
+  }
+
+  @Test
+  void defaultFileOperationsPropagateIoFailuresFromPermissionNormalization() {
+    IOException failure = new IOException("permission normalization failed");
+    CliPdfReportExporter.DefaultFileOperations fileOperations =
+        new CliPdfReportExporter.DefaultFileOperations(
+            path -> {
+              throw failure;
+            });
+
+    IOException exception =
+        assertThrows(
+            IOException.class,
+            () ->
+                fileOperations.normalizePublishedPdfPermissions(
+                    tempDirectory.resolve("trial-balance.pdf")));
+
+    assertSame(failure, exception);
   }
 
   @Test
