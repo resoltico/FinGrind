@@ -150,10 +150,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
-      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+      - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
-        with:
-          arch: x64
+        shell: pwsh
+        run: .\scripts\setup-msvc-dev-cmd.ps1 -Arch x64
 
       - name: Verify Unix runner identity matches bundle target
         if: runner.os != 'Windows'

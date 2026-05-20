@@ -34,6 +34,8 @@ readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the GitHub release verifier regression"
+grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${release_workflow}" || die \
+    "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned PowerShell owner"
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
 grep -Fq 'verify-security-policy-surface.sh' "${verifier}" || die \
@@ -48,6 +50,9 @@ grep -Fq 'gh attestation verify' "${verifier}" || die \
     "release verifier no longer verifies published bundle attestations"
 grep -Fq 'actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26' "${release_workflow}" || die \
     "release workflow no longer pins the published bundle attestation action"
+if grep -Fq 'ilammy/msvc-dev-cmd' "${release_workflow}"; then
+    die "release workflow still depends on the deprecated third-party msvc-dev-cmd action"
+fi
 python3 - <<'PY' "${release_workflow}" || die \
     "release workflow no longer isolates published-asset attestation to the neutral post-upload job"
 from pathlib import Path

@@ -264,6 +264,9 @@ TEXT
 
                 if [[ -n "${pdf_out}" ]]; then
                     printf '%%PDF-' > "${pdf_out}"
+                    if [[ "${mode}" == 'unreadable-pdf' ]]; then
+                        chmod 000 "${pdf_out}"
+                    fi
                 fi
 
                 if [[ "${mode}" == 'bad-report' ]]; then
@@ -386,5 +389,22 @@ fi
 printf '%s\n' "${failure_output}" | grep -Fq \
     'published human trial balance did not report the expected Cash trial-balance row' || die \
     "public container surface verifier did not report the broken human trial-balance row"
+
+set +e
+permission_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_MODE='unreadable-pdf' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+permission_failure_exit=$?
+set -e
+
+if [[ ${permission_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted an unreadable mounted PDF artifact"
+fi
+printf '%s\n' "${permission_failure_output}" | grep -Fq \
+    'published container wrote trial-balance.pdf without host-readable permissions' || die \
+    "public container surface verifier did not report unreadable mounted PDF permissions"
 
 printf 'public container surface verifier regression: success\n'

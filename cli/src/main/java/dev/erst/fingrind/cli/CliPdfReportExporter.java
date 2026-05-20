@@ -14,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
@@ -23,7 +25,17 @@ final class CliPdfReportExporter {
   private final FileOperations fileOperations;
 
   CliPdfReportExporter(PdfReportService pdfReportService) {
-    this(pdfReportService, new DefaultFileOperations());
+    this(
+        pdfReportService,
+        new DefaultFileOperations(
+            path ->
+                Files.setPosixFilePermissions(
+                    path,
+                    Set.of(
+                        PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE,
+                        PosixFilePermission.GROUP_READ,
+                        PosixFilePermission.OTHERS_READ))));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -71,6 +83,7 @@ final class CliPdfReportExporter {
       fileOperations.write(
           temporaryFile, pdfBytes, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
       moveAtomically(temporaryFile, normalizedOutputPath);
+      fileOperations.normalizePublishedPdfPermissions(normalizedOutputPath);
     } catch (IOException exception) {
       deleteIfPresent(temporaryFile);
       throw new CliPdfExportException(normalizedOutputPath, exception);
@@ -128,10 +141,28 @@ final class CliPdfReportExporter {
         throws IOException {
       return move(source, target, options);
     }
+
+    /** Normalizes the finished PDF artifact permissions for public mounted-volume workflows. */
+    void normalizePublishedPdfPermissions(Path path) throws IOException;
+  }
+
+  /** One strategy seam that applies the published-PDF permission policy for one filesystem. */
+  @FunctionalInterface
+  interface PublishedPdfPermissionNormalizer {
+    /** Applies the mounted-volume PDF permission policy to one finished artifact path. */
+    void normalize(Path path) throws IOException;
   }
 
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
-  private static final class DefaultFileOperations implements FileOperations {
+  static final class DefaultFileOperations implements FileOperations {
+    private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
+
+    DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
+      this.publishedPdfPermissionNormalizer =
+          Objects.requireNonNull(
+              publishedPdfPermissionNormalizer, "publishedPdfPermissionNormalizer");
+    }
+
     @Override
     public void createDirectories(Path directory) throws IOException {
       Files.createDirectories(directory);
@@ -155,6 +186,15 @@ final class CliPdfReportExporter {
     @Override
     public boolean deleteIfExists(Path path) throws IOException {
       return Files.deleteIfExists(path);
+    }
+
+    @Override
+    public void normalizePublishedPdfPermissions(Path path) throws IOException {
+      try {
+        publishedPdfPermissionNormalizer.normalize(path);
+      } catch (UnsupportedOperationException exception) {
+        Objects.requireNonNull(exception, "exception");
+      }
     }
   }
 }

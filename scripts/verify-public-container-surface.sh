@@ -223,6 +223,8 @@ verify_mounted_book_surface() {
         --effective-date-to 2026-04-08 --output human --pdf-out /work/trial-balance.pdf >/dev/null
 
     [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
+    [[ -r "${pdf_path}" ]] || die \
+        "published container wrote trial-balance.pdf without host-readable permissions"
     [[ "$(head -c 5 "${pdf_path}")" == '%PDF-' ]] || die \
         "published container wrote a non-PDF trial-balance artifact"
 
