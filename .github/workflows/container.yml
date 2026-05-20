@@ -151,8 +151,8 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - name: Verify published version and latest container tags
-        run: ./scripts/verify-container-publication.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
+      - name: Verify published public container surface
+        run: ./scripts/verify-public-container-surface.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
 
   cleanup:
     name: Prune old container versions

@@ -69,10 +69,15 @@ case "${command_name}" in
         printf 'Pulled %s\n' "${image_ref}"
         ;;
     run)
+        entrypoint=''
         while [[ $# -gt 0 ]]; do
             case "${1}" in
                 --rm)
                     shift
+                    ;;
+                --entrypoint)
+                    entrypoint="${2:-}"
+                    shift 2
                     ;;
                 -v)
                     mount_root="${2%%:*}"
@@ -88,6 +93,31 @@ case "${command_name}" in
         shift || true
         subcommand="${1:-}"
         shift || true
+
+        if [[ -n "${entrypoint}" ]]; then
+            [[ "${entrypoint}" == '/bin/sh' ]] || {
+                printf 'unsupported docker entrypoint: %s\n' "${entrypoint}" >&2
+                exit 1
+            }
+            [[ "${subcommand}" == '-c' ]] || {
+                printf 'unsupported shell entrypoint command: %s\n' "${subcommand}" >&2
+                exit 1
+            }
+            shell_command="${1:-}"
+            if [[ "${shell_command}" =~ ^test[[:space:]]+-s[[:space:]]+\'?(/opt/fingrind/lib/native/(toolchain-fingerprint\.json|build-contract\.json))\'?$ ]]; then
+                target_path="${BASH_REMATCH[1]}"
+                if [[ "${mode}" == 'missing-provenance' ]]; then
+                    exit 1
+                fi
+                case "${target_path}" in
+                    /opt/fingrind/lib/native/toolchain-fingerprint.json|/opt/fingrind/lib/native/build-contract.json)
+                        exit 0
+                        ;;
+                esac
+            fi
+            printf 'unsupported shell probe command: %s\n' "${shell_command}" >&2
+            exit 1
+        fi
 
         case "${subcommand}" in
             version)
@@ -220,44 +250,70 @@ TEXT
 Trial Balance
 =============
 
-Effective date to : 2026-04-08
+Entity               : Release Protocol Fixture
+Entity form          : Company
+Owner model          : Unknown
+Reporting obligation : Unspecified
+Business activity    : (none)
+Functional currency  : EUR
+Fiscal year start    : 01-01
+Accounting basis     : Accrual
+Posting coverage     : All posting kinds
+Effective date to    : 2026-04-08
 
-Account | Name | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash | Asset        | Ordinary     | Debit          | Yes    | USD      |       10.00 |         0.00 |      10.00 | Debit
+1000 | Cash
+-----------
+Account type   : Asset
+Account role   : Ordinary
+Normal balance : Debit
+Active         : Yes
+Currency       : USD
+Debit total    : 10.00
+Credit total   : 0.00
+Net amount     : 10.00
+Balance side   : Debit
 TEXT
                 else
                     cat <<TEXT
 Trial Balance
 =============
 
-Effective date to : 2026-04-08
+Entity               : Release Protocol Fixture
+Entity form          : Company
+Owner model          : Unknown
+Reporting obligation : Unspecified
+Business activity    : (none)
+Functional currency  : EUR
+Fiscal year start    : 01-01
+Accounting basis     : Accrual
+Posting coverage     : All posting kinds
+Effective date to    : 2026-04-08
 
-Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | Asset        | Ordinary     | Debit          | Yes    | EUR      |       10.00 |         0.00 | 10.00      | Debit
-2000    | Revenue | Revenue      | Ordinary     | Credit         | Yes    | EUR      |        0.00 |        10.00 | 10.00      | Credit
+1000 | Cash
+-----------
+Account type   : Asset
+Account role   : Ordinary
+Normal balance : Debit
+Active         : Yes
+Currency       : EUR
+Debit total    : 10.00
+Credit total   : 0.00
+Net amount     : 10.00
+Balance side   : Debit
+
+2000 | Revenue
+--------------
+Account type   : Revenue
+Account role   : Ordinary
+Normal balance : Credit
+Active         : Yes
+Currency       : EUR
+Debit total    : 0.00
+Credit total   : 10.00
+Net amount     : 10.00
+Balance side   : Credit
 TEXT
                 fi
-                ;;
-            test)
-                if [[ "${1:-}" != '-s' ]]; then
-                    printf 'unsupported docker test flag: %s\n' "${1:-}" >&2
-                    exit 1
-                fi
-                target_path="${2:-}"
-                [[ -n "${target_path}" ]] || exit 1
-                case "${target_path}" in
-                    /opt/fingrind/lib/native/toolchain-fingerprint.json|/opt/fingrind/lib/native/build-contract.json)
-                        if [[ "${mode}" == 'missing-provenance' ]]; then
-                            exit 1
-                        fi
-                        ;;
-                    *)
-                        printf 'unsupported docker test path: %s\n' "${target_path}" >&2
-                        exit 1
-                        ;;
-                esac
                 ;;
             *)
                 printf 'unsupported docker run subcommand: %s\n' "${subcommand}" >&2

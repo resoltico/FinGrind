@@ -88,8 +88,8 @@ PY
 
 grep -Fq './scripts/verify-github-release.sh' "${workflow_file}" || die \
     "container workflow no longer waits for the GitHub release asset handoff"
-grep -Fq './scripts/verify-container-publication.sh' "${workflow_file}" || die \
-    "container workflow no longer verifies the published version and latest tags"
+grep -Fq './scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
+    "container workflow no longer verifies the published public container surface"
 grep -Fq 'context: cli/build/docker-context' "${workflow_file}" || die \
     "container workflow no longer publishes from the staged Docker build context"
 grep -Fq 'context: .' "${workflow_file}" && die \
