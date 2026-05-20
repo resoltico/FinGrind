@@ -46,8 +46,12 @@ grep -Fq 'scripts/test-verify-release-candidate-tag.sh' "${stage_contract_script
     "check stage contract no longer exercises the release-candidate verifier regression"
 grep -Fq './scripts/verify-release-candidate-tag.sh' "${release_protocol}" || die \
     "release protocol no longer requires the release-candidate verifier"
-grep -Fq './scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
-    "release workflow no longer validates publication candidates before building assets"
+grep -Fq 'Verify release candidate tag handoff' "${release_workflow}" || die \
+    "release workflow no longer declares the release-candidate handoff gate"
+grep -Fq 'verify-release-candidate-tag.sh' "${release_workflow}" || die \
+    "release workflow no longer invokes the release-candidate verifier"
+grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
+    "release workflow no longer resolves the workflow helper-root contract"
 grep -Fq './scripts/verify-release-candidate-tag.sh' "${container_workflow}" || die \
     "container workflow no longer validates publication candidates before publishing images"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
