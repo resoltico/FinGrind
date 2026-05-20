@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workflow-owned publication helpers from `main` while rebuilding the immutable tag checkout,
   which keeps the repaired Windows MSVC bootstrap and release verifiers available even when the
   tagged source line predates those helper files.
+- Fixed the release workflow's Windows MSVC bootstrap step to remain valid YAML after the
+  helper-root replay refactor, and tightened the repo-owned MSVC regression owner so malformed
+  workflow YAML is rejected before GitHub drops the release workflow's dispatch contract.
 
 ## [0.43.0] - 2026-05-20
 

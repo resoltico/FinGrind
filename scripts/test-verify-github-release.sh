@@ -32,13 +32,14 @@ readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier helper"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
+readonly expected_windows_bootstrap_run='run: '\''& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'\'''
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the GitHub release verifier regression"
 grep -Fq 'Checkout workflow-owner helper surface' "${release_workflow}" || die \
     "release workflow no longer materializes a replay-safe helper surface from main during workflow_dispatch reruns"
 grep -Fq "printf 'path=%s\\n' './workflow-owner-surface' >> \"\$GITHUB_OUTPUT\"" "${release_workflow}" || die \
     "release workflow no longer resolves a distinct helper-root path for immutable-tag workflow replays"
-grep -Fq '& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64' "${release_workflow}" || die \
+grep -Fq "${expected_windows_bootstrap_run}" "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the replay-safe helper surface"
 grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
     "release workflow no longer routes the tag-handoff verifier through the replay-safe helper surface"
@@ -93,7 +94,7 @@ required_lines = (
     "          checksum_path=\"$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')\"\n",
     "          function Resolve-BundlePath {\n",
     "              $_.StartsWith($MachinePrefix) -or $_.StartsWith($LegacyPrefix)\n",
-    '        run: & "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64\n',
+    '        run: \'& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64\'\n',
     '          ${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.sh \\\n',
     '          & "${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.ps1" `\n',
     '          bash "${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh" \\\n',

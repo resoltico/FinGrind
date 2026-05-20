@@ -191,7 +191,7 @@ jobs:
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
         shell: pwsh
-        run: & "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64
+        run: '& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'
 
       - name: Verify Unix runner identity matches bundle target
         if: runner.os != 'Windows'
