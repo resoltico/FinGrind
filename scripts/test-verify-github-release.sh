@@ -34,8 +34,18 @@ readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the GitHub release verifier regression"
-grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${release_workflow}" || die \
-    "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned PowerShell owner"
+grep -Fq 'Checkout workflow-owner helper surface' "${release_workflow}" || die \
+    "release workflow no longer materializes a replay-safe helper surface from main during workflow_dispatch reruns"
+grep -Fq "printf 'path=%s\\n' './workflow-owner-surface' >> \"\$GITHUB_OUTPUT\"" "${release_workflow}" || die \
+    "release workflow no longer resolves a distinct helper-root path for immutable-tag workflow replays"
+grep -Fq '& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64' "${release_workflow}" || die \
+    "release workflow no longer bootstraps the Windows MSVC environment through the replay-safe helper surface"
+grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
+    "release workflow no longer routes the tag-handoff verifier through the replay-safe helper surface"
+grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh' "${release_workflow}" || die \
+    "release workflow no longer routes the release-object converger through the replay-safe helper surface"
+grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh' "${release_workflow}" || die \
+    "release workflow no longer routes the public release verifier through the replay-safe helper surface"
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
 grep -Fq 'verify-security-policy-surface.sh' "${verifier}" || die \
@@ -73,6 +83,7 @@ if 'cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }
 required_lines = (
     "    permissions:\n",
     "      contents: write\n",
+    "          path: workflow-owner-surface\n",
     "        id: unix-bundle-build\n",
     "        id: windows-bundle-build\n",
     "          resolve_bundle_path() {\n",
@@ -82,6 +93,11 @@ required_lines = (
     "          checksum_path=\"$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')\"\n",
     "          function Resolve-BundlePath {\n",
     "              $_.StartsWith($MachinePrefix) -or $_.StartsWith($LegacyPrefix)\n",
+    '        run: & "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64\n',
+    '          ${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.sh \\\n',
+    '          & "${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.ps1" `\n',
+    '          bash "${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh" \\\n',
+    '          bash "${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh" `\n',
     "            -LegacyPrefix 'FinGrind bundle archive: ' `\n",
     "            -LegacyPrefix 'FinGrind bundle checksum: ' `\n",
     "          Add-Content -Path $env:GITHUB_OUTPUT -Value \"archive-path=$archivePath\"\n",

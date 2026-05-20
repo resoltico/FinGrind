@@ -59,7 +59,13 @@ printf '%s\n' "${execution_probe}" | grep -Fq 'can only run on Windows runners' 
 
 grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${ci_workflow}" || die \
     "CI workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
-grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${release_workflow}" || die \
+grep -Fq 'Configure MSVC developer command environment' "${release_workflow}" || die \
+    "release workflow no longer declares the Windows MSVC bootstrap step"
+grep -Fq 'setup-msvc-dev-cmd.ps1' "${release_workflow}" || die \
+    "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
+grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
+    "release workflow no longer resolves the workflow helper-root contract for Windows bootstrap"
+grep -Fq 'run: & "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64' "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
 if grep -Fq 'ilammy/msvc-dev-cmd' "${ci_workflow}"; then
     die "CI workflow still depends on the deprecated third-party msvc-dev-cmd action"

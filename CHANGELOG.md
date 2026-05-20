@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PowerShell bootstrap that locates `VsDevCmd.bat`, exports the full developer-command
   environment for subsequent steps, parses cleanly under PowerShell before execution, and removes
   the Node 20 deprecation warning from the CI and release publication workflows.
+- Fixed the post-tag release replay seam so `workflow_dispatch` reruns now materialize
+  workflow-owned publication helpers from `main` while rebuilding the immutable tag checkout,
+  which keeps the repaired Windows MSVC bootstrap and release verifiers available even when the
+  tagged source line predates those helper files.
 
 ## [0.43.0] - 2026-05-20
 
