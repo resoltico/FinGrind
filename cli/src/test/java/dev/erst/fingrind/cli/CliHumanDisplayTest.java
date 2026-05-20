@@ -12,7 +12,9 @@ class CliHumanDisplayTest {
   void path_and_date_labels_coverNormalizedPath_redactedHints_andOpenRangeBranches() {
     assertEquals(
         ".../fingrind/book.sqlite", CliHumanDisplay.path(Path.of("tmp/../fingrind/book.sqlite")));
-    assertEquals("/", CliHumanDisplay.path(Path.of("/")));
+    assertEquals(
+        Path.of("/").toAbsolutePath().normalize().toString().replace('\\', '/'),
+        CliHumanDisplay.path(Path.of("/")));
     assertEquals("book.sqlite", CliHumanDisplay.path(Path.of("/book.sqlite")));
     assertEquals("tmp/book.sqlite", CliHumanDisplay.path(Path.of("/tmp/book.sqlite")));
     assertEquals(

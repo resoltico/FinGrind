@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed report and query CSV evidence serialization so nested source-document and approval JSON is
   emitted in a deterministic field order, and refreshed the checked-in human/report example
   fixtures to match the current expanded book-identity header contract.
+- Fixed the human path-display contract on Windows so root paths normalize to the same forward-slash
+  presentation rule the rest of the compact human CLI surfaces use, and aligned the focused CLI
+  regression test with that cross-platform display contract.
 
 ## [0.42.0] - 2026-05-20
 

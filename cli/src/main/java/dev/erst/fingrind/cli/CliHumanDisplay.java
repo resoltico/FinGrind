@@ -25,7 +25,7 @@ final class CliHumanDisplay {
     Path normalizedPath = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
     int segmentCount = normalizedPath.getNameCount();
     if (segmentCount == 0) {
-      return normalizedPath.toString();
+      return humanPathText(normalizedPath);
     }
     if (segmentCount == 1) {
       return normalizedPath.getFileName().toString();
@@ -57,5 +57,9 @@ final class CliHumanDisplay {
     return Arrays.stream(wireValue.split("_+"))
         .map(token -> token.substring(0, 1) + token.substring(1).toLowerCase(java.util.Locale.ROOT))
         .collect(java.util.stream.Collectors.joining(" "));
+  }
+
+  private static String humanPathText(Path path) {
+    return path.toString().replace('\\', '/');
   }
 }
