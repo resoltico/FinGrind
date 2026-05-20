@@ -32,6 +32,17 @@ readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 [[ -f "${msvc_setup_script}" ]] || die "missing repo-owned MSVC setup script at ${msvc_setup_script}"
 [[ -f "${ci_workflow}" ]] || die "missing CI workflow at ${ci_workflow}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
+
+parse_workflow_yaml() {
+    local workflow_path="$1"
+    local workflow_label="$2"
+    ruby -e 'require "psych"; Psych.parse_stream(File.read(ARGV.fetch(0)))' "${workflow_path}" \
+        >/dev/null 2>&1 || die "${workflow_label} no longer parses as valid YAML"
+}
+
+parse_workflow_yaml "${ci_workflow}" "CI workflow"
+parse_workflow_yaml "${release_workflow}" "release workflow"
+
 grep -Fq 'scripts/test-setup-msvc-dev-cmd.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the repo-owned MSVC setup regression"
 grep -Fq 'vswhere.exe' "${msvc_setup_script}" || die \
@@ -65,7 +76,7 @@ grep -Fq 'setup-msvc-dev-cmd.ps1' "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
 grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
     "release workflow no longer resolves the workflow helper-root contract for Windows bootstrap"
-grep -Fq 'run: & "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64' "${release_workflow}" || die \
+grep -Fq 'run: '\''& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'\''' "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
 if grep -Fq 'ilammy/msvc-dev-cmd' "${ci_workflow}"; then
     die "CI workflow still depends on the deprecated third-party msvc-dev-cmd action"
