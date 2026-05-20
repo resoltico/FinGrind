@@ -40,9 +40,22 @@ grep -Fq 'VsDevCmd.bat did not publish VSCMD_VER' "${msvc_setup_script}" || die 
     "repo-owned MSVC setup script no longer rejects partial developer-command environments"
 grep -Fq 'GITHUB_ENV' "${msvc_setup_script}" || die \
     "repo-owned MSVC setup script no longer exports the configured environment to subsequent steps"
-pwsh -NoLogo -NoProfile -Command \
-    "[System.Management.Automation.Language.Parser]::ParseFile('${msvc_setup_script}', [ref] \$null, [ref] \$null) | Out-Null" >/dev/null || die \
-    "repo-owned MSVC setup script no longer parses as valid PowerShell"
+parse_probe="$(
+    pwsh -NoLogo -NoProfile -Command \
+        "\$tokens = \$null; \$errors = \$null; [System.Management.Automation.Language.Parser]::ParseFile('${msvc_setup_script}', [ref] \$tokens, [ref] \$errors) | Out-Null; if (\$errors.Count -gt 0) { \$errors | ForEach-Object Message; exit 1 }" \
+        2>&1
+)" || die "repo-owned MSVC setup script no longer parses as valid PowerShell: ${parse_probe}"
+set +e
+execution_probe="$(
+    pwsh -NoLogo -NoProfile -File "${msvc_setup_script}" 2>&1
+)"
+execution_status=$?
+set -e
+if [[ ${execution_status} -eq 0 ]]; then
+    die "repo-owned MSVC setup script unexpectedly succeeded outside a Windows runner"
+fi
+printf '%s\n' "${execution_probe}" | grep -Fq 'can only run on Windows runners' || die \
+    "repo-owned MSVC setup script no longer fails through its explicit non-Windows guard after parsing"
 
 grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${ci_workflow}" || die \
     "CI workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"

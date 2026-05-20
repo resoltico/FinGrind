@@ -1,6 +1,3 @@
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version Latest
-
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
@@ -10,6 +7,9 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$HostArch = "x64"
 )
+
+$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 
 function Fail {
     param(
