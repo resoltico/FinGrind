@@ -5,6 +5,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The tagged container publication workflow now runs the same mounted-book and native-provenance
+  verifier the Step 9 operator release protocol uses, so automated post-publish checks and manual
+  public-surface verification enforce one shared container contract instead of two different
+  depths.
+
+### Fixed
+
+- Fixed the public container verifier's native-provenance probe so it checks published files
+  through an explicit shell entrypoint inside the container rather than routing `test -s` through
+  the FinGrind CLI entrypoint and reporting a false missing-file failure.
+
 ## [0.42.0] - 2026-05-20
 
 ### Changed

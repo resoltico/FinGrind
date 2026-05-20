@@ -162,7 +162,10 @@ run manual Git housekeeping first and remove that log only after a successful cl
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,
-submit one current posting request, and render the current human `trial-balance` layout for that
-workflow. When that mounted-book grammar changes or that human report layout changes, repair the
-verifier and its mock-backed shell regression harness together before trusting the release
-protocol again.
+submit one current posting request, render the current human `trial-balance` layout for that
+workflow, and expose the published native-provenance files through a shell probe that does not
+route filesystem checks back through the FinGrind entrypoint. The tagged container workflow now
+runs this same verifier after push, so workflow automation and the operator's Step 9 command are
+held to one public surface contract. When that mounted-book grammar changes, that human report
+layout changes, or the container-native provenance surface moves, repair the verifier and its
+mock-backed shell regression harness together before trusting the release protocol again.

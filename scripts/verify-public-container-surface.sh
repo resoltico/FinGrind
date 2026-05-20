@@ -16,6 +16,13 @@ require_match() {
     printf '%s\n' "${text}" | grep -Eq "${pattern}"
 }
 
+require_literal_block() {
+    local text=$1
+    local block=$2
+
+    [[ "${text}" == *"${block}"* ]]
+}
+
 readonly image_name="${1:-}"
 readonly expected_version="${2:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
@@ -45,12 +52,19 @@ anonymous_docker() {
     docker --config "${docker_config_dir}" "$@"
 }
 
+container_shell() {
+    local image_ref=$1
+    local shell_command=$2
+
+    anonymous_docker run --rm --entrypoint /bin/sh "${image_ref}" -c "${shell_command}"
+}
+
 require_nonempty_container_file() {
     local image_ref=$1
     local container_path=$2
     local file_label=$3
 
-    if ! anonymous_docker run --rm "${image_ref}" test -s "${container_path}"; then
+    if ! container_shell "${image_ref}" "test -s '${container_path}'"; then
         die "published container ${image_ref} did not expose a non-empty ${file_label} at ${container_path}"
     fi
 }
@@ -117,17 +131,44 @@ JSON
 
 verify_human_trial_balance() {
     local human_output=$1
+    local cash_block revenue_block
+
+    cash_block="$(cat <<'TEXT'
+1000 | Cash
+-----------
+Account type   : Asset
+Account role   : Ordinary
+Normal balance : Debit
+Active         : Yes
+Currency       : EUR
+Debit total    : 10.00
+Credit total   : 0.00
+Net amount     : 10.00
+Balance side   : Debit
+TEXT
+)"
+    revenue_block="$(cat <<'TEXT'
+2000 | Revenue
+--------------
+Account type   : Revenue
+Account role   : Ordinary
+Normal balance : Credit
+Active         : Yes
+Currency       : EUR
+Debit total    : 0.00
+Credit total   : 10.00
+Net amount     : 10.00
+Balance side   : Credit
+TEXT
+)"
 
     require_match "${human_output}" '^Trial Balance$' || die \
         "published human trial balance did not render the report header"
-    require_match "${human_output}" \
-        '^Account[[:space:]]+\|[[:space:]]+Name[[:space:]]+\|[[:space:]]+Account type[[:space:]]+\|[[:space:]]+Account role[[:space:]]+\|[[:space:]]+Normal balance[[:space:]]+\|[[:space:]]+Active[[:space:]]+\|[[:space:]]+Currency[[:space:]]+\|[[:space:]]+Debit total[[:space:]]+\|[[:space:]]+Credit total[[:space:]]+\|[[:space:]]+Net amount[[:space:]]+\|[[:space:]]+Balance side[[:space:]]*$' \
-        || die "published human trial balance did not render the expected column header"
-    require_match "${human_output}" \
-        '^1000[[:space:]]+\|[[:space:]]+Cash[[:space:]]+\|[[:space:]]+Asset[[:space:]]+\|[[:space:]]+Ordinary[[:space:]]+\|[[:space:]]+Debit[[:space:]]+\|[[:space:]]+Yes[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+Debit[[:space:]]*$' \
+    require_match "${human_output}" '^Entity[[:space:]]+:[[:space:]]+Release Protocol Fixture$' || die \
+        "published human trial balance did not render the expected entity header"
+    require_literal_block "${human_output}" "${cash_block}" \
         || die "published human trial balance did not report the expected Cash trial-balance row"
-    require_match "${human_output}" \
-        '^2000[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+Ordinary[[:space:]]+\|[[:space:]]+Credit[[:space:]]+\|[[:space:]]+Yes[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+Credit[[:space:]]*$' \
+    require_literal_block "${human_output}" "${revenue_block}" \
         || die "published human trial balance did not report the expected Revenue trial-balance row"
 }
 

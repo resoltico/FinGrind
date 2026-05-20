@@ -639,9 +639,13 @@ request fields — update
 `scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
 process where the operator-side verifier lags behind the published statement surface.
 
-If the public verifier fails, inspect the reported step, fix the published state, and rerun the
-same anonymous verification command. Do not switch to the operator's normal Docker config as a
-fallback.
+The tagged container workflow runs this same verifier after image publication, so a green
+container workflow and a green Step 9 operator run now speak to the same public contract rather
+than two different verification depths.
+
+If the public verifier fails, inspect the reported step, fix the published state or the verifier
+owner if the probe itself is wrong, and rerun the same anonymous verification command. Do not
+switch to the operator's normal Docker config as a fallback.
 
 These checks are a second handoff checkpoint. Workflow success is not enough; public pull and run
 behavior is the authoritative state.
