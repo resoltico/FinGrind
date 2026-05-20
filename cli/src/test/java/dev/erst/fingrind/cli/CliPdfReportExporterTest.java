@@ -34,16 +34,23 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileStore;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -89,6 +96,46 @@ class CliPdfReportExporterTest {
     assertPdfFile(trialBalancePdf);
     assertPdfFile(accountLedgerPdf);
     assertPdfFile(periodSummaryPdf);
+  }
+
+  @Test
+  void exportNormalizesPublishedPdfPermissionsOnPosixFileSystems() throws IOException {
+    FileStore fileStore = Files.getFileStore(tempDirectory);
+    Assumptions.assumeTrue(
+        fileStore.supportsFileAttributeView("posix"),
+        "requires one POSIX file store to assert mounted-volume PDF permissions");
+
+    CliPdfReportExporter exporter =
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.43.0", CLOCK));
+    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
+
+    exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
+
+    assertPdfFile(trialBalancePdf);
+    assertEquals(
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.OTHERS_READ),
+        Files.getPosixFilePermissions(trialBalancePdf));
+  }
+
+  @Test
+  void exportIgnoresPermissionNormalizationOnNonPosixFileSystems() throws IOException {
+    CliPdfReportExporter exporter =
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.43.0", CLOCK));
+    Path archivePath = tempDirectory.resolve("reports.zip");
+
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(
+            java.net.URI.create("jar:" + archivePath.toUri()), Map.of("create", "true"))) {
+      Path trialBalancePdf = zipFileSystem.getPath("/reports/trial-balance.pdf");
+
+      exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
+
+      assertPdfFile(trialBalancePdf);
+    }
   }
 
   @Test
@@ -308,6 +355,11 @@ class CliPdfReportExporterTest {
         throw new IOException("delete failed");
       }
       return true;
+    }
+
+    @Override
+    public void normalizePublishedPdfPermissions(Path path) {
+      // Recording test doubles do not mutate filesystem permissions.
     }
 
     @Override

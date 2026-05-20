@@ -14,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
@@ -71,6 +73,7 @@ final class CliPdfReportExporter {
       fileOperations.write(
           temporaryFile, pdfBytes, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
       moveAtomically(temporaryFile, normalizedOutputPath);
+      fileOperations.normalizePublishedPdfPermissions(normalizedOutputPath);
     } catch (IOException exception) {
       deleteIfPresent(temporaryFile);
       throw new CliPdfExportException(normalizedOutputPath, exception);
@@ -128,6 +131,9 @@ final class CliPdfReportExporter {
         throws IOException {
       return move(source, target, options);
     }
+
+    /** Normalizes the finished PDF artifact permissions for public mounted-volume workflows. */
+    void normalizePublishedPdfPermissions(Path path) throws IOException;
   }
 
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
@@ -156,5 +162,25 @@ final class CliPdfReportExporter {
     public boolean deleteIfExists(Path path) throws IOException {
       return Files.deleteIfExists(path);
     }
+
+    @Override
+    public void normalizePublishedPdfPermissions(Path path) throws IOException {
+      try {
+        Files.setPosixFilePermissions(
+            path,
+            Set.of(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.GROUP_READ,
+                PosixFilePermission.OTHERS_READ));
+      } catch (UnsupportedOperationException exception) {
+        ignorePermissionNormalizationOnNonPosixFilesystems(exception);
+      }
+    }
+  }
+
+  private static void ignorePermissionNormalizationOnNonPosixFilesystems(
+      UnsupportedOperationException exception) {
+    java.util.Objects.requireNonNull(exception, "exception");
   }
 }

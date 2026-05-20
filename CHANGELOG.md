@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed PDF artifact export permissions on POSIX hosts so `--pdf-out` now publishes mounted report
+  files with host-readable permissions instead of preserving the private temp-file mode across the
+  final move, and tightened the public container verifier plus its regression harness to report
+  unreadable mounted PDF artifacts as a first-class release-surface failure.
+
 ## [0.43.0] - 2026-05-20
 
 ### Added
