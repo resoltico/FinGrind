@@ -18,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /** Shared workflow and fixture helpers for public CLI docs and example-contract tests. */
@@ -69,7 +70,7 @@ abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   }
 
   protected void assertJsonFixture(String fixtureName, JsonNode actual) throws IOException {
-    assertTextFixture(fixtureName, actual.toString());
+    assertTextFixture(fixtureName, canonicalizeJsonFixture(actual).toString());
   }
 
   protected void assertTextFixture(String fixtureName, String actual) throws IOException {
@@ -90,7 +91,7 @@ abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   protected void recordJsonFixture(
       Map<String, String> recordedFixtures, String fixtureName, JsonNode actual)
       throws IOException {
-    recordTextFixture(recordedFixtures, fixtureName, actual.toString());
+    recordTextFixture(recordedFixtures, fixtureName, canonicalizeJsonFixture(actual).toString());
   }
 
   protected void recordTextFixture(
@@ -189,9 +190,31 @@ abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
 
   protected String canonicalizeExampleFixture(String text) {
     String pathCanonicalized =
-        trimSingleTerminalNewline(normalizeLineEndings(text))
-            .replace(tempDirectory.toAbsolutePath().toString(), "/absolute/path");
+        canonicalizeOwnedTemporaryPaths(trimSingleTerminalNewline(normalizeLineEndings(text)));
     return canonicalizeGeneratedIds(pathCanonicalized);
+  }
+
+  protected JsonNode canonicalizeJsonFixture(JsonNode actual) {
+    if (actual.isObject()) {
+      ObjectNode actualObject = (ObjectNode) actual;
+      ObjectNode canonical = OBJECT_MAPPER.createObjectNode();
+      actualObject
+          .properties()
+          .forEach(
+              entry -> canonical.set(entry.getKey(), canonicalizeJsonFixture(entry.getValue())));
+      return canonical;
+    }
+    if (actual.isArray()) {
+      ArrayNode canonical = OBJECT_MAPPER.createArrayNode();
+      actual.forEach(entry -> canonical.add(canonicalizeJsonFixture(entry)));
+      return canonical;
+    }
+    if (actual.isTextual()) {
+      return OBJECT_MAPPER
+          .getNodeFactory()
+          .textNode(canonicalizeOwnedTemporaryPaths(actual.textValue()));
+    }
+    return actual;
   }
 
   private static void writeActualFixture(String fixtureName, String normalizedActual)
@@ -204,6 +227,18 @@ abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
 
   private static String trimSingleTerminalNewline(String text) {
     return text.endsWith("\n") ? text.substring(0, text.length() - 1) : text;
+  }
+
+  private String canonicalizeOwnedTemporaryPaths(String text) {
+    String absolutePath = tempDirectory.toAbsolutePath().toString();
+    String canonicalized = text;
+    for (String variant :
+        List.of(absolutePath, absolutePath.replace('\\', '/'), absolutePath.replace('/', '\\'))) {
+      canonicalized = canonicalized.replace(variant, "/absolute/path");
+    }
+    return canonicalized.contains("/absolute/path")
+        ? canonicalized.replace('\\', '/')
+        : canonicalized;
   }
 
   private static String canonicalizeGeneratedIds(String text) {

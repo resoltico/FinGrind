@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the PR Gate and merge-handoff verifiers now wait longer by default before declaring timeout, and
   the release protocol documents the same explicit timeout override path for both pre-merge and
   post-merge verification.
+- Cross-platform CLI surface checks are tighter at the owner seams: shared human-format helpers now
+  emit one deterministic wrapped-line contract independent of host line endings, and published
+  example-fixture canonicalization now normalizes path-bearing JSON and text fixtures through the
+  same owned temporary-path rules on Windows, macOS, and Linux.
 - Fixed release-surface and source-checkout launcher regressions that were asserting retired help
   headings or one exact unwrapped launcher line; verification now proves the live grouped-help
   contract the launchers actually publish.

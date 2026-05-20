@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 /** Shared human-table, CSV, and money-display formatting for CLI query output. */
 final class CliTextFormat {
+  private static final String TEXT_LINE_SEPARATOR = "\n";
   private static final String CSV_LINE_SEPARATOR = "\n";
   private static final int MINIMUM_WRAP_VALUE_WIDTH = 24;
   private static final Pattern WRAP_WORD_BOUNDARY = Pattern.compile("\\s+");
@@ -43,13 +44,13 @@ final class CliTextFormat {
           .append(padded(row.getFirst(), labelWidth, TextAlignment.LEFT))
           .append(" : ")
           .append(wrappedValueLines.getFirst())
-          .append(System.lineSeparator());
+          .append(TEXT_LINE_SEPARATOR);
       for (int index = 1; index < wrappedValueLines.size(); index++) {
         document
             .append(" ".repeat(labelWidth))
             .append("   ")
             .append(wrappedValueLines.get(index))
-            .append(System.lineSeparator());
+            .append(TEXT_LINE_SEPARATOR);
       }
     }
     return document.toString().stripTrailing();
@@ -59,10 +60,10 @@ final class CliTextFormat {
     Objects.requireNonNull(title, "title");
     Objects.requireNonNull(body, "body");
     return title
-        + System.lineSeparator()
+        + TEXT_LINE_SEPARATOR
         + "=".repeat(title.length())
-        + System.lineSeparator()
-        + System.lineSeparator()
+        + TEXT_LINE_SEPARATOR
+        + TEXT_LINE_SEPARATOR
         + body;
   }
 
@@ -70,9 +71,9 @@ final class CliTextFormat {
     Objects.requireNonNull(summary, "summary");
     Objects.requireNonNull(body, "body");
     return summary
-        + System.lineSeparator()
+        + TEXT_LINE_SEPARATOR
         + "-".repeat(summary.length())
-        + System.lineSeparator()
+        + TEXT_LINE_SEPARATOR
         + body;
   }
 
@@ -86,7 +87,7 @@ final class CliTextFormat {
     appendTableLine(document, headers, widths, rightAligned);
     appendSeparatorLine(document, widths);
     if (rows.isEmpty()) {
-      document.append("(none)").append(System.lineSeparator());
+      document.append("(none)").append(TEXT_LINE_SEPARATOR);
       return document.toString().stripTrailing();
     }
     for (List<String> row : rows) {
@@ -108,7 +109,7 @@ final class CliTextFormat {
     for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
       recordBlocks.add(renderAdaptiveRecordBlock(maxWidth, headers, rows.get(rowIndex), rowIndex));
     }
-    return String.join(System.lineSeparator() + System.lineSeparator(), recordBlocks);
+    return String.join(TEXT_LINE_SEPARATOR + TEXT_LINE_SEPARATOR, recordBlocks);
   }
 
   static String renderCsv(List<String> headers, List<List<String>> rows) {
@@ -144,7 +145,7 @@ final class CliTextFormat {
               widths[index],
               rightAligned.contains(index) ? TextAlignment.RIGHT : TextAlignment.LEFT));
     }
-    document.append(line.toString().stripTrailing()).append(System.lineSeparator());
+    document.append(line.toString().stripTrailing()).append(TEXT_LINE_SEPARATOR);
   }
 
   private static void appendSeparatorLine(StringBuilder document, int[] widths) {
@@ -152,7 +153,7 @@ final class CliTextFormat {
     for (int width : widths) {
       cells.add("-".repeat(width));
     }
-    document.append(String.join("-+-", cells)).append(System.lineSeparator());
+    document.append(String.join("-+-", cells)).append(TEXT_LINE_SEPARATOR);
   }
 
   private static Set<Integer> rightAligned(int... rightAlignedColumns) {
@@ -182,7 +183,7 @@ final class CliTextFormat {
   }
 
   static String wrap(String text, int width) {
-    return String.join(System.lineSeparator(), wrapLines(text, width));
+    return String.join(TEXT_LINE_SEPARATOR, wrapLines(text, width));
   }
 
   static String wrapLineBlock(List<String> lines, int width) {
@@ -191,7 +192,7 @@ final class CliTextFormat {
         ? ""
         : lines.stream()
             .map(line -> wrap(line, width))
-            .collect(Collectors.joining(System.lineSeparator()));
+            .collect(Collectors.joining(TEXT_LINE_SEPARATOR));
   }
 
   static String renderBulletedBlock(List<String> items, int width) {
@@ -200,7 +201,7 @@ final class CliTextFormat {
         ? ""
         : items.stream()
             .map(item -> wrapWithPrefix(item, width, "- ", "  "))
-            .collect(Collectors.joining(System.lineSeparator()));
+            .collect(Collectors.joining(TEXT_LINE_SEPARATOR));
   }
 
   private static List<String> wrapLines(String text, int width) {
@@ -258,12 +259,11 @@ final class CliTextFormat {
     StringBuilder builder = new StringBuilder(firstPrefix).append(wrappedLines.getFirst());
     for (int index = 1; index < wrappedLines.size(); index++) {
       builder
-          .append(System.lineSeparator())
+          .append(TEXT_LINE_SEPARATOR)
           .append(nextPrefix)
           .append(
               String.join(
-                  System.lineSeparator() + nextPrefix,
-                  wrapLines(wrappedLines.get(index), nextWidth)));
+                  TEXT_LINE_SEPARATOR + nextPrefix, wrapLines(wrappedLines.get(index), nextWidth)));
     }
     return builder.toString();
   }
