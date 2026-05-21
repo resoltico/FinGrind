@@ -41,6 +41,7 @@ set -euo pipefail
 
 mode="${FAKE_DOCKER_MODE:-success}"
 expected_version="${FAKE_DOCKER_EXPECTED_VERSION:-0.24.0}"
+expected_mount_user="${FAKE_DOCKER_EXPECTED_MOUNT_USER:-}"
 mount_root=''
 
 translate_path() {
@@ -70,10 +71,15 @@ case "${command_name}" in
         ;;
     run)
         entrypoint=''
+        requested_user=''
         while [[ $# -gt 0 ]]; do
             case "${1}" in
                 --rm)
                     shift
+                    ;;
+                --user)
+                    requested_user="${2:-}"
+                    shift 2
                     ;;
                 --entrypoint)
                     entrypoint="${2:-}"
@@ -88,6 +94,12 @@ case "${command_name}" in
                     ;;
             esac
         done
+
+        if [[ -n "${mount_root}" && -n "${expected_mount_user}" && "${requested_user}" != "${expected_mount_user}" ]]; then
+            printf 'expected docker run --user %s for mounted workflow, got %s\n' \
+                "${expected_mount_user}" "${requested_user:-<missing>}" >&2
+            exit 1
+        fi
 
         image_ref="${1:-}"
         shift || true
@@ -370,12 +382,14 @@ EOF
 chmod +x "${fixture_root}/bin/head"
 
 PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+    FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
     bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
 
 set +e
 provenance_failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
         FAKE_DOCKER_MODE='missing-provenance' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
@@ -393,6 +407,7 @@ set +e
 failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
         FAKE_DOCKER_MODE='bad-report' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
@@ -410,6 +425,7 @@ set +e
 permission_failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
         FAKE_DOCKER_MODE='unreadable-pdf' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
@@ -427,6 +443,7 @@ set +e
 head_failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
         FAKE_HEAD_MODE='deny-pdf-read' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"

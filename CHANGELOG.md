@@ -11,9 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files with host-readable permissions instead of preserving the private temp-file mode across the
   final move, added a portable default-filesystem fallback that verifies one host-readable artifact
   contract instead of treating platform-specific permission-mutation return values as the public
-  invariant, and tightened the public container verifier plus its regression harness so host read
-  failures are reported as unreadable mounted PDF artifacts rather than being misclassified as
-  non-PDF content failures.
+  invariant, and tightened the public container verifier plus its regression harness so mounted
+  book/key/PDF workflows now run as the caller's numeric `UID:GID` and host read failures are
+  reported as unreadable mounted PDF artifacts rather than being misclassified as non-PDF content
+  failures.
 - Replaced the aging third-party Windows MSVC developer-command GitHub Action with a repo-owned
   PowerShell bootstrap that locates `VsDevCmd.bat`, exports the full developer-command
   environment for subsequent steps, parses cleanly under PowerShell before execution, and removes

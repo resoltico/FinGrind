@@ -627,14 +627,16 @@ can still perform one end-to-end bookkeeping/reporting loop, not just print disc
 `trial-balance --output human` must render the posted Cash and Revenue rows for the seeded EUR
 10.00 entry rather than failing in book initialization, key handling, or reporting. The same
 anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
-mounted workspace.
+mounted workspace. The mounted-workspace commands in that verifier must run the container as the
+caller's numeric `UID:GID`, matching the repo-owned `docker-smoke` contract, so bind-mounted key,
+book, and PDF artifacts remain owned and readable by the invoking operator on Linux hosts.
 
 Because this verifier asserts human statement output and drives a real mounted-book initialization
 and posting path, it is part of the published bookkeeping contract, not just the
 container-publication machinery. When the human `trial-balance` layout changes — for example new
 bookkeeping columns appear — or when the mounted workflow grammar changes — for example
 `open-book` starts requiring additional identity flags or `post-entry` starts requiring new
-request fields — update
+request fields — or when the mounted-workspace user contract changes — update
 `scripts/verify-public-container-surface.sh` and
 `scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
 process where the operator-side verifier lags behind the published statement surface.
