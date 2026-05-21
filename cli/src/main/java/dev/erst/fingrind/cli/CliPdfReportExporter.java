@@ -37,7 +37,7 @@ final class CliPdfReportExporter {
     this(
         pdfReportService,
         new DefaultFileOperations(
-            CliPdfReportExporter::normalizePublishedPdfPermissionsOnPosixFileSystems,
+            path -> Files.setPosixFilePermissions(path, PUBLISHED_PDF_POSIX_PERMISSIONS),
             CliPdfReportExporter::normalizePublishedPdfPermissionsOnPortableHostFileSystems));
   }
 
@@ -120,11 +120,6 @@ final class CliPdfReportExporter {
 
   private static void ignoreCleanupFailure(IOException exception) {
     java.util.Objects.requireNonNull(exception, "exception");
-  }
-
-  private static void normalizePublishedPdfPermissionsOnPosixFileSystems(Path path)
-      throws IOException {
-    Files.setPosixFilePermissions(path, PUBLISHED_PDF_POSIX_PERMISSIONS);
   }
 
   private static void normalizePublishedPdfPermissionsOnPortableHostFileSystems(Path path)
