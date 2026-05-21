@@ -128,6 +128,10 @@ staged Docker context mirrored at `cli/build/docker-context`, not from the repos
 Docker acceptance already proves that staged context path; tag-rerun publication must reuse the
 same assembly boundary instead of reopening checkout-local files through repository-root
 `.dockerignore` semantics.
+That rerun path must also materialize workflow-owned helper scripts from `main`, exactly like the
+release workflow does, before it replays the immutable tag checkout. Otherwise the tagged
+container rerun will silently keep the stale tag-owned verifier or publication helper and ignore
+the very repair you just merged.
 
 ## Evidence Owners
 
