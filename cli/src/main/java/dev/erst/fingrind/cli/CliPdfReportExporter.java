@@ -16,29 +16,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
 final class CliPdfReportExporter {
-  private static final Set<PosixFilePermission> PUBLISHED_PDF_POSIX_PERMISSIONS =
-      Set.of(
-          PosixFilePermission.OWNER_READ,
-          PosixFilePermission.OWNER_WRITE,
-          PosixFilePermission.GROUP_READ,
-          PosixFilePermission.OTHERS_READ);
-
   private final PdfReportService pdfReportService;
   private final FileOperations fileOperations;
 
   CliPdfReportExporter(PdfReportService pdfReportService) {
     this(
         pdfReportService,
-        new DefaultFileOperations(
-            path -> Files.setPosixFilePermissions(path, PUBLISHED_PDF_POSIX_PERMISSIONS),
-            CliPdfReportExporter::normalizePublishedPdfPermissionsOnPortableHostFileSystems));
+        new DefaultFileOperations(CliPdfReportExporter::normalizePublishedPdfPermissions));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -122,8 +111,7 @@ final class CliPdfReportExporter {
     java.util.Objects.requireNonNull(exception, "exception");
   }
 
-  private static void normalizePublishedPdfPermissionsOnPortableHostFileSystems(Path path)
-      throws IOException {
+  private static void normalizePublishedPdfPermissions(Path path) throws IOException {
     if (!path.getFileSystem().equals(FileSystems.getDefault())) {
       return;
     }
@@ -132,7 +120,7 @@ final class CliPdfReportExporter {
     pdfFile.setWritable(true, true);
     if (!Files.isReadable(path)) {
       throw new IOException(
-          "Published PDF artifact is not host-readable after portable permission normalization: "
+          "Published PDF artifact is not host-readable after permission normalization: "
               + path.toAbsolutePath());
     }
   }
@@ -171,33 +159,18 @@ final class CliPdfReportExporter {
     void normalize(Path path) throws IOException;
   }
 
-  /** One portable fallback seam for mounted-volume PDF permission normalization. */
-  @FunctionalInterface
-  interface PortablePublishedPdfPermissionNormalizer {
-    /** Applies one host-readable mounted-volume PDF permission fallback to one artifact path. */
-    void normalize(Path path) throws IOException;
-  }
-
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
   static final class DefaultFileOperations implements FileOperations {
     private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
-    private final PortablePublishedPdfPermissionNormalizer portablePublishedPdfPermissionNormalizer;
 
-    DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
-      this(
-          publishedPdfPermissionNormalizer,
-          CliPdfReportExporter::normalizePublishedPdfPermissionsOnPortableHostFileSystems);
+    DefaultFileOperations() {
+      this(CliPdfReportExporter::normalizePublishedPdfPermissions);
     }
 
-    DefaultFileOperations(
-        PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer,
-        PortablePublishedPdfPermissionNormalizer portablePublishedPdfPermissionNormalizer) {
+    DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
       this.publishedPdfPermissionNormalizer =
           Objects.requireNonNull(
               publishedPdfPermissionNormalizer, "publishedPdfPermissionNormalizer");
-      this.portablePublishedPdfPermissionNormalizer =
-          Objects.requireNonNull(
-              portablePublishedPdfPermissionNormalizer, "portablePublishedPdfPermissionNormalizer");
     }
 
     @Override
@@ -227,11 +200,7 @@ final class CliPdfReportExporter {
 
     @Override
     public void normalizePublishedPdfPermissions(Path path) throws IOException {
-      try {
-        publishedPdfPermissionNormalizer.normalize(path);
-      } catch (UnsupportedOperationException exception) {
-        portablePublishedPdfPermissionNormalizer.normalize(path);
-      }
+      publishedPdfPermissionNormalizer.normalize(path);
     }
   }
 }

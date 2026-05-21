@@ -36,14 +36,12 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,9 +49,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -102,29 +98,6 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void exportNormalizesPublishedPdfPermissionsOnPosixFileSystems() throws IOException {
-    FileStore fileStore = Files.getFileStore(tempDirectory);
-    Assumptions.assumeTrue(
-        fileStore.supportsFileAttributeView("posix"),
-        "requires one POSIX file store to assert mounted-volume PDF permissions");
-
-    CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.43.0", CLOCK));
-    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
-
-    exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
-
-    assertPdfFile(trialBalancePdf);
-    assertEquals(
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.GROUP_READ,
-            PosixFilePermission.OTHERS_READ),
-        Files.getPosixFilePermissions(trialBalancePdf));
-  }
-
-  @Test
   void exportIgnoresPermissionNormalizationOnNonPosixFileSystems() throws IOException {
     CliPdfReportExporter exporter =
         new CliPdfReportExporter(new PdfReportService("FinGrind", "0.43.0", CLOCK));
@@ -154,30 +127,9 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void defaultFileOperationsFallbackToPortablePermissionNormalizationWhenPosixIsUnsupported()
-      throws IOException {
-    AtomicReference<Path> observedPath = new AtomicReference<>();
+  void defaultFileOperationsApplyHostReadablePermissionsOnDefaultFileSystems() throws IOException {
     CliPdfReportExporter.DefaultFileOperations fileOperations =
-        new CliPdfReportExporter.DefaultFileOperations(
-            path -> {
-              throw new UnsupportedOperationException("posix unsupported");
-            },
-            observedPath::set);
-    Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
-
-    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
-
-    assertEquals(trialBalancePdf, observedPath.get());
-  }
-
-  @Test
-  void defaultFileOperationsApplyPortableHostReadablePermissionsOnDefaultFileSystems()
-      throws IOException {
-    CliPdfReportExporter.DefaultFileOperations fileOperations =
-        new CliPdfReportExporter.DefaultFileOperations(
-            path -> {
-              throw new UnsupportedOperationException("posix unsupported");
-            });
+        new CliPdfReportExporter.DefaultFileOperations();
     Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
     Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
 
@@ -189,12 +141,9 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void defaultFileOperationsRejectPortablePermissionNormalizationForMissingArtifact() {
+  void defaultFileOperationsRejectPermissionNormalizationForMissingArtifact() {
     CliPdfReportExporter.DefaultFileOperations fileOperations =
-        new CliPdfReportExporter.DefaultFileOperations(
-            path -> {
-              throw new UnsupportedOperationException("posix unsupported");
-            });
+        new CliPdfReportExporter.DefaultFileOperations();
     Path missingPdf = tempDirectory.resolve("missing/trial-balance.pdf");
 
     IOException exception =
@@ -203,36 +152,14 @@ class CliPdfReportExporterTest {
 
     String message = exception.getMessage();
     assertNotNull(message);
-    assertTrue(message.contains("host-readable"));
+    assertTrue(message.contains("permission normalization"));
   }
 
   @Test
-  void defaultFileOperationsPropagateIoFailuresFromDirectPermissionNormalization() {
+  void defaultFileOperationsPropagateIoFailuresFromPermissionNormalization() {
     IOException failure = new IOException("permission normalization failed");
     CliPdfReportExporter.DefaultFileOperations fileOperations =
         new CliPdfReportExporter.DefaultFileOperations(
-            path -> {
-              throw failure;
-            });
-
-    IOException exception =
-        assertThrows(
-            IOException.class,
-            () ->
-                fileOperations.normalizePublishedPdfPermissions(
-                    tempDirectory.resolve("trial-balance.pdf")));
-
-    assertSame(failure, exception);
-  }
-
-  @Test
-  void defaultFileOperationsPropagateIoFailuresFromPortablePermissionNormalization() {
-    IOException failure = new IOException("portable permission normalization failed");
-    CliPdfReportExporter.DefaultFileOperations fileOperations =
-        new CliPdfReportExporter.DefaultFileOperations(
-            path -> {
-              throw new UnsupportedOperationException("posix unsupported");
-            },
             path -> {
               throw failure;
             });
