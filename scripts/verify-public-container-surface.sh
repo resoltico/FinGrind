@@ -186,7 +186,7 @@ TEXT
 
 verify_mounted_book_surface() {
     local image_ref="${image_name}:${expected_version}"
-    local human_output pdf_path="${report_root}/trial-balance.pdf"
+    local human_output pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
 
     seed_public_fixture
 
@@ -225,7 +225,10 @@ verify_mounted_book_surface() {
     [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
     [[ -r "${pdf_path}" ]] || die \
         "published container wrote trial-balance.pdf without host-readable permissions"
-    [[ "$(head -c 5 "${pdf_path}")" == '%PDF-' ]] || die \
+    if ! pdf_signature="$(head -c 5 "${pdf_path}")"; then
+        die "published container wrote trial-balance.pdf without host-readable permissions"
+    fi
+    [[ "${pdf_signature}" == '%PDF-' ]] || die \
         "published container wrote a non-PDF trial-balance artifact"
 
     printf 'Verified mounted public workflow: %s\n' "${image_ref}"

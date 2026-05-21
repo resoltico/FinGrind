@@ -8,15 +8,15 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.report.pdf.PdfReportService;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
@@ -27,15 +27,7 @@ final class CliPdfReportExporter {
   CliPdfReportExporter(PdfReportService pdfReportService) {
     this(
         pdfReportService,
-        new DefaultFileOperations(
-            path ->
-                Files.setPosixFilePermissions(
-                    path,
-                    Set.of(
-                        PosixFilePermission.OWNER_READ,
-                        PosixFilePermission.OWNER_WRITE,
-                        PosixFilePermission.GROUP_READ,
-                        PosixFilePermission.OTHERS_READ))));
+        new DefaultFileOperations(CliPdfReportExporter::normalizePublishedPdfPermissions));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -119,6 +111,20 @@ final class CliPdfReportExporter {
     java.util.Objects.requireNonNull(exception, "exception");
   }
 
+  private static void normalizePublishedPdfPermissions(Path path) throws IOException {
+    if (!path.getFileSystem().equals(FileSystems.getDefault())) {
+      return;
+    }
+    File pdfFile = path.toFile();
+    pdfFile.setReadable(true, false);
+    pdfFile.setWritable(true, true);
+    if (!Files.isReadable(path)) {
+      throw new IOException(
+          "Published PDF artifact is not host-readable after permission normalization: "
+              + path.toAbsolutePath());
+    }
+  }
+
   /** One filesystem adapter used by PDF export and its focused unit tests. */
   interface FileOperations {
     /** Creates parent directories for the target PDF artifact. */
@@ -157,6 +163,10 @@ final class CliPdfReportExporter {
   static final class DefaultFileOperations implements FileOperations {
     private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
 
+    DefaultFileOperations() {
+      this(CliPdfReportExporter::normalizePublishedPdfPermissions);
+    }
+
     DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
       this.publishedPdfPermissionNormalizer =
           Objects.requireNonNull(
@@ -190,11 +200,7 @@ final class CliPdfReportExporter {
 
     @Override
     public void normalizePublishedPdfPermissions(Path path) throws IOException {
-      try {
-        publishedPdfPermissionNormalizer.normalize(path);
-      } catch (UnsupportedOperationException exception) {
-        Objects.requireNonNull(exception, "exception");
-      }
+      publishedPdfPermissionNormalizer.normalize(path);
     }
   }
 }
