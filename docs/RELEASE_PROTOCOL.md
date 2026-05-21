@@ -434,7 +434,10 @@ If the repair changes container publication, verify that `container.yml` builds 
 Docker context at `cli/build/docker-context` instead of the repository root before dispatching the
 rerun. The local Docker acceptance gate already proves the staged context path; the public
 container workflow must publish from that same checked assembly boundary rather than reopening the
-checkout root under repository-root `.dockerignore` rules.
+checkout root under repository-root `.dockerignore` rules. The tagged rerun must also materialize
+workflow-owned helper scripts from `main` before it replays the immutable tag checkout; otherwise
+the rerun will silently keep the stale tag-owned verifier or release-asset helper and ignore the
+merged repair.
 
 Never create a second tag or move an existing release tag just to retry CI.
 

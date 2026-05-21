@@ -86,10 +86,14 @@ PY
 (( timeout_minutes * 60 >= release_wait_budget_seconds + 15 * 60 )) || die \
     "container workflow timeout must leave at least 15 minutes beyond the release wait budget for image build and post-publish verification"
 
-grep -Fq './scripts/verify-github-release.sh' "${workflow_file}" || die \
-    "container workflow no longer waits for the GitHub release asset handoff"
-grep -Fq './scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
-    "container workflow no longer verifies the published public container surface"
+grep -Fq 'workflow-helper-root' "${workflow_file}" || die \
+    "container workflow no longer resolves a workflow helper-root for immutable-tag reruns"
+grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${workflow_file}" || die \
+    "container workflow no longer executes the release-candidate verifier from the workflow helper-root"
+grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh' "${workflow_file}" || die \
+    "container workflow no longer waits for the release-asset handoff through the workflow helper-root"
+grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
+    "container workflow no longer verifies the published public container surface through the workflow helper-root"
 grep -Fq 'context: cli/build/docker-context' "${workflow_file}" || die \
     "container workflow no longer publishes from the staged Docker build context"
 grep -Fq 'context: .' "${workflow_file}" && die \

@@ -41,6 +41,25 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
 
+      - name: Checkout workflow-owner helper surface
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          ref: main
+          path: workflow-owner-surface
+
+      - name: Resolve workflow helper root
+        id: workflow-helper-root
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
+          else
+            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Resolve Java toolchain version
         id: build-metadata
         shell: bash
@@ -88,7 +107,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
-        run: ./scripts/verify-release-candidate-tag.sh
+        run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh
 
       - name: Wait for GitHub release assets before publishing the container
         env:
@@ -97,7 +116,7 @@ jobs:
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "120"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "15"
         run: |
-          ./scripts/verify-github-release.sh \
+          ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh \
             "fingrind-${{ steps.target-tag.outputs.version }}-linux-x86_64.tar.gz" \
             "fingrind-${{ steps.target-tag.outputs.version }}-linux-x86_64.tar.gz.sha256" \
             "fingrind-${{ steps.target-tag.outputs.version }}-linux-aarch64.tar.gz" \
@@ -152,7 +171,7 @@ jobs:
           sbom: true
 
       - name: Verify published public container surface
-        run: ./scripts/verify-public-container-surface.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
+        run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
 
   cleanup:
     name: Prune old container versions

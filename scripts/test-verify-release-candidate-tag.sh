@@ -52,7 +52,9 @@ grep -Fq 'verify-release-candidate-tag.sh' "${release_workflow}" || die \
     "release workflow no longer invokes the release-candidate verifier"
 grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
     "release workflow no longer resolves the workflow helper-root contract"
-grep -Fq './scripts/verify-release-candidate-tag.sh' "${container_workflow}" || die \
+grep -Fq 'workflow-helper-root' "${container_workflow}" || die \
+    "container workflow no longer resolves the workflow helper-root contract"
+grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${container_workflow}" || die \
     "container workflow no longer validates publication candidates before publishing images"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "release-candidate verifier no longer sources the canonical release-check owner"
