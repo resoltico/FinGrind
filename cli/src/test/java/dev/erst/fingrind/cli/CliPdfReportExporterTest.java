@@ -189,7 +189,7 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void defaultFileOperationsRejectPortablePermissionNormalizationWhenMutationFails() {
+  void defaultFileOperationsRejectPortablePermissionNormalizationForMissingArtifact() {
     CliPdfReportExporter.DefaultFileOperations fileOperations =
         new CliPdfReportExporter.DefaultFileOperations(
             path -> {
@@ -203,7 +203,7 @@ class CliPdfReportExporterTest {
 
     String message = exception.getMessage();
     assertNotNull(message);
-    assertTrue(message.contains("published PDF artifact"));
+    assertTrue(message.contains("host-readable"));
   }
 
   @Test

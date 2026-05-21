@@ -133,21 +133,12 @@ final class CliPdfReportExporter {
       return;
     }
     File pdfFile = path.toFile();
-    requirePermissionMutation(
-        pdfFile.setReadable(false, false), path, "clear existing read permissions");
-    requirePermissionMutation(
-        pdfFile.setWritable(false, false), path, "clear existing write permissions");
-    requirePermissionMutation(
-        pdfFile.setReadable(true, false), path, "grant read permissions to all users");
-    requirePermissionMutation(
-        pdfFile.setWritable(true, true), path, "grant write permission to the owner");
-  }
-
-  private static void requirePermissionMutation(boolean mutationApplied, Path path, String action)
-      throws IOException {
-    if (!mutationApplied) {
+    pdfFile.setReadable(true, false);
+    pdfFile.setWritable(true, true);
+    if (!Files.isReadable(path)) {
       throw new IOException(
-          "Failed to " + action + " for published PDF artifact: " + path.toAbsolutePath());
+          "Published PDF artifact is not host-readable after portable permission normalization: "
+              + path.toAbsolutePath());
     }
   }
 
