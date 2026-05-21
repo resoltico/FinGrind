@@ -35,6 +35,7 @@ readonly fixture_business_activity_tag='consulting-services'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
 readonly fixture_accounting_basis='ACCRUAL'
+readonly docker_run_user="$(id -u):$(id -g)"
 docker_config_dir=''
 report_root=''
 
@@ -53,6 +54,13 @@ report_root="$(mktemp -d)"
 
 anonymous_docker() {
     docker --config "${docker_config_dir}" "$@"
+}
+
+mounted_container_run() {
+    local image_ref=$1
+    shift
+
+    anonymous_docker run --rm --user "${docker_run_user}" -v "${report_root}:/work" "${image_ref}" "$@"
 }
 
 container_shell() {
@@ -190,9 +198,9 @@ verify_mounted_book_surface() {
 
     seed_public_fixture
 
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         generate-book-key-file --book-key-file /work/book.key >/dev/null
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         open-book \
         --book-file /work/book.sqlite \
         --book-key-file /work/book.key \
@@ -204,21 +212,21 @@ verify_mounted_book_surface() {
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" \
         --accounting-basis "${fixture_accounting_basis}" >/dev/null
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json >/dev/null
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         post-entry --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
 
     human_output="$(
-        anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+        mounted_container_run "${image_ref}" \
             trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
             --effective-date-to 2026-04-08 --output human | tr -d '\r'
     )"
     verify_human_trial_balance "${human_output}"
 
-    anonymous_docker run --rm -v "${report_root}:/work" "${image_ref}" \
+    mounted_container_run "${image_ref}" \
         trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
         --effective-date-to 2026-04-08 --output human --pdf-out /work/trial-balance.pdf >/dev/null
 
