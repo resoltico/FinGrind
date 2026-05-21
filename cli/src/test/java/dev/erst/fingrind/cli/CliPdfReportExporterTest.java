@@ -35,6 +35,7 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -42,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -49,6 +51,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -115,6 +118,53 @@ class CliPdfReportExporterTest {
   }
 
   @Test
+  void applyHostReadablePosixPermissionsIfSupportedEnforcesPublicReadMode() throws IOException {
+    Path archivePath = tempDirectory.resolve("reports.zip");
+
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(
+            URI.create("jar:" + archivePath.toUri()),
+            Map.of(
+                "create", "true",
+                "enablePosixFileAttributes", "true",
+                "defaultOwner", "owner",
+                "defaultGroup", "group",
+                "defaultPermissions", "rw-------"))) {
+      Path trialBalancePdf = zipFileSystem.getPath("/reports/trial-balance.pdf");
+      Files.createDirectories(trialBalancePdf.getParent());
+      Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
+
+      CliPdfReportExporter.applyHostReadablePosixPermissionsIfSupported(trialBalancePdf);
+
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ,
+              PosixFilePermission.OTHERS_READ),
+          Files.getPosixFilePermissions(trialBalancePdf));
+    }
+  }
+
+  @Test
+  void applyHostReadablePosixPermissionsIfSupportedIgnoresFileSystemsWithoutPosixView()
+      throws IOException {
+    Path archivePath = tempDirectory.resolve("non-posix-reports.zip");
+
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(
+            URI.create("jar:" + archivePath.toUri()), Map.of("create", "true"))) {
+      Path trialBalancePdf = zipFileSystem.getPath("/reports/trial-balance.pdf");
+      Files.createDirectories(trialBalancePdf.getParent());
+      Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
+
+      CliPdfReportExporter.applyHostReadablePosixPermissionsIfSupported(trialBalancePdf);
+
+      assertTrue(Files.isReadable(trialBalancePdf));
+    }
+  }
+
+  @Test
   void defaultFileOperationsDelegatePermissionNormalizationWhenSupported() throws IOException {
     AtomicReference<Path> observedPath = new AtomicReference<>();
     CliPdfReportExporter.DefaultFileOperations fileOperations =
@@ -152,7 +202,7 @@ class CliPdfReportExporterTest {
 
     String message = exception.getMessage();
     assertNotNull(message);
-    assertTrue(message.contains("permission normalization"));
+    assertTrue(message.contains("host-readable after permission normalization"));
   }
 
   @Test

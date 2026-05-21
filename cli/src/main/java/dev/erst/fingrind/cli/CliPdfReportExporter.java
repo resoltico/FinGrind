@@ -16,11 +16,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
 final class CliPdfReportExporter {
+  private static final Set<PosixFilePermission> HOST_READABLE_PDF_POSIX_PERMISSIONS =
+      Set.of(
+          PosixFilePermission.OWNER_READ,
+          PosixFilePermission.OWNER_WRITE,
+          PosixFilePermission.GROUP_READ,
+          PosixFilePermission.OTHERS_READ);
+
   private final PdfReportService pdfReportService;
   private final FileOperations fileOperations;
 
@@ -118,11 +128,27 @@ final class CliPdfReportExporter {
     File pdfFile = path.toFile();
     pdfFile.setReadable(true, false);
     pdfFile.setWritable(true, true);
-    if (!Files.isReadable(path)) {
-      throw new IOException(
-          "Published PDF artifact is not host-readable after permission normalization: "
-              + path.toAbsolutePath());
+    applyHostReadablePosixPermissionsIfSupported(path);
+    requireHostReadablePublishedPdf(path);
+  }
+
+  static void applyHostReadablePosixPermissionsIfSupported(Path path) throws IOException {
+    if (Files.notExists(path)) {
+      return;
     }
+    if (Files.getFileAttributeView(path, PosixFileAttributeView.class) == null) {
+      return;
+    }
+    Files.setPosixFilePermissions(path, HOST_READABLE_PDF_POSIX_PERMISSIONS);
+  }
+
+  static void requireHostReadablePublishedPdf(Path path) throws IOException {
+    if (Files.isReadable(path)) {
+      return;
+    }
+    throw new IOException(
+        "Published PDF artifact is not host-readable after permission normalization: "
+            + path.toAbsolutePath());
   }
 
   /** One filesystem adapter used by PDF export and its focused unit tests. */
