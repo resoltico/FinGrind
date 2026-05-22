@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -16,6 +17,7 @@ final class CliDiscoveryArguments {
   static CliCommand parseHelp(List<String> arguments) {
     @Nullable OperationId commandTopic = null;
     @Nullable OutputMode outputMode = null;
+    @Nullable DiscoveryDetail detail = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -27,29 +29,45 @@ final class CliDiscoveryArguments {
                 CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
         continue;
       }
+      if (ProtocolOptions.DETAIL.equals(argument)) {
+        detail = CliArgumentValueParser.requireDiscoveryDetail(detail, argumentIterator);
+        continue;
+      }
       if (commandTopic != null) {
         throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       commandTopic = requiredCommandTopic(argument, "help");
     }
-    return new Help(commandTopic, CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
+    OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
+    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
+    return new Help(
+        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
   }
 
   static CliCommand parseCommandHelp(OperationId commandTopic, List<String> arguments) {
     @Nullable OutputMode outputMode = null;
+    @Nullable DiscoveryDetail detail = null;
     ListIterator<String> argumentIterator = arguments.listIterator(2);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode =
+            CliArgumentValueParser.requireOutputMode(
+                outputMode,
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        continue;
       }
-      outputMode =
-          CliArgumentValueParser.requireOutputMode(
-              outputMode,
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+      if (ProtocolOptions.DETAIL.equals(argument)) {
+        detail = CliArgumentValueParser.requireDiscoveryDetail(detail, argumentIterator);
+        continue;
+      }
+      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
-    return new Help(commandTopic, CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
+    OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
+    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
+    return new Help(
+        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
   }
 
   static CliCommand parseVersion(List<String> arguments) {
@@ -57,7 +75,28 @@ final class CliDiscoveryArguments {
   }
 
   static CliCommand parseCapabilities(List<String> arguments) {
-    return parseDiscoveryCommand(arguments, Capabilities::new);
+    @Nullable OutputMode outputMode = null;
+    @Nullable DiscoveryDetail detail = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode =
+            CliArgumentValueParser.requireOutputMode(
+                outputMode,
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        continue;
+      }
+      if (ProtocolOptions.DETAIL.equals(argument)) {
+        detail = CliArgumentValueParser.requireDiscoveryDetail(detail, argumentIterator);
+        continue;
+      }
+      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+    }
+    OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
+    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
+    return new Capabilities(resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
   }
 
   static CliCommand parseEnvironment(List<String> arguments) {
@@ -148,6 +187,22 @@ final class CliDiscoveryArguments {
         ProtocolCatalog.operationName(OperationId.POST_ENTRY),
         ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
         ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT));
+  }
+
+  private static void requireJsonDiscoveryDetail(
+      @Nullable DiscoveryDetail detail, OutputMode resolvedOutputMode) {
+    if (detail == null || resolvedOutputMode == OutputMode.JSON) {
+      return;
+    }
+    throw CliArgumentValueParser.invalid(
+        ProtocolOptions.DETAIL,
+        ProtocolOptions.DETAIL
+            + " is supported only when the resolved output mode is json. "
+            + "Add "
+            + ProtocolOptions.OUTPUT
+            + " json or omit "
+            + ProtocolOptions.DETAIL
+            + ".");
   }
 
   /** Factory for one discovery command that only varies by the selected output mode. */

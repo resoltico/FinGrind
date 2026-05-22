@@ -11,6 +11,51 @@ import org.junit.jupiter.api.Test;
 /** Tests semantic integrity gating for initialized SQLite books. */
 class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
   @Test
+  void initializedBookState_recognizesHealthyInitializedBooks() {
+    Path initializedBookPath = tempDirectory.resolve("book-state-initialized.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INITIALIZED_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(database)));
+  }
+
+  @Test
+  void initializedBookState_rejectsHealthyBookWhenPersistedMoneyAuditFails() {
+    Path initializedBookPath = tempDirectory.resolve("book-state-invalid-persisted-money.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(
+                    InterceptingSqliteNativeDatabase.replacing(
+                        database,
+                        SqlitePostingSql.LOAD_PERSISTED_MONEY_AUDIT_ROWS,
+                        "select 'ZZZ' as currency_code, -1 as amount_minor"))));
+  }
+
+  @Test
+  void initializedBookState_rejectsHealthyBookWhenFunctionalCurrencyProbeFindsMismatch() {
+    Path initializedBookPath =
+        tempDirectory.resolve("book-state-functional-currency-probe-mismatch.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(
+                    InterceptingSqliteNativeDatabase.replacing(
+                        database,
+                        SqlitePostingSql.FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY,
+                        "select 'posting-1'"))));
+  }
+
+  @Test
   void initializedBookState_requiresIntegrityForeignKeyFingerprintBalanceAndMoneyIntegrity() {
     Path fingerprintPath = tempDirectory.resolve("book-state-fingerprint.sqlite");
     initializeBookOnDisk(fingerprintPath);
@@ -66,6 +111,7 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
         });
     assertIncompleteStateAfterCorruption(
         "book-state-mixed-currency.sqlite",
+        "drop trigger journal_line_validate_functional_currency_on_insert",
         database -> {
           insertPostingFactRow(database, "posting-mixed-currency", "idem-mixed-currency");
           insertJournalLineRow(database, "posting-mixed-currency", 0, "1000", "DEBIT", "EUR", 1000);
@@ -85,6 +131,7 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
         });
     assertIncompleteStateAfterCorruption(
         "book-state-functional-currency-mismatch.sqlite",
+        "drop trigger journal_line_validate_functional_currency_on_insert",
         database -> {
           insertPostingFactRow(database, "posting-usd", "idem-usd");
           insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000);
@@ -118,6 +165,8 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
     withStandaloneDatabase(
         bookAccess(invalidMoneyPath),
         database -> {
+          database.executeStatement(
+              "drop trigger journal_line_validate_functional_currency_on_insert");
           insertPostingFactRow(database, "posting-invalid-currency", "idem-invalid-currency");
           insertJournalLineRow(
               database, "posting-invalid-currency", 0, "1000", "DEBIT", "ZZZ", 1000);
@@ -184,11 +233,19 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
 
   private void assertIncompleteStateAfterCorruption(
       String filename, SqliteDatabaseAction corruptionAction) {
+    assertIncompleteStateAfterCorruption(filename, null, corruptionAction);
+  }
+
+  private void assertIncompleteStateAfterCorruption(
+      String filename, @Nullable String preCorruptionSql, SqliteDatabaseAction corruptionAction) {
     Path bookPath = tempDirectory.resolve(filename);
     initializeBookOnDisk(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
+          if (preCorruptionSql != null) {
+            database.executeStatement(preCorruptionSql);
+          }
           corruptionAction.run(database);
           assertEquals(
               SqliteBookState.INCOMPLETE_FINGRIND,

@@ -57,7 +57,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(openBookPromptArguments(bookFilePath));
-    assertEquals(2, exitCode);
+    assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code(),
@@ -122,7 +122,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             utf8PrintStream(listOutput),
             fixedClock());
     assertEquals(
-        2,
+        6,
         listCli.run(
             new String[] {
               "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
@@ -153,7 +153,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             fixedClock());
 
     assertEquals(
-        2,
+        6,
         listCli.run(
             new String[] {
               "list-accounts",
@@ -191,7 +191,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             },
             utf8PrintStream(outputStream),
             fixedClock());
-    assertEquals(2, cli.run(openBookStandardInputArguments(bookFilePath)));
+    assertEquals(6, cli.run(openBookStandardInputArguments(bookFilePath)));
     String outputText = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(

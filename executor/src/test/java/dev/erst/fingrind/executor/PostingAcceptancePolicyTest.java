@@ -10,7 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -107,6 +109,52 @@ class PostingAcceptancePolicyTest {
     assertEquals(1, book.findAccountsCalls);
     assertEquals(List.of(new AccountCode("1000"), new AccountCode("2000")), book.requestedAccounts);
     assertThrows(AssertionError.class, () -> book.findAccount(new AccountCode("1000")));
+  }
+
+  @Test
+  void rejectionFor_rejectsNonPostableHeaderAccounts() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount cashHeader =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash Header"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            new AccountTaxonomy(
+                AccountNodeKind.HEADER,
+                Optional.empty(),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty()),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("4000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(cashHeader.accountCode(), cashHeader);
+    book.accounts.put(revenue.accountCode(), revenue);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
+            command(
+                "idem-non-postable-header",
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("4000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.AccountStateViolations(
+                List.of(
+                    new BookkeepingPostingRejection.NonPostableAccount(
+                        new AccountCode("1000"), AccountNodeKind.HEADER)))),
+        rejection);
   }
 
   @Test

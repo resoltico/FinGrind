@@ -19,11 +19,14 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": []
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s
                 }
-                """)
+                """
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -41,12 +44,15 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": "not-an-object"
                 }
-                """)
+                """
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -64,12 +70,15 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": null
                 }
-                """)
+                """
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

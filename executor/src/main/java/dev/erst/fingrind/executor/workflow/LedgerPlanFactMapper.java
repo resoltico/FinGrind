@@ -22,14 +22,39 @@ public final class LedgerPlanFactMapper {
 
   /** Expands one declared account into workflow-owned machine facts. */
   public static List<BookWorkflowFact> declaredAccountFacts(RegisteredAccount account) {
-    return List.of(
-        BookWorkflowFact.text("accountCode", account.accountCode().value()),
-        BookWorkflowFact.text("accountName", account.accountName().value()),
-        BookWorkflowFact.text("accountType", account.accountType().wireValue()),
-        BookWorkflowFact.text("accountRole", account.accountRole().wireValue()),
-        BookWorkflowFact.text("normalBalance", account.normalBalance().wireValue()),
-        BookWorkflowFact.flag("active", account.active()),
-        BookWorkflowFact.text("declaredAt", account.declaredAt().toString()));
+    List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.text("accountCode", account.accountCode().value()));
+    facts.add(BookWorkflowFact.text("accountName", account.accountName().value()));
+    facts.add(BookWorkflowFact.text("accountType", account.accountType().wireValue()));
+    facts.add(BookWorkflowFact.text("accountRole", account.accountRole().wireValue()));
+    facts.add(
+        BookWorkflowFact.text("accountNodeKind", account.accountTaxonomy().nodeKind().wireValue()));
+    account
+        .accountTaxonomy()
+        .parentAccountCode()
+        .ifPresent(
+            parentAccountCode ->
+                facts.add(BookWorkflowFact.text("parentAccountCode", parentAccountCode.value())));
+    account
+        .accountTaxonomy()
+        .financialPositionLineClassification()
+        .ifPresent(
+            classification ->
+                facts.add(
+                    BookWorkflowFact.text(
+                        "financialPositionLineClassification", classification.wireValue())));
+    account
+        .accountTaxonomy()
+        .profitAndLossLineClassification()
+        .ifPresent(
+            classification ->
+                facts.add(
+                    BookWorkflowFact.text(
+                        "profitAndLossLineClassification", classification.wireValue())));
+    facts.add(BookWorkflowFact.text("normalBalance", account.normalBalance().wireValue()));
+    facts.add(BookWorkflowFact.flag("active", account.active()));
+    facts.add(BookWorkflowFact.text("declaredAt", account.declaredAt().toString()));
+    return List.copyOf(facts);
   }
 
   /** Expands one paginated account-registry result into workflow-owned machine facts. */
@@ -59,6 +84,10 @@ public final class LedgerPlanFactMapper {
   public static List<BookWorkflowFact> postingFacts(CommittedPosting postingFact) {
     List<BookWorkflowFact> facts = new ArrayList<>();
     facts.add(BookWorkflowFact.text("postingId", postingFact.postingId().value()));
+    facts.add(BookWorkflowFact.text("postingKind", postingFact.postingKind().wireValue()));
+    facts.add(
+        BookWorkflowFact.text(
+            "reversalState", postingFact.reversalReference().isPresent() ? "reversal" : "direct"));
     facts.add(
         BookWorkflowFact.text(
             "idempotencyKey",
@@ -164,13 +193,21 @@ public final class LedgerPlanFactMapper {
       SourceDocumentReference sourceDocument) {
     return List.of(
         BookWorkflowFact.text("sourceDocumentId", sourceDocument.sourceDocumentId().value()),
-        BookWorkflowFact.text("sourceDocumentType", sourceDocument.sourceDocumentType().value()));
+        BookWorkflowFact.text("sourceDocumentType", sourceDocument.sourceDocumentType().value()),
+        BookWorkflowFact.text("documentDate", sourceDocument.documentDate().toString()),
+        BookWorkflowFact.text("capturedAt", sourceDocument.capturedAt().toString()),
+        BookWorkflowFact.text("storageLocator", sourceDocument.storageLocator().value()),
+        BookWorkflowFact.text("contentSha256", sourceDocument.contentSha256().value()));
   }
 
   private static List<BookWorkflowFact> approvalFacts(ApprovalReference approval) {
     return List.of(
         BookWorkflowFact.text("approvalId", approval.approvalId().value()),
-        BookWorkflowFact.text("approvalType", approval.approvalType().value()));
+        BookWorkflowFact.text("approvalType", approval.approvalType().value()),
+        BookWorkflowFact.text("approverId", approval.approverId().value()),
+        BookWorkflowFact.text("approverType", approval.approverType().wireValue()),
+        BookWorkflowFact.text("decision", approval.decision().wireValue()),
+        BookWorkflowFact.text("approvedAt", approval.approvedAt().toString()));
   }
 
   private static List<BookWorkflowFact> journalLineFacts(JournalLine line) {

@@ -1,17 +1,18 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -19,6 +20,7 @@ import java.util.Objects;
 
 /** Application service that owns preflight and commit behavior for posting entries. */
 public final class PostingApplicationService {
+  private final PostingValidationStore validationStore;
   private final BookkeepingPostingService bookkeepingPostingService;
 
   /** Creates the posting application service with its application-owned seams. */
@@ -27,33 +29,26 @@ public final class PostingApplicationService {
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
       java.time.Clock clock) {
-    this(
-        validationStore,
-        commitStore,
-        postingIdGenerator,
-        clock,
-        CoreBookkeepingPolicyPack.current());
-  }
-
-  PostingApplicationService(
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      PostingIdGenerator postingIdGenerator,
-      java.time.Clock clock,
-      BookkeepingPolicyPack policyPack) {
+    this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
-            Objects.requireNonNull(validationStore, "validationStore"),
+            this.validationStore,
             Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
-            Objects.requireNonNull(clock, "clock"),
-            BookkeepingPolicyPack.requirePolicyPack(policyPack));
+            Objects.requireNonNull(clock, "clock"));
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
-  public PreflightEntryResult preflight(PostingCommand command) {
+  public PreflightEntryResult preflight(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    return switch (bookkeepingPostingService.preflight(command)) {
+    if (bookNotInitialized()) {
+      return rejectedPreflight(
+          command,
+          BookkeepingPublishedLanguageTranslator.toPublished(
+              new BookkeepingPostingRejection.BookNotInitialized()));
+    }
+    PostingCommand postingCommand = localPostingCommand(command);
+    return switch (bookkeepingPostingService.preflight(postingCommand)) {
       case PostingPreflightOutcome.Accepted accepted ->
           new PostEntryResult.PreflightAccepted(
               accepted.idempotencyKey(), accepted.effectiveDate());
@@ -64,9 +59,16 @@ public final class PostingApplicationService {
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
-  public CommitEntryResult commit(PostingCommand command) {
+  public CommitEntryResult commit(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    return switch (bookkeepingPostingService.commit(command)) {
+    if (bookNotInitialized()) {
+      return rejectedCommit(
+          command,
+          BookkeepingPublishedLanguageTranslator.toPublished(
+              new BookkeepingPostingRejection.BookNotInitialized()));
+    }
+    PostingCommand postingCommand = localPostingCommand(command);
+    return switch (bookkeepingPostingService.commit(postingCommand)) {
       case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
       case PostingCommitResult.Rejected rejected ->
           rejectedCommit(
@@ -83,14 +85,25 @@ public final class PostingApplicationService {
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(
-      PostingCommand command, PostingRejection rejection) {
+      PostEntryCommand command, PostingRejection rejection) {
     return new PostEntryResult.PreflightRejected(
         command.requestProvenance().idempotencyKey(), rejection);
   }
 
   private static PostEntryResult.CommitRejected rejectedCommit(
-      PostingCommand command, PostingRejection rejection) {
+      PostEntryCommand command, PostingRejection rejection) {
     return new PostEntryResult.CommitRejected(
         command.requestProvenance().idempotencyKey(), rejection);
+  }
+
+  private boolean bookNotInitialized() {
+    return !(validationStore.inspectBook() instanceof BookLifecycleInspection.Initialized);
+  }
+
+  private PostingCommand localPostingCommand(PostEntryCommand command) {
+    BookLifecycleInspection inspection = validationStore.inspectBook();
+    BookLifecycleInspection.Initialized initialized =
+        (BookLifecycleInspection.Initialized) inspection;
+    return PostEntryCommandTranslator.toPostingCommand(initialized.bookIdentity(), command);
   }
 }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -180,7 +180,9 @@ That wrapper resolves the active CLI build directory, then invokes the generated
 same Java native-access flag as the bundle, the source-checkout runtime-distribution contract, and
 managed-SQLite checkout lookup already baked in. The launcher also carries the active root-project
 build directory so relocated Gradle build roots resolve the prepared managed SQLite library tree
-instead of guessing at `repo/build/...`.
+instead of guessing at `repo/build/...`. The repo-owned wrapper now verifies a source-hash manifest
+before each launch; when the cached raw JAR has drifted behind the live checkout, it refreshes
+`:cli:shadowJar` and `prepareManagedSqlite` before executing the command.
 
 Developer direct-Java entrypoints:
 
@@ -197,7 +199,9 @@ That wrapper resolves the active CLI build directory and then runs the prepared 
 It grants native access only to the `fingrind` module and keeps the same managed-SQLite
 auto-discovery path as the generated source-checkout launcher. Manual
 `FINGRIND_SQLITE_LIBRARY` export remains the escape hatch only for custom direct-Java launches
-that have been moved away from the prepared checkout layout.
+that have been moved away from the prepared checkout layout. The wrapper uses the same source-hash
+manifest guard as the source-checkout launcher, so stale raw-JAR bytes are refreshed from the
+current checkout before direct execution.
 
 The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
 one canonical Docker build-context directory under the active CLI build root, plus a mirrored

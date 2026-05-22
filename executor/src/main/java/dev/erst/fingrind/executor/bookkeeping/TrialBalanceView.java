@@ -11,14 +11,14 @@ import java.util.Optional;
 /** Local bookkeeping trial-balance view. */
 public record TrialBalanceView(
     BookIdentity bookIdentity,
-    Optional<LocalDate> effectiveDateTo,
+    Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<TrialBalanceRowView> rows,
     List<TrialBalanceRowView> comparativeRows) {
   public TrialBalanceView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     rows = List.copyOf(Objects.requireNonNull(rows, "rows"));

@@ -6,8 +6,7 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
@@ -32,7 +31,6 @@ public final class PeriodCloseService {
   private final PeriodCloseStore periodCloseStore;
   private final PostingIdGenerator postingIdGenerator;
   private final Clock clock;
-  private final PeriodClosePlanner planner;
 
   /** Creates the close-period service with its application-owned seams. */
   public PeriodCloseService(
@@ -42,31 +40,12 @@ public final class PeriodCloseService {
       PeriodCloseStore periodCloseStore,
       PostingIdGenerator postingIdGenerator,
       Clock clock) {
-    this(
-        lifecycleReader,
-        accountCatalogStore,
-        postingRangeStore,
-        periodCloseStore,
-        postingIdGenerator,
-        clock,
-        CoreBookkeepingPolicyPack.current().closePolicy());
-  }
-
-  PeriodCloseService(
-      BookLifecycleReader lifecycleReader,
-      AccountCatalogStore accountCatalogStore,
-      PostingRangeStore postingRangeStore,
-      PeriodCloseStore periodCloseStore,
-      PostingIdGenerator postingIdGenerator,
-      Clock clock,
-      ClosePolicy closePolicy) {
     this.lifecycleReader = Objects.requireNonNull(lifecycleReader, "lifecycleReader");
     this.accountCatalogStore = Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
     this.postingRangeStore = Objects.requireNonNull(postingRangeStore, "postingRangeStore");
     this.periodCloseStore = Objects.requireNonNull(periodCloseStore, "periodCloseStore");
     this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
-    this.planner = new PeriodClosePlanner(Objects.requireNonNull(closePolicy, "closePolicy"));
   }
 
   /** Closes one contiguous reporting period using generated closing-equity postings. */
@@ -79,6 +58,10 @@ public final class PeriodCloseService {
     }
     BookLifecycleInspection.Initialized initialized =
         (BookLifecycleInspection.Initialized) inspection;
+    PeriodClosePlanner planner =
+        new PeriodClosePlanner(
+            BuiltInBookkeepingPolicyPacks.forBookIdentity(initialized.bookIdentity())
+                .closePolicy());
     List<RegisteredAccount> accounts = accountCatalogStore.allAccounts();
     PeriodClosePlanner.ClosingEquitySelection closingEquitySelection =
         planner.closingEquityAccount(initialized.bookIdentity(), accounts);

@@ -81,6 +81,12 @@ final class MachineContractSchemaSupport {
     return orderedMap("description", description, "oneOf", variants);
   }
 
+  static Map<String, Object> rootOneOfSchema(
+      String description, List<Map<String, Object>> variants) {
+    return orderedMap(
+        "$schema", JSON_SCHEMA_DIALECT, "description", description, "oneOf", variants);
+  }
+
   static Map<String, Object> constSchema(String value, String description) {
     return orderedMap("const", value, "description", description);
   }
@@ -91,6 +97,10 @@ final class MachineContractSchemaSupport {
 
   static Map<String, Object> dateStringSchema(String description) {
     return orderedMap("type", "string", "description", description, "format", "date");
+  }
+
+  static Map<String, Object> instantStringSchema(String description) {
+    return orderedMap("type", "string", "description", description, "format", "date-time");
   }
 
   static Map<String, Object> nonBlankStringSchema(String description) {

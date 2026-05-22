@@ -83,6 +83,21 @@ public final class ContractErrors {
       };
     }
 
+    /** Returns the canonical process exit code for this deterministic error descriptor. */
+    public int exitCode() {
+      return switch (this) {
+        case UNKNOWN_COMMAND, INVALID_REQUEST, INVALID_PAGE_CURSOR -> 1;
+        case RUNTIME_FAILURE, STORAGE_RUNTIME_FAILURE, PDF_EXPORT_FAILURE -> 4;
+        case MANAGED_RUNTIME_FAILURE, INTERACTIVE_PROMPT_UNAVAILABLE, INTERACTIVE_PROMPT_FAILED ->
+            5;
+        case INVALID_BOOK_KEY_FILE,
+            INVALID_BOOK_PASSPHRASE_SOURCE,
+            PROTECTED_BOOK_VERIFICATION_FAILED ->
+            6;
+        case BOOK_KEY_FILE_ALREADY_EXISTS, BOOK_MAINTENANCE_IN_PROGRESS -> 7;
+      };
+    }
+
     /** Creates one deterministic failure with this canonical contract descriptor. */
     public ContractFailure failure(
         String message, @Nullable String hint, @Nullable String argument) {
@@ -93,6 +108,7 @@ public final class ContractErrors {
       if (this == INVALID_REQUEST) {
         return new ContractResponse.ErrorDescriptor(
             code(),
+            exitCode(),
             description(),
             List.of(
                 new ContractResponse.FieldDescriptor(
@@ -107,7 +123,7 @@ public final class ContractErrors {
                     "violations",
                     "Ordered list of deterministic request-validation violations when one malformed request produces more than one diagnosis.")));
       }
-      return new ContractResponse.ErrorDescriptor(code(), description());
+      return new ContractResponse.ErrorDescriptor(code(), exitCode(), description());
     }
 
     private static List<ContractResponse.ErrorDescriptor> descriptors() {

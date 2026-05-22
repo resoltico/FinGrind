@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -60,13 +59,12 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                 new BookEntityName("Acme Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
 

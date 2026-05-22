@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -40,18 +39,6 @@ public final class BookkeepingPublishedLanguageTranslator {
   public static dev.erst.fingrind.core.BookIdentity fromPublished(OpenBookCommand command) {
     Objects.requireNonNull(command, "command");
     return command.bookIdentity();
-  }
-
-  /** Translates one public post-entry request into the local bookkeeping model. */
-  public static PostingCommand fromPublished(PostEntryCommand command) {
-    Objects.requireNonNull(command, "command");
-    return new PostingCommand(
-        command.postingKind(),
-        command.journalEntry(),
-        fromPublished(command.postingLineage()),
-        command.evidence(),
-        command.requestProvenance(),
-        command.sourceChannel());
   }
 
   /** Translates one published committed posting into the local bookkeeping model. */
@@ -172,6 +159,17 @@ public final class BookkeepingPublishedLanguageTranslator {
               conflict.requestedAccountType(),
               conflict.parentAccountCode(),
               conflict.parentAccountType());
+      case BookkeepingAdministrationRejection.ParentAccountRoleConflict conflict ->
+          new BookAdministrationRejection.ParentAccountRoleConflict(
+              conflict.accountCode(),
+              conflict.requestedAccountRole(),
+              conflict.parentAccountCode(),
+              conflict.parentAccountRole());
+      case BookkeepingAdministrationRejection.ParentAccountNotHeader conflict ->
+          new BookAdministrationRejection.ParentAccountNotHeader(
+              conflict.accountCode(),
+              conflict.parentAccountCode(),
+              conflict.parentAccountNodeKind());
       case BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
           new BookAdministrationRejection.ParentAccountTaxonomyConflict(
               conflict.accountCode(),
@@ -251,6 +249,9 @@ public final class BookkeepingPublishedLanguageTranslator {
           new PostingRejection.UnknownAccount(unknownAccount.accountCode());
       case BookkeepingPostingRejection.InactiveAccount inactiveAccount ->
           new PostingRejection.InactiveAccount(inactiveAccount.accountCode());
+      case BookkeepingPostingRejection.NonPostableAccount nonPostableAccount ->
+          new PostingRejection.NonPostableAccount(
+              nonPostableAccount.accountCode(), nonPostableAccount.accountNodeKind());
     };
   }
 

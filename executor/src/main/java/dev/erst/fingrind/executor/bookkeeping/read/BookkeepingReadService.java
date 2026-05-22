@@ -26,8 +26,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
@@ -38,22 +37,12 @@ import java.util.function.Supplier;
 /** Local bookkeeping read/query service used before any public published-language projection. */
 public final class BookkeepingReadService {
   private final BookkeepingReadStore bookStore;
-  private final BookkeepingPolicyPack policyPack;
   private final BookkeepingStatementService statementService;
 
   /** Creates the local bookkeeping read service over one selected-book store seam. */
   public BookkeepingReadService(BookkeepingReadStore bookStore) {
-    this(bookStore, CoreBookkeepingPolicyPack.current());
-  }
-
-  /**
-   * Creates the local bookkeeping read service over one selected-book store seam and policy pack.
-   */
-  public BookkeepingReadService(BookkeepingReadStore bookStore, BookkeepingPolicyPack policyPack) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
-    this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
-    this.statementService =
-        new BookkeepingStatementService(this.bookStore, this.bookStore, this.policyPack);
+    this.statementService = new BookkeepingStatementService(this.bookStore, this.bookStore);
   }
 
   /** Returns the local lifecycle snapshot before public contract projection. */
@@ -183,7 +172,8 @@ public final class BookkeepingReadService {
   public PeriodClosePlanner.ClosingEquitySelection closingEquitySelection(
       BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return new PeriodClosePlanner(policyPack.closePolicy())
+    return new PeriodClosePlanner(
+            BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity).closePolicy())
         .closingEquityAccount(bookIdentity, bookStore.allAccounts());
   }
 
@@ -191,7 +181,9 @@ public final class BookkeepingReadService {
   public FinancialPositionLineClassification requiredClosingEquityClassification(
       BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return policyPack.closePolicy().closingEquityLineClassification(bookIdentity);
+    return BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity)
+        .closePolicy()
+        .closingEquityLineClassification(bookIdentity);
   }
 
   private Optional<BookkeepingQueryRejection> accountRejection(Optional<AccountCode> accountCode) {
@@ -203,13 +195,14 @@ public final class BookkeepingReadService {
 
   private TrialBalanceView trialBalanceView(TrialBalanceCriteria query) {
     TrialBalanceView currentView = bookStore.trialBalance(query);
+    var policyPack = BuiltInBookkeepingPolicyPacks.forBookIdentity(currentView.bookIdentity());
     var comparativeRange =
         policyPack
             .statementComparativePolicy()
-            .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateTo());
+            .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateAsOf());
     return new TrialBalanceView(
         currentView.bookIdentity(),
-        currentView.effectiveDateTo(),
+        currentView.effectiveDateAsOf(),
         comparativeRange,
         currentView.postingCoverage(),
         currentView.rows(),

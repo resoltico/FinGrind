@@ -10,11 +10,10 @@ UNICODE_WORKSPACE_SEGMENT = "Rīga büro"
 ENTITY_NAME = "Acme Studio"
 ENTITY_FORM = "COMPANY"
 OWNER_MODEL = "MULTI_OWNER"
-REPORTING_OBLIGATION_STATUS = "INTERNAL_MANAGEMENT_ONLY"
 BUSINESS_ACTIVITY_TAGS = ["consulting-services"]
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
-ACCOUNTING_BASIS = "ACCRUAL"
+POLICY_PROFILE = "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
 
 
 def build_release_smoke_scenario(
@@ -96,11 +95,10 @@ def build_release_smoke_scenario(
         entity_name=ENTITY_NAME,
         entity_form=ENTITY_FORM,
         owner_model=OWNER_MODEL,
-        reporting_obligation_status=REPORTING_OBLIGATION_STATUS,
         business_activity_tags=BUSINESS_ACTIVITY_TAGS,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,
-        accounting_basis=ACCOUNTING_BASIS,
+        policy_profile=POLICY_PROFILE,
     )
 
 

@@ -55,10 +55,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(openBookHuman.contains("Acme Studio"));
     assertTrue(openBookHuman.contains("Entity form"));
     assertTrue(openBookHuman.contains("Owner model"));
-    assertTrue(openBookHuman.contains("Reporting obligation"));
+    assertTrue(openBookHuman.contains("Policy profile"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
-    assertTrue(openBookHuman.contains("Accounting basis"));
+    assertTrue(openBookHuman.contains("Internal Management Single Entity V1"));
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),

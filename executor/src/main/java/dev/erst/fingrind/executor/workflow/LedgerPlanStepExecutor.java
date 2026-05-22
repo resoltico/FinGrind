@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -8,17 +9,12 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
-import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
@@ -31,7 +27,7 @@ final class LedgerPlanStepExecutor {
   private final Clock clock;
   private final BookAdministrationService bookAdministrationService;
   private final BookkeepingReadService bookkeepingReadService;
-  private final BookkeepingPostingService bookkeepingPostingService;
+  private final PostingApplicationService postingApplicationService;
 
   LedgerPlanStepExecutor(
       BookAdministrationStore administrationStore,
@@ -41,26 +37,6 @@ final class LedgerPlanStepExecutor {
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
       Clock clock) {
-    this(
-        administrationStore,
-        accountCatalogStore,
-        readStore,
-        validationStore,
-        commitStore,
-        postingIdGenerator,
-        clock,
-        CoreBookkeepingPolicyPack.current());
-  }
-
-  LedgerPlanStepExecutor(
-      BookAdministrationStore administrationStore,
-      AccountCatalogStore accountCatalogStore,
-      BookkeepingReadStore readStore,
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      PostingIdGenerator postingIdGenerator,
-      Clock clock,
-      BookkeepingPolicyPack policyPack) {
     Objects.requireNonNull(administrationStore, "administrationStore");
     Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
     Objects.requireNonNull(readStore, "readStore");
@@ -68,13 +44,11 @@ final class LedgerPlanStepExecutor {
     Objects.requireNonNull(commitStore, "commitStore");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
-    BookkeepingPolicyPack requiredPolicyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
     this.bookAdministrationService =
         new BookAdministrationService(readStore, administrationStore, accountCatalogStore, clock);
-    this.bookkeepingReadService = new BookkeepingReadService(readStore, requiredPolicyPack);
-    this.bookkeepingPostingService =
-        new BookkeepingPostingService(
-            validationStore, commitStore, postingIdGenerator, clock, requiredPolicyPack);
+    this.bookkeepingReadService = new BookkeepingReadService(readStore);
+    this.postingApplicationService =
+        new PostingApplicationService(validationStore, commitStore, postingIdGenerator, clock);
   }
 
   BookLifecycleInspection inspectBook() {
@@ -165,35 +139,25 @@ final class LedgerPlanStepExecutor {
   }
 
   private LedgerPlanStepOutcome preflightOutcome(BookWorkflowStep.PreflightEntry step) {
-    return switch (bookkeepingPostingService.preflight(step.command())) {
-      case PostingPreflightOutcome.Accepted accepted ->
+    return switch (postingApplicationService.preflight(step.command())) {
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted accepted ->
           LedgerPlanOutcomeMapper.stepSucceeded(
               BookWorkflowFact.text("idempotencyKey", accepted.idempotencyKey().value()),
               BookWorkflowFact.text("effectiveDate", accepted.effectiveDate().toString()));
-      case PostingPreflightOutcome.Rejected rejected ->
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected rejected ->
           LedgerPlanOutcomeMapper.postingRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome postEntryOutcome(BookWorkflowStep.PostEntry step) {
-    return switch (bookkeepingPostingService.commit(step.command())) {
-      case PostingCommitResult.Committed committed ->
+    return switch (postingApplicationService.commit(step.command())) {
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed committed ->
           LedgerPlanOutcomeMapper.stepSucceeded(
-              BookWorkflowFact.text("postingId", committed.postingFact().postingId().value()),
-              BookWorkflowFact.text(
-                  "idempotencyKey",
-                  committed
-                      .postingFact()
-                      .provenance()
-                      .requestProvenance()
-                      .idempotencyKey()
-                      .value()),
-              BookWorkflowFact.text(
-                  "effectiveDate",
-                  committed.postingFact().journalEntry().effectiveDate().toString()),
-              BookWorkflowFact.text(
-                  "recordedAt", committed.postingFact().provenance().recordedAt().toString()));
-      case PostingCommitResult.Rejected rejected ->
+              BookWorkflowFact.text("postingId", committed.postingId().value()),
+              BookWorkflowFact.text("idempotencyKey", committed.idempotencyKey().value()),
+              BookWorkflowFact.text("effectiveDate", committed.effectiveDate().toString()),
+              BookWorkflowFact.text("recordedAt", committed.recordedAt().toString()));
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected ->
           LedgerPlanOutcomeMapper.postingRejection(rejected.rejection());
     };
   }

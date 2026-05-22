@@ -14,7 +14,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -28,7 +28,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -57,7 +56,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.43.0",
+                "0.44.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -73,7 +72,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.43.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.44.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -174,7 +173,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.43.0");
+    return new PdfDocumentFactory("FinGrind", "0.44.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -185,12 +184,13 @@ class PdfReportCoverageTest {
             AccountType.ASSET,
             AccountRole.ORDINARY,
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty()),
             true,
             Instant.parse("2026-04-01T08:00:00Z"));
-    return new TrialBalanceReport(
+    return trialBalanceReport(
         bookIdentity(),
         Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
@@ -207,11 +207,10 @@ class PdfReportCoverageTest {
             new BookEntityName("Acme Studio"),
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 
   private static List<List<String>> paginatedKeyValueRows() {
@@ -224,6 +223,58 @@ class PdfReportCoverageTest {
                   .formatted(index, index, index)));
     }
     return rows;
+  }
+
+  private static TrialBalanceReport trialBalanceReport(
+      BookIdentity bookIdentity,
+      Optional<LocalDate> effectiveDateTo,
+      EffectiveDateRange comparativeEffectiveDateRange,
+      PostingCoverage postingCoverage,
+      List<TrialBalanceRow> rows,
+      List<TrialBalanceRow> comparativeRows) {
+    List<CurrencyBalance> totals = trialBalanceTotals(rows);
+    List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
+    return new TrialBalanceReport(
+        bookIdentity,
+        effectiveDateTo,
+        comparativeEffectiveDateRange,
+        postingCoverage,
+        rows,
+        totals,
+        isBalanced(totals),
+        comparativeRows,
+        comparativeTotals,
+        isBalanced(comparativeTotals));
+  }
+
+  private static List<CurrencyBalance> trialBalanceTotals(List<TrialBalanceRow> rows) {
+    List<CurrencyBalance> totalsByCurrency = new ArrayList<>();
+    for (TrialBalanceRow row : rows) {
+      mergeCurrencyBalance(totalsByCurrency, row.balance());
+    }
+    return List.copyOf(totalsByCurrency);
+  }
+
+  private static CurrencyBalance sumCurrencyBalances(CurrencyBalance left, CurrencyBalance right) {
+    return CurrencyBalance.ofTotals(
+        left.debitTotal().plus(right.debitTotal()), left.creditTotal().plus(right.creditTotal()));
+  }
+
+  private static boolean isBalanced(List<CurrencyBalance> totals) {
+    return totals.stream().allMatch(balance -> balance.balanceSide() == BalanceSide.ZERO);
+  }
+
+  private static void mergeCurrencyBalance(
+      List<CurrencyBalance> totalsByCurrency, CurrencyBalance candidate) {
+    CurrencyUnit currencyUnit = candidate.debitTotal().currencyUnit();
+    for (int index = 0; index < totalsByCurrency.size(); index++) {
+      CurrencyBalance existing = totalsByCurrency.get(index);
+      if (existing.debitTotal().currencyUnit().equals(currencyUnit)) {
+        totalsByCurrency.set(index, sumCurrencyBalances(existing, candidate));
+        return;
+      }
+    }
+    totalsByCurrency.add(candidate);
   }
 
   private static Money money(String currencyCode, String amount) {

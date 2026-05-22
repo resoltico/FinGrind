@@ -48,10 +48,12 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.AccountTaxonomyConflict(
                     new AccountCode("1000"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3000")),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                         Optional.empty()),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3010")),
                         Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                         Optional.empty())))
@@ -76,14 +78,31 @@ class RejectionNarrativeTest {
             .contains("Parent and child must share one account type"));
     assertTrue(
         RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountRoleConflict(
+                    new AccountCode("1010"),
+                    AccountRole.ORDINARY,
+                    new AccountCode("1000"),
+                    AccountRole.CONTRA))
+            .contains("Parent and child must share one account role"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.ParentAccountNotHeader(
+                    new AccountCode("1010"),
+                    new AccountCode("1000"),
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE))
+            .contains("cannot own child accounts"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookAdministrationRejection.ParentAccountTaxonomyConflict(
                     new AccountCode("1010"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("1000")),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         Optional.empty()),
                     new AccountCode("1000"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
                         Optional.empty())))

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountSemantics;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,12 @@ final class PostingAccountStatePolicy {
       }
       if (!account.active()) {
         violations.add(new BookkeepingPostingRejection.InactiveAccount(accountCode));
+        continue;
+      }
+      if (!AccountSemantics.allowsPosting(account.accountTaxonomy())) {
+        violations.add(
+            new BookkeepingPostingRejection.NonPostableAccount(
+                accountCode, account.accountTaxonomy().nodeKind()));
       }
     }
     return violations.isEmpty()

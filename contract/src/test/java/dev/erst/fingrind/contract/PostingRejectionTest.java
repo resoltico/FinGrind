@@ -64,11 +64,14 @@ class PostingRejectionTest {
   @Test
   void accountStateViolationWireCode_isStableForEverySubtype() {
     assertEquals(
-        List.of("unknown-account", "inactive-account"),
+        List.of("unknown-account", "inactive-account", "non-postable-account"),
         List.of(
             PostingRejection.wireCode(new PostingRejection.UnknownAccount(new AccountCode("1000"))),
             PostingRejection.wireCode(
-                new PostingRejection.InactiveAccount(new AccountCode("2000")))));
+                new PostingRejection.InactiveAccount(new AccountCode("2000"))),
+            PostingRejection.wireCode(
+                new PostingRejection.NonPostableAccount(
+                    new AccountCode("3000"), dev.erst.fingrind.core.AccountNodeKind.HEADER))));
   }
 
   @Test

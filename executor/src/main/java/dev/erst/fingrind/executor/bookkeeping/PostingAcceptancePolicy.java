@@ -2,16 +2,14 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.util.Objects;
 import java.util.Optional;
 
 /** Bookkeeping acceptance policy shared by preflight and durable commit paths. */
 public final class PostingAcceptancePolicy {
-  private static final PostingAcceptancePolicy CURRENT_KERNEL =
-      new PostingAcceptancePolicy(CoreBookkeepingPolicyPack.current());
+  private static final PostingAcceptancePolicy CURRENT_KERNEL = new PostingAcceptancePolicy();
   private final PostingKindSelectionPolicy postingKindSelectionPolicy =
       new PostingKindSelectionPolicy();
   private final PostingCurrencyAcceptancePolicy postingCurrencyAcceptancePolicy =
@@ -22,14 +20,6 @@ public final class PostingAcceptancePolicy {
       new OpeningBalanceAcceptancePolicy();
   private final PostingAccountStatePolicy postingAccountStatePolicy =
       new PostingAccountStatePolicy();
-  private final ClosingEquityReservationPolicy closingEquityReservationPolicy;
-
-  /** Creates one posting-acceptance policy from the selected bookkeeping policy pack. */
-  public PostingAcceptancePolicy(BookkeepingPolicyPack policyPack) {
-    this.closingEquityReservationPolicy =
-        new ClosingEquityReservationPolicy(
-            BookkeepingPolicyPack.requirePolicyPack(policyPack).closePolicy());
-  }
 
   /** Returns the built-in posting-acceptance policy for the current FinGrind kernel. */
   public static PostingAcceptancePolicy currentKernel() {
@@ -79,7 +69,9 @@ public final class PostingAcceptancePolicy {
       return openingBalanceNominalRejection;
     }
     Optional<BookkeepingPostingRejection> closingEquityReservationRejection =
-        closingEquityReservationPolicy.rejectionFor(postingRequest, bookIdentity, book);
+        new ClosingEquityReservationPolicy(
+                BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity).closePolicy())
+            .rejectionFor(postingRequest, bookIdentity, book);
     if (closingEquityReservationRejection.isPresent()) {
       return closingEquityReservationRejection;
     }

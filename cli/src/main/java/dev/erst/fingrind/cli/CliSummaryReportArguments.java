@@ -20,7 +20,7 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec TRIAL_BALANCE_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.EFFECTIVE_DATE_AS_OF,
               ProtocolOptions.POSTING_COVERAGE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
@@ -37,7 +37,9 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec FINANCIAL_POSITION_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_TO, ProtocolOptions.OUTPUT, ProtocolOptions.PDF_OUT),
+              ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec INCOME_STATEMENT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
@@ -68,10 +70,10 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+      if (ProtocolOptions.EFFECTIVE_DATE_AS_OF.equals(argument)) {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_AS_OF);
         continue;
       }
       if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
@@ -91,7 +93,7 @@ final class CliSummaryReportArguments {
     return new TrialBalance(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.EFFECTIVE_DATE_AS_OF,
             () ->
                 new TrialBalanceQuery(
                     Optional.ofNullable(resolvedEffectiveDateTo), resolvedPostingCoverage)),
@@ -167,10 +169,10 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+      if (ProtocolOptions.EFFECTIVE_DATE_AS_OF.equals(argument)) {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_AS_OF);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {

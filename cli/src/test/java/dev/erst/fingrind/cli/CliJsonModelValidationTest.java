@@ -5,13 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -60,25 +69,91 @@ class CliJsonModelValidationTest {
   }
 
   @Test
+  void discoveryPayloads_requireFullContractParity() {
+    HelpDescriptor helpDescriptor = MachineContract.help(identity(), environment());
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.HelpOverviewPayload(
+                "FinGrind",
+                "0.44.0",
+                "Discovery overview",
+                DiscoveryDetail.FULL,
+                List.of(),
+                List.of(),
+                List.of(),
+                "Run fingrind capabilities --output json.",
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.HelpOverviewPayload(
+                "FinGrind",
+                "0.44.0",
+                "Discovery overview",
+                DiscoveryDetail.COMPACT,
+                List.of(),
+                List.of(),
+                List.of(),
+                "Run fingrind capabilities --output json.",
+                helpDescriptor));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.CapabilitiesPayload(
+                "FinGrind",
+                "0.44.0",
+                DiscoveryDetail.FULL,
+                capabilitiesDescriptor.storage(),
+                capabilitiesDescriptor.commands(),
+                capabilitiesDescriptor.requestInput(),
+                List.of("Prefer --output json for agents."),
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.CapabilitiesPayload(
+                "FinGrind",
+                "0.44.0",
+                DiscoveryDetail.COMPACT,
+                capabilitiesDescriptor.storage(),
+                capabilitiesDescriptor.commands(),
+                capabilitiesDescriptor.requestInput(),
+                List.of("Prefer --output json for agents."),
+                capabilitiesDescriptor));
+  }
+
+  @Test
   void parentAccountRejectionPayloads_validateRequiredFields() {
     CliRejectionJsonModels.ParentAccountDetails parentAccountDetails =
         new CliRejectionJsonModels.ParentAccountDetails("4100", "4000");
     CliRejectionJsonModels.ParentAccountTypeConflictDetails parentAccountTypeConflictDetails =
         new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
             "4100", "EXPENSE", "4000", "REVENUE");
+    CliRejectionJsonModels.ParentAccountRoleConflictDetails parentAccountRoleConflictDetails =
+        new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
+            "4100", "ORDINARY", "4000", "CONTRA");
+    CliRejectionJsonModels.ParentAccountNodeKindDetails parentAccountNodeKindDetails =
+        new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE");
     CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails
         parentAccountTaxonomyConflictDetails =
             new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
                 "4100",
                 new CliRejectionJsonModels.AccountTaxonomyDetails(
-                    "4050", null, "OPERATING_EXPENSE"),
+                    "POSTABLE", "4050", null, "OPERATING_EXPENSE"),
                 "4000",
-                new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES"));
+                new CliRejectionJsonModels.AccountTaxonomyDetails(
+                    "POSTABLE", null, null, "COST_OF_SALES"));
 
     assertEquals("4100", parentAccountDetails.accountCode());
     assertEquals("4000", parentAccountDetails.parentAccountCode());
     assertEquals("EXPENSE", parentAccountTypeConflictDetails.requestedAccountType());
     assertEquals("REVENUE", parentAccountTypeConflictDetails.parentAccountType());
+    assertEquals("ORDINARY", parentAccountRoleConflictDetails.requestedAccountRole());
+    assertEquals("CONTRA", parentAccountRoleConflictDetails.parentAccountRole());
+    assertEquals("POSTABLE", parentAccountNodeKindDetails.parentAccountNodeKind());
     assertEquals(
         "4050",
         parentAccountTaxonomyConflictDetails.requestedAccountTaxonomy().parentAccountCode());
@@ -96,6 +171,14 @@ class CliJsonModelValidationTest {
         () ->
             new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
                 "4100", " ", "4000", "REVENUE"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
+                "4100", " ", "4000", "CONTRA"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", " "));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -121,7 +204,8 @@ class CliJsonModelValidationTest {
                     LedgerStepStatus.SUCCEEDED,
                     "2026-05-14T10:00:00Z",
                     "2026-05-14T10:00:01Z",
-                    List.of(new CliPlanJsonModels.TextLedgerFactPayload("text", "detail", "value")),
+                    new CliPlanJsonModels.OpenBookStepDataPayload(
+                        "2026-05-14T10:00:00Z", "Acme Studio", "EUR", "01-01"),
                     null)));
 
     assertThrows(
@@ -241,5 +325,22 @@ class CliJsonModelValidationTest {
         "Unsupported value for pricingMode: GOOD. Accepted values: GOOD.",
         parserFailure.getMessage());
     assertInstanceOf(IllegalArgumentException.class, parserFailure.getCause());
+  }
+
+  private static ApplicationIdentity identity() {
+    return new ApplicationIdentity(
+        "FinGrind",
+        "0.44.0",
+        "Command-line double-entry bookkeeping with one protected book per accounting entity");
+  }
+
+  private static EnvironmentDescriptor environment() {
+    return CliResponseWriterTestSupport.environmentDescriptor(
+        RuntimeDistribution.SELF_CONTAINED_BUNDLE.wireValue(),
+        dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus.VERIFIED,
+        "ready",
+        ProtocolCatalog.requiredMinimumSqliteVersion(),
+        ProtocolCatalog.requiredSqlite3mcVersion(),
+        null);
   }
 }

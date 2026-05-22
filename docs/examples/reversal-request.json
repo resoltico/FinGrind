@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-09",
   "lines": [
@@ -23,7 +24,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-reversal-1",
-        "sourceDocumentType": "credit-note"
+        "sourceDocumentType": "credit-note",
+        "documentDate": "2026-04-09",
+        "capturedAt": "2026-04-09T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-reversal-1",
+        "contentSha256": "2222222222222222222222222222222222222222222222222222222222222222"
       }
     ],
     "approvals": []

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,7 +44,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `12`, owned by `BookFormatContract`
+- the current supported book format is `14`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
@@ -149,11 +149,14 @@ License and attribution stance:
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
 - generated source-checkout launchers are managed-only as well: after
   `./gradlew :cli:installShadowDist prepareManagedSqlite`, the launcher resolves the managed
-  SQLite library from that prepared checkout automatically
+  SQLite library from that prepared checkout automatically, and the repo-owned wrapper refreshes
+  the cached raw JAR plus managed runtime when the current checkout has moved ahead of the last
+  prepared build
 - the developer direct-Java wrappers (`./scripts/direct-java-cli.sh` and
   `.\scripts\direct-java-cli.ps1`) are the supported non-bundle Java entrypoints; they resolve
   the same managed SQLite library automatically from a prepared checkout and grant native access
-  only to the `fingrind` module
+  only to the `fingrind` module, and they refresh the cached raw JAR from the live checkout when
+  the source-hash manifest shows drift
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first. When the resulting

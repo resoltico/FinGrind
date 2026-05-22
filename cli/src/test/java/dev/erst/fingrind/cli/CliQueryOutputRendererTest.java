@@ -32,7 +32,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -50,7 +50,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -119,10 +118,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(initializedInspection.contains("Acme Studio"));
     assertTrue(initializedInspection.contains("Entity form"));
     assertTrue(initializedInspection.contains("Owner model"));
-    assertTrue(initializedInspection.contains("Reporting obligation"));
+    assertTrue(initializedInspection.contains("Policy profile"));
     assertTrue(initializedInspection.contains("Functional currency"));
     assertTrue(initializedInspection.contains("Fiscal year start"));
-    assertTrue(initializedInspection.contains("Accounting basis"));
+    assertTrue(initializedInspection.contains("Internal Management Single Entity V1"));
     assertTrue(accountsHuman.contains("Cash, reserve"));
     assertTrue(accountsHuman.contains("Current asset"));
     assertTrue(accountsHuman.contains(nextAccountCursor.wireValue()));
@@ -151,13 +150,12 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 new BookEntityName("Acme Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
@@ -171,23 +169,22 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertTrue(inspection.contains("Business activity"));
     assertTrue(inspection.contains("translation,localization, cafe services"));
-    assertTrue(inspection.contains("Reporting obligation"));
-    assertTrue(inspection.contains("Internal Management Only"));
+    assertTrue(inspection.contains("Policy profile"));
+    assertTrue(inspection.contains("Internal Management Single Entity V1"));
   }
 
   @Test
-  void renderBookInspectionHuman_includesReportingProfileRows() {
+  void renderBookInspectionHuman_includesPolicyProfileRows() {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Registered Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
@@ -199,8 +196,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 registeredIdentity,
                 closeReadyInspection()));
 
-    assertTrue(inspection.contains("Reporting obligation"));
-    assertTrue(inspection.contains("Internal Management Only"));
+    assertTrue(inspection.contains("Policy profile"));
+    assertTrue(inspection.contains("Internal Management Single Entity V1"));
   }
 
   @Test
@@ -328,8 +325,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String emptyLedgerHuman =
         CliReportOutputRenderer.renderAccountLedgerHuman(sampleAccountLedgerReport());
     TrialBalanceReport comparativeWithoutReference =
-        new TrialBalanceReport(
-            bookIdentity(),
+        trialBalanceReport(
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -356,6 +352,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             AccountType.ASSET,
             AccountRole.ORDINARY,
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1000")),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty()),
@@ -392,10 +389,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(openBookHuman.contains("Acme Studio"));
     assertTrue(openBookHuman.contains("Entity form"));
     assertTrue(openBookHuman.contains("Owner model"));
-    assertTrue(openBookHuman.contains("Reporting obligation"));
+    assertTrue(openBookHuman.contains("Policy profile"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
-    assertTrue(openBookHuman.contains("Accounting basis"));
+    assertTrue(openBookHuman.contains("Internal Management Single Entity V1"));
     assertTrue(rekeyBookHuman.contains("Book Rekeyed"));
     assertTrue(rekeyBookHuman.contains("Replacement secret source"));
     assertTrue(rekeyBookHuman.contains("Replacement key file"));
@@ -421,10 +418,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         accountBalanceCsv.contains(
             "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
     assertTrue(trialBalanceHuman.contains("Trial Balance"));
-    assertTrue(trialBalanceHuman.contains("Effective date to"));
+    assertTrue(trialBalanceHuman.contains("As of"));
+    assertTrue(trialBalanceHuman.contains("Balanced"));
     assertTrue(
         trialBalanceCsv.contains(
-            "reportBasis,effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
   }
 
   private static void assertLedgerOutputSamples(
@@ -703,6 +701,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             AccountType.EQUITY,
             AccountRole.ORDINARY,
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("3000")),
                 Optional.of(FinancialPositionLineClassification.OWNER_CAPITAL),
                 Optional.empty()),
@@ -715,6 +714,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             AccountType.EXPENSE,
             fixtureAccountRole(AccountType.EXPENSE, NormalBalance.DEBIT),
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("5100")),
                 Optional.empty(),
                 Optional.of(ProfitAndLossLineClassification.COST_OF_SALES)),
@@ -932,8 +932,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             CliResponseWriterTestSupport.currencyBalance(
                 "EUR", "7.00", "1.00", "6.00", BalanceSide.DEBIT));
     TrialBalanceReport comparativeTrialBalance =
-        new TrialBalanceReport(
-            bookIdentity(),
+        trialBalanceReport(
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             allPostingKinds(),
@@ -1135,8 +1134,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   void reportSurfacePolicy_detectsTrialBalanceAndCurrentEquityComparatives() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
     TrialBalanceReport nonComparativeTrialBalance =
-        new TrialBalanceReport(
-            bookIdentity(),
+        trialBalanceReport(
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -1212,7 +1210,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertFalse(CliReportSurfacePolicy.hasComparative(nonComparativeTrialBalance));
     assertTrue(
         CliReportSurfacePolicy.hasComparative(
-            new TrialBalanceReport(
+            trialBalanceReport(
                 nonComparativeTrialBalance.bookIdentity(),
                 Optional.of(LocalDate.parse("2026-04-30")),
                 EffectiveDateRange.unbounded(),

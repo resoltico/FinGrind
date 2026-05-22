@@ -15,7 +15,10 @@ final class CliArguments {
     Objects.requireNonNull(args, "args must not be null");
     List<String> arguments = List.of(args);
     if (arguments.isEmpty()) {
-      return new Help(null, dev.erst.fingrind.contract.protocol.OutputMode.HUMAN);
+      return new Help(
+          null,
+          dev.erst.fingrind.contract.protocol.OutputMode.HUMAN,
+          dev.erst.fingrind.contract.protocol.DiscoveryDetail.COMPACT);
     }
     @Nullable CliCommand commandHelp = parseCommandSpecificHelp(arguments);
     if (commandHelp != null) {

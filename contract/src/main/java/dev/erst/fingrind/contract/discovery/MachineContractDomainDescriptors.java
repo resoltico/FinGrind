@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -83,7 +84,12 @@ final class MachineContractDomainDescriptors {
             "valid "
                 + ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)
                 + " request whose assertion step failed"),
-        new ExitCodeDescriptor(4, "runtime or environment failure"));
+        new ExitCodeDescriptor(4, "runtime failure while executing an otherwise valid invocation"),
+        new ExitCodeDescriptor(
+            5, "interactive prompt or managed runtime environment precondition failure"),
+        new ExitCodeDescriptor(6, "protected-book passphrase, key-file, or verification failure"),
+        new ExitCodeDescriptor(
+            7, "protected-book maintenance precondition or destination-collision failure"));
   }
 
   static ContractResponse.AuditDescriptor audit() {
@@ -133,6 +139,9 @@ final class MachineContractDomainDescriptors {
                 ProtocolDeclareAccountFields.ACCOUNT_ROLE,
                 "Doctrinal account role that determines whether the account is ordinary or contra."),
             new ContractResponse.FieldDescriptor(
+                ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
+                "Chart node kind that determines whether the account is a hierarchy header or a direct posting target."),
+            new ContractResponse.FieldDescriptor(
                 ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
                 "Optional parent account code that places the account in the declared chart hierarchy."),
             new ContractResponse.FieldDescriptor(
@@ -148,6 +157,7 @@ final class MachineContractDomainDescriptors {
                 "accountName", "Current display name of the account."),
             new ContractResponse.FieldDescriptor("accountType", "Declared account classification."),
             new ContractResponse.FieldDescriptor("accountRole", "Declared account doctrinal role."),
+            new ContractResponse.FieldDescriptor("accountNodeKind", "Declared chart node kind."),
             new ContractResponse.FieldDescriptor(
                 "parentAccountCode", "Declared optional chart parent account code."),
             new ContractResponse.FieldDescriptor(
@@ -166,6 +176,8 @@ final class MachineContractDomainDescriptors {
                 "accountType", AccountType.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "accountRole", AccountRole.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "accountNodeKind", AccountNodeKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "financialPositionLineClassification",
                 FinancialPositionLineClassification.declaredAccountWireValues()),

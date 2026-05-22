@@ -47,7 +47,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli oldKeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
     assertEquals(
-        2,
+        6,
         oldKeyCli.run(
             new String[] {
               "list-accounts",
@@ -95,7 +95,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli inspectCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock());
     assertEquals(
-        2,
+        6,
         inspectCli.run(
             new String[] {
               "inspect-book",
@@ -233,7 +233,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
     assertEquals(
-        2,
+        6,
         rekeyCli.run(
             new String[] {
               "rekey-book",
@@ -251,5 +251,64 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains("wrong-current-secret"));
     assertFalse(outputText.contains("replacement-secret"));
+  }
+
+  @Test
+  void run_backupBookToExistingDestination_returnsMaintenanceCollisionExit() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("backup-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path backupFilePath = tempDirectory.resolve("backup-books").resolve("entity-backup.sqlite");
+    Path backupKeyFilePath = tempDirectory.resolve("backup-books").resolve("entity-backup.key");
+    Path secondBackupKeyFilePath =
+        tempDirectory.resolve("backup-books").resolve("entity-backup-second.key");
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+
+    ByteArrayOutputStream firstBackupOutput = new ByteArrayOutputStream();
+    FinGrindCli firstBackupCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(firstBackupOutput),
+            fixedClock());
+    assertEquals(
+        0,
+        firstBackupCli.run(
+            new String[] {
+              "backup-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--backup-file-out",
+              backupFilePath.toString(),
+              "--backup-book-key-file-out",
+              backupKeyFilePath.toString()
+            }));
+
+    ByteArrayOutputStream secondBackupOutput = new ByteArrayOutputStream();
+    FinGrindCli secondBackupCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(secondBackupOutput),
+            fixedClock());
+    assertEquals(
+        7,
+        secondBackupCli.run(
+            new String[] {
+              "backup-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--backup-file-out",
+              backupFilePath.toString(),
+              "--backup-book-key-file-out",
+              secondBackupKeyFilePath.toString()
+            }));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(secondBackupOutput.toByteArray());
+    assertEquals("rejected", failureEnvelope.path("status").stringValue());
+    assertEquals("backup-destination-already-exists", failureEnvelope.path("code").stringValue());
   }
 }

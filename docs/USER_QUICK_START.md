@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: USER_QUICK_START
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -69,7 +69,7 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1
 ```
 
 ## 4. Declare The Accounts You Need
@@ -82,6 +82,7 @@ Create `./declare-account-cash.json` with:
   "accountName": "Cash",
   "accountType": "ASSET",
   "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
   "financialPositionLineClassification": "CURRENT_ASSET"
 }
 ```
@@ -94,6 +95,7 @@ Create `./declare-account-revenue.json` with:
   "accountName": "Revenue",
   "accountType": "REVENUE",
   "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
   "profitAndLossLineClassification": "OPERATING_REVENUE"
 }
 ```
@@ -121,31 +123,23 @@ Replace the contents of `./request.json` with one balanced entry, for example:
 
 ```json
 {
-  "postingKind": "STANDARD",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "1000",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    },
-    {
-      "accountCode": "2000",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    }
-  ],
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "2000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "quick-start-invoice-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-08",
+        "capturedAt": "2026-04-08T10:15:30Z",
+        "storageLocator": "vault://quick-start/invoice-1",
+        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       }
     ],
     "approvals": []

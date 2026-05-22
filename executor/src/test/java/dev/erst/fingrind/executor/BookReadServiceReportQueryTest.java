@@ -31,10 +31,13 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -62,7 +65,7 @@ class BookReadServiceReportQueryTest {
 
       assertEquals(
           new TrialBalanceResult.Reported(
-              new TrialBalanceReport(
+              trialBalanceReport(
                   bookIdentity(),
                   Optional.of(EFFECTIVE_DATE),
                   EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
@@ -85,7 +88,7 @@ class BookReadServiceReportQueryTest {
 
       assertEquals(
           new TrialBalanceResult.Reported(
-              new TrialBalanceReport(
+              trialBalanceReport(
                   bookIdentity(),
                   Optional.empty(),
                   EffectiveDateRange.of(null, null),
@@ -211,5 +214,57 @@ class BookReadServiceReportQueryTest {
     assertEquals(
         "Book identity is unavailable for non-initialized book status blank-sqlite.",
         failure.getMessage());
+  }
+
+  private static TrialBalanceReport trialBalanceReport(
+      dev.erst.fingrind.core.BookIdentity bookIdentity,
+      Optional<java.time.LocalDate> effectiveDateAsOf,
+      EffectiveDateRange comparativeEffectiveDateRange,
+      dev.erst.fingrind.core.PostingCoverage postingCoverage,
+      List<TrialBalanceRow> rows,
+      List<TrialBalanceRow> comparativeRows) {
+    List<CurrencyBalance> totals = trialBalanceTotals(rows);
+    List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
+    return new TrialBalanceReport(
+        bookIdentity,
+        effectiveDateAsOf,
+        comparativeEffectiveDateRange,
+        postingCoverage,
+        rows,
+        totals,
+        isBalanced(totals),
+        comparativeRows,
+        comparativeTotals,
+        isBalanced(comparativeTotals));
+  }
+
+  private static List<CurrencyBalance> trialBalanceTotals(List<TrialBalanceRow> rows) {
+    List<CurrencyBalance> totalsByCurrency = new ArrayList<>();
+    for (TrialBalanceRow row : rows) {
+      mergeCurrencyBalance(totalsByCurrency, row.balance());
+    }
+    return List.copyOf(totalsByCurrency);
+  }
+
+  private static CurrencyBalance sumCurrencyBalances(CurrencyBalance left, CurrencyBalance right) {
+    return CurrencyBalance.ofTotals(
+        left.debitTotal().plus(right.debitTotal()), left.creditTotal().plus(right.creditTotal()));
+  }
+
+  private static boolean isBalanced(List<CurrencyBalance> totals) {
+    return totals.stream().allMatch(balance -> balance.balanceSide() == BalanceSide.ZERO);
+  }
+
+  private static void mergeCurrencyBalance(
+      List<CurrencyBalance> totalsByCurrency, CurrencyBalance candidate) {
+    CurrencyUnit currencyUnit = candidate.debitTotal().currencyUnit();
+    for (int index = 0; index < totalsByCurrency.size(); index++) {
+      CurrencyBalance existing = totalsByCurrency.get(index);
+      if (existing.debitTotal().currencyUnit().equals(currencyUnit)) {
+        totalsByCurrency.set(index, sumCurrencyBalances(existing, candidate));
+        return;
+      }
+    }
+    totalsByCurrency.add(candidate);
   }
 }

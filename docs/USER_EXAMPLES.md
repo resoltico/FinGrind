@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: USER_EXAMPLES
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -46,11 +46,10 @@ fingrind \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
   --owner-model MULTI_OWNER \
-  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
-  --business-activity-tag consulting-services \
+    --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --accounting-basis ACCRUAL \
+  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
   --book-passphrase-prompt
 ```
 
@@ -89,18 +88,17 @@ cat ./secrets/acme.book-key | \
     --entity-name "Acme Studio" \
     --entity-form COMPANY \
     --owner-model MULTI_OWNER \
-    --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
-    --business-activity-tag consulting-services \
+        --business-activity-tag consulting-services \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
-    --accounting-basis ACCRUAL \
+    --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
     --book-passphrase-stdin
 ```
 
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --accounting-basis ACCRUAL --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -112,18 +110,17 @@ fingrind \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
   --owner-model MULTI_OWNER \
-  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
-  --business-activity-tag consulting-services \
+    --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --accounting-basis ACCRUAL \
+  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
   --book-key-file ./secrets/acme.book-key
 ```
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","reportingObligationStatus":"INTERNAL_MANAGEMENT_ONLY","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","accountingBasis":"ACCRUAL"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","policyProfile":"INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -193,8 +190,8 @@ fingrind \
   backup-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --backup-file ./backup/books/acme.sqlite \
-  --backup-book-key-file ./backup/secrets/acme.book-key
+  --backup-file-out ./backup/books/acme.sqlite \
+  --backup-book-key-file-out ./backup/secrets/acme.book-key
 ```
 
 That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
@@ -294,7 +291,7 @@ fingrind \
 
 That generated scaffold is byte-identical to the checked-in
 [examples/request-template.json](./examples/request-template.json) fixture. Both intentionally
-publish one runnable sample document and default to `"postingKind": "STANDARD"`.
+publish one runnable sample document and default to `"entryKind": "CASH_REVENUE"`.
 The scaffold is agent-first: `actorType` is `AGENT`, `evidence.approvals` starts as an empty
 array that callers may populate when one posting requires explicit approval references, and the
 demo evidence plus provenance values should be replaced before real-world use.
@@ -351,9 +348,9 @@ fingrind \
 
 Like `print-request-template`, this scaffold is byte-identical to the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture.
-Its nested posting scaffold defaults to `"postingKind": "STANDARD"`, and the emitted workflow is
-runnable as a demo flow on a fresh book. Replace the sample evidence and provenance values before
-real-world use.
+Its nested posting scaffold defaults to `"entryKind": "CASH_REVENUE"`, and the emitted workflow
+is runnable as a demo flow on a fresh book. Replace the sample evidence and provenance values
+before real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -451,7 +448,7 @@ fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --effective-date-to 2026-04-08 \
+  --effective-date-as-of 2026-04-08 \
   --output human
 
 fingrind \
@@ -475,7 +472,7 @@ fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --effective-date-to 2026-04-08 \
+  --effective-date-as-of 2026-04-08 \
   --output human \
   --pdf-out ./acme-trial-balance.pdf
 ```
@@ -638,7 +635,7 @@ fingrind \
 One deterministic error example is checked in at
 [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json).
 Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite variants
-now return `protected-book-verification-failed` with exit `2`; SQLite storage symptoms such as
+now return `protected-book-verification-failed` with exit `6`; SQLite storage symptoms such as
 `SQLITE_NOTADB` do not leak to callers.
 
 ## Prompt Mode Requires A Supported Interactive Terminal
@@ -650,15 +647,14 @@ fingrind \
   --entity-name "Acme Studio" \
   --entity-form COMPANY \
   --owner-model MULTI_OWNER \
-  --reporting-obligation-status INTERNAL_MANAGEMENT_ONLY \
-  --business-activity-tag consulting-services \
+    --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --accounting-basis ACCRUAL \
+  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
   --book-passphrase-prompt
 ```
 
 When no supported controlling terminal is available, FinGrind returns the deterministic
 `interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
-`--book-passphrase-stdin`. One example is checked in at
+`--book-passphrase-stdin` and exits with code `5`. One example is checked in at
 [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json).

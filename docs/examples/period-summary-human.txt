@@ -1,19 +1,12 @@
 Period Summary
 ==============
 
-Entity               : Acme Studio
-Entity form          : Company
-Owner model          : Multi Owner
-Reporting obligation : Internal Management Only
-Business activity    : translation-services
-Functional currency  : EUR
-Fiscal year start    : 01-01
-Accounting basis     : Accrual
-Posting coverage     : All posting kinds
-Range                : 2026-04-07 to 2026-04-08
-Posting count        : 1
-Posting line count   : 2
-Accounts touched     : 2
+Book               : Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Posting coverage   : All posting kinds
+Range              : 2026-04-07 to 2026-04-08
+Posting count      : 1
+Posting line count : 2
+Accounts touched   : 2
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------

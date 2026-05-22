@@ -4,9 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -14,7 +15,6 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
@@ -84,12 +84,9 @@ class CliArgumentValueParserTest {
         OwnerModel.MULTI_OWNER,
         CliArgumentValueParser.parseOwnerModelOption("MULTI_OWNER", "--owner-model"));
     assertEquals(
-        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-        CliArgumentValueParser.parseReportingObligationStatusOption(
-            "INTERNAL_MANAGEMENT_ONLY", "--reporting-obligation-status"));
-    assertEquals(
-        AccountingBasis.ACCRUAL,
-        CliArgumentValueParser.parseAccountingBasisOption("ACCRUAL", "--accounting-basis"));
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
+        CliArgumentValueParser.parseAccountingPolicyProfileOption(
+            "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1", "--policy-profile"));
     assertEquals(
         new BusinessActivityTag("translation,localization"),
         CliArgumentValueParser.parseBusinessActivityTagOption(
@@ -108,19 +105,12 @@ class CliArgumentValueParserTest {
                 () -> CliArgumentValueParser.parseOwnerModelOption("NOPE", "--owner-model"))
             .argument());
     assertEquals(
-        "--reporting-obligation-status",
+        "--policy-profile",
         assertThrows(
                 CliArgumentsException.class,
                 () ->
-                    CliArgumentValueParser.parseReportingObligationStatusOption(
-                        "NOPE", "--reporting-obligation-status"))
-            .argument());
-    assertEquals(
-        "--accounting-basis",
-        assertThrows(
-                CliArgumentsException.class,
-                () ->
-                    CliArgumentValueParser.parseAccountingBasisOption("NOPE", "--accounting-basis"))
+                    CliArgumentValueParser.parseAccountingPolicyProfileOption(
+                        "NOPE", "--policy-profile"))
             .argument());
     assertEquals(
         "--business-activity-tag",
@@ -181,5 +171,32 @@ class CliArgumentValueParserTest {
     assertTrue(
         Objects.requireNonNull(invalidException.getMessage())
             .contains("Accepted values: summary, full."));
+  }
+
+  @Test
+  void requireDiscoveryDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
+    assertEquals(
+        DiscoveryDetail.FULL,
+        CliArgumentValueParser.requireDiscoveryDetail(
+            null, List.of(DiscoveryDetail.FULL.wireValue()).listIterator()));
+
+    CliArgumentsException duplicateException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArgumentValueParser.requireDiscoveryDetail(
+                    DiscoveryDetail.COMPACT, List.<String>of().listIterator()));
+    assertEquals(ProtocolOptions.DETAIL, duplicateException.argument());
+
+    CliArgumentsException invalidException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArgumentValueParser.requireDiscoveryDetail(
+                    null, List.of("expanded").listIterator()));
+    assertEquals(ProtocolOptions.DETAIL, invalidException.argument());
+    assertTrue(
+        Objects.requireNonNull(invalidException.getMessage())
+            .contains("Accepted values: compact, full."));
   }
 }

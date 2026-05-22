@@ -9,10 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Covers the built-in neutral bookkeeping policy pack contract. */
@@ -25,12 +24,22 @@ class CoreBookkeepingPolicyPackTest {
   }
 
   @Test
-  void accountingBasisPolicy_supportsCashAndAccrualOnly() {
-    AccountingBasisPolicy policy = CoreBookkeepingPolicyPack.current().accountingBasisPolicy();
+  void profileSelection_resolvesTheCurrentBuiltInPolicyPack() {
+    CoreBookkeepingPolicyPack policyPack = CoreBookkeepingPolicyPack.current();
 
-    assertEquals(List.of(AccountingBasis.CASH, AccountingBasis.ACCRUAL), policy.supportedBases());
-    assertTrue(policy.supports(AccountingBasis.CASH));
-    assertTrue(policy.supports(AccountingBasis.ACCRUAL));
+    assertEquals(
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1, policyPack.profile());
+    assertSame(
+        policyPack,
+        BuiltInBookkeepingPolicyPacks.forProfile(
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
+  }
+
+  @Test
+  void identitySelection_resolvesTheCurrentBuiltInPolicyPack() {
+    assertSame(
+        CoreBookkeepingPolicyPack.current(),
+        BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity()));
   }
 
   @Test

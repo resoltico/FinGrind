@@ -1,37 +1,37 @@
 {
-  "targetKey" : "posting-workflow",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/reversal_target_missing.json",
-  "coverageIntent" : "deterministic rejection for missing reversal target",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "POSTING_WORKFLOW",
-      "request" : {
-        "effectiveDate" : "2026-04-08",
-        "idempotencyKey" : "idem-5",
-        "lineCount" : 2,
-        "reversalPresent" : true
+  "targetKey": "posting-workflow",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/reversal_target_missing.json",
+  "coverageIntent": "deterministic rejection for missing reversal target",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "POSTING_WORKFLOW",
+      "request": {
+        "effectiveDate": "2026-04-08",
+        "idempotencyKey": "idem-5",
+        "lineCount": 2,
+        "reversalPresent": true
       },
-      "lifecycle" : {
-        "uninitialized" : {
-          "preflightStatus" : "posting-book-not-initialized",
-          "commitStatus" : "posting-book-not-initialized"
+      "lifecycle": {
+        "uninitialized": {
+          "preflightStatus": "posting-book-not-initialized",
+          "commitStatus": "posting-book-not-initialized"
         },
-        "undeclared" : {
-          "preflightStatus" : "unknown-account",
-          "commitStatus" : "unknown-account"
+        "undeclared": {
+          "preflightStatus": "unknown-account",
+          "commitStatus": "unknown-account"
         },
-        "inactive" : {
-          "preflightStatus" : "inactive-account",
-          "commitStatus" : "inactive-account"
+        "inactive": {
+          "preflightStatus": "inactive-account",
+          "commitStatus": "inactive-account"
         }
       },
-      "outcome" : {
-        "finalPreflightStatus" : "reversal-target-not-found",
-        "finalCommitStatus" : "reversal-target-not-found",
-        "duplicateStatus" : "not-run",
-        "storedFactPresent" : false
+      "outcome": {
+        "finalPreflightStatus": "reversal-target-not-found",
+        "finalCommitStatus": "reversal-target-not-found",
+        "duplicateStatus": "not-run",
+        "storedFactPresent": false
       }
     }
   }

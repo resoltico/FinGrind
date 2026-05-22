@@ -32,7 +32,8 @@ class PostingWorkflowInvariantAssertionsTest {
     PostEntryCommand command = basicCommand();
     PreflightAccepted accepted =
         new PreflightAccepted(
-            command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
+            command.requestProvenance().idempotencyKey(),
+            CliFuzzFixtures.journalEntry(command).effectiveDate());
     Committed committed = committed(command, "posting-1");
     PostingFact postingFact = postingFact(command, "posting-1");
     CommitRejected duplicateRejected =
@@ -99,7 +100,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(
                 new PreflightAccepted(
                     reversalCommand.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
                 command));
     assertThrows(
         IllegalStateException.class,
@@ -107,7 +108,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate().plusDays(1)),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1)),
                 command));
     assertThrows(
         IllegalStateException.class,
@@ -130,8 +131,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact(
                     "posting-1",
-                    reversalCommand.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(reversalCommand),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -144,8 +145,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    reversalCommand.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(reversalCommand),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -158,8 +159,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -172,8 +173,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
@@ -186,8 +187,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -299,7 +300,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.assertRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
                 PostingRejection.BookNotInitialized.class));
     assertThrows(
         IllegalStateException.class,
@@ -328,7 +329,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.assertAccountStateRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
                 PostingRejection.UnknownAccount.class));
     assertThrows(
         IllegalStateException.class,
@@ -363,15 +364,15 @@ class PostingWorkflowInvariantAssertionsTest {
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
-        command.journalEntry().effectiveDate(),
+        CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant());
   }
 
   private static PostingFact postingFact(PostEntryCommand command, String postingId) {
     return postingFact(
         postingId,
-        command.journalEntry(),
-        command.postingLineage(),
+        CliFuzzFixtures.journalEntry(command),
+        CliFuzzFixtures.postingLineage(command),
         command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),

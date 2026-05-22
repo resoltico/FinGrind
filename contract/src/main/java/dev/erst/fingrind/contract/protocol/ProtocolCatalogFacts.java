@@ -66,8 +66,8 @@ final class ProtocolCatalogFacts {
                   List.of(),
                   "Built into the current kernel as one internal management statement.")),
           new AccountingPolicyPackFacts(
-              "neutral-single-entity-policy-pack",
-              "Neutral Single-Entity Policy Pack",
+              "internal-management-single-entity-v1",
+              "Internal Management Single-Entity V1",
               AccountingBaselineTarget.INTERNAL_MANAGEMENT_STATEMENTS,
               List.of(
                   "FREELANCER",
@@ -79,9 +79,17 @@ final class ProtocolCatalogFacts {
                   "OTHER"),
               List.of(
                   new PolicyDimensionFacts(
-                      "accounting-basis",
+                      "policy-profile-selection",
                       CapabilityStatus.IMPLEMENTED,
-                      "The current kernel requires one explicit accounting basis on book creation."),
+                      "Book creation selects one canonical persisted accounting policy profile."),
+                  new PolicyDimensionFacts(
+                      "typed-entry-recipes",
+                      CapabilityStatus.IMPLEMENTED,
+                      "Committed write requests use typed bookkeeping entry recipes, with one explicit manual-adjustment path for privileged journal work."),
+                  new PolicyDimensionFacts(
+                      "retained-evidence",
+                      CapabilityStatus.IMPLEMENTED,
+                      "Accepted postings retain source-document and approval evidence facts with capture, storage, and verification metadata."),
                   new PolicyDimensionFacts(
                       "statement-comparatives",
                       CapabilityStatus.IMPLEMENTED,
@@ -93,16 +101,16 @@ final class ProtocolCatalogFacts {
                   new PolicyDimensionFacts(
                       "period-close",
                       CapabilityStatus.IMPLEMENTED,
-                      "Period close enforces an entity-form-aware closing-equity classification instead of one hard-coded equity doctrine."),
+                      "Period close enforces one policy-owned closing-equity classification inside the current internal-management single-entity foundation."),
                   new PolicyDimensionFacts(
                       "statement-presentation",
                       CapabilityStatus.IMPLEMENTED,
                       "Built-in statements publish typed line classifications and current-versus-noncurrent financial-position taxonomy.")),
-              "Current neutral built-in policy pack for one single-entity, single-functional-currency bookkeeping foundation with explicit accounting basis, account taxonomy, statement taxonomy, and entity-form-aware close policy."),
+              "Current built-in accounting policy profile for one single-entity, single-functional-currency internal-management bookkeeping foundation with typed entry recipes, retained evidence, account taxonomy, statement taxonomy, and close policy."),
           "FinGrind targets one policy-driven exact-money bookkeeping foundation, not one full IFRS or local-GAAP compliance/reporting package.",
-          "Built-in reporting stops at financial position, income statement, and changes in equity. Those built-in statements already publish typed account and line classifications, while cash flows, OCI/comprehensive-income reporting, and note/disclosure packages belong to adjacent reporting contexts rather than the current kernel.",
+          "Built-in reporting stops at financial position, income statement, and changes in equity. Those built-in statements already publish typed account and line classifications, while cash flows, OCI/comprehensive-income reporting, and note/disclosure packages remain unsupported adjacent reporting contexts rather than the current kernel.",
           "The current chart of accounts supports explicit parent-child hierarchy and first-class statement-line taxonomy while keeping account-code text itself opaque and book-local.",
-          "FinGrind does not yet claim IFRS for SMEs parity. The current kernel fits one single-entity, single-functional-currency internal book for sole traders and small organizations, but not one full SME reporting regime.",
+          "FinGrind does not yet claim IFRS for SMEs parity. The current kernel fits one single-entity, single-functional-currency internal book for sole traders and small organizations, but not one standards-complete SME reporting regime.",
           "Operational contexts such as invoicing, receivables, payables, inventory, payroll, and settlement orchestration are not modeled in the current kernel. They belong above the ledger as adjacent bounded contexts that publish postings into the book.",
           "Tax is not a first-class domain in the current kernel. Users may post tax-bearing amounts manually, but tax registrations, tax codes, rate schedules, recoverability, inclusivity, determination rules, and filing obligations are not modeled yet.",
           "FinGrind does not yet claim multi-entity organizational accounting. Group reporting, consolidations, and intercompany elimination belong to a separate future context above the current single-entity book kernel.",
@@ -112,17 +120,29 @@ final class ProtocolCatalogFacts {
           "bookkeeping-policy-pack",
           ACCOUNTING_BASELINE.defaultPolicyPack().policyPackId(),
           List.of(
-              "accounting-basis-policy",
+              "policy-profile-selection",
+              "entry-recipe-policy",
+              "retained-evidence-policy",
               "statement-comparative-policy",
               "chart-policy",
               "close-policy",
               "statement-presentation-policy"),
           List.of(
               new PolicySeamFacts(
-                  "accounting-basis-policy",
+                  "policy-profile-selection",
                   CapabilityStatus.IMPLEMENTED,
                   "accounting-policy",
-                  "Executable policy seam that defines which accounting-basis values one book may declare."),
+                  "Executable policy seam that defines which persisted accounting policy profiles one book may declare."),
+              new PolicySeamFacts(
+                  "entry-recipe-policy",
+                  CapabilityStatus.IMPLEMENTED,
+                  "accounting-policy",
+                  "Executable policy seam that maps typed bookkeeping entry kinds into canonical journal postings."),
+              new PolicySeamFacts(
+                  "retained-evidence-policy",
+                  CapabilityStatus.IMPLEMENTED,
+                  "accounting-policy",
+                  "Executable policy seam that requires retained source-document and approval evidence facts for accepted postings."),
               new PolicySeamFacts(
                   "statement-comparative-policy",
                   CapabilityStatus.IMPLEMENTED,

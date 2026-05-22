@@ -35,6 +35,7 @@ import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.AccountRole;
@@ -92,7 +93,7 @@ class MachineContractTest {
             .contains("Built-in reporting stops at financial position"));
     assertTrue(capabilities.accountingBaseline().nonClaims().contains("IFRS for SMEs parity"));
     assertEquals(
-        "neutral-single-entity-policy-pack",
+        "internal-management-single-entity-v1",
         capabilities.accountingBaseline().defaultPolicyPack().policyPackId());
     assertTrue(
         capabilities
@@ -124,14 +125,17 @@ class MachineContractTest {
   private static void assertExtensionSurfaceCapabilities(CapabilitiesDescriptor capabilities) {
     assertEquals(
         List.of(
-            "accounting-basis-policy",
+            "policy-profile-selection",
+            "entry-recipe-policy",
+            "retained-evidence-policy",
             "statement-comparative-policy",
             "chart-policy",
             "close-policy",
             "statement-presentation-policy"),
         capabilities.extensionSurface().implementedSeams());
     assertEquals(
-        "neutral-single-entity-policy-pack", capabilities.extensionSurface().defaultPolicyPackId());
+        "internal-management-single-entity-v1",
+        capabilities.extensionSurface().defaultPolicyPackId());
     assertTrue(
         capabilities.extensionSurface().policySeams().stream()
             .anyMatch(
@@ -201,7 +205,8 @@ class MachineContractTest {
         enumValues(AccountRole.values()),
         vocabularyValues(declareAccount.enumVocabularies(), "accountRole"));
     assertEquals("https://json-schema.org/draft/2020-12/schema", requestShapes.schemaDialect());
-    assertEquals("object", postEntry.schema().get("type"));
+    assertEquals("https://json-schema.org/draft/2020-12/schema", postEntry.schema().get("$schema"));
+    assertTrue(postEntry.schema().containsKey("oneOf"));
     assertEquals("object", declareAccount.schema().get("type"));
     assertEquals("array", nestedSchemaProperty(ledgerPlan.schema(), "steps", "type"));
     assertEquals(
@@ -224,6 +229,11 @@ class MachineContractTest {
             .filter(descriptor -> "invalid-request".equals(descriptor.code()))
             .findFirst()
             .orElseThrow();
+    ContractResponse.ErrorDescriptor protectedBookVerificationError =
+        capabilities.responseModel().errorDescriptors().stream()
+            .filter(descriptor -> "protected-book-verification-failed".equals(descriptor.code()))
+            .findFirst()
+            .orElseThrow();
     assertTrue(rejectionCodes.contains("administration-book-not-initialized"));
     assertTrue(rejectionCodes.contains("query-book-not-initialized"));
     assertTrue(rejectionCodes.contains("posting-book-not-initialized"));
@@ -237,6 +247,8 @@ class MachineContractTest {
     assertTrue(errorCodes.contains("managed-runtime-failure"));
     assertTrue(errorCodes.contains("storage-runtime-failure"));
     assertTrue(errorCodes.contains("pdf-export-failure"));
+    assertEquals(1, invalidRequestError.exitCode());
+    assertEquals(6, protectedBookVerificationError.exitCode());
     assertEquals(
         List.of("parseMessage", "line", "column", "violations"),
         invalidRequestError.detailFields().stream()
@@ -303,7 +315,9 @@ class MachineContractTest {
     assertEquals(
         "--pdf-out <path>",
         command(help.commands(), OperationId.TRIAL_BALANCE).artifactOutputs().getFirst().option());
-    assertEquals(5, help.exitCodes().size());
+    assertEquals(
+        List.of(0, 1, 2, 3, 4, 5, 6, 7),
+        help.exitCodes().stream().map(ExitCodeDescriptor::code).toList());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(
         List.of(WorkflowSurface.BUNDLE_POSIX_SHELL, WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
@@ -394,8 +408,11 @@ class MachineContractTest {
         environment.distribution().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliBundleTargets());
     assertEquals("2026-01-15", template.effectiveDate());
-    assertEquals(dev.erst.fingrind.core.PostingKind.STANDARD, template.postingKind());
-    assertEquals("1000", template.lines().get(0).accountCode());
+    assertEquals(dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE, template.entryKind());
+    assertEquals("1000", template.cashAccountCode());
+    assertEquals("2000", template.revenueAccountCode());
+    assertEquals(null, template.lines());
+    assertEquals(null, template.postingKind());
     assertEquals("operator-demo-1", template.provenance().actorId());
     assertEquals(ActorType.AGENT, template.provenance().actorType());
     assertEquals("idem-demo-1", template.provenance().idempotencyKey());

@@ -35,20 +35,20 @@ final class SqliteMutationWriter {
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_IDENTITY)) {
       statement.bindText(1, bookIdentity.entityName().value());
       statement.bindText(2, bookIdentity.functionalCurrency().code());
-      statement.bindText(3, bookIdentity.fiscalYearStart().wireValue());
+      statement.bindInt(3, bookIdentity.fiscalYearStart().month());
+      statement.bindInt(4, bookIdentity.fiscalYearStart().day());
       statement.step();
     }
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_ENTITY_PROFILE)) {
       statement.bindText(1, bookIdentity.entityProfile().entityForm().wireValue());
       statement.bindText(2, bookIdentity.entityProfile().ownerModel().wireValue());
-      statement.bindText(3, bookIdentity.entityProfile().reportingObligationStatus().wireValue());
-      statement.bindText(4, encodedBusinessActivityTags);
+      statement.bindText(3, encodedBusinessActivityTags);
       statement.step();
     }
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_POLICY)) {
-      statement.bindText(1, bookIdentity.accountingBasis().wireValue());
+      statement.bindText(1, bookIdentity.policyProfile().wireValue());
       statement.step();
     }
   }
@@ -70,13 +70,14 @@ final class SqliteMutationWriter {
       statement.bindText(2, account.accountName().value());
       statement.bindText(3, account.accountType().wireValue());
       statement.bindText(4, account.accountRole().wireValue());
-      bindOptionalText(
-          statement,
-          5,
-          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
+      statement.bindText(5, account.accountTaxonomy().nodeKind().wireValue());
       bindOptionalText(
           statement,
           6,
+          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
+      bindOptionalText(
+          statement,
+          7,
           account
               .accountTaxonomy()
               .financialPositionLineClassification()
@@ -84,14 +85,14 @@ final class SqliteMutationWriter {
               .orElse(null));
       bindOptionalText(
           statement,
-          7,
+          8,
           account
               .accountTaxonomy()
               .profitAndLossLineClassification()
               .map(value -> value.wireValue())
               .orElse(null));
-      statement.bindInt(8, Boolean.compare(account.active(), false));
-      statement.bindText(9, account.declaredAt().toString());
+      statement.bindInt(9, Boolean.compare(account.active(), false));
+      statement.bindText(10, account.declaredAt().toString());
       statement.step();
     }
   }
@@ -136,6 +137,10 @@ final class SqliteMutationWriter {
         statement.bindInt(2, index);
         statement.bindText(3, sourceDocument.sourceDocumentId().value());
         statement.bindText(4, sourceDocument.sourceDocumentType().value());
+        statement.bindText(5, sourceDocument.documentDate().toString());
+        statement.bindText(6, sourceDocument.capturedAt().toString());
+        statement.bindText(7, sourceDocument.storageLocator().value());
+        statement.bindText(8, sourceDocument.contentSha256().value());
         statement.step();
       }
     }
@@ -147,6 +152,10 @@ final class SqliteMutationWriter {
         statement.bindInt(2, index);
         statement.bindText(3, approval.approvalId().value());
         statement.bindText(4, approval.approvalType().value());
+        statement.bindText(5, approval.approverId().value());
+        statement.bindText(6, approval.approverType().wireValue());
+        statement.bindText(7, approval.decision().wireValue());
+        statement.bindText(8, approval.approvedAt().toString());
         statement.step();
       }
     }

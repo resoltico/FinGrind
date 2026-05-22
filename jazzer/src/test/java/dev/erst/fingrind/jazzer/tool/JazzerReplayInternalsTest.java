@@ -18,17 +18,22 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -283,7 +288,7 @@ class JazzerReplayInternalsTest {
             JazzerReplayDetailsMapper.requiredPreflightRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate())));
+                    CliFuzzFixtures.journalEntry(command).effectiveDate())));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -291,7 +296,7 @@ class JazzerReplayInternalsTest {
                 new Committed(
                     new PostingId("posting-1"),
                     command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate(),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant())));
   }
 
@@ -345,7 +350,7 @@ class JazzerReplayInternalsTest {
             SqliteRoundTripReplayVerifier.verifyReloadedPosting(
                 new PostingFact(
                     new PostingId("posting-1"),
-                    command.journalEntry(),
+                    CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
                     command.evidence(),
@@ -361,8 +366,8 @@ class JazzerReplayInternalsTest {
             SqliteRoundTripReplayVerifier.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    reversalCommand.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(reversalCommand),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -375,17 +380,9 @@ class JazzerReplayInternalsTest {
             SqliteRoundTripReplayVerifier.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
-                    new AccountingEvidence(
-                        List.of(
-                            new SourceDocumentReference(
-                                new SourceDocumentId("document-evidence-mismatch"),
-                                new SourceDocumentType("invoice"))),
-                        List.of(
-                            new ApprovalReference(
-                                new ApprovalId("approval-evidence-mismatch"),
-                                new ApprovalType("manager-signoff")))),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
+                    mismatchedEvidence(command),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -397,8 +394,8 @@ class JazzerReplayInternalsTest {
             SqliteRoundTripReplayVerifier.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -411,8 +408,8 @@ class JazzerReplayInternalsTest {
             SqliteRoundTripReplayVerifier.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
+                    CliFuzzFixtures.journalEntry(command),
+                    CliFuzzFixtures.postingLineage(command),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
@@ -544,8 +541,8 @@ class JazzerReplayInternalsTest {
   private static PostingFact postingFact(PostEntryCommand command, String postingId) {
     return postingFact(
         postingId,
-        command.journalEntry(),
-        command.postingLineage(),
+        CliFuzzFixtures.journalEntry(command),
+        CliFuzzFixtures.postingLineage(command),
         command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),
@@ -573,8 +570,29 @@ class JazzerReplayInternalsTest {
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
-        command.journalEntry().effectiveDate(),
+        CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant());
+  }
+
+  private static AccountingEvidence mismatchedEvidence(PostEntryCommand command) {
+    return new AccountingEvidence(
+        List.of(
+            new SourceDocumentReference(
+                new SourceDocumentId("document-evidence-mismatch"),
+                new SourceDocumentType("invoice"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T12:00:00Z"),
+                new StorageLocator("s3://evidence/document-evidence-mismatch.pdf"),
+                new ContentSha256(
+                    "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"))),
+        List.of(
+            new ApprovalReference(
+                new ApprovalId("approval-evidence-mismatch"),
+                new ApprovalType("manager-signoff"),
+                command.requestProvenance().actorId(),
+                command.requestProvenance().actorType(),
+                ApprovalDecision.REJECTED,
+                Instant.parse("2026-04-07T13:00:00Z"))));
   }
 
   @SuppressWarnings("NullAway")

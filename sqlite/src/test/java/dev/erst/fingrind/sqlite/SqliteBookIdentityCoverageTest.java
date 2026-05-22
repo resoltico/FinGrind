@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -47,8 +46,9 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   singleton_id,
                   entity_name,
                   functional_currency_code,
-                  fiscal_year_start
-              ) values (1, 'Acme Studio', 'EUR', '01-01')
+                  fiscal_year_start_month,
+                  fiscal_year_start_day
+              ) values (1, 'Acme Studio', 'EUR', 1, 1)
               """);
           IllegalStateException exception =
               assertThrows(
@@ -70,8 +70,9 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   singleton_id,
                   entity_name,
                   functional_currency_code,
-                  fiscal_year_start
-              ) values (1, 'Acme Studio', 'EUR', '01-01')
+                  fiscal_year_start_month,
+                  fiscal_year_start_day
+              ) values (1, 'Acme Studio', 'EUR', 1, 1)
               """);
           database.executeStatement(
               """
@@ -79,13 +80,11 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   singleton_id,
                   entity_form,
                   owner_model,
-                  reporting_obligation_status,
                   business_activity_tags
               ) values (
                   1,
                   'COMPANY',
                   'MULTI_OWNER',
-                  'INTERNAL_MANAGEMENT_ONLY',
                   ''
               )
               """);
@@ -156,13 +155,12 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 new BookEntityName("Acme Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -176,7 +174,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_roundTripsRegisteredTaxStatusWithoutTaxProfileMetadata() {
+  void loadBookIdentity_roundTripsPolicyProfileWithoutTaxProfileMetadata() {
     Path bookPath = tempDirectory.resolve("book-identity-registered-tax-status.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
@@ -184,11 +182,10 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 new BookEntityName("Registered Studio"),
                 EntityForm.COMPANY,
                 OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of(new BusinessActivityTag("translation-services"))),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -199,5 +196,45 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
         });
+  }
+
+  @Test
+  void loadBookIdentity_roundTripsEveryCanonicalOwnerModel() {
+    BusinessActivityTag translationServices = new BusinessActivityTag("translation-services");
+    CurrencyUnit functionalCurrency = CurrencyUnit.of("EUR");
+    FiscalYearStart fiscalYearStart = FiscalYearStart.parse("01-01");
+    for (OwnerModel ownerModel : OwnerModel.values()) {
+      Path bookPath =
+          tempDirectory.resolve("book-identity-owner-model-" + ownerModel.wireValue() + ".sqlite");
+      BookIdentity bookIdentity =
+          ownerModelBookIdentity(
+              ownerModel, translationServices, functionalCurrency, fiscalYearStart);
+      withStandaloneDatabase(
+          bookAccess(bookPath),
+          database -> {
+            SqliteBookSchemaBootstrap.initializeBook(database);
+            insertInitializedAtRow(database);
+            SqliteMutationWriter.insertBookIdentity(database, bookIdentity);
+
+            assertEquals(
+                Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+          });
+    }
+  }
+
+  private static BookIdentity ownerModelBookIdentity(
+      OwnerModel ownerModel,
+      BusinessActivityTag translationServices,
+      CurrencyUnit functionalCurrency,
+      FiscalYearStart fiscalYearStart) {
+    return new BookIdentity(
+        new EntityProfile(
+            new BookEntityName("Owner Model " + ownerModel.wireValue()),
+            EntityForm.COMPANY,
+            ownerModel,
+            List.of(translationServices)),
+        functionalCurrency,
+        fiscalYearStart,
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 }

@@ -38,18 +38,17 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.ENTITY_NAME + " <text>",
                 ProtocolOptions.ENTITY_FORM + " <entity-form>",
                 ProtocolOptions.OWNER_MODEL + " <owner-model>",
-                ProtocolOptions.REPORTING_OBLIGATION_STATUS + " <reporting-obligation-status>",
                 ProtocolOptions.BUSINESS_ACTIVITY_TAG + " <business-activity-tag> ...",
                 ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
                 ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
-                ProtocolOptions.ACCOUNTING_BASIS + " <accounting-basis>",
+                ProtocolOptions.POLICY_PROFILE + " <policy-profile>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Initialize a new book file with the canonical schema.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s INTERNAL_MANAGEMENT_ONLY %s translation-services %s EUR %s 01-01 %s ACCRUAL"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
@@ -57,38 +56,35 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.ENTITY_NAME,
                             ProtocolOptions.ENTITY_FORM,
                             ProtocolOptions.OWNER_MODEL,
-                            ProtocolOptions.REPORTING_OBLIGATION_STATUS,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.ACCOUNTING_BASIS)),
+                            ProtocolOptions.POLICY_PROFILE)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s INTERNAL_MANAGEMENT_ONLY %s translation-services %s EUR %s 01-01 %s ACCRUAL %s"
+                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
                             ProtocolOptions.ENTITY_FORM,
                             ProtocolOptions.OWNER_MODEL,
-                            ProtocolOptions.REPORTING_OBLIGATION_STATUS,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.ACCOUNTING_BASIS,
+                            ProtocolOptions.POLICY_PROFILE,
                             ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
                 ProtocolExampleStep.command(
-                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s INTERNAL_MANAGEMENT_ONLY %s translation-services %s EUR %s 01-01 %s ACCRUAL %s"
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
                             ProtocolOptions.ENTITY_FORM,
                             ProtocolOptions.OWNER_MODEL,
-                            ProtocolOptions.REPORTING_OBLIGATION_STATUS,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.ACCOUNTING_BASIS,
+                            ProtocolOptions.POLICY_PROFILE,
                             ProtocolOptions.BOOK_PASSPHRASE_STDIN)))),
         ProtocolOperationDefinitions.operation(
             OperationId.REKEY_BOOK,
@@ -131,8 +127,8 @@ final class ProtocolAdministrationOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.BACKUP_FILE + " <path>",
-                ProtocolOptions.BACKUP_BOOK_KEY_FILE + " <path>",
+                ProtocolOptions.BACKUP_FILE_OUT + " <path>",
+                ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT + " <path>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
@@ -146,8 +142,8 @@ final class ProtocolAdministrationOperations {
                             OperationId.BACKUP_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.BACKUP_FILE,
-                            ProtocolOptions.BACKUP_BOOK_KEY_FILE)))),
+                            ProtocolOptions.BACKUP_FILE_OUT,
+                            ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT)))),
         ProtocolOperationDefinitions.operation(
             OperationId.RESTORE_BOOK,
             OperationCategory.ADMINISTRATION,

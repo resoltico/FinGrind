@@ -1,14 +1,20 @@
 # FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
-You initialize the book explicitly, declare accounts explicitly, commit balanced journal entries,
-and query the same file for balances, ledgers, and summaries. Invalid writes are rejected before
-they change the book.
+You initialize the book explicitly, declare accounts explicitly, commit typed bookkeeping entries
+or explicit manual adjustments, and query the same file for balances, ledgers, and summaries.
+Humans use the task guide in `help`; automation uses `capabilities --output json`. Invalid writes
+are rejected before they change the book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
-- Declare accounts before posting; unbalanced entries and undeclared accounts are rejected at commit
-- Post double-entry journal entries with provenance and idempotency keys
-- Read back account balances, trial balances, account ledgers, and period summaries
+- Declare accounts and chart nodes before posting; undeclared accounts and non-postable nodes are
+  rejected at commit
+- Post typed bookkeeping entries with retained evidence, provenance, and idempotency keys; reserve
+  raw journals for explicit manual adjustments
+- Scaffold runnable request and plan documents with `print-request-template` and
+  `print-plan-template`
+- Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
+  and period summaries
 - Export any report as human-readable tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
@@ -28,8 +34,9 @@ walkthrough that creates those files locally, use [docs/USER_QUICK_START.md](doc
 # Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --entity-form COMPANY --functional-currency EUR \
-  --fiscal-year-start 01-01 --accounting-basis ACCRUAL
+  --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER \
+  --business-activity-tag consulting-services --functional-currency EUR \
+  --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1
 
 # Declare the accounts used by the first posting
 fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
@@ -43,27 +50,38 @@ fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/ac
 
 # Read the trial balance back
 fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --effective-date-to 2026-04-08 --output human
+  --effective-date-as-of 2026-04-08 --output human
+```
+
+The interface is layered: `help` is the operator guide, `print-request-template` scaffolds one
+runnable sample document, and `capabilities --output json` exposes the machine contract.
+
+```bash
+fingrind help post-entry
+fingrind print-request-template post-entry > request.json
+fingrind capabilities --output json
 ```
 
 ```
 Trial Balance
 =============
 
-Entity            : Acme Studio
-Profile           : Company | Unknown | Unspecified
-Accounting        : EUR | FY start 01-01 | Accrual
-Posting coverage  : All posting kinds
-Effective date to : 2026-04-08
+Book             : Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Posting coverage : All posting kinds
+As of            : 2026-04-08
 
-Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | Asset        | Ordinary     | Debit          | Yes    |      EUR |       10.00 |         0.00 | 10.00      | Debit
-2000    | Revenue | Revenue      | Ordinary     | Credit         | Yes    |      EUR |        0.00 |        10.00 | 10.00      | Credit
+Current totals
+--------------
+As of    : 2026-04-08
+Balanced : Yes
+
+Currency | Debit total | Credit total | Net amount | Balance side
+---------+-------------+--------------+------------+-------------
+EUR      |       10.00 |        10.00 |       0.00 | ZERO
 ```
 
 Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced
-lines, undeclared accounts, or duplicate idempotency keys.
+lines, undeclared accounts, invalid evidence metadata, or duplicate idempotency keys.
 
 ## Documentation
 

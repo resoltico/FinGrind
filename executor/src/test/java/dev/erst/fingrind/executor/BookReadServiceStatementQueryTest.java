@@ -123,7 +123,7 @@ class BookReadServiceStatementQueryTest {
       FinancialPositionReport report =
           assertInstanceOf(FinancialPositionResult.Reported.class, result).report();
 
-      assertEquals(Optional.of(PERIOD_DATE), report.effectiveDateTo());
+      assertEquals(Optional.of(PERIOD_DATE), report.effectiveDateAsOf());
       assertEquals(PostingCoverage.ALL_POSTING_KINDS, report.postingCoverage());
       assertEquals(3, report.sections().size());
 

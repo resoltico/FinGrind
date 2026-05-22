@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-08",
   "lines": [
@@ -26,7 +27,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-6",
-        "sourceDocumentType": "credit-note"
+        "sourceDocumentType": "credit-note",
+        "documentDate": "2026-04-08",
+        "capturedAt": "2026-04-08T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-idem-6",
+        "contentSha256": "1d0a17350e5a8ff5fb5d2cd518d44f9606865bcf5893801770ca94f5a63ca898"
       }
     ],
     "approvals": []

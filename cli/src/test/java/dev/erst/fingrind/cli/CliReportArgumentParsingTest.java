@@ -61,7 +61,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
                   "--output",
                   "csv"
@@ -151,7 +151,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
                   "--output",
                   "human",
@@ -200,7 +200,7 @@ class CliReportArgumentParsingTest {
     assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
     assertEquals(OutputMode.JSON, defaultTrialBalance.output().outputMode());
     assertEquals(
-        Optional.of(LocalDate.parse("2026-04-30")), trialBalance.query().effectiveDateTo());
+        Optional.of(LocalDate.parse("2026-04-30")), trialBalance.query().effectiveDateAsOf());
     assertEquals(OutputMode.JSON, defaultAccountLedger.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-01")), accountLedger.query().effectiveDateFrom());
@@ -208,7 +208,7 @@ class CliReportArgumentParsingTest {
     assertEquals(LocalDate.parse("2026-04-30"), periodSummary.query().effectiveDateTo());
     assertEquals(OutputMode.JSON, defaultFinancialPosition.output().outputMode());
     assertEquals(
-        Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateTo());
+        Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateAsOf());
     assertEquals(OutputMode.CSV, incomeStatement.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-01"), incomeStatement.query().effectiveDateFrom());
     assertEquals(OutputMode.HUMAN, changesInEquity.output().outputMode());
@@ -296,9 +296,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-05-01"
                 }));
     assertThrows(

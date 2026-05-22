@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-12",
   "lines": [
@@ -27,7 +28,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-posting-invalid-9",
-        "sourceDocumentType": "credit-note"
+        "sourceDocumentType": "credit-note",
+        "documentDate": "2026-04-12",
+        "capturedAt": "2026-04-12T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-idem-posting-invalid-9",
+        "contentSha256": "c64b1e501f5eb924a0befc49ef94187067f7d7e98fe3ce9c76cfefd651b18221"
       }
     ],
     "approvals": []

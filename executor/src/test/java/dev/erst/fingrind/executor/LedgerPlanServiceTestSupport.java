@@ -7,6 +7,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdent
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -31,23 +32,18 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
@@ -109,7 +105,7 @@ final class LedgerPlanServiceTestSupport {
     PostEntryResult committed =
         new PostingApplicationService(
                 bookSession, bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
-            .commit(postingCommand("idem-setup"));
+            .commit(postEntryCommand("idem-setup"));
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;
   }
@@ -208,19 +204,11 @@ final class LedgerPlanServiceTestSupport {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        PostingKind.STANDARD,
-        new JournalEntry(
+        new BookkeepingEntry.CashRevenue(
             LocalDate.parse("2026-04-07"),
-            List.of(
-                new JournalLine(
-                    new AccountCode("1000"),
-                    JournalLine.EntrySide.DEBIT,
-                    Money.parse("EUR", "10.00")),
-                new JournalLine(
-                    new AccountCode("2000"),
-                    JournalLine.EntrySide.CREDIT,
-                    Money.parse("EUR", "10.00")))),
-        dev.erst.fingrind.contract.bookkeeping.PostingLineage.direct(),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -230,10 +218,6 @@ final class LedgerPlanServiceTestSupport {
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
         SourceChannel.CLI);
-  }
-
-  static PostingCommand postingCommand(String idempotencyKey) {
-    return BookkeepingPublishedLanguageTranslator.fromPublished(postEntryCommand(idempotencyKey));
   }
 
   static MonetaryAmount monetaryAmount(String currencyCode, String amountText) {

@@ -7,11 +7,10 @@
       "entityName" : "Acme Studio",
       "entityForm" : "FREELANCER",
       "ownerModel" : "SOLE_OWNER",
-      "reportingObligationStatus" : "INTERNAL_MANAGEMENT_ONLY",
       "businessActivityTags" : [ "translation-services" ],
       "functionalCurrency" : "EUR",
       "fiscalYearStart" : "01-01",
-      "accountingBasis" : "ACCRUAL"
+      "policyProfile" : "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
     }
   }, {
     "stepId" : "declare-cash",
@@ -21,6 +20,7 @@
       "accountName" : "Cash",
       "accountType" : "ASSET",
       "accountRole" : "ORDINARY",
+      "accountNodeKind" : "POSTABLE",
       "financialPositionLineClassification" : "CURRENT_ASSET"
     }
   }, {
@@ -31,33 +31,29 @@
       "accountName" : "Revenue",
       "accountType" : "REVENUE",
       "accountRole" : "ORDINARY",
+      "accountNodeKind" : "POSTABLE",
       "profitAndLossLineClassification" : "OPERATING_REVENUE"
     }
   }, {
     "stepId" : "post-journal",
     "kind" : "post-entry",
     "posting" : {
-      "postingKind" : "STANDARD",
+      "entryKind" : "CASH_REVENUE",
       "effectiveDate" : "2026-01-15",
-      "lines" : [ {
-        "accountCode" : "1000",
-        "side" : "DEBIT",
-        "amount" : {
-          "currencyCode" : "EUR",
-          "minorUnits" : "1000"
-        }
-      }, {
-        "accountCode" : "2000",
-        "side" : "CREDIT",
-        "amount" : {
-          "currencyCode" : "EUR",
-          "minorUnits" : "1000"
-        }
-      } ],
+      "cashAccountCode" : "1000",
+      "revenueAccountCode" : "2000",
+      "amount" : {
+        "currencyCode" : "EUR",
+        "minorUnits" : "1000"
+      },
       "evidence" : {
         "sourceDocuments" : [ {
           "sourceDocumentId" : "invoice-1001",
-          "sourceDocumentType" : "invoice"
+          "sourceDocumentType" : "invoice",
+          "documentDate" : "2026-01-15",
+          "capturedAt" : "2026-01-15T09:00:00Z",
+          "storageLocator" : "vault://documents/invoice-1001",
+          "contentSha256" : "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         } ],
         "approvals" : [ ]
       },

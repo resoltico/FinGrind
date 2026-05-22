@@ -6,12 +6,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for first-class evidence value objects. */
 class AccountingEvidenceTest {
+  private static final LocalDate DOCUMENT_DATE = LocalDate.parse("2026-04-07");
+  private static final Instant CAPTURED_AT = Instant.parse("2026-04-07T10:15:30Z");
+  private static final Instant APPROVED_AT = Instant.parse("2026-04-07T10:18:00Z");
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   @Test
   void sourceDocumentId_publishesBoundaryContractAndNormalizesValues() {
     assertEquals(255, SourceDocumentId.maxLength());
@@ -74,75 +82,187 @@ class AccountingEvidenceTest {
   }
 
   @Test
-  void sourceDocumentReference_requiresBothConstituents() {
+  void sourceDocumentReference_requiresRetainedDocumentFact() {
     SourceDocumentId sourceDocumentId = new SourceDocumentId("invoice-1");
     SourceDocumentType sourceDocumentType = new SourceDocumentType("invoice");
+    StorageLocator storageLocator = new StorageLocator("evidence://documents/invoice-1.pdf");
+    ContentSha256 contentSha256 = new ContentSha256(DOCUMENT_SHA256);
     SourceDocumentReference reference =
-        new SourceDocumentReference(sourceDocumentId, sourceDocumentType);
+        new SourceDocumentReference(
+            sourceDocumentId,
+            sourceDocumentType,
+            DOCUMENT_DATE,
+            CAPTURED_AT,
+            storageLocator,
+            contentSha256);
     assertEquals(sourceDocumentId, reference.sourceDocumentId());
     assertEquals(sourceDocumentType, reference.sourceDocumentType());
+    assertEquals(DOCUMENT_DATE, reference.documentDate());
+    assertEquals(CAPTURED_AT, reference.capturedAt());
+    assertEquals(storageLocator, reference.storageLocator());
+    assertEquals(contentSha256, reference.contentSha256());
     assertThrows(
         NullPointerException.class,
-        () -> new SourceDocumentReference(nullOf(), sourceDocumentType));
+        () ->
+            new SourceDocumentReference(
+                nullOf(),
+                sourceDocumentType,
+                DOCUMENT_DATE,
+                CAPTURED_AT,
+                storageLocator,
+                contentSha256));
     assertThrows(
-        NullPointerException.class, () -> new SourceDocumentReference(sourceDocumentId, nullOf()));
+        NullPointerException.class,
+        () ->
+            new SourceDocumentReference(
+                sourceDocumentId,
+                nullOf(),
+                DOCUMENT_DATE,
+                CAPTURED_AT,
+                storageLocator,
+                contentSha256));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new SourceDocumentReference(
+                sourceDocumentId,
+                sourceDocumentType,
+                nullOf(),
+                CAPTURED_AT,
+                storageLocator,
+                contentSha256));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new SourceDocumentReference(
+                sourceDocumentId,
+                sourceDocumentType,
+                DOCUMENT_DATE,
+                nullOf(),
+                storageLocator,
+                contentSha256));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new SourceDocumentReference(
+                sourceDocumentId,
+                sourceDocumentType,
+                DOCUMENT_DATE,
+                CAPTURED_AT,
+                nullOf(),
+                contentSha256));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new SourceDocumentReference(
+                sourceDocumentId,
+                sourceDocumentType,
+                DOCUMENT_DATE,
+                CAPTURED_AT,
+                storageLocator,
+                nullOf()));
   }
 
   @Test
-  void approvalReference_requiresBothConstituents() {
+  void approvalReference_requiresRetainedApprovalFact() {
     ApprovalId approvalId = new ApprovalId("approval-1");
     ApprovalType approvalType = new ApprovalType("manager-signoff");
-    ApprovalReference reference = new ApprovalReference(approvalId, approvalType);
+    ActorId approverId = new ActorId("manager-1");
+    ApprovalReference reference =
+        new ApprovalReference(
+            approvalId,
+            approvalType,
+            approverId,
+            ActorType.HUMAN,
+            ApprovalDecision.APPROVED,
+            APPROVED_AT);
     assertEquals(approvalId, reference.approvalId());
     assertEquals(approvalType, reference.approvalType());
-    assertThrows(NullPointerException.class, () -> new ApprovalReference(nullOf(), approvalType));
-    assertThrows(NullPointerException.class, () -> new ApprovalReference(approvalId, nullOf()));
+    assertEquals(approverId, reference.approverId());
+    assertEquals(ActorType.HUMAN, reference.approverType());
+    assertEquals(ApprovalDecision.APPROVED, reference.decision());
+    assertEquals(APPROVED_AT, reference.approvedAt());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                nullOf(),
+                approvalType,
+                approverId,
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                APPROVED_AT));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                approvalId,
+                nullOf(),
+                approverId,
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                APPROVED_AT));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                approvalId,
+                approvalType,
+                nullOf(),
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                APPROVED_AT));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                approvalId,
+                approvalType,
+                approverId,
+                nullOf(),
+                ApprovalDecision.APPROVED,
+                APPROVED_AT));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                approvalId, approvalType, approverId, ActorType.HUMAN, nullOf(), APPROVED_AT));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ApprovalReference(
+                approvalId,
+                approvalType,
+                approverId,
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                nullOf()));
   }
 
   @Test
   void accountingEvidence_defensivelyCopiesCollectionsAndTracksApprovalPresence() {
     List<SourceDocumentReference> sourceDocuments =
-        new ArrayList<>(
-            List.of(
-                new SourceDocumentReference(
-                    new SourceDocumentId("invoice-1"), new SourceDocumentType("invoice"))));
-    List<ApprovalReference> approvals =
-        new ArrayList<>(
-            List.of(
-                new ApprovalReference(new ApprovalId("approval-1"), new ApprovalType("signoff"))));
+        new ArrayList<>(List.of(sourceDocumentReference("invoice-1")));
+    List<ApprovalReference> approvals = new ArrayList<>(List.of(approvalReference("approval-1")));
 
     AccountingEvidence accountingEvidence = new AccountingEvidence(sourceDocuments, approvals);
 
     assertTrue(accountingEvidence.hasApprovals());
-    sourceDocuments.add(
-        new SourceDocumentReference(
-            new SourceDocumentId("invoice-2"), new SourceDocumentType("invoice")));
-    approvals.add(new ApprovalReference(new ApprovalId("approval-2"), new ApprovalType("review")));
+    sourceDocuments.add(sourceDocumentReference("invoice-2"));
+    approvals.add(approvalReference("approval-2"));
     assertEquals(1, accountingEvidence.sourceDocuments().size());
     assertEquals(1, accountingEvidence.approvals().size());
     assertThrows(
         UnsupportedOperationException.class,
-        () ->
-            accountingEvidence
-                .sourceDocuments()
-                .add(
-                    new SourceDocumentReference(
-                        new SourceDocumentId("invoice-3"), new SourceDocumentType("invoice"))));
+        () -> accountingEvidence.sourceDocuments().add(sourceDocumentReference("invoice-3")));
     assertThrows(
         UnsupportedOperationException.class,
-        () ->
-            accountingEvidence
-                .approvals()
-                .add(
-                    new ApprovalReference(
-                        new ApprovalId("approval-3"), new ApprovalType("audit"))));
+        () -> accountingEvidence.approvals().add(approvalReference("approval-3")));
   }
 
   @Test
   void accountingEvidence_requiresSourceDocumentsAndRejectsNullCollections() {
-    SourceDocumentReference sourceDocument =
-        new SourceDocumentReference(
-            new SourceDocumentId("invoice-1"), new SourceDocumentType("invoice"));
+    SourceDocumentReference sourceDocument = sourceDocumentReference("invoice-1");
 
     assertThrows(NullPointerException.class, () -> new AccountingEvidence(nullOf(), List.of()));
     assertThrows(
@@ -154,5 +274,25 @@ class AccountingEvidenceTest {
     AccountingEvidence accountingEvidence =
         new AccountingEvidence(List.of(sourceDocument), List.of());
     assertFalse(accountingEvidence.hasApprovals());
+  }
+
+  private static SourceDocumentReference sourceDocumentReference(String token) {
+    return new SourceDocumentReference(
+        new SourceDocumentId(token),
+        new SourceDocumentType("invoice"),
+        DOCUMENT_DATE,
+        CAPTURED_AT,
+        new StorageLocator("evidence://documents/%s.pdf".formatted(token)),
+        new ContentSha256(DOCUMENT_SHA256));
+  }
+
+  private static ApprovalReference approvalReference(String token) {
+    return new ApprovalReference(
+        new ApprovalId(token),
+        new ApprovalType("manager-signoff"),
+        new ActorId("manager-1"),
+        ActorType.HUMAN,
+        ApprovalDecision.APPROVED,
+        APPROVED_AT);
   }
 }

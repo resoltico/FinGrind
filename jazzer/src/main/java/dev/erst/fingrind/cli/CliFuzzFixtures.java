@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -18,7 +19,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -30,11 +31,13 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
+import dev.erst.fingrind.executor.PostEntryCommandTranslator;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -70,6 +73,36 @@ public final class CliFuzzFixtures {
     return new CliRequestReader(new ByteArrayInputStream(input)).readPostEntryCommand(Path.of("-"));
   }
 
+  /** Derives the local bookkeeping posting command for one published post-entry command. */
+  public static dev.erst.fingrind.executor.bookkeeping.PostingCommand bookkeepingCommand(
+      PostEntryCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    return PostEntryCommandTranslator.toPostingCommand(
+        bookIdentity(entryCurrencyUnit(command.entry())), command);
+  }
+
+  /** Returns the derived journal entry carried by one published command. */
+  public static dev.erst.fingrind.core.JournalEntry journalEntry(PostEntryCommand command) {
+    return bookkeepingCommand(command).journalEntry();
+  }
+
+  /** Returns the derived posting kind carried by one published command. */
+  public static PostingKind postingKind(PostEntryCommand command) {
+    return bookkeepingCommand(command).postingKind();
+  }
+
+  /** Returns the derived reversal target carried by one published command. */
+  public static Optional<ReversalReference> reversalReference(PostEntryCommand command) {
+    return bookkeepingCommand(command).postingLineage().reversalReference();
+  }
+
+  /** Returns the derived posting lineage carried by one published command. */
+  public static dev.erst.fingrind.contract.bookkeeping.PostingLineage postingLineage(
+      PostEntryCommand command) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(
+        bookkeepingCommand(command).postingLineage());
+  }
+
   /** Parses one ledger-plan payload from bytes using the production CLI request reader. */
   public static LedgerPlan readLedgerPlan(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
@@ -100,11 +133,10 @@ public final class CliFuzzFixtures {
             new BookEntityName("Acme Studio"),
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
             List.of(new BusinessActivityTag("translation-services"))),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */
@@ -202,7 +234,7 @@ public final class CliFuzzFixtures {
   public static List<DeclareAccountCommand> declarePostingAccountCommands(
       PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return command.journalEntry().lines().stream()
+    return journalEntry(command).lines().stream()
         .map(line -> line.accountCode())
         .distinct()
         .map(CliFuzzFixtures::syntheticDeclareAccountCommand)
@@ -212,7 +244,7 @@ public final class CliFuzzFixtures {
   /** Returns the first journal-line account code for lifecycle assertions. */
   public static AccountCode firstAccountCode(PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return command.journalEntry().lines().getFirst().accountCode();
+    return journalEntry(command).lines().getFirst().accountCode();
   }
 
   /** Reactivates one account with an updated display name and asserts the durable shape. */
@@ -245,8 +277,7 @@ public final class CliFuzzFixtures {
       PostingApplicationService applicationService, PostEntryCommand command) {
     Objects.requireNonNull(applicationService, "applicationService must not be null");
     Objects.requireNonNull(command, "command must not be null");
-    return applicationService.preflight(
-        BookkeepingPublishedLanguageTranslator.fromPublished(command));
+    return applicationService.preflight(command);
   }
 
   /** Runs one posting commit through the internal bookkeeping translation boundary. */
@@ -254,7 +285,7 @@ public final class CliFuzzFixtures {
       PostingApplicationService applicationService, PostEntryCommand command) {
     Objects.requireNonNull(applicationService, "applicationService must not be null");
     Objects.requireNonNull(command, "command must not be null");
-    return applicationService.commit(BookkeepingPublishedLanguageTranslator.fromPublished(command));
+    return applicationService.commit(command);
   }
 
   /**
@@ -320,6 +351,18 @@ public final class CliFuzzFixtures {
             BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
+  private static CurrencyUnit entryCurrencyUnit(BookkeepingEntry entry) {
+    Objects.requireNonNull(entry, "entry");
+    return switch (entry) {
+      case BookkeepingEntry.CashRevenue event -> CurrencyUnit.of(event.amount().currencyCode());
+      case BookkeepingEntry.CashExpense event -> CurrencyUnit.of(event.amount().currencyCode());
+      case BookkeepingEntry.OwnerContribution event ->
+          CurrencyUnit.of(event.amount().currencyCode());
+      case BookkeepingEntry.OwnerDraw event -> CurrencyUnit.of(event.amount().currencyCode());
+      case BookkeepingEntry.ManualAdjustment adjustment -> adjustment.journalEntry().currencyUnit();
+    };
+  }
+
   private static AccountName syntheticAccountName(AccountCode accountCode) {
     return new AccountName("Synthetic " + accountCode.value());
   }
@@ -357,26 +400,31 @@ public final class CliFuzzFixtures {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));

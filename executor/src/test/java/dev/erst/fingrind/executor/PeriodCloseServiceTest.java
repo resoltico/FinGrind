@@ -22,6 +22,7 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -34,6 +35,10 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.SourceDocumentId;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -49,10 +54,14 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingRangeStore;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -719,18 +728,32 @@ class PeriodCloseServiceTest {
 
   private static dev.erst.fingrind.core.AccountingEvidence generatedPeriodCloseEvidence(
       String currencyCode) {
+    String closeToken =
+        "%s:%s:%s:%d"
+            .formatted(
+                PERIOD.effectiveDateFrom(),
+                PERIOD.effectiveDateTo(),
+                currencyCode,
+                FIXED_INSTANT.toEpochMilli());
     return new dev.erst.fingrind.core.AccountingEvidence(
         List.of(
-            new dev.erst.fingrind.core.SourceDocumentReference(
-                new dev.erst.fingrind.core.SourceDocumentId(
-                    "periodClose:%s:%s:%s:%d"
-                        .formatted(
-                            PERIOD.effectiveDateFrom(),
-                            PERIOD.effectiveDateTo(),
-                            currencyCode,
-                            FIXED_INSTANT.toEpochMilli())),
-                new dev.erst.fingrind.core.SourceDocumentType("period-close-plan"))),
+            new SourceDocumentReference(
+                new SourceDocumentId("periodClose:" + closeToken),
+                new SourceDocumentType("period-close-plan"),
+                PERIOD.effectiveDateTo(),
+                FIXED_INSTANT,
+                new StorageLocator("system://period-close/" + closeToken),
+                new ContentSha256(sha256Hex(closeToken)))),
         List.of());
+  }
+
+  private static String sha256Hex(String value) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
+    }
   }
 
   /** Deterministic posting id generator for generated close postings. */

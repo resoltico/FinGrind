@@ -300,9 +300,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             SqliteBookSessionMode.READ_ONLY,
             passphraseResolver,
             SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            postingApplicationService(bookSession, clock)
-                .preflight(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
+        bookSession -> postingApplicationService(bookSession, clock).preflight(command));
   }
 
   @Override
@@ -314,9 +312,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             SqliteBookSessionMode.READ_WRITE_EXISTING,
             passphraseResolver,
             SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            postingApplicationService(bookSession, clock)
-                .commit(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
+        bookSession -> postingApplicationService(bookSession, clock).commit(command));
   }
 
   private static <T> ContractDecision<T> withAdministrationSession(

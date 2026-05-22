@@ -18,6 +18,7 @@ public interface CliBookQueryJsonModels {
       String accountName,
       String accountType,
       String accountRole,
+      String accountNodeKind,
       @Nullable String parentAccountCode,
       @Nullable String financialPositionLineClassification,
       @Nullable String profitAndLossLineClassification,
@@ -30,6 +31,7 @@ public interface CliBookQueryJsonModels {
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
       accountRole = requireText(accountRole, "accountRole");
+      accountNodeKind = requireText(accountNodeKind, "accountNodeKind");
       parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
       financialPositionLineClassification =
           requireOptionalText(
@@ -49,17 +51,37 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record SourceDocumentPayload(String sourceDocumentId, String sourceDocumentType) {
+  record SourceDocumentPayload(
+      String sourceDocumentId,
+      String sourceDocumentType,
+      String documentDate,
+      String capturedAt,
+      String storageLocator,
+      String contentSha256) {
     public SourceDocumentPayload {
       sourceDocumentId = requireText(sourceDocumentId, "sourceDocumentId");
       sourceDocumentType = requireText(sourceDocumentType, "sourceDocumentType");
+      documentDate = requireText(documentDate, "documentDate");
+      capturedAt = requireText(capturedAt, "capturedAt");
+      storageLocator = requireText(storageLocator, "storageLocator");
+      contentSha256 = requireText(contentSha256, "contentSha256");
     }
   }
 
-  record ApprovalPayload(String approvalId, String approvalType) {
+  record ApprovalPayload(
+      String approvalId,
+      String approvalType,
+      String approverId,
+      String approverType,
+      String decision,
+      String approvedAt) {
     public ApprovalPayload {
       approvalId = requireText(approvalId, "approvalId");
       approvalType = requireText(approvalType, "approvalType");
+      approverId = requireText(approverId, "approverId");
+      approverType = requireText(approverType, "approverType");
+      decision = requireText(decision, "decision");
+      approvedAt = requireText(approvedAt, "approvedAt");
     }
   }
 

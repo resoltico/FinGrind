@@ -28,7 +28,7 @@ final class FinancialPositionStatementCalculator {
   FinancialPositionStatementCalculator(BookkeepingStatementContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.profitAndLossContributionCalculator =
-        new ProfitAndLossContributionCalculator(context.policyPack());
+        new ProfitAndLossContributionCalculator(context::policyPack);
   }
 
   FinancialPositionView view(FinancialPositionCriteria criteria) {
@@ -38,7 +38,7 @@ final class FinancialPositionStatementCalculator {
         context
             .policyPack()
             .statementComparativePolicy()
-            .comparativeAsOf(bookIdentity, criteria.effectiveDateTo());
+            .comparativeAsOf(bookIdentity, criteria.effectiveDateAsOf());
     List<FinancialPositionSectionView> sections =
         sections(
             bookIdentity,
@@ -46,7 +46,7 @@ final class FinancialPositionStatementCalculator {
                 .reportStore()
                 .accountTotals(
                     criteria
-                        .effectiveDateTo()
+                        .effectiveDateAsOf()
                         .<EffectiveDateRange>map(EffectiveDateRange::to)
                         .orElseGet(EffectiveDateRange::unbounded),
                     postingCoverage));
@@ -62,7 +62,7 @@ final class FinancialPositionStatementCalculator {
             : List.of();
     return new FinancialPositionView(
         bookIdentity,
-        criteria.effectiveDateTo(),
+        criteria.effectiveDateAsOf(),
         comparativeRange,
         postingCoverage,
         sections,

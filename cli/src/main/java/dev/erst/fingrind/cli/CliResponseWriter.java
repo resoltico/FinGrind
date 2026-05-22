@@ -21,6 +21,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -52,19 +53,30 @@ final class CliResponseWriter {
   }
 
   void writeHelp(HelpDescriptor helpDescriptor) {
-    writeHelp(helpDescriptor, OutputMode.JSON);
+    writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
-    discoveryWriter.writeHelp(helpDescriptor, outputMode);
+    writeHelp(helpDescriptor, outputMode, DiscoveryDetail.COMPACT);
+  }
+
+  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
+    discoveryWriter.writeHelp(helpDescriptor, outputMode, detail);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor) {
-    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON);
+    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
-    discoveryWriter.writeCapabilities(capabilitiesDescriptor, outputMode);
+    writeCapabilities(capabilitiesDescriptor, outputMode, DiscoveryDetail.COMPACT);
+  }
+
+  void writeCapabilities(
+      CapabilitiesDescriptor capabilitiesDescriptor,
+      OutputMode outputMode,
+      DiscoveryDetail detail) {
+    discoveryWriter.writeCapabilities(capabilitiesDescriptor, outputMode, detail);
   }
 
   void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {

@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.PostingId;
@@ -17,11 +18,12 @@ class SqliteRoundTripWorkflowExerciseTest {
     PostEntryCommand baseCommand = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
     PostEntryCommand command =
         new PostEntryCommand(
-            baseCommand.postingKind(),
-            baseCommand.journalEntry(),
-            PostingLineage.reversal(
-                new ReversalReference(new PostingId("missing-posting")),
-                new ReversalReason("Missing prior posting")),
+            new BookkeepingEntry.ManualAdjustment(
+                CliFuzzFixtures.postingKind(baseCommand),
+                CliFuzzFixtures.journalEntry(baseCommand),
+                PostingLineage.reversal(
+                    new ReversalReference(new PostingId("missing-posting")),
+                    new ReversalReason("Missing prior posting"))),
             baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());

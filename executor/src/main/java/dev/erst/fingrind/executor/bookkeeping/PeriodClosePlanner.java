@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -26,12 +27,17 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
 import dev.erst.fingrind.executor.spi.PostingDraft;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -265,8 +271,21 @@ public final class PeriodClosePlanner {
         List.of(
             new SourceDocumentReference(
                 new SourceDocumentId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken),
-                new SourceDocumentType("period-close-plan"))),
+                new SourceDocumentType("period-close-plan"),
+                reportingPeriod.effectiveDateTo(),
+                closedAt,
+                new StorageLocator("system://period-close/" + closeToken),
+                new ContentSha256(sha256Hex(closeToken)))),
         List.of());
+  }
+
+  private static String sha256Hex(String value) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
+    }
   }
 
   /** One complete close plan containing durable drafts and their published close totals. */

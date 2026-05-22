@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplate
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -26,17 +27,18 @@ final class CliDiscoveryCommandExecutor {
     this.metadata = Objects.requireNonNull(metadata, "metadata");
   }
 
-  int writeHelp(@Nullable OperationId commandTopic, OutputMode outputMode) {
+  int writeHelp(@Nullable OperationId commandTopic, OutputMode outputMode, DiscoveryDetail detail) {
     responseWriter.writeHelp(
         launcherAwareHelp(
             MachineContract.help(applicationIdentity(), environmentDescriptor(), commandTopic)),
-        outputMode);
+        outputMode,
+        detail);
     return 0;
   }
 
-  int writeCapabilities(OutputMode outputMode) {
+  int writeCapabilities(OutputMode outputMode, DiscoveryDetail detail) {
     responseWriter.writeCapabilities(
-        MachineContract.capabilities(applicationIdentity()), outputMode);
+        MachineContract.capabilities(applicationIdentity()), outputMode, detail);
     return 0;
   }
 

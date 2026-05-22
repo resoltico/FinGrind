@@ -110,11 +110,7 @@ final class CliPostingOutputRenderer {
                 .map(
                     posting ->
                         CliTextFormat.renderSummaryBlock(
-                            posting.journalEntry().effectiveDate()
-                                + " | "
-                                + CliQueryOutputFormatter.displayPostingRoleHuman(posting)
-                                + " | "
-                                + posting.postingId().value(),
+                            postingHeadline(posting),
                             CliTextFormat.renderKeyValueBlock(
                                 List.of(
                                     List.of(
@@ -161,6 +157,16 @@ final class CliPostingOutputRenderer {
             + System.lineSeparator()
             + System.lineSeparator()
             + postings);
+  }
+
+  static String postingHeadline(PostingFact postingFact) {
+    return postingFact.journalEntry().effectiveDate()
+        + " | kind="
+        + CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())
+        + " | role="
+        + CliQueryOutputFormatter.displayPostingRoleHuman(postingFact)
+        + " | posting="
+        + postingFact.postingId().value();
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {

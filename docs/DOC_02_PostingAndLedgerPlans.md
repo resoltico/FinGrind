@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -26,24 +26,57 @@ public sealed interface PostingLineage
 - Variants: `Direct`, `Reversal`
 - Purpose: keep direct postings and reversal postings structurally distinct
 
+## `BookkeepingEntry` And `BookkeepingEntryKind`
+
+`BookkeepingEntry` is the public bookkeeping write model that makes typed business events the
+default write surface, and `BookkeepingEntryKind` is the closed caller-authored vocabulary that
+selects those entry families.
+
+```java
+public sealed interface BookkeepingEntry
+public enum BookkeepingEntryKind
+```
+
+- Typed events: `CashRevenue`, `CashExpense`, `OwnerContribution`, and `OwnerDraw`
+- Explicit exception path: `ManualAdjustment` is the narrow raw-journal route for openings,
+  reversals, and exceptional adjustments that do not belong to one supported typed business event
+- Purpose: keep business-event intent explicit at the public boundary before the executor projects
+  it into canonical journal postings
+
 ## `PostEntryCommand`
 
-`PostEntryCommand` is the application-layer request to preflight or commit one journal entry.
+`PostEntryCommand` is the application-layer request to preflight or commit one caller-authored
+bookkeeping entry.
 
 ```java
 public record PostEntryCommand(
-    PostingKind postingKind,
-    JournalEntry journalEntry,
-    PostingLineage postingLineage,
+    BookkeepingEntry entry,
     AccountingEvidence evidence,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
 ```
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
-  caller-authored posting family plus first-class accounting evidence
-- Money policy: journal lines arrive with exact `PositiveMoney` amounts whose currency, scale, and
-  minor-unit representation have already been validated by the shared-kernel money model
+  caller-authored business event plus first-class retained evidence and provenance
+- Boundary: typed business events are primary; raw journal lines appear only through
+  `BookkeepingEntry.ManualAdjustment`
+- Money policy: typed entry amounts arrive as exact positive `MonetaryAmount` values, while the
+  explicit manual-adjustment path carries one already-validated `JournalEntry`
+
+## `PostEntryCommandTranslator`
+
+`PostEntryCommandTranslator` maps one published `PostEntryCommand` into the local posting command
+required by the selected `AccountingPolicyProfile`.
+
+```java
+public final class PostEntryCommandTranslator
+```
+
+- Purpose: keep typed business-event recipes owned at the application boundary instead of leaking
+  raw journal construction into the CLI, request loaders, or posting service
+- Current scope: `CashRevenue`, `CashExpense`, `OwnerContribution`, and `OwnerDraw` become
+  canonical standard postings, while `BookkeepingEntry.ManualAdjustment` remains the explicit
+  exceptional route that carries a caller-authored `JournalEntry`
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -59,17 +92,6 @@ public sealed interface CommitEntryResult extends PostEntryResult
 - Purpose: make `preflight-entry` unable to return `Committed` and `post-entry` unable to return
   `PreflightAccepted` at compile time
 
-## `PostingRequest`
-
-`PostingRequest` is the minimal posting shape shared by preflight and commit validation.
-
-```java
-public interface PostingRequest
-```
-
-- Surface: `journalEntry()`, `postingLineage()`, `evidence()`, `requestProvenance()`
-- Purpose: keep shared write validation independent of transport adapters
-
 ## `PostingDraft`
 
 `PostingDraft` is the commit-ready posting model that defers `postingId` allocation until the store
@@ -79,11 +101,13 @@ accepts the write.
 public record PostingDraft(
     JournalEntry journalEntry,
     PostingLineage postingLineage,
+    PostingKind postingKind,
     AccountingEvidence evidence,
     CommittedProvenance provenance)
 ```
 
-- Purpose: separate accepted commit metadata from durable id assignment
+- Purpose: separate accepted commit metadata, canonical durable posting kind, and durable id
+  assignment
 - Surface: `materialize(PostingId)` creates the final internal committed posting fact
 - Boundary: this is an executor bookkeeping model, not the public published language
 
@@ -128,7 +152,7 @@ public final class BookkeepingPublishedLanguageTranslator
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
   admissibility before translation into public `PostingRejection`
 - `BookkeepingPublishedLanguageTranslator`: translates `DeclareAccountCommand`,
-  `PostEntryCommand`, `PostingFact`, and bookkeeping outcomes at the host boundary instead of
+  `PostEntryCommand`, `CommittedPosting`, and bookkeeping outcomes at the host boundary instead of
   letting transport DTOs become the local working model
 
 ## `LedgerPlanId` And `LedgerStepId`

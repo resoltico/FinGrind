@@ -5,17 +5,22 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
+import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -26,15 +31,21 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /** Request and ledger-plan template descriptor namespace for discovery commands. */
 public final class ContractTemplates {
+  private static final Map<BookkeepingEntryKind, PostingRequestTemplateValidator>
+      POSTING_REQUEST_TEMPLATE_VALIDATORS = postingRequestTemplateValidators();
+
   private ContractTemplates() {}
 
   /** Returns the descriptor record types owned by this namespace. */
@@ -60,27 +71,47 @@ public final class ContractTemplates {
 
   /** Canonical request-template document for print-request-template. */
   public record PostingRequestTemplateDescriptor(
-      PostingKind postingKind,
+      BookkeepingEntryKind entryKind,
       String effectiveDate,
-      List<JournalLineTemplateDescriptor> lines,
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
       @Nullable ReversalTemplateDescriptor reversal)
       implements TemplateDescriptorType {
     /** Validates one posting-request template descriptor payload. */
     public PostingRequestTemplateDescriptor {
-      postingKind = ContractDescriptorValidation.requireValue(postingKind, "postingKind");
-      if (!postingKind.isCallerSelectable()) {
-        throw new IllegalArgumentException(
-            "postingKind must belong to the caller-authored posting surface.");
-      }
+      entryKind = ContractDescriptorValidation.requireValue(entryKind, "entryKind");
       effectiveDate = ContractDescriptorValidation.requireText(effectiveDate, "effectiveDate");
-      lines = ContractDescriptorValidation.copyList(lines, "lines");
-      if (lines.size() < 2) {
-        throw new IllegalArgumentException("lines must contain at least two journal lines.");
-      }
+      cashAccountCode =
+          ContractDescriptorValidation.requireOptionalText(cashAccountCode, "cashAccountCode");
+      revenueAccountCode =
+          ContractDescriptorValidation.requireOptionalText(
+              revenueAccountCode, "revenueAccountCode");
+      expenseAccountCode =
+          ContractDescriptorValidation.requireOptionalText(
+              expenseAccountCode, "expenseAccountCode");
+      equityAccountCode =
+          ContractDescriptorValidation.requireOptionalText(equityAccountCode, "equityAccountCode");
+      postingKind = ContractDescriptorValidation.requireOptionalValue(postingKind, "postingKind");
+      lines = lines == null ? null : ContractDescriptorValidation.copyList(lines, "lines");
       evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
+      validatorFor(entryKind)
+          .validate(
+              cashAccountCode,
+              revenueAccountCode,
+              expenseAccountCode,
+              equityAccountCode,
+              amount,
+              postingKind,
+              lines,
+              reversal);
     }
   }
 
@@ -137,20 +168,34 @@ public final class ContractTemplates {
                   sourceDocument ->
                       new SourceDocumentReference(
                           new SourceDocumentId(sourceDocument.sourceDocumentId()),
-                          new SourceDocumentType(sourceDocument.sourceDocumentType())))
+                          new SourceDocumentType(sourceDocument.sourceDocumentType()),
+                          LocalDate.parse(sourceDocument.documentDate()),
+                          Instant.parse(sourceDocument.capturedAt()),
+                          new StorageLocator(sourceDocument.storageLocator()),
+                          new ContentSha256(sourceDocument.contentSha256())))
               .toList(),
           approvals.stream()
               .map(
                   approval ->
                       new ApprovalReference(
                           new ApprovalId(approval.approvalId()),
-                          new ApprovalType(approval.approvalType())))
+                          new ApprovalType(approval.approvalType()),
+                          new ActorId(approval.approverId()),
+                          approval.approverType(),
+                          approval.decision(),
+                          Instant.parse(approval.approvedAt())))
               .toList());
     }
   }
 
   /** Canonical request-template source-document descriptor. */
-  public record SourceDocumentTemplateDescriptor(String sourceDocumentId, String sourceDocumentType)
+  public record SourceDocumentTemplateDescriptor(
+      String sourceDocumentId,
+      String sourceDocumentType,
+      String documentDate,
+      String capturedAt,
+      String storageLocator,
+      String contentSha256)
       implements TemplateDescriptorType {
     /** Validates one source-document template descriptor payload. */
     public SourceDocumentTemplateDescriptor {
@@ -158,20 +203,40 @@ public final class ContractTemplates {
           ContractDescriptorValidation.requireText(sourceDocumentId, "sourceDocumentId");
       sourceDocumentType =
           ContractDescriptorValidation.requireText(sourceDocumentType, "sourceDocumentType");
+      documentDate = ContractDescriptorValidation.requireText(documentDate, "documentDate");
+      capturedAt = ContractDescriptorValidation.requireText(capturedAt, "capturedAt");
+      storageLocator = ContractDescriptorValidation.requireText(storageLocator, "storageLocator");
+      contentSha256 = ContractDescriptorValidation.requireText(contentSha256, "contentSha256");
       new SourceDocumentId(sourceDocumentId);
       new SourceDocumentType(sourceDocumentType);
+      LocalDate.parse(documentDate);
+      Instant.parse(capturedAt);
+      new StorageLocator(storageLocator);
+      new ContentSha256(contentSha256);
     }
   }
 
   /** Canonical request-template approval descriptor. */
-  public record ApprovalTemplateDescriptor(String approvalId, String approvalType)
+  public record ApprovalTemplateDescriptor(
+      String approvalId,
+      String approvalType,
+      String approverId,
+      ActorType approverType,
+      ApprovalDecision decision,
+      String approvedAt)
       implements TemplateDescriptorType {
     /** Validates one approval template descriptor payload. */
     public ApprovalTemplateDescriptor {
       approvalId = ContractDescriptorValidation.requireText(approvalId, "approvalId");
       approvalType = ContractDescriptorValidation.requireText(approvalType, "approvalType");
+      approverId = ContractDescriptorValidation.requireText(approverId, "approverId");
+      approverType = ContractDescriptorValidation.requireValue(approverType, "approverType");
+      decision = ContractDescriptorValidation.requireValue(decision, "decision");
+      approvedAt = ContractDescriptorValidation.requireText(approvedAt, "approvedAt");
       new ApprovalId(approvalId);
       new ApprovalType(approvalType);
+      new ActorId(approverId);
+      Instant.parse(approvedAt);
     }
   }
 
@@ -183,6 +248,199 @@ public final class ContractTemplates {
       priorPostingId = ContractDescriptorValidation.requireText(priorPostingId, "priorPostingId");
       reason = ContractDescriptorValidation.requireText(reason, "reason");
     }
+  }
+
+  private static void validateCashRevenueTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    requireText(cashAccountCode, "cashAccountCode");
+    requireText(revenueAccountCode, "revenueAccountCode");
+    requirePositiveAmount(amount);
+    forbidText(expenseAccountCode, "expenseAccountCode");
+    forbidText(equityAccountCode, "equityAccountCode");
+    forbidPostingKind(postingKind);
+    forbidLines(lines);
+    forbidReversal(reversal);
+  }
+
+  private static void validateCashExpenseTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    requireText(cashAccountCode, "cashAccountCode");
+    requireText(expenseAccountCode, "expenseAccountCode");
+    requirePositiveAmount(amount);
+    forbidText(revenueAccountCode, "revenueAccountCode");
+    forbidText(equityAccountCode, "equityAccountCode");
+    forbidPostingKind(postingKind);
+    forbidLines(lines);
+    forbidReversal(reversal);
+  }
+
+  private static void validateOwnerContributionTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    requireText(cashAccountCode, "cashAccountCode");
+    requireText(equityAccountCode, "equityAccountCode");
+    requirePositiveAmount(amount);
+    forbidText(revenueAccountCode, "revenueAccountCode");
+    forbidText(expenseAccountCode, "expenseAccountCode");
+    forbidPostingKind(postingKind);
+    forbidLines(lines);
+    forbidReversal(reversal);
+  }
+
+  private static void validateOwnerDrawTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    requireText(cashAccountCode, "cashAccountCode");
+    requireText(equityAccountCode, "equityAccountCode");
+    requirePositiveAmount(amount);
+    forbidText(revenueAccountCode, "revenueAccountCode");
+    forbidText(expenseAccountCode, "expenseAccountCode");
+    forbidPostingKind(postingKind);
+    forbidLines(lines);
+    forbidReversal(reversal);
+  }
+
+  private static void validateManualAdjustmentTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable PostingKind postingKind,
+      @Nullable List<JournalLineTemplateDescriptor> lines) {
+    if (postingKind == null || !postingKind.isCallerSelectable()) {
+      throw new IllegalArgumentException(
+          "postingKind must belong to the caller-authored manual-adjustment surface.");
+    }
+    if (lines == null || lines.size() < 2) {
+      throw new IllegalArgumentException(
+          "lines must contain at least two journal lines for manualAdjustment.");
+    }
+    forbidText(cashAccountCode, "cashAccountCode");
+    forbidText(revenueAccountCode, "revenueAccountCode");
+    forbidText(expenseAccountCode, "expenseAccountCode");
+    forbidText(equityAccountCode, "equityAccountCode");
+    if (amount != null) {
+      throw new IllegalArgumentException("amount must be absent for manualAdjustment.");
+    }
+  }
+
+  private static String requireText(@Nullable String value, String fieldName) {
+    if (value == null) {
+      throw new IllegalArgumentException(fieldName + " must not be null.");
+    }
+    return ContractDescriptorValidation.requireText(value, fieldName);
+  }
+
+  private static void forbidText(@Nullable String value, String fieldName) {
+    if (value != null) {
+      throw new IllegalArgumentException(fieldName + " must be absent for this entryKind.");
+    }
+  }
+
+  private static MonetaryAmount requirePositiveAmount(@Nullable MonetaryAmount amount) {
+    if (amount == null) {
+      throw new IllegalArgumentException("amount must not be null.");
+    }
+    MonetaryAmount requiredAmount = ContractDescriptorValidation.requireValue(amount, "amount");
+    if (!requiredAmount.toMoney().isPositive()) {
+      throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
+    }
+    return requiredAmount;
+  }
+
+  private static void forbidPostingKind(@Nullable PostingKind postingKind) {
+    if (postingKind != null) {
+      throw new IllegalArgumentException("postingKind must be absent for typed business events.");
+    }
+  }
+
+  private static void forbidLines(@Nullable List<JournalLineTemplateDescriptor> lines) {
+    if (lines != null) {
+      throw new IllegalArgumentException("lines must be absent for typed business events.");
+    }
+  }
+
+  private static void forbidReversal(@Nullable ReversalTemplateDescriptor reversal) {
+    if (reversal != null) {
+      throw new IllegalArgumentException("reversal must be absent for typed business events.");
+    }
+  }
+
+  private static PostingRequestTemplateValidator validatorFor(BookkeepingEntryKind entryKind) {
+    return java.util.Objects.requireNonNull(
+        POSTING_REQUEST_TEMPLATE_VALIDATORS.get(entryKind), "entryKind validator");
+  }
+
+  private static Map<BookkeepingEntryKind, PostingRequestTemplateValidator>
+      postingRequestTemplateValidators() {
+    return Map.of(
+        BookkeepingEntryKind.CASH_REVENUE,
+        ContractTemplates::validateCashRevenueTemplate,
+        BookkeepingEntryKind.CASH_EXPENSE,
+        ContractTemplates::validateCashExpenseTemplate,
+        BookkeepingEntryKind.OWNER_CONTRIBUTION,
+        ContractTemplates::validateOwnerContributionTemplate,
+        BookkeepingEntryKind.OWNER_DRAW,
+        ContractTemplates::validateOwnerDrawTemplate,
+        BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+        (cashAccountCode,
+            revenueAccountCode,
+            expenseAccountCode,
+            equityAccountCode,
+            amount,
+            postingKind,
+            lines,
+            reversal) ->
+            validateManualAdjustmentTemplate(
+                cashAccountCode,
+                revenueAccountCode,
+                expenseAccountCode,
+                equityAccountCode,
+                amount,
+                postingKind,
+                lines));
+  }
+
+  /** Validator for one entry-kind-specific posting-template shape. */
+  @FunctionalInterface
+  private interface PostingRequestTemplateValidator {
+    /** Validates one posting template using the shape rules for one selected entry kind. */
+    void validate(
+        @Nullable String cashAccountCode,
+        @Nullable String revenueAccountCode,
+        @Nullable String expenseAccountCode,
+        @Nullable String equityAccountCode,
+        @Nullable MonetaryAmount amount,
+        @Nullable PostingKind postingKind,
+        @Nullable List<JournalLineTemplateDescriptor> lines,
+        @Nullable ReversalTemplateDescriptor reversal);
   }
 
   /** Canonical ledger-plan template document for print-plan-template. */
@@ -225,11 +483,10 @@ public final class ContractTemplates {
       String entityName,
       EntityForm entityForm,
       OwnerModel ownerModel,
-      ReportingObligationStatus reportingObligationStatus,
       List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
-      AccountingBasis accountingBasis)
+      AccountingPolicyProfile policyProfile)
       implements TemplateDescriptorType {
     /** Validates one open-book template descriptor payload. */
     public OpenBookTemplateDescriptor {
@@ -237,9 +494,6 @@ public final class ContractTemplates {
       new BookEntityName(entityName);
       entityForm = ContractDescriptorValidation.requireValue(entityForm, "entityForm");
       ownerModel = ContractDescriptorValidation.requireValue(ownerModel, "ownerModel");
-      reportingObligationStatus =
-          ContractDescriptorValidation.requireValue(
-              reportingObligationStatus, "reportingObligationStatus");
       businessActivityTags =
           ContractDescriptorValidation.copyList(businessActivityTags, "businessActivityTags");
       businessActivityTags.forEach(BusinessActivityTag::new);
@@ -249,8 +503,7 @@ public final class ContractTemplates {
       fiscalYearStart =
           ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
       FiscalYearStart.parse(fiscalYearStart);
-      accountingBasis =
-          ContractDescriptorValidation.requireValue(accountingBasis, "accountingBasis");
+      policyProfile = ContractDescriptorValidation.requireValue(policyProfile, "policyProfile");
     }
   }
 
@@ -289,6 +542,7 @@ public final class ContractTemplates {
       String accountName,
       AccountType accountType,
       AccountRole accountRole,
+      AccountNodeKind accountNodeKind,
       @Nullable String parentAccountCode,
       @Nullable FinancialPositionLineClassification financialPositionLineClassification,
       @Nullable ProfitAndLossLineClassification profitAndLossLineClassification)
@@ -300,6 +554,8 @@ public final class ContractTemplates {
       accountName = ContractDescriptorValidation.requireText(accountName, "accountName");
       accountType = ContractDescriptorValidation.requireValue(accountType, "accountType");
       accountRole = ContractDescriptorValidation.requireValue(accountRole, "accountRole");
+      accountNodeKind =
+          ContractDescriptorValidation.requireValue(accountNodeKind, "accountNodeKind");
       parentAccountCode =
           ContractDescriptorValidation.requireOptionalText(parentAccountCode, "parentAccountCode");
       if (parentAccountCode != null) {

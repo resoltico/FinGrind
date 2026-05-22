@@ -102,6 +102,9 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("stageDockerBuildContext"));
     assertTrue(buildScript.contains("docker-context"));
     assertTrue(buildScript.contains("docker-build-context-manifest.json"));
+    assertTrue(buildScript.contains("source-checkout-artifact-manifest.tsv"));
+    assertTrue(buildScript.contains("sourceCheckoutArtifactSourceIncludePatterns"));
+    assertTrue(buildScript.contains("sourceCheckoutArtifactSourceInputs"));
     assertTrue(buildScript.contains("dockerBuildContextSourceIncludePatterns"));
     assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
     assertTrue(buildScript.contains("dockerBuildContextSourceInputs"));
@@ -113,11 +116,16 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("managedSqliteToolchainFingerprintPath"));
     assertTrue(buildScript.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
     assertTrue(buildScript.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
+    assertTrue(buildScript.contains("sourceFiles.from(sourceCheckoutArtifactSourceInputs)"));
     assertTrue(
         buildScript.contains("from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));
     assertTrue(buildScript.contains("into(\"source-root\")"));
     assertTrue(buildScript.contains("tasks.register<Sync>(\"syncRepositoryDockerBuildContext\")"));
+    assertTrue(
+        buildScript.contains(
+            "tasks.register<WriteSourceFileHashManifestTask>(\"writeSourceCheckoutArtifactManifest\")"));
     assertTrue(buildScript.contains("finalizedBy(syncRepositoryDockerBuildContext)"));
+    assertTrue(buildScript.contains("finalizedBy(writeSourceCheckoutArtifactManifest)"));
     assertTrue(buildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(
         buildScript.contains("dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
@@ -165,6 +173,31 @@ class CliDistributionBuildContractTest {
             "\"-Dfingrind.source-checkout.build-root=${sourceCheckoutBuildRootDirectory}\""));
     assertTrue(buildScript.contains("tasks.named<JavaExec>(\"run\")"));
     assertFalse(buildScript.contains("jvmArgs(\"-Dfingrind.runtime.distribution="));
+  }
+
+  @Test
+  void sourceCheckoutWrappers_refreshCachedRawJarAgainstLiveSourceHashes() throws IOException {
+    Path repositoryRoot = repositoryRoot();
+    String shellSupport =
+        Files.readString(repositoryRoot.resolve("scripts/gradle-wrapper-support.sh"));
+    String powerShellSupport =
+        Files.readString(repositoryRoot.resolve("scripts/gradle-wrapper-support.ps1"));
+    String sourceCheckoutShell =
+        Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli.sh"));
+    String directJavaShell = Files.readString(repositoryRoot.resolve("scripts/direct-java-cli.sh"));
+    String sourceCheckoutPowerShell =
+        Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli.ps1"));
+    String directJavaPowerShell =
+        Files.readString(repositoryRoot.resolve("scripts/direct-java-cli.ps1"));
+
+    assertTrue(shellSupport.contains("fg_gradle_source_checkout_artifact_manifest_path()"));
+    assertTrue(shellSupport.contains("fg_gradle_source_checkout_artifact_needs_refresh()"));
+    assertTrue(powerShellSupport.contains("Get-FinGrindSourceCheckoutArtifactManifestPath"));
+    assertTrue(powerShellSupport.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
+    assertTrue(sourceCheckoutShell.contains("fg_gradle_source_checkout_artifact_needs_refresh"));
+    assertTrue(directJavaShell.contains("fg_gradle_source_checkout_artifact_needs_refresh"));
+    assertTrue(sourceCheckoutPowerShell.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
+    assertTrue(directJavaPowerShell.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
   }
 
   @Test

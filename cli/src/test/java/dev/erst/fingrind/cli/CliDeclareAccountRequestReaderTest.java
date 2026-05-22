@@ -25,6 +25,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
               "accountName": "Cash",
               "accountType": "ASSET",
               "accountRole": "ORDINARY",
+              "accountNodeKind": "POSTABLE",
               "financialPositionLineClassification": "CURRENT_ASSET",
               "profitAndLossLineClassification": null
             }
@@ -100,6 +101,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Derived Result Placeholder",
                   "accountType": "EQUITY",
                   "accountRole": "ORDINARY",
+                  "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_PERIOD_RESULT",
                   "profitAndLossLineClassification": null
                 }
@@ -126,6 +128,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Cash",
                   "accountType": "ASSET",
                   "accountRole": "ORDINARY",
+                  "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_ASSET",
                   "profitAndLossLineClassification": null,
                   "ignored": true
@@ -151,6 +154,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Cash",
                   "accountType": "ASSET",
                   "accountRole": "ORDINARY",
+                  "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_ASSET",
                   "profitAndLossLineClassification": null,
                   "ignored": true,
@@ -178,6 +182,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountName": "Cash",
                     "accountType": "ASSET",
                     "accountRole": "ORDINARY",
+                    "accountNodeKind": "POSTABLE",
                     "financialPositionLineClassification": "CURRENT_ASSET",
                     "profitAndLossLineClassification": null
                   }
@@ -204,6 +209,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountName": "Cash",
                     "accountType": "ASSET",
                     "accountRole": "ORDINARY",
+                    "accountNodeKind": "POSTABLE",
                     "financialPositionLineClassification": "CURRENT_ASSET",
                     "profitAndLossLineClassification": null
                   }

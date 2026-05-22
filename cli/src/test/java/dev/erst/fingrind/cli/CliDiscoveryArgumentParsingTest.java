@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -68,6 +70,59 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(
         dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY, command.commandTopic());
     assertEquals(dev.erst.fingrind.contract.protocol.OutputMode.JSON, command.outputMode());
+  }
+
+  @Test
+  void parse_supportsFullDetailForJsonCommandHelpAlias() {
+    Help command =
+        assertInstanceOf(
+            Help.class,
+            CliArguments.parse(
+                new String[] {"post-entry", "--help", "--output", "json", "--detail", "full"}));
+
+    assertEquals(OperationId.POST_ENTRY, command.commandTopic());
+    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(DiscoveryDetail.FULL, command.detail());
+  }
+
+  @Test
+  void parse_rejectsDiscoveryDetailWhenCommandHelpResolvesToHumanOutput() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry", "--help", "--output", "human", "--detail", "full"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--detail", exception.argument());
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage())
+            .contains("supported only when the resolved output mode is json"));
+  }
+
+  @Test
+  void parse_supportsOutputSelectionForEnvironmentDiscoveryCommand() {
+    EnvironmentCommand command =
+        assertInstanceOf(
+            EnvironmentCommand.class,
+            CliArguments.parse(new String[] {"environment", "--output", "json"}));
+
+    assertEquals(OutputMode.JSON, command.outputMode());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedArgumentForVersionDiscoveryCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"version", "--detail", "full"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--detail", exception.argument());
+    assertEquals("Unsupported argument: --detail", exception.getMessage());
   }
 
   @Test

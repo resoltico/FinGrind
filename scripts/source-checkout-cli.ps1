@@ -7,11 +7,16 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $cliBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "cli"
 $rootBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "root"
 $rawJar = Join-Path $cliBuildDir "libs/fingrind.jar"
+$sourceCheckoutArtifactManifest =
+    Get-FinGrindSourceCheckoutArtifactManifestPath -RepositoryRoot $repoRoot -ProjectSegment "cli"
 $applicationModule = "fingrind/dev.erst.fingrind.cli.App"
 
-if (-not (Test-Path -LiteralPath $rawJar -PathType Leaf)) {
-    throw "missing source-checkout launcher JAR at $rawJar; run .\\gradlew.bat :cli:shadowJar prepareManagedSqlite"
-}
+Invoke-FinGrindEnsureSourceCheckoutArtifact `
+    -RepositoryRoot $repoRoot `
+    -ManifestPath $sourceCheckoutArtifactManifest `
+    -ArtifactPath $rawJar `
+    -ArtifactLabel "source-checkout launcher JAR" `
+    -GradleTasks @(":cli:writeSourceCheckoutArtifactManifest", "prepareManagedSqlite")
 
 & java `
     --enable-native-access=fingrind `

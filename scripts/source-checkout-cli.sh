@@ -38,10 +38,30 @@ source "${gradle_wrapper_support}"
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 readonly root_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'root' "${is_darwin}")"
 readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
+readonly source_checkout_artifact_manifest="$(
+    fg_gradle_source_checkout_artifact_manifest_path "${repo_root}" 'cli' "${is_darwin}"
+)"
 readonly application_module='fingrind/dev.erst.fingrind.cli.App'
+
+if fg_gradle_source_checkout_artifact_needs_refresh \
+    "${repo_root}" \
+    "${source_checkout_artifact_manifest}" \
+    "${raw_jar}"; then
+    (
+        cd "${repo_root}"
+        ./gradlew :cli:writeSourceCheckoutArtifactManifest prepareManagedSqlite --no-daemon --quiet >/dev/null
+    ) || die "failed to refresh the source-checkout launcher JAR from the current checkout"
+fi
 
 [[ -f "${raw_jar}" ]] || die \
     "missing source-checkout launcher JAR at ${raw_jar}; run ./gradlew :cli:shadowJar prepareManagedSqlite"
+if fg_gradle_source_checkout_artifact_needs_refresh \
+    "${repo_root}" \
+    "${source_checkout_artifact_manifest}" \
+    "${raw_jar}"; then
+    die \
+        "source-checkout launcher JAR at ${raw_jar} is not synchronized with the current checkout; rerun ./gradlew :cli:shadowJar prepareManagedSqlite"
+fi
 
 exec java \
     --enable-native-access=fingrind \

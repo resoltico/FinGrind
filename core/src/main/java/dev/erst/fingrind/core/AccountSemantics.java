@@ -19,6 +19,7 @@ public final class AccountSemantics {
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountRole, "accountRole");
     Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
+    Objects.requireNonNull(accountTaxonomy.nodeKind(), "accountTaxonomy.nodeKind");
     Optional<FinancialPositionLineClassification> financialPositionLineClassification =
         accountTaxonomy.financialPositionLineClassification();
     Optional<ProfitAndLossLineClassification> profitAndLossLineClassification =
@@ -56,6 +57,42 @@ public final class AccountSemantics {
       throw new IllegalArgumentException(
           "Profit-and-loss classification must match the declared accountType.");
     }
+  }
+
+  /** Returns whether this taxonomy may accept direct postings. */
+  public static boolean allowsPosting(AccountTaxonomy accountTaxonomy) {
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
+    return accountTaxonomy.nodeKind().allowsPosting();
+  }
+
+  /** Returns whether this taxonomy may own child accounts. */
+  public static boolean allowsChildren(AccountTaxonomy accountTaxonomy) {
+    Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
+    return accountTaxonomy.nodeKind().allowsChildren();
+  }
+
+  /** Returns whether one parent-child hierarchy edge preserves the declared reporting meaning. */
+  public static boolean parentChildHierarchyCompatible(
+      AccountType accountType,
+      AccountRole parentAccountRole,
+      AccountTaxonomy parentAccountTaxonomy,
+      AccountRole childAccountRole,
+      AccountTaxonomy childAccountTaxonomy) {
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(parentAccountRole, "parentAccountRole");
+    Objects.requireNonNull(parentAccountTaxonomy, "parentAccountTaxonomy");
+    Objects.requireNonNull(childAccountRole, "childAccountRole");
+    Objects.requireNonNull(childAccountTaxonomy, "childAccountTaxonomy");
+    if (parentAccountRole != childAccountRole) {
+      return false;
+    }
+    return closesTemporaryProfitAndLossAccountType(accountType)
+        ? parentAccountTaxonomy
+            .profitAndLossLineClassification()
+            .equals(childAccountTaxonomy.profitAndLossLineClassification())
+        : parentAccountTaxonomy
+            .financialPositionLineClassification()
+            .equals(childAccountTaxonomy.financialPositionLineClassification());
   }
 
   /** Returns the canonical journal side that increases this account. */

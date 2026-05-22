@@ -8,11 +8,10 @@
         "entityName": "Plan Seed Basic",
         "entityForm": "COMPANY",
         "ownerModel": "MULTI_OWNER",
-        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-        "businessActivityTags": ["translation-services"],
+                "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01",
-        "accountingBasis": "ACCRUAL"
+        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
       }
     },
     {
@@ -23,6 +22,7 @@
         "accountName": "Cash",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
         "profitAndLossLineClassification": null
       }
@@ -35,6 +35,7 @@
         "accountName": "Revenue",
         "accountType": "REVENUE",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
@@ -43,31 +44,23 @@
       "stepId": "post-sale",
       "kind": "post-entry",
       "posting": {
-        "postingKind": "STANDARD",
+        "entryKind": "CASH_REVENUE",
         "effectiveDate": "2026-04-07",
-        "lines": [
-          {
-            "accountCode": "1000",
-            "side": "DEBIT",
-            "amount": {
-              "currencyCode": "EUR",
-              "minorUnits": "1000"
-            }
-          },
-          {
-            "accountCode": "2000",
-            "side": "CREDIT",
-            "amount": {
-              "currencyCode": "EUR",
-              "minorUnits": "1000"
-            }
-          }
-        ],
+        "cashAccountCode": "1000",
+        "revenueAccountCode": "2000",
+        "amount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "evidence": {
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-idem-plan-1",
-              "sourceDocumentType": "invoice"
+              "sourceDocumentType": "invoice",
+              "documentDate": "2026-04-07",
+              "capturedAt": "2026-04-07T10:15:30Z",
+              "storageLocator": "vault://fixtures/document-idem-plan-1",
+              "contentSha256": "6a278323d58e3ee9b2cf7411ed54fdf9230592b46a1c78918a39bf404a22e6c5"
             }
           ],
           "approvals": []

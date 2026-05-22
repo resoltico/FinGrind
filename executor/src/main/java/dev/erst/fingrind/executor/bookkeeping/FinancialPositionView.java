@@ -11,14 +11,14 @@ import java.util.Optional;
 /** Local bookkeeping statement-of-financial-position view. */
 public record FinancialPositionView(
     BookIdentity bookIdentity,
-    Optional<LocalDate> effectiveDateTo,
+    Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<FinancialPositionSectionView> sections,
     List<FinancialPositionSectionView> comparativeSections) {
   public FinancialPositionView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = List.copyOf(Objects.requireNonNull(sections, "sections"));

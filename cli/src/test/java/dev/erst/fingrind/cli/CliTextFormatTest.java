@@ -52,6 +52,8 @@ class CliTextFormatTest {
         CliTextFormat.renderAdaptiveTable(12, List.of("Account", "Amount"), List.of())
             .contains("(none)"));
     assertEquals("", CliTextFormat.wrapLineBlock(List.of(), 12));
+    assertEquals(
+        "alpha\nbeta/\ngamma", CliTextFormat.wrapLineBlock(List.of("alpha", "beta/gamma"), 5));
     assertEquals("", CliTextFormat.renderBulletedBlock(List.of(), 12));
     assertEquals("- alpha", CliTextFormat.renderBulletedBlock(List.of("alpha"), Integer.MAX_VALUE));
     assertEquals("alph\na", CliTextFormat.wrap("alpha   ", 4));
@@ -74,5 +76,9 @@ class CliTextFormatTest {
         CliTextFormat.renderAdaptiveTable(3, List.of("Only"), List.of(List.of("")));
     assertTrue(singleColumnCompact.contains("Row 1"));
     assertTrue(singleColumnCompact.contains("Only :"));
+
+    assertEquals("", CliTextFormat.renderLiteralBlock(List.of(), "  "));
+    assertEquals(
+        "  first\n  second", CliTextFormat.renderLiteralBlock(List.of("first", "second"), "  "));
   }
 }

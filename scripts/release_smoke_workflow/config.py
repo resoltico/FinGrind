@@ -61,11 +61,10 @@ def load_config() -> ReleaseSmokeConfig:
         entity_name=scenario.entity_name,
         entity_form=scenario.entity_form,
         owner_model=scenario.owner_model,
-        reporting_obligation_status=scenario.reporting_obligation_status,
         business_activity_tags=scenario.business_activity_tags,
         functional_currency=scenario.functional_currency,
         fiscal_year_start=scenario.fiscal_year_start,
-        accounting_basis=scenario.accounting_basis,
+        policy_profile=scenario.policy_profile,
     )
 
 

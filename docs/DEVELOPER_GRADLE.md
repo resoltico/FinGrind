@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -229,6 +229,10 @@ That contract now has a few explicit rules:
 - local developer direct-Java verification uses `./scripts/direct-java-cli.sh` or
   `.\scripts\direct-java-cli.ps1` and must therefore run both `:cli:shadowJar` and
   `prepareManagedSqlite`
+- the repo-owned source-checkout and direct-Java wrappers now verify one generated source-hash
+  manifest before they execute the cached raw JAR, and they refresh `:cli:shadowJar` plus
+  `prepareManagedSqlite` automatically when the current checkout has outrun the last prepared
+  artifact
 
 ### Committed Jazzer topology
 

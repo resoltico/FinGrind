@@ -8,11 +8,10 @@
         "entityName": "Plan Seed BHD",
         "entityForm": "COMPANY",
         "ownerModel": "MULTI_OWNER",
-        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-        "businessActivityTags": ["translation-services"],
+                "businessActivityTags": ["translation-services"],
         "functionalCurrency": "BHD",
         "fiscalYearStart": "01-01",
-        "accountingBasis": "ACCRUAL"
+        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
       }
     },
     {
@@ -23,6 +22,7 @@
         "accountName": "Cash BHD Seed",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
         "profitAndLossLineClassification": null
       }
@@ -35,6 +35,7 @@
         "accountName": "Sales BHD Seed",
         "accountType": "REVENUE",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
@@ -43,31 +44,23 @@
       "stepId": "post-bhd",
       "kind": "post-entry",
       "posting": {
-        "postingKind": "STANDARD",
+        "entryKind": "CASH_REVENUE",
         "effectiveDate": "2026-06-17",
-        "lines": [
-          {
-            "accountCode": "7120",
-            "side": "DEBIT",
-            "amount": {
-              "currencyCode": "BHD",
-              "minorUnits": "4321"
-            }
-          },
-          {
-            "accountCode": "8120",
-            "side": "CREDIT",
-            "amount": {
-              "currencyCode": "BHD",
-              "minorUnits": "4321"
-            }
-          }
-        ],
+        "cashAccountCode": "7120",
+        "revenueAccountCode": "8120",
+        "amount": {
+          "currencyCode": "BHD",
+          "minorUnits": "4321"
+        },
         "evidence": {
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-seed-plan-bhd-idem-1",
-              "sourceDocumentType": "invoice"
+              "sourceDocumentType": "invoice",
+              "documentDate": "2026-06-17",
+              "capturedAt": "2026-06-17T10:15:30Z",
+              "storageLocator": "vault://fixtures/document-seed-plan-bhd-idem-1",
+              "contentSha256": "a23becd1e5006cc7cd69ac3e914a55346e5e6c669bc4bff5939a5f5c2d8ece5c"
             }
           ],
           "approvals": []

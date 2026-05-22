@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+from hashlib import sha256
 from io import StringIO
 from typing import Any
 
@@ -32,21 +33,37 @@ def parse_csv_rows(csv_output: str, surface_name: str) -> tuple[list[str], list[
     return list(fieldnames), rows
 
 
+def expected_source_document(
+    actor_prefix: str, evidence_suffix: str, document_date: str
+) -> dict[str, str]:
+    return {
+        "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
+        "sourceDocumentType": "invoice",
+        "documentDate": document_date,
+        "capturedAt": f"{document_date}T10:15:30Z",
+        "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",
+        "contentSha256": sha256(
+            f"sha256-{actor_prefix}-{evidence_suffix}".encode("utf-8")
+        ).hexdigest(),
+    }
+
+
 def assert_discovery_payloads(
     config: ReleaseSmokeConfig,
     contract: dict[str, object],
     capabilities_payload: dict[str, Any],
     environment_payload: dict[str, Any],
-) -> None:
+) -> dict[str, int]:
     payload = required_mapping(capabilities_payload, "payload")
     environment = required_mapping(environment_payload, "payload")
+    full_contract = required_mapping(payload, "fullContract")
     distribution = required_mapping(environment, "distribution")
     storage = required_mapping(environment, "storage")
     sqlite = required_mapping(environment, "sqlite")
     runtime = required_mapping(sqlite, "runtime")
     request_input = required_mapping(payload, "requestInput")
     commands = required_mapping(payload, "commands")
-    response_model = required_mapping(payload, "responseModel")
+    response_model = required_mapping(full_contract, "responseModel")
     query_commands = required_list(commands, "query")
     query_commands_by_name = {
         require_string(command, "name"): command
@@ -54,11 +71,18 @@ def assert_discovery_payloads(
         if isinstance(command, dict)
     }
     error_descriptors = required_list(response_model, "errorDescriptors")
-    error_codes = {
-        require_string(descriptor, "code")
-        for descriptor in error_descriptors
-        if isinstance(descriptor, dict)
-    }
+    error_descriptor_exit_codes: dict[str, int] = {}
+    for descriptor in error_descriptors:
+        if not isinstance(descriptor, dict):
+            continue
+        code = require_string(descriptor, "code")
+        exit_code = descriptor.get("exitCode")
+        require(
+            isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code >= 0,
+            f"{config.label} capabilities output did not publish one non-negative exitCode for {code}",
+        )
+        error_descriptor_exit_codes[code] = exit_code
+    error_codes = set(error_descriptor_exit_codes)
     runtime_surface = required_mapping(contract, "runtimeSurface")
     protected_book_format = required_mapping(contract, "protectedBookFormat")
     public_distribution = required_mapping(contract, "publicDistribution")
@@ -66,6 +90,10 @@ def assert_discovery_payloads(
     operation_ids = required_mapping(contract, "operationIds")
     runtime_distribution = require_string(runtime_surface, config.runtime_distribution_key)
 
+    require(
+        require_string(payload, "detail") == "full",
+        f"{config.label} capabilities output did not expose the exhaustive full discovery contract",
+    )
     require(
         require_string(distribution, "runtimeDistribution") == runtime_distribution,
         f"{config.label} environment output did not report the canonical runtime distribution",
@@ -227,6 +255,8 @@ def assert_discovery_payloads(
             f"{config.label} environment output did not report the bundle-home system property",
         )
 
+    return error_descriptor_exit_codes
+
 
 def assert_operator_queries_and_reports(
     config: ReleaseSmokeConfig,
@@ -291,8 +321,8 @@ def assert_operator_queries_and_reports(
     )
     require_match(
         trial_balance_human_output,
-        r"Effective date to[[:space:]]+:[[:space:]]+2026-04-08",
-        f"{config.label} trial-balance output did not render the effective date",
+        r"As of[[:space:]]+:[[:space:]]+2026-04-08",
+        f"{config.label} trial-balance output did not render the as-of date",
     )
     require_match(
         trial_balance_human_output,
@@ -411,12 +441,7 @@ def assert_operator_queries_and_reports(
         and opening_entry["runningBalanceSide"] == "DEBIT"
         and opening_entry["counterpartAccounts"] == "2000"
         and json.loads(opening_entry["sourceDocuments"])
-        == [
-            {
-                "sourceDocumentId": f"{config.actor_prefix}-sale-document-1",
-                "sourceDocumentType": "invoice",
-            }
-        ]
+        == [expected_source_document(config.actor_prefix, "sale", "2026-04-07")]
         and json.loads(opening_entry["approvals"]) == [],
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
@@ -447,12 +472,7 @@ def assert_operator_queries_and_reports(
         and adjustment_entry["runningBalanceSide"] == "DEBIT"
         and adjustment_entry["counterpartAccounts"] == "2000"
         and json.loads(adjustment_entry["sourceDocuments"])
-        == [
-            {
-                "sourceDocumentId": f"{config.actor_prefix}-adjustment-document-1",
-                "sourceDocumentType": "invoice",
-            }
-        ]
+        == [expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")]
         and json.loads(adjustment_entry["approvals"]) == [],
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )

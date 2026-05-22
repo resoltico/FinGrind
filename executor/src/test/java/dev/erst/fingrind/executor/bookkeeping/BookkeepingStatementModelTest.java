@@ -72,6 +72,7 @@ class BookkeepingStatementModelTest {
             AccountType.ASSET,
             AccountRole.ORDINARY,
             new dev.erst.fingrind.core.AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1099")),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty()));

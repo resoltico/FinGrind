@@ -3,5 +3,6 @@
   "accountName": "Cash",
   "accountType": "ASSET",
   "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
   "financialPositionLineClassification": "CURRENT_ASSET"
 }

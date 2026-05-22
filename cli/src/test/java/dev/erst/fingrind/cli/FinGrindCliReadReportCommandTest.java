@@ -192,7 +192,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "reportBasis,effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -339,7 +339,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           bookFilePath.toString(),
           "--book-key-file",
           bookKeyFilePath.toString(),
-          "--effective-date-to",
+          "--effective-date-as-of",
           "2026-04-07",
           "--output",
           "human"

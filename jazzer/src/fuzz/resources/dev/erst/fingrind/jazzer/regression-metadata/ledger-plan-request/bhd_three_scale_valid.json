@@ -1,25 +1,25 @@
 {
-  "targetKey" : "ledger-plan-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/bhd_three_scale_valid.json",
-  "coverageIntent" : "BHD three-scale plan assertion",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "LEDGER_PLAN_REQUEST",
-      "plan" : {
-        "planId" : "seed-plan-bhd-1",
-        "stepCount" : 5,
-        "firstStepKind" : "open-book",
-        "lastStepKind" : "assert",
-        "assertionStepCount" : 1,
-        "beginsWithOpenBook" : true
+  "targetKey": "ledger-plan-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/bhd_three_scale_valid.json",
+  "coverageIntent": "BHD three-scale plan assertion",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "LEDGER_PLAN_REQUEST",
+      "plan": {
+        "planId": "seed-plan-bhd-1",
+        "stepCount": 5,
+        "firstStepKind": "open-book",
+        "lastStepKind": "assert",
+        "assertionStepCount": 1,
+        "beginsWithOpenBook": true
       },
-      "execution" : {
-        "executionStatus" : "succeeded",
-        "journalStepCount" : 5,
-        "listQueryStepCount" : 0,
-        "structuredListQueryStepCount" : 0
+      "execution": {
+        "executionStatus": "succeeded",
+        "journalStepCount": 5,
+        "listQueryStepCount": 0,
+        "structuredListQueryStepCount": 0
       }
     }
   }

@@ -6,8 +6,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -27,7 +28,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -36,6 +36,7 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,6 +45,9 @@ import org.junit.jupiter.api.Test;
 
 /** Focused branch coverage tests for {@link PdfValueFormatter}. */
 class PdfValueFormatterTest {
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   @Test
   void displayMoneyUsesCanonicalCurrencyScale() {
     assertEquals("12.50", PdfValueFormatter.displayMoney(Money.parse("EUR", "12.50")));
@@ -293,14 +297,14 @@ class PdfValueFormatterTest {
   }
 
   @Test
-  void displayIdentityProfileValuesFormatsEntityReportingAndActivityFacts() {
+  void displayIdentityProfileValuesFormatsPolicyAndActivityFacts() {
     assertEquals(
         "Company / Multi Owner",
         PdfValueFormatter.displayEntityProfile(EntityForm.COMPANY, OwnerModel.MULTI_OWNER));
     assertEquals(
-        "Internal Management Only",
-        PdfValueFormatter.displayReportingProfile(
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY));
+        "Internal Management Single Entity V1",
+        PdfValueFormatter.displayPolicyProfile(
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
     assertEquals(
         "translation-services, advisory",
         PdfValueFormatter.displayBusinessActivityTags(
@@ -308,7 +312,6 @@ class PdfValueFormatterTest {
                 new BusinessActivityTag("translation-services"),
                 new BusinessActivityTag("advisory"))));
     assertEquals("(none)", PdfValueFormatter.displayBusinessActivityTags(List.of()));
-    assertEquals("Accrual", PdfValueFormatter.displayAccountingBasis(AccountingBasis.ACCRUAL));
   }
 
   @Test
@@ -415,7 +418,12 @@ class PdfValueFormatterTest {
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+                new SourceDocumentId("document-" + token),
+                new SourceDocumentType("invoice"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                new StorageLocator("evidence://documents/document-" + token + ".pdf"),
+                new ContentSha256(DOCUMENT_SHA256))),
         List.of());
   }
 

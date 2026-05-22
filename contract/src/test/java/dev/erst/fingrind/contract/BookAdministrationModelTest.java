@@ -15,7 +15,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -24,7 +24,6 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -103,54 +102,27 @@ class BookAdministrationModelTest {
   }
 
   @Test
-  void openBookCommand_rejectsUnknownOwnerModel() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new OpenBookCommand(
-                bookIdentity(
-                    OwnerModel.UNKNOWN,
-                    ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                    List.of(new BusinessActivityTag("translation-services")))));
-  }
-
-  @Test
-  void openBookCommand_rejectsUnspecifiedReportingObligationStatus() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new OpenBookCommand(
-                bookIdentity(
-                    OwnerModel.MULTI_OWNER,
-                    ReportingObligationStatus.UNSPECIFIED,
-                    List.of(new BusinessActivityTag("translation-services")))));
+  void openBookCommand_rejectsNullBookIdentity() {
+    assertThrows(NullPointerException.class, () -> new OpenBookCommand(nullOf()));
   }
 
   @Test
   void openBookCommand_rejectsMissingBusinessActivityTags() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new OpenBookCommand(
-                bookIdentity(
-                    OwnerModel.MULTI_OWNER,
-                    ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-                    List.of())));
+        () -> new OpenBookCommand(bookIdentity(OwnerModel.MULTI_OWNER, List.of())));
   }
 
   private static BookIdentity bookIdentity(
-      OwnerModel ownerModel,
-      ReportingObligationStatus reportingObligationStatus,
-      List<BusinessActivityTag> businessActivityTags) {
+      OwnerModel ownerModel, List<BusinessActivityTag> businessActivityTags) {
     return new BookIdentity(
         new EntityProfile(
             new BookEntityName("Acme Studio"),
             EntityForm.COMPANY,
             ownerModel,
-            reportingObligationStatus,
             businessActivityTags),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 }

@@ -9,10 +9,11 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
@@ -21,6 +22,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityForm;
@@ -37,7 +39,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -45,6 +46,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -66,11 +68,10 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             new BookEntityName("Acme Studio"),
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
             List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 
   static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
@@ -153,29 +154,39 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static AccountingEvidence accountingEvidence(String token) {
     return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
-        List.of());
+        List.of(sourceDocument("document-" + token, "invoice")), List.of());
   }
 
   static AccountingEvidence accountingEvidenceWithApproval(String token) {
     return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
-        List.of(
-            new ApprovalReference(
-                new ApprovalId("approval-" + token), new ApprovalType("manager-signoff"))));
+        List.of(sourceDocument("document-" + token, "invoice")),
+        List.of(approval("approval-" + token, "manager-signoff")));
   }
 
   static AccountingEvidence generatedEvidence(String token, String sourceDocumentType) {
     return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("generated-" + token),
-                new SourceDocumentType(sourceDocumentType))),
-        List.of());
+        List.of(sourceDocument("generated-" + token, sourceDocumentType)), List.of());
+  }
+
+  private static SourceDocumentReference sourceDocument(
+      String sourceDocumentId, String sourceDocumentType) {
+    return new SourceDocumentReference(
+        new SourceDocumentId(sourceDocumentId),
+        new SourceDocumentType(sourceDocumentType),
+        LocalDate.parse("2026-04-07"),
+        Instant.parse("2026-04-07T10:15:30Z"),
+        new StorageLocator("vault://fixtures/" + sourceDocumentId),
+        new ContentSha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+  }
+
+  private static ApprovalReference approval(String approvalId, String approvalType) {
+    return new ApprovalReference(
+        new ApprovalId(approvalId),
+        new ApprovalType(approvalType),
+        new ActorId("approver-" + approvalId),
+        ActorType.HUMAN,
+        ApprovalDecision.APPROVED,
+        Instant.parse("2026-04-07T10:20:30Z"));
   }
 
   static PostingLineageModel postingLineage(
@@ -207,26 +218,31 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
@@ -235,7 +251,11 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static AccountTaxonomy financialPositionTaxonomy(
       FinancialPositionLineClassification lineClassification) {
-    return new AccountTaxonomy(Optional.empty(), Optional.of(lineClassification), Optional.empty());
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(lineClassification),
+        Optional.empty());
   }
 
   static RegisteredAccount registeredAccount(

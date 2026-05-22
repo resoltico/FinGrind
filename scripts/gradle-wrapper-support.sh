@@ -153,3 +153,52 @@ fg_gradle_project_build_dir() {
     fi
     printf '%s/%s/build\n' "${fg_gradle_repo_root}" "${fg_gradle_project_segment}"
 }
+
+fg_gradle_source_checkout_artifact_manifest_path() {
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_project_segment=${2:-cli}
+    fg_gradle_is_darwin=${3:-false}
+    fg_gradle_build_dir=$(fg_gradle_project_build_dir "${fg_gradle_repo_root}" "${fg_gradle_project_segment}" "${fg_gradle_is_darwin}")
+    printf '%s/generated/source-checkout/source-checkout-artifact-manifest.tsv\n' "${fg_gradle_build_dir}"
+}
+
+fg_gradle_file_mtime_epoch_seconds() {
+    fg_gradle_file_path=${1:-}
+    if stat -f '%m' "${fg_gradle_file_path}" >/dev/null 2>&1; then
+        stat -f '%m' "${fg_gradle_file_path}"
+        return
+    fi
+    if stat -c '%Y' "${fg_gradle_file_path}" >/dev/null 2>&1; then
+        stat -c '%Y' "${fg_gradle_file_path}"
+        return
+    fi
+    printf '%s\n' 'missing stat support for file modification timestamps' >&2
+    return 1
+}
+
+fg_gradle_source_checkout_artifact_needs_refresh() {
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_manifest_path=${2:-}
+    fg_gradle_artifact_path=${3:-}
+
+    [ -f "${fg_gradle_artifact_path}" ] || return 0
+    [ -f "${fg_gradle_manifest_path}" ] || return 0
+    fg_gradle_manifest_mtime_epoch_seconds=$(
+        fg_gradle_file_mtime_epoch_seconds "${fg_gradle_manifest_path}"
+    ) || return 0
+
+    while IFS="$(printf '\t')" read -r fg_gradle_record_type fg_gradle_relative_path fg_gradle_expected_sha256; do
+        case "${fg_gradle_record_type}" in
+            sourceFile)
+                fg_gradle_source_path="${fg_gradle_repo_root}/${fg_gradle_relative_path}"
+                [ -f "${fg_gradle_source_path}" ] || return 0
+                fg_gradle_source_mtime_epoch_seconds=$(
+                    fg_gradle_file_mtime_epoch_seconds "${fg_gradle_source_path}"
+                ) || return 0
+                [ "${fg_gradle_source_mtime_epoch_seconds}" -le "${fg_gradle_manifest_mtime_epoch_seconds}" ] || return 0
+                ;;
+        esac
+    done < "${fg_gradle_manifest_path}"
+
+    return 1
+}

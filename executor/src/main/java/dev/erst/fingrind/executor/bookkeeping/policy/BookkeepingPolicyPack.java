@@ -1,17 +1,17 @@
 package dev.erst.fingrind.executor.bookkeeping.policy;
 
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 
 /** Named seam for executable bookkeeping policy inside the current kernel. */
 @NullMarked
 public interface BookkeepingPolicyPack {
+  /** Returns the persisted profile identifier that selects this policy pack. */
+  AccountingPolicyProfile profile();
 
   /** Returns the policy that derives comparative reporting windows from one book identity. */
   StatementComparativePolicy statementComparativePolicy();
-
-  /** Returns the policy that governs explicit accounting-basis support. */
-  AccountingBasisPolicy accountingBasisPolicy();
 
   /** Returns the policy that governs chart hierarchy and taxonomy support. */
   ChartPolicy chartPolicy();

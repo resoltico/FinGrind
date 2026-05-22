@@ -345,7 +345,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
                   "--pdf-out",
                   positionPdf.toString()

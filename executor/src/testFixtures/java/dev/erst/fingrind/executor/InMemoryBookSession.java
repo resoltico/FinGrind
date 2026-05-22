@@ -6,7 +6,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -21,7 +21,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -102,11 +101,10 @@ public final class InMemoryBookSession
               new BookEntityName("FinGrind Test Entity"),
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
-              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
               List.of()),
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1),
-          AccountingBasis.ACCRUAL);
+          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
 
   @Override
   public BookLifecycleInspection inspectBook() {
@@ -473,7 +471,7 @@ public final class InMemoryBookSession
         () ->
             new TrialBalanceView(
                 bookIdentity,
-                query.effectiveDateTo(),
+                query.effectiveDateAsOf(),
                 dev.erst.fingrind.core.EffectiveDateRange.of(null, null),
                 query.postingCoverage(),
                 accountsByCode.values().stream()
@@ -490,7 +488,7 @@ public final class InMemoryBookSession
                                                     .includes(posting.postingKind()))
                                         .filter(
                                             posting ->
-                                                query.effectiveDateTo().stream()
+                                                query.effectiveDateAsOf().stream()
                                                     .allMatch(
                                                         date ->
                                                             !posting

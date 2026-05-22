@@ -12,7 +12,7 @@ import java.util.Optional;
 /** Canonical statement of financial position for one selected book. */
 public record FinancialPositionReport(
     BookIdentity bookIdentity,
-    Optional<LocalDate> effectiveDateTo,
+    Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<FinancialPositionSection> sections,
@@ -20,7 +20,7 @@ public record FinancialPositionReport(
   /** Validates one financial-position report. */
   public FinancialPositionReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = ContractDescriptorValidation.copyList(sections, "sections");

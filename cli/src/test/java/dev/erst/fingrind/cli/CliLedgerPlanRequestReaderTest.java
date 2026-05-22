@@ -449,10 +449,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
                         "ownerModel": "MULTI_OWNER",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "functionalCurrency": "EUR",
+                                                "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
@@ -473,11 +472,10 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
                         "ownerModel": "MULTI_OWNER",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "businessActivityTags": null,
+                                                "businessActivityTags": null,
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
@@ -514,11 +512,10 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
                         "ownerModel": "MULTI_OWNER",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "businessActivityTags": "translation-services",
+                                                "businessActivityTags": "translation-services",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
@@ -539,11 +536,10 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
                         "ownerModel": "MULTI_OWNER",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "businessActivityTags": ["translation-services", 2],
+                                                "businessActivityTags": ["translation-services", 2],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
@@ -579,11 +575,10 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
                         "ownerModel": "MULTI_OWNER",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "businessActivityTags": [],
+                                                "businessActivityTags": [],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
@@ -613,18 +608,17 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "openBook": {
                         "entityName": "Acme Studio",
                         "entityForm": "COMPANY",
-                        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                        "businessActivityTags": ["translation-services"],
+                                                "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
-    CliRequestReader missingReportingStatusReader =
+    CliRequestReader missingPolicyProfileReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
@@ -640,8 +634,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "ownerModel": "MULTI_OWNER",
                         "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -652,15 +645,14 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException missingOwnerModelException =
         assertThrows(
             CliRequestException.class, () -> missingOwnerModelReader.readLedgerPlan(Path.of("-")));
-    CliRequestException missingReportingStatusException =
+    CliRequestException missingPolicyProfileException =
         assertThrows(
             CliRequestException.class,
-            () -> missingReportingStatusReader.readLedgerPlan(Path.of("-")));
+            () -> missingPolicyProfileReader.readLedgerPlan(Path.of("-")));
 
     assertEquals("Missing required field: ownerModel", missingOwnerModelException.getMessage());
     assertEquals(
-        "Missing required field: reportingObligationStatus",
-        missingReportingStatusException.getMessage());
+        "Missing required field: policyProfile", missingPolicyProfileException.getMessage());
   }
 
   @Test
@@ -683,7 +675,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         },
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
-                        "accountingBasis": "ACCRUAL"
+                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                       }
                     }
                   ]

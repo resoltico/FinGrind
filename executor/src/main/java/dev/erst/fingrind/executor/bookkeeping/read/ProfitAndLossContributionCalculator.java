@@ -10,18 +10,21 @@ import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /** Computes signed profit-and-loss contributions from declared account currency totals. */
 final class ProfitAndLossContributionCalculator {
-  private final BookkeepingPolicyPack policyPack;
+  private final Supplier<BookkeepingPolicyPack> policyPackSupplier;
 
-  ProfitAndLossContributionCalculator(BookkeepingPolicyPack policyPack) {
-    this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
+  ProfitAndLossContributionCalculator(Supplier<BookkeepingPolicyPack> policyPackSupplier) {
+    this.policyPackSupplier = Objects.requireNonNull(policyPackSupplier, "policyPackSupplier");
   }
 
   Map<CurrencyUnit, Long> contributionMap(List<AccountCurrencyTotals> accountTotals) {
     Objects.requireNonNull(accountTotals, "accountTotals");
+    BookkeepingPolicyPack policyPack =
+        BookkeepingPolicyPack.requirePolicyPack(policyPackSupplier.get());
     return Map.copyOf(
         accountTotals.stream()
             .filter(

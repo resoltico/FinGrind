@@ -7,9 +7,9 @@ import java.util.Optional;
 
 /** Local bookkeeping criteria for one as-of trial-balance view. */
 public record TrialBalanceCriteria(
-    Optional<LocalDate> effectiveDateTo, PostingCoverage postingCoverage) {
+    Optional<LocalDate> effectiveDateAsOf, PostingCoverage postingCoverage) {
   public TrialBalanceCriteria {
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
   }
 }

@@ -11,8 +11,6 @@ import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.CoreBookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
 import java.util.Comparator;
@@ -36,15 +34,8 @@ final class BookkeepingStatementService {
 
   BookkeepingStatementService(
       BookLifecycleReader lifecycleReader, BookkeepingReportStore reportStore) {
-    this(lifecycleReader, reportStore, CoreBookkeepingPolicyPack.current());
-  }
-
-  BookkeepingStatementService(
-      BookLifecycleReader lifecycleReader,
-      BookkeepingReportStore reportStore,
-      BookkeepingPolicyPack policyPack) {
     BookkeepingStatementContext context =
-        new BookkeepingStatementContext(lifecycleReader, reportStore, policyPack);
+        new BookkeepingStatementContext(lifecycleReader, reportStore);
     this.financialPositionCalculator = new FinancialPositionStatementCalculator(context);
     this.incomeStatementCalculator = new IncomeStatementCalculator(context);
     this.changesInEquityCalculator = new ChangesInEquityStatementCalculator(context);

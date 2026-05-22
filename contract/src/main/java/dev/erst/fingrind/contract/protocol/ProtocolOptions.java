@@ -23,8 +23,14 @@ public final class ProtocolOptions {
   /** Option selecting one encrypted backup-book file for backup and restore workflows. */
   public static final String BACKUP_FILE = "--backup-file";
 
-  /** Option selecting one backup key file for backup and restore workflows. */
+  /** Option selecting one existing backup key file for restore workflows. */
   public static final String BACKUP_BOOK_KEY_FILE = "--backup-book-key-file";
+
+  /** Option selecting one new backup-book file destination for backup workflows. */
+  public static final String BACKUP_FILE_OUT = "--backup-file-out";
+
+  /** Option selecting one new backup key file destination for backup workflows. */
+  public static final String BACKUP_BOOK_KEY_FILE_OUT = "--backup-book-key-file-out";
 
   /** Option selecting one explicit stale rollback artifact for rekey recovery. */
   public static final String ROLLBACK_FILE = "--rollback-file";
@@ -52,6 +58,9 @@ public final class ProtocolOptions {
   /** Option selecting the inclusive upper effective-date bound. */
   public static final String EFFECTIVE_DATE_TO = "--effective-date-to";
 
+  /** Option selecting one as-of effective date for as-of report commands. */
+  public static final String EFFECTIVE_DATE_AS_OF = "--effective-date-as-of";
+
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
 
@@ -60,9 +69,6 @@ public final class ProtocolOptions {
 
   /** Option selecting the owner model used when initializing one new book. */
   public static final String OWNER_MODEL = "--owner-model";
-
-  /** Option selecting the reporting-obligation status used when initializing one new book. */
-  public static final String REPORTING_OBLIGATION_STATUS = "--reporting-obligation-status";
 
   /** Option selecting one business-activity tag used when initializing one new book. */
   public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
@@ -73,8 +79,8 @@ public final class ProtocolOptions {
   /** Option selecting the {@code MM-DD} fiscal-year start used when initializing one new book. */
   public static final String FISCAL_YEAR_START = "--fiscal-year-start";
 
-  /** Option selecting the accounting basis used when initializing one new book. */
-  public static final String ACCOUNTING_BASIS = "--accounting-basis";
+  /** Option selecting the accounting policy profile used when initializing one new book. */
+  public static final String POLICY_PROFILE = "--policy-profile";
 
   /** Option selecting the closing equity account used by one close-period command. */
 
@@ -89,6 +95,9 @@ public final class ProtocolOptions {
 
   /** Option selecting the presentation format for commands that advertise output modes. */
   public static final String OUTPUT = "--output";
+
+  /** Option selecting one discovery-payload detail level. */
+  public static final String DETAIL = "--detail";
 
   /** Option selecting whether execute-plan returns one summary or the full execution journal. */
   public static final String RESULT_DETAIL = "--result-detail";
@@ -169,5 +178,24 @@ public final class ProtocolOptions {
         + " <"
         + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(PlanResultDetail.class))
         + ">]";
+  }
+
+  /** Returns the rendered optional discovery-detail syntax. */
+  public static String optionalDiscoveryDetailSyntax() {
+    return "["
+        + DETAIL
+        + " <"
+        + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryDetail.class))
+        + ">]";
+  }
+
+  /** Returns the rendered optional discovery-detail syntax for JSON-only discovery surfaces. */
+  public static String optionalJsonOnlyDiscoveryDetailSyntax() {
+    return "["
+        + DETAIL
+        + " <"
+        + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryDetail.class))
+        + ">"
+        + " (json only)]";
   }
 }

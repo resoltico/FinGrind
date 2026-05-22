@@ -7,13 +7,13 @@ public record BookIdentity(
     EntityProfile entityProfile,
     CurrencyUnit functionalCurrency,
     FiscalYearStart fiscalYearStart,
-    AccountingBasis accountingBasis) {
+    AccountingPolicyProfile policyProfile) {
   /** Validates one book identity. */
   public BookIdentity {
     Objects.requireNonNull(entityProfile, "entityProfile");
     Objects.requireNonNull(functionalCurrency, "functionalCurrency");
     Objects.requireNonNull(fiscalYearStart, "fiscalYearStart");
-    Objects.requireNonNull(accountingBasis, "accountingBasis");
+    Objects.requireNonNull(policyProfile, "policyProfile");
   }
 
   /** Returns the canonical display name of the accounting entity that owns this book. */

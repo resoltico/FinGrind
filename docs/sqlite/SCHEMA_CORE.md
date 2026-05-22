@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 11;
+pragma user_version = 15;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -34,9 +34,20 @@ create table if not exists book_identity (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
     ),
-    fiscal_year_start text not null check (
-        length(fiscal_year_start) = 5
-        and fiscal_year_start glob '[0-1][0-9]-[0-3][0-9]'
+    fiscal_year_start_month integer not null check (
+        fiscal_year_start_month between 1 and 12
+    ),
+    fiscal_year_start_day integer not null check (
+        fiscal_year_start_day between 1 and 31
+    ),
+    check (
+        date(
+            printf(
+                '2000-%02d-%02d',
+                fiscal_year_start_month,
+                fiscal_year_start_day
+            )
+        ) is not null
     )
 ) strict;
 
@@ -55,12 +66,10 @@ create table if not exists entity_profile (
     ),
     owner_model text not null check (
         owner_model in (
-            'SOLE_OWNER', 'MULTI_OWNER', 'MEMBER_FUNDED', 'INSTITUTIONALLY_GOVERNED', 'UNKNOWN'
-        )
-    ),
-    reporting_obligation_status text not null check (
-        reporting_obligation_status in (
-            'INTERNAL_MANAGEMENT_ONLY', 'EXTERNAL_GENERAL_PURPOSE', 'MIXED', 'UNSPECIFIED'
+            'SOLE_OWNER',
+            'MULTI_OWNER',
+            'MEMBERSHIP_BODY',
+            'NO_PRIVATE_OWNER'
         )
     ),
     business_activity_tags text not null,
@@ -69,7 +78,9 @@ create table if not exists entity_profile (
 
 create table if not exists book_policy (
     singleton_id integer primary key check (singleton_id = 1),
-    accounting_basis text not null check (accounting_basis in ('CASH', 'ACCRUAL')),
+    policy_profile text not null check (
+        policy_profile in ('INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1')
+    ),
     foreign key (singleton_id) references book_identity (singleton_id)
 ) strict;
 
@@ -84,6 +95,7 @@ create table if not exists account (
         account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')
     ),
     account_role text not null check (account_role in ('ORDINARY', 'CONTRA')),
+    account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
     financial_position_line_classification text check (
         financial_position_line_classification is null
@@ -195,6 +207,35 @@ begin
             parent.account_code = new.parent_account_code
             and parent.account_type <> new.account_type
     );
+    select raise(fail, 'account parent must share the child account role.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_role <> new.account_role
+    );
+    select raise(fail, 'account parent must be a header node.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_node_kind <> 'HEADER'
+    );
+    select raise(fail, 'account parent must share the child statement classification.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and (
+                coalesce(parent.financial_position_line_classification, '')
+                    <> coalesce(new.financial_position_line_classification, '')
+                or coalesce(parent.profit_and_loss_line_classification, '')
+                    <> coalesce(new.profit_and_loss_line_classification, '')
+            )
+    );
     with recursive ancestors (account_code, parent_account_code) as (
         select
             account_seed.account_code,
@@ -222,6 +263,7 @@ before update on account
 when
     old.account_type <> new.account_type
     or old.account_role <> new.account_role
+    or old.account_node_kind <> new.account_node_kind
     or coalesce(old.parent_account_code, '') <> coalesce(new.parent_account_code, '')
     or coalesce(old.financial_position_line_classification, '')
     <> coalesce(new.financial_position_line_classification, '')
@@ -302,6 +344,56 @@ begin
     where new.prior_posting_id is not null or new.reason is not null;
 end;
 
+create table if not exists posting_source_document (
+    posting_id text not null,
+    source_document_order integer not null check (source_document_order >= 0),
+    source_document_id text not null check (
+        length(source_document_id) between 1 and 255
+        and source_document_id glob '[A-Za-z0-9]*'
+        and source_document_id not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    source_document_type text not null check (
+        length(source_document_type) between 1 and 64
+        and source_document_type glob '[A-Za-z0-9]*'
+        and source_document_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    document_date text not null,
+    captured_at text not null,
+    storage_locator text not null check (
+        length(trim(storage_locator)) between 1 and 512
+    ),
+    content_sha256 text not null check (
+        length(content_sha256) = 64
+        and content_sha256 glob '[0-9a-f]*'
+        and content_sha256 not glob '*[^0-9a-f]*'
+    ),
+    primary key (posting_id, source_document_order),
+    unique (posting_id, source_document_id),
+    foreign key (posting_id) references posting_fact (posting_id)
+) strict;
+
+create table if not exists posting_approval (
+    posting_id text not null,
+    approval_order integer not null check (approval_order >= 0),
+    approval_id text not null check (
+        length(approval_id) between 1 and 255
+        and approval_id glob '[A-Za-z0-9]*'
+        and approval_id not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    approval_type text not null check (
+        length(approval_type) between 1 and 64
+        and approval_type glob '[A-Za-z0-9]*'
+        and approval_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    approver_id text not null check (length(trim(approver_id)) > 0),
+    approver_type text not null check (approver_type in ('HUMAN', 'SYSTEM', 'AGENT')),
+    decision text not null check (decision in ('APPROVED', 'REJECTED')),
+    approved_at text not null,
+    primary key (posting_id, approval_order),
+    unique (posting_id, approval_id),
+    foreign key (posting_id) references posting_fact (posting_id)
+) strict;
+
 create table if not exists journal_line (
     posting_id text not null,
     line_order integer not null check (line_order >= 0),
@@ -331,6 +423,27 @@ begin
         where
             account.account_code = new.account_code
             and account.active = 0
+    );
+    select raise(fail, 'journal-line accounts must be postable.')
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.account_code
+            and account.account_node_kind <> 'POSTABLE'
+    );
+end;
+
+create trigger if not exists journal_line_validate_functional_currency_on_insert
+before insert on journal_line
+begin
+    select raise(fail, 'journal-line currency must match the book functional currency.')
+    where exists (
+        select 1
+        from book_identity
+        where
+            book_identity.singleton_id = 1
+            and new.currency_code <> book_identity.functional_currency_code
     );
 end;
 
@@ -649,18 +762,18 @@ Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
 - `entity_name`: `text not null check (length(trim(entity_name)) > 0)`
 - `functional_currency_code`: `text not null check ( length(functional_currency_code) = 3 and functional_currency_code glob '[A-Z][A-Z][A-Z]' )`
-- `fiscal_year_start`: `text not null check ( length(fiscal_year_start) = 5 and fiscal_year_start glob '[0-1][0-9]-[0-3][0-9]' )`
+- `fiscal_year_start_month`: `integer not null check ( fiscal_year_start_month between 1 and 12 )`
+- `fiscal_year_start_day`: `integer not null check ( fiscal_year_start_day between 1 and 31 )`
 
 Table-level constraints:
-- None.
+- `check ( date( printf( '2000-%02d-%02d', fiscal_year_start_month, fiscal_year_start_day ) ) is not null )`
 
 ### `entity_profile`
 
 Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
 - `entity_form`: `text not null check ( entity_form in ( 'FREELANCER', 'SOLE_PROPRIETORSHIP', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'BRANCH', 'OTHER' ) )`
-- `owner_model`: `text not null check ( owner_model in ( 'SOLE_OWNER', 'MULTI_OWNER', 'MEMBER_FUNDED', 'INSTITUTIONALLY_GOVERNED', 'UNKNOWN' ) )`
-- `reporting_obligation_status`: `text not null check ( reporting_obligation_status in ( 'INTERNAL_MANAGEMENT_ONLY', 'EXTERNAL_GENERAL_PURPOSE', 'MIXED', 'UNSPECIFIED' ) )`
+- `owner_model`: `text not null check ( owner_model in ( 'SOLE_OWNER', 'MULTI_OWNER', 'MEMBERSHIP_BODY', 'NO_PRIVATE_OWNER' ) )`
 - `business_activity_tags`: `text not null`
 
 Table-level constraints:
@@ -670,7 +783,7 @@ Table-level constraints:
 
 Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
-- `accounting_basis`: `text not null check (accounting_basis in ('CASH', 'ACCRUAL'))`
+- `policy_profile`: `text not null check ( policy_profile in ('INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1') )`
 
 Table-level constraints:
 - `foreign key (singleton_id) references book_identity (singleton_id)`
@@ -682,6 +795,7 @@ Columns:
 - `account_name`: `text not null check (length(trim(account_name)) > 0)`
 - `account_type`: `text not null check ( account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE') )`
 - `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA'))`
+- `account_node_kind`: `text not null check (account_node_kind in ('HEADER', 'POSTABLE'))`
 - `parent_account_code`: `text references account (account_code)`
 - `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'OWNER_CAPITAL', 'OWNER_DRAWINGS', 'PARTNER_CAPITAL', 'PARTNER_CURRENT', 'SHARE_CAPITAL', 'RETAINED_EARNINGS', 'ACCUMULATED_SURPLUS', 'RESERVE', 'OTHER_EQUITY' ) )`
 - `profit_and_loss_line_classification`: `text check ( profit_and_loss_line_classification is null or profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME', 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) )`
@@ -714,6 +828,40 @@ Table-level constraints:
 - `unique (idempotency_key)`
 - `foreign key (prior_posting_id) references posting_fact (posting_id)`
 - `check ( (prior_posting_id is null and reason is null) or (prior_posting_id is not null and reason is not null) )`
+
+### `posting_source_document`
+
+Columns:
+- `posting_id`: `text not null`
+- `source_document_order`: `integer not null check (source_document_order >= 0)`
+- `source_document_id`: `text not null check ( length(source_document_id) between 1 and 255 and source_document_id glob '[A-Za-z0-9]*' and source_document_id not glob '*[^A-Za-z0-9._:/-]*' )`
+- `source_document_type`: `text not null check ( length(source_document_type) between 1 and 64 and source_document_type glob '[A-Za-z0-9]*' and source_document_type not glob '*[^A-Za-z0-9._:/-]*' )`
+- `document_date`: `text not null`
+- `captured_at`: `text not null`
+- `storage_locator`: `text not null check ( length(trim(storage_locator)) between 1 and 512 )`
+- `content_sha256`: `text not null check ( length(content_sha256) = 64 and content_sha256 glob '[0-9a-f]*' and content_sha256 not glob '*[^0-9a-f]*' )`
+
+Table-level constraints:
+- `primary key (posting_id, source_document_order)`
+- `unique (posting_id, source_document_id)`
+- `foreign key (posting_id) references posting_fact (posting_id)`
+
+### `posting_approval`
+
+Columns:
+- `posting_id`: `text not null`
+- `approval_order`: `integer not null check (approval_order >= 0)`
+- `approval_id`: `text not null check ( length(approval_id) between 1 and 255 and approval_id glob '[A-Za-z0-9]*' and approval_id not glob '*[^A-Za-z0-9._:/-]*' )`
+- `approval_type`: `text not null check ( length(approval_type) between 1 and 64 and approval_type glob '[A-Za-z0-9]*' and approval_type not glob '*[^A-Za-z0-9._:/-]*' )`
+- `approver_id`: `text not null check (length(trim(approver_id)) > 0)`
+- `approver_type`: `text not null check (approver_type in ('HUMAN', 'SYSTEM', 'AGENT'))`
+- `decision`: `text not null check (decision in ('APPROVED', 'REJECTED'))`
+- `approved_at`: `text not null`
+
+Table-level constraints:
+- `primary key (posting_id, approval_order)`
+- `unique (posting_id, approval_id)`
+- `foreign key (posting_id) references posting_fact (posting_id)`
 
 ### `journal_line`
 
@@ -801,8 +949,8 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `11`
-- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `book_policy`, `account`, `posting_fact`, `journal_line`, `period_close`, `period_close_total`, `period_close_posting`, `audit_event`
+- `user_version`: `14`
+- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `book_policy`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_close`, `period_close_total`, `period_close_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_total_by_currency`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.

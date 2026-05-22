@@ -31,9 +31,12 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyUnit;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -69,7 +72,7 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Translates one public trial-balance query into the local bookkeeping read model. */
   public static TrialBalanceCriteria fromPublished(TrialBalanceQuery query) {
     Objects.requireNonNull(query, "query");
-    return new TrialBalanceCriteria(query.effectiveDateTo(), query.postingCoverage());
+    return new TrialBalanceCriteria(query.effectiveDateAsOf(), query.postingCoverage());
   }
 
   /** Translates one public account-ledger query into the local bookkeeping read model. */
@@ -89,7 +92,7 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Translates one public financial-position query into the local bookkeeping read model. */
   public static FinancialPositionCriteria fromPublished(FinancialPositionQuery query) {
     Objects.requireNonNull(query, "query");
-    return new FinancialPositionCriteria(query.effectiveDateTo());
+    return new FinancialPositionCriteria(query.effectiveDateAsOf());
   }
 
   /** Translates one public income-statement query into the local bookkeeping read model. */
@@ -147,15 +150,25 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   /** Projects one local trial-balance view back into the public published language. */
   public static TrialBalanceReport toPublished(TrialBalanceView view) {
     Objects.requireNonNull(view, "view");
-    return new TrialBalanceReport(
-        view.bookIdentity(),
-        view.effectiveDateTo(),
-        view.comparativeEffectiveDateRange(),
-        view.postingCoverage(),
-        view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList(),
+    List<TrialBalanceRow> rows =
+        view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList();
+    List<TrialBalanceRow> comparativeRows =
         view.comparativeRows().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
-            .toList());
+            .toList();
+    List<CurrencyBalance> totals = aggregateTrialBalanceTotals(rows);
+    List<CurrencyBalance> comparativeTotals = aggregateTrialBalanceTotals(comparativeRows);
+    return new TrialBalanceReport(
+        view.bookIdentity(),
+        view.effectiveDateAsOf(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
+        rows,
+        totals,
+        isBalanced(totals),
+        comparativeRows,
+        comparativeTotals,
+        isBalanced(comparativeTotals));
   }
 
   /** Projects one local account-ledger view back into the public published language. */
@@ -199,7 +212,7 @@ public final class BookkeepingReadPublishedLanguageTranslator {
     Objects.requireNonNull(view, "view");
     return new FinancialPositionReport(
         view.bookIdentity(),
-        view.effectiveDateTo(),
+        view.effectiveDateAsOf(),
         view.comparativeEffectiveDateRange(),
         view.postingCoverage(),
         view.sections().stream()
@@ -388,5 +401,37 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         row.openingBalance(),
         row.movement(),
         row.closingBalance());
+  }
+
+  private static List<CurrencyBalance> aggregateTrialBalanceTotals(List<TrialBalanceRow> rows) {
+    List<CurrencyBalance> totalsByCurrency = new ArrayList<>();
+    for (TrialBalanceRow row : rows) {
+      mergeCurrencyBalance(totalsByCurrency, row.balance());
+    }
+    return List.copyOf(totalsByCurrency);
+  }
+
+  private static boolean isBalanced(List<CurrencyBalance> totals) {
+    return totals.stream().allMatch(total -> total.balanceSide() == BalanceSide.ZERO);
+  }
+
+  private static CurrencyBalance sumCurrencyBalances(CurrencyBalance left, CurrencyBalance right) {
+    return BalanceMath.currencyBalance(
+        left.debitTotal().currencyUnit(),
+        Math.addExact(left.debitTotal().minorUnits(), right.debitTotal().minorUnits()),
+        Math.addExact(left.creditTotal().minorUnits(), right.creditTotal().minorUnits()));
+  }
+
+  private static void mergeCurrencyBalance(
+      List<CurrencyBalance> totalsByCurrency, CurrencyBalance candidate) {
+    CurrencyUnit currencyUnit = candidate.debitTotal().currencyUnit();
+    for (int index = 0; index < totalsByCurrency.size(); index++) {
+      CurrencyBalance existing = totalsByCurrency.get(index);
+      if (existing.debitTotal().currencyUnit().equals(currencyUnit)) {
+        totalsByCurrency.set(index, sumCurrencyBalances(existing, candidate));
+        return;
+      }
+    }
+    totalsByCurrency.add(candidate);
   }
 }

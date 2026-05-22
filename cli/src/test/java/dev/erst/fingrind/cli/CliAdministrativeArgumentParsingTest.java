@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -60,16 +60,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL",
                   "--output",
                   "human"
                 }));
@@ -175,16 +173,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL",
                       "--output",
                       "csv"
                     }));
@@ -194,7 +190,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_acceptsExplicitOwnershipAndReportingDoctrineWithoutTaxProfileScaffolding() {
+  void parse_openBook_acceptsExplicitOwnershipAndPolicyProfileWithoutTaxProfileScaffolding() {
     OpenBook openBook =
         assertInstanceOf(
             OpenBook.class,
@@ -211,21 +207,19 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL"
                 }));
 
     assertEquals(
-        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-        openBook.command().bookIdentity().entityProfile().reportingObligationStatus());
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
+        openBook.command().bookIdentity().policyProfile());
     assertEquals(
         OwnerModel.MULTI_OWNER, openBook.command().bookIdentity().entityProfile().ownerModel());
   }
@@ -251,8 +245,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--tax-profile-file",
@@ -261,8 +255,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
 
     assertEquals("--tax-profile-file", exception.argument());
@@ -288,16 +280,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL",
                       "--extra"
                     }));
     CliArgumentsException executePlanExtra =
@@ -374,16 +364,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -392,7 +380,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_requiresOwnershipAndReportingDoctrineAndCollectsBusinessActivityTags() {
+  void parse_openBook_requiresOwnershipAndPolicyProfileAndCollectsBusinessActivityTags() {
     OpenBook command =
         assertInstanceOf(
             OpenBook.class,
@@ -409,8 +397,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation,localization",
                   "--business-activity-tag",
@@ -419,15 +407,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL"
                 }));
 
     assertEquals(
         OwnerModel.MULTI_OWNER, command.command().bookIdentity().entityProfile().ownerModel());
     assertEquals(
-        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-        command.command().bookIdentity().entityProfile().reportingObligationStatus());
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
+        command.command().bookIdentity().policyProfile());
     assertEquals(
         List.of("translation,localization", "cafe services"),
         command.command().bookIdentity().entityProfile().businessActivityTags().stream()
@@ -621,16 +607,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -694,16 +678,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "COMPANY",
                   "--owner-model",
                   "MULTI_OWNER",
-                  "--reporting-obligation-status",
-                  "INTERNAL_MANAGEMENT_ONLY",
+                  "--policy-profile",
+                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
                   "01-01",
-                  "--accounting-basis",
-                  "ACCRUAL"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -731,16 +713,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL",
                       "--request-file",
                       "oops.json"
                     }));
@@ -769,8 +749,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
     CliArgumentsException missingOwnerModel =
         assertThrows(
@@ -787,18 +765,16 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--entity-form",
                       "COMPANY",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--fiscal-year-start",
                       "01-01",
                       "--functional-currency",
                       "EUR",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
-    CliArgumentsException missingReportingObligationStatus =
+    CliArgumentsException missingPolicyProfile =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -821,8 +797,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
     CliArgumentsException missingBusinessActivityTag =
         assertThrows(
@@ -841,14 +815,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
     CliArgumentsException missingFunctionalCurrency =
         assertThrows(
@@ -867,8 +839,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--fiscal-year-start",
@@ -889,16 +861,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "Acme Studio",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
     CliArgumentsException missingFiscalYearStart =
         assertThrows(
@@ -917,52 +887,21 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "COMPANY",
                       "--owner-model",
                       "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
+                      "--policy-profile",
+                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
                       "EUR",
-                      "--accounting-basis",
-                      "ACCRUAL"
                     }));
-    CliArgumentsException missingAccountingBasis =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
-                      "--reporting-obligation-status",
-                      "INTERNAL_MANAGEMENT_ONLY",
-                      "--business-activity-tag",
-                      "translation-services",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01"
-                    }));
-
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
     assertEquals("--entity-form", missingEntityForm.argument());
     assertEquals("A --entity-form argument is required.", missingEntityForm.getMessage());
     assertEquals("--owner-model", missingOwnerModel.argument());
     assertEquals("A --owner-model argument is required.", missingOwnerModel.getMessage());
-    assertEquals("--reporting-obligation-status", missingReportingObligationStatus.argument());
-    assertEquals(
-        "A --reporting-obligation-status argument is required.",
-        missingReportingObligationStatus.getMessage());
+    assertEquals("--policy-profile", missingPolicyProfile.argument());
+    assertEquals("A --policy-profile argument is required.", missingPolicyProfile.getMessage());
     assertEquals("--business-activity-tag", missingBusinessActivityTag.argument());
     assertEquals(
         "At least one --business-activity-tag argument is required.",
@@ -973,8 +912,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals("--fiscal-year-start", missingFiscalYearStart.argument());
     assertEquals(
         "A --fiscal-year-start argument is required.", missingFiscalYearStart.getMessage());
-    assertEquals("--accounting-basis", missingAccountingBasis.argument());
-    assertEquals("A --accounting-basis argument is required.", missingAccountingBasis.getMessage());
   }
 
   @Test
@@ -989,9 +926,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--backup-file",
+                  "--backup-file-out",
                   "backup/entity.sqlite",
-                  "--backup-book-key-file",
+                  "--backup-book-key-file-out",
                   "backup/entity.key",
                   "--output",
                   "human"
@@ -1174,9 +1111,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file",
+                      "--backup-file-out",
                       "book.sqlite",
-                      "--backup-book-key-file",
+                      "--backup-book-key-file-out",
                       "backup.key"
                     }));
     CliArgumentsException restoreCollision =
@@ -1194,9 +1131,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "backup.sqlite"
                     }));
 
-    assertEquals("--backup-file", backupCollision.argument());
+    assertEquals("--backup-file-out", backupCollision.argument());
     assertEquals(
-        "--book-file and --backup-file must not point to the same path.",
+        "--book-file and --backup-file-out must not point to the same path.",
         backupCollision.getMessage());
     assertEquals("--backup-book-key-file", restoreCollision.argument());
     assertEquals(

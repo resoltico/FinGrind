@@ -3,5 +3,6 @@
   "accountName": "Revenue",
   "accountType": "REVENUE",
   "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
   "profitAndLossLineClassification": "OPERATING_REVENUE"
 }

@@ -75,18 +75,11 @@ class CoreTextValueObjectsTest {
         new ArrayList<>(List.of(new BusinessActivityTag("translation-services")));
 
     EntityProfile profile =
-        new EntityProfile(
-            displayName,
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-            tags);
+        new EntityProfile(displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, tags);
 
     assertEquals(displayName, profile.displayName());
     assertEquals(EntityForm.COMPANY, profile.entityForm());
     assertEquals(OwnerModel.MULTI_OWNER, profile.ownerModel());
-    assertEquals(
-        ReportingObligationStatus.BASIC_STANDARD_REPORTING, profile.reportingObligationStatus());
     assertEquals(
         List.of(new BusinessActivityTag("translation-services")), profile.businessActivityTags());
     tags.add(new BusinessActivityTag("consulting"));
@@ -96,45 +89,16 @@ class CoreTextValueObjectsTest {
         () -> profile.businessActivityTags().add(new BusinessActivityTag("forbidden")));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new EntityProfile(
-                nullOf(),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                List.of()));
+        () -> new EntityProfile(nullOf(), EntityForm.COMPANY, OwnerModel.MULTI_OWNER, List.of()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new EntityProfile(
-                displayName,
-                nullOf(),
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                List.of()));
+        () -> new EntityProfile(displayName, nullOf(), OwnerModel.MULTI_OWNER, List.of()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new EntityProfile(
-                displayName,
-                EntityForm.COMPANY,
-                nullOf(),
-                ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                List.of()));
+        () -> new EntityProfile(displayName, EntityForm.COMPANY, nullOf(), List.of()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new EntityProfile(
-                displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, nullOf(), List.of()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new EntityProfile(
-                displayName,
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                ReportingObligationStatus.BASIC_STANDARD_REPORTING,
-                nullOf()));
+        () -> new EntityProfile(displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, nullOf()));
   }
 
   @Test
@@ -143,16 +107,14 @@ class CoreTextValueObjectsTest {
     CurrencyUnit functionalCurrency = CurrencyUnit.of("EUR");
     FiscalYearStart fiscalYearStart = FiscalYearStart.parse("01-01");
     EntityProfile entityProfile =
-        new EntityProfile(
-            entityName,
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-            List.of());
+        new EntityProfile(entityName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, List.of());
 
     BookIdentity bookIdentity =
         new BookIdentity(
-            entityProfile, functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL);
+            entityProfile,
+            functionalCurrency,
+            fiscalYearStart,
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(EntityForm.COMPANY, bookIdentity.entityForm());
@@ -160,14 +122,26 @@ class CoreTextValueObjectsTest {
         NullPointerException.class,
         () ->
             new BookIdentity(
-                nullOf(), functionalCurrency, fiscalYearStart, AccountingBasis.ACCRUAL));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookIdentity(entityProfile, nullOf(), fiscalYearStart, AccountingBasis.ACCRUAL));
+                nullOf(),
+                functionalCurrency,
+                fiscalYearStart,
+                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookIdentity(entityProfile, functionalCurrency, nullOf(), AccountingBasis.ACCRUAL));
+            new BookIdentity(
+                entityProfile,
+                nullOf(),
+                fiscalYearStart,
+                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookIdentity(
+                entityProfile,
+                functionalCurrency,
+                nullOf(),
+                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
     assertThrows(
         NullPointerException.class,
         () -> new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart, nullOf()));
@@ -200,48 +174,57 @@ class CoreTextValueObjectsTest {
     assertEquals("MULTI_OWNER", OwnerModel.MULTI_OWNER.wireValue());
     assertEquals("MEMBERSHIP_BODY", OwnerModel.MEMBERSHIP_BODY.wireValue());
     assertEquals("NO_PRIVATE_OWNER", OwnerModel.NO_PRIVATE_OWNER.wireValue());
-    assertEquals("UNKNOWN", OwnerModel.UNKNOWN.wireValue());
     assertEquals(OwnerModel.SOLE_OWNER, OwnerModel.fromWireValue("SOLE_OWNER"));
-    assertEquals(OwnerModel.UNKNOWN, OwnerModel.fromWireValue("UNKNOWN"));
     assertEquals(
-        List.of("SOLE_OWNER", "MULTI_OWNER", "MEMBERSHIP_BODY", "NO_PRIVATE_OWNER", "UNKNOWN"),
+        List.of("SOLE_OWNER", "MULTI_OWNER", "MEMBERSHIP_BODY", "NO_PRIVATE_OWNER"),
         OwnerModel.wireValues());
     assertThrows(IllegalArgumentException.class, () -> OwnerModel.fromWireValue("sole_owner"));
   }
 
   @Test
-  void reportingBasisAndAccountingWireVocabulariesParseStableValuesAndRejectUnknownValues() {
+  void accountingPolicyAndChartNodeWireVocabulariesParseStableValuesAndRejectUnknownValues() {
     assertEquals(
-        "INTERNAL_MANAGEMENT_ONLY", ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY.wireValue());
+        "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1.wireValue());
     assertEquals(
-        "BASIC_STANDARD_REPORTING", ReportingObligationStatus.BASIC_STANDARD_REPORTING.wireValue());
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
+        AccountingPolicyProfile.fromWireValue("INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"));
     assertEquals(
-        "EXTERNAL_COMPLIANCE_PACK_REQUIRED",
-        ReportingObligationStatus.EXTERNAL_COMPLIANCE_PACK_REQUIRED.wireValue());
-    assertEquals("UNSPECIFIED", ReportingObligationStatus.UNSPECIFIED.wireValue());
-    assertEquals(
-        ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
-        ReportingObligationStatus.fromWireValue("INTERNAL_MANAGEMENT_ONLY"));
-    assertEquals(
-        ReportingObligationStatus.UNSPECIFIED,
-        ReportingObligationStatus.fromWireValue("UNSPECIFIED"));
-    assertEquals(
-        List.of(
-            "INTERNAL_MANAGEMENT_ONLY",
-            "BASIC_STANDARD_REPORTING",
-            "EXTERNAL_COMPLIANCE_PACK_REQUIRED",
-            "UNSPECIFIED"),
-        ReportingObligationStatus.wireValues());
+        List.of("INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"), AccountingPolicyProfile.wireValues());
     assertThrows(
         IllegalArgumentException.class,
-        () -> ReportingObligationStatus.fromWireValue("internal-management-only"));
+        () -> AccountingPolicyProfile.fromWireValue("internal-management"));
 
-    assertEquals("CASH", AccountingBasis.CASH.wireValue());
-    assertEquals("ACCRUAL", AccountingBasis.ACCRUAL.wireValue());
-    assertEquals(AccountingBasis.CASH, AccountingBasis.fromWireValue("CASH"));
-    assertEquals(AccountingBasis.ACCRUAL, AccountingBasis.fromWireValue("ACCRUAL"));
-    assertEquals(List.of("CASH", "ACCRUAL"), AccountingBasis.wireValues());
-    assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash"));
+    assertEquals("HEADER", AccountNodeKind.HEADER.wireValue());
+    assertEquals("POSTABLE", AccountNodeKind.POSTABLE.wireValue());
+    assertEquals(AccountNodeKind.HEADER, AccountNodeKind.fromWireValue("HEADER"));
+    assertEquals(AccountNodeKind.POSTABLE, AccountNodeKind.fromWireValue("POSTABLE"));
+    assertEquals(List.of("HEADER", "POSTABLE"), AccountNodeKind.wireValues());
+    assertTrue(AccountNodeKind.HEADER.allowsChildren());
+    assertFalse(AccountNodeKind.HEADER.allowsPosting());
+    assertFalse(AccountNodeKind.POSTABLE.allowsChildren());
+    assertTrue(AccountNodeKind.POSTABLE.allowsPosting());
+    assertThrows(IllegalArgumentException.class, () -> AccountNodeKind.fromWireValue("header"));
+  }
+
+  @Test
+  void retainedEvidenceSupportTypesValidateCanonicalValues() {
+    assertEquals(
+        "evidence://documents/invoice-1.pdf",
+        new StorageLocator("  evidence://documents/invoice-1.pdf  ").value());
+    assertThrows(IllegalArgumentException.class, () -> new StorageLocator("   "));
+    assertThrows(IllegalArgumentException.class, () -> new StorageLocator("x".repeat(513)));
+
+    String sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    assertEquals(sha256, new ContentSha256(sha256).value());
+    assertThrows(IllegalArgumentException.class, () -> new ContentSha256("abc"));
+
+    assertEquals("APPROVED", ApprovalDecision.APPROVED.wireValue());
+    assertEquals("REJECTED", ApprovalDecision.REJECTED.wireValue());
+    assertEquals(ApprovalDecision.APPROVED, ApprovalDecision.fromWireValue("APPROVED"));
+    assertEquals(ApprovalDecision.REJECTED, ApprovalDecision.fromWireValue("REJECTED"));
+    assertEquals(List.of("APPROVED", "REJECTED"), ApprovalDecision.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> ApprovalDecision.fromWireValue("approved"));
   }
 
   @Test

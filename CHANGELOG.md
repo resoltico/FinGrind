@@ -5,8 +5,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-05-22
+
+### Added
+
+- Added a typed public bookkeeping-entry write contract. `preflight-entry`, `post-entry`,
+  `print-request-template`, `execute-plan`, the machine-discovery schemas, and the checked-in
+  example corpus now center on stable `entryKind` event shapes (`CASH_REVENUE`, `CASH_EXPENSE`,
+  `OWNER_CONTRIBUTION`, `OWNER_DRAW`, and `MANUAL_ADJUSTMENT`) instead of one generic raw
+  posting-request object.
+- Added durable retained-evidence facts to the public bookkeeping surface. Source documents now
+  carry document date, capture timestamp, storage locator, and lowercase SHA-256 digest metadata,
+  while approvals now carry approver identity, approver type, explicit decision, and approval
+  timestamp facts across the contract, examples, and replay/fuzz fixtures.
+
+### Changed
+
+- Narrowed the protected-book identity and policy model to the executable bookkeeping kernel.
+  `open-book` now selects entity name, entity form, owner model, business activity tags,
+  functional currency, fiscal-year anchor, and one persisted policy profile, and the
+  protected-book format advances to `15` with canonical month/day fiscal-year storage plus the
+  same owner-model vocabulary enforced across Java, SQLite, examples, and machine discovery.
+- Posting application now translates the published typed bookkeeping-entry events through the
+  selected accounting policy profile instead of exposing dormant accounting-basis behavior as a
+  first-class public contract.
+- Account declaration and chart hierarchy now distinguish `HEADER` versus `POSTABLE` nodes,
+  require parent/child statement-classification parity, and surface the same hierarchy doctrine
+  through the SQLite schema, CLI request schemas, examples, and report readers.
+- Trial-balance and statement/report payloads now publish richer readback facts: trial balances
+  include book-wide totals plus an explicit balanced verdict, report criteria use as-of
+  language for point-in-time reads, and comparative date ranges remain first-class in the
+  canonical report contracts.
+- Human and machine discovery are now layered more deliberately. `help` is the operator task
+  guide with copy-safe literal command grammar, explicit request-document scaffold/contract lookup
+  cues, and compact human report headers, while `capabilities` remains the shared machine
+  inventory for automation and release-surface verifiers.
+- Refreshed the checked-in examples, quick-start guides, and storefront docs so the published
+  snippets show the live typed-entry, retained-evidence, policy-profile, and compact-report
+  surfaces rather than older placeholder or pre-refactor interface shapes.
+
+### Removed
+
+- Removed `PostingRequest` as the primary public write contract. Raw journal mechanics now remain
+  only inside the explicit `MANUAL_ADJUSTMENT` bookkeeping-entry path.
+- Removed `ReportingObligationStatus`, `AccountingBasis`, and the dormant
+  `AccountingBasisPolicy` seam from the active book identity and bookkeeping policy model, along
+  with the related public wording that implied behavior FinGrind did not execute.
+
 ### Fixed
 
+- Fixed the published machine error surface so `responseModel.errorDescriptors` now carries one
+  canonical `exitCode` per deterministic error, and aligned the release-smoke plus
+  source-checkout launcher verifiers to consume those published values instead of stale private
+  numbers.
+- Fixed the human CLI operator surfaces so command help no longer hard-wraps invocation or option
+  grammar mid-command, request-document sections label scaffold and contract lookup commands
+  explicitly, and repeated report/register identity headers collapse into one stable compact
+  book-context row instead of reprinting the same multi-line banner on every screen.
+- Fixed the source-checkout and developer direct-Java wrappers so they now verify one generated
+  source-hash manifest before executing the cached raw JAR, refresh `:cli:shadowJar` plus
+  `prepareManagedSqlite` automatically when the checkout has moved ahead of that artifact, and
+  keep the checked-in request/plan template captures aligned with the live typed-entry contract
+  instead of silently replaying stale launcher bytes.
+- Fixed the bundle and release-smoke evidence fixtures so they now emit real lowercase SHA-256
+  digests for retained source-document metadata, and updated the launcher/release verifiers to
+  keep long-running local checks alive with explicit progress pulses instead of timing out on
+  quiet-but-healthy work.
 - Fixed PDF artifact export permissions on POSIX hosts so `--pdf-out` now publishes mounted report
   files with host-readable permissions instead of preserving the private temp-file mode across the
   final move, added a portable default-filesystem fallback that verifies one host-readable artifact
@@ -156,8 +220,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separated from first-class grammar sections, and report/query outputs use the normalized versus
   redacted path vocabulary consistently across human, JSON, bundle-smoke, and Docker acceptance
   surfaces.
-- The current bookkeeping kernel was narrowed to executable present-day meaning: unsupported
-  `AccountingBasis` extension values, dormant tax/FX/evidence policy seams, and unused
+- The current bookkeeping kernel was narrowed to executable present-day meaning: inert
+  reporting/basis identity labels, dormant tax/FX/evidence policy seams, and unused
   organization/reporting identity types were removed from the active model, while workflow
   assertions now preserve structured effective-date ranges instead of degrading them to nullable
   bounds.
@@ -2178,7 +2242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.43.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.44.0...HEAD
+[0.44.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.44.0
 [0.43.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.43.0
 [0.42.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.42.0
 [0.41.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.41.0

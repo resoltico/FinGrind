@@ -26,6 +26,9 @@ class ProtocolWireVocabularyTest {
     assertEquals(List.of("summary", "full"), PlanResultDetail.wireValues());
     assertEquals("summary", PlanResultDetail.SUMMARY.toString());
     assertEquals("full", PlanResultDetail.FULL.toString());
+    assertEquals(List.of("compact", "full"), DiscoveryDetail.wireValues());
+    assertEquals("compact", DiscoveryDetail.COMPACT.toString());
+    assertEquals("full", DiscoveryDetail.FULL.toString());
     assertEquals(
         List.of("bundle-managed", "source-checkout-managed"), SqliteRuntimeProvenance.wireValues());
     assertEquals("bundle-managed", SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue());
@@ -64,6 +67,8 @@ class ProtocolWireVocabularyTest {
         PlanFailurePolicy.fromWireValue("halt-on-first-failure"));
     assertEquals(PlanResultDetail.SUMMARY, PlanResultDetail.fromWireValue("summary"));
     assertEquals(PlanResultDetail.FULL, PlanResultDetail.fromWireValue("full"));
+    assertEquals(DiscoveryDetail.COMPACT, DiscoveryDetail.fromWireValue("compact"));
+    assertEquals(DiscoveryDetail.FULL, DiscoveryDetail.fromWireValue("full"));
     assertEquals(
         SqliteRuntimeProvenance.BUNDLE_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
@@ -100,6 +105,7 @@ class ProtocolWireVocabularyTest {
     assertThrows(
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
     assertThrows(IllegalArgumentException.class, () -> PlanResultDetail.fromWireValue("verbose"));
+    assertThrows(IllegalArgumentException.class, () -> DiscoveryDetail.fromWireValue("expanded"));
     assertThrows(
         IllegalArgumentException.class,
         () -> SqliteRuntimeProvenance.fromWireValue("maybe-managed"));

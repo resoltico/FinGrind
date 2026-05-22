@@ -7,10 +7,10 @@ import java.util.Optional;
 
 /** As-of query for a book-wide trial balance report. */
 public record TrialBalanceQuery(
-    Optional<LocalDate> effectiveDateTo, PostingCoverage postingCoverage) {
+    Optional<LocalDate> effectiveDateAsOf, PostingCoverage postingCoverage) {
   /** Validates one trial-balance query. */
   public TrialBalanceQuery {
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
   }
 }

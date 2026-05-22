@@ -210,7 +210,11 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   new TrialBalanceRow(
                       publishedAccount(revenueAccount),
                       balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT))),
-              List.of()),
+              List.of(balance("EUR", "14.00", "14.00", "0.00", BalanceSide.ZERO)),
+              true,
+              List.of(),
+              List.of(),
+              true),
           published(
               postingFactStore.trialBalance(
                   trialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));

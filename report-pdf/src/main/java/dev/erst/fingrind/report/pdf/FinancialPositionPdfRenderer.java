@@ -19,8 +19,8 @@ final class FinancialPositionPdfRenderer {
             report.postingCoverage(),
             List.of(
                 List.of(
-                    "Effective date to",
-                    PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null))))));
+                    "Effective date as of",
+                    PdfValueFormatter.optionalDate(report.effectiveDateAsOf().orElse(null))))));
     renderSections(pageWriter, report.sections(), "");
     renderSections(pageWriter, report.comparativeSections(), "Comparative ");
   }

@@ -1,10 +1,9 @@
 package dev.erst.fingrind.executor.bookkeeping.policy;
 
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 
@@ -12,8 +11,6 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   private static final CoreBookkeepingPolicyPack CURRENT = new CoreBookkeepingPolicyPack();
-  private static final AccountingBasisPolicy ACCOUNTING_BASIS_POLICY =
-      () -> List.of(AccountingBasis.CASH, AccountingBasis.ACCRUAL);
   private static final ChartPolicy CHART_POLICY = () -> true;
   private static final ClosePolicy CLOSE_POLICY =
       new ClosePolicy() {
@@ -67,13 +64,13 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   }
 
   @Override
-  public StatementComparativePolicy statementComparativePolicy() {
-    return statementComparativePolicy;
+  public AccountingPolicyProfile profile() {
+    return AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1;
   }
 
   @Override
-  public AccountingBasisPolicy accountingBasisPolicy() {
-    return ACCOUNTING_BASIS_POLICY;
+  public StatementComparativePolicy statementComparativePolicy() {
+    return statementComparativePolicy;
   }
 
   @Override

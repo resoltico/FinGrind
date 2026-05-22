@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.cashRevenueRequestJson;
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,44 +50,7 @@ class LedgerPlanFuzzAssertionsTest {
                 {
                   "stepId": "post-sale",
                   "kind": "post-entry",
-                  "posting": {
-                    "postingKind": "STANDARD",
-                    "effectiveDate": "2026-04-07",
-                    "lines": [
-                      {
-                        "accountCode": "1000",
-                        "side": "DEBIT",
-                        "amount": {
-                          "currencyCode": "EUR",
-                          "minorUnits": "1000"
-                        }
-                      },
-	                    {
-	                      "accountCode": "2000",
-	                      "side": "CREDIT",
-	                      "amount": {
-	                        "currencyCode": "EUR",
-	                        "minorUnits": "1000"
-	                      }
-	                    }
-	                  ],
-	                  "evidence": {
-	                    "sourceDocuments": [
-	                      {
-	                        "sourceDocumentId": "document-idem-assertion",
-	                        "sourceDocumentType": "invoice"
-	                      }
-	                    ],
-	                    "approvals": []
-	                  },
-	                  "provenance": {
-	                    "actorId": "agent-1",
-	                    "actorType": "AGENT",
-                      "commandId": "command-1",
-                      "idempotencyKey": "idem-assertion",
-                      "causationId": "cause-1"
-                    }
-                  }
+                  "posting": %s
                 },
                 {
                   "stepId": "assert-cash",
@@ -113,6 +77,25 @@ class LedgerPlanFuzzAssertionsTest {
                     declareOrdinaryAccountStepJson(
                             "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
                         .indent(16)
+                        .stripLeading(),
+                    cashRevenueRequestJson(
+                            new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                                "2026-04-07",
+                                "1000",
+                                "2000",
+                                "EUR",
+                                "1000",
+                                new CliFuzzHarnessTestSupport.RequestContext(
+                                    "document-idem-assertion",
+                                    "invoice",
+                                    "2026-04-07",
+                                    "agent-1",
+                                    "AGENT",
+                                    "command-1",
+                                    "idem-assertion",
+                                    "cause-1",
+                                    null)))
+                        .indent(20)
                         .stripLeading())
                 .getBytes(UTF_8));
 
@@ -621,44 +604,7 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "stepId": "post-sale",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  },
-	                  {
-	                    "accountCode": "2000",
-	                    "side": "CREDIT",
-	                    "amount": {
-	                      "currencyCode": "EUR",
-	                      "minorUnits": "1000"
-	                    }
-	                  }
-	                ],
-	                "evidence": {
-	                  "sourceDocuments": [
-	                    {
-	                      "sourceDocumentId": "document-idem-query-1",
-	                      "sourceDocumentType": "invoice"
-	                    }
-	                  ],
-	                  "approvals": []
-	                },
-	                "provenance": {
-	                  "actorId": "agent-1",
-	                  "actorType": "AGENT",
-                  "commandId": "command-query-1",
-                  "idempotencyKey": "idem-query-1",
-                  "causationId": "cause-query-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "page-accounts",
@@ -685,6 +631,25 @@ class LedgerPlanFuzzAssertionsTest {
             declareOrdinaryAccountStepJson(
                     "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                        "2026-04-07",
+                        "1000",
+                        "2000",
+                        "EUR",
+                        "1000",
+                        new CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-query-1",
+                            "invoice",
+                            "2026-04-07",
+                            "agent-1",
+                            "AGENT",
+                            "command-query-1",
+                            "idem-query-1",
+                            "cause-query-1",
+                            null)))
+                .indent(16)
                 .stripLeading());
   }
 
@@ -703,86 +668,12 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "stepId": "preflight-sale",
               "kind": "preflight-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  },
-	                  {
-	                    "accountCode": "2000",
-	                    "side": "CREDIT",
-	                    "amount": {
-	                      "currencyCode": "EUR",
-	                      "minorUnits": "1000"
-	                    }
-	                  }
-	                ],
-	                "evidence": {
-	                  "sourceDocuments": [
-	                    {
-	                      "sourceDocumentId": "document-idem-spectrum-1",
-	                      "sourceDocumentType": "invoice"
-	                    }
-	                  ],
-	                  "approvals": []
-	                },
-	                "provenance": {
-	                  "actorId": "agent-1",
-	                  "actorType": "AGENT",
-                  "commandId": "command-spectrum-1",
-                  "idempotencyKey": "idem-spectrum-1",
-                  "causationId": "cause-spectrum-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "post-sale",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  },
-	                  {
-	                    "accountCode": "2000",
-	                    "side": "CREDIT",
-	                    "amount": {
-	                      "currencyCode": "EUR",
-	                      "minorUnits": "1000"
-	                    }
-	                  }
-	                ],
-	                "evidence": {
-	                  "sourceDocuments": [
-	                    {
-	                      "sourceDocumentId": "document-idem-spectrum-2",
-	                      "sourceDocumentType": "invoice"
-	                    }
-	                  ],
-	                  "approvals": []
-	                },
-	                "provenance": {
-	                  "actorId": "agent-1",
-	                  "actorType": "AGENT",
-                  "commandId": "command-spectrum-2",
-                  "idempotencyKey": "idem-spectrum-2",
-                  "causationId": "cause-spectrum-2"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "inspect-book",
@@ -842,6 +733,44 @@ class LedgerPlanFuzzAssertionsTest {
             declareOrdinaryAccountStepJson(
                     "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                        "2026-04-07",
+                        "1000",
+                        "2000",
+                        "EUR",
+                        "1000",
+                        new CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-spectrum-1",
+                            "invoice",
+                            "2026-04-07",
+                            "agent-1",
+                            "AGENT",
+                            "command-spectrum-1",
+                            "idem-spectrum-1",
+                            "cause-spectrum-1",
+                            null)))
+                .indent(16)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                        "2026-04-07",
+                        "1000",
+                        "2000",
+                        "EUR",
+                        "1000",
+                        new CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-spectrum-2",
+                            "invoice",
+                            "2026-04-07",
+                            "agent-1",
+                            "AGENT",
+                            "command-spectrum-2",
+                            "idem-spectrum-2",
+                            "cause-spectrum-2",
+                            null)))
+                .indent(16)
                 .stripLeading());
   }
 
@@ -865,11 +794,10 @@ class LedgerPlanFuzzAssertionsTest {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
           "ownerModel": "MULTI_OWNER",
-          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-          "businessActivityTags": ["translation-services"],
+                    "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
-          "accountingBasis": "ACCRUAL"
+          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
         }
         """
         .formatted(functionalCurrency)

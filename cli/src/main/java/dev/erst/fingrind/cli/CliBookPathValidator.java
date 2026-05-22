@@ -97,37 +97,37 @@ final class CliBookPathValidator {
     Path normalizedBackupBookKeyFilePath = backupBookKeyFilePath.toAbsolutePath();
     if (normalizedBookFilePath.equals(normalizedBackupFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BACKUP_FILE_OUT,
           ProtocolOptions.BOOK_FILE
               + " and "
-              + ProtocolOptions.BACKUP_FILE
+              + ProtocolOptions.BACKUP_FILE_OUT
               + " must not point to the same path.");
     }
     if (normalizedBackupFilePath.equals(normalizedBackupBookKeyFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
-          ProtocolOptions.BACKUP_FILE
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
+          ProtocolOptions.BACKUP_FILE_OUT
               + " and "
-              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT
               + " must not point to the same path.");
     }
     Optional<Path> keyFilePath = keyFilePath(passphraseSource);
     if (keyFilePath.isPresent()
         && keyFilePath.orElseThrow().toAbsolutePath().equals(normalizedBackupFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BACKUP_FILE_OUT,
           ProtocolOptions.BOOK_KEY_FILE
               + " and "
-              + ProtocolOptions.BACKUP_FILE
+              + ProtocolOptions.BACKUP_FILE_OUT
               + " must not point to the same path.");
     }
     if (keyFilePath.isPresent()
         && keyFilePath.orElseThrow().toAbsolutePath().equals(normalizedBackupBookKeyFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
           ProtocolOptions.BOOK_KEY_FILE
               + " and "
-              + ProtocolOptions.BACKUP_BOOK_KEY_FILE
+              + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT
               + " must not point to the same path.");
     }
   }

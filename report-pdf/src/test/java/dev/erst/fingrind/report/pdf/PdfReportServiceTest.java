@@ -29,8 +29,8 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -39,6 +39,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -58,7 +59,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -67,6 +67,7 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.StorageLocator;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -84,21 +85,22 @@ import org.junit.jupiter.api.Test;
 
 /** Tests for {@link PdfReportService}. */
 class PdfReportServiceTest {
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.43.0", CLOCK);
+      new PdfReportService("FinGrind", "0.44.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(
               new BookEntityName("Acme Studio"),
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
-              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
-          AccountingBasis.ACCRUAL);
+          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -120,7 +122,7 @@ class PdfReportServiceTest {
                     balance("USD", "500.00", "100.00", "400.00", BalanceSide.DEBIT))));
     byte[] trialBalancePdf =
         PDF_REPORT_SERVICE.renderTrialBalance(
-            new TrialBalanceReport(
+            trialBalanceReport(
                 BOOK_IDENTITY,
                 Optional.of(LocalDate.parse("2026-04-30")),
                 EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
@@ -144,9 +146,7 @@ class PdfReportServiceTest {
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
     assertTrue(trialBalanceText.contains("Company / Multi Owner"));
-    assertTrue(trialBalanceText.contains("Internal Management Only"));
-    assertFalse(trialBalanceText.contains("Internal Management Only / Unspecified"));
-    assertTrue(trialBalanceText.contains("Accrual"));
+    assertTrue(trialBalanceText.contains("Internal Management Single Entity V1"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
@@ -526,7 +526,7 @@ class PdfReportServiceTest {
   @Test
   void renderComparativeBranchesWhenComparativesAreOmittedOrPartiallyPresent() throws IOException {
     TrialBalanceReport trialBalanceWithoutComparatives =
-        new TrialBalanceReport(
+        trialBalanceReport(
             BOOK_IDENTITY,
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
@@ -709,10 +709,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.43.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.44.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.43.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.44.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -729,7 +729,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.43.0", information.getCreator());
+      assertEquals("FinGrind 0.44.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -819,7 +819,12 @@ class PdfReportServiceTest {
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
+                new SourceDocumentId("document-" + token),
+                new SourceDocumentType("invoice"),
+                LocalDate.parse("2026-04-19"),
+                Instant.parse("2026-04-19T10:15:30Z"),
+                new StorageLocator("evidence://documents/document-" + token + ".pdf"),
+                new ContentSha256(DOCUMENT_SHA256))),
         List.of());
   }
 
@@ -895,30 +900,87 @@ class PdfReportServiceTest {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OWNER_CAPITAL),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
     };
+  }
+
+  private static TrialBalanceReport trialBalanceReport(
+      BookIdentity bookIdentity,
+      Optional<LocalDate> effectiveDateTo,
+      EffectiveDateRange comparativeEffectiveDateRange,
+      PostingCoverage postingCoverage,
+      List<TrialBalanceRow> rows,
+      List<TrialBalanceRow> comparativeRows) {
+    List<CurrencyBalance> totals = trialBalanceTotals(rows);
+    List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
+    return new TrialBalanceReport(
+        bookIdentity,
+        effectiveDateTo,
+        comparativeEffectiveDateRange,
+        postingCoverage,
+        rows,
+        totals,
+        isBalanced(totals),
+        comparativeRows,
+        comparativeTotals,
+        isBalanced(comparativeTotals));
+  }
+
+  private static List<CurrencyBalance> trialBalanceTotals(List<TrialBalanceRow> rows) {
+    List<CurrencyBalance> totalsByCurrency = new ArrayList<>();
+    for (TrialBalanceRow row : rows) {
+      mergeCurrencyBalance(totalsByCurrency, row.balance());
+    }
+    return List.copyOf(totalsByCurrency);
+  }
+
+  private static CurrencyBalance sumCurrencyBalances(CurrencyBalance left, CurrencyBalance right) {
+    return CurrencyBalance.ofTotals(
+        left.debitTotal().plus(right.debitTotal()), left.creditTotal().plus(right.creditTotal()));
+  }
+
+  private static boolean isBalanced(List<CurrencyBalance> totals) {
+    return totals.stream().allMatch(balance -> balance.balanceSide() == BalanceSide.ZERO);
+  }
+
+  private static void mergeCurrencyBalance(
+      List<CurrencyBalance> totalsByCurrency, CurrencyBalance candidate) {
+    CurrencyUnit currencyUnit = candidate.debitTotal().currencyUnit();
+    for (int index = 0; index < totalsByCurrency.size(); index++) {
+      CurrencyBalance existing = totalsByCurrency.get(index);
+      if (existing.debitTotal().currencyUnit().equals(currencyUnit)) {
+        totalsByCurrency.set(index, sumCurrencyBalances(existing, candidate));
+        return;
+      }
+    }
+    totalsByCurrency.add(candidate);
   }
 
   private static CurrencyBalance balance(

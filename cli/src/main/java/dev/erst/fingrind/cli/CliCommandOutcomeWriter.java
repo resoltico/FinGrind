@@ -27,6 +27,6 @@ final class CliCommandOutcomeWriter {
   static int writeDeterministicFailure(
       ContractFailure failure, OutputMode outputMode, CliResponseWriter responseWriter) {
     responseWriter.writeDeterministicFailure(CliFailureMapper.contractFailure(failure), outputMode);
-    return CliExecutionPolicy.deterministicFailureExitCode();
+    return CliExecutionPolicy.contractFailureExitCode(failure);
   }
 }

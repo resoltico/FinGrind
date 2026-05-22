@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
@@ -72,15 +71,15 @@ final class SqliteStatementQueries {
   }
 
   private record BookIdentityCoreRow(
-      String entityName, String functionalCurrencyCode, String fiscalYearStart) {}
+      String entityName,
+      String functionalCurrencyCode,
+      int fiscalYearStartMonth,
+      int fiscalYearStartDay) {}
 
   private record EntityProfileRow(
-      String entityForm,
-      String ownerModel,
-      String reportingObligationStatus,
-      String businessActivityTags) {}
+      String entityForm, String ownerModel, String businessActivityTags) {}
 
-  private record BookPolicyRow(String accountingBasis) {}
+  private record BookPolicyRow(String policyProfile) {}
 
   private SqliteStatementQueries() {}
 
@@ -228,12 +227,10 @@ final class SqliteStatementQueries {
                 new BookEntityName(coreRow.entityName()),
                 EntityForm.fromWireValue(entityProfileRow.entityForm()),
                 OwnerModel.fromWireValue(entityProfileRow.ownerModel()),
-                ReportingObligationStatus.fromWireValue(
-                    entityProfileRow.reportingObligationStatus()),
                 decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
-            FiscalYearStart.parse(coreRow.fiscalYearStart()),
-            AccountingBasis.fromWireValue(bookPolicyRow.accountingBasis())));
+            new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay()),
+            AccountingPolicyProfile.fromWireValue(bookPolicyRow.policyProfile())));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {
@@ -317,7 +314,8 @@ final class SqliteStatementQueries {
               new BookIdentityCoreRow(
                   SqlitePostingMapper.requiredText(statement, 0),
                   SqlitePostingMapper.requiredText(statement, 1),
-                  SqlitePostingMapper.requiredText(statement, 2));
+                  SqlitePostingMapper.requiredInt(statement, 2),
+                  SqlitePostingMapper.requiredInt(statement, 3));
           if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite book identity core query returned more than one row.");
@@ -339,8 +337,7 @@ final class SqliteStatementQueries {
               new EntityProfileRow(
                   SqlitePostingMapper.requiredText(statement, 0),
                   SqlitePostingMapper.requiredText(statement, 1),
-                  SqlitePostingMapper.requiredText(statement, 2),
-                  SqlitePostingMapper.requiredText(statement, 3));
+                  SqlitePostingMapper.requiredText(statement, 2));
           if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite entity profile query returned more than one row.");

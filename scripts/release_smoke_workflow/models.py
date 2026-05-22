@@ -42,11 +42,10 @@ class ReleaseSmokeConfig:
     entity_name: str
     entity_form: str
     owner_model: str
-    reporting_obligation_status: str
     business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
-    accounting_basis: str
+    policy_profile: str
 
 
 @dataclass(frozen=True)
@@ -67,11 +66,10 @@ class ReleaseSmokeScenario:
     entity_name: str
     entity_form: str
     owner_model: str
-    reporting_obligation_status: str
     business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
-    accounting_basis: str
+    policy_profile: str
 
 
 class ReleaseSmokeFailure(RuntimeError):

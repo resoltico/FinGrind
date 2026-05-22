@@ -376,8 +376,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void postingReader_accountBalanceOrdersCurrencyBucketsByCurrencyCode() {
-    Path bookPath = tempDirectory.resolve("posting-reader-account-balance-order.sqlite");
+  void postingReader_accountBalanceReturnsOnlyTheFunctionalCurrencyBucket() {
+    Path bookPath =
+        tempDirectory.resolve("posting-reader-account-balance-functional-currency.sqlite");
     initializeBookOnDisk(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
@@ -385,16 +386,13 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           insertPostingFactRow(database, "posting-eur", "idem-eur");
           insertJournalLineRow(database, "posting-eur", 0, "1000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(database, "posting-eur", 1, "2000", "CREDIT", "EUR", 1000);
-          insertPostingFactRow(database, "posting-usd", "idem-usd");
-          insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 500);
-          insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 500);
 
           RegisteredAccount cashAccount =
               SqliteStatementQueries.findOneAccount(database, new AccountCode("1000"))
                   .orElseThrow();
 
           assertEquals(
-              List.of("EUR", "USD"),
+              List.of("EUR"),
               new SqlitePostingReader()
                       .accountBalance(
                           database,

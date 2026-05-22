@@ -137,6 +137,10 @@ final class CliFailureOutputRenderer {
           appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.ParentAccountTypeConflictDetails details ->
           appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ParentAccountRoleConflictDetails details ->
+          appendAccountRejectionDetails(rows, details);
+      case CliRejectionJsonModels.ParentAccountNodeKindDetails details ->
+          appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details ->
           appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
@@ -188,7 +192,15 @@ final class CliFailureOutputRenderer {
               List.of(
                   "Violations",
                   violations.violations().stream()
-                      .map(violation -> violation.code() + " (" + violation.accountCode() + ")")
+                      .map(
+                          violation ->
+                              violation.code()
+                                  + " ("
+                                  + violation.accountCode()
+                                  + (violation.accountNodeKind() == null
+                                      ? ""
+                                      : ", " + violation.accountNodeKind())
+                                  + ")")
                       .collect(java.util.stream.Collectors.joining(", "))));
       case CliRejectionJsonModels.PriorPostingDetails details ->
           rows.add(List.of("Prior posting id", details.priorPostingId()));
@@ -240,6 +252,17 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Requested account type", details.requestedAccountType()));
         rows.add(List.of("Parent account code", details.parentAccountCode()));
         rows.add(List.of("Parent account type", details.parentAccountType()));
+      }
+      case CliRejectionJsonModels.ParentAccountRoleConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Requested account role", details.requestedAccountRole()));
+        rows.add(List.of("Parent account code", details.parentAccountCode()));
+        rows.add(List.of("Parent account role", details.parentAccountRole()));
+      }
+      case CliRejectionJsonModels.ParentAccountNodeKindDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Parent account code", details.parentAccountCode()));
+        rows.add(List.of("Parent account node kind", details.parentAccountNodeKind()));
       }
       case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
@@ -344,6 +367,7 @@ final class CliFailureOutputRenderer {
       List<List<String>> rows,
       String labelPrefix,
       CliRejectionJsonModels.AccountTaxonomyDetails details) {
+    rows.add(List.of(labelPrefix + " account node kind", details.accountNodeKind()));
     rows.add(
         List.of(
             labelPrefix + " parent account",

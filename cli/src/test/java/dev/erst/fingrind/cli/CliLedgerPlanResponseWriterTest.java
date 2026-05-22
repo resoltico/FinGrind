@@ -39,11 +39,23 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             startedAt,
             finishedAt,
             List.of(
-                LedgerFact.text("accountCode", "1000"),
+                LedgerFact.group(
+                    "account",
+                    List.of(
+                        LedgerFact.text("accountCode", "1000"),
+                        LedgerFact.text("accountName", "Cash"),
+                        LedgerFact.text("accountType", "ASSET"),
+                        LedgerFact.text("accountRole", "ORDINARY"),
+                        LedgerFact.text("accountNodeKind", "POSTABLE"),
+                        LedgerFact.text("normalBalance", "DEBIT"),
+                        LedgerFact.flag("active", true),
+                        LedgerFact.text("declaredAt", "2026-04-07T10:15:30Z"))),
                 LedgerFact.count("bucketCount", 1),
                 LedgerFact.group(
                     "balance",
                     List.of(
+                        LedgerFact.money("debitTotal", new MonetaryAmount("EUR", "1000")),
+                        LedgerFact.money("creditTotal", new MonetaryAmount("EUR", "0")),
                         LedgerFact.money("netAmount", new MonetaryAmount("EUR", "1000")),
                         LedgerFact.text("balanceSide", "DEBIT")))));
     responseWriter.writeLedgerPlanResult(
@@ -51,19 +63,16 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             planId("plan-1"),
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(balanceEntry))),
         PlanResultDetail.FULL);
-    JsonNode facts =
-        readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("facts");
-    assertEquals("text", facts.get(0).path("kind").stringValue());
-    assertEquals("accountCode", facts.get(0).path("name").stringValue());
-    assertEquals("1000", facts.get(0).path("value").stringValue());
-    assertEquals("count", facts.get(1).path("kind").stringValue());
-    assertEquals(1, facts.get(1).path("value").asInt());
-    assertEquals("group", facts.get(2).path("kind").stringValue());
-    assertEquals("balance", facts.get(2).path("name").stringValue());
-    assertEquals("money", facts.get(2).path("facts").get(0).path("kind").stringValue());
-    assertEquals("netAmount", facts.get(2).path("facts").get(0).path("name").stringValue());
+    JsonNode data =
+        readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("data");
+    assertEquals("1000", data.path("account").path("accountCode").stringValue());
+    assertEquals("Cash", data.path("account").path("accountName").stringValue());
+    assertEquals(1, data.path("bucketCount").asInt());
     assertEquals(
-        "1000", facts.get(2).path("facts").get(0).path("value").path("minorUnits").stringValue());
+        "1000", data.path("balances").get(0).path("debitTotal").path("minorUnits").stringValue());
+    assertEquals(
+        "1000", data.path("balances").get(0).path("netAmount").path("minorUnits").stringValue());
+    assertEquals("DEBIT", data.path("balances").get(0).path("balanceSide").stringValue());
   }
 
   @Test

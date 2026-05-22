@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-06-12",
   "lines": [
@@ -23,7 +24,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-posting-jpy-idem-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-06-12",
+        "capturedAt": "2026-06-12T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-seed-posting-jpy-idem-1",
+        "contentSha256": "6d31ba16c68f33b5964903b4213100766fa5c0ba08f2f957a945cac56713dbb7"
       }
     ],
     "approvals": []

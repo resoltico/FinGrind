@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -26,43 +27,24 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     actor_prefix = config.actor_prefix
     write_json(
         config.request_sale.local_path,
-        {
-            "postingKind": "STANDARD",
-            "effectiveDate": "2026-04-07",
-            "lines": [
-                {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000",
-                    },
-                },
-                {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000",
-                    },
-                },
-            ],
-            "evidence": posting_evidence(actor_prefix, "sale"),
-            "provenance": {
-                "actorId": actor_prefix,
-                "actorType": "AGENT",
-                "commandId": actor_prefix + "-sale",
-                "idempotencyKey": actor_prefix + "-idem-1",
-                "causationId": actor_prefix + "-cause-1",
-            },
-        },
+        cash_revenue_request(
+            actor_prefix=actor_prefix,
+            effective_date="2026-04-07",
+            cash_account_code="1000",
+            revenue_account_code="2000",
+            minor_units="1000",
+            evidence_suffix="sale",
+            command_suffix="sale",
+            idempotency_suffix="idem-1",
+            causation_suffix="cause-1",
+        ),
     )
     write_json(
         config.request_adjustment.local_path,
-        {
-            "postingKind": "STANDARD",
-            "effectiveDate": "2026-04-08",
-            "lines": [
+        manual_adjustment_request(
+            actor_prefix=actor_prefix,
+            effective_date="2026-04-08",
+            lines=[
                 {
                     "accountCode": "1000",
                     "side": "CREDIT",
@@ -80,50 +62,46 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
                     },
                 },
             ],
-            "evidence": posting_evidence(actor_prefix, "adjustment"),
-            "provenance": {
-                "actorId": actor_prefix,
-                "actorType": "AGENT",
-                "commandId": actor_prefix + "-adjustment",
-                "idempotencyKey": actor_prefix + "-idem-2",
-                "causationId": actor_prefix + "-cause-2",
-            },
-        },
+            evidence_suffix="adjustment",
+            command_suffix="adjustment",
+            idempotency_suffix="idem-2",
+            causation_suffix="cause-2",
+        ),
     )
     write_json(
         config.invalid_request.local_path,
-        {
-            "accountCode": "1000",
-            "accountName": "Cash",
-            "accountType": "ASSET",
-            "accountRole": "ORDINARY",
-            "financialPositionLineClassification": "CURRENT_ASSET",
-            "profitAndLossLineClassification": None,
-            "nonsenseOne": "unexpected",
-            "nonsenseTwo": "unexpected",
-        },
+        declare_account_request(
+            account_code="1000",
+            account_name="Cash",
+            account_type="ASSET",
+            account_role="ORDINARY",
+            account_node_kind="POSTABLE",
+            financial_position_line_classification="CURRENT_ASSET",
+            nonsense_one="unexpected",
+            nonsense_two="unexpected",
+        ),
     )
     write_json(
         config.declare_cash.local_path,
-        {
-            "accountCode": "1000",
-            "accountName": "Cash",
-            "accountType": "ASSET",
-            "accountRole": "ORDINARY",
-            "financialPositionLineClassification": "CURRENT_ASSET",
-            "profitAndLossLineClassification": None,
-        },
+        declare_account_request(
+            account_code="1000",
+            account_name="Cash",
+            account_type="ASSET",
+            account_role="ORDINARY",
+            account_node_kind="POSTABLE",
+            financial_position_line_classification="CURRENT_ASSET",
+        ),
     )
     write_json(
         config.declare_revenue.local_path,
-        {
-            "accountCode": "2000",
-            "accountName": "Revenue",
-            "accountType": "REVENUE",
-            "accountRole": "ORDINARY",
-            "financialPositionLineClassification": None,
-            "profitAndLossLineClassification": "OPERATING_REVENUE",
-        },
+        declare_account_request(
+            account_code="2000",
+            account_name="Revenue",
+            account_type="REVENUE",
+            account_role="ORDINARY",
+            account_node_kind="POSTABLE",
+            profit_and_loss_line_classification="OPERATING_REVENUE",
+        ),
     )
 
 
@@ -131,13 +109,120 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def posting_evidence(actor_prefix: str, evidence_suffix: str) -> dict[str, Any]:
+def cash_revenue_request(
+    *,
+    actor_prefix: str,
+    effective_date: str,
+    cash_account_code: str,
+    revenue_account_code: str,
+    minor_units: str,
+    evidence_suffix: str,
+    command_suffix: str,
+    idempotency_suffix: str,
+    causation_suffix: str,
+) -> dict[str, Any]:
     return {
-        "sourceDocuments": [
-            {
-                "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
-                "sourceDocumentType": "invoice",
-            }
-        ],
+        "entryKind": "CASH_REVENUE",
+        "effectiveDate": effective_date,
+        "cashAccountCode": cash_account_code,
+        "revenueAccountCode": revenue_account_code,
+        "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": minor_units,
+        },
+        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "provenance": posting_provenance(
+            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+        ),
+    }
+
+
+def manual_adjustment_request(
+    *,
+    actor_prefix: str,
+    effective_date: str,
+    lines: list[dict[str, Any]],
+    evidence_suffix: str,
+    command_suffix: str,
+    idempotency_suffix: str,
+    causation_suffix: str,
+) -> dict[str, Any]:
+    return {
+        "entryKind": "MANUAL_ADJUSTMENT",
+        "postingKind": "STANDARD",
+        "effectiveDate": effective_date,
+        "lines": lines,
+        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "provenance": posting_provenance(
+            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+        ),
+    }
+
+
+def declare_account_request(
+    *,
+    account_code: str,
+    account_name: str,
+    account_type: str,
+    account_role: str,
+    account_node_kind: str,
+    financial_position_line_classification: str | None = None,
+    profit_and_loss_line_classification: str | None = None,
+    nonsense_one: str | None = None,
+    nonsense_two: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "accountCode": account_code,
+        "accountName": account_name,
+        "accountType": account_type,
+        "accountRole": account_role,
+        "accountNodeKind": account_node_kind,
+    }
+    if financial_position_line_classification is not None:
+        payload["financialPositionLineClassification"] = financial_position_line_classification
+    if profit_and_loss_line_classification is not None:
+        payload["profitAndLossLineClassification"] = profit_and_loss_line_classification
+    if nonsense_one is not None:
+        payload["nonsenseOne"] = nonsense_one
+    if nonsense_two is not None:
+        payload["nonsenseTwo"] = nonsense_two
+    return payload
+
+
+def posting_evidence(actor_prefix: str, evidence_suffix: str, document_date: str) -> dict[str, Any]:
+    return {
+        "sourceDocuments": [retained_source_document(actor_prefix, evidence_suffix, document_date)],
         "approvals": [],
     }
+
+
+def retained_source_document(
+    actor_prefix: str, evidence_suffix: str, document_date: str
+) -> dict[str, str]:
+    return {
+        "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
+        "sourceDocumentType": "invoice",
+        "documentDate": document_date,
+        "capturedAt": f"{document_date}T10:15:30Z",
+        "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",
+        "contentSha256": evidence_digest(actor_prefix, evidence_suffix),
+    }
+
+
+def posting_provenance(
+    actor_prefix: str,
+    command_suffix: str,
+    idempotency_suffix: str,
+    causation_suffix: str,
+) -> dict[str, str]:
+    return {
+        "actorId": actor_prefix,
+        "actorType": "AGENT",
+        "commandId": actor_prefix + "-" + command_suffix,
+        "idempotencyKey": actor_prefix + "-" + idempotency_suffix,
+        "causationId": actor_prefix + "-" + causation_suffix,
+    }
+
+
+def evidence_digest(actor_prefix: str, evidence_suffix: str) -> str:
+    return sha256(f"sha256-{actor_prefix}-{evidence_suffix}".encode("utf-8")).hexdigest()

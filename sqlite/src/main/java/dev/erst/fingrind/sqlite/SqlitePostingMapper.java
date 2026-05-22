@@ -2,18 +2,21 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -29,6 +32,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
@@ -51,6 +55,8 @@ final class SqlitePostingMapper {
         AccountType.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_TYPE)),
         AccountRole.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_ROLE)),
         new AccountTaxonomy(
+            AccountNodeKind.fromWireValue(
+                requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NODE_KIND)),
             optionalText(accountRow, SqlitePostingSql.COL_ACCOUNT_PARENT_ACCOUNT_CODE)
                 .map(AccountCode::new),
             optionalText(
@@ -148,7 +154,18 @@ final class SqlitePostingMapper {
               new SourceDocumentId(
                   requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_ID)),
               new SourceDocumentType(
-                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_TYPE))));
+                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_TYPE)),
+              LocalDate.parse(
+                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_DATE)),
+              Instant.parse(
+                  requiredText(
+                      sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_CAPTURED_AT)),
+              new StorageLocator(
+                  requiredText(
+                      sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_STORAGE_LOCATOR)),
+              new ContentSha256(
+                  requiredText(
+                      sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_CONTENT_SHA256))));
     }
     return List.copyOf(sourceDocuments);
   }
@@ -159,7 +176,13 @@ final class SqlitePostingMapper {
       approvals.add(
           new ApprovalReference(
               new ApprovalId(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_ID)),
-              new ApprovalType(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_TYPE))));
+              new ApprovalType(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_TYPE)),
+              new ActorId(requiredText(approvalRows, SqlitePostingSql.COL_APPROVER_ID)),
+              ActorType.fromWireValue(
+                  requiredText(approvalRows, SqlitePostingSql.COL_APPROVER_TYPE)),
+              ApprovalDecision.fromWireValue(
+                  requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_DECISION)),
+              Instant.parse(requiredText(approvalRows, SqlitePostingSql.COL_APPROVED_AT))));
     }
     return List.copyOf(approvals);
   }

@@ -1,29 +1,21 @@
 {
-  "postingKind": "STANDARD",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-06-11",
-  "lines": [
-    {
-      "accountCode": "1120",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "BHD",
-        "minorUnits": "1250"
-      }
-    },
-    {
-      "accountCode": "2120",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "BHD",
-        "minorUnits": "1250"
-      }
-    }
-  ],
+  "cashAccountCode": "1120",
+  "revenueAccountCode": "2120",
+  "amount": {
+    "currencyCode": "BHD",
+    "minorUnits": "1250"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-cli-bhd-idem-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-06-11",
+        "capturedAt": "2026-06-11T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-seed-cli-bhd-idem-1",
+        "contentSha256": "6ade076483a6048016ec942f91673a18069acd46831531a19cbe3e378d3f7219"
       }
     ],
     "approvals": []

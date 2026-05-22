@@ -1,6 +1,7 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.canonicalOpenBookJson;
+import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.cashRevenueRequestJson;
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
 
 import dev.erst.fingrind.core.AccountType;
@@ -23,44 +24,7 @@ final class JazzerReplayLedgerPlanFixtures {
             {
               "stepId": "post-sale",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  }
-                ],
-                "evidence": {
-                  "sourceDocuments": [
-                    {
-                      "sourceDocumentId": "document-idem-plan-1",
-                      "sourceDocumentType": "invoice"
-                    }
-                  ],
-                  "approvals": []
-                },
-                "provenance": {
-                  "actorId": "agent-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-1",
-                  "idempotencyKey": "idem-plan-1",
-                  "causationId": "cause-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "assert-cash",
@@ -86,6 +50,25 @@ final class JazzerReplayLedgerPlanFixtures {
             declareOrdinaryAccountStepJson(
                     "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                        "2026-04-07",
+                        "1000",
+                        "2000",
+                        "EUR",
+                        "1000",
+                        new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-plan-1",
+                            "invoice",
+                            "2026-04-07",
+                            "agent-1",
+                            "AGENT",
+                            "command-1",
+                            "idem-plan-1",
+                            "cause-1",
+                            null)))
+                .indent(16)
                 .stripLeading());
   }
 
@@ -104,44 +87,7 @@ final class JazzerReplayLedgerPlanFixtures {
             {
               "stepId": "post-sale",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "EUR",
-                      "minorUnits": "1000"
-                    }
-                  }
-                ],
-                "evidence": {
-                  "sourceDocuments": [
-                    {
-                      "sourceDocumentId": "document-idem-query-1",
-                      "sourceDocumentType": "invoice"
-                    }
-                  ],
-                  "approvals": []
-                },
-                "provenance": {
-                  "actorId": "agent-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-query-1",
-                  "idempotencyKey": "idem-query-1",
-                  "causationId": "cause-query-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "page-accounts",
@@ -168,6 +114,25 @@ final class JazzerReplayLedgerPlanFixtures {
             declareOrdinaryAccountStepJson(
                     "declare-revenue", "2000", "Revenue", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                        "2026-04-07",
+                        "1000",
+                        "2000",
+                        "EUR",
+                        "1000",
+                        new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-query-1",
+                            "invoice",
+                            "2026-04-07",
+                            "agent-1",
+                            "AGENT",
+                            "command-query-1",
+                            "idem-query-1",
+                            "cause-query-1",
+                            null)))
+                .indent(16)
                 .stripLeading());
   }
 

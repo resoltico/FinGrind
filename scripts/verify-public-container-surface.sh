@@ -30,11 +30,10 @@ readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
 readonly fixture_entity_name='Release Protocol Fixture'
 readonly fixture_entity_form='COMPANY'
 readonly fixture_owner_model='MULTI_OWNER'
-readonly fixture_reporting_obligation_status='INTERNAL_MANAGEMENT_ONLY'
 readonly fixture_business_activity_tag='consulting-services'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
-readonly fixture_accounting_basis='ACCRUAL'
+readonly fixture_policy_profile='INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1'
 readonly docker_run_user="$(id -u):$(id -g)"
 docker_config_dir=''
 report_root=''
@@ -106,38 +105,36 @@ verify_ref() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-cash.json" <<'JSON'
-{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
+{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
-{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","financialPositionLineClassification":null,"profitAndLossLineClassification":"OPERATING_REVENUE"}
+{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":null,"profitAndLossLineClassification":"OPERATING_REVENUE"}
 JSON
 
 cat > "${report_root}/posting.json" <<'JSON'
 {
-  "postingKind": "STANDARD",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "2000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "release-protocol-invoice-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-08",
+        "capturedAt": "2026-04-08T10:15:30Z",
+        "storageLocator": "vault://release-protocol/invoice-1",
+        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       }
     ],
     "approvals": []
   },
-  "lines": [
-    {
-      "accountCode":"1000",
-      "side":"DEBIT",
-      "amount":{"currencyCode":"EUR","minorUnits":"1000"}
-    },
-    {
-      "accountCode":"2000",
-      "side":"CREDIT",
-      "amount":{"currencyCode":"EUR","minorUnits":"1000"}
-    }
-  ],
   "provenance": {
     "actorId": "release-protocol",
     "actorType": "AGENT",
@@ -207,11 +204,10 @@ verify_mounted_book_surface() {
         --entity-name "${fixture_entity_name}" \
         --entity-form "${fixture_entity_form}" \
         --owner-model "${fixture_owner_model}" \
-        --reporting-obligation-status "${fixture_reporting_obligation_status}" \
         --business-activity-tag "${fixture_business_activity_tag}" \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" \
-        --accounting-basis "${fixture_accounting_basis}" >/dev/null
+        --policy-profile "${fixture_policy_profile}" >/dev/null
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
     mounted_container_run "${image_ref}" \
@@ -222,13 +218,13 @@ verify_mounted_book_surface() {
     human_output="$(
         mounted_container_run "${image_ref}" \
             trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
-            --effective-date-to 2026-04-08 --output human | tr -d '\r'
+            --effective-date-as-of 2026-04-08 --output human | tr -d '\r'
     )"
     verify_human_trial_balance "${human_output}"
 
     mounted_container_run "${image_ref}" \
         trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
-        --effective-date-to 2026-04-08 --output human --pdf-out /work/trial-balance.pdf >/dev/null
+        --effective-date-as-of 2026-04-08 --output human --pdf-out /work/trial-balance.pdf >/dev/null
 
     [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
     [[ -r "${pdf_path}" ]] || die \

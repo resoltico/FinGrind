@@ -143,7 +143,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             bookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
-            "--effective-date-to",
+            "--effective-date-as-of",
             "2026-04-08"));
     recordTextFixture(
         recordedFixtures,
@@ -154,7 +154,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             bookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
-            "--effective-date-to",
+            "--effective-date-as-of",
             "2026-04-08",
             "--output",
             "human"));
@@ -243,7 +243,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
         recordedFixtures,
         "protected-book-verification-failed-error.json",
         runJsonCommandExpectingExit(
-            2,
+            6,
             "inspect-book",
             "--book-file",
             brokenBookFile.toString(),
@@ -253,7 +253,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
         recordedFixtures,
         "interactive-prompt-unavailable-error.json",
         runJsonCommandExpectingExit(
-            2, "inspect-book", "--book-file", bookFile.toString(), "--book-passphrase-prompt"));
+            5, "inspect-book", "--book-file", bookFile.toString(), "--book-passphrase-prompt"));
 
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =

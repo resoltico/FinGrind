@@ -57,6 +57,8 @@ final class PostingRejectionDescriptors {
     return switch (Objects.requireNonNull(violation, "violation")) {
       case PostingRejection.UnknownAccount _ -> AccountStateDetailDescriptor.UNKNOWN_ACCOUNT;
       case PostingRejection.InactiveAccount _ -> AccountStateDetailDescriptor.INACTIVE_ACCOUNT;
+      case PostingRejection.NonPostableAccount _ ->
+          AccountStateDetailDescriptor.NON_POSTABLE_ACCOUNT;
     };
   }
 
@@ -235,12 +237,14 @@ final class PostingRejectionDescriptors {
   /** Canonical metadata for nested account-state detail rejections. */
   enum AccountStateDetailDescriptor {
     UNKNOWN_ACCOUNT,
-    INACTIVE_ACCOUNT;
+    INACTIVE_ACCOUNT,
+    NON_POSTABLE_ACCOUNT;
 
     private String code() {
       return switch (this) {
         case UNKNOWN_ACCOUNT -> "unknown-account";
         case INACTIVE_ACCOUNT -> "inactive-account";
+        case NON_POSTABLE_ACCOUNT -> "non-postable-account";
       };
     }
 
@@ -248,6 +252,8 @@ final class PostingRejectionDescriptors {
       return switch (this) {
         case UNKNOWN_ACCOUNT -> "One journal line references an undeclared account.";
         case INACTIVE_ACCOUNT -> "One journal line references an inactive account.";
+        case NON_POSTABLE_ACCOUNT ->
+            "One journal line references a header account that cannot accept direct postings.";
       };
     }
 
@@ -263,6 +269,12 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "accountCode",
                     "Inactive accountCode referenced by one rejected journal line."));
+        case NON_POSTABLE_ACCOUNT ->
+            List.of(
+                detailField(
+                    "accountCode", "Header accountCode referenced by one rejected journal line."),
+                detailField(
+                    "accountNodeKind", "Declared accountNodeKind that forbids direct postings."));
       };
     }
 
@@ -272,7 +284,7 @@ final class PostingRejectionDescriptors {
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return List.of(UNKNOWN_ACCOUNT, INACTIVE_ACCOUNT).stream()
+      return List.of(UNKNOWN_ACCOUNT, INACTIVE_ACCOUNT, NON_POSTABLE_ACCOUNT).stream()
           .map(AccountStateDetailDescriptor::descriptor)
           .toList();
     }

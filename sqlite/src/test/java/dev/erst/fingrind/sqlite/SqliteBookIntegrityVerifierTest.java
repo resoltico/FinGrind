@@ -117,6 +117,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
         });
     assertRejectedPersistedJournal(
         "persisted-journal-mixed-currency.sqlite",
+        """
+        drop trigger journal_line_validate_functional_currency_on_insert
+        """,
         database -> {
           insertPostingFactRow(database, "posting-mixed-currency", "idem-mixed-currency");
           insertJournalLineRow(database, "posting-mixed-currency", 0, "1000", "DEBIT", "EUR", 1000);
@@ -139,6 +142,8 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
+          database.executeStatement(
+              "drop trigger journal_line_validate_functional_currency_on_insert");
           insertPostingFactRow(database, "posting-invalid-currency", "idem-invalid-currency");
           insertJournalLineRow(
               database, "posting-invalid-currency", 0, "1000", "DEBIT", "ZZZ", 1000);
@@ -158,6 +163,20 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           assertTrue(SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(database));
 
           insertPostingFactRow(database, "posting-usd", "idem-usd");
+          SqliteNativeException rejection =
+              assertThrows(
+                  SqliteNativeException.class,
+                  () ->
+                      insertJournalLineRow(
+                          database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000));
+          assertEquals("SQLITE_CONSTRAINT_TRIGGER", rejection.resultName());
+          assertEquals(
+              0,
+              queryInt(
+                  database, "select count(*) from journal_line where posting_id = 'posting-usd'"));
+
+          database.executeStatement(
+              "drop trigger journal_line_validate_functional_currency_on_insert");
           insertJournalLineRow(database, "posting-usd", 0, "1000", "DEBIT", "USD", 1000);
           insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 1000);
 
@@ -499,11 +518,19 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
 
   private void assertRejectedPersistedJournal(
       String filename, SqliteDatabaseAction corruptionAction) {
+    assertRejectedPersistedJournal(filename, "", corruptionAction);
+  }
+
+  private void assertRejectedPersistedJournal(
+      String filename, String preCorruptionSql, SqliteDatabaseAction corruptionAction) {
     Path bookPath = tempDirectory.resolve(filename);
     initializeBookOnDisk(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
+          if (!preCorruptionSql.isBlank()) {
+            database.executeStatement(preCorruptionSql);
+          }
           corruptionAction.run(database);
           assertFalse(SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(database));
         });

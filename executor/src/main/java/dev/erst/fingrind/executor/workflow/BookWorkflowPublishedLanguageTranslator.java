@@ -171,12 +171,9 @@ public final class BookWorkflowPublishedLanguageTranslator {
               BookkeepingPublishedLanguageTranslator.fromPublished(declareAccount.command()));
       case LedgerStep.PreflightEntry preflightEntry ->
           new BookWorkflowStep.PreflightEntry(
-              fromPublished(preflightEntry.stepId()),
-              BookkeepingPublishedLanguageTranslator.fromPublished(preflightEntry.command()));
+              fromPublished(preflightEntry.stepId()), preflightEntry.command());
       case LedgerStep.PostEntry postEntry ->
-          new BookWorkflowStep.PostEntry(
-              fromPublished(postEntry.stepId()),
-              BookkeepingPublishedLanguageTranslator.fromPublished(postEntry.command()));
+          new BookWorkflowStep.PostEntry(fromPublished(postEntry.stepId()), postEntry.command());
       case LedgerStep.InspectBook inspectBook ->
           new BookWorkflowStep.InspectBook(fromPublished(inspectBook.stepId()));
       case LedgerStep.ListAccounts listAccounts ->

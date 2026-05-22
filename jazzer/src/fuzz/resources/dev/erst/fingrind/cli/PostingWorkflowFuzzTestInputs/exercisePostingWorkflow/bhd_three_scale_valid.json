@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-06-13",
   "lines": [
@@ -23,7 +24,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-posting-bhd-idem-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-06-13",
+        "capturedAt": "2026-06-13T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-seed-posting-bhd-idem-1",
+        "contentSha256": "8115b47918a235d8d1863d3d9b4ed700315272454ceb50c9c39ed8e969798425"
       }
     ],
     "approvals": []

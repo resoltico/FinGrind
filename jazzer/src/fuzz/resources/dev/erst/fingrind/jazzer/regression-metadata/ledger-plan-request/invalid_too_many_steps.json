@@ -1,12 +1,12 @@
 {
-  "targetKey" : "ledger-plan-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_too_many_steps.json",
-  "coverageIntent" : "100-step protocol limit rejection",
-  "expectation" : {
-    "outcomeKind" : "expected-invalid",
-    "message" : "Ledger plan must not contain more than 100 steps.",
-    "details" : {
-      "type" : "LEDGER_PLAN_REQUEST_UNPARSED"
+  "targetKey": "ledger-plan-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_too_many_steps.json",
+  "coverageIntent": "100-step protocol limit rejection",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "Ledger plan must not contain more than 100 steps.",
+    "details": {
+      "type": "LEDGER_PLAN_REQUEST_UNPARSED"
     }
   }
 }

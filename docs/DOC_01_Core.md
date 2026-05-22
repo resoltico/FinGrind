@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: CORE
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -124,32 +124,19 @@ public enum OwnerModel implements WireValue
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `ReportingObligationStatus`
+## `AccountingPolicyProfile`
 
-`ReportingObligationStatus` is the neutral reporting-obligation vocabulary attached to one entity
-profile.
-
-```java
-public enum ReportingObligationStatus implements WireValue
-```
-
-- Purpose: publish whether the current book is internal-only, externally reportable, or not yet
-  classified
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `AccountingBasis`
-
-`AccountingBasis` is the explicit recognition premise attached to one book identity.
+`AccountingPolicyProfile` is the canonical persisted bookkeeping-policy profile selected when one
+book is initialized.
 
 ```java
-public enum AccountingBasis implements WireValue {
-  CASH,
-  ACCRUAL
-}
+public enum AccountingPolicyProfile implements WireValue
 ```
 
-- Purpose: make cash-versus-accrual posture explicit at the book boundary
+- Purpose: bind one behavior-owning bookkeeping profile to the book boundary instead of carrying
+  inert reporting or basis labels
+- Current scope: `INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1` for the internal-management single-entity
+  kernel shipped today
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
@@ -192,17 +179,36 @@ public record ApprovalType(String value)
 - Purpose: distinguish approval evidence kinds without inventing adapter-owned enums prematurely
 - Validation: rejects `null`, blank text, and values outside the public approval-type grammar
 
+## `ApprovalDecision`
+
+`ApprovalDecision` is the canonical approval outcome retained as part of posting evidence.
+
+```java
+public enum ApprovalDecision implements WireValue
+```
+
+- Purpose: keep approval outcomes explicit and stable across request, storage, and query surfaces
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
 ## `ApprovalReference`
 
 `ApprovalReference` is the typed evidence link to one approval artifact.
 
 ```java
-public record ApprovalReference(ApprovalId approvalId, ApprovalType approvalType)
+public record ApprovalReference(
+    ApprovalId approvalId,
+    ApprovalType approvalType,
+    ActorId approverId,
+    ActorType approverType,
+    ApprovalDecision decision,
+    Instant approvedAt)
 ```
 
 - Purpose: keep approval evidence structured and durable across request and committed-posting
   surfaces
-- Validation: rejects `null` approval id or approval type
+- Validation: rejects `null` approval id, approval type, approver id, approver type, decision,
+  or approval timestamp
 
 ## `EntityProfile`
 
@@ -210,17 +216,16 @@ public record ApprovalReference(ApprovalId approvalId, ApprovalType approvalType
 
 ```java
 public record EntityProfile(
-    BookEntityName entityName,
+    BookEntityName displayName,
     EntityForm entityForm,
     OwnerModel ownerModel,
-    ReportingObligationStatus reportingObligationStatus,
     List<BusinessActivityTag> businessActivityTags)
 ```
 
-- Purpose: make entity form, ownership, reporting posture, and activity tags explicit inside the
-  current single-entity bookkeeping kernel
-- Validation: rejects `null` entity name, entity form, owner model, reporting status, and
-  activity-tag collections
+- Purpose: make entity form, ownership, and activity tags explicit inside the current
+  single-entity bookkeeping kernel
+- Validation: rejects `null` display name, entity form, owner model, and activity-tag
+  collections
 
 ## `BookIdentity`
 
@@ -231,15 +236,15 @@ public record BookIdentity(
     EntityProfile entityProfile,
     CurrencyUnit functionalCurrency,
     FiscalYearStart fiscalYearStart,
-    AccountingBasis accountingBasis)
+    AccountingPolicyProfile policyProfile)
 ```
 
-- Purpose: couple entity profile, functional currency, fiscal-year anchor, and accounting basis as
+- Purpose: couple entity profile, functional currency, fiscal-year anchor, and policy profile as
   one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` and `entityForm()` keep the most common neutral identity facts
   accessible without unwrapping the full entity profile
 - Validation: rejects `null` entity profile, functional currency, fiscal-year start, and
-  accounting basis
+  policy profile
 
 ## `AccountType`
 
@@ -277,6 +282,19 @@ public enum AccountRole implements WireValue {
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
+## `AccountNodeKind`
+
+`AccountNodeKind` is the canonical hierarchy role for one declared account.
+
+```java
+public enum AccountNodeKind implements WireValue
+```
+
+- Purpose: distinguish roll-up headers from directly postable accounts in the chart hierarchy
+- Surface: `allowsPosting()` and `allowsChildren()` make the hierarchy contract explicit
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
 ## `AccountTaxonomy`
 
 `AccountTaxonomy` is the canonical declaration bundle for chart hierarchy and statement taxonomy on
@@ -284,16 +302,18 @@ one declared account.
 
 ```java
 public record AccountTaxonomy(
+    AccountNodeKind nodeKind,
     Optional<AccountCode> parentAccountCode,
     Optional<FinancialPositionLineClassification> financialPositionLineClassification,
     Optional<ProfitAndLossLineClassification> profitAndLossLineClassification)
 ```
 
-- Purpose: keep hierarchy and report taxonomy on the declared account instead of inferring it from
-  account codes, names, or renderer-local rules
+- Purpose: keep node role, hierarchy, and report taxonomy on the declared account instead of
+  inferring them from account codes, names, or renderer-local rules
 - Validation role: `AccountSemantics.validate(...)` enforces which taxonomy branch must be present
   for each `AccountType`
-- Factory: `empty()` returns the neutral taxonomy before account-type-specific validation applies
+- Factory: `empty()` returns the neutral postable taxonomy before account-type-specific validation
+  applies
 
 ## `FinancialPositionLineClassification`
 
@@ -768,6 +788,29 @@ public record SourceDocumentType(String value)
 - Validation: rejects `null`, blank text, and values outside the public source-document-type
   grammar
 
+## `StorageLocator`
+
+`StorageLocator` is the stable retained locator for one evidence artifact payload.
+
+```java
+public record StorageLocator(String value)
+```
+
+- Purpose: keep evidence retention references explicit without forcing one storage backend into the
+  core model
+- Validation: rejects `null`, blank text, and values longer than the public maximum length
+
+## `ContentSha256`
+
+`ContentSha256` is the canonical lowercase SHA-256 hex digest retained for one evidence artifact.
+
+```java
+public record ContentSha256(String value)
+```
+
+- Purpose: let FinGrind retain verifiable content identity for source documents
+- Validation: rejects `null` and any value outside the 64-character lowercase hex grammar
+
 ## `SourceDocumentReference`
 
 `SourceDocumentReference` is the typed evidence link to one source document.
@@ -775,12 +818,17 @@ public record SourceDocumentType(String value)
 ```java
 public record SourceDocumentReference(
     SourceDocumentId sourceDocumentId,
-    SourceDocumentType sourceDocumentType)
+    SourceDocumentType sourceDocumentType,
+    LocalDate documentDate,
+    Instant capturedAt,
+    StorageLocator storageLocator,
+    ContentSha256 contentSha256)
 ```
 
 - Purpose: keep source-document evidence structured and durable across request and
   committed-posting surfaces
-- Validation: rejects `null` source-document id or source-document type
+- Validation: rejects `null` source-document id, source-document type, document date, capture
+  timestamp, storage locator, or content digest
 
 ## `ReversalReason`
 

@@ -51,7 +51,7 @@ class ProtectedBookFormatContractsTest {
                         """
                         {
                           "applicationId": 1179079236,
-                          "formatVersion": 12,
+                          "formatVersion": 15,
                           "cipher": "chacha20",
                           "legacyMode": "false",
                           "pageSize": 4096,
@@ -75,7 +75,7 @@ class ProtectedBookFormatContractsTest {
                 """
                 {
                   "applicationId": 1179079236,
-                  "formatVersion": 12,
+                  "formatVersion": 15,
                   "cipher": "chacha20",
                   "legacyMode": false,
                   "pageSize": 4096,
@@ -89,7 +89,7 @@ class ProtectedBookFormatContractsTest {
             "/protected-book-format-contract.json");
 
     assertEquals(1_179_079_236, contract.applicationId());
-    assertEquals(12, contract.formatVersion());
+    assertEquals(15, contract.formatVersion());
     assertEquals(BookCipher.CHACHA20, contract.cipher());
     assertFalse(contract.legacyMode());
     assertEquals(4096, contract.pageSize());

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -64,26 +64,34 @@ the raw scaffold bytes directly, `print-request-template` now accepts the reques
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
-- `postingKind` is required and must be `STANDARD` or `OPENING_BALANCE`
-- `lines[].amount` is one exact money object with `currencyCode` and `minorUnits`
-- `lines[].amount.currencyCode` must be one canonical three-letter uppercase ISO 4217 code
+- `entryKind` is required and selects the posting recipe
+- `amount` and `lines[].amount` both use one exact money object with `currencyCode` and `minorUnits`
+- every money-object `currencyCode` must be one canonical three-letter uppercase ISO 4217 code
   supported by FinGrind's pinned currency registry
-- `lines[].amount.minorUnits` must contain ASCII digits only, must not contain redundant leading
+- every money-object `minorUnits` must contain ASCII digits only, must not contain redundant leading
   zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit
   range
-- `lines[].amount` must decode to one strictly positive posted amount
-- `postingKind`, `effectiveDate`, `lines`, `evidence`, and `provenance` are required
-- `lines` must contain at least one journal line
+- every money object must decode to one strictly positive posted amount
+- `effectiveDate`, `evidence`, and `provenance` are required for every entry kind
+- `CASH_REVENUE` requires `cashAccountCode`, `revenueAccountCode`, and `amount`
+- `CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
+- `OWNER_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
+- `OWNER_DRAW` requires `equityAccountCode`, `cashAccountCode`, and `amount`
+- `MANUAL_ADJUSTMENT` requires `postingKind` plus `lines`
+- `MANUAL_ADJUSTMENT.postingKind` must be `STANDARD` or `OPENING_BALANCE`
+- `MANUAL_ADJUSTMENT.lines` must contain at least two journal lines
 - `evidence.sourceDocuments` must contain at least one source-document object
-- every `evidence.sourceDocuments[]` entry requires `sourceDocumentId` and `sourceDocumentType`
+- every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`,
+  `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
 - `evidence.approvals` is required as an array and may be empty
-- every `evidence.approvals[]` entry requires `approvalId` and `approvalType`
+- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`,
+  `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
   letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
-- every entry must contain at least one `DEBIT` line and at least one `CREDIT` line
-- every line inside one entry must share the same `lines[].amount.currencyCode`
-- every line inside one entry must use the selected book's functional currency
-- `reversal` is optional
+- every `MANUAL_ADJUSTMENT` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
+- every line inside one `MANUAL_ADJUSTMENT` entry must share the same `lines[].amount.currencyCode`
+- every posted money amount must use the selected book's functional currency
+- `reversal` is optional only for `MANUAL_ADJUSTMENT`
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
   ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
@@ -92,7 +100,7 @@ Current posting-request rules:
 - `provenance.recordedAt` and `provenance.sourceChannel` are not accepted
 - optional fields may be omitted; `null` is accepted for `reversal` and `correlationId`
 - `reversal.priorPostingId` must already exist in the selected book
-- a reversal requires an exact line-by-line negation of the target posting and only one reversal is allowed per target
+- a reversal requires one exact line-by-line negation of the target posting and only one reversal is allowed per target
 - `OPENING_BALANCE` postings may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
 - `OPENING_BALANCE` postings are accepted only before the first committed posting exists in the
   selected book, so all opening balances must be seeded as one opening-statement phase
@@ -110,12 +118,13 @@ Current posting-request rules:
   "accountName": "Cash",
   "accountType": "ASSET",
   "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
   "financialPositionLineClassification": "CURRENT_ASSET"
 }
 ```
 
 Current account-declaration rules:
-- `accountCode`, `accountName`, `accountType`, and `accountRole` are required
+- `accountCode`, `accountName`, `accountType`, `accountRole`, and `accountNodeKind` are required
 - `parentAccountCode` is optional and declares one explicit chart parent when this account belongs
   under another declared account
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
@@ -125,6 +134,7 @@ Current account-declaration rules:
 - `accountName` must be a non-blank string
 - `accountType` must be one of the canonical chart classifications supported by FinGrind
 - `accountRole` must be one of `ORDINARY` or `CONTRA`
+- `accountNodeKind` must be one of `POSTABLE` or `HEADER`
 - `ASSET`, `LIABILITY`, and `EQUITY` accounts must declare
   `financialPositionLineClassification` and must not declare
   `profitAndLossLineClassification`
@@ -159,8 +169,7 @@ Current ledger-plan rules:
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `open-book` uses nested `openBook`, which requires `entityName`, `entityForm`, `ownerModel`,
-  `reportingObligationStatus`, `businessActivityTags`,
-  `functionalCurrency`, `fiscalYearStart`, and `accountingBasis`
+  `businessActivityTags`, `functionalCurrency`, `fiscalYearStart`, and `policyProfile`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request, including required `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -188,14 +197,13 @@ Current ledger-plan rules:
   `boundaryPhase`
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
-- plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
-- money-bearing plan-journal facts use `kind: "money"` with a `value` object carrying
-  `currencyCode` and `minorUnits`
+- plan-journal steps now carry typed `data` records instead of generic fact bags
+- money-bearing plan-journal `data` fields use objects carrying `currencyCode` and `minorUnits`
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
-  `hasMore`, and repeated grouped `account` facts
+  `hasMore`, and repeated typed `accounts[]`
 - successful `list-postings` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
-  `hasMore`, and repeated grouped `posting` facts with nested `provenance`, `evidence`, `line`,
-  and optional `reversal` groups
+  `hasMore`, and repeated typed `postings[]` with nested `provenance`, `evidence`, `lines`, and
+  optional `reversal`
 
 Human rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
 top-level `message`, optional `hint`, and any typed rejection details that identify the failing
@@ -210,6 +218,7 @@ deterministic repair data.
 | `provenance.actorType` | `HUMAN`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountRole` | `ORDINARY`, `CONTRA` |
+| `accountNodeKind` | `POSTABLE`, `HEADER` |
 | `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `OWNER_CAPITAL`, `OWNER_DRAWINGS`, `PARTNER_CAPITAL`, `PARTNER_CURRENT`, `SHARE_CAPITAL`, `RETAINED_EARNINGS`, `ACCUMULATED_SURPLUS`, `RESERVE`, `OTHER_EQUITY` |
 | `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `TAX_EXPENSE` |
 
@@ -236,9 +245,8 @@ Dynamic fields:
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.entityForm`, `.ownerModel`,
-  `.reportingObligationStatus`, ``.businessActivityTags`,
-  `.functionalCurrency`, `.fiscalYearStart`, and
-  `.accountingBasis` echo the persisted initialized-book identity
+  `.businessActivityTags`, `.functionalCurrency`, `.fiscalYearStart`, and
+  `.policyProfile` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
@@ -250,18 +258,16 @@ Dynamic fields:
   details are stamped from the FinGrind execution clock
 - `ok.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock when `--result-detail full` is selected
-- plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
-  facts nest their child observations under `facts`
+- plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries `entityForm`,
-  `ownerModel`, `reportingObligationStatus`, `businessActivityTags`,
-  and `accountingBasis`
+  `ownerModel`, `businessActivityTags`, and `policyProfile`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
-- successful `post-entry` and `get-posting` plan steps emit nested `evidence` groups with source
-  document counts plus grouped source-document and approval facts
-- successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
-  `balance` buckets
+- successful `post-entry` and `get-posting` plan steps emit typed `evidence` data with source
+  document and approval entries
+- successful `assert-account-balance` plan steps emit typed `account` data plus repeated
+  `balances[]`
 - `execute-plan` accepts at most 100 steps, so returned plan summaries and optional full journals
   are complete but bounded
 
@@ -270,11 +276,15 @@ validation against the current book state, but it is not a durable commit guaran
 `post-entry` performs its authoritative transactional checks before committing.
 
 Discovery output also has two intentionally different JSON scopes:
+- `--detail compact|full` is accepted only when the resolved discovery output mode is JSON
 - `help --output json` returns a concise overview payload with command summaries, getting-started
   hints, and exit codes
 - `help <command> --output json` returns one narrow command-local payload with usage, options,
   examples, operator notes, and request-file guidance when that command accepts `--request-file`
-- `capabilities --output json` is the stable deep machine contract for doctrine, command grammar,
+- `help --output json --detail full` and `help <command> --output json --detail full` include the
+  extended discovery body such as embedded templates, enum vocabularies, and request-shape details
+- `capabilities --output json` defaults to the compact machine contract, while
+  `capabilities --output json --detail full` expands to the full doctrine, command grammar,
   request shapes, and cross-command facts
 - `environment --output json` is the live runtime contract for distribution, runtime provenance,
   loaded SQLite facts, and launcher-local storage paths
@@ -302,7 +312,7 @@ rendered:
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
   descriptors such as `invalid-page-cursor`, `protected-book-verification-failed`,
   `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
-  `interactive-prompt-unavailable`
+  `interactive-prompt-unavailable`; each descriptor includes its published `exitCode`
 - `preflight.semantics` carries the short machine hint and `preflight.commitGuarantee`
   carries the advisory-versus-guaranteed commit relationship
 - `currencyModel` declares the current single-currency scope and the explicit
@@ -341,11 +351,10 @@ Shared initialized-book identity payload:
 - `entityName`
 - `entityForm`
 - `ownerModel`
-- `reportingObligationStatus`
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`
-- `accountingBasis`
+- `policyProfile`
 
 Shared posting payload:
 - `postingId`
@@ -360,8 +369,10 @@ Shared posting payload:
 - `causationId`
 - optional `correlationId`
 - `sourceChannel`
-- `evidence.sourceDocuments[]`, where each entry carries `sourceDocumentId` and `sourceDocumentType`
-- `evidence.approvals[]`, where each entry carries `approvalId` and `approvalType`
+- `evidence.sourceDocuments[]`, where each entry carries `sourceDocumentId`, `sourceDocumentType`,
+  `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
+- `evidence.approvals[]`, where each entry carries `approvalId`, `approvalType`, `approverId`,
+  `approverType`, `decision`, and `approvedAt`
 - optional `reversal.priorPostingId` and `reversal.reason`
 - `lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
 
@@ -473,7 +484,7 @@ Shared report context payload:
 - optional `comparativeReferenceEffectiveDateTo`
 
 `trial-balance` success returns:
-- optional `payload.effectiveDateTo`
+- optional `payload.effectiveDateAsOf`
 - `payload.context`, using the shared report context payload
 - `payload.rows[]`, where each row includes `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, `declaredAt`, typed `debitTotal`, `creditTotal`,
@@ -513,7 +524,7 @@ Shared report context payload:
   `creditTotal`, `netAmount`, and `balanceSide`
 
 `financial-position` success returns:
-- optional `payload.effectiveDateTo`
+- optional `payload.effectiveDateAsOf`
 - `payload.context`, using the shared report context payload
 - `payload.sections[]`, where each section includes `accountType`, `rows[]`, and `totals[]`
 - `payload.comparativeSections[]`, using the same section shape for the fiscal-year-anchored
@@ -561,7 +572,7 @@ Shared report context payload:
 - `startedAt`
 - `finishedAt`
 - `steps[]`, where each entry includes `stepId`, `kind`, `status`, `startedAt`, `finishedAt`,
-  typed `facts[]`, optional `detailKind`, and optional `failure`
+  typed `data`, optional `detailKind`, and optional `failure`
 
 Commands that advertise `--output` default successful stdout to human text on an interactive
 terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
