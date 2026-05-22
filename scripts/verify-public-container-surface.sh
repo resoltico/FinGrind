@@ -148,7 +148,25 @@ JSON
 
 verify_human_trial_balance() {
     local human_output=$1
-    local cash_block revenue_block
+    local header_block totals_block cash_block revenue_block
+
+    header_block="$(cat <<'TEXT'
+Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Posting coverage : All posting kinds
+As of            : 2026-04-08
+TEXT
+)"
+    totals_block="$(cat <<'TEXT'
+Current totals
+--------------
+As of    : 2026-04-08
+Balanced : Yes
+
+Currency | Debit total | Credit total | Net amount | Balance side
+---------+-------------+--------------+------------+-------------
+EUR      |       10.00 |        10.00 |       0.00 | ZERO
+TEXT
+)"
 
     cash_block="$(cat <<'TEXT'
 1000 | Cash
@@ -181,8 +199,10 @@ TEXT
 
     require_match "${human_output}" '^Trial Balance$' || die \
         "published human trial balance did not render the report header"
-    require_match "${human_output}" '^Entity[[:space:]]+:[[:space:]]+Release Protocol Fixture$' || die \
-        "published human trial balance did not render the expected entity header"
+    require_literal_block "${human_output}" "${header_block}" \
+        || die "published human trial balance did not render the expected book header"
+    require_literal_block "${human_output}" "${totals_block}" \
+        || die "published human trial balance did not render the expected totals block"
     require_literal_block "${human_output}" "${cash_block}" \
         || die "published human trial balance did not report the expected Cash trial-balance row"
     require_literal_block "${human_output}" "${revenue_block}" \

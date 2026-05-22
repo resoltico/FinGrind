@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Realigned the public-container release verifier with the shipped compact human trial-balance
+  surface. The operator-side anonymous pull-and-run check and its shell regression harness now
+  assert the current `Book ... | Currency ... | FY ... | Policy ...` header plus the published
+  current-totals block instead of an older multi-line entity banner.
+
 ## [0.44.0] - 2026-05-22
 
 ### Added
