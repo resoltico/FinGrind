@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
@@ -24,11 +23,10 @@ import org.junit.jupiter.api.Test;
 class PostEntryCommandTest {
   @Test
   void constructor_acceptsValidCommand() {
-    BookkeepingEntry.ManualAdjustment adjustment =
-        new BookkeepingEntry.ManualAdjustment(
-            PostingKind.STANDARD,
+    BookkeepingEntry.ReversalAdjustment adjustment =
+        new BookkeepingEntry.ReversalAdjustment(
             journalEntry(),
-            PostingLineage.reversal(
+            new PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("operator reversal")));
     PostEntryCommand command =
@@ -38,9 +36,8 @@ class PostEntryCommandTest {
             ContractFixtures.requestProvenance("idem-1"),
             SourceChannel.CLI);
     assertEquals(LocalDate.parse("2026-04-07"), command.entry().effectiveDate());
-    assertEquals(BookkeepingEntry.ManualAdjustment.class, command.entry().getClass());
-    assertEquals(PostingKind.STANDARD, adjustment.postingKind());
-    assertEquals(1, adjustment.postingLineage().reversalReference().stream().count());
+    assertEquals(BookkeepingEntry.ReversalAdjustment.class, command.entry().getClass());
+    assertEquals(1, adjustment.reversal().reversalReference().stream().count());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -62,8 +59,7 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                new BookkeepingEntry.ManualAdjustment(
-                    PostingKind.STANDARD, journalEntry(), PostingLineage.direct()),
+                new BookkeepingEntry.CorrectionAdjustment(journalEntry()),
                 nullOf(),
                 ContractFixtures.requestProvenance("idem-1"),
                 SourceChannel.CLI));

@@ -23,12 +23,10 @@ import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentId;
@@ -186,17 +184,9 @@ public final class ExecutorAccountingTestSupport {
 
   /** Returns one canonical test-only book identity for explicit open-book flows. */
   public static BookIdentity bookIdentity() {
-    return bookIdentity(EntityForm.COMPANY);
-  }
-
-  /** Returns one canonical test-only book identity for the supplied entity form. */
-  public static BookIdentity bookIdentity(EntityForm entityForm) {
-    Objects.requireNonNull(entityForm, "entityForm");
     return new BookIdentity(
         new EntityProfile(
             new BookEntityName("Acme Studio"),
-            entityForm,
-            OwnerModel.MULTI_OWNER,
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
@@ -243,7 +233,7 @@ public final class ExecutorAccountingTestSupport {
   public static BookInspection.CloseReadiness closeReadyInspection() {
     return new BookInspection.CloseReadiness(
         true,
-        FinancialPositionLineClassification.OWNER_CAPITAL,
+        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
         new AccountCode("3200"),
         null,
         null,

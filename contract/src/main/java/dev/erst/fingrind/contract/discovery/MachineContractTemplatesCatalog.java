@@ -12,9 +12,7 @@ import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -77,7 +75,6 @@ final class MachineContractTemplatesCatalog {
         null,
         new MonetaryAmount("EUR", "1000"),
         null,
-        null,
         new ContractTemplates.AccountingEvidenceTemplateDescriptor(
             List.of(
                 new ContractTemplates.SourceDocumentTemplateDescriptor(
@@ -119,8 +116,6 @@ final class MachineContractTemplatesCatalog {
                 LedgerStepKind.OPEN_BOOK,
                 new ContractTemplates.OpenBookTemplateDescriptor(
                     "Acme Studio",
-                    EntityForm.FREELANCER,
-                    OwnerModel.SOLE_OWNER,
                     List.of("translation-services"),
                     "EUR",
                     "01-01",

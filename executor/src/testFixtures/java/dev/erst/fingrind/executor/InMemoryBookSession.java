@@ -12,13 +12,11 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -97,11 +95,7 @@ public final class InMemoryBookSession
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
   private BookIdentity bookIdentity =
       new BookIdentity(
-          new EntityProfile(
-              new BookEntityName("FinGrind Test Entity"),
-              EntityForm.COMPANY,
-              OwnerModel.MULTI_OWNER,
-              List.of()),
+          new EntityProfile(new BookEntityName("FinGrind Test Entity"), List.of()),
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1),
           AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

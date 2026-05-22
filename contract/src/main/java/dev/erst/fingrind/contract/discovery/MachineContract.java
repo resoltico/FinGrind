@@ -37,7 +37,7 @@ public final class MachineContract {
             ? ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList()
             : List.of(selectedOperation.usage()),
         MachineContractDomainDescriptors.bookModel(),
-        MachineContractDomainDescriptors.accountingBaseline(),
+        MachineContractDomainDescriptors.bookkeepingKernel(),
         MachineContractTemplatesCatalog.requestShapesFor(selectedOperation),
         postingRequestTemplateFor(selectedOperation),
         declareAccountTemplateFor(selectedOperation),
@@ -53,8 +53,7 @@ public final class MachineContract {
             : List.of(),
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),
-        MachineContractDomainDescriptors.currencyModel(),
-        MachineContractDomainDescriptors.extensionSurface());
+        MachineContractDomainDescriptors.currencyModel());
   }
 
   /** Builds the canonical capabilities descriptor. */
@@ -74,8 +73,7 @@ public final class MachineContract {
         MachineContractDomainDescriptors.reversals(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
-        MachineContractDomainDescriptors.accountingBaseline(),
-        MachineContractDomainDescriptors.extensionSurface());
+        MachineContractDomainDescriptors.bookkeepingKernel());
   }
 
   /** Builds the canonical version descriptor. */

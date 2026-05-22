@@ -35,10 +35,6 @@ public final class AccountSemantics {
       }
       FinancialPositionLineClassification declaredClassification =
           financialPositionLineClassification.orElseThrow();
-      if (declaredClassification == FinancialPositionLineClassification.CURRENT_PERIOD_RESULT) {
-        throw new IllegalArgumentException(
-            "CURRENT_PERIOD_RESULT is reserved for derived statement rows and must not be declared on accounts.");
-      }
       if (declaredClassification.accountType() != accountType) {
         throw new IllegalArgumentException(
             "Financial-position classification must match the declared accountType.");

@@ -22,8 +22,6 @@ final class CliJsonRequestSchemas {
   static final Set<String> OPEN_BOOK_FIELDS =
       Set.of(
           ProtocolOpenBookFields.ENTITY_NAME,
-          ProtocolOpenBookFields.ENTITY_FORM,
-          ProtocolOpenBookFields.OWNER_MODEL,
           ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START,
@@ -66,10 +64,23 @@ final class CliJsonRequestSchemas {
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  static final Set<String> MANUAL_ADJUSTMENT_FIELDS =
+  static final Set<String> OPENING_BALANCE_ADJUSTMENT_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> CORRECTION_ADJUSTMENT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> REVERSAL_ADJUSTMENT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
           ProtocolPostEntryFields.TopLevel.LINES,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,

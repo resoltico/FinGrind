@@ -44,7 +44,6 @@ import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -54,7 +53,6 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.JournalLine.EntrySide;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
@@ -90,14 +88,10 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.44.0", CLOCK);
+      new PdfReportService("FinGrind", "0.45.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
-          new EntityProfile(
-              new BookEntityName("Acme Studio"),
-              EntityForm.COMPANY,
-              OwnerModel.MULTI_OWNER,
-              List.of()),
+          new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
           AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
@@ -145,7 +139,6 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Company / Multi Owner"));
     assertTrue(trialBalanceText.contains("Internal Management Single Entity V1"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
@@ -301,7 +294,7 @@ class PdfReportServiceTest {
                             "Current period result",
                             AccountType.EQUITY,
                             Optional.empty(),
-                            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                            Optional.empty(),
                             StatementLineKind.CURRENT_PERIOD_RESULT,
                             creditBalance)),
                     List.of(creditBalance))),
@@ -319,7 +312,7 @@ class PdfReportServiceTest {
                     "Current period result",
                     Optional.of(AccountType.EQUITY),
                     Optional.empty(),
-                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
                     creditBalance,
@@ -466,9 +459,9 @@ class PdfReportServiceTest {
             List.of(
                 changesInEquityRow(
                     "3000",
-                    "Owner Capital",
+                    "Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.OWNER_CAPITAL,
+                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -478,9 +471,9 @@ class PdfReportServiceTest {
             List.of(
                 changesInEquityRow(
                     "3000",
-                    "Prior Owner Capital",
+                    "Prior Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.OWNER_CAPITAL,
+                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
                     balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT))),
@@ -514,13 +507,13 @@ class PdfReportServiceTest {
     assertTrue(incomeStatementText.contains("Comparative Revenue"));
     assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
     assertTrue(incomeStatementText.contains("Prior Subscription Revenue"));
-    assertTrue(changesInEquityText.contains("Owner Capital"));
+    assertTrue(changesInEquityText.contains("Contributed Capital"));
     assertTrue(changesInEquityText.contains("Changes In Equity"));
     assertTrue(changesInEquityText.contains("Acme Studio"));
     assertTrue(changesInEquityText.contains("Ordinary"));
     assertTrue(changesInEquityText.contains("Comparative Changes In Equity"));
     assertTrue(changesInEquityText.contains("Comparative Equity Totals"));
-    assertTrue(changesInEquityText.contains("Prior Owner Capital"));
+    assertTrue(changesInEquityText.contains("Prior Contributed Capital"));
   }
 
   @Test
@@ -578,9 +571,9 @@ class PdfReportServiceTest {
             List.of(
                 changesInEquityRow(
                     "3000",
-                    "Owner Capital",
+                    "Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.OWNER_CAPITAL,
+                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -709,10 +702,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.44.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.45.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.44.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.45.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -729,7 +722,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.44.0", information.getCreator());
+      assertEquals("FinGrind 0.45.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -854,7 +847,7 @@ class PdfReportServiceTest {
         lineName,
         accountType,
         Optional.of(accountRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
   }
@@ -889,7 +882,7 @@ class PdfReportServiceTest {
         lineName,
         Optional.of(AccountType.EQUITY),
         Optional.of(accountRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
         movement,
@@ -914,7 +907,7 @@ class PdfReportServiceTest {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.OWNER_CAPITAL),
+              Optional.of(FinancialPositionLineClassification.CONTRIBUTED_CAPITAL),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(

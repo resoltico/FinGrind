@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-05-22"
 route:
@@ -320,21 +320,16 @@ public final class SqliteRuntimeStateValidator
   consume the same protocol-owned runtime-surface contract instead of carrying private copies of
   those wire values
 
-## `BookModelFacts`, `CurrencyFacts`, `AccountingBaselineFacts`, `AccountingBaselineTarget`, `ReportCapabilityFacts`, `AccountingPolicyPackFacts`, `PolicyDimensionFacts`, `ExtensionSurfaceFacts`, `PolicySeamFacts`, `CapabilityStatus`, `PreflightFacts`, And `PlanExecutionFacts`
+## `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `AccountingPolicyProfileFacts`, `PreflightFacts`, And `PlanExecutionFacts`
 
 These typed records publish FinGrind's hard public model facts.
 
 ```java
 public record BookModelFacts(...)
 public record CurrencyFacts(...)
-public record AccountingBaselineFacts(...)
-public enum AccountingBaselineTarget ...
+public record BookkeepingKernelFacts(...)
 public record ReportCapabilityFacts(...)
-public record AccountingPolicyPackFacts(...)
-public record PolicyDimensionFacts(...)
-public record ExtensionSurfaceFacts(...)
-public record PolicySeamFacts(...)
-public enum CapabilityStatus ...
+public record AccountingPolicyProfileFacts(...)
 public record PreflightFacts(...)
 public record PlanExecutionFacts(...)
 ```
@@ -345,25 +340,13 @@ public record PlanExecutionFacts(...)
 - Related types: `BookBoundaryFact`, `BookEntityScopeFact`, `BookFilesystemFact`,
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
   and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
-- `AccountingBaselineTarget`: publishes the current and next declared accounting-foundation target
-  so the protocol can distinguish bookkeeping-kernel scope from broader reporting ambitions
-- `ReportCapabilityFacts`: publishes the current status, target-baseline relevance, bounded-context
-  owner, and blocking model gaps for each statement/reporting capability
-- `AccountingPolicyPackFacts`: publishes the built-in neutral policy-pack identity, supported
-  entity forms, and policy-dimension coverage
-- `PolicyDimensionFacts`: publishes one structured status row for the executable accounting-basis,
-  comparatives, chart, close, and statement-presentation dimensions
-- `CapabilityStatus`: publishes the shared lifecycle vocabulary for implemented, planned,
-  future-context, deliberately-excluded, and unsupported capability states
-- `AccountingBaselineFacts`: publishes the declared standards posture, explicit non-claims,
-  current/next baseline targets, built-in statement inventory, report-capability inventory,
-  default policy pack, small-entity position, organizational
-  position, and the ISO-vs-IFRS clarification as typed machine facts instead of burying that scope
-  only in prose documentation
-- `PolicySeamFacts`: publishes the structured inventory of executable policy seams
-- `ExtensionSurfaceFacts`: publishes the current policy-pack model, the default pack id, the
-  implemented extension seams, and the structured seam inventory without promoting roadmap domains
-  into the machine contract
+- `BookkeepingKernelFacts`: publishes the live executable kernel scope, the built-in statement
+  inventory, the per-report capability inventory, the persisted policy-profile identity, and the
+  concise machine description of the shipped bookkeeping kernel
+- `ReportCapabilityFacts`: publishes the statement id, comparative support flag, and contract
+  description for each built-in report
+- `AccountingPolicyProfileFacts`: publishes the persisted policy-profile id, display name, and the
+  machine description of that profile
 
 ## `MonetaryAmount`
 
@@ -535,8 +518,7 @@ public final class ContractTemplates
   `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
   `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`,
-  `.AccountingBaselineDescriptor`, and `.ExtensionSurfaceDescriptor` are the nested typed
-  response descriptors
+  and `.BookkeepingKernelDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
 - `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
   template-descriptor inventory
@@ -602,7 +584,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 15`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 17`
 
 ## `ProtectedBookFormatContract`
 

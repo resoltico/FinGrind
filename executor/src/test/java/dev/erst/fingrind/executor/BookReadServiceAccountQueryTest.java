@@ -62,16 +62,16 @@ class BookReadServiceAccountQueryTest {
       BookInspection inspection =
           new BookInspection.Initialized(
               BookFormatContract.APPLICATION_ID,
-              15,
-              15,
+              BookFormatContract.FORMAT_VERSION,
+              BookFormatContract.FORMAT_VERSION,
               BookReadServiceTestSupport.FIXED_INSTANT,
               bookIdentity(),
               new BookInspection.CloseReadiness(
                   false,
-                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
                   null,
                   "closing-equity-account-candidate-missing",
-                  "No active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS'.",
+                  "No active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT'.",
                   List.of()));
       assertEquals(inspection, service.inspectBook());
     }
@@ -82,7 +82,8 @@ class BookReadServiceAccountQueryTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookReadService service = readService(bookSession);
 
-      assertEquals(new BookInspection.Missing(15), service.inspectBook());
+      assertEquals(
+          new BookInspection.Missing(BookFormatContract.FORMAT_VERSION), service.inspectBook());
     }
   }
 
@@ -94,14 +95,14 @@ class BookReadServiceAccountQueryTest {
           new AccountName("Retained Earnings"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
           new BookInspection.CloseReadiness(
               true,
-              FinancialPositionLineClassification.RETAINED_EARNINGS,
+              FinancialPositionLineClassification.ACCUMULATED_RESULT,
               new AccountCode("3200"),
               null,
               null,
@@ -119,24 +120,24 @@ class BookReadServiceAccountQueryTest {
           new AccountName("Retained Earnings A"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
           BookReadServiceTestSupport.FIXED_INSTANT);
       bookSession.declareAccount(
           new AccountCode("3210"),
           new AccountName("Retained Earnings B"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
           new BookInspection.CloseReadiness(
               false,
-              FinancialPositionLineClassification.RETAINED_EARNINGS,
+              FinancialPositionLineClassification.ACCUMULATED_RESULT,
               null,
               "closing-equity-account-candidate-ambiguous",
-              "More than one active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS': 3200, 3210.",
+              "More than one active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT': 3200, 3210.",
               List.of(new AccountCode("3200"), new AccountCode("3210"))),
           ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
     }

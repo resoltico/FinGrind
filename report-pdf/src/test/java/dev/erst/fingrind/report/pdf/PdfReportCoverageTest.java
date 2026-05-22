@@ -21,12 +21,10 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -56,7 +54,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.44.0",
+                "0.45.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -72,7 +70,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.44.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.45.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -173,7 +171,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.44.0");
+    return new PdfDocumentFactory("FinGrind", "0.45.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -203,11 +201,7 @@ class PdfReportCoverageTest {
 
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
-            List.of()),
+        new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

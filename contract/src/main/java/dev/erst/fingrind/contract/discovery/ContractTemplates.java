@@ -22,14 +22,11 @@ import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
@@ -78,7 +75,6 @@ public final class ContractTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
@@ -98,7 +94,6 @@ public final class ContractTemplates {
               expenseAccountCode, "expenseAccountCode");
       equityAccountCode =
           ContractDescriptorValidation.requireOptionalText(equityAccountCode, "equityAccountCode");
-      postingKind = ContractDescriptorValidation.requireOptionalValue(postingKind, "postingKind");
       lines = lines == null ? null : ContractDescriptorValidation.copyList(lines, "lines");
       evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
@@ -109,7 +104,6 @@ public final class ContractTemplates {
               expenseAccountCode,
               equityAccountCode,
               amount,
-              postingKind,
               lines,
               reversal);
     }
@@ -256,7 +250,6 @@ public final class ContractTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines,
       @Nullable ReversalTemplateDescriptor reversal) {
     requireText(cashAccountCode, "cashAccountCode");
@@ -264,7 +257,6 @@ public final class ContractTemplates {
     requirePositiveAmount(amount);
     forbidText(expenseAccountCode, "expenseAccountCode");
     forbidText(equityAccountCode, "equityAccountCode");
-    forbidPostingKind(postingKind);
     forbidLines(lines);
     forbidReversal(reversal);
   }
@@ -275,7 +267,6 @@ public final class ContractTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines,
       @Nullable ReversalTemplateDescriptor reversal) {
     requireText(cashAccountCode, "cashAccountCode");
@@ -283,7 +274,6 @@ public final class ContractTemplates {
     requirePositiveAmount(amount);
     forbidText(revenueAccountCode, "revenueAccountCode");
     forbidText(equityAccountCode, "equityAccountCode");
-    forbidPostingKind(postingKind);
     forbidLines(lines);
     forbidReversal(reversal);
   }
@@ -294,7 +284,6 @@ public final class ContractTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines,
       @Nullable ReversalTemplateDescriptor reversal) {
     requireText(cashAccountCode, "cashAccountCode");
@@ -302,7 +291,6 @@ public final class ContractTemplates {
     requirePositiveAmount(amount);
     forbidText(revenueAccountCode, "revenueAccountCode");
     forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidPostingKind(postingKind);
     forbidLines(lines);
     forbidReversal(reversal);
   }
@@ -313,7 +301,6 @@ public final class ContractTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines,
       @Nullable ReversalTemplateDescriptor reversal) {
     requireText(cashAccountCode, "cashAccountCode");
@@ -321,33 +308,55 @@ public final class ContractTemplates {
     requirePositiveAmount(amount);
     forbidText(revenueAccountCode, "revenueAccountCode");
     forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidPostingKind(postingKind);
     forbidLines(lines);
     forbidReversal(reversal);
   }
 
-  private static void validateManualAdjustmentTemplate(
+  private static void validateOpeningBalanceAdjustmentTemplate(
       @Nullable String cashAccountCode,
       @Nullable String revenueAccountCode,
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable PostingKind postingKind,
       @Nullable List<JournalLineTemplateDescriptor> lines) {
-    if (postingKind == null || !postingKind.isCallerSelectable()) {
-      throw new IllegalArgumentException(
-          "postingKind must belong to the caller-authored manual-adjustment surface.");
-    }
     if (lines == null || lines.size() < 2) {
       throw new IllegalArgumentException(
-          "lines must contain at least two journal lines for manualAdjustment.");
+          "lines must contain at least two journal lines for openingBalanceAdjustment.");
     }
     forbidText(cashAccountCode, "cashAccountCode");
     forbidText(revenueAccountCode, "revenueAccountCode");
     forbidText(expenseAccountCode, "expenseAccountCode");
     forbidText(equityAccountCode, "equityAccountCode");
     if (amount != null) {
-      throw new IllegalArgumentException("amount must be absent for manualAdjustment.");
+      throw new IllegalArgumentException("amount must be absent for openingBalanceAdjustment.");
+    }
+  }
+
+  private static void validateCorrectionAdjustmentTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    validateOpeningBalanceAdjustmentTemplate(
+        cashAccountCode, revenueAccountCode, expenseAccountCode, equityAccountCode, amount, lines);
+    forbidReversal(reversal);
+  }
+
+  private static void validateReversalAdjustmentTemplate(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    validateOpeningBalanceAdjustmentTemplate(
+        cashAccountCode, revenueAccountCode, expenseAccountCode, equityAccountCode, amount, lines);
+    if (reversal == null) {
+      throw new IllegalArgumentException("reversal must be present for reversalAdjustment.");
     }
   }
 
@@ -375,12 +384,6 @@ public final class ContractTemplates {
     return requiredAmount;
   }
 
-  private static void forbidPostingKind(@Nullable PostingKind postingKind) {
-    if (postingKind != null) {
-      throw new IllegalArgumentException("postingKind must be absent for typed business events.");
-    }
-  }
-
   private static void forbidLines(@Nullable List<JournalLineTemplateDescriptor> lines) {
     if (lines != null) {
       throw new IllegalArgumentException("lines must be absent for typed business events.");
@@ -389,7 +392,7 @@ public final class ContractTemplates {
 
   private static void forbidReversal(@Nullable ReversalTemplateDescriptor reversal) {
     if (reversal != null) {
-      throw new IllegalArgumentException("reversal must be absent for typed business events.");
+      throw new IllegalArgumentException("reversal must be absent for this entryKind.");
     }
   }
 
@@ -409,23 +412,53 @@ public final class ContractTemplates {
         ContractTemplates::validateOwnerContributionTemplate,
         BookkeepingEntryKind.OWNER_DRAW,
         ContractTemplates::validateOwnerDrawTemplate,
-        BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
         (cashAccountCode,
             revenueAccountCode,
             expenseAccountCode,
             equityAccountCode,
             amount,
-            postingKind,
             lines,
             reversal) ->
-            validateManualAdjustmentTemplate(
+            validateOpeningBalanceAdjustmentTemplate(
                 cashAccountCode,
                 revenueAccountCode,
                 expenseAccountCode,
                 equityAccountCode,
                 amount,
-                postingKind,
-                lines));
+                lines),
+        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
+        (cashAccountCode,
+            revenueAccountCode,
+            expenseAccountCode,
+            equityAccountCode,
+            amount,
+            lines,
+            reversal) ->
+            validateCorrectionAdjustmentTemplate(
+                cashAccountCode,
+                revenueAccountCode,
+                expenseAccountCode,
+                equityAccountCode,
+                amount,
+                lines,
+                reversal),
+        BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+        (cashAccountCode,
+            revenueAccountCode,
+            expenseAccountCode,
+            equityAccountCode,
+            amount,
+            lines,
+            reversal) ->
+            validateReversalAdjustmentTemplate(
+                cashAccountCode,
+                revenueAccountCode,
+                expenseAccountCode,
+                equityAccountCode,
+                amount,
+                lines,
+                reversal));
   }
 
   /** Validator for one entry-kind-specific posting-template shape. */
@@ -438,7 +471,6 @@ public final class ContractTemplates {
         @Nullable String expenseAccountCode,
         @Nullable String equityAccountCode,
         @Nullable MonetaryAmount amount,
-        @Nullable PostingKind postingKind,
         @Nullable List<JournalLineTemplateDescriptor> lines,
         @Nullable ReversalTemplateDescriptor reversal);
   }
@@ -481,8 +513,6 @@ public final class ContractTemplates {
   /** Canonical open-book template nested inside a ledger plan. */
   public record OpenBookTemplateDescriptor(
       String entityName,
-      EntityForm entityForm,
-      OwnerModel ownerModel,
       List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart,
@@ -492,8 +522,6 @@ public final class ContractTemplates {
     public OpenBookTemplateDescriptor {
       entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
       new BookEntityName(entityName);
-      entityForm = ContractDescriptorValidation.requireValue(entityForm, "entityForm");
-      ownerModel = ContractDescriptorValidation.requireValue(ownerModel, "ownerModel");
       businessActivityTags =
           ContractDescriptorValidation.copyList(businessActivityTags, "businessActivityTags");
       businessActivityTags.forEach(BusinessActivityTag::new);

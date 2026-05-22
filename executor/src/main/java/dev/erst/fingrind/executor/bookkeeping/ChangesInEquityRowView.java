@@ -14,7 +14,7 @@ public record ChangesInEquityRowView(
     String lineName,
     Optional<AccountType> lineType,
     Optional<AccountRole> lineRole,
-    FinancialPositionLineClassification lineClassification,
+    Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance openingBalance,
     CurrencyBalance movement,

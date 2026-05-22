@@ -63,7 +63,7 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
-                        Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                        Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                         Optional.empty()))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountMissing(
@@ -112,7 +112,7 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT,
                     List.of(new dev.erst.fingrind.core.AccountCode("3000")))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(

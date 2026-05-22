@@ -1,7 +1,7 @@
 Period Summary
 ==============
 
-Book               : Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book               : Acme Studio | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage   : All posting kinds
 Range              : 2026-04-07 to 2026-04-08
 Posting count      : 1

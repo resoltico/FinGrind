@@ -20,10 +20,8 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -109,18 +107,12 @@ class BookAdministrationModelTest {
   @Test
   void openBookCommand_rejectsMissingBusinessActivityTags() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new OpenBookCommand(bookIdentity(OwnerModel.MULTI_OWNER, List.of())));
+        IllegalArgumentException.class, () -> new OpenBookCommand(bookIdentity(List.of())));
   }
 
-  private static BookIdentity bookIdentity(
-      OwnerModel ownerModel, List<BusinessActivityTag> businessActivityTags) {
+  private static BookIdentity bookIdentity(List<BusinessActivityTag> businessActivityTags) {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            ownerModel,
-            businessActivityTags),
+        new EntityProfile(new BookEntityName("Acme Studio"), businessActivityTags),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

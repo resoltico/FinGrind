@@ -250,7 +250,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 true,
-                FinancialPositionLineClassification.OWNER_CAPITAL,
+                FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
                 new AccountCode("3200"),
                 "closing-equity-account-candidate-missing",
                 "Blocked",
@@ -260,7 +260,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 true,
-                FinancialPositionLineClassification.OWNER_CAPITAL,
+                FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
                 new AccountCode("3200"),
                 null,
                 "Blocked",
@@ -274,7 +274,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 false,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 new AccountCode("3200"),
                 "closing-equity-account-candidate-missing",
                 "Missing retained earnings account.",
@@ -288,7 +288,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 false,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 null,
                 " ",
                 "Missing retained earnings account.",
@@ -298,7 +298,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 false,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 null,
                 "closing-equity-account-candidate-missing",
                 " ",
@@ -308,7 +308,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 false,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 null,
                 null,
                 "Missing retained earnings account.",
@@ -318,7 +318,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         () ->
             new BookInspection.CloseReadiness(
                 false,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 null,
                 "closing-equity-account-candidate-missing",
                 null,
@@ -331,7 +331,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     BookInspection.CloseReadiness readiness =
         new BookInspection.CloseReadiness(
             false,
-            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            FinancialPositionLineClassification.ACCUMULATED_RESULT,
             null,
             "closing-equity-account-candidate-ambiguous",
             "Multiple retained earnings candidates are active.",
@@ -343,7 +343,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   private static BookInspection.CloseReadiness closeReadyInspection() {
     return new BookInspection.CloseReadiness(
         true,
-        FinancialPositionLineClassification.OWNER_CAPITAL,
+        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
         new AccountCode("3200"),
         null,
         null,

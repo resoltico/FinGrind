@@ -177,8 +177,6 @@ TEXT
                 ;;
             open-book)
                 entity_name=''
-                entity_form=''
-                owner_model=''
                 business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
@@ -191,14 +189,6 @@ TEXT
                             ;;
                         --entity-name)
                             entity_name="${2}"
-                            shift 2
-                            ;;
-                        --entity-form)
-                            entity_form="${2}"
-                            shift 2
-                            ;;
-                        --owner-model)
-                            owner_model="${2}"
                             shift 2
                             ;;
                         --business-activity-tag)
@@ -223,8 +213,6 @@ TEXT
                     esac
                 done
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
-                [[ "${entity_form}" == 'COMPANY' ]] || exit 1
-                [[ "${owner_model}" == 'MULTI_OWNER' ]] || exit 1
                 [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
@@ -286,7 +274,7 @@ TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 
@@ -316,7 +304,7 @@ TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 

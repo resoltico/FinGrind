@@ -217,110 +217,35 @@ class ProtocolCatalogTest {
   }
 
   @Test
-  void accountingBaselineFacts_requireBuiltInStatementsToMatchImplementedCapabilities() {
-    AccountingBaselineFacts baseline = ProtocolCatalog.accountingBaseline();
+  void bookkeepingKernelFacts_requireBuiltInStatementsToMatchImplementedCapabilities() {
+    BookkeepingKernelFacts kernel = ProtocolCatalog.bookkeepingKernel();
 
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new AccountingBaselineFacts(
-                baseline.scope(),
-                baseline.currentTarget(),
-                baseline.nextTarget(),
-                baseline.doctrineSources(),
+            new BookkeepingKernelFacts(
+                kernel.scope(),
                 List.of("statement-of-cash-flows"),
-                baseline.deliberateExclusions(),
-                baseline.nonClaims(),
-                baseline.reportCapabilities(),
-                baseline.defaultPolicyPack(),
-                baseline.standardsPosition(),
-                baseline.reportingPosition(),
-                baseline.chartModelPosition(),
-                baseline.smallEntityPosition(),
-                baseline.operationalPosition(),
-                baseline.taxPosition(),
-                baseline.organizationalPosition(),
-                baseline.isoClarification()));
+                kernel.reportCapabilities(),
+                kernel.policyProfile(),
+                kernel.description()));
   }
 
   @Test
-  void extensionSurfaceFacts_requireImplementedSeamsToMatchImplementedPolicyInventory() {
-    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ExtensionSurfaceFacts(
-                extensionSurface.model(),
-                extensionSurface.defaultPolicyPackId(),
-                List.of("close-policy"),
-                extensionSurface.policySeams(),
-                extensionSurface.description()));
-  }
-
-  @Test
-  void publishedFactFamilies_ignoreNonImplementedCapabilitiesWhenDerivingCurrentInventory() {
-    AccountingBaselineFacts baseline = ProtocolCatalog.accountingBaseline();
-    ReportCapabilityFacts implementedReport =
-        new ReportCapabilityFacts(
-            "financial-position",
-            CapabilityStatus.IMPLEMENTED,
-            true,
-            "bookkeeping",
-            List.of(),
-            "Financial position is currently built in.");
-    ReportCapabilityFacts plannedReport =
-        new ReportCapabilityFacts(
-            "statement-of-cash-flows",
-            CapabilityStatus.PLANNED,
-            false,
-            "cash-flow-reporting",
-            List.of("typed-operating-investing-financing-classification"),
-            "Cash-flow reporting remains outside the current executable baseline.");
-    AccountingBaselineFacts facts =
-        new AccountingBaselineFacts(
-            baseline.scope(),
-            baseline.currentTarget(),
-            baseline.nextTarget(),
-            baseline.doctrineSources(),
-            List.of("financial-position"),
-            baseline.deliberateExclusions(),
-            baseline.nonClaims(),
-            List.of(implementedReport, plannedReport),
-            baseline.defaultPolicyPack(),
-            baseline.standardsPosition(),
-            baseline.reportingPosition(),
-            baseline.chartModelPosition(),
-            baseline.smallEntityPosition(),
-            baseline.operationalPosition(),
-            baseline.taxPosition(),
-            baseline.organizationalPosition(),
-            baseline.isoClarification());
-
-    assertEquals(List.of("financial-position"), facts.builtInStatements());
-
-    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
-    PolicySeamFacts implementedSeam =
-        new PolicySeamFacts(
-            "close-policy",
-            CapabilityStatus.IMPLEMENTED,
-            "bookkeeping-policy-pack",
-            "Close policy is one current executable seam.");
-    PolicySeamFacts futureSeam =
-        new PolicySeamFacts(
-            "tax-policy",
-            CapabilityStatus.FUTURE_CONTEXT,
-            "tax",
-            "Tax remains one future adjacent bounded context.");
-    ExtensionSurfaceFacts seamFacts =
-        new ExtensionSurfaceFacts(
-            extensionSurface.model(),
-            extensionSurface.defaultPolicyPackId(),
-            List.of("close-policy"),
-            List.of(implementedSeam, futureSeam),
-            extensionSurface.description());
-
-    assertEquals(List.of("close-policy"), seamFacts.implementedSeams());
+  void bookkeepingKernelFacts_publishCurrentExecutableKernelInventory() {
+    BookkeepingKernelFacts kernel = ProtocolCatalog.bookkeepingKernel();
+    assertEquals("cash-single-entity-internal-management-kernel", kernel.scope());
+    assertEquals(
+        List.of("financial-position", "income-statement", "changes-in-equity"),
+        kernel.builtInStatements());
+    assertEquals(
+        List.of("financial-position", "income-statement", "changes-in-equity"),
+        kernel.reportCapabilities().stream().map(ReportCapabilityFacts::statementId).toList());
+    assertTrue(
+        kernel.reportCapabilities().stream()
+            .allMatch(reportCapability -> reportCapability.comparativeSupported()));
+    assertEquals("internal-management-single-entity-v1", kernel.policyProfile().profileId());
+    assertTrue(kernel.policyProfile().description().contains("cash-oriented"));
   }
 
   @Test
@@ -605,7 +530,6 @@ class ProtocolCatalogTest {
             "expenseAccountCode",
             "equityAccountCode",
             "amount",
-            "postingKind",
             "lines",
             "evidence",
             "provenance",

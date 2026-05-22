@@ -80,15 +80,14 @@ class CliFuzzFixturesTest {
   }
 
   @Test
-  void bookkeeping_helpers_follow_typed_and_manual_entry_currency_shapes() {
+  void bookkeeping_helpers_follow_typed_and_administrative_entry_currency_shapes() {
     var typedCommand =
         CliFuzzFixtures.readPostEntryCommand(CliFuzzHarnessTestSupport.validJpyRequestBytes());
-    var manualCommand =
+    var correctionCommand =
         CliFuzzFixtures.readPostEntryCommand(
-            CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
-                    new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+            CliFuzzHarnessTestSupport.correctionAdjustmentRequestJson(
+                    new CliFuzzHarnessTestSupport.CorrectionAdjustmentRequestInput(
                         "2026-04-08",
-                        "STANDARD",
                         """
                         [
                           {
@@ -118,9 +117,7 @@ class CliFuzzFixturesTest {
                             "command-manual-1",
                             "idem-manual-1",
                             "cause-manual-1",
-                            null),
-                        null,
-                        null))
+                            null)))
                 .getBytes(UTF_8));
     PostEntryCommand cashExpenseCommand =
         withEntry(
@@ -146,12 +143,46 @@ class CliFuzzFixturesTest {
                 new AccountCode("3100"),
                 new AccountCode("1100"),
                 new MonetaryAmount("USD", "55")));
+    PostEntryCommand openingBalanceCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.OpeningBalanceAdjustment(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-12"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            dev.erst.fingrind.core.Money.parse("SEK", "42.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("3000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            dev.erst.fingrind.core.Money.parse("SEK", "42.00"))))));
+    PostEntryCommand reversalCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.ReversalAdjustment(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-13"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")))),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(
+                        new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal"))));
 
     assertEquals("JPY", CliFuzzFixtures.journalEntry(typedCommand).currencyUnit().code());
     assertEquals(
         "JPY",
         CliFuzzFixtures.bookkeepingCommand(typedCommand).journalEntry().currencyUnit().code());
-    assertEquals("GBP", CliFuzzFixtures.journalEntry(manualCommand).currencyUnit().code());
+    assertEquals("GBP", CliFuzzFixtures.journalEntry(correctionCommand).currencyUnit().code());
     assertEquals(
         "CHF",
         CliFuzzFixtures.bookkeepingCommand(cashExpenseCommand)
@@ -167,7 +198,17 @@ class CliFuzzFixturesTest {
     assertEquals(
         "USD",
         CliFuzzFixtures.bookkeepingCommand(ownerDrawCommand).journalEntry().currencyUnit().code());
-    assertEquals(PostingKind.STANDARD, CliFuzzFixtures.postingKind(manualCommand));
+    assertEquals(
+        "SEK",
+        CliFuzzFixtures.bookkeepingCommand(openingBalanceCommand)
+            .journalEntry()
+            .currencyUnit()
+            .code());
+    assertEquals(
+        "NOK",
+        CliFuzzFixtures.bookkeepingCommand(reversalCommand).journalEntry().currencyUnit().code());
+    assertEquals(PostingKind.STANDARD, CliFuzzFixtures.postingKind(correctionCommand));
+    assertEquals(PostingKind.OPENING_BALANCE, CliFuzzFixtures.postingKind(openingBalanceCommand));
   }
 
   @Test
@@ -533,9 +574,7 @@ class CliFuzzFixturesTest {
     return """
         {
           "entityName": "Acme Studio",
-          "entityForm": "COMPANY",
-          "ownerModel": "MULTI_OWNER",
-                    "businessActivityTags": ["translation-services"],
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"

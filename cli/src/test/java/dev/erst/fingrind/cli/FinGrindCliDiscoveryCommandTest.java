@@ -137,9 +137,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode fullContract = payload.path("fullContract");
     assertTrue(fullContract.isObject());
     assertTrue(fullContract.path("bookModel").isObject());
-    assertTrue(fullContract.path("accountingBaseline").isObject());
+    assertTrue(fullContract.path("bookkeepingKernel").isObject());
     assertTrue(fullContract.path("currencyModel").isObject());
-    assertTrue(fullContract.path("extensionSurface").isObject());
+    assertTrue(fullContract.path("extensionSurface").isMissingNode());
     assertTrue(fullContract.path("quickStart").isArray());
   }
 

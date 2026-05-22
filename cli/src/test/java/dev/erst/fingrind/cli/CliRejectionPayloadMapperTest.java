@@ -56,18 +56,18 @@ class CliRejectionPayloadMapperTest {
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
-                Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                 Optional.empty())),
         "existing taxonomy",
         CliRejectionJsonModels.AccountTaxonomyConflictDetails.class);
     assertHint(
         new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-            FinancialPositionLineClassification.RETAINED_EARNINGS, List.of()),
+            FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of()),
         "Declare one active equity account",
         CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails.class);
     assertHint(
         new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            FinancialPositionLineClassification.ACCUMULATED_RESULT,
             List.of(new AccountCode("3200"))),
         "Reactivate one of the matching equity accounts",
         CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails.class);
@@ -168,12 +168,12 @@ class CliRejectionPayloadMapperTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
-                    Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                    Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                     Optional.empty())));
     var retainedEarningsMissingEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
             new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200"))));
     var retainedEarningsAmbiguousEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
@@ -217,13 +217,13 @@ class CliRejectionPayloadMapperTest {
     assertEquals(null, taxonomyDetails.existingAccountTaxonomy().parentAccountCode());
     assertEquals(null, taxonomyDetails.existingAccountTaxonomy().profitAndLossLineClassification());
     assertEquals(
-        "RETAINED_EARNINGS",
+        "ACCUMULATED_RESULT",
         taxonomyDetails.requestedAccountTaxonomy().financialPositionLineClassification());
     assertEquals(null, taxonomyDetails.requestedAccountTaxonomy().parentAccountCode());
     assertEquals(
         null, taxonomyDetails.requestedAccountTaxonomy().profitAndLossLineClassification());
     assertEquals(
-        "RETAINED_EARNINGS",
+        "ACCUMULATED_RESULT",
         retainedEarningsMissingDetails.requiredFinancialPositionLineClassification());
     assertEquals(List.of("3200"), retainedEarningsMissingDetails.inactiveCandidateAccountCodes());
     assertEquals(
@@ -266,9 +266,6 @@ class CliRejectionPayloadMapperTest {
 
   @Test
   void postingRejectedEnvelope_coversHintsAndStructuredDetailsForNewPostingDoctrineBranches() {
-    var postingKindReserved =
-        CliRejectionPayloadMapper.postingRejectedEnvelope(
-            "idem-1", new PostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE));
     var functionalCurrencyMismatch =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-2",
@@ -287,11 +284,6 @@ class CliRejectionPayloadMapperTest {
     var reversalTargetNotFound =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-4", new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")));
-
-    assertNotNull(postingKindReserved.hint());
-    assertTrue(postingKindReserved.hint().contains("STANDARD or OPENING_BALANCE"));
-    assertInstanceOf(
-        CliRejectionJsonModels.PostingKindDetails.class, postingKindReserved.details());
 
     CliRejectionJsonModels.FunctionalCurrencyMismatchDetails currencyDetails =
         assertInstanceOf(

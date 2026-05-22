@@ -100,14 +100,6 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected entity name",
     )
     require(
-        payload_field(open_payload, "payload", "bookIdentity", "entityForm") == config.entity_form,
-        f"{config.label} open-book did not echo the expected entity form",
-    )
-    require(
-        payload_field(open_payload, "payload", "bookIdentity", "ownerModel") == config.owner_model,
-        f"{config.label} open-book did not echo the expected owner model",
-    )
-    require(
         payload_field(open_payload, "payload", "bookIdentity", "businessActivityTags")
         == config.business_activity_tags,
         f"{config.label} open-book did not echo the expected business activity tags",
@@ -195,10 +187,6 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.book.argument,
             "--entity-name",
             config.entity_name,
-            "--entity-form",
-            config.entity_form,
-            "--owner-model",
-            config.owner_model,
             "--business-activity-tag",
             *config.business_activity_tags,
             "--functional-currency",
@@ -218,10 +206,6 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.book.argument,
             "--entity-name",
             config.entity_name,
-            "--entity-form",
-            config.entity_form,
-            "--owner-model",
-            config.owner_model,
             "--business-activity-tag",
             *config.business_activity_tags,
             "--functional-currency",

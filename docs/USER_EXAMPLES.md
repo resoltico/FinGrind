@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: USER_EXAMPLES
 updated: "2026-05-22"
 route:
@@ -44,9 +44,7 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
-  --entity-form COMPANY \
-  --owner-model MULTI_OWNER \
-    --business-activity-tag consulting-services \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
@@ -86,9 +84,7 @@ cat ./secrets/acme.book-key | \
     open-book \
     --book-file ./books/acme.sqlite \
     --entity-name "Acme Studio" \
-    --entity-form COMPANY \
-    --owner-model MULTI_OWNER \
-        --business-activity-tag consulting-services \
+    --business-activity-tag consulting-services \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
     --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
@@ -98,7 +94,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -108,9 +104,7 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
-  --entity-form COMPANY \
-  --owner-model MULTI_OWNER \
-    --business-activity-tag consulting-services \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
@@ -120,7 +114,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","entityForm":"COMPANY","ownerModel":"MULTI_OWNER","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","policyProfile":"INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","policyProfile":"INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -359,7 +353,7 @@ Or execute the checked-in runnable example plan directly against a fresh book:
 ```bash
 fingrind \
   execute-plan \
-  --book-file ./acme-plan.sqlite \
+  --book-file ./books/acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --result-detail full \
   --request-file ./ledger-plan-request.json
@@ -390,7 +384,7 @@ query example:
 ```bash
 fingrind \
   execute-plan \
-  --book-file ./acme-plan.sqlite \
+  --book-file ./books/acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --result-detail full \
   --request-file ./ledger-plan-query-request.json
@@ -645,9 +639,7 @@ fingrind \
   open-book \
   --book-file ./prompt.sqlite \
   --entity-name "Acme Studio" \
-  --entity-form COMPANY \
-  --owner-model MULTI_OWNER \
-    --business-activity-tag consulting-services \
+  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \

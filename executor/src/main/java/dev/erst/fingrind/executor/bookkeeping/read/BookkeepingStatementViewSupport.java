@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
@@ -25,7 +26,11 @@ final class BookkeepingStatementViewSupport {
       Comparator.comparing(balance -> balance.netAmount().currencyUnit().code());
   static final Comparator<FinancialPositionRowView> FINANCIAL_POSITION_ROW_ORDER =
       Comparator.comparing(FinancialPositionRowView::lineKind)
-          .thenComparing(FinancialPositionRowView::lineClassification)
+          .thenComparing(
+              row ->
+                  row.lineClassification()
+                      .map(FinancialPositionLineClassification::wireValue)
+                      .orElse(""))
           .thenComparing(FinancialPositionRowView::lineCode)
           .thenComparing(row -> row.balance().netAmount().currencyUnit().code());
   static final Comparator<IncomeStatementRowView> INCOME_STATEMENT_ROW_ORDER =
@@ -35,7 +40,11 @@ final class BookkeepingStatementViewSupport {
           .thenComparing(row -> row.movement().netAmount().currencyUnit().code());
   static final Comparator<ChangesInEquityRowView> CHANGES_IN_EQUITY_ROW_ORDER =
       Comparator.comparing(ChangesInEquityRowView::lineKind)
-          .thenComparing(ChangesInEquityRowView::lineClassification)
+          .thenComparing(
+              row ->
+                  row.lineClassification()
+                      .map(FinancialPositionLineClassification::wireValue)
+                      .orElse(""))
           .thenComparing(ChangesInEquityRowView::lineCode)
           .thenComparing(row -> row.closingBalance().netAmount().currencyUnit().code());
 
@@ -67,11 +76,7 @@ final class BookkeepingStatementViewSupport {
         accountTotal.account().accountName().value(),
         accountTotal.account().accountType(),
         java.util.Optional.of(accountTotal.account().accountRole()),
-        accountTotal
-            .account()
-            .accountTaxonomy()
-            .financialPositionLineClassification()
-            .orElseThrow(),
+        accountTotal.account().accountTaxonomy().financialPositionLineClassification(),
         dev.erst.fingrind.core.StatementLineKind.DECLARED_ACCOUNT,
         accountTotal.balance());
   }
@@ -83,7 +88,7 @@ final class BookkeepingStatementViewSupport {
         currentPeriodResultLine.lineName(),
         AccountType.EQUITY,
         java.util.Optional.empty(),
-        currentPeriodResultLine.lineClassification(),
+        java.util.Optional.empty(),
         dev.erst.fingrind.core.StatementLineKind.CURRENT_PERIOD_RESULT,
         signedBalance(currencyUnit, signedMinorUnits));
   }

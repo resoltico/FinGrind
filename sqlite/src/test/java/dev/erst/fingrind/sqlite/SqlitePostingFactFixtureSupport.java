@@ -25,7 +25,6 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -34,7 +33,6 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
@@ -64,11 +62,7 @@ import java.util.Optional;
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
-            List.of()),
+        new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

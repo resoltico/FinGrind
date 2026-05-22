@@ -21,7 +21,6 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
-            "posting-kind-reserved",
             "book-functional-currency-mismatch",
             "closed-period-violation",
             "opening-balance-window-closed",
@@ -36,8 +35,6 @@ class PostingRejectionTest {
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.DuplicateIdempotencyKey()),
-            PostingRejection.wireCode(
-                new PostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)),
             PostingRejection.wireCode(
                 new PostingRejection.BookFunctionalCurrencyMismatch(
                     CurrencyUnit.of("EUR"), CurrencyUnit.of("USD"))),
@@ -81,7 +78,6 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
-            "posting-kind-reserved",
             "book-functional-currency-mismatch",
             "closed-period-violation",
             "opening-balance-window-closed",

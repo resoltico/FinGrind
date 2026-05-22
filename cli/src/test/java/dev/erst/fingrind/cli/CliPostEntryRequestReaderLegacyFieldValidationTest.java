@@ -19,8 +19,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -98,8 +97,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "reversal": {

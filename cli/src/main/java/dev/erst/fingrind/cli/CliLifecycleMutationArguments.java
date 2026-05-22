@@ -11,10 +11,8 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -29,8 +27,6 @@ final class CliLifecycleMutationArguments {
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.ENTITY_NAME,
-              ProtocolOptions.ENTITY_FORM,
-              ProtocolOptions.OWNER_MODEL,
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
@@ -105,8 +101,6 @@ final class CliLifecycleMutationArguments {
             new BookIdentity(
                 new EntityProfile(
                     requireOpenBookEntityName(argumentValues.entityName),
-                    requireOpenBookEntityForm(argumentValues.entityForm),
-                    requireOpenBookOwnerModel(argumentValues.ownerModel),
                     requireOpenBookBusinessActivityTags(argumentValues.businessActivityTags)),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
                 requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
@@ -134,18 +128,6 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.ENTITY_NAME),
                   ProtocolOptions.ENTITY_NAME);
-      case ProtocolOptions.ENTITY_FORM ->
-          argumentValues.entityForm =
-              CliArgumentValueParser.parseEntityFormOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.ENTITY_FORM),
-                  ProtocolOptions.ENTITY_FORM);
-      case ProtocolOptions.OWNER_MODEL ->
-          argumentValues.ownerModel =
-              CliArgumentValueParser.parseOwnerModelOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.OWNER_MODEL),
-                  ProtocolOptions.OWNER_MODEL);
       case ProtocolOptions.BUSINESS_ACTIVITY_TAG ->
           argumentValues.businessActivityTags.add(
               CliArgumentValueParser.parseBusinessActivityTagOption(
@@ -190,15 +172,6 @@ final class CliLifecycleMutationArguments {
     return entityName;
   }
 
-  private static EntityForm requireOpenBookEntityForm(@Nullable EntityForm entityForm) {
-    if (entityForm == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ENTITY_FORM,
-          "A " + ProtocolOptions.ENTITY_FORM + " argument is required.");
-    }
-    return entityForm;
-  }
-
   private static CurrencyUnit requireOpenBookFunctionalCurrency(
       @Nullable CurrencyUnit functionalCurrency) {
     if (functionalCurrency == null) {
@@ -229,15 +202,6 @@ final class CliLifecycleMutationArguments {
     return policyProfile;
   }
 
-  private static OwnerModel requireOpenBookOwnerModel(@Nullable OwnerModel ownerModel) {
-    if (ownerModel == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.OWNER_MODEL,
-          "A " + ProtocolOptions.OWNER_MODEL + " argument is required.");
-    }
-    return ownerModel;
-  }
-
   private static List<BusinessActivityTag> requireOpenBookBusinessActivityTags(
       List<BusinessActivityTag> businessActivityTags) {
     if (businessActivityTags.isEmpty()) {
@@ -252,8 +216,6 @@ final class CliLifecycleMutationArguments {
   static final class OpenBookArgumentValues {
     private final List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
     private @Nullable BookEntityName entityName;
-    private @Nullable EntityForm entityForm;
-    private @Nullable OwnerModel ownerModel;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable AccountingPolicyProfile policyProfile;

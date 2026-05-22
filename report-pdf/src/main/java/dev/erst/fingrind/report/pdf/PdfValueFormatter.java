@@ -7,11 +7,9 @@ import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -100,17 +98,19 @@ final class PdfValueFormatter {
       case NONCURRENT_ASSET -> "Non-current asset";
       case CURRENT_LIABILITY -> "Current liability";
       case NONCURRENT_LIABILITY -> "Non-current liability";
-      case OWNER_CAPITAL -> "Owner capital";
-      case OWNER_DRAWINGS -> "Owner drawings";
-      case PARTNER_CAPITAL -> "Partner capital";
-      case PARTNER_CURRENT -> "Partner current";
-      case SHARE_CAPITAL -> "Share capital";
-      case RETAINED_EARNINGS -> "Retained earnings";
-      case ACCUMULATED_SURPLUS -> "Accumulated surplus";
+      case CONTRIBUTED_CAPITAL -> "Contributed capital";
+      case DISTRIBUTIONS -> "Distributions";
+      case ACCUMULATED_RESULT -> "Accumulated result";
       case RESERVE -> "Reserve";
-      case CURRENT_PERIOD_RESULT -> "Current period result";
       case OTHER_EQUITY -> "Other equity";
     };
+  }
+
+  static String displayFinancialPositionLineClassification(
+      Optional<FinancialPositionLineClassification> lineClassification) {
+    return lineClassification
+        .map(PdfValueFormatter::displayFinancialPositionLineClassification)
+        .orElse("(derived)");
   }
 
   static String displayProfitAndLossLineClassification(
@@ -143,10 +143,6 @@ final class PdfValueFormatter {
       case ALL_POSTING_KINDS -> "All posting kinds";
       case NON_CLOSING_POSTINGS -> "Non-closing postings";
     };
-  }
-
-  static String displayEntityProfile(EntityForm entityForm, OwnerModel ownerModel) {
-    return wireLabel(entityForm.wireValue()) + " / " + wireLabel(ownerModel.wireValue());
   }
 
   static String displayBusinessActivityTags(List<BusinessActivityTag> businessActivityTags) {

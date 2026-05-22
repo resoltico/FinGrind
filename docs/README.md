@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-05-22"
 route:
@@ -66,8 +66,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER.md](./DEVELOPER.md): contributor architecture, quality gates, build entrypoints, and cross-module ownership
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md): preferred contributor container workflow and editor-agnostic container use
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md): explicit bookkeeping and workflow consistency boundaries, invariants, and mutation owners
-- [ADR_10X_ACCOUNTING_FOUNDATION.md](./ADR_10X_ACCOUNTING_FOUNDATION.md): exact 10/10 target doctrine, current maturity, and hard-break implementation order for missing accounting contexts
-- [ADR_ACCOUNTING_BASELINE.md](./ADR_ACCOUNTING_BASELINE.md): current accounting baseline, country-agnostic scope, and intentional exclusions
+- [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md): exact accounting-foundation target doctrine, current maturity, and hard-break implementation order for missing accounting contexts
+- [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md): current bookkeeping-kernel scope, public truth boundaries, and intentional exclusions
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): canonical bounded contexts, context map, and accounting-entity vocabulary
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules

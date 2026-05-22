@@ -17,13 +17,11 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
@@ -145,41 +143,28 @@ class PdfValueFormatterTest {
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_LIABILITY));
     assertEquals(
-        "Owner capital",
+        "Contributed capital",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.OWNER_CAPITAL));
+            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL));
     assertEquals(
-        "Owner drawings",
+        "Distributions",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.OWNER_DRAWINGS));
+            FinancialPositionLineClassification.DISTRIBUTIONS));
     assertEquals(
-        "Partner capital",
+        "Accumulated result",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.PARTNER_CAPITAL));
-    assertEquals(
-        "Partner current",
-        PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.PARTNER_CURRENT));
-    assertEquals(
-        "Share capital",
-        PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.SHARE_CAPITAL));
-    assertEquals(
-        "Retained earnings",
-        PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.RETAINED_EARNINGS));
-    assertEquals(
-        "Accumulated surplus",
-        PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.ACCUMULATED_SURPLUS));
+            FinancialPositionLineClassification.ACCUMULATED_RESULT));
     assertEquals(
         "Reserve",
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESERVE));
     assertEquals(
-        "Current period result",
+        "(derived)",
+        PdfValueFormatter.displayFinancialPositionLineClassification(Optional.empty()));
+    assertEquals(
+        "Current asset",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT));
+            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET)));
     assertEquals(
         "Other equity",
         PdfValueFormatter.displayFinancialPositionLineClassification(
@@ -265,9 +250,6 @@ class PdfValueFormatterTest {
                         Optional.empty()),
                     Instant.parse("2026-04-07T10:15:30Z"),
                     SourceChannel.CLI))));
-    assertEquals(
-        "Other / Multi Owner",
-        PdfValueFormatter.displayEntityProfile(EntityForm.OTHER, OwnerModel.MULTI_OWNER));
   }
 
   @Test
@@ -298,9 +280,6 @@ class PdfValueFormatterTest {
 
   @Test
   void displayIdentityProfileValuesFormatsPolicyAndActivityFacts() {
-    assertEquals(
-        "Company / Multi Owner",
-        PdfValueFormatter.displayEntityProfile(EntityForm.COMPANY, OwnerModel.MULTI_OWNER));
     assertEquals(
         "Internal Management Single Entity V1",
         PdfValueFormatter.displayPolicyProfile(

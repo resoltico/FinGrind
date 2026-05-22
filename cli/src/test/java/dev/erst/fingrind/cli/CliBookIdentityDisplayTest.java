@@ -7,10 +7,8 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -22,8 +20,6 @@ class CliBookIdentityDisplayTest {
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Acme Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
@@ -35,10 +31,10 @@ class CliBookIdentityDisplayTest {
         List.of(
             List.of(
                 "Book",
-                "Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1")),
+                "Acme Studio | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
     assertEquals(
         List.of("Business activity", "translation-services, platform-sales"),
-        CliBookIdentityDisplay.detailRows(bookIdentity).get(3));
+        CliBookIdentityDisplay.detailRows(bookIdentity).get(1));
   }
 }

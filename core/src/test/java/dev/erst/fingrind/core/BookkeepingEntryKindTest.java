@@ -15,14 +15,19 @@ class BookkeepingEntryKindTest {
     assertEquals("CASH_EXPENSE", BookkeepingEntryKind.CASH_EXPENSE.wireValue());
     assertEquals("OWNER_CONTRIBUTION", BookkeepingEntryKind.OWNER_CONTRIBUTION.wireValue());
     assertEquals("OWNER_DRAW", BookkeepingEntryKind.OWNER_DRAW.wireValue());
-    assertEquals("MANUAL_ADJUSTMENT", BookkeepingEntryKind.MANUAL_ADJUSTMENT.wireValue());
+    assertEquals(
+        "OPENING_BALANCE_ADJUSTMENT", BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT.wireValue());
+    assertEquals("CORRECTION_ADJUSTMENT", BookkeepingEntryKind.CORRECTION_ADJUSTMENT.wireValue());
+    assertEquals("REVERSAL_ADJUSTMENT", BookkeepingEntryKind.REVERSAL_ADJUSTMENT.wireValue());
     assertEquals(
         List.of(
             "CASH_REVENUE",
             "CASH_EXPENSE",
             "OWNER_CONTRIBUTION",
             "OWNER_DRAW",
-            "MANUAL_ADJUSTMENT"),
+            "OPENING_BALANCE_ADJUSTMENT",
+            "CORRECTION_ADJUSTMENT",
+            "REVERSAL_ADJUSTMENT"),
         BookkeepingEntryKind.wireValues());
   }
 
@@ -37,8 +42,14 @@ class BookkeepingEntryKindTest {
         BookkeepingEntryKind.fromWireValue("OWNER_CONTRIBUTION"));
     assertEquals(BookkeepingEntryKind.OWNER_DRAW, BookkeepingEntryKind.fromWireValue("OWNER_DRAW"));
     assertEquals(
-        BookkeepingEntryKind.MANUAL_ADJUSTMENT,
-        BookkeepingEntryKind.fromWireValue("MANUAL_ADJUSTMENT"));
+        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
+        BookkeepingEntryKind.fromWireValue("OPENING_BALANCE_ADJUSTMENT"));
+    assertEquals(
+        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
+        BookkeepingEntryKind.fromWireValue("CORRECTION_ADJUSTMENT"));
+    assertEquals(
+        BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+        BookkeepingEntryKind.fromWireValue("REVERSAL_ADJUSTMENT"));
 
     IllegalArgumentException unknownValueFailure =
         assertThrows(

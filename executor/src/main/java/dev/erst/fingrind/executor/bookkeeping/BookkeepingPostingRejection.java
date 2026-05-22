@@ -15,7 +15,6 @@ public sealed interface BookkeepingPostingRejection
     permits BookkeepingPostingRejection.BookNotInitialized,
         BookkeepingPostingRejection.AccountStateViolations,
         BookkeepingPostingRejection.DuplicateIdempotencyKey,
-        BookkeepingPostingRejection.PostingKindReserved,
         BookkeepingPostingRejection.BookFunctionalCurrencyMismatch,
         BookkeepingPostingRejection.ClosedPeriodViolation,
         BookkeepingPostingRejection.OpeningBalanceWindowClosed,
@@ -71,13 +70,6 @@ public sealed interface BookkeepingPostingRejection
 
   /** Duplicate idempotency refusal for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements BookkeepingPostingRejection {}
-
-  /** Refusal for a caller-authored posting that attempts to use a generated posting kind. */
-  record PostingKindReserved(PostingKind postingKind) implements BookkeepingPostingRejection {
-    public PostingKindReserved {
-      Objects.requireNonNull(postingKind, "postingKind");
-    }
-  }
 
   /** Refusal for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(

@@ -76,7 +76,7 @@ class AccountCodePolicyTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
-                    java.util.Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                    java.util.Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                     java.util.Optional.empty())));
   }
 }

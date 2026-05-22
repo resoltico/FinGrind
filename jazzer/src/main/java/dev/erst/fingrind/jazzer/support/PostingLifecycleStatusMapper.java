@@ -16,7 +16,6 @@ public final class PostingLifecycleStatusMapper {
           accountStateViolationStatus(violations);
       case PostingRejection.DuplicateIdempotencyKey _ ->
           PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
-      case PostingRejection.PostingKindReserved _ -> PostingLifecycleStatus.POSTING_KIND_RESERVED;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.ClosedPeriodViolation _ ->

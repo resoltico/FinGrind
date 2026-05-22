@@ -9,7 +9,6 @@ import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentType;
 import java.util.List;
@@ -27,7 +26,9 @@ final class MachineContractPostEntrySchemas {
             cashExpenseSchema(),
             ownerContributionSchema(),
             ownerDrawSchema(),
-            manualAdjustmentSchema()));
+            openingBalanceAdjustmentSchema(),
+            correctionAdjustmentSchema(),
+            reversalAdjustmentSchema()));
   }
 
   static Map<String, Object> postEntrySchemaWithoutDialect() {
@@ -46,8 +47,6 @@ final class MachineContractPostEntrySchemas {
         List.of(
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "entryKind", BookkeepingEntryKind.wireValues()),
-            new ContractRequestShapes.EnumVocabularyDescriptor(
-                "postingKind", PostingKind.callerSelectableWireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "lineSide", JournalLine.EntrySide.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor("actorType", ActorType.wireValues()),
@@ -90,7 +89,7 @@ final class MachineContractPostEntrySchemas {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-            "Caller-authored bookkeeping entry kind. Typed business events are the primary write surface; MANUAL_ADJUSTMENT is the explicit raw-journal exception path.",
+            "Caller-authored bookkeeping entry kind. Typed business events remain primary, and administrative adjustments use named entry kinds rather than a generic raw-journal tunnel.",
             MachineContractSchemaSupport.enumStringSchema(
                 "Caller-authored bookkeeping entry kind.", BookkeepingEntryKind.wireValues())),
         MachineContractFieldSpec.required(
@@ -123,16 +122,10 @@ final class MachineContractPostEntrySchemas {
             MachineContractSchemaSupport.moneyObjectSchema(
                 "Exact positive money object carried by one typed business event.", true)),
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
-            "Caller-authored manual-adjustment posting family. Accepted values are STANDARD and OPENING_BALANCE.",
-            MachineContractSchemaSupport.enumStringSchema(
-                "Caller-authored manual-adjustment posting family.",
-                PostingKind.callerSelectableWireValues())),
-        MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.LINES,
-            "Balanced non-empty array of journal lines used only by the explicit MANUAL_ADJUSTMENT path.",
+            "Balanced non-empty array of journal lines used only by named administrative adjustment entries.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of journal lines used only by the explicit MANUAL_ADJUSTMENT path.",
+                "Balanced non-empty array of journal lines used only by named administrative adjustment entries.",
                 lineSchema(),
                 2)),
         MachineContractFieldSpec.required(
@@ -145,7 +138,7 @@ final class MachineContractPostEntrySchemas {
             provenanceSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVERSAL,
-            "Optional reversal target descriptor for the explicit MANUAL_ADJUSTMENT path.",
+            "Required reversal target descriptor for REVERSAL_ADJUSTMENT and absent otherwise.",
             reversalSchema()),
         MachineContractFieldSpec.forbidden(
             ProtocolPostEntryFields.TopLevel.CORRECTION,
@@ -248,35 +241,73 @@ final class MachineContractPostEntrySchemas {
             requiredProvenanceField()));
   }
 
-  private static Map<String, Object> manualAdjustmentSchema() {
+  private static Map<String, Object> openingBalanceAdjustmentSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Explicit raw-journal adjustment path for openings, reversals, and exceptional adjustments outside the supported typed business events.",
+        "Explicit administrative opening-balance entry used to seed one book before operating activity begins.",
         List.of(
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                "This request uses the explicit manual-adjustment path.",
+                "This request records one opening-balance administrative entry.",
                 MachineContractSchemaSupport.constSchema(
-                    BookkeepingEntryKind.MANUAL_ADJUSTMENT.wireValue(),
-                    "This request uses the explicit manual-adjustment path.")),
-            MachineContractFieldSpec.required(
-                ProtocolPostEntryFields.TopLevel.POSTING_KIND,
-                "Caller-authored manual-adjustment posting family. Accepted values are STANDARD and OPENING_BALANCE.",
-                MachineContractSchemaSupport.enumStringSchema(
-                    "Caller-authored manual-adjustment posting family.",
-                    PostingKind.callerSelectableWireValues())),
+                    BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT.wireValue(),
+                    "This request records one opening-balance administrative entry.")),
             requiredEffectiveDateField(),
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.LINES,
-                "Balanced non-empty array of journal lines for one manual adjustment.",
+                "Balanced non-empty array of journal lines for one opening-balance administrative entry.",
                 MachineContractSchemaSupport.arraySchema(
-                    "Balanced non-empty array of journal lines for one manual adjustment.",
+                    "Balanced non-empty array of journal lines for one opening-balance administrative entry.",
+                    lineSchema(),
+                    2)),
+            requiredEvidenceField(),
+            requiredProvenanceField()));
+  }
+
+  private static Map<String, Object> correctionAdjustmentSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Explicit administrative correction entry for non-opening, non-reversal adjustments outside the typed business-event family.",
+        List.of(
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                "This request records one correction administrative entry.",
+                MachineContractSchemaSupport.constSchema(
+                    BookkeepingEntryKind.CORRECTION_ADJUSTMENT.wireValue(),
+                    "This request records one correction administrative entry.")),
+            requiredEffectiveDateField(),
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.LINES,
+                "Balanced non-empty array of journal lines for one correction administrative entry.",
+                MachineContractSchemaSupport.arraySchema(
+                    "Balanced non-empty array of journal lines for one correction administrative entry.",
+                    lineSchema(),
+                    2)),
+            requiredEvidenceField(),
+            requiredProvenanceField()));
+  }
+
+  private static Map<String, Object> reversalAdjustmentSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Explicit administrative reversal entry that fully negates one previously committed posting.",
+        List.of(
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                "This request records one reversal administrative entry.",
+                MachineContractSchemaSupport.constSchema(
+                    BookkeepingEntryKind.REVERSAL_ADJUSTMENT.wireValue(),
+                    "This request records one reversal administrative entry.")),
+            requiredEffectiveDateField(),
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.LINES,
+                "Balanced non-empty array of journal lines for one reversal administrative entry.",
+                MachineContractSchemaSupport.arraySchema(
+                    "Balanced non-empty array of journal lines for one reversal administrative entry.",
                     lineSchema(),
                     2)),
             requiredEvidenceField(),
             requiredProvenanceField(),
-            MachineContractFieldSpec.optional(
+            MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.REVERSAL,
-                "Optional reversal target descriptor for additive manual-adjustment reversals.",
+                "Required reversal target descriptor for one reversal administrative entry.",
                 reversalSchema())));
   }
 

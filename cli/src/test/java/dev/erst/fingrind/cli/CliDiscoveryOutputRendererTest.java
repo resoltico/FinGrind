@@ -340,7 +340,7 @@ class CliDiscoveryOutputRendererTest {
             canonical.description(),
             canonical.usage(),
             canonical.bookModel(),
-            canonical.accountingBaseline(),
+            canonical.bookkeepingKernel(),
             new ContractRequestShapes.RequestShapesDescriptor(
                 canonical.requestShapes().schemaDialect(),
                 canonical.requestShapes().postEntry(),
@@ -364,8 +364,7 @@ class CliDiscoveryOutputRendererTest {
             canonical.quickStart(),
             canonical.exitCodes(),
             canonical.preflight(),
-            canonical.currencyModel(),
-            canonical.extensionSurface());
+            canonical.currencyModel());
 
     String rendered = CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor);
 
@@ -389,8 +388,6 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(postEntryRendered.contains("Accepted value vocabularies:"));
     assertTrue(postEntryRendered.contains("entryKind"));
-    assertTrue(postEntryRendered.contains("postingKind"));
-    assertTrue(postEntryRendered.contains("STANDARD, OPENING_BALANCE"));
     assertTrue(postEntryRendered.contains("lineSide"));
     assertTrue(postEntryRendered.contains("DEBIT, CREDIT"));
     assertTrue(postEntryRendered.contains("actorType"));
@@ -421,10 +418,8 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(keyHelp.contains("Choose one missing private parent directory"));
     assertTrue(
         restoreHelp.contains("reopen the restored live book with that same backup key file"));
-    assertTrue(closeHelp.contains("FREELANCER and SOLE_PROPRIETORSHIP"));
-    assertTrue(closeHelp.contains("OWNER_CAPITAL"));
-    assertTrue(closeHelp.contains("PARTNERSHIP requires"));
-    assertTrue(closeHelp.contains("PARTNER_CURRENT"));
+    assertTrue(closeHelp.contains("ACCUMULATED_RESULT"));
+    assertTrue(closeHelp.contains("exactly one active and postable EQUITY account"));
     assertTrue(closeHelp.contains("2026-04-30"));
     assertFalse(closeHelp.contains("--closing-equity-account"));
   }
@@ -659,7 +654,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
-                postEntryCanonical.accountingBaseline(),
+                postEntryCanonical.bookkeepingKernel(),
                 postEntryCanonical.requestShapes(),
                 null,
                 postEntryCanonical.declareAccountTemplate(),
@@ -668,8 +663,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.quickStart(),
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
-                postEntryCanonical.currencyModel(),
-                postEntryCanonical.extensionSurface()));
+                postEntryCanonical.currencyModel()));
     String declareRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -678,7 +672,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
-                declareCanonical.accountingBaseline(),
+                declareCanonical.bookkeepingKernel(),
                 declareCanonical.requestShapes(),
                 declareCanonical.requestTemplate(),
                 null,
@@ -687,8 +681,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.quickStart(),
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
-                declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface()));
+                declareCanonical.currencyModel()));
     String executePlanRendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -697,7 +690,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
-                executePlanCanonical.accountingBaseline(),
+                executePlanCanonical.bookkeepingKernel(),
                 executePlanCanonical.requestShapes(),
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
@@ -706,8 +699,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.quickStart(),
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
-                executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface()));
+                executePlanCanonical.currencyModel()));
 
     assertFalse(postEntryRendered.contains("Request Document"));
     assertFalse(declareRendered.contains("Request Document"));
@@ -731,7 +723,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
-                postEntryCanonical.accountingBaseline(),
+                postEntryCanonical.bookkeepingKernel(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
                     null,
@@ -744,8 +736,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.quickStart(),
                 postEntryCanonical.exitCodes(),
                 postEntryCanonical.preflight(),
-                postEntryCanonical.currencyModel(),
-                postEntryCanonical.extensionSurface()));
+                postEntryCanonical.currencyModel()));
     String declareWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -754,7 +745,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
-                declareCanonical.accountingBaseline(),
+                declareCanonical.bookkeepingKernel(),
                 null,
                 declareCanonical.requestTemplate(),
                 declareCanonical.declareAccountTemplate(),
@@ -763,8 +754,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.quickStart(),
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
-                declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface()));
+                declareCanonical.currencyModel()));
     String declareWithoutDeclareShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -773,7 +763,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
-                declareCanonical.accountingBaseline(),
+                declareCanonical.bookkeepingKernel(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
                     declareCanonical.requestShapes().postEntry(),
@@ -786,8 +776,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.quickStart(),
                 declareCanonical.exitCodes(),
                 declareCanonical.preflight(),
-                declareCanonical.currencyModel(),
-                declareCanonical.extensionSurface()));
+                declareCanonical.currencyModel()));
     String executePlanWithoutRequestShapes =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -796,7 +785,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
-                executePlanCanonical.accountingBaseline(),
+                executePlanCanonical.bookkeepingKernel(),
                 null,
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
@@ -805,8 +794,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.quickStart(),
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
-                executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface()));
+                executePlanCanonical.currencyModel()));
     String executePlanWithoutLedgerShape =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
@@ -815,7 +803,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
-                executePlanCanonical.accountingBaseline(),
+                executePlanCanonical.bookkeepingKernel(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
                     executePlanCanonical.requestShapes().postEntry(),
@@ -828,8 +816,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.quickStart(),
                 executePlanCanonical.exitCodes(),
                 executePlanCanonical.preflight(),
-                executePlanCanonical.currencyModel(),
-                executePlanCanonical.extensionSurface()));
+                executePlanCanonical.currencyModel()));
 
     assertFalse(postEntryWithoutPostShape.contains("Request Document"));
     assertFalse(declareWithoutRequestShapes.contains("Request Document"));
@@ -997,8 +984,7 @@ class CliDiscoveryOutputRendererTest {
             canonical.reversals(),
             canonical.preflight(),
             canonical.currencyModel(),
-            canonical.accountingBaseline(),
-            canonical.extensionSurface());
+            canonical.bookkeepingKernel());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(customized);
 
@@ -1048,53 +1034,14 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderCapabilitiesHuman_omitsDeepBoundaryDoctrineFromHumanSurface() {
+  void renderCapabilitiesHuman_omitsBookkeepingKernelDoctrineFromHumanSurface() {
     var canonical = MachineContract.capabilities(identity());
-    String rendered =
-        CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
-            new dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor(
-                canonical.application(),
-                canonical.version(),
-                canonical.storage(),
-                canonical.commands(),
-                canonical.requestInput(),
-                canonical.requestShapes(),
-                canonical.responseModel(),
-                canonical.planExecution(),
-                canonical.audit(),
-                canonical.accountRegistry(),
-                canonical.reversals(),
-                canonical.preflight(),
-                canonical.currencyModel(),
-                new ContractResponse.AccountingBaselineDescriptor(
-                    OperationId.FINANCIAL_POSITION.wireName(),
-                    canonical.accountingBaseline().currentTarget(),
-                    canonical.accountingBaseline().nextTarget(),
-                    canonical.accountingBaseline().doctrineSources(),
-                    canonical.accountingBaseline().builtInStatements(),
-                    canonical.accountingBaseline().deliberateExclusions(),
-                    canonical.accountingBaseline().nonClaims(),
-                    canonical.accountingBaseline().reportCapabilities(),
-                    canonical.accountingBaseline().defaultPolicyPack(),
-                    canonical.accountingBaseline().standardsPosition(),
-                    canonical.accountingBaseline().reportingPosition(),
-                    canonical.accountingBaseline().chartModelPosition(),
-                    canonical.accountingBaseline().smallEntityPosition(),
-                    canonical.accountingBaseline().operationalPosition(),
-                    canonical.accountingBaseline().taxPosition(),
-                    canonical.accountingBaseline().organizationalPosition(),
-                    canonical.accountingBaseline().isoClarification()),
-                new ContractResponse.ExtensionSurfaceDescriptor(
-                    "ifrs-ias-iso-fx-ar-ap-gaap-playbook",
-                    canonical.extensionSurface().defaultPolicyPackId(),
-                    List.of("ifrs-ias-iso-fx-ar-ap-gaap-playbook", "oci"),
-                    canonical.extensionSurface().policySeams(),
-                    canonical.extensionSurface().description())));
+    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(canonical);
 
-    assertFalse(rendered.contains("Financial position"));
-    assertFalse(rendered.contains("Extension model"));
-    assertFalse(rendered.contains("IFRS IAS ISO FX AR AP GAAP Playbook"));
-    assertFalse(rendered.contains("OCI"));
+    assertFalse(rendered.contains(canonical.bookkeepingKernel().scope()));
+    assertFalse(rendered.contains(canonical.bookkeepingKernel().description()));
+    assertFalse(rendered.contains("builtInStatements"));
+    assertFalse(rendered.contains("reportCapabilities"));
   }
 
   @Test
@@ -1173,7 +1120,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.44.0"));
+    assertTrue(rendered.contains("0.45.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -1217,7 +1164,7 @@ class CliDiscoveryOutputRendererTest {
         applicationIdentity.description(),
         usage,
         bookModel,
-        canonical.accountingBaseline(),
+        canonical.bookkeepingKernel(),
         requestShapes,
         canonical.requestTemplate(),
         canonical.declareAccountTemplate(),
@@ -1226,8 +1173,7 @@ class CliDiscoveryOutputRendererTest {
         quickStart,
         exitCodes,
         preflight,
-        currencyModel,
-        canonical.extensionSurface());
+        currencyModel);
   }
 
   private static ContractRequestShapes.RequestShapesDescriptor withoutDeclareAccountEnumVocabulary(
@@ -1245,7 +1191,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.44.0",
+        "0.45.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

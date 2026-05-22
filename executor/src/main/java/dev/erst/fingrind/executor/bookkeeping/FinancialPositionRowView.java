@@ -14,7 +14,7 @@ public record FinancialPositionRowView(
     String lineName,
     AccountType lineType,
     Optional<AccountRole> lineRole,
-    FinancialPositionLineClassification lineClassification,
+    Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance balance) {
   public FinancialPositionRowView {

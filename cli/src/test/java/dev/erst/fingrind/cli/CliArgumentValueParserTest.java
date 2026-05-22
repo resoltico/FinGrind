@@ -11,9 +11,7 @@ import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.util.List;
 import java.util.ListIterator;
@@ -78,12 +76,6 @@ class CliArgumentValueParserTest {
   @Test
   void parseStructuredOpenBookValueOptions_acceptValidValuesAndRejectInvalidOnes() {
     assertEquals(
-        EntityForm.COMPANY,
-        CliArgumentValueParser.parseEntityFormOption("COMPANY", "--entity-form"));
-    assertEquals(
-        OwnerModel.MULTI_OWNER,
-        CliArgumentValueParser.parseOwnerModelOption("MULTI_OWNER", "--owner-model"));
-    assertEquals(
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
         CliArgumentValueParser.parseAccountingPolicyProfileOption(
             "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1", "--policy-profile"));
@@ -92,18 +84,6 @@ class CliArgumentValueParserTest {
         CliArgumentValueParser.parseBusinessActivityTagOption(
             "translation,localization", "--business-activity-tag"));
 
-    assertEquals(
-        "--entity-form",
-        assertThrows(
-                CliArgumentsException.class,
-                () -> CliArgumentValueParser.parseEntityFormOption("NOPE", "--entity-form"))
-            .argument());
-    assertEquals(
-        "--owner-model",
-        assertThrows(
-                CliArgumentsException.class,
-                () -> CliArgumentValueParser.parseOwnerModelOption("NOPE", "--owner-model"))
-            .argument());
     assertEquals(
         "--policy-profile",
         assertThrows(

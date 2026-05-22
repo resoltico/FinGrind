@@ -394,7 +394,7 @@ with tempfile.TemporaryDirectory() as fixture_dir:
         ),
         (
             adjustment_request,
-            "MANUAL_ADJUSTMENT",
+            "CORRECTION_ADJUSTMENT",
             "fixture-regression-adjustment",
             expected_source_document(
                 "fixture-regression", "adjustment", "2026-04-08"
@@ -409,7 +409,6 @@ with tempfile.TemporaryDirectory() as fixture_dir:
         assert request_payload["provenance"]["commandId"] == expected_command_id
     assert sale_request["cashAccountCode"] == "1000"
     assert sale_request["revenueAccountCode"] == "2000"
-    assert adjustment_request["postingKind"] == "STANDARD"
     assert sale_request["amount"]["minorUnits"] == "1000"
     assert adjustment_request["lines"][0]["accountCode"] == "1000"
     declare_cash_request = json.loads(
@@ -470,8 +469,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
-        entity_form="COMPANY",
-        owner_model="MULTI_OWNER",
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
@@ -533,8 +530,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
-        entity_form="COMPANY",
-        owner_model="MULTI_OWNER",
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
@@ -623,8 +618,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
         actor_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
-        entity_form="COMPANY",
-        owner_model="MULTI_OWNER",
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",

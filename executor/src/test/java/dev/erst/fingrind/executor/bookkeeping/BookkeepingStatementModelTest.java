@@ -127,15 +127,15 @@ class BookkeepingStatementModelTest {
   @Test
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
-        FinancialPositionLineClassification.RETAINED_EARNINGS,
+        FinancialPositionLineClassification.ACCUMULATED_RESULT,
         new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200")))
             .requiredFinancialPositionLineClassification());
     assertEquals(
         List.of(new AccountCode("3200")),
         new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200")))
             .inactiveCandidateAccountCodes());
     assertEquals(
@@ -241,11 +241,6 @@ class BookkeepingStatementModelTest {
                 dev.erst.fingrind.core.CurrencyUnit.of("EUR"))
             .attemptedCurrency());
     assertEquals(
-        PostingKind.PERIOD_CLOSE,
-        new BookkeepingPostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)
-            .postingKind());
-
-    assertEquals(
         "currencyUnit",
         assertThrows(
                 NullPointerException.class,
@@ -283,12 +278,6 @@ class BookkeepingStatementModelTest {
                     new BookkeepingPostingRejection.BookFunctionalCurrencyMismatch(
                         dev.erst.fingrind.core.CurrencyUnit.of("USD"), nullOf()))
             .getMessage());
-    assertEquals(
-        "postingKind",
-        assertThrows(
-                NullPointerException.class,
-                () -> new BookkeepingPostingRejection.PostingKindReserved(nullOf()))
-            .getMessage());
   }
 
   @Test
@@ -304,7 +293,7 @@ class BookkeepingStatementModelTest {
                             "Cash",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
                     List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
@@ -331,7 +320,7 @@ class BookkeepingStatementModelTest {
                     "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),

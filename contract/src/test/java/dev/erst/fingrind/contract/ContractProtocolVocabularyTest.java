@@ -18,10 +18,8 @@ import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
-import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
-import dev.erst.fingrind.contract.protocol.CapabilityStatus;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -49,7 +47,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.PostingKind;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -71,7 +68,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(15, BookFormatContract.FORMAT_VERSION);
+    assertEquals(17, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -94,21 +91,6 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         RequestFieldPresence.CONDITIONAL, RequestFieldPresence.fromWireValue("conditional"));
     assertEquals("conditional", RequestFieldPresence.CONDITIONAL.toString());
-    assertEquals(
-        AccountingBaselineTarget.INTERNAL_MANAGEMENT_STATEMENTS,
-        AccountingBaselineTarget.fromWireValue("internal-management-statements"));
-    assertEquals(CapabilityStatus.FUTURE_CONTEXT, CapabilityStatus.fromWireValue("future-context"));
-    assertEquals(
-        List.of(
-            "bookkeeping-kernel-only",
-            "internal-management-statements",
-            "basic-standard-reporting-foundation",
-            "ifrs-for-smes-parity",
-            "full-local-gaap-or-statutory-pack"),
-        AccountingBaselineTarget.wireValues());
-    assertEquals(
-        List.of("implemented", "planned", "future-context", "deliberately-excluded", "unsupported"),
-        CapabilityStatus.wireValues());
     assertEquals(
         RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
         RuntimeDistribution.fromWireValue("source-checkout-gradle"));
@@ -188,7 +170,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of(
             ContractResponse.BookModelDescriptor.class,
-            ContractResponse.AccountingBaselineDescriptor.class,
+            ContractResponse.BookkeepingKernelDescriptor.class,
             ContractResponse.FieldDescriptor.class,
             ContractResponse.ErrorDescriptor.class,
             ContractResponse.ResponseModelDescriptor.class,
@@ -198,8 +180,7 @@ class ContractProtocolVocabularyTest {
             ContractResponse.AccountRegistryDescriptor.class,
             ContractResponse.ReversalDescriptor.class,
             ContractResponse.PreflightDescriptor.class,
-            ContractResponse.CurrencyDescriptor.class,
-            ContractResponse.ExtensionSurfaceDescriptor.class),
+            ContractResponse.CurrencyDescriptor.class),
         ContractResponse.descriptorTypes());
     assertEquals(
         List.of(
@@ -249,7 +230,6 @@ class ContractProtocolVocabularyTest {
                 null,
                 null,
                 new MonetaryAmount("EUR", "1000"),
-                null,
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000"))),
@@ -261,14 +241,13 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
-                BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
                 "2026-04-25",
                 null,
                 null,
                 null,
                 null,
                 null,
-                PostingKind.PERIOD_CLOSE,
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),

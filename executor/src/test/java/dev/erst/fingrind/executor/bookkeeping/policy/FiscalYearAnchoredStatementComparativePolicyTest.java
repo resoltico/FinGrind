@@ -8,10 +8,8 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -20,21 +18,13 @@ import org.junit.jupiter.api.Test;
 class FiscalYearAnchoredStatementComparativePolicyTest {
   private static final BookIdentity FEBRUARY_YEAR_BOOK =
       new BookIdentity(
-          new EntityProfile(
-              new BookEntityName("Leap Shop"),
-              EntityForm.FREELANCER,
-              OwnerModel.SOLE_OWNER,
-              java.util.List.of()),
+          new EntityProfile(new BookEntityName("Leap Shop"), java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("02-29"),
           AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
-          new EntityProfile(
-              new BookEntityName("Calendar Shop"),
-              EntityForm.FREELANCER,
-              OwnerModel.SOLE_OWNER,
-              java.util.List.of()),
+          new EntityProfile(new BookEntityName("Calendar Shop"), java.util.List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
           AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

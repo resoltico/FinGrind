@@ -5,8 +5,6 @@
     "kind" : "open-book",
     "openBook" : {
       "entityName" : "Acme Studio",
-      "entityForm" : "FREELANCER",
-      "ownerModel" : "SOLE_OWNER",
       "businessActivityTags" : [ "translation-services" ],
       "functionalCurrency" : "EUR",
       "fiscalYearStart" : "01-01",

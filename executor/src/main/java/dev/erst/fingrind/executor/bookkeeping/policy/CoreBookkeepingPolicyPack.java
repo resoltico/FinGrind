@@ -7,7 +7,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 
-/** Current FinGrind bookkeeping policy pack for the built-in country-agnostic kernel. */
+/** Current FinGrind bookkeeping policy pack for the built-in internal-management kernel. */
 @NullMarked
 public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   private static final CoreBookkeepingPolicyPack CURRENT = new CoreBookkeepingPolicyPack();
@@ -26,14 +26,7 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
         public FinancialPositionLineClassification closingEquityLineClassification(
             BookIdentity bookIdentity) {
           Objects.requireNonNull(bookIdentity, "bookIdentity");
-          return switch (bookIdentity.entityForm()) {
-            case FREELANCER, SOLE_PROPRIETORSHIP ->
-                FinancialPositionLineClassification.OWNER_CAPITAL;
-            case COMPANY, BRANCH -> FinancialPositionLineClassification.RETAINED_EARNINGS;
-            case PARTNERSHIP -> FinancialPositionLineClassification.PARTNER_CURRENT;
-            case NONPROFIT -> FinancialPositionLineClassification.ACCUMULATED_SURPLUS;
-            case OTHER -> FinancialPositionLineClassification.OTHER_EQUITY;
-          };
+          return FinancialPositionLineClassification.ACCUMULATED_RESULT;
         }
       };
   private static final StatementPresentationPolicy STATEMENT_PRESENTATION_POLICY =
@@ -46,10 +39,7 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
         @Override
         public DerivedEquityLine currentPeriodResultLine(BookIdentity bookIdentity) {
           Objects.requireNonNull(bookIdentity, "bookIdentity");
-          return new DerivedEquityLine(
-              "current-period-result",
-              "Current Period Result",
-              FinancialPositionLineClassification.CURRENT_PERIOD_RESULT);
+          return new DerivedEquityLine("current-period-result", "Current Period Result");
         }
       };
 

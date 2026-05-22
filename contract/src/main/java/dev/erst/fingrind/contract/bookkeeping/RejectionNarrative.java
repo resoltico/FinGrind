@@ -187,9 +187,6 @@ public final class RejectionNarrative {
               + violations.violations().size();
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
-      case PostingRejection.PostingKindReserved postingKindReserved ->
-          "Posting kind '%s' is reserved for generated FinGrind workflows and cannot be submitted directly."
-              .formatted(postingKindReserved.postingKind().wireValue());
       case PostingRejection.BookFunctionalCurrencyMismatch functionalCurrencyMismatch ->
           "Posting currency '%s' does not match this book's functional currency '%s'."
               .formatted(

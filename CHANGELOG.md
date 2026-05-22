@@ -5,12 +5,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-05-22
+
+### Changed
+
+- Narrowed the initialized-book identity and bookkeeping kernel to the live
+  cash-oriented single-entity contract. `open-book`, `inspect-book`, request schemas, examples,
+  and machine discovery now publish only entity name, business activity tags, functional
+  currency, fiscal-year anchor, and one persisted `policyProfile`, and the protected-book format
+  advances to `17`.
+- Replaced the machine-discovery `accountingBaseline` and extension-shaped `policyPack` surfaces
+  with a narrower `bookkeepingKernel` contract plus one `policyProfile`, so help, capabilities,
+  request docs, and protocol references publish only the executable bookkeeping kernel instead of
+  a broader standards-baseline posture.
+- Replaced generic `MANUAL_ADJUSTMENT` bookkeeping-entry language with named administrative
+  adjustment entry kinds (`OPENING_BALANCE_ADJUSTMENT`, `CORRECTION_ADJUSTMENT`, and
+  `REVERSAL_ADJUSTMENT`) across the public request contract, checked-in examples, release-smoke
+  fixtures, and fuzz/replay inputs.
+- Neutralized equity and period-close vocabulary across the bookkeeping kernel. Legal-form
+  identity and equity-classification assumptions are gone from the active public model,
+  `close-period` now targets `ACCUMULATED_RESULT`, and statements/readback use the same neutral
+  equity taxonomy across Java, SQLite, CLI output, and examples.
+- Renamed and rewrote the accounting ADR line around current executable truth:
+  [ADR_ACCOUNTING_FOUNDATION.md](./docs/ADR_ACCOUNTING_FOUNDATION.md) replaced the old
+  `ADR_10X_ACCOUNTING_FOUNDATION.md`, and
+  [ADR_ACCOUNTING_KERNEL_SCOPE.md](./docs/ADR_ACCOUNTING_KERNEL_SCOPE.md) replaced the old
+  `ADR_ACCOUNTING_BASELINE.md`.
+
+### Removed
+
+- Removed `entityForm` and `ownerModel` from initialized-book identity, `open-book` grammar,
+  request schemas, examples, and machine discovery so the live public contract no longer carries
+  dormant legal-form vocabulary.
+- Removed the public `accountingBaseline`, `nextTarget`, `policyPack`, and extension-surface
+  capability facts from discovery so unsupported broader accounting-foundation posture is no
+  longer published as live machine truth.
+
 ### Fixed
 
 - Realigned the public-container release verifier with the shipped compact human trial-balance
   surface. The operator-side anonymous pull-and-run check and its shell regression harness now
   assert the current `Book ... | Currency ... | FY ... | Policy ...` header plus the published
   current-totals block instead of an older multi-line entity banner.
+- Realigned the release-smoke workflow and source-checkout launcher verifier with the narrowed
+  book-identity contract and named administrative adjustment vocabulary, removing retired
+  entity-form, owner-model, and generic manual-adjustment assumptions from the public verification
+  surface.
+- Refreshed the README, quick-start guides, protocol references, request docs, and checked-in
+  example corpus so the published snippets show the live bookkeeping-kernel, policy-profile, and
+  administrative-adjustment surfaces instead of superseded intermediate contract shapes.
 
 ## [0.44.0] - 2026-05-22
 
@@ -2249,7 +2292,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.44.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.45.0...HEAD
+[0.45.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.45.0
 [0.44.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.44.0
 [0.43.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.43.0
 [0.42.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.42.0

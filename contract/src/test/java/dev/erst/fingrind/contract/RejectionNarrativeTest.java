@@ -55,7 +55,7 @@ class RejectionNarrativeTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3010")),
-                        Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                        Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                         Optional.empty())))
             .contains("immutable hierarchy or statement taxonomy"));
     assertTrue(
@@ -115,12 +115,12 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    FinancialPositionLineClassification.RETAINED_EARNINGS, List.of()))
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of()))
             .contains("required classification"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT,
                     List.of(new AccountCode("3200"))))
             .contains("inactive candidates: 3200"));
     assertTrue(
@@ -252,11 +252,6 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(new PostingRejection.DuplicateIdempotencyKey())
             .contains("same idempotency key"));
-    assertTrue(
-        RejectionNarrative.message(
-                new PostingRejection.PostingKindReserved(
-                    dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE))
-            .contains("PERIOD_CLOSE"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.BookFunctionalCurrencyMismatch(

@@ -157,8 +157,6 @@ final class SqlitePostingSql {
   static final String FIND_ENTITY_PROFILE =
       """
       select
-          entity_form,
-          owner_model,
           business_activity_tags
       from entity_profile
       where singleton_id = 1
@@ -608,10 +606,8 @@ final class SqlitePostingSql {
       """
       insert into entity_profile (
           singleton_id,
-          entity_form,
-          owner_model,
           business_activity_tags
-      ) values (1, ?, ?, ?)
+      ) values (1, ?)
       """;
 
   static final String INSERT_BOOK_POLICY =

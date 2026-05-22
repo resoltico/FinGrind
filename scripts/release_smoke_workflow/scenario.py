@@ -8,8 +8,6 @@ ARGUMENT_PATH_MODE_ABSOLUTE = "absolute"
 ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE = "relative-to-work-root"
 UNICODE_WORKSPACE_SEGMENT = "Rīga büro"
 ENTITY_NAME = "Acme Studio"
-ENTITY_FORM = "COMPANY"
-OWNER_MODEL = "MULTI_OWNER"
 BUSINESS_ACTIVITY_TAGS = ["consulting-services"]
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
@@ -93,8 +91,6 @@ def build_release_smoke_scenario(
         second_page_command_id=normalized_scenario_id + "-sale",
         actor_prefix=normalized_scenario_id,
         entity_name=ENTITY_NAME,
-        entity_form=ENTITY_FORM,
-        owner_model=OWNER_MODEL,
         business_activity_tags=BUSINESS_ACTIVITY_TAGS,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,

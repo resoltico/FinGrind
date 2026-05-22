@@ -254,9 +254,6 @@ public final class LedgerPlanOutcomeMapper {
       case PostingRejection.BookNotInitialized _ -> List.of();
       case PostingRejection.AccountStateViolations violations -> accountStateFacts(violations);
       case PostingRejection.DuplicateIdempotencyKey _ -> List.of();
-      case PostingRejection.PostingKindReserved postingKindReserved ->
-          List.of(
-              BookWorkflowFact.text("postingKind", postingKindReserved.postingKind().wireValue()));
       case PostingRejection.BookFunctionalCurrencyMismatch mismatch ->
           List.of(
               BookWorkflowFact.text("functionalCurrency", mismatch.functionalCurrency().code()),

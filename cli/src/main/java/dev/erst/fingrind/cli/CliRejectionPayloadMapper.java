@@ -93,10 +93,6 @@ final class CliRejectionPayloadMapper {
           "Declare or reactivate every account named in details.violations, then rerun the request with a fresh provenance.idempotencyKey.";
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
-      case PostingRejection.PostingKindReserved _ ->
-          "Use postingKind STANDARD or OPENING_BALANCE on direct posting requests; let "
-              + CLOSE_PERIOD_OPERATION
-              + " generate PERIOD_CLOSE entries.";
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
       case PostingRejection.ClosedPeriodViolation _ ->
@@ -300,9 +296,6 @@ final class CliRejectionPayloadMapper {
                   .map(CliRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
       case PostingRejection.DuplicateIdempotencyKey _ -> null;
-      case PostingRejection.PostingKindReserved rejectionPostingKind ->
-          new CliRejectionJsonModels.PostingKindDetails(
-              rejectionPostingKind.postingKind().wireValue());
       case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
           new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
               rejectionCurrencyMismatch.functionalCurrency().code(),

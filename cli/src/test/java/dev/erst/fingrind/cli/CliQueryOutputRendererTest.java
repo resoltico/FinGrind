@@ -40,13 +40,11 @@ import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -116,8 +114,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(initializedInspection.contains("Initialized at"));
     assertTrue(initializedInspection.contains("Entity"));
     assertTrue(initializedInspection.contains("Acme Studio"));
-    assertTrue(initializedInspection.contains("Entity form"));
-    assertTrue(initializedInspection.contains("Owner model"));
     assertTrue(initializedInspection.contains("Policy profile"));
     assertTrue(initializedInspection.contains("Functional currency"));
     assertTrue(initializedInspection.contains("Fiscal year start"));
@@ -148,8 +144,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Acme Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
@@ -177,11 +171,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   void renderBookInspectionHuman_includesPolicyProfileRows() {
     BookIdentity registeredIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Registered Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
-                List.of()),
+            new EntityProfile(new BookEntityName("Registered Studio"), List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"),
             AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
@@ -213,10 +203,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 bookIdentity(),
                 new BookInspection.CloseReadiness(
                     false,
-                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT,
                     null,
                     "closing-equity-account-candidate-missing",
-                    "No active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS'.",
+                    "No active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT'.",
                     List.of())));
 
     assertTrue(inspection.contains("Candidate accounts"));
@@ -236,10 +226,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 bookIdentity(),
                 new BookInspection.CloseReadiness(
                     false,
-                    FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT,
                     null,
                     "closing-equity-account-candidate-ambiguous",
-                    "More than one active declared closing-equity account satisfies required classification 'RETAINED_EARNINGS': 3200, 3210.",
+                    "More than one active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT': 3200, 3210.",
                     List.of(new AccountCode("3200"), new AccountCode("3210")))));
 
     assertTrue(inspection.contains("Candidate accounts"));
@@ -387,8 +377,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(openBookHuman.contains("Book Initialized"));
     assertTrue(openBookHuman.contains("Entity"));
     assertTrue(openBookHuman.contains("Acme Studio"));
-    assertTrue(openBookHuman.contains("Entity form"));
-    assertTrue(openBookHuman.contains("Owner model"));
     assertTrue(openBookHuman.contains("Policy profile"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
@@ -552,7 +540,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                             "Current period result",
                             AccountType.EQUITY,
                             Optional.empty(),
-                            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                            Optional.empty(),
                             StatementLineKind.CURRENT_PERIOD_RESULT,
                             creditBalance)),
                     List.of(creditBalance))),
@@ -570,7 +558,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                     "Current period result",
                     Optional.of(AccountType.EQUITY),
                     Optional.empty(),
-                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     CliResponseWriterTestSupport.currencyBalance(
                         "EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
@@ -697,13 +685,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     DeclaredAccount equityAccount =
         new DeclaredAccount(
             new AccountCode("3200"),
-            new AccountName("Owner capital"),
+            new AccountName("Contributed capital account"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("3000")),
-                Optional.of(FinancialPositionLineClassification.OWNER_CAPITAL),
+                Optional.of(FinancialPositionLineClassification.CONTRIBUTED_CAPITAL),
                 Optional.empty()),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -745,41 +733,40 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_LIABILITY));
     assertEquals(
-        "Owner capital",
+        "Contributed capital",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.OWNER_CAPITAL));
+            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL));
     assertEquals(
-        "Owner drawings",
+        "Distributions",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.OWNER_DRAWINGS));
+            FinancialPositionLineClassification.DISTRIBUTIONS));
     assertEquals(
-        "Partner capital",
+        "Contributed capital",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.PARTNER_CAPITAL));
+            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL));
     assertEquals(
-        "Partner current",
+        "Distributions",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.PARTNER_CURRENT));
+            FinancialPositionLineClassification.DISTRIBUTIONS));
     assertEquals(
-        "Share capital",
+        "Contributed capital",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.SHARE_CAPITAL));
+            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL));
     assertEquals(
-        "Retained earnings",
+        "Accumulated result",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.RETAINED_EARNINGS));
+            FinancialPositionLineClassification.ACCUMULATED_RESULT));
     assertEquals(
-        "Accumulated surplus",
+        "Accumulated result",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.ACCUMULATED_SURPLUS));
+            FinancialPositionLineClassification.ACCUMULATED_RESULT));
     assertEquals(
         "Reserve",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESERVE));
     assertEquals(
-        "Current period result",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT));
+        "(derived)",
+        CliQueryOutputFormatter.displayFinancialPositionLineClassification(Optional.empty()));
     assertEquals(
         "Other equity",
         CliQueryOutputFormatter.displayFinancialPositionLineClassification(
@@ -817,11 +804,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryOutputFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.TAX_EXPENSE));
 
-    assertTrue(human.contains("Owner capital"));
+    assertTrue(human.contains("Contributed capital"));
     assertTrue(human.contains("3000"));
     assertTrue(human.contains("Cost of sales"));
     assertTrue(human.contains("5100"));
-    assertTrue(csv.contains("OWNER_CAPITAL"));
+    assertTrue(csv.contains("CONTRIBUTED_CAPITAL"));
     assertTrue(csv.contains("COST_OF_SALES"));
   }
 
@@ -843,7 +830,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                             "Cash without Totals",
                             AccountType.ASSET,
                             Optional.of(AccountRole.ORDINARY),
-                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             debitBalance)),
                     List.of()),
@@ -1112,7 +1099,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                     "Equity rollforward",
                     Optional.of(AccountType.EQUITY),
                     Optional.empty(),
-                    FinancialPositionLineClassification.OTHER_EQUITY,
+                    Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                     StatementLineKind.DECLARED_ACCOUNT,
                     zeroBalance,
                     zeroBalance,

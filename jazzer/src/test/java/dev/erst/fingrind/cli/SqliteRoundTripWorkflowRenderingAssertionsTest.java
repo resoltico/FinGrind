@@ -19,11 +19,9 @@ import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.OwnerModel;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,11 +31,7 @@ import org.junit.jupiter.api.Test;
 class SqliteRoundTripWorkflowRenderingAssertionsTest {
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
-          new EntityProfile(
-              new BookEntityName("Acme Studio"),
-              EntityForm.COMPANY,
-              OwnerModel.MULTI_OWNER,
-              List.of()),
+          new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
           AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);

@@ -41,7 +41,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     )
     write_json(
         config.request_adjustment.local_path,
-        manual_adjustment_request(
+        correction_adjustment_request(
             actor_prefix=actor_prefix,
             effective_date="2026-04-08",
             lines=[
@@ -137,7 +137,7 @@ def cash_revenue_request(
     }
 
 
-def manual_adjustment_request(
+def correction_adjustment_request(
     *,
     actor_prefix: str,
     effective_date: str,
@@ -148,8 +148,7 @@ def manual_adjustment_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "MANUAL_ADJUSTMENT",
-        "postingKind": "STANDARD",
+        "entryKind": "CORRECTION_ADJUSTMENT",
         "effectiveDate": effective_date,
         "lines": lines,
         "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),

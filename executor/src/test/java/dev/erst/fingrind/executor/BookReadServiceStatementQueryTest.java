@@ -81,7 +81,7 @@ class BookReadServiceStatementQueryTest {
   private static final AccountCode CASH_ACCOUNT_CODE = new AccountCode("1000");
   private static final AccountCode CONTRA_ASSET_ACCOUNT_CODE = new AccountCode("1090");
   private static final AccountCode CAPITAL_ACCOUNT_CODE = new AccountCode("3000");
-  private static final AccountCode RETAINED_EARNINGS_ACCOUNT_CODE = new AccountCode("3200");
+  private static final AccountCode ACCUMULATED_RESULT_ACCOUNT_CODE = new AccountCode("3200");
   private static final AccountCode REVENUE_ACCOUNT_CODE = new AccountCode("4000");
   private static final AccountCode EXPENSE_ACCOUNT_CODE = new AccountCode("5000");
 
@@ -248,7 +248,7 @@ class BookReadServiceStatementQueryTest {
                   "Retained Earnings",
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
                   currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
               positionRow(
                   "3000",
@@ -270,7 +270,7 @@ class BookReadServiceStatementQueryTest {
                   "3200",
                   "Retained Earnings",
                   AccountRole.ORDINARY,
-                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
                   currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                   currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT),
                   currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
@@ -453,11 +453,11 @@ class BookReadServiceStatementQueryTest {
         AccountRole.ORDINARY);
     declareAccount(
         bookSession,
-        RETAINED_EARNINGS_ACCOUNT_CODE,
+        ACCUMULATED_RESULT_ACCOUNT_CODE,
         "Retained Earnings",
         AccountType.EQUITY,
         AccountRole.ORDINARY,
-        financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+        financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
     declareAccount(
         bookSession,
         REVENUE_ACCOUNT_CODE,
@@ -644,7 +644,7 @@ class BookReadServiceStatementQueryTest {
         lineName,
         lineType,
         Optional.of(lineRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
   }
@@ -656,7 +656,7 @@ class BookReadServiceStatementQueryTest {
         lineName,
         lineType,
         Optional.empty(),
-        FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+        Optional.empty(),
         StatementLineKind.CURRENT_PERIOD_RESULT,
         balance);
   }
@@ -707,7 +707,7 @@ class BookReadServiceStatementQueryTest {
         lineName,
         Optional.of(AccountType.EQUITY),
         Optional.of(lineRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
         movement,
@@ -725,7 +725,7 @@ class BookReadServiceStatementQueryTest {
         lineName,
         Optional.empty(),
         Optional.empty(),
-        FinancialPositionLineClassification.CURRENT_PERIOD_RESULT,
+        Optional.empty(),
         StatementLineKind.CURRENT_PERIOD_RESULT,
         openingBalance,
         movement,

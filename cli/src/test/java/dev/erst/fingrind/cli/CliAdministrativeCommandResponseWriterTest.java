@@ -53,8 +53,6 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(openBookHuman.contains("Book Initialized"));
     assertTrue(openBookHuman.contains("Entity"));
     assertTrue(openBookHuman.contains("Acme Studio"));
-    assertTrue(openBookHuman.contains("Entity form"));
-    assertTrue(openBookHuman.contains("Owner model"));
     assertTrue(openBookHuman.contains("Policy profile"));
     assertTrue(openBookHuman.contains("Functional currency"));
     assertTrue(openBookHuman.contains("Fiscal year start"));
@@ -241,7 +239,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     responseWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
             new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of())),
         OutputMode.HUMAN);
     assertTrue(
@@ -645,12 +643,12 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     missingWriter.writeClosePeriodResult(
         new ClosePeriodResult.Rejected(
             new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200")))),
         OutputMode.JSON);
     assertJsonContains(missingOutput, "\"code\":\"closing-equity-account-candidate-missing\"");
     assertJsonContains(
-        missingOutput, "\"requiredFinancialPositionLineClassification\":\"RETAINED_EARNINGS\"");
+        missingOutput, "\"requiredFinancialPositionLineClassification\":\"ACCUMULATED_RESULT\"");
 
     ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
     CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
@@ -690,7 +688,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         CliExecutionPolicy.exitCodeFor(
             new ClosePeriodResult.Rejected(
                 new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    dev.erst.fingrind.core.FinancialPositionLineClassification.RETAINED_EARNINGS,
+                    dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
                     List.of()))));
   }
 

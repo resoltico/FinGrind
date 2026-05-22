@@ -8,7 +8,9 @@ public enum BookkeepingEntryKind implements WireValue {
   CASH_EXPENSE,
   OWNER_CONTRIBUTION,
   OWNER_DRAW,
-  MANUAL_ADJUSTMENT;
+  OPENING_BALANCE_ADJUSTMENT,
+  CORRECTION_ADJUSTMENT,
+  REVERSAL_ADJUSTMENT;
 
   @Override
   public String wireValue() {
@@ -17,7 +19,9 @@ public enum BookkeepingEntryKind implements WireValue {
       case CASH_EXPENSE -> "CASH_EXPENSE";
       case OWNER_CONTRIBUTION -> "OWNER_CONTRIBUTION";
       case OWNER_DRAW -> "OWNER_DRAW";
-      case MANUAL_ADJUSTMENT -> "MANUAL_ADJUSTMENT";
+      case OPENING_BALANCE_ADJUSTMENT -> "OPENING_BALANCE_ADJUSTMENT";
+      case CORRECTION_ADJUSTMENT -> "CORRECTION_ADJUSTMENT";
+      case REVERSAL_ADJUSTMENT -> "REVERSAL_ADJUSTMENT";
     };
   }
 

@@ -121,7 +121,7 @@ final class ChangesInEquityStatementCalculator {
               account.accountName().value(),
               Optional.of(account.accountType()),
               Optional.of(account.accountRole()),
-              account.accountTaxonomy().financialPositionLineClassification().orElseThrow(),
+              account.accountTaxonomy().financialPositionLineClassification(),
               StatementLineKind.DECLARED_ACCOUNT,
               BookkeepingStatementViewSupport.balanceOrZero(openingTotal, key.currencyUnit()),
               BookkeepingStatementViewSupport.balanceOrZero(movementTotal, key.currencyUnit()),
@@ -143,7 +143,7 @@ final class ChangesInEquityStatementCalculator {
                       currentPeriodResultLine.lineName(),
                       Optional.empty(),
                       Optional.empty(),
-                      currentPeriodResultLine.lineClassification(),
+                      Optional.empty(),
                       StatementLineKind.CURRENT_PERIOD_RESULT,
                       BookkeepingStatementViewSupport.signedBalance(currencyUnit, opening),
                       BookkeepingStatementViewSupport.signedBalance(

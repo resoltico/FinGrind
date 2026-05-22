@@ -78,8 +78,6 @@ final class CliBookPayloadMapper {
       BookIdentity bookIdentity) {
     return new CliAdministrationJsonModels.BookIdentityPayload(
         bookIdentity.entityName().value(),
-        bookIdentity.entityProfile().entityForm().wireValue(),
-        bookIdentity.entityProfile().ownerModel().wireValue(),
         bookIdentity.entityProfile().businessActivityTags().stream()
             .map(value -> value.value())
             .toList(),

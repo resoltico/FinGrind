@@ -68,6 +68,25 @@ class PostingAcceptancePolicyInternalTest {
                     new CausationId("cause-close"),
                     Optional.of(new CorrelationId("corr-close"))),
                 SourceChannel.SYSTEM)));
+    assertFalse(
+        PostingAcceptancePolicy.isInternalSystemPosting(
+            new PostingCommand(
+                PostingKind.STANDARD,
+                new JournalEntry(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        line("6100", JournalLine.EntrySide.DEBIT, "10.00"),
+                        line("1000", JournalLine.EntrySide.CREDIT, "10.00"))),
+                PostingLineageModel.direct(),
+                generatedEvidence("operator-correction", "operator-correction"),
+                new RequestProvenance(
+                    new ActorId("actor-1"),
+                    ActorType.HUMAN,
+                    new CommandId("command-correction"),
+                    new IdempotencyKey("idem-command-cli"),
+                    new CausationId("cause-correction"),
+                    Optional.empty()),
+                SourceChannel.CLI)));
     assertTrue(
         PostingAcceptancePolicy.isInternalSystemPosting(
             draft(SourceChannel.SYSTEM, "idem-system")));

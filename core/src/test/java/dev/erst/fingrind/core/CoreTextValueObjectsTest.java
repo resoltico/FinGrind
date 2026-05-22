@@ -74,12 +74,9 @@ class CoreTextValueObjectsTest {
     List<BusinessActivityTag> tags =
         new ArrayList<>(List.of(new BusinessActivityTag("translation-services")));
 
-    EntityProfile profile =
-        new EntityProfile(displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, tags);
+    EntityProfile profile = new EntityProfile(displayName, tags);
 
     assertEquals(displayName, profile.displayName());
-    assertEquals(EntityForm.COMPANY, profile.entityForm());
-    assertEquals(OwnerModel.MULTI_OWNER, profile.ownerModel());
     assertEquals(
         List.of(new BusinessActivityTag("translation-services")), profile.businessActivityTags());
     tags.add(new BusinessActivityTag("consulting"));
@@ -87,18 +84,8 @@ class CoreTextValueObjectsTest {
     assertThrows(
         UnsupportedOperationException.class,
         () -> profile.businessActivityTags().add(new BusinessActivityTag("forbidden")));
-    assertThrows(
-        NullPointerException.class,
-        () -> new EntityProfile(nullOf(), EntityForm.COMPANY, OwnerModel.MULTI_OWNER, List.of()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new EntityProfile(displayName, nullOf(), OwnerModel.MULTI_OWNER, List.of()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new EntityProfile(displayName, EntityForm.COMPANY, nullOf(), List.of()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new EntityProfile(displayName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, nullOf()));
+    assertThrows(NullPointerException.class, () -> new EntityProfile(nullOf(), List.of()));
+    assertThrows(NullPointerException.class, () -> new EntityProfile(displayName, nullOf()));
   }
 
   @Test
@@ -106,8 +93,7 @@ class CoreTextValueObjectsTest {
     BookEntityName entityName = new BookEntityName("Acme Studio");
     CurrencyUnit functionalCurrency = CurrencyUnit.of("EUR");
     FiscalYearStart fiscalYearStart = FiscalYearStart.parse("01-01");
-    EntityProfile entityProfile =
-        new EntityProfile(entityName, EntityForm.COMPANY, OwnerModel.MULTI_OWNER, List.of());
+    EntityProfile entityProfile = new EntityProfile(entityName, List.of());
 
     BookIdentity bookIdentity =
         new BookIdentity(
@@ -117,7 +103,6 @@ class CoreTextValueObjectsTest {
             AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
 
     assertEquals(entityName, bookIdentity.entityName());
-    assertEquals(EntityForm.COMPANY, bookIdentity.entityForm());
     assertThrows(
         NullPointerException.class,
         () ->
@@ -145,40 +130,6 @@ class CoreTextValueObjectsTest {
     assertThrows(
         NullPointerException.class,
         () -> new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart, nullOf()));
-  }
-
-  @Test
-  void entityAndOwnerWireVocabulariesParseStableValuesAndRejectUnknownValues() {
-    assertEquals("FREELANCER", EntityForm.FREELANCER.wireValue());
-    assertEquals("SOLE_PROPRIETORSHIP", EntityForm.SOLE_PROPRIETORSHIP.wireValue());
-    assertEquals("COMPANY", EntityForm.COMPANY.wireValue());
-    assertEquals("PARTNERSHIP", EntityForm.PARTNERSHIP.wireValue());
-    assertEquals("NONPROFIT", EntityForm.NONPROFIT.wireValue());
-    assertEquals("BRANCH", EntityForm.BRANCH.wireValue());
-    assertEquals("OTHER", EntityForm.OTHER.wireValue());
-    assertEquals(EntityForm.FREELANCER, EntityForm.fromWireValue("FREELANCER"));
-    assertEquals(EntityForm.OTHER, EntityForm.fromWireValue("OTHER"));
-    assertEquals(
-        List.of(
-            "FREELANCER",
-            "SOLE_PROPRIETORSHIP",
-            "COMPANY",
-            "PARTNERSHIP",
-            "NONPROFIT",
-            "BRANCH",
-            "OTHER"),
-        EntityForm.wireValues());
-    assertThrows(IllegalArgumentException.class, () -> EntityForm.fromWireValue("freelancer"));
-
-    assertEquals("SOLE_OWNER", OwnerModel.SOLE_OWNER.wireValue());
-    assertEquals("MULTI_OWNER", OwnerModel.MULTI_OWNER.wireValue());
-    assertEquals("MEMBERSHIP_BODY", OwnerModel.MEMBERSHIP_BODY.wireValue());
-    assertEquals("NO_PRIVATE_OWNER", OwnerModel.NO_PRIVATE_OWNER.wireValue());
-    assertEquals(OwnerModel.SOLE_OWNER, OwnerModel.fromWireValue("SOLE_OWNER"));
-    assertEquals(
-        List.of("SOLE_OWNER", "MULTI_OWNER", "MEMBERSHIP_BODY", "NO_PRIVATE_OWNER"),
-        OwnerModel.wireValues());
-    assertThrows(IllegalArgumentException.class, () -> OwnerModel.fromWireValue("sole_owner"));
   }
 
   @Test
@@ -235,15 +186,10 @@ class CoreTextValueObjectsTest {
             "NONCURRENT_ASSET",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
-            "OWNER_CAPITAL",
-            "OWNER_DRAWINGS",
-            "PARTNER_CAPITAL",
-            "PARTNER_CURRENT",
-            "SHARE_CAPITAL",
-            "RETAINED_EARNINGS",
-            "ACCUMULATED_SURPLUS",
+            "CONTRIBUTED_CAPITAL",
+            "DISTRIBUTIONS",
+            "ACCUMULATED_RESULT",
             "RESERVE",
-            "CURRENT_PERIOD_RESULT",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.wireValues());
     assertEquals(
@@ -252,13 +198,9 @@ class CoreTextValueObjectsTest {
             "NONCURRENT_ASSET",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
-            "OWNER_CAPITAL",
-            "OWNER_DRAWINGS",
-            "PARTNER_CAPITAL",
-            "PARTNER_CURRENT",
-            "SHARE_CAPITAL",
-            "RETAINED_EARNINGS",
-            "ACCUMULATED_SURPLUS",
+            "CONTRIBUTED_CAPITAL",
+            "DISTRIBUTIONS",
+            "ACCUMULATED_RESULT",
             "RESERVE",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.declaredAccountWireValues());
@@ -278,23 +220,12 @@ class CoreTextValueObjectsTest {
         AccountType.LIABILITY,
         FinancialPositionLineClassification.NONCURRENT_LIABILITY.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.OWNER_CAPITAL.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.CONTRIBUTED_CAPITAL.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.OWNER_DRAWINGS.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.DISTRIBUTIONS.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.PARTNER_CAPITAL.accountType());
-    assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.PARTNER_CURRENT.accountType());
-    assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.SHARE_CAPITAL.accountType());
-    assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.RETAINED_EARNINGS.accountType());
-    assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.ACCUMULATED_SURPLUS.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.ACCUMULATED_RESULT.accountType());
     assertEquals(AccountType.EQUITY, FinancialPositionLineClassification.RESERVE.accountType());
-    assertEquals(
-        AccountType.EQUITY,
-        FinancialPositionLineClassification.CURRENT_PERIOD_RESULT.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.OTHER_EQUITY.accountType());
     assertThrows(
@@ -472,17 +403,14 @@ class CoreTextValueObjectsTest {
     assertEquals(PostingKind.PERIOD_CLOSE, PostingKind.fromWireValue("PERIOD_CLOSE"));
     assertEquals(
         java.util.List.of("STANDARD", "OPENING_BALANCE", "PERIOD_CLOSE"), PostingKind.wireValues());
-    assertEquals(
-        java.util.List.of("STANDARD", "OPENING_BALANCE"), PostingKind.callerSelectableWireValues());
     assertThrows(IllegalArgumentException.class, () -> PostingKind.fromWireValue("CLOSING"));
     assertTrue(PostingKind.STANDARD.isStandard());
-    assertTrue(PostingKind.STANDARD.isCallerSelectable());
     assertTrue(PostingKind.OPENING_BALANCE.isOpeningBalance());
-    assertTrue(PostingKind.OPENING_BALANCE.isCallerSelectable());
     assertTrue(PostingKind.PERIOD_CLOSE.isGenerated());
     assertFalse(PostingKind.PERIOD_CLOSE.isStandard());
     assertFalse(PostingKind.PERIOD_CLOSE.isOpeningBalance());
-    assertFalse(PostingKind.PERIOD_CLOSE.isCallerSelectable());
+    assertFalse(PostingKind.STANDARD.isGenerated());
+    assertFalse(PostingKind.OPENING_BALANCE.isGenerated());
   }
 
   @Test

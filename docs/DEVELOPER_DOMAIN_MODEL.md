@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: DEVELOPER_DOMAIN_MODEL
 updated: "2026-05-22"
 route:
@@ -13,7 +13,7 @@ route:
 **Purpose**: Canonical domain language, bounded contexts, and context-map reference for FinGrind.
 **Companion documents**:
 - [DEVELOPER.md](./DEVELOPER.md)
-- [ADR_ACCOUNTING_BASELINE.md](./ADR_ACCOUNTING_BASELINE.md)
+- [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md)
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
@@ -148,7 +148,7 @@ Current accounting-standards scope:
 - the current built-in reporting surface is financial position, income statement, and changes in
   equity
 - comparative windows and comparative payload data for those built-in statements are derived from
-  one book's declared fiscal-year anchor through the built-in bookkeeping policy pack
+  one book's declared fiscal-year anchor through the built-in bookkeeping policy profile
 - statement of cash flows, OCI, note/disclosure packages, and multi-currency translation remain
   separate future domains
 - tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent

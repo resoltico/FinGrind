@@ -28,8 +28,6 @@ readonly expected_version="${2:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
 readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
 readonly fixture_entity_name='Release Protocol Fixture'
-readonly fixture_entity_form='COMPANY'
-readonly fixture_owner_model='MULTI_OWNER'
 readonly fixture_business_activity_tag='consulting-services'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
@@ -151,7 +149,7 @@ verify_human_trial_balance() {
     local header_block totals_block cash_block revenue_block
 
     header_block="$(cat <<'TEXT'
-Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 TEXT
@@ -222,8 +220,6 @@ verify_mounted_book_surface() {
         --book-file /work/book.sqlite \
         --book-key-file /work/book.key \
         --entity-name "${fixture_entity_name}" \
-        --entity-form "${fixture_entity_form}" \
-        --owner-model "${fixture_owner_model}" \
         --business-activity-tag "${fixture_business_activity_tag}" \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" \

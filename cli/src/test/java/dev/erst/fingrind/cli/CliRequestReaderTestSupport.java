@@ -29,8 +29,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
     if (includeReversal) {
       return """
               {
-                "entryKind": "MANUAL_ADJUSTMENT",
-                "postingKind": "STANDARD",
+                "entryKind": "REVERSAL_ADJUSTMENT",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {
@@ -86,7 +85,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
   static String validLegacyCorrectionRequestJson() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CORRECTION_ADJUSTMENT",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -159,8 +158,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "open-book",
               "openBook": {
                 "entityName": "Acme Studio",
-                "entityForm": "COMPANY",
-                "ownerModel": "MULTI_OWNER",
                 "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
                 "fiscalYearStart": "01-01",

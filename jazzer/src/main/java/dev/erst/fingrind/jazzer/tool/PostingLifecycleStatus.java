@@ -16,7 +16,6 @@ public enum PostingLifecycleStatus implements WireValue {
   UNKNOWN_ACCOUNT("unknown-account"),
   INACTIVE_ACCOUNT("inactive-account"),
   DUPLICATE_IDEMPOTENCY_KEY("duplicate-idempotency-key"),
-  POSTING_KIND_RESERVED("posting-kind-reserved"),
   BOOK_FUNCTIONAL_CURRENCY_MISMATCH("book-functional-currency-mismatch"),
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
   OPENING_BALANCE_WINDOW_CLOSED("opening-balance-window-closed"),

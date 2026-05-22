@@ -214,8 +214,6 @@ public final class BookkeepingPublishedLanguageTranslator {
                   .toList());
       case BookkeepingPostingRejection.DuplicateIdempotencyKey _ ->
           new PostingRejection.DuplicateIdempotencyKey();
-      case BookkeepingPostingRejection.PostingKindReserved postingKindReserved ->
-          new PostingRejection.PostingKindReserved(postingKindReserved.postingKind());
       case BookkeepingPostingRejection.BookFunctionalCurrencyMismatch currencyMismatch ->
           new PostingRejection.BookFunctionalCurrencyMismatch(
               currencyMismatch.functionalCurrency(), currencyMismatch.attemptedCurrency());

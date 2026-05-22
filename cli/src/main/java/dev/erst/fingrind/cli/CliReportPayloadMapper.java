@@ -219,7 +219,9 @@ final class CliReportPayloadMapper {
         row.lineName(),
         row.lineType().wireValue(),
         row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
-        row.lineClassification().wireValue(),
+        row.lineClassification()
+            .map(dev.erst.fingrind.core.FinancialPositionLineClassification::wireValue)
+            .orElse(null),
         row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.balance()));
   }
@@ -251,7 +253,9 @@ final class CliReportPayloadMapper {
         row.lineName(),
         row.lineType().map(dev.erst.fingrind.core.AccountType::wireValue).orElse(null),
         row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
-        row.lineClassification().wireValue(),
+        row.lineClassification()
+            .map(dev.erst.fingrind.core.FinancialPositionLineClassification::wireValue)
+            .orElse(null),
         row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.openingBalance()),
         CliPayloadAssembler.balancePayload(row.movement()),

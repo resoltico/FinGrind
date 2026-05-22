@@ -23,7 +23,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("runnable sample document"));
     assertTrue(guide.contains("same book is rejected"));
     assertTrue(guide.contains("--entity-name"));
-    assertTrue(guide.contains("--owner-model"));
     assertTrue(guide.contains("--policy-profile"));
     assertTrue(guide.contains("--business-activity-tag"));
     assertTrue(guide.contains("--functional-currency"));
@@ -158,7 +157,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(examplesGuide.contains("runnable sample"));
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
-    assertTrue(examplesGuide.contains("--owner-model"));
     assertTrue(examplesGuide.contains("--policy-profile"));
     assertTrue(examplesGuide.contains("--business-activity-tag"));
     assertTrue(examplesGuide.contains("--functional-currency"));

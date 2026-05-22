@@ -878,7 +878,12 @@ final class CliReportOutputRenderer {
                                         .map(dev.erst.fingrind.core.AccountRole::wireValue)
                                         .orElse(""),
                                     row.lineType().wireValue(),
-                                    row.lineClassification().wireValue(),
+                                    row.lineClassification()
+                                        .map(
+                                            dev.erst.fingrind.core
+                                                    .FinancialPositionLineClassification
+                                                ::wireValue)
+                                        .orElse(""),
                                     row.lineKind().wireValue(),
                                     row.balance().netAmount().currencyUnit().code(),
                                     CliQueryOutputFormatter.displayMoney(
@@ -1101,7 +1106,11 @@ final class CliReportOutputRenderer {
                         row.lineRole()
                             .map(dev.erst.fingrind.core.AccountRole::wireValue)
                             .orElse(""),
-                        row.lineClassification().wireValue(),
+                        row.lineClassification()
+                            .map(
+                                dev.erst.fingrind.core.FinancialPositionLineClassification
+                                    ::wireValue)
+                            .orElse(""),
                         row.lineKind().wireValue(),
                         row.closingBalance().netAmount().currencyUnit().code(),
                         CliQueryOutputFormatter.displayMoney(row.openingBalance().debitTotal()),

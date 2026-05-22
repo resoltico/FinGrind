@@ -15,7 +15,7 @@ public record ChangesInEquityRow(
     String lineName,
     Optional<AccountType> lineType,
     Optional<AccountRole> lineRole,
-    FinancialPositionLineClassification lineClassification,
+    Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance openingBalance,
     CurrencyBalance movement,
@@ -26,7 +26,8 @@ public record ChangesInEquityRow(
     lineName = ContractDescriptorValidation.requireText(lineName, "lineName");
     lineType = ContractDescriptorValidation.requireValue(lineType, "lineType");
     lineRole = ContractDescriptorValidation.requireValue(lineRole, "lineRole");
-    Objects.requireNonNull(lineClassification, "lineClassification");
+    lineClassification =
+        ContractDescriptorValidation.requireValue(lineClassification, "lineClassification");
     Objects.requireNonNull(lineKind, "lineKind");
     Objects.requireNonNull(openingBalance, "openingBalance");
     Objects.requireNonNull(movement, "movement");

@@ -24,12 +24,10 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -131,8 +129,6 @@ public final class CliFuzzFixtures {
     return new BookIdentity(
         new EntityProfile(
             new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
             List.of(new BusinessActivityTag("translation-services"))),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"),
@@ -359,7 +355,12 @@ public final class CliFuzzFixtures {
       case BookkeepingEntry.OwnerContribution event ->
           CurrencyUnit.of(event.amount().currencyCode());
       case BookkeepingEntry.OwnerDraw event -> CurrencyUnit.of(event.amount().currencyCode());
-      case BookkeepingEntry.ManualAdjustment adjustment -> adjustment.journalEntry().currencyUnit();
+      case BookkeepingEntry.OpeningBalanceAdjustment adjustment ->
+          adjustment.journalEntry().currencyUnit();
+      case BookkeepingEntry.CorrectionAdjustment adjustment ->
+          adjustment.journalEntry().currencyUnit();
+      case BookkeepingEntry.ReversalAdjustment adjustment ->
+          adjustment.journalEntry().currencyUnit();
     };
   }
 

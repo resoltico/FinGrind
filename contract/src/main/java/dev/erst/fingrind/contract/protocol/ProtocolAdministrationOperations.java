@@ -36,8 +36,6 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.ENTITY_NAME + " <text>",
-                ProtocolOptions.ENTITY_FORM + " <entity-form>",
-                ProtocolOptions.OWNER_MODEL + " <owner-model>",
                 ProtocolOptions.BUSINESS_ACTIVITY_TAG + " <business-activity-tag> ...",
                 ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
                 ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
@@ -48,39 +46,33 @@ final class ProtocolAdministrationOperations {
             "Initialize a new book file with the canonical schema.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.ENTITY_FORM,
-                            ProtocolOptions.OWNER_MODEL,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.POLICY_PROFILE)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
+                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.ENTITY_FORM,
-                            ProtocolOptions.OWNER_MODEL,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.POLICY_PROFILE,
                             ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
                 ProtocolExampleStep.command(
-                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s FREELANCER %s SOLE_OWNER %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.ENTITY_FORM,
-                            ProtocolOptions.OWNER_MODEL,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
@@ -272,9 +264,9 @@ final class ProtocolAdministrationOperations {
             "Close one contiguous reporting period into one policy-selected closing equity account.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Built-in closing-equity mapping is entity-form specific: FREELANCER and SOLE_PROPRIETORSHIP require OWNER_CAPITAL; COMPANY and BRANCH require RETAINED_EARNINGS; PARTNERSHIP requires PARTNER_CURRENT; NONPROFIT requires ACCUMULATED_SURPLUS; OTHER requires OTHER_EQUITY."),
+                    "Built-in close uses one neutral accumulated-result target. Declare one active EQUITY account classified as ACCUMULATED_RESULT before closing a period."),
                 ProtocolExampleStep.note(
-                    "Declare exactly one active equity account that satisfies the active closing-equity policy for the selected entity form. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
+                    "Declare exactly one active and postable EQUITY account classified as ACCUMULATED_RESULT. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
                 ProtocolExampleStep.note(
                     "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon and remain inside one fiscal year."),
                 ProtocolExampleStep.command(

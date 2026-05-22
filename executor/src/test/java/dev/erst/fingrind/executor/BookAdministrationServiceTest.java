@@ -150,7 +150,7 @@ class BookAdministrationServiceTest {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS)));
+              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("4000"),

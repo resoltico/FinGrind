@@ -216,7 +216,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineName,
       String lineType,
       @Nullable String lineRole,
-      String lineClassification,
+      @Nullable String lineClassification,
       String lineKind,
       BalanceBucketPayload balance) {
     public FinancialPositionRowPayload {
@@ -224,7 +224,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
       lineRole = requireOptionalText(lineRole, "lineRole");
-      lineClassification = requireText(lineClassification, "lineClassification");
+      lineClassification = requireOptionalText(lineClassification, "lineClassification");
       lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(balance, "balance");
     }
@@ -312,7 +312,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       String lineName,
       @Nullable String lineType,
       @Nullable String lineRole,
-      String lineClassification,
+      @Nullable String lineClassification,
       String lineKind,
       BalanceBucketPayload openingBalance,
       BalanceBucketPayload movement,
@@ -322,7 +322,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       lineName = requireText(lineName, "lineName");
       lineType = requireOptionalText(lineType, "lineType");
       lineRole = requireOptionalText(lineRole, "lineRole");
-      lineClassification = requireText(lineClassification, "lineClassification");
+      lineClassification = requireOptionalText(lineClassification, "lineClassification");
       lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(openingBalance, "openingBalance");
       Objects.requireNonNull(movement, "movement");

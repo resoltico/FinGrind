@@ -1,26 +1,26 @@
 ---
 afad: "4.0"
-version: "0.44.0"
-domain: ADR_10X_ACCOUNTING_FOUNDATION
+version: "0.45.0"
+domain: ADR_ACCOUNTING_FOUNDATION
 updated: "2026-05-22"
 route:
-  keywords: [fingrind, 10x, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
-  questions: ["what exactly must fingrind implement to reach a 10 out of 10 accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]
+  keywords: [fingrind, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
+  questions: ["what exactly must fingrind implement to reach a best in class accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]
 ---
 
-# 10/10 Accounting Foundation ADR
+# Accounting Foundation ADR
 
-**Purpose**: State FinGrind's exact current maturity, the target meaning of "10/10", and the
-hard-break implementation sequence required to reach that target.
+**Purpose**: State FinGrind's exact current maturity, the target meaning of a best-in-class
+accounting foundation, and the hard-break implementation sequence required to reach that target.
 **Companion documents**:
-- [ADR_ACCOUNTING_BASELINE.md](./ADR_ACCOUNTING_BASELINE.md)
+- [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md)
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md)
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
 
 ## Decision
 
-FinGrind is not yet a 10/10 bookkeeping or accounting product line.
+FinGrind is not yet a best-in-class bookkeeping or accounting product line.
 
 Current exact posture:
 - the protected-book storage and truth-ownership split are strong enough for one durable
@@ -30,7 +30,8 @@ Current exact posture:
 - the current public write surface is too raw because caller-authored postings remain the primary
   mutation language
 
-The repository may claim a 10/10 accounting foundation only after the missing bounded contexts
+The repository may claim a best-in-class accounting foundation only after the missing bounded
+contexts
 below exist as executable, durable, and tested system owners.
 
 ## Current Exact State
@@ -40,7 +41,7 @@ The current hard-break line is:
 - one functional currency per book
 - exact-money append-only postings
 - explicit chart and statement taxonomy
-- entity-form-aware period close
+- one neutral accumulated-result close target inside the current bookkeeping kernel
 - built-in financial position, income statement, and changes-in-equity reports
 - deterministic maintenance, runtime, bundle, and release discipline
 
@@ -51,9 +52,9 @@ The current hard-break line is not:
 - one evidence-rich bookkeeping platform
 - one multi-currency, tax-aware, disclosure-capable accounting foundation
 
-## 10/10 Meaning
+## Target Meaning
 
-For FinGrind, "10/10" means:
+For FinGrind, a best-in-class accounting foundation means:
 
 1. FinGrind owns accounting meaning above storage mechanics.
 2. Durable accepted facts carry source-document and approval evidence.
@@ -178,7 +179,7 @@ This order is deliberate:
 
 ## Evidence For Progress
 
-Progress toward 10/10 is proven only by:
+Progress toward the target is proven only by:
 - executable contracts
 - durable storage
 - query/report projection
@@ -192,10 +193,3 @@ It is not proven by:
 - dormant schema columns
 - abstract service names
 - roadmap prose alone
-
-## Current Session Commitment
-
-This session begins the 10/10 route with two hard-break actions:
-
-1. codify the doctrine and target posture so the repository theory is explicit
-2. implement the evidence foundation as the first durable missing bounded context

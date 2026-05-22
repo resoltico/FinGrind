@@ -21,8 +21,6 @@ import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepKind;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
-import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
-import dev.erst.fingrind.contract.protocol.CapabilityStatus;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -57,8 +55,7 @@ class MachineContractTest {
         MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.9.0", "desc"));
 
     assertPreflightAndCurrencyCapabilities(capabilities, environment);
-    assertAccountingBaselineCapabilities(capabilities);
-    assertExtensionSurfaceCapabilities(capabilities);
+    assertBookkeepingKernelCapabilities(capabilities);
     assertRequestInputCapabilities(capabilities);
     assertCommandOutputModes(capabilities);
     assertRequestShapes(capabilities);
@@ -79,69 +76,20 @@ class MachineContractTest {
             .runtimeTrustBasis());
   }
 
-  private static void assertAccountingBaselineCapabilities(CapabilitiesDescriptor capabilities) {
+  private static void assertBookkeepingKernelCapabilities(CapabilitiesDescriptor capabilities) {
     assertEquals(
-        AccountingBaselineTarget.INTERNAL_MANAGEMENT_STATEMENTS,
-        capabilities.accountingBaseline().currentTarget());
+        "cash-single-entity-internal-management-kernel", capabilities.bookkeepingKernel().scope());
     assertEquals(
-        AccountingBaselineTarget.BASIC_STANDARD_REPORTING_FOUNDATION,
-        capabilities.accountingBaseline().nextTarget());
+        List.of("financial-position", "income-statement", "changes-in-equity"),
+        capabilities.bookkeepingKernel().builtInStatements());
+    assertEquals(3, capabilities.bookkeepingKernel().reportCapabilities().size());
     assertTrue(
-        capabilities
-            .accountingBaseline()
-            .reportingPosition()
-            .contains("Built-in reporting stops at financial position"));
-    assertTrue(capabilities.accountingBaseline().nonClaims().contains("IFRS for SMEs parity"));
+        capabilities.bookkeepingKernel().reportCapabilities().stream()
+            .allMatch(reportCapability -> reportCapability.comparativeSupported()));
     assertEquals(
         "internal-management-single-entity-v1",
-        capabilities.accountingBaseline().defaultPolicyPack().policyPackId());
-    assertTrue(
-        capabilities
-            .accountingBaseline()
-            .chartModelPosition()
-            .contains("supports explicit parent-child hierarchy"));
-    assertTrue(
-        capabilities
-            .accountingBaseline()
-            .smallEntityPosition()
-            .contains("does not yet claim IFRS for SMEs parity"));
-    assertTrue(
-        capabilities
-            .accountingBaseline()
-            .operationalPosition()
-            .contains("Operational contexts such as invoicing"));
-    assertTrue(
-        capabilities
-            .accountingBaseline()
-            .taxPosition()
-            .contains("Tax is not a first-class domain"));
-    assertTrue(
-        capabilities
-            .accountingBaseline()
-            .organizationalPosition()
-            .contains("does not yet claim multi-entity organizational accounting"));
-  }
-
-  private static void assertExtensionSurfaceCapabilities(CapabilitiesDescriptor capabilities) {
-    assertEquals(
-        List.of(
-            "policy-profile-selection",
-            "entry-recipe-policy",
-            "retained-evidence-policy",
-            "statement-comparative-policy",
-            "chart-policy",
-            "close-policy",
-            "statement-presentation-policy"),
-        capabilities.extensionSurface().implementedSeams());
-    assertEquals(
-        "internal-management-single-entity-v1",
-        capabilities.extensionSurface().defaultPolicyPackId());
-    assertTrue(
-        capabilities.extensionSurface().policySeams().stream()
-            .anyMatch(
-                seam ->
-                    "close-policy".equals(seam.seamId())
-                        && seam.status() == CapabilityStatus.IMPLEMENTED));
+        capabilities.bookkeepingKernel().policyProfile().profileId());
+    assertTrue(capabilities.bookkeepingKernel().description().contains("cash-oriented"));
   }
 
   private static void assertRequestInputCapabilities(CapabilitiesDescriptor capabilities) {
@@ -412,7 +360,6 @@ class MachineContractTest {
     assertEquals("1000", template.cashAccountCode());
     assertEquals("2000", template.revenueAccountCode());
     assertEquals(null, template.lines());
-    assertEquals(null, template.postingKind());
     assertEquals("operator-demo-1", template.provenance().actorId());
     assertEquals(ActorType.AGENT, template.provenance().actorType());
     assertEquals("idem-demo-1", template.provenance().idempotencyKey());

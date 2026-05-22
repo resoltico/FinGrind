@@ -4,18 +4,19 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.PostingKind;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
-/** Public bookkeeping write-model entry shape with typed business events and manual adjustment. */
+/** Public bookkeeping write-model entry shape with typed business events and named adjustments. */
 public sealed interface BookkeepingEntry
     permits BookkeepingEntry.CashRevenue,
         BookkeepingEntry.CashExpense,
         BookkeepingEntry.OwnerContribution,
         BookkeepingEntry.OwnerDraw,
-        BookkeepingEntry.ManualAdjustment {
+        BookkeepingEntry.OpeningBalanceAdjustment,
+        BookkeepingEntry.CorrectionAdjustment,
+        BookkeepingEntry.ReversalAdjustment {
   /** Returns the stable caller-authored entry kind. */
   BookkeepingEntryKind entryKind();
 
@@ -107,21 +108,17 @@ public sealed interface BookkeepingEntry
   }
 
   /**
-   * Explicit privileged raw-journal path reserved for adjustments, openings, and reversals that do
-   * not belong to one supported typed business event.
+   * Explicit administrative opening-balance entry reserved for seeding one book before operating
+   * activity begins.
    */
-  record ManualAdjustment(
-      PostingKind postingKind, JournalEntry journalEntry, PostingLineage postingLineage)
-      implements BookkeepingEntry {
-    public ManualAdjustment {
-      Objects.requireNonNull(postingKind, "postingKind");
+  record OpeningBalanceAdjustment(JournalEntry journalEntry) implements BookkeepingEntry {
+    public OpeningBalanceAdjustment {
       Objects.requireNonNull(journalEntry, "journalEntry");
-      Objects.requireNonNull(postingLineage, "postingLineage");
     }
 
     @Override
     public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.MANUAL_ADJUSTMENT;
+      return BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT;
     }
 
     @Override
@@ -129,7 +126,53 @@ public sealed interface BookkeepingEntry
       return journalEntry.effectiveDate();
     }
 
-    /** Returns the caller-authored adjustment lines for this explicit manual path. */
+    /** Returns the caller-authored lines for this opening-balance entry. */
+    public List<JournalLine> lines() {
+      return journalEntry.lines();
+    }
+  }
+
+  /** Explicit administrative correction entry for non-opening, non-reversal adjustments. */
+  record CorrectionAdjustment(JournalEntry journalEntry) implements BookkeepingEntry {
+    public CorrectionAdjustment {
+      Objects.requireNonNull(journalEntry, "journalEntry");
+    }
+
+    @Override
+    public BookkeepingEntryKind entryKind() {
+      return BookkeepingEntryKind.CORRECTION_ADJUSTMENT;
+    }
+
+    @Override
+    public LocalDate effectiveDate() {
+      return journalEntry.effectiveDate();
+    }
+
+    /** Returns the caller-authored lines for this correction entry. */
+    public List<JournalLine> lines() {
+      return journalEntry.lines();
+    }
+  }
+
+  /** Explicit administrative reversal entry that negates one previously committed posting. */
+  record ReversalAdjustment(JournalEntry journalEntry, PostingLineage.Reversal reversal)
+      implements BookkeepingEntry {
+    public ReversalAdjustment {
+      Objects.requireNonNull(journalEntry, "journalEntry");
+      Objects.requireNonNull(reversal, "reversal");
+    }
+
+    @Override
+    public BookkeepingEntryKind entryKind() {
+      return BookkeepingEntryKind.REVERSAL_ADJUSTMENT;
+    }
+
+    @Override
+    public LocalDate effectiveDate() {
+      return journalEntry.effectiveDate();
+    }
+
+    /** Returns the caller-authored lines for this reversal entry. */
     public List<JournalLine> lines() {
       return journalEntry.lines();
     }

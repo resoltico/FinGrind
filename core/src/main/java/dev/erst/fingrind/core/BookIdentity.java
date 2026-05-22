@@ -20,9 +20,4 @@ public record BookIdentity(
   public BookEntityName entityName() {
     return entityProfile.displayName();
   }
-
-  /** Returns the canonical entity form that drives policy selection for this book. */
-  public EntityForm entityForm() {
-    return entityProfile.entityForm();
-  }
 }

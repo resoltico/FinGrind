@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountingPolicyProfile;
-import dev.erst.fingrind.core.OwnerModel;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -56,10 +55,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -169,10 +164,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
@@ -190,7 +181,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_acceptsExplicitOwnershipAndPolicyProfileWithoutTaxProfileScaffolding() {
+  void parse_openBook_acceptsExplicitPolicyProfileWithoutTaxProfileScaffolding() {
     OpenBook openBook =
         assertInstanceOf(
             OpenBook.class,
@@ -203,10 +194,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -220,8 +207,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
         openBook.command().bookIdentity().policyProfile());
-    assertEquals(
-        OwnerModel.MULTI_OWNER, openBook.command().bookIdentity().entityProfile().ownerModel());
   }
 
   @Test
@@ -241,10 +226,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
@@ -276,10 +257,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
@@ -360,10 +337,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -380,7 +353,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_requiresOwnershipAndPolicyProfileAndCollectsBusinessActivityTags() {
+  void parse_openBook_requiresPolicyProfileAndCollectsBusinessActivityTags() {
     OpenBook command =
         assertInstanceOf(
             OpenBook.class,
@@ -393,10 +366,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -409,8 +378,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                 }));
 
-    assertEquals(
-        OwnerModel.MULTI_OWNER, command.command().bookIdentity().entityProfile().ownerModel());
     assertEquals(
         AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
         command.command().bookIdentity().policyProfile());
@@ -603,10 +570,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-stdin",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -674,10 +637,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-prompt",
                   "--entity-name",
                   "Acme Studio",
-                  "--entity-form",
-                  "COMPANY",
-                  "--owner-model",
-                  "MULTI_OWNER",
                   "--policy-profile",
                   "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
@@ -709,10 +668,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
@@ -743,36 +698,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--entity-form",
-                      "COMPANY",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
                       "01-01",
-                    }));
-    CliArgumentsException missingOwnerModel =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
-                      "--business-activity-tag",
-                      "translation-services",
-                      "--fiscal-year-start",
-                      "01-01",
-                      "--functional-currency",
-                      "EUR",
                     }));
     CliArgumentsException missingPolicyProfile =
         assertThrows(
@@ -787,10 +716,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
@@ -811,10 +736,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--functional-currency",
@@ -835,40 +756,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--fiscal-year-start",
                       "01-01"
-                    }));
-    CliArgumentsException missingEntityForm =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--owner-model",
-                      "MULTI_OWNER",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
-                      "--business-activity-tag",
-                      "translation-services",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01",
                     }));
     CliArgumentsException missingFiscalYearStart =
         assertThrows(
@@ -883,10 +776,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--entity-form",
-                      "COMPANY",
-                      "--owner-model",
-                      "MULTI_OWNER",
                       "--policy-profile",
                       "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
@@ -896,10 +785,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                     }));
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
-    assertEquals("--entity-form", missingEntityForm.argument());
-    assertEquals("A --entity-form argument is required.", missingEntityForm.getMessage());
-    assertEquals("--owner-model", missingOwnerModel.argument());
-    assertEquals("A --owner-model argument is required.", missingOwnerModel.getMessage());
     assertEquals("--policy-profile", missingPolicyProfile.argument());
     assertEquals("A --policy-profile argument is required.", missingPolicyProfile.getMessage());
     assertEquals("--business-activity-tag", missingBusinessActivityTag.argument());
