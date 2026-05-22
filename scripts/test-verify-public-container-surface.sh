@@ -286,15 +286,18 @@ TEXT
 Trial Balance
 =============
 
-Entity               : Release Protocol Fixture
-Entity form          : Company
-Owner model          : Unknown
-Business activity    : (none)
-Functional currency  : EUR
-Fiscal year start    : 01-01
-Policy profile       : Internal Management Single Entity V1
-Posting coverage     : All posting kinds
-As of                : 2026-04-08
+Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Posting coverage : All posting kinds
+As of            : 2026-04-08
+
+Current totals
+--------------
+As of    : 2026-04-08
+Balanced : Yes
+
+Currency | Debit total | Credit total | Net amount | Balance side
+---------+-------------+--------------+------------+-------------
+EUR      |       10.00 |        10.00 |       0.00 | ZERO
 
 1000 | Cash
 -----------
@@ -313,15 +316,18 @@ TEXT
 Trial Balance
 =============
 
-Entity               : Release Protocol Fixture
-Entity form          : Company
-Owner model          : Unknown
-Business activity    : (none)
-Functional currency  : EUR
-Fiscal year start    : 01-01
-Policy profile       : Internal Management Single Entity V1
-Posting coverage     : All posting kinds
-As of                : 2026-04-08
+Book             : Release Protocol Fixture (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Posting coverage : All posting kinds
+As of            : 2026-04-08
+
+Current totals
+--------------
+As of    : 2026-04-08
+Balanced : Yes
+
+Currency | Debit total | Credit total | Net amount | Balance side
+---------+-------------+--------------+------------+-------------
+EUR      |       10.00 |        10.00 |       0.00 | ZERO
 
 1000 | Cash
 -----------
