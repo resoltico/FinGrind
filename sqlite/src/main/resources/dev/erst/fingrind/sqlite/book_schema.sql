@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 15;
+pragma user_version = 17;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -41,25 +41,6 @@ create table if not exists book_identity (
 
 create table if not exists entity_profile (
     singleton_id integer primary key check (singleton_id = 1),
-    entity_form text not null check (
-        entity_form in (
-            'FREELANCER',
-            'SOLE_PROPRIETORSHIP',
-            'COMPANY',
-            'PARTNERSHIP',
-            'NONPROFIT',
-            'BRANCH',
-            'OTHER'
-        )
-    ),
-    owner_model text not null check (
-        owner_model in (
-            'SOLE_OWNER',
-            'MULTI_OWNER',
-            'MEMBERSHIP_BODY',
-            'NO_PRIVATE_OWNER'
-        )
-    ),
     business_activity_tags text not null,
     foreign key (singleton_id) references book_identity (singleton_id)
 ) strict;
@@ -92,13 +73,9 @@ create table if not exists account (
             'NONCURRENT_ASSET',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
-            'OWNER_CAPITAL',
-            'OWNER_DRAWINGS',
-            'PARTNER_CAPITAL',
-            'PARTNER_CURRENT',
-            'SHARE_CAPITAL',
-            'RETAINED_EARNINGS',
-            'ACCUMULATED_SURPLUS',
+            'CONTRIBUTED_CAPITAL',
+            'DISTRIBUTIONS',
+            'ACCUMULATED_RESULT',
             'RESERVE',
             'OTHER_EQUITY'
         )
@@ -138,13 +115,9 @@ create table if not exists account (
         (
             account_type = 'EQUITY'
             and financial_position_line_classification in (
-                'OWNER_CAPITAL',
-                'OWNER_DRAWINGS',
-                'PARTNER_CAPITAL',
-                'PARTNER_CURRENT',
-                'SHARE_CAPITAL',
-                'RETAINED_EARNINGS',
-                'ACCUMULATED_SURPLUS',
+                'CONTRIBUTED_CAPITAL',
+                'DISTRIBUTIONS',
+                'ACCUMULATED_RESULT',
                 'RESERVE',
                 'OTHER_EQUITY'
             )

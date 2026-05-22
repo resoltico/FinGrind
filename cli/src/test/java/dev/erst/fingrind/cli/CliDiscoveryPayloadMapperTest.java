@@ -62,7 +62,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 canonical.description(),
                 canonical.usage(),
                 canonical.bookModel(),
-                canonical.accountingBaseline(),
+                canonical.bookkeepingKernel(),
                 canonical.requestShapes(),
                 canonical.requestTemplate(),
                 canonical.declareAccountTemplate(),
@@ -76,8 +76,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                                 "demo")))),
                 canonical.exitCodes(),
                 canonical.preflight(),
-                canonical.currencyModel(),
-                canonical.extensionSurface()));
+                canonical.currencyModel()));
 
     assertInstanceOf(CliDiscoveryJsonModels.HelpOverviewPayload.class, payload);
   }
@@ -174,7 +173,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.description(),
                     postEntry.usage(),
                     postEntry.bookModel(),
-                    postEntry.accountingBaseline(),
+                    postEntry.bookkeepingKernel(),
                     null,
                     postEntry.requestTemplate(),
                     postEntry.declareAccountTemplate(),
@@ -183,8 +182,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.quickStart(),
                     postEntry.exitCodes(),
                     postEntry.preflight(),
-                    postEntry.currencyModel(),
-                    postEntry.extensionSurface())));
+                    postEntry.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -195,7 +193,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.description(),
                     declareAccount.usage(),
                     declareAccount.bookModel(),
-                    declareAccount.accountingBaseline(),
+                    declareAccount.bookkeepingKernel(),
                     declareAccount.requestShapes(),
                     declareAccount.requestTemplate(),
                     null,
@@ -204,8 +202,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.quickStart(),
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
-                    declareAccount.currencyModel(),
-                    declareAccount.extensionSurface())));
+                    declareAccount.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -216,7 +213,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.description(),
                     executePlan.usage(),
                     executePlan.bookModel(),
-                    executePlan.accountingBaseline(),
+                    executePlan.bookkeepingKernel(),
                     executePlan.requestShapes(),
                     executePlan.requestTemplate(),
                     executePlan.declareAccountTemplate(),
@@ -225,8 +222,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.quickStart(),
                     executePlan.exitCodes(),
                     executePlan.preflight(),
-                    executePlan.currencyModel(),
-                    executePlan.extensionSurface())));
+                    executePlan.currencyModel())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -248,7 +244,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.description(),
                     postEntry.usage(),
                     postEntry.bookModel(),
-                    postEntry.accountingBaseline(),
+                    postEntry.bookkeepingKernel(),
                     postEntry.requestShapes(),
                     null,
                     postEntry.declareAccountTemplate(),
@@ -257,8 +253,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.quickStart(),
                     postEntry.exitCodes(),
                     postEntry.preflight(),
-                    postEntry.currencyModel(),
-                    postEntry.extensionSurface())));
+                    postEntry.currencyModel())));
 
     assertNull(payload.requestFile());
   }
@@ -282,7 +277,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.description(),
                     postEntry.usage(),
                     postEntry.bookModel(),
-                    postEntry.accountingBaseline(),
+                    postEntry.bookkeepingKernel(),
                     null,
                     postEntry.requestTemplate(),
                     postEntry.declareAccountTemplate(),
@@ -291,8 +286,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.quickStart(),
                     postEntry.exitCodes(),
                     postEntry.preflight(),
-                    postEntry.currencyModel(),
-                    postEntry.extensionSurface())));
+                    postEntry.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -303,7 +297,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.description(),
                     declareAccount.usage(),
                     declareAccount.bookModel(),
-                    declareAccount.accountingBaseline(),
+                    declareAccount.bookkeepingKernel(),
                     null,
                     declareAccount.requestTemplate(),
                     declareAccount.declareAccountTemplate(),
@@ -312,8 +306,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.quickStart(),
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
-                    declareAccount.currencyModel(),
-                    declareAccount.extensionSurface())));
+                    declareAccount.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -324,7 +317,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.description(),
                     executePlan.usage(),
                     executePlan.bookModel(),
-                    executePlan.accountingBaseline(),
+                    executePlan.bookkeepingKernel(),
                     null,
                     executePlan.requestTemplate(),
                     executePlan.declareAccountTemplate(),
@@ -333,8 +326,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.quickStart(),
                     executePlan.exitCodes(),
                     executePlan.preflight(),
-                    executePlan.currencyModel(),
-                    executePlan.extensionSurface())));
+                    executePlan.currencyModel())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -360,7 +352,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.description(),
                     postEntry.usage(),
                     postEntry.bookModel(),
-                    postEntry.accountingBaseline(),
+                    postEntry.bookkeepingKernel(),
                     new dev.erst.fingrind.contract.discovery.ContractRequestShapes
                         .RequestShapesDescriptor(
                         Objects.requireNonNull(postEntry.requestShapes()).schemaDialect(),
@@ -374,8 +366,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.quickStart(),
                     postEntry.exitCodes(),
                     postEntry.preflight(),
-                    postEntry.currencyModel(),
-                    postEntry.extensionSurface())));
+                    postEntry.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -386,7 +377,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.description(),
                     declareAccount.usage(),
                     declareAccount.bookModel(),
-                    declareAccount.accountingBaseline(),
+                    declareAccount.bookkeepingKernel(),
                     new dev.erst.fingrind.contract.discovery.ContractRequestShapes
                         .RequestShapesDescriptor(
                         Objects.requireNonNull(declareAccount.requestShapes()).schemaDialect(),
@@ -400,8 +391,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.quickStart(),
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
-                    declareAccount.currencyModel(),
-                    declareAccount.extensionSurface())));
+                    declareAccount.currencyModel())));
     CliDiscoveryJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryJsonModels.CommandHelpPayload.class,
@@ -412,7 +402,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.description(),
                     executePlan.usage(),
                     executePlan.bookModel(),
-                    executePlan.accountingBaseline(),
+                    executePlan.bookkeepingKernel(),
                     new dev.erst.fingrind.contract.discovery.ContractRequestShapes
                         .RequestShapesDescriptor(
                         Objects.requireNonNull(executePlan.requestShapes()).schemaDialect(),
@@ -426,8 +416,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     executePlan.quickStart(),
                     executePlan.exitCodes(),
                     executePlan.preflight(),
-                    executePlan.currencyModel(),
-                    executePlan.extensionSurface())));
+                    executePlan.currencyModel())));
 
     assertNull(postEntryPayload.requestFile());
     assertNull(declarePayload.requestFile());
@@ -513,7 +502,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.44.0",
+        "0.45.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

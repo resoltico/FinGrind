@@ -17,7 +17,6 @@ public sealed interface PostingRejection
     permits PostingRejection.BookNotInitialized,
         PostingRejection.AccountStateViolations,
         PostingRejection.DuplicateIdempotencyKey,
-        PostingRejection.PostingKindReserved,
         PostingRejection.BookFunctionalCurrencyMismatch,
         PostingRejection.ClosedPeriodViolation,
         PostingRejection.OpeningBalanceWindowClosed,
@@ -96,13 +95,6 @@ public sealed interface PostingRejection
 
   /** Duplicate idempotency rejection for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements PostingRejection {}
-
-  /** Rejection for a caller-authored posting that attempts to use a generated posting kind. */
-  record PostingKindReserved(PostingKind postingKind) implements PostingRejection {
-    public PostingKindReserved {
-      Objects.requireNonNull(postingKind, "postingKind");
-    }
-  }
 
   /** Rejection for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(

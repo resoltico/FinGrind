@@ -126,7 +126,7 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
   private static BookInspection.CloseReadiness closeReadyInspection() {
     return new BookInspection.CloseReadiness(
         true,
-        FinancialPositionLineClassification.OWNER_CAPITAL,
+        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
         new AccountCode("3200"),
         null,
         null,

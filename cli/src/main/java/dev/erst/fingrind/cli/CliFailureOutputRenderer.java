@@ -117,8 +117,6 @@ final class CliFailureOutputRenderer {
           appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.PriorPostingDetails details ->
           appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PostingKindDetails details ->
-          appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details ->
           appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details ->
@@ -204,8 +202,6 @@ final class CliFailureOutputRenderer {
                       .collect(java.util.stream.Collectors.joining(", "))));
       case CliRejectionJsonModels.PriorPostingDetails details ->
           rows.add(List.of("Prior posting id", details.priorPostingId()));
-      case CliRejectionJsonModels.PostingKindDetails details ->
-          rows.add(List.of("Posting kind", details.postingKind()));
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
         rows.add(List.of("Functional currency", details.functionalCurrency()));
         rows.add(List.of("Attempted currency", details.attemptedCurrency()));

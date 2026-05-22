@@ -59,18 +59,26 @@ public final class CliFuzzHarnessTestSupport {
     }
   }
 
-  public record ManualAdjustmentRequestInput(
-      String effectiveDate,
-      String postingKind,
-      String linesJson,
-      RequestContext context,
-      @Nullable String priorPostingId,
-      @Nullable String reversalReason) {
-    public ManualAdjustmentRequestInput {
+  public record CorrectionAdjustmentRequestInput(
+      String effectiveDate, String linesJson, RequestContext context) {
+    public CorrectionAdjustmentRequestInput {
       Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(postingKind, "postingKind");
       Objects.requireNonNull(linesJson, "linesJson");
       Objects.requireNonNull(context, "context");
+    }
+  }
+
+  public record ReversalAdjustmentRequestInput(
+      String effectiveDate,
+      String linesJson,
+      RequestContext context,
+      String priorPostingId,
+      @Nullable String reversalReason) {
+    public ReversalAdjustmentRequestInput {
+      Objects.requireNonNull(effectiveDate, "effectiveDate");
+      Objects.requireNonNull(linesJson, "linesJson");
+      Objects.requireNonNull(context, "context");
+      Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
   }
 
@@ -194,10 +202,9 @@ public final class CliFuzzHarnessTestSupport {
   }
 
   static byte[] missingReversalReasonRequestBytes() {
-    return manualAdjustmentRequestJson(
-            new ManualAdjustmentRequestInput(
+    return reversalAdjustmentRequestJson(
+            new ReversalAdjustmentRequestInput(
                 "2026-04-08",
-                "STANDARD",
                 """
                 [
                   {
@@ -234,10 +241,9 @@ public final class CliFuzzHarnessTestSupport {
   }
 
   static String reversalTargetMissingRequest() {
-    return manualAdjustmentRequestJson(
-        new ManualAdjustmentRequestInput(
+    return reversalAdjustmentRequestJson(
+        new ReversalAdjustmentRequestInput(
             "2026-04-08",
-            "STANDARD",
             """
             [
               {
@@ -443,9 +449,7 @@ public final class CliFuzzHarnessTestSupport {
     return """
         {
           "entityName": "Acme Studio",
-          "entityForm": "COMPANY",
-          "ownerModel": "MULTI_OWNER",
-                    "businessActivityTags": ["translation-services"],
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
@@ -534,36 +538,54 @@ public final class CliFuzzHarnessTestSupport {
             provenanceJson(request.context()).indent(10).stripLeading());
   }
 
-  public static String manualAdjustmentRequestJson(ManualAdjustmentRequestInput request) {
-    String reversalJson =
-        request.priorPostingId() == null
-            ? ""
-            : """
-              ,
-              "reversal": {
-                "priorPostingId": "%s"%s
-              }
-              """
-                .formatted(
-                    request.priorPostingId(),
-                    request.reversalReason() == null
-                        ? ""
-                        : ",\n    \"reason\": \"" + request.reversalReason() + "\"");
+  public static String correctionAdjustmentRequestJson(CorrectionAdjustmentRequestInput request) {
     return """
         {
-          "entryKind": "MANUAL_ADJUSTMENT",
-          "postingKind": "%s",
+          "entryKind": "CORRECTION_ADJUSTMENT",
           "effectiveDate": "%s",
-          "lines": %s%s,
+          "lines": %s,
           "evidence": %s,
           "provenance": %s
         }
         """
         .formatted(
-            request.postingKind(),
             request.effectiveDate(),
             request.linesJson().strip(),
-            reversalJson,
+            evidenceJson(
+                    request.context().sourceDocumentId(),
+                    request.context().sourceDocumentType(),
+                    request.context().documentDate())
+                .indent(10)
+                .stripLeading(),
+            provenanceJson(request.context()).indent(10).stripLeading());
+  }
+
+  public static String reversalAdjustmentRequestJson(ReversalAdjustmentRequestInput request) {
+    String reversalJson =
+        """
+        {
+          "priorPostingId": "%s"%s
+        }
+        """
+            .formatted(
+                request.priorPostingId(),
+                request.reversalReason() == null
+                    ? ""
+                    : ",\n    \"reason\": \"" + request.reversalReason() + "\"");
+    return """
+        {
+          "entryKind": "REVERSAL_ADJUSTMENT",
+          "effectiveDate": "%s",
+          "lines": %s,
+          "reversal": %s,
+          "evidence": %s,
+          "provenance": %s
+        }
+        """
+        .formatted(
+            request.effectiveDate(),
+            request.linesJson().strip(),
+            reversalJson.indent(10).stripLeading(),
             evidenceJson(
                     request.context().sourceDocumentId(),
                     request.context().sourceDocumentType(),

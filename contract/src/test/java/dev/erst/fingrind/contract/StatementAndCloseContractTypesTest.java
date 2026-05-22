@@ -115,7 +115,7 @@ class StatementAndCloseContractTypesTest {
             "Owner Capital",
             Optional.of(AccountType.EQUITY),
             Optional.of(AccountRole.ORDINARY),
-            FinancialPositionLineClassification.OWNER_CAPITAL,
+            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
             StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "0.00", "100.00"),
             balance("EUR", "0.00", "10.00"),
@@ -217,7 +217,7 @@ class StatementAndCloseContractTypesTest {
                 "Cash",
                 AccountType.ASSET,
                 Optional.of(AccountRole.ORDINARY),
-                FinancialPositionLineClassification.CURRENT_ASSET,
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 StatementLineKind.DECLARED_ACCOUNT,
                 balance("EUR", "1.00", "0.00")));
     assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Reported(nullOf()));
@@ -286,7 +286,7 @@ class StatementAndCloseContractTypesTest {
                 "Capital",
                 Optional.of(AccountType.EQUITY),
                 Optional.of(AccountRole.ORDINARY),
-                FinancialPositionLineClassification.OWNER_CAPITAL,
+                Optional.of(FinancialPositionLineClassification.CONTRIBUTED_CAPITAL),
                 StatementLineKind.DECLARED_ACCOUNT,
                 nullOf(),
                 balance("EUR", "0.00", "1.00"),

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: HUMAN_REQUESTS
 updated: "2026-05-22"
 route:
@@ -77,9 +77,10 @@ Current posting-request rules:
 - `CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `OWNER_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
 - `OWNER_DRAW` requires `equityAccountCode`, `cashAccountCode`, and `amount`
-- `MANUAL_ADJUSTMENT` requires `postingKind` plus `lines`
-- `MANUAL_ADJUSTMENT.postingKind` must be `STANDARD` or `OPENING_BALANCE`
-- `MANUAL_ADJUSTMENT.lines` must contain at least two journal lines
+- `OPENING_BALANCE_ADJUSTMENT` requires `lines`
+- `CORRECTION_ADJUSTMENT` requires `lines`
+- `REVERSAL_ADJUSTMENT` requires `lines` plus `reversal`
+- every administrative adjustment entry must contain at least two journal lines
 - `evidence.sourceDocuments` must contain at least one source-document object
 - every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`,
   `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
@@ -88,10 +89,13 @@ Current posting-request rules:
   `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
   letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
-- every `MANUAL_ADJUSTMENT` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
-- every line inside one `MANUAL_ADJUSTMENT` entry must share the same `lines[].amount.currencyCode`
+- every administrative adjustment entry must contain at least one `DEBIT` line and at least one
+  `CREDIT` line
+- every line inside one administrative adjustment entry must share the same
+  `lines[].amount.currencyCode`
 - every posted money amount must use the selected book's functional currency
-- `reversal` is optional only for `MANUAL_ADJUSTMENT`
+- `reversal` is required only for `REVERSAL_ADJUSTMENT` and must be absent for every other
+  `entryKind`
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
   ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
@@ -168,7 +172,7 @@ Current ledger-plan rules:
 - `steps` must contain at least one object and every `stepId` must be unique
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `open-book` uses nested `openBook`, which requires `entityName`, `entityForm`, `ownerModel`,
+- `open-book` uses nested `openBook`, which requires `entityName`,
   `businessActivityTags`, `functionalCurrency`, `fiscalYearStart`, and `policyProfile`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
@@ -219,7 +223,7 @@ deterministic repair data.
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountRole` | `ORDINARY`, `CONTRA` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
-| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `OWNER_CAPITAL`, `OWNER_DRAWINGS`, `PARTNER_CAPITAL`, `PARTNER_CURRENT`, `SHARE_CAPITAL`, `RETAINED_EARNINGS`, `ACCUMULATED_SURPLUS`, `RESERVE`, `OTHER_EQUITY` |
+| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `CONTRIBUTED_CAPITAL`, `DISTRIBUTIONS`, `ACCUMULATED_RESULT`, `RESERVE`, `OTHER_EQUITY` |
 | `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `TAX_EXPENSE` |
 
 ## CLI Output Shapes
@@ -244,8 +248,8 @@ Dynamic fields:
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
-- `open-book.payload.bookIdentity.entityName`, `.entityForm`, `.ownerModel`,
-  `.businessActivityTags`, `.functionalCurrency`, `.fiscalYearStart`, and
+- `open-book.payload.bookIdentity.entityName`, `.businessActivityTags`,
+  `.functionalCurrency`, `.fiscalYearStart`, and
   `.policyProfile` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
@@ -260,8 +264,8 @@ Dynamic fields:
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
-  `fiscalYearStart`; the persisted initialized-book identity also carries `entityForm`,
-  `ownerModel`, `businessActivityTags`, and `policyProfile`
+  `fiscalYearStart`; the persisted initialized-book identity also carries
+  `businessActivityTags` and `policyProfile`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `post-entry` and `get-posting` plan steps emit typed `evidence` data with source
@@ -317,22 +321,15 @@ rendered:
   carries the advisory-versus-guaranteed commit relationship
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
-- `accountingBaseline.reportingPosition` states explicitly that the current kernel stops at
-  financial position, income statement, and changes in equity
-- `accountingBaseline.chartModelPosition` states explicitly that declared accounts carry explicit
-  parent-child hierarchy and statement-line taxonomy while account-code text remains opaque
-- `accountingBaseline.smallEntityPosition` states explicitly that the current kernel does not yet
-  claim IFRS for SMEs parity
-- `accountingBaseline.operationalPosition` states explicitly that invoicing, receivables,
-  payables, inventory, payroll, and settlement live above the ledger in future adjacent contexts
-- `accountingBaseline.taxPosition` states explicitly that tax is not a first-class domain in the
-  current kernel and that tax determination/rate/filer policy is not modeled yet
-- `accountingBaseline.organizationalPosition` states explicitly that the current kernel does not
-  yet claim multi-entity organizational accounting
-- `extensionSurface.implementedSeams` lists the live executable policy seams currently owned in
-  code
-- `extensionSurface.policySeams` lists only live executable seams; adjacent domains stay in ADRs
-  and domain docs until they own commands, state, storage, and tests
+- `bookkeepingKernel.scope` identifies the current executable kernel scope as one
+  cash-oriented internal-management single-entity bookkeeping kernel
+- `bookkeepingKernel.builtInStatements` lists the shipped statement ids
+- `bookkeepingKernel.reportCapabilities[]` describes each built-in statement id, whether
+  comparatives are supported, and the live human description published by the contract
+- `bookkeepingKernel.policyProfile` publishes the persisted policy-profile id, name, and its
+  contract description
+- `bookkeepingKernel.description` carries the current machine-published summary of that live
+  bookkeeping kernel
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
@@ -349,8 +346,6 @@ rendered:
 
 Shared initialized-book identity payload:
 - `entityName`
-- `entityForm`
-- `ownerModel`
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`

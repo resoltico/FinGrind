@@ -41,9 +41,7 @@ final class SqliteMutationWriter {
     }
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_ENTITY_PROFILE)) {
-      statement.bindText(1, bookIdentity.entityProfile().entityForm().wireValue());
-      statement.bindText(2, bookIdentity.entityProfile().ownerModel().wireValue());
-      statement.bindText(3, encodedBusinessActivityTags);
+      statement.bindText(1, encodedBusinessActivityTags);
       statement.step();
     }
     try (SqliteNativeStatement statement =

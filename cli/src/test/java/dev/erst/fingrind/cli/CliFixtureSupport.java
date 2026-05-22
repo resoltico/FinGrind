@@ -344,7 +344,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "Retained Earnings",
                         AccountType.EQUITY,
                         AccountRole.ORDINARY,
-                        FinancialPositionLineClassification.RETAINED_EARNINGS,
+                        FinancialPositionLineClassification.ACCUMULATED_RESULT,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))));
     return new FinancialPositionReport(
@@ -397,7 +397,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 "3200",
                 "Retained Earnings",
                 AccountRole.ORDINARY,
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 openingBalance,
                 movementBalance,
                 closingBalance));
@@ -439,7 +439,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         lineName,
         accountType,
         Optional.of(accountRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
   }
@@ -474,7 +474,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         lineName,
         Optional.of(AccountType.EQUITY),
         Optional.of(accountRole),
-        lineClassification,
+        Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
         movement,

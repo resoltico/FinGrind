@@ -23,7 +23,6 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   sealed interface PostingRejectionDetails extends RejectionDetails
       permits AccountStateViolationsDetails,
           PriorPostingDetails,
-          PostingKindDetails,
           FunctionalCurrencyMismatchDetails,
           OpeningBalanceWindowClosedDetails,
           OpeningBalanceNominalAccountDetails,
@@ -194,12 +193,6 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
               financialPositionLineClassification, "financialPositionLineClassification");
       profitAndLossLineClassification =
           requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
-    }
-  }
-
-  record PostingKindDetails(String postingKind) implements PostingRejectionDetails {
-    public PostingKindDetails {
-      postingKind = requireText(postingKind, "postingKind");
     }
   }
 

@@ -196,28 +196,6 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
-  void rejectionFor_rejectsCallerAuthoredGeneratedPostingKinds() {
-    RecordingValidationBook book = new RecordingValidationBook();
-    book.initialized = true;
-
-    Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE_POLICY.rejectionFor(
-            command(
-                PostingKind.PERIOD_CLOSE,
-                "idem-generated",
-                SourceChannel.CLI,
-                List.of(
-                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
-                    line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
-            book);
-
-    assertEquals(
-        Optional.of(new BookkeepingPostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)),
-        rejection);
-    assertEquals(0, book.findAccountsCalls);
-  }
-
-  @Test
   void rejectionFor_allowsSystemGeneratedPostingKindsFromPostingCommands() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
@@ -227,7 +205,7 @@ class PostingAcceptancePolicyTest {
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -462,7 +440,7 @@ class PostingAcceptancePolicyTest {
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount balancingAccount =
@@ -502,7 +480,7 @@ class PostingAcceptancePolicyTest {
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =

@@ -100,7 +100,7 @@ class PeriodCloseServiceTest {
       assertEquals(
           new PeriodCloseOutcome.Rejected(
               new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                  FinancialPositionLineClassification.RETAINED_EARNINGS, List.of())),
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of())),
           outcome);
     }
   }
@@ -117,7 +117,7 @@ class PeriodCloseServiceTest {
       assertEquals(
           new PeriodCloseOutcome.Rejected(
               new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
                   List.of(new AccountCode("3200")))),
           outcome);
     }
@@ -134,7 +134,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings A",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
       declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
@@ -145,14 +145,14 @@ class PeriodCloseServiceTest {
           "Retained Earnings Duplicate",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
 
       PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
 
       assertEquals(
           new PeriodCloseOutcome.Rejected(
               new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
-                  FinancialPositionLineClassification.RETAINED_EARNINGS,
+                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
                   List.of(new AccountCode("3200"), new AccountCode("3210")))),
           outcome);
     }
@@ -169,7 +169,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings A",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
       declareAccount(
           bookSession,
           "3210",
@@ -306,7 +306,7 @@ class PeriodCloseServiceTest {
                 "Retained Earnings",
                 AccountType.EQUITY,
                 AccountRole.ORDINARY,
-                financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS)),
+                financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT)),
             account("4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY),
             account("5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY));
     book.postings =
@@ -459,7 +459,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
       declareAccount(
           bookSession, "4000", "Sales Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(
@@ -567,7 +567,7 @@ class PeriodCloseServiceTest {
         "Retained Earnings",
         AccountType.EQUITY,
         AccountRole.ORDINARY,
-        financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS));
+        financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
     declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
     declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
   }

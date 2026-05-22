@@ -411,11 +411,6 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanOutcomeMapper.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalDoesNotNegateTarget(new PostingId("posting-3")));
-    var postingKindReserved =
-        (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
-                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .PostingKindReserved(PostingKind.PERIOD_CLOSE));
     var functionalCurrencyMismatch =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanOutcomeMapper.postingRejection(
@@ -452,7 +447,6 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("reversal-target-not-found", reversalTargetNotFound.failure().code());
     assertEquals("reversal-already-exists", reversalAlreadyExists.failure().code());
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
-    assertEquals("posting-kind-reserved", postingKindReserved.failure().code());
     assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
     assertEquals("closed-period-violation", closedPeriodViolation.failure().code());
     assertEquals("opening-balance-window-closed", openingBalanceWindowClosed.failure().code());
@@ -468,9 +462,6 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-3")),
         reversalDoesNotNegateTarget.failure().facts());
-    assertEquals(
-        List.of(BookWorkflowFact.text("postingKind", PostingKind.PERIOD_CLOSE.wireValue())),
-        postingKindReserved.failure().facts());
     assertEquals(
         List.of(
             BookWorkflowFact.text("functionalCurrency", "EUR"),

@@ -447,8 +447,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                                                 "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
                         "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
@@ -470,8 +468,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                                                 "businessActivityTags": null,
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -510,8 +506,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                                                 "businessActivityTags": "translation-services",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -534,8 +528,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                                                 "businessActivityTags": ["translation-services", 2],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -573,8 +565,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                                                 "businessActivityTags": [],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01",
@@ -595,29 +585,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
 
   @Test
   void readLedgerPlan_rejectsMissingOpenBookPolicyFields() {
-    CliRequestReader missingOwnerModelReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [
-                    {
-                      "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
-                        "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                                                "businessActivityTags": ["translation-services"],
-                        "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
-                      }
-                    }
-                  ]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
     CliRequestReader missingPolicyProfileReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -630,8 +597,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
-                        "ownerModel": "MULTI_OWNER",
                         "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01"
@@ -642,15 +607,11 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    CliRequestException missingOwnerModelException =
-        assertThrows(
-            CliRequestException.class, () -> missingOwnerModelReader.readLedgerPlan(Path.of("-")));
     CliRequestException missingPolicyProfileException =
         assertThrows(
             CliRequestException.class,
             () -> missingPolicyProfileReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Missing required field: ownerModel", missingOwnerModelException.getMessage());
     assertEquals(
         "Missing required field: policyProfile", missingPolicyProfileException.getMessage());
   }
@@ -669,7 +630,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "entityForm": "COMPANY",
                         "taxProfile": {
                           "registrations": []
                         },

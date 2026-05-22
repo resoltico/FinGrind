@@ -83,14 +83,9 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.currency();
   }
 
-  /** Returns the structured accounting-baseline facts. */
-  public static AccountingBaselineFacts accountingBaseline() {
-    return ProtocolCatalogFacts.accountingBaseline();
-  }
-
-  /** Returns the structured extension-surface facts. */
-  public static ExtensionSurfaceFacts extensionSurface() {
-    return ProtocolCatalogFacts.extensionSurface();
+  /** Returns the structured executable bookkeeping-kernel facts. */
+  public static BookkeepingKernelFacts bookkeepingKernel() {
+    return ProtocolCatalogFacts.bookkeepingKernel();
   }
 
   /** Returns the structured preflight semantics. */

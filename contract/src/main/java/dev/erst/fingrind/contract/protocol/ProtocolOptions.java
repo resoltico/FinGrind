@@ -64,12 +64,6 @@ public final class ProtocolOptions {
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
 
-  /** Option selecting the entity form used when initializing one new book. */
-  public static final String ENTITY_FORM = "--entity-form";
-
-  /** Option selecting the owner model used when initializing one new book. */
-  public static final String OWNER_MODEL = "--owner-model";
-
   /** Option selecting one business-activity tag used when initializing one new book. */
   public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
 

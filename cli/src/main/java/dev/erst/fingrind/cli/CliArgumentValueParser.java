@@ -11,10 +11,8 @@ import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -78,28 +76,6 @@ final class CliArgumentValueParser {
           optionName,
           Objects.requireNonNullElse(
               exception.getMessage(), "Option must use MM-DD for " + optionName + "."),
-          exception);
-    }
-  }
-
-  static EntityForm parseEntityFormOption(String rawValue, String optionName) {
-    try {
-      return EntityForm.fromWireValue(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw invalid(
-          optionName,
-          Objects.requireNonNullElse(exception.getMessage(), "Unsupported entity form."),
-          exception);
-    }
-  }
-
-  static OwnerModel parseOwnerModelOption(String rawValue, String optionName) {
-    try {
-      return OwnerModel.fromWireValue(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw invalid(
-          optionName,
-          Objects.requireNonNullElse(exception.getMessage(), "Unsupported owner model."),
           exception);
     }
   }

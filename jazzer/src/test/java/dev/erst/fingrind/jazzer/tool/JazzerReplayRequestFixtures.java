@@ -199,10 +199,9 @@ final class JazzerReplayRequestFixtures {
   }
 
   static String reversalTargetMissingRequest() {
-    return CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
-        new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+    return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
+        new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
             "2026-04-08",
-            "STANDARD",
             """
             [
               {
@@ -238,10 +237,9 @@ final class JazzerReplayRequestFixtures {
   }
 
   static String missingReversalReasonRequest() {
-    return CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
-        new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+    return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
+        new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
             "2026-04-08",
-            "STANDARD",
             """
             [
               {

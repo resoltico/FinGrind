@@ -19,8 +19,7 @@ public record CapabilitiesDescriptor(
     ContractResponse.ReversalDescriptor reversals,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
-    ContractResponse.AccountingBaselineDescriptor accountingBaseline,
-    ContractResponse.ExtensionSurfaceDescriptor extensionSurface)
+    ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel)
     implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */
   public CapabilitiesDescriptor {
@@ -37,9 +36,7 @@ public record CapabilitiesDescriptor(
     reversals = ContractDescriptorValidation.requireValue(reversals, "reversals");
     preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
     currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
-    accountingBaseline =
-        ContractDescriptorValidation.requireValue(accountingBaseline, "accountingBaseline");
-    extensionSurface =
-        ContractDescriptorValidation.requireValue(extensionSurface, "extensionSurface");
+    bookkeepingKernel =
+        ContractDescriptorValidation.requireValue(bookkeepingKernel, "bookkeepingKernel");
   }
 }

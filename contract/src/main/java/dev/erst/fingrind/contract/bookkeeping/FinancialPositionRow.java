@@ -14,7 +14,7 @@ public record FinancialPositionRow(
     String lineName,
     AccountType lineType,
     Optional<AccountRole> lineRole,
-    FinancialPositionLineClassification lineClassification,
+    Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance balance) {
   /** Validates one financial-position statement row. */
@@ -29,7 +29,9 @@ public record FinancialPositionRow(
     lineRole =
         dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireValue(
             lineRole, "lineRole");
-    Objects.requireNonNull(lineClassification, "lineClassification");
+    lineClassification =
+        dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireValue(
+            lineClassification, "lineClassification");
     Objects.requireNonNull(lineKind, "lineKind");
     Objects.requireNonNull(balance, "balance");
   }

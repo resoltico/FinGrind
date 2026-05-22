@@ -1,7 +1,7 @@
 Trial Balance
 =============
 
-Book             : Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Acme Studio | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 

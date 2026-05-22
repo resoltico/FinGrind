@@ -197,11 +197,6 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
-        PostingLifecycleStatus.POSTING_KIND_RESERVED,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.PostingKindReserved(
-                dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE)));
-    assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.BookFunctionalCurrencyMismatch(

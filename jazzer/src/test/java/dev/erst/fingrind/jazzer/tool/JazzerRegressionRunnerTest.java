@@ -103,37 +103,7 @@ class JazzerRegressionRunnerTest {
       writeSeedMetadata(
           JazzerHarness.cliRequest(),
           "basic_valid.json",
-          """
-          {
-            "postingKind": "STANDARD",
-            "effectiveDate": "2026-04-07",
-            "lines": [
-              {
-                "accountCode": "1000",
-                "side": "DEBIT",
-                "amount": {
-                  "currencyCode": "EUR",
-                  "minorUnits": "1000"
-                }
-              },
-              {
-                "accountCode": "2000",
-                "side": "CREDIT",
-                "amount": {
-                  "currencyCode": "EUR",
-                  "minorUnits": "1000"
-                }
-              }
-            ],
-            "provenance": {
-              "actorId": "actor-1",
-              "actorType": "AGENT",
-              "commandId": "command-1",
-              "idempotencyKey": "idem-1",
-              "causationId": "cause-1"
-            }
-          }
-          """);
+          JazzerReplayRequestFixtures.basicValidRequest());
 
       int exitCode =
           JazzerRegressionRunner.run(
@@ -168,30 +138,7 @@ class JazzerRegressionRunnerTest {
       writeSeedMetadata(
           JazzerHarness.cliRequest(),
           "invalid_missing_provenance.json",
-          """
-          {
-            "postingKind": "STANDARD",
-            "effectiveDate": "2026-04-07",
-            "lines": [
-              {
-                "accountCode": "1000",
-                "side": "DEBIT",
-                "amount": {
-                  "currencyCode": "EUR",
-                  "minorUnits": "1000"
-                }
-              },
-              {
-                "accountCode": "2000",
-                "side": "CREDIT",
-                "amount": {
-                  "currencyCode": "EUR",
-                  "minorUnits": "1000"
-                }
-              }
-            ]
-          }
-          """);
+          JazzerReplayRequestFixtures.invalidMissingProvenanceRequest());
 
       Path metadataPath =
           RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())

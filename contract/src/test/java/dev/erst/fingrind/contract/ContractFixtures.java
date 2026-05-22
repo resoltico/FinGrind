@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
-import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -44,7 +43,6 @@ import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -52,9 +50,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
@@ -81,8 +77,6 @@ final class ContractFixtures {
     return new BookIdentity(
         new EntityProfile(
             new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
@@ -185,7 +179,13 @@ final class ContractFixtures {
       StatementLineKind lineKind,
       dev.erst.fingrind.core.CurrencyBalance balance) {
     return new FinancialPositionRow(
-        lineCode, lineName, accountType, lineRole, lineClassification, lineKind, balance);
+        lineCode,
+        lineName,
+        accountType,
+        lineRole,
+        Optional.of(lineClassification),
+        lineKind,
+        balance);
   }
 
   static IncomeStatementRow incomeStatementRow(
@@ -215,7 +215,7 @@ final class ContractFixtures {
         lineName,
         lineType,
         lineRole,
-        lineClassification,
+        Optional.of(lineClassification),
         lineKind,
         openingBalance,
         movement,
@@ -224,8 +224,7 @@ final class ContractFixtures {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.ManualAdjustment(
-            PostingKind.STANDARD,
+        new BookkeepingEntry.CorrectionAdjustment(
             new JournalEntry(
                 FIXTURE_DATE,
                 List.of(
@@ -236,8 +235,7 @@ final class ContractFixtures {
                     new JournalLine(
                         new AccountCode("2000"),
                         JournalLine.EntrySide.CREDIT,
-                        Money.parse("EUR", "10.00")))),
-            PostingLineage.direct()),
+                        Money.parse("EUR", "10.00"))))),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);

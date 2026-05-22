@@ -42,7 +42,6 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -210,7 +209,9 @@ final class CliPostingRequestParser {
       case CASH_EXPENSE -> readCashExpenseEntry(rootNode);
       case OWNER_CONTRIBUTION -> readOwnerContributionEntry(rootNode);
       case OWNER_DRAW -> readOwnerDrawEntry(rootNode);
-      case MANUAL_ADJUSTMENT -> readManualAdjustmentEntry(rootNode);
+      case OPENING_BALANCE_ADJUSTMENT -> readOpeningBalanceAdjustmentEntry(rootNode);
+      case CORRECTION_ADJUSTMENT -> readCorrectionAdjustmentEntry(rootNode);
+      case REVERSAL_ADJUSTMENT -> readReversalAdjustmentEntry(rootNode);
     };
   }
 
@@ -255,20 +256,29 @@ final class CliPostingRequestParser {
         requiredPositiveAmount(rootNode));
   }
 
-  private static BookkeepingEntry.ManualAdjustment readManualAdjustmentEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.MANUAL_ADJUSTMENT_FIELDS);
-    PostingKind postingKind =
-        parseWireValue(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
-            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
-            PostingKind.wireValues(),
-            PostingKind::fromWireValue);
-    List<JournalLine> lines =
-        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES));
-    PostingLineage reversal =
-        readReversal(nullableField(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL));
-    return new BookkeepingEntry.ManualAdjustment(
-        postingKind, new JournalEntry(requiredEffectiveDate(rootNode), lines), reversal);
+  private static BookkeepingEntry.OpeningBalanceAdjustment readOpeningBalanceAdjustmentEntry(
+      ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.OPENING_BALANCE_ADJUSTMENT_FIELDS);
+    return new BookkeepingEntry.OpeningBalanceAdjustment(readAdministrativeJournalEntry(rootNode));
+  }
+
+  private static BookkeepingEntry.CorrectionAdjustment readCorrectionAdjustmentEntry(
+      ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.CORRECTION_ADJUSTMENT_FIELDS);
+    return new BookkeepingEntry.CorrectionAdjustment(readAdministrativeJournalEntry(rootNode));
+  }
+
+  private static BookkeepingEntry.ReversalAdjustment readReversalAdjustmentEntry(
+      ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.REVERSAL_ADJUSTMENT_FIELDS);
+    return new BookkeepingEntry.ReversalAdjustment(
+        readAdministrativeJournalEntry(rootNode), readRequiredReversal(rootNode));
+  }
+
+  private static JournalEntry readAdministrativeJournalEntry(ObjectNode rootNode) {
+    return new JournalEntry(
+        requiredEffectiveDate(rootNode),
+        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES)));
   }
 
   private static LocalDate requiredEffectiveDate(ObjectNode rootNode) {
@@ -286,18 +296,18 @@ final class CliPostingRequestParser {
             .money());
   }
 
-  private static PostingLineage readReversal(@Nullable JsonNode reversalNode) {
-    if (reversalNode == null || reversalNode.isNull()) {
-      return PostingLineage.direct();
-    }
-    ObjectNode reversalObject =
-        requireObjectNode(reversalNode, ProtocolPostEntryFields.TopLevel.REVERSAL);
+  private static PostingLineage.Reversal readRequiredReversal(ObjectNode rootNode) {
+    ObjectNode reversalObject = requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL);
+    return readReversalObject(reversalObject);
+  }
+
+  private static PostingLineage.Reversal readReversalObject(ObjectNode reversalObject) {
     rejectForbiddenField(reversalObject, ProtocolPostEntryFields.Reversal.KIND);
     rejectUnexpectedFields(
         reversalObject,
         ProtocolPostEntryFields.TopLevel.REVERSAL,
         CliJsonRequestSchemas.REVERSAL_FIELDS);
-    return PostingLineage.reversal(
+    return new PostingLineage.Reversal(
         new ReversalReference(
             new PostingId(
                 requiredText(reversalObject, ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID))),

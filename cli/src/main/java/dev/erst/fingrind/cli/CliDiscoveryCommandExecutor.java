@@ -84,7 +84,7 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.description(),
         usage,
         helpDescriptor.bookModel(),
-        helpDescriptor.accountingBaseline(),
+        helpDescriptor.bookkeepingKernel(),
         requestShapes,
         requestTemplate,
         declareAccountTemplate,
@@ -93,8 +93,7 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.quickStart(),
         helpDescriptor.exitCodes(),
         helpDescriptor.preflight(),
-        helpDescriptor.currencyModel(),
-        helpDescriptor.extensionSurface());
+        helpDescriptor.currencyModel());
   }
 
   private EnvironmentDescriptor environmentDescriptor() {

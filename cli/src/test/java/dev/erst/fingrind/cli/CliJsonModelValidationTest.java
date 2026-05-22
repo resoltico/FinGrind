@@ -78,7 +78,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.44.0",
+                "0.45.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 List.of(),
@@ -91,7 +91,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.44.0",
+                "0.45.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -104,7 +104,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.44.0",
+                "0.45.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -116,7 +116,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.44.0",
+                "0.45.0",
                 DiscoveryDetail.COMPACT,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -330,7 +330,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.44.0",
+        "0.45.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

@@ -41,9 +41,9 @@ Corollaries:
    and group accounting must own their own commands, state, storage, and tests before they are
    published as real seams.
 
-## 10/10 target doctrine
+## Best-in-class accounting target doctrine
 
-FinGrind is not finished when the bookkeeping kernel is elegant. A 10/10 accounting product line
+FinGrind is not finished when the bookkeeping kernel is elegant. A best-in-class accounting product line
 for this repository means:
 
 1. the current bookkeeping kernel remains exact, durable, and policy-owned;

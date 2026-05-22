@@ -60,11 +60,12 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             new CausationId("cause-1"),
             Optional.empty());
     dev.erst.fingrind.core.JournalEntry requestJournalEntry = journalEntry();
-    BookkeepingEntry.ManualAdjustment manualAdjustment =
-        new BookkeepingEntry.ManualAdjustment(PostingKind.STANDARD, requestJournalEntry, reversal);
+    BookkeepingEntry.ReversalAdjustment reversalAdjustment =
+        new BookkeepingEntry.ReversalAdjustment(
+            requestJournalEntry, (PostingLineage.Reversal) reversal);
     PostEntryCommand command =
         new PostEntryCommand(
-            manualAdjustment,
+            reversalAdjustment,
             ContractFixtures.accountingEvidence("idem-1"),
             requestProvenance,
             SourceChannel.CLI);
@@ -146,11 +147,11 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     assertEquals(Optional.of(reversalReference), reversal.reversalReference());
     assertEquals(Optional.of(reversalReason), reversal.reversalReason());
     assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.MANUAL_ADJUSTMENT, command.entry().entryKind());
+        dev.erst.fingrind.core.BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+        command.entry().entryKind());
     assertEquals(LocalDate.parse("2026-04-07"), command.entry().effectiveDate());
-    assertEquals(
-        Optional.of(reversalReference), manualAdjustment.postingLineage().reversalReference());
-    assertEquals(Optional.of(reversalReason), manualAdjustment.postingLineage().reversalReason());
+    assertEquals(Optional.of(reversalReference), reversalAdjustment.reversal().reversalReference());
+    assertEquals(Optional.of(reversalReason), reversalAdjustment.reversal().reversalReason());
     assertEquals(Optional.of(reversalReference), postingFact.reversalReference());
     assertEquals(Optional.of(reversalReason), postingFact.reversalReason());
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), assertion.effectiveDateFrom());

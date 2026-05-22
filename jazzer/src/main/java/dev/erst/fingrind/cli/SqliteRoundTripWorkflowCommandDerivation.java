@@ -37,10 +37,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand syntheticDirectCommand(PostEntryCommand command, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        new BookkeepingEntry.ManualAdjustment(
-            CliFuzzFixtures.postingKind(command),
-            CliFuzzFixtures.journalEntry(command),
-            PostingLineage.direct()),
+        directAdministrativeEntry(command),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -50,12 +47,11 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        new BookkeepingEntry.ManualAdjustment(
-            CliFuzzFixtures.postingKind(command),
+        new BookkeepingEntry.ReversalAdjustment(
             new JournalEntry(
                 CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                 exactReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
-            PostingLineage.reversal(
+            new PostingLineage.Reversal(
                 new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
@@ -66,16 +62,23 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        new BookkeepingEntry.ManualAdjustment(
-            CliFuzzFixtures.postingKind(command),
+        new BookkeepingEntry.ReversalAdjustment(
             new JournalEntry(
                 CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                 nonNegatingReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
-            PostingLineage.reversal(
+            new PostingLineage.Reversal(
                 new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
+  }
+
+  private static BookkeepingEntry directAdministrativeEntry(PostEntryCommand command) {
+    if (command.entry()
+        instanceof BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment) {
+      return new BookkeepingEntry.OpeningBalanceAdjustment(openingBalanceAdjustment.journalEntry());
+    }
+    return new BookkeepingEntry.CorrectionAdjustment(CliFuzzFixtures.journalEntry(command));
   }
 
   static List<JournalLine> exactReversalLines(List<JournalLine> lines) {

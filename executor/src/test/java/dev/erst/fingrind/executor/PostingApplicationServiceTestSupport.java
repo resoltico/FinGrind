@@ -121,9 +121,14 @@ final class PostingApplicationServiceTestSupport {
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason,
       JournalEntry journalEntry) {
+    BookkeepingEntry entry =
+        reversalReference.isPresent()
+            ? new BookkeepingEntry.ReversalAdjustment(
+                journalEntry,
+                new PostingLineage.Reversal(reversalReference.orElseThrow(), reason.orElseThrow()))
+            : new BookkeepingEntry.CorrectionAdjustment(journalEntry);
     return new PostEntryCommand(
-        new BookkeepingEntry.ManualAdjustment(
-            PostingKind.STANDARD, journalEntry, postingLineage(reversalReference, reason)),
+        entry,
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
@@ -156,14 +161,6 @@ final class PostingApplicationServiceTestSupport {
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));
-  }
-
-  static PostingLineage postingLineage(
-      Optional<ReversalReference> reversalReference, Optional<ReversalReason> reason) {
-    if (reversalReference.isEmpty()) {
-      return PostingLineage.direct();
-    }
-    return PostingLineage.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
   }
 
   static JournalEntry journalEntry() {

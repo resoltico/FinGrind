@@ -115,16 +115,15 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
     CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
-    BookkeepingEntry.ManualAdjustment entry =
-        assertInstanceOf(BookkeepingEntry.ManualAdjustment.class, command.entry());
+    BookkeepingEntry.ReversalAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.ReversalAdjustment.class, command.entry());
 
     assertEquals("idem-1", command.requestProvenance().idempotencyKey().value());
     assertEquals(
         Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-0"))),
-        entry.postingLineage().reversalReference());
+        entry.reversal().reversalReference());
     assertEquals(
-        Optional.of(new ReversalReason("operator reversal")),
-        entry.postingLineage().reversalReason());
+        Optional.of(new ReversalReason("operator reversal")), entry.reversal().reversalReason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -144,15 +143,14 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readPostEntryCommand_treatsExplicitNullReversalAsEmpty() {
+  void readPostEntryCommand_readsCorrectionAdjustmentWithoutReversal() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "CORRECTION_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {
@@ -172,18 +170,58 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     "commandId": "command-1",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
-                  },
-                  "reversal": null
+                  }
                 }
                 """
                             .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
-    BookkeepingEntry.ManualAdjustment entry =
-        assertInstanceOf(BookkeepingEntry.ManualAdjustment.class, command.entry());
+    BookkeepingEntry.CorrectionAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.CorrectionAdjustment.class, command.entry());
 
-    assertEquals(Optional.empty(), entry.postingLineage().reversalReference());
+    assertEquals(2, entry.lines().size());
+  }
+
+  @Test
+  void readPostEntryCommand_readsOpeningBalanceAdjustment() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                withEvidence(
+                        """
+                {
+                  "entryKind": "OPENING_BALANCE_ADJUSTMENT",
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "amount": %s
+                    },
+                    {
+                      "accountCode": "3000",
+                      "side": "CREDIT",
+                      "amount": %s
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-opening-balance",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
+    BookkeepingEntry.OpeningBalanceAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.OpeningBalanceAdjustment.class, command.entry());
+
+    assertEquals(2, entry.lines().size());
   }
 
   @Test

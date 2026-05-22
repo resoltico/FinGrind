@@ -247,8 +247,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "CORRECTION_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -281,8 +280,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -397,8 +395,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "MANUAL_ADJUSTMENT",
-                  "postingKind": "STANDARD",
+                  "entryKind": "CORRECTION_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

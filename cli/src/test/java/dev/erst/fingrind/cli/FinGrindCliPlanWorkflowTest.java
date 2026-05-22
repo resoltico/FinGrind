@@ -262,8 +262,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                   "kind": "open-book",
                   "openBook": {
                     "entityName": "Acme Studio",
-                    "entityForm": "COMPANY",
-                    "ownerModel": "MULTI_OWNER",
                                         "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01",

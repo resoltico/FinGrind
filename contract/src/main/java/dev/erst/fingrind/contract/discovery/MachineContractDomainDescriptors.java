@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.BookModelFacts;
 import dev.erst.fingrind.contract.protocol.CurrencyFacts;
-import dev.erst.fingrind.contract.protocol.ExtensionSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -37,27 +36,15 @@ final class MachineContractDomainDescriptors {
         bookModel.currencyScope());
   }
 
-  static ContractResponse.AccountingBaselineDescriptor accountingBaseline() {
-    dev.erst.fingrind.contract.protocol.AccountingBaselineFacts baseline =
-        ProtocolCatalog.accountingBaseline();
-    return new ContractResponse.AccountingBaselineDescriptor(
-        baseline.scope(),
-        baseline.currentTarget(),
-        baseline.nextTarget(),
-        baseline.doctrineSources(),
-        baseline.builtInStatements(),
-        baseline.deliberateExclusions(),
-        baseline.nonClaims(),
-        baseline.reportCapabilities(),
-        baseline.defaultPolicyPack(),
-        baseline.standardsPosition(),
-        baseline.reportingPosition(),
-        baseline.chartModelPosition(),
-        baseline.smallEntityPosition(),
-        baseline.operationalPosition(),
-        baseline.taxPosition(),
-        baseline.organizationalPosition(),
-        baseline.isoClarification());
+  static ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel() {
+    dev.erst.fingrind.contract.protocol.BookkeepingKernelFacts kernel =
+        ProtocolCatalog.bookkeepingKernel();
+    return new ContractResponse.BookkeepingKernelDescriptor(
+        kernel.scope(),
+        kernel.builtInStatements(),
+        kernel.reportCapabilities(),
+        kernel.policyProfile(),
+        kernel.description());
   }
 
   static List<CommandDescriptor> commandDescriptors() {
@@ -209,16 +196,6 @@ final class MachineContractDomainDescriptors {
     CurrencyFacts currency = ProtocolCatalog.currency();
     return new ContractResponse.CurrencyDescriptor(
         currency.scope(), currency.multiCurrencyStatus(), currency.description());
-  }
-
-  static ContractResponse.ExtensionSurfaceDescriptor extensionSurface() {
-    ExtensionSurfaceFacts extensionSurface = ProtocolCatalog.extensionSurface();
-    return new ContractResponse.ExtensionSurfaceDescriptor(
-        extensionSurface.model(),
-        extensionSurface.defaultPolicyPackId(),
-        extensionSurface.implementedSeams(),
-        extensionSurface.policySeams(),
-        extensionSurface.description());
   }
 
   static ContractResponse.PlanExecutionDescriptor planExecution() {

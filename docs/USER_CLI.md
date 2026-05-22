@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: USER_CLI
 updated: "2026-05-22"
 route:
@@ -72,10 +72,9 @@ after verifying one initialized live book through one explicit passphrase source
 closing equity account, and successful results surface that selected closing-equity account code
 plus the per-currency closed totals that were moved into equity. The first close may begin before
 the earliest posting date; after one close is recorded, later closes must start on the day after
-the closed-through horizon. Built-in closing-equity mapping is entity-form specific:
-`FREELANCER` and `SOLE_PROPRIETORSHIP` require `OWNER_CAPITAL`, `COMPANY` and `BRANCH` require
-`RETAINED_EARNINGS`, `PARTNERSHIP` requires `PARTNER_CURRENT`, `NONPROFIT` requires
-`ACCUMULATED_SURPLUS`, and `OTHER` requires `OTHER_EQUITY`.
+the closed-through horizon. Built-in close uses one neutral accumulated-result target: declare
+exactly one active and postable `EQUITY` account classified as `ACCUMULATED_RESULT` before
+closing a period.
 `inspect-book` reports lifecycle state, format metadata, compatibility, and the active hard-break
 migration policy for one selected book.
 `list-accounts` returns one stable page of the current account registry.
@@ -131,7 +130,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|declare-account]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--entity-form &lt;entity-form&gt;</code><br><code>--owner-model &lt;owner-model&gt;</code><br><code>--business-activity-tag &lt;business-activity-tag&gt; ...</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--policy-profile &lt;policy-profile&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--business-activity-tag &lt;business-activity-tag&gt; ...</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>--policy-profile &lt;policy-profile&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file-out &lt;path&gt;</code><br><code>--backup-book-key-file-out &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
     <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>

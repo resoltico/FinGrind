@@ -10,10 +10,8 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.OwnerModel;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -34,7 +32,6 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
             LocalDate.parse("2026-04-30"));
 
     assertEquals("Acme Studio", bookContext.bookIdentity().entityName());
-    assertEquals("COMPANY", bookContext.bookIdentity().entityForm());
     assertEquals(
         List.of("translation-services"), bookContext.bookIdentity().businessActivityTags());
 
@@ -57,8 +54,6 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Acme Studio"),
-                EntityForm.COMPANY,
-                OwnerModel.MULTI_OWNER,
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),

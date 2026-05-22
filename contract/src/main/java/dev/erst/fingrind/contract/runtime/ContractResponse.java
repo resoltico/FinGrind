@@ -3,11 +3,9 @@ package dev.erst.fingrind.contract.runtime;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.protocol.AccountingBaselineTarget;
-import dev.erst.fingrind.contract.protocol.AccountingPolicyPackFacts;
+import dev.erst.fingrind.contract.protocol.AccountingPolicyProfileFacts;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
-import dev.erst.fingrind.contract.protocol.PolicySeamFacts;
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
@@ -27,7 +25,7 @@ public final class ContractResponse {
   /** Sealed inventory root for the response descriptor namespace. */
   public sealed interface ResponseDescriptorType
       permits BookModelDescriptor,
-          AccountingBaselineDescriptor,
+          BookkeepingKernelDescriptor,
           FieldDescriptor,
           ErrorDescriptor,
           ResponseModelDescriptor,
@@ -37,8 +35,7 @@ public final class ContractResponse {
           AccountRegistryDescriptor,
           ReversalDescriptor,
           PreflightDescriptor,
-          CurrencyDescriptor,
-          ExtensionSurfaceDescriptor {}
+          CurrencyDescriptor {}
 
   /** Stable initialization requirements for account-registry operations. */
   public enum InitializationRequirement implements WireValue {
@@ -113,57 +110,23 @@ public final class ContractResponse {
     }
   }
 
-  /** Descriptor for the machine-readable accounting baseline. */
-  public record AccountingBaselineDescriptor(
+  /** Descriptor for the machine-readable executable bookkeeping kernel. */
+  public record BookkeepingKernelDescriptor(
       String scope,
-      AccountingBaselineTarget currentTarget,
-      AccountingBaselineTarget nextTarget,
-      List<String> doctrineSources,
       List<String> builtInStatements,
-      List<String> deliberateExclusions,
-      List<String> nonClaims,
       List<ReportCapabilityFacts> reportCapabilities,
-      AccountingPolicyPackFacts defaultPolicyPack,
-      String standardsPosition,
-      String reportingPosition,
-      String chartModelPosition,
-      String smallEntityPosition,
-      String operationalPosition,
-      String taxPosition,
-      String organizationalPosition,
-      String isoClarification)
+      AccountingPolicyProfileFacts policyProfile,
+      String description)
       implements ResponseDescriptorType {
-    /** Validates one accounting-baseline descriptor payload. */
-    public AccountingBaselineDescriptor {
+    /** Validates one bookkeeping-kernel descriptor payload. */
+    public BookkeepingKernelDescriptor {
       scope = ContractDescriptorValidation.requireText(scope, "scope");
-      currentTarget = ContractDescriptorValidation.requireValue(currentTarget, "currentTarget");
-      nextTarget = ContractDescriptorValidation.requireValue(nextTarget, "nextTarget");
-      doctrineSources = ContractDescriptorValidation.copyList(doctrineSources, "doctrineSources");
       builtInStatements =
           ContractDescriptorValidation.copyList(builtInStatements, "builtInStatements");
-      deliberateExclusions =
-          ContractDescriptorValidation.copyList(deliberateExclusions, "deliberateExclusions");
-      nonClaims = ContractDescriptorValidation.copyList(nonClaims, "nonClaims");
       reportCapabilities =
           ContractDescriptorValidation.copyList(reportCapabilities, "reportCapabilities");
-      defaultPolicyPack =
-          ContractDescriptorValidation.requireValue(defaultPolicyPack, "defaultPolicyPack");
-      standardsPosition =
-          ContractDescriptorValidation.requireText(standardsPosition, "standardsPosition");
-      reportingPosition =
-          ContractDescriptorValidation.requireText(reportingPosition, "reportingPosition");
-      chartModelPosition =
-          ContractDescriptorValidation.requireText(chartModelPosition, "chartModelPosition");
-      smallEntityPosition =
-          ContractDescriptorValidation.requireText(smallEntityPosition, "smallEntityPosition");
-      operationalPosition =
-          ContractDescriptorValidation.requireText(operationalPosition, "operationalPosition");
-      taxPosition = ContractDescriptorValidation.requireText(taxPosition, "taxPosition");
-      organizationalPosition =
-          ContractDescriptorValidation.requireText(
-              organizationalPosition, "organizationalPosition");
-      isoClarification =
-          ContractDescriptorValidation.requireText(isoClarification, "isoClarification");
+      policyProfile = ContractDescriptorValidation.requireValue(policyProfile, "policyProfile");
+      description = ContractDescriptorValidation.requireText(description, "description");
     }
   }
 
@@ -331,26 +294,6 @@ public final class ContractResponse {
       scope = ContractDescriptorValidation.requireText(scope, "scope");
       multiCurrencyStatus =
           ContractDescriptorValidation.requireText(multiCurrencyStatus, "multiCurrencyStatus");
-      description = ContractDescriptorValidation.requireText(description, "description");
-    }
-  }
-
-  /** Descriptor for sanctioned implemented executable policy seams. */
-  public record ExtensionSurfaceDescriptor(
-      String model,
-      String defaultPolicyPackId,
-      List<String> implementedSeams,
-      List<PolicySeamFacts> policySeams,
-      String description)
-      implements ResponseDescriptorType {
-    /** Validates one extension-surface descriptor payload. */
-    public ExtensionSurfaceDescriptor {
-      model = ContractDescriptorValidation.requireText(model, "model");
-      defaultPolicyPackId =
-          ContractDescriptorValidation.requireText(defaultPolicyPackId, "defaultPolicyPackId");
-      implementedSeams =
-          ContractDescriptorValidation.copyList(implementedSeams, "implementedSeams");
-      policySeams = ContractDescriptorValidation.copyList(policySeams, "policySeams");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }

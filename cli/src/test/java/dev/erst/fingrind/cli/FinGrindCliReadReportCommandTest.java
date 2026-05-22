@@ -236,7 +236,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         writeNamedRequest(
             "close-declare-retained-earnings.json",
             declareAccountJson(
-                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "RETAINED_EARNINGS", null));
+                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "ACCUMULATED_RESULT", null));
     Path bookFilePath = tempDirectory.resolve("statement-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
 

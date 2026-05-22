@@ -225,10 +225,6 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
-        PostingLifecycleStatus.POSTING_KIND_RESERVED,
-        JazzerReplayDetailsMapper.rejectionStatus(
-            new PostingRejection.PostingKindReserved(PostingKind.PERIOD_CLOSE)));
-    assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
         JazzerReplayDetailsMapper.rejectionStatus(
             new PostingRejection.BookFunctionalCurrencyMismatch(

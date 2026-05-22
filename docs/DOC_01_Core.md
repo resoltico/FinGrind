@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: CORE
 updated: "2026-05-22"
 route:
@@ -91,38 +91,6 @@ public record BusinessActivityTag(String value)
 
 - Purpose: keep declared business activity cues typed instead of burying them in free-form notes
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `EntityForm`
-
-`EntityForm` is the neutral entity-shape vocabulary used for policy selection.
-
-```java
-public enum EntityForm implements WireValue {
-  FREELANCER,
-  SOLE_PROPRIETORSHIP,
-  COMPANY,
-  PARTNERSHIP,
-  NONPROFIT,
-  BRANCH,
-  OTHER
-}
-```
-
-- Purpose: distinguish neutral entity forms inside the current single-entity bookkeeping kernel
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `OwnerModel`
-
-`OwnerModel` is the neutral ownership-shape vocabulary attached to one entity profile.
-
-```java
-public enum OwnerModel implements WireValue
-```
-
-- Purpose: keep owner-shape assumptions explicit at book creation instead of leaving them implicit
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
 
 ## `AccountingPolicyProfile`
 
@@ -217,15 +185,12 @@ public record ApprovalReference(
 ```java
 public record EntityProfile(
     BookEntityName displayName,
-    EntityForm entityForm,
-    OwnerModel ownerModel,
     List<BusinessActivityTag> businessActivityTags)
 ```
 
-- Purpose: make entity form, ownership, and activity tags explicit inside the current
-  single-entity bookkeeping kernel
-- Validation: rejects `null` display name, entity form, owner model, and activity-tag
-  collections
+- Purpose: make entity name and activity tags explicit inside the current single-entity
+  bookkeeping kernel
+- Validation: rejects `null` display name and activity-tag collections
 
 ## `BookIdentity`
 
@@ -241,8 +206,8 @@ public record BookIdentity(
 
 - Purpose: couple entity profile, functional currency, fiscal-year anchor, and policy profile as
   one typed bookkeeping fact for one initialized book
-- Surface: `entityName()` and `entityForm()` keep the most common neutral identity facts
-  accessible without unwrapping the full entity profile
+- Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
+  full entity profile
 - Validation: rejects `null` entity profile, functional currency, fiscal-year start, and
   policy profile
 
@@ -325,8 +290,8 @@ public enum FinancialPositionLineClassification implements WireValue
 ```
 
 - Scope: classifies ASSET, LIABILITY, and EQUITY lines, including current/noncurrent buckets and
-  entity-form-sensitive equity classes such as `OWNER_CAPITAL`, `PARTNER_CURRENT`,
-  `RETAINED_EARNINGS`, and derived `CURRENT_PERIOD_RESULT` statement rows
+  entity-form-sensitive equity classes such as `CONTRIBUTED_CAPITAL`, `DISTRIBUTIONS`,
+  `ACCUMULATED_RESULT`, and derived `CURRENT_PERIOD_RESULT` statement rows
 - Surface: `accountType()` maps each classification back to its owning `AccountType`
 - Wire contract: `wireValue()`, `wireValues()`, `declaredAccountWireValues()`, and
   `fromWireValue(...)` own the stable public vocabulary
@@ -376,7 +341,7 @@ public final class AccountSemantics
   `profitAndLossContributionMinorUnits(...)`
 - Doctrine: ordinary balance polarity is derived from `AccountType`, `CONTRA` reverses that
   polarity deliberately, and built-in close destinations are selected through
-  `FinancialPositionLineClassification.RETAINED_EARNINGS` inside `AccountTaxonomy`
+  `FinancialPositionLineClassification.ACCUMULATED_RESULT` inside `AccountTaxonomy`
 
 ## `ActorId`
 
@@ -698,8 +663,9 @@ public enum PostingKind implements WireValue {
   admitted only before the first committed posting enters the book
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
-- Surface: `callerSelectableWireValues()` publishes only caller-authored posting kinds, while
-  generated close postings remain internal to FinGrind workflows
+- Surface: committed postings publish one durable `PostingKind`, while caller-authored
+  `BookkeepingEntryKind` inputs determine whether FinGrind derives `STANDARD`,
+  `OPENING_BALANCE`, or internal `PERIOD_CLOSE` postings
 
 ## `PostingCoverage`
 

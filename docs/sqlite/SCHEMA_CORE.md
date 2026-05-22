@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: SQLITE_SCHEMA_CORE
 updated: "2026-05-22"
 route:
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 15;
+pragma user_version = 17;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -53,25 +53,6 @@ create table if not exists book_identity (
 
 create table if not exists entity_profile (
     singleton_id integer primary key check (singleton_id = 1),
-    entity_form text not null check (
-        entity_form in (
-            'FREELANCER',
-            'SOLE_PROPRIETORSHIP',
-            'COMPANY',
-            'PARTNERSHIP',
-            'NONPROFIT',
-            'BRANCH',
-            'OTHER'
-        )
-    ),
-    owner_model text not null check (
-        owner_model in (
-            'SOLE_OWNER',
-            'MULTI_OWNER',
-            'MEMBERSHIP_BODY',
-            'NO_PRIVATE_OWNER'
-        )
-    ),
     business_activity_tags text not null,
     foreign key (singleton_id) references book_identity (singleton_id)
 ) strict;
@@ -104,13 +85,9 @@ create table if not exists account (
             'NONCURRENT_ASSET',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
-            'OWNER_CAPITAL',
-            'OWNER_DRAWINGS',
-            'PARTNER_CAPITAL',
-            'PARTNER_CURRENT',
-            'SHARE_CAPITAL',
-            'RETAINED_EARNINGS',
-            'ACCUMULATED_SURPLUS',
+            'CONTRIBUTED_CAPITAL',
+            'DISTRIBUTIONS',
+            'ACCUMULATED_RESULT',
             'RESERVE',
             'OTHER_EQUITY'
         )
@@ -150,13 +127,9 @@ create table if not exists account (
         (
             account_type = 'EQUITY'
             and financial_position_line_classification in (
-                'OWNER_CAPITAL',
-                'OWNER_DRAWINGS',
-                'PARTNER_CAPITAL',
-                'PARTNER_CURRENT',
-                'SHARE_CAPITAL',
-                'RETAINED_EARNINGS',
-                'ACCUMULATED_SURPLUS',
+                'CONTRIBUTED_CAPITAL',
+                'DISTRIBUTIONS',
+                'ACCUMULATED_RESULT',
                 'RESERVE',
                 'OTHER_EQUITY'
             )
@@ -772,8 +745,6 @@ Table-level constraints:
 
 Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
-- `entity_form`: `text not null check ( entity_form in ( 'FREELANCER', 'SOLE_PROPRIETORSHIP', 'COMPANY', 'PARTNERSHIP', 'NONPROFIT', 'BRANCH', 'OTHER' ) )`
-- `owner_model`: `text not null check ( owner_model in ( 'SOLE_OWNER', 'MULTI_OWNER', 'MEMBERSHIP_BODY', 'NO_PRIVATE_OWNER' ) )`
 - `business_activity_tags`: `text not null`
 
 Table-level constraints:
@@ -797,14 +768,14 @@ Columns:
 - `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA'))`
 - `account_node_kind`: `text not null check (account_node_kind in ('HEADER', 'POSTABLE'))`
 - `parent_account_code`: `text references account (account_code)`
-- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'OWNER_CAPITAL', 'OWNER_DRAWINGS', 'PARTNER_CAPITAL', 'PARTNER_CURRENT', 'SHARE_CAPITAL', 'RETAINED_EARNINGS', 'ACCUMULATED_SURPLUS', 'RESERVE', 'OTHER_EQUITY' ) )`
+- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'CONTRIBUTED_CAPITAL', 'DISTRIBUTIONS', 'ACCUMULATED_RESULT', 'RESERVE', 'OTHER_EQUITY' ) )`
 - `profit_and_loss_line_classification`: `text check ( profit_and_loss_line_classification is null or profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME', 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) )`
 - `active`: `integer not null check (active in (0, 1))`
 - `declared_at`: `text not null`
 
 Table-level constraints:
 - `check ( parent_account_code is null or parent_account_code <> account_code )`
-- `check ( ( account_type = 'ASSET' and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET') and profit_and_loss_line_classification is null ) or ( account_type = 'LIABILITY' and financial_position_line_classification in ( 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'EQUITY' and financial_position_line_classification in ( 'OWNER_CAPITAL', 'OWNER_DRAWINGS', 'PARTNER_CAPITAL', 'PARTNER_CURRENT', 'SHARE_CAPITAL', 'RETAINED_EARNINGS', 'ACCUMULATED_SURPLUS', 'RESERVE', 'OTHER_EQUITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'REVENUE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME' ) ) or ( account_type = 'EXPENSE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) ) )`
+- `check ( ( account_type = 'ASSET' and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET') and profit_and_loss_line_classification is null ) or ( account_type = 'LIABILITY' and financial_position_line_classification in ( 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'EQUITY' and financial_position_line_classification in ( 'CONTRIBUTED_CAPITAL', 'DISTRIBUTIONS', 'ACCUMULATED_RESULT', 'RESERVE', 'OTHER_EQUITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'REVENUE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME' ) ) or ( account_type = 'EXPENSE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) ) )`
 
 ### `posting_fact`
 

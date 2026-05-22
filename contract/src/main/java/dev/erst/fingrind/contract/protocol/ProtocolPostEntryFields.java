@@ -16,7 +16,6 @@ public final class ProtocolPostEntryFields {
         TopLevel.EXPENSE_ACCOUNT_CODE,
         TopLevel.EQUITY_ACCOUNT_CODE,
         TopLevel.AMOUNT,
-        TopLevel.POSTING_KIND,
         TopLevel.LINES,
         TopLevel.EVIDENCE,
         TopLevel.PROVENANCE,
@@ -74,7 +73,6 @@ public final class ProtocolPostEntryFields {
   /** Top-level posting request fields. */
   public static final class TopLevel {
     public static final String ENTRY_KIND = "entryKind";
-    public static final String POSTING_KIND = "postingKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
     public static final String CASH_ACCOUNT_CODE = "cashAccountCode";
     public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";

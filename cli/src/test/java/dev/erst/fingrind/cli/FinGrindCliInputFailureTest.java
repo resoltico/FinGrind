@@ -279,8 +279,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             CliRequestReaderTestSupport.withEvidence(
                 """
             {
-              "entryKind": "MANUAL_ADJUSTMENT",
-              "postingKind": "STANDARD",
+              "entryKind": "CORRECTION_ADJUSTMENT",
               "effectiveDate": "2026-04-07",
               "lines": %s,
               "provenance": {
@@ -532,10 +531,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--entity-name",
               "Acme Studio",
-              "--entity-form",
-              "COMPANY",
-              "--owner-model",
-              "MULTI_OWNER",
               "--policy-profile",
               "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
               "--business-activity-tag",

@@ -792,9 +792,7 @@ class LedgerPlanFuzzAssertionsTest {
     return """
         {
           "entityName": "Acme Studio",
-          "entityForm": "COMPANY",
-          "ownerModel": "MULTI_OWNER",
-                    "businessActivityTags": ["translation-services"],
+          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
           "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"

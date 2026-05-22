@@ -7,11 +7,9 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -76,8 +74,7 @@ final class SqliteStatementQueries {
       int fiscalYearStartMonth,
       int fiscalYearStartDay) {}
 
-  private record EntityProfileRow(
-      String entityForm, String ownerModel, String businessActivityTags) {}
+  private record EntityProfileRow(String businessActivityTags) {}
 
   private record BookPolicyRow(String policyProfile) {}
 
@@ -225,8 +222,6 @@ final class SqliteStatementQueries {
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName(coreRow.entityName()),
-                EntityForm.fromWireValue(entityProfileRow.entityForm()),
-                OwnerModel.fromWireValue(entityProfileRow.ownerModel()),
                 decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay()),
@@ -334,10 +329,7 @@ final class SqliteStatementQueries {
             throw new IllegalStateException(missingMessage);
           }
           EntityProfileRow row =
-              new EntityProfileRow(
-                  SqlitePostingMapper.requiredText(statement, 0),
-                  SqlitePostingMapper.requiredText(statement, 1),
-                  SqlitePostingMapper.requiredText(statement, 2));
+              new EntityProfileRow(SqlitePostingMapper.requiredText(statement, 0));
           if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite entity profile query returned more than one row.");

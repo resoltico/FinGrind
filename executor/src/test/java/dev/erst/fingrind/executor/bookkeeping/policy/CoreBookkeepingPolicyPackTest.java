@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingPolicyProfile;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import org.junit.jupiter.api.Test;
 
@@ -47,23 +46,8 @@ class CoreBookkeepingPolicyPackTest {
     ClosePolicy policy = CoreBookkeepingPolicyPack.current().closePolicy();
 
     assertEquals(
-        FinancialPositionLineClassification.RETAINED_EARNINGS,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.COMPANY)));
-    assertEquals(
-        FinancialPositionLineClassification.OWNER_CAPITAL,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.FREELANCER)));
-    assertEquals(
-        FinancialPositionLineClassification.OWNER_CAPITAL,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.SOLE_PROPRIETORSHIP)));
-    assertEquals(
-        FinancialPositionLineClassification.PARTNER_CURRENT,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.PARTNERSHIP)));
-    assertEquals(
-        FinancialPositionLineClassification.ACCUMULATED_SURPLUS,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.NONPROFIT)));
-    assertEquals(
-        FinancialPositionLineClassification.OTHER_EQUITY,
-        policy.closingEquityLineClassification(bookIdentity(EntityForm.OTHER)));
+        FinancialPositionLineClassification.ACCUMULATED_RESULT,
+        policy.closingEquityLineClassification(bookIdentity()));
     assertFalse(policy.closesAccountType(AccountType.ASSET));
     assertFalse(policy.closesAccountType(AccountType.LIABILITY));
     assertFalse(policy.closesAccountType(AccountType.EQUITY));
@@ -78,10 +62,7 @@ class CoreBookkeepingPolicyPackTest {
     assertTrue(policyPack.chartPolicy().supportsHierarchicalChart());
     assertTrue(policyPack.statementPresentationPolicy().supportsRichClassification());
     assertEquals(
-        new DerivedEquityLine(
-            "current-period-result",
-            "Current Period Result",
-            FinancialPositionLineClassification.CURRENT_PERIOD_RESULT),
+        new DerivedEquityLine("current-period-result", "Current Period Result"),
         policyPack.statementPresentationPolicy().currentPeriodResultLine(bookIdentity()));
     assertEquals(
         FiscalYearAnchoredStatementComparativePolicy.class,
@@ -100,10 +81,7 @@ class CoreBookkeepingPolicyPackTest {
           @Override
           public DerivedEquityLine currentPeriodResultLine(
               dev.erst.fingrind.core.BookIdentity bookIdentity) {
-            return new DerivedEquityLine(
-                "current-period-result",
-                "Current Period Result",
-                FinancialPositionLineClassification.CURRENT_PERIOD_RESULT);
+            return new DerivedEquityLine("current-period-result", "Current Period Result");
           }
         };
 
@@ -120,31 +98,13 @@ class CoreBookkeepingPolicyPackTest {
         "lineCode must not be blank.",
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                    new DerivedEquityLine(
-                        "  ",
-                        "Current Period Result",
-                        FinancialPositionLineClassification.CURRENT_PERIOD_RESULT))
+                () -> new DerivedEquityLine("  ", "Current Period Result"))
             .getMessage());
     assertEquals(
         "lineName must not be blank.",
         assertThrows(
                 IllegalArgumentException.class,
-                () ->
-                    new DerivedEquityLine(
-                        "current-period-result",
-                        "  ",
-                        FinancialPositionLineClassification.CURRENT_PERIOD_RESULT))
-            .getMessage());
-    assertEquals(
-        "Derived equity lines must use one equity financialPositionLineClassification.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    new DerivedEquityLine(
-                        "current-period-result",
-                        "Current Period Result",
-                        FinancialPositionLineClassification.CURRENT_ASSET))
+                () -> new DerivedEquityLine("current-period-result", "  "))
             .getMessage());
   }
 }

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.44.0"
+version: "0.45.0"
 domain: CONTRACT_EXECUTOR_WRITE
 updated: "2026-05-22"
 route:
@@ -348,7 +348,7 @@ public final class BookkeepingPostingService
   `Clock`, and one explicit `BookkeepingPolicyPack`
 - Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
 - Boundary: this service stays inside the bookkeeping context, applies one explicit bookkeeping
-  policy pack, and returns only local admission and commit outcomes
+  policy profile, and returns only local admission and commit outcomes
 
 ## `BookWorkflowExecutionService`
 

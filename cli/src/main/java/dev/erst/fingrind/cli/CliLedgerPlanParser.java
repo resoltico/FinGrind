@@ -203,12 +203,6 @@ final class CliLedgerPlanParser {
                 CliArgumentValueParser.parseBookEntityNameOption(
                     requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
                     "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
-                CliArgumentValueParser.parseEntityFormOption(
-                    requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_FORM),
-                    "openBook." + ProtocolOpenBookFields.ENTITY_FORM),
-                CliArgumentValueParser.parseOwnerModelOption(
-                    requiredText(openBookNode, ProtocolOpenBookFields.OWNER_MODEL),
-                    "openBook." + ProtocolOpenBookFields.OWNER_MODEL),
                 requiredBusinessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),

@@ -18,12 +18,10 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
@@ -225,11 +223,7 @@ class BookkeepingStatementServiceCoverageTest {
   void comparativeWindows_followFiscalYearAnchorInsteadOfBlindCalendarSubtraction() {
     BookIdentity fiscalYearShiftedIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Shifted Year Shop"),
-                EntityForm.FREELANCER,
-                OwnerModel.SOLE_OWNER,
-                List.of()),
+            new EntityProfile(new BookEntityName("Shifted Year Shop"), List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("02-29"),
             AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
@@ -284,7 +278,7 @@ class BookkeepingStatementServiceCoverageTest {
         lineName,
         lineType,
         Optional.of(lineRole),
-        FinancialPositionLineClassification.CURRENT_ASSET,
+        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
   }
@@ -317,7 +311,7 @@ class BookkeepingStatementServiceCoverageTest {
         lineName,
         Optional.of(AccountType.EQUITY),
         Optional.of(lineRole),
-        FinancialPositionLineClassification.OWNER_CAPITAL,
+        Optional.of(FinancialPositionLineClassification.CONTRIBUTED_CAPITAL),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
         movement,

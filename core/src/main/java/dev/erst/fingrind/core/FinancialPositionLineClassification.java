@@ -2,21 +2,16 @@ package dev.erst.fingrind.core;
 
 import java.util.List;
 
-/** Canonical statement-of-financial-position taxonomy for one declared account or derived line. */
+/** Canonical statement-of-financial-position taxonomy for one declared account. */
 public enum FinancialPositionLineClassification implements WireValue {
   CURRENT_ASSET,
   NONCURRENT_ASSET,
   CURRENT_LIABILITY,
   NONCURRENT_LIABILITY,
-  OWNER_CAPITAL,
-  OWNER_DRAWINGS,
-  PARTNER_CAPITAL,
-  PARTNER_CURRENT,
-  SHARE_CAPITAL,
-  RETAINED_EARNINGS,
-  ACCUMULATED_SURPLUS,
+  CONTRIBUTED_CAPITAL,
+  DISTRIBUTIONS,
+  ACCUMULATED_RESULT,
   RESERVE,
-  CURRENT_PERIOD_RESULT,
   OTHER_EQUITY;
 
   /** Returns the canonical account type this classification belongs to. */
@@ -24,16 +19,7 @@ public enum FinancialPositionLineClassification implements WireValue {
     return switch (this) {
       case CURRENT_ASSET, NONCURRENT_ASSET -> AccountType.ASSET;
       case CURRENT_LIABILITY, NONCURRENT_LIABILITY -> AccountType.LIABILITY;
-      case OWNER_CAPITAL,
-          OWNER_DRAWINGS,
-          PARTNER_CAPITAL,
-          PARTNER_CURRENT,
-          SHARE_CAPITAL,
-          RETAINED_EARNINGS,
-          ACCUMULATED_SURPLUS,
-          RESERVE,
-          CURRENT_PERIOD_RESULT,
-          OTHER_EQUITY ->
+      case CONTRIBUTED_CAPITAL, DISTRIBUTIONS, ACCUMULATED_RESULT, RESERVE, OTHER_EQUITY ->
           AccountType.EQUITY;
     };
   }
@@ -46,15 +32,10 @@ public enum FinancialPositionLineClassification implements WireValue {
       case NONCURRENT_ASSET -> "NONCURRENT_ASSET";
       case CURRENT_LIABILITY -> "CURRENT_LIABILITY";
       case NONCURRENT_LIABILITY -> "NONCURRENT_LIABILITY";
-      case OWNER_CAPITAL -> "OWNER_CAPITAL";
-      case OWNER_DRAWINGS -> "OWNER_DRAWINGS";
-      case PARTNER_CAPITAL -> "PARTNER_CAPITAL";
-      case PARTNER_CURRENT -> "PARTNER_CURRENT";
-      case SHARE_CAPITAL -> "SHARE_CAPITAL";
-      case RETAINED_EARNINGS -> "RETAINED_EARNINGS";
-      case ACCUMULATED_SURPLUS -> "ACCUMULATED_SURPLUS";
+      case CONTRIBUTED_CAPITAL -> "CONTRIBUTED_CAPITAL";
+      case DISTRIBUTIONS -> "DISTRIBUTIONS";
+      case ACCUMULATED_RESULT -> "ACCUMULATED_RESULT";
       case RESERVE -> "RESERVE";
-      case CURRENT_PERIOD_RESULT -> "CURRENT_PERIOD_RESULT";
       case OTHER_EQUITY -> "OTHER_EQUITY";
     };
   }
@@ -66,12 +47,7 @@ public enum FinancialPositionLineClassification implements WireValue {
 
   /** Returns the public wire values that are valid for declared account taxonomy. */
   public static List<String> declaredAccountWireValues() {
-    return wireValues().stream()
-        .filter(
-            wireValue ->
-                !wireValue.equals(
-                    FinancialPositionLineClassification.CURRENT_PERIOD_RESULT.wireValue()))
-        .toList();
+    return wireValues();
   }
 
   /** Parses one stable public wire value. */

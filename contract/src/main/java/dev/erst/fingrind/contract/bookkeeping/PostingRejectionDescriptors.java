@@ -35,7 +35,6 @@ final class PostingRejectionDescriptors {
       case PostingRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations _ -> Descriptor.ACCOUNT_STATE_VIOLATIONS;
       case PostingRejection.DuplicateIdempotencyKey _ -> Descriptor.DUPLICATE_IDEMPOTENCY_KEY;
-      case PostingRejection.PostingKindReserved _ -> Descriptor.POSTING_KIND_RESERVED;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.ClosedPeriodViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
@@ -67,7 +66,6 @@ final class PostingRejectionDescriptors {
     BOOK_NOT_INITIALIZED,
     ACCOUNT_STATE_VIOLATIONS,
     DUPLICATE_IDEMPOTENCY_KEY,
-    POSTING_KIND_RESERVED,
     BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
     CLOSED_PERIOD_VIOLATION,
     OPENING_BALANCE_WINDOW_CLOSED,
@@ -82,7 +80,6 @@ final class PostingRejectionDescriptors {
         case BOOK_NOT_INITIALIZED -> "posting-book-not-initialized";
         case ACCOUNT_STATE_VIOLATIONS -> "account-state-violations";
         case DUPLICATE_IDEMPOTENCY_KEY -> "duplicate-idempotency-key";
-        case POSTING_KIND_RESERVED -> "posting-kind-reserved";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH -> "book-functional-currency-mismatch";
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
         case OPENING_BALANCE_WINDOW_CLOSED -> "opening-balance-window-closed";
@@ -104,8 +101,6 @@ final class PostingRejectionDescriptors {
             "Posting refused because one or more journal lines reference undeclared or inactive accounts.";
         case DUPLICATE_IDEMPOTENCY_KEY ->
             "Posting refused because the selected book already contains the same idempotency key.";
-        case POSTING_KIND_RESERVED ->
-            "Posting refused because generated posting kinds are reserved for FinGrind workflows and cannot be submitted directly.";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
             "Posting refused because the journal-entry currency does not match the selected book functional currency.";
         case CLOSED_PERIOD_VIOLATION ->
@@ -133,11 +128,6 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "violations",
                     "Array of per-line account-state issue objects with stable code and accountCode."));
-        case POSTING_KIND_RESERVED ->
-            List.of(
-                detailField(
-                    "postingKind",
-                    "Rejected generated postingKind that callers may not submit directly."));
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
             List.of(
                 detailField(
@@ -196,7 +186,6 @@ final class PostingRejectionDescriptors {
         case ACCOUNT_STATE_VIOLATIONS -> AccountStateDetailDescriptor.descriptors();
         case BOOK_NOT_INITIALIZED,
             DUPLICATE_IDEMPOTENCY_KEY,
-            POSTING_KIND_RESERVED,
             BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
             OPENING_BALANCE_WINDOW_CLOSED,
@@ -219,7 +208,6 @@ final class PostingRejectionDescriptors {
               BOOK_NOT_INITIALIZED,
               ACCOUNT_STATE_VIOLATIONS,
               DUPLICATE_IDEMPOTENCY_KEY,
-              POSTING_KIND_RESERVED,
               BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
               CLOSED_PERIOD_VIOLATION,
               OPENING_BALANCE_WINDOW_CLOSED,

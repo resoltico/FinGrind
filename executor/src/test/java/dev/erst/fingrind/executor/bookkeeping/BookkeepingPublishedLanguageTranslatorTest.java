@@ -173,11 +173,11 @@ class BookkeepingPublishedLanguageTranslatorTest {
     assertEquals(
         new ClosePeriodResult.Rejected(
             new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.RETAINED_EARNINGS, List.of())),
+                FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of())),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new PeriodCloseOutcome.Rejected(
                 new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    FinancialPositionLineClassification.RETAINED_EARNINGS, List.of()))));
+                    FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of()))));
   }
 
   @Test
@@ -217,11 +217,11 @@ class BookkeepingPublishedLanguageTranslatorTest {
                     java.util.Optional.empty()))));
     assertEquals(
         new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            FinancialPositionLineClassification.ACCUMULATED_RESULT,
             List.of(new AccountCode("3200"))),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200")))));
     assertEquals(
         new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-08")),
@@ -230,11 +230,11 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 LocalDate.parse("2026-04-08"))));
     assertEquals(
         new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
-            FinancialPositionLineClassification.RETAINED_EARNINGS,
+            FinancialPositionLineClassification.ACCUMULATED_RESULT,
             List.of(new AccountCode("3200"), new AccountCode("3210"))),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
-                FinancialPositionLineClassification.RETAINED_EARNINGS,
+                FinancialPositionLineClassification.ACCUMULATED_RESULT,
                 List.of(new AccountCode("3200"), new AccountCode("3210")))));
     assertEquals(
         new BookAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-04-30")),
@@ -340,11 +340,6 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
                 dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-04-07"))));
-    assertEquals(
-        new PostingRejection.PostingKindReserved(dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.PostingKindReserved(
-                dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE)));
     assertEquals(
         new PostingRejection.BookFunctionalCurrencyMismatch(
             dev.erst.fingrind.core.CurrencyUnit.of("USD"),

@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.PostingKind;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -65,15 +64,30 @@ class BookkeepingEntryTest {
   }
 
   @Test
-  void manualAdjustment_exposesEffectiveDateLinesAndEntryKind() {
+  void administrativeAdjustments_exposeEffectiveDateLinesAndEntryKinds() {
     JournalEntry journalEntry = journalEntry();
-    BookkeepingEntry.ManualAdjustment manualAdjustment =
-        new BookkeepingEntry.ManualAdjustment(
-            PostingKind.OPENING_BALANCE, journalEntry, PostingLineage.direct());
+    BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment =
+        new BookkeepingEntry.OpeningBalanceAdjustment(journalEntry);
+    BookkeepingEntry.CorrectionAdjustment correctionAdjustment =
+        new BookkeepingEntry.CorrectionAdjustment(journalEntry);
+    BookkeepingEntry.ReversalAdjustment reversalAdjustment =
+        new BookkeepingEntry.ReversalAdjustment(
+            journalEntry,
+            new PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(
+                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReason("operator reversal")));
 
-    assertEquals(BookkeepingEntryKind.MANUAL_ADJUSTMENT, manualAdjustment.entryKind());
-    assertEquals(LocalDate.parse("2026-04-07"), manualAdjustment.effectiveDate());
-    assertEquals(journalEntry.lines(), manualAdjustment.lines());
+    assertEquals(
+        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT, openingBalanceAdjustment.entryKind());
+    assertEquals(BookkeepingEntryKind.CORRECTION_ADJUSTMENT, correctionAdjustment.entryKind());
+    assertEquals(BookkeepingEntryKind.REVERSAL_ADJUSTMENT, reversalAdjustment.entryKind());
+    assertEquals(LocalDate.parse("2026-04-07"), openingBalanceAdjustment.effectiveDate());
+    assertEquals(LocalDate.parse("2026-04-07"), correctionAdjustment.effectiveDate());
+    assertEquals(LocalDate.parse("2026-04-07"), reversalAdjustment.effectiveDate());
+    assertEquals(journalEntry.lines(), openingBalanceAdjustment.lines());
+    assertEquals(journalEntry.lines(), correctionAdjustment.lines());
+    assertEquals(journalEntry.lines(), reversalAdjustment.lines());
   }
 
   @Test
@@ -103,9 +117,12 @@ class BookkeepingEntryTest {
                 new AccountCode("1000"),
                 nullOf()));
     assertThrows(
+        NullPointerException.class, () -> new BookkeepingEntry.OpeningBalanceAdjustment(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new BookkeepingEntry.CorrectionAdjustment(nullOf()));
+    assertThrows(
         NullPointerException.class,
-        () ->
-            new BookkeepingEntry.ManualAdjustment(PostingKind.STANDARD, journalEntry(), nullOf()));
+        () -> new BookkeepingEntry.ReversalAdjustment(journalEntry(), nullOf()));
   }
 
   private static JournalEntry journalEntry() {

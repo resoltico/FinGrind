@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
-import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -81,11 +80,27 @@ public final class PostEntryCommandTranslator {
                       JournalLine.EntrySide.CREDIT,
                       event.amount().toMoney())),
               command);
-      case BookkeepingEntry.ManualAdjustment manualAdjustment ->
+      case BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment ->
           new PostingCommand(
-              manualAdjustment.postingKind(),
-              manualAdjustment.journalEntry(),
-              toPostingLineageModel(manualAdjustment.postingLineage()),
+              PostingKind.OPENING_BALANCE,
+              openingBalanceAdjustment.journalEntry(),
+              PostingLineageModel.direct(),
+              command.evidence(),
+              command.requestProvenance(),
+              command.sourceChannel());
+      case BookkeepingEntry.CorrectionAdjustment correctionAdjustment ->
+          new PostingCommand(
+              PostingKind.STANDARD,
+              correctionAdjustment.journalEntry(),
+              PostingLineageModel.direct(),
+              command.evidence(),
+              command.requestProvenance(),
+              command.sourceChannel());
+      case BookkeepingEntry.ReversalAdjustment reversalAdjustment ->
+          new PostingCommand(
+              PostingKind.STANDARD,
+              reversalAdjustment.journalEntry(),
+              toReversalPostingLineageModel(reversalAdjustment.reversal()),
               command.evidence(),
               command.requestProvenance(),
               command.sourceChannel());
@@ -103,12 +118,9 @@ public final class PostEntryCommandTranslator {
         command.sourceChannel());
   }
 
-  private static PostingLineageModel toPostingLineageModel(PostingLineage postingLineage) {
-    Objects.requireNonNull(postingLineage, "postingLineage");
-    return switch (postingLineage) {
-      case PostingLineage.Direct _ -> PostingLineageModel.direct();
-      case PostingLineage.Reversal reversal ->
-          PostingLineageModel.reversal(reversal.reference(), reversal.reason());
-    };
+  private static PostingLineageModel toReversalPostingLineageModel(
+      dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal reversal) {
+    Objects.requireNonNull(reversal, "reversal");
+    return PostingLineageModel.reversal(reversal.reference(), reversal.reason());
   }
 }

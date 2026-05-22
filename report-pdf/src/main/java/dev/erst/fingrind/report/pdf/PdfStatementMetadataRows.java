@@ -20,12 +20,6 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
     statementRows.add(
         List.of(
-            "Entity profile",
-            PdfValueFormatter.displayEntityProfile(
-                bookIdentity.entityProfile().entityForm(),
-                bookIdentity.entityProfile().ownerModel())));
-    statementRows.add(
-        List.of(
             "Business activity",
             PdfValueFormatter.displayBusinessActivityTags(
                 bookIdentity.entityProfile().businessActivityTags())));

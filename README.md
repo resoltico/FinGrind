@@ -2,7 +2,8 @@
 
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
 You initialize the book explicitly, declare accounts explicitly, commit typed bookkeeping entries
-or explicit manual adjustments, and query the same file for balances, ledgers, and summaries.
+or explicit administrative adjustments, and query the same file for balances, ledgers, and
+summaries.
 Humans use the task guide in `help`; automation uses `capabilities --output json`. Invalid writes
 are rejected before they change the book.
 
@@ -10,7 +11,7 @@ are rejected before they change the book.
 - Declare accounts and chart nodes before posting; undeclared accounts and non-postable nodes are
   rejected at commit
 - Post typed bookkeeping entries with retained evidence, provenance, and idempotency keys; reserve
-  raw journals for explicit manual adjustments
+  raw journals for explicit administrative adjustments
 - Scaffold runnable request and plan documents with `print-request-template` and
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
@@ -34,8 +35,8 @@ walkthrough that creates those files locally, use [docs/USER_QUICK_START.md](doc
 # Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --entity-form COMPANY --owner-model MULTI_OWNER \
-  --business-activity-tag consulting-services --functional-currency EUR \
+  --entity-name "Acme Studio" --business-activity-tag consulting-services \
+  --functional-currency EUR \
   --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1
 
 # Declare the accounts used by the first posting
@@ -66,7 +67,7 @@ fingrind capabilities --output json
 Trial Balance
 =============
 
-Book             : Acme Studio (Company) | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Acme Studio | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 

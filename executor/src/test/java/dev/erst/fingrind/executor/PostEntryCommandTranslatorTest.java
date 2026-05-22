@@ -161,7 +161,7 @@ class PostEntryCommandTranslatorTest {
   }
 
   @Test
-  void toPostingCommand_preservesManualAdjustmentsAndReversalLineage() {
+  void toPostingCommand_translatesReversalAdjustmentsAndReversalLineage() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -176,14 +176,13 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.ManualAdjustment(
-                PostingKind.STANDARD,
+            new BookkeepingEntry.ReversalAdjustment(
                 journalEntry,
-                dev.erst.fingrind.contract.bookkeeping.PostingLineage.reversal(
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
                     new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry"))),
-            accountingEvidence("manual-adjustment-reversal"),
-            PostingApplicationServiceTestSupport.requestProvenance("idem-manual-adjustment"),
+            accountingEvidence("reversal-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
             SourceChannel.CLI);
 
     assertEquals(
@@ -193,14 +192,14 @@ class PostEntryCommandTranslatorTest {
             PostingLineageModel.reversal(
                 new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
                 new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
-            accountingEvidence("manual-adjustment-reversal"),
-            PostingApplicationServiceTestSupport.requestProvenance("idem-manual-adjustment"),
+            accountingEvidence("reversal-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
             SourceChannel.CLI),
         PostEntryCommandTranslator.toPostingCommand(bookIdentity(), command));
   }
 
   @Test
-  void toPostingCommand_preservesManualAdjustmentsWithDirectLineage() {
+  void toPostingCommand_translatesOpeningBalanceAdjustmentsWithDirectLineage() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -215,12 +214,10 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.ManualAdjustment(
-                PostingKind.OPENING_BALANCE,
-                journalEntry,
-                dev.erst.fingrind.contract.bookkeeping.PostingLineage.direct()),
-            accountingEvidence("manual-adjustment-direct"),
-            PostingApplicationServiceTestSupport.requestProvenance("idem-manual-adjustment-direct"),
+            new BookkeepingEntry.OpeningBalanceAdjustment(journalEntry),
+            accountingEvidence("opening-balance-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance(
+                "idem-opening-balance-adjustment"),
             SourceChannel.CLI);
 
     assertEquals(
@@ -228,8 +225,41 @@ class PostEntryCommandTranslatorTest {
             PostingKind.OPENING_BALANCE,
             journalEntry,
             PostingLineageModel.direct(),
-            accountingEvidence("manual-adjustment-direct"),
-            PostingApplicationServiceTestSupport.requestProvenance("idem-manual-adjustment-direct"),
+            accountingEvidence("opening-balance-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance(
+                "idem-opening-balance-adjustment"),
+            SourceChannel.CLI),
+        PostEntryCommandTranslator.toPostingCommand(bookIdentity(), command));
+  }
+
+  @Test
+  void toPostingCommand_translatesCorrectionAdjustmentsWithDirectLineage() {
+    JournalEntry journalEntry =
+        new JournalEntry(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("6100"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "12.50")),
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "12.50"))));
+    PostEntryCommand command =
+        new PostEntryCommand(
+            new BookkeepingEntry.CorrectionAdjustment(journalEntry),
+            accountingEvidence("correction-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
+            SourceChannel.CLI);
+
+    assertEquals(
+        new PostingCommand(
+            PostingKind.STANDARD,
+            journalEntry,
+            PostingLineageModel.direct(),
+            accountingEvidence("correction-adjustment"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
             SourceChannel.CLI),
         PostEntryCommandTranslator.toPostingCommand(bookIdentity(), command));
   }

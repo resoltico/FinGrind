@@ -10,8 +10,6 @@ import java.util.Optional;
 /** Bookkeeping acceptance policy shared by preflight and durable commit paths. */
 public final class PostingAcceptancePolicy {
   private static final PostingAcceptancePolicy CURRENT_KERNEL = new PostingAcceptancePolicy();
-  private final PostingKindSelectionPolicy postingKindSelectionPolicy =
-      new PostingKindSelectionPolicy();
   private final PostingCurrencyAcceptancePolicy postingCurrencyAcceptancePolicy =
       new PostingCurrencyAcceptancePolicy();
   private final PostingClosedPeriodPolicy postingClosedPeriodPolicy =
@@ -36,11 +34,6 @@ public final class PostingAcceptancePolicy {
     }
     if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
       return Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey());
-    }
-    Optional<BookkeepingPostingRejection> postingKindRejection =
-        postingKindSelectionPolicy.rejectionFor(postingRequest);
-    if (postingKindRejection.isPresent()) {
-      return postingKindRejection;
     }
     BookIdentity bookIdentity = initializedBookIdentity(book);
     Optional<BookkeepingPostingRejection> currencyRejection =

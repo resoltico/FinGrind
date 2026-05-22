@@ -32,13 +32,11 @@ import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
@@ -169,8 +167,6 @@ class CliIoFixtureSupport {
     return new BookIdentity(
         new EntityProfile(
             new BookEntityName("Acme Studio"),
-            EntityForm.COMPANY,
-            OwnerModel.MULTI_OWNER,
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
@@ -190,10 +186,6 @@ class CliIoFixtureSupport {
       bookKeyFilePath.toString(),
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.ENTITY_FORM,
-      bookIdentity().entityProfile().entityForm().wireValue(),
-      ProtocolOptions.OWNER_MODEL,
-      bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.BUSINESS_ACTIVITY_TAG,
       "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
@@ -213,10 +205,6 @@ class CliIoFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_STDIN,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.ENTITY_FORM,
-      bookIdentity().entityProfile().entityForm().wireValue(),
-      ProtocolOptions.OWNER_MODEL,
-      bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.BUSINESS_ACTIVITY_TAG,
       "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
@@ -236,10 +224,6 @@ class CliIoFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.ENTITY_FORM,
-      bookIdentity().entityProfile().entityForm().wireValue(),
-      ProtocolOptions.OWNER_MODEL,
-      bookIdentity().entityProfile().ownerModel().wireValue(),
       ProtocolOptions.BUSINESS_ACTIVITY_TAG,
       "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
@@ -289,7 +273,7 @@ class CliIoFixtureSupport {
   protected static BookInspection.CloseReadiness closeReadyInspection() {
     return new BookInspection.CloseReadiness(
         true,
-        FinancialPositionLineClassification.OWNER_CAPITAL,
+        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
         new AccountCode("3200"),
         null,
         null,
@@ -409,8 +393,6 @@ class CliIoFixtureSupport {
                   "kind": "open-book",
                   "openBook": {
                     "entityName": "Acme Studio",
-                    "entityForm": "COMPANY",
-                    "ownerModel": "MULTI_OWNER",
                     "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01",

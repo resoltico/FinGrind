@@ -41,7 +41,7 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --entity-form FREELANCER --owner-model SOLE_OWNER --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),

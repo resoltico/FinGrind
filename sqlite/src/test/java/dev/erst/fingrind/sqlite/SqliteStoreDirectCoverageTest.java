@@ -123,7 +123,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -131,7 +131,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
               FIXED_INSTANT));
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
@@ -194,7 +194,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -202,7 +202,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
               FIXED_INSTANT));
 
       commitPosting(
@@ -299,7 +299,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -307,7 +307,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_EARNINGS),
+              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
               FIXED_INSTANT));
 
       CommittedPosting operatingPosting =

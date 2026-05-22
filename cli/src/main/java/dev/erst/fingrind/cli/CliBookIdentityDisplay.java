@@ -16,14 +16,6 @@ final class CliBookIdentityDisplay {
     rows.add(List.of("Entity", bookIdentity.entityName().value()));
     rows.add(
         List.of(
-            "Entity form",
-            CliHumanDisplay.wireLabel(bookIdentity.entityProfile().entityForm().wireValue())));
-    rows.add(
-        List.of(
-            "Owner model",
-            CliHumanDisplay.wireLabel(bookIdentity.entityProfile().ownerModel().wireValue())));
-    rows.add(
-        List.of(
             "Business activity",
             businessActivityTags(bookIdentity.entityProfile().businessActivityTags())));
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
@@ -53,9 +45,6 @@ final class CliBookIdentityDisplay {
 
   private static String summaryLine(BookIdentity bookIdentity) {
     return bookIdentity.entityName().value()
-        + " ("
-        + CliHumanDisplay.wireLabel(bookIdentity.entityProfile().entityForm().wireValue())
-        + ")"
         + " | Currency "
         + bookIdentity.functionalCurrency().code()
         + " | FY "

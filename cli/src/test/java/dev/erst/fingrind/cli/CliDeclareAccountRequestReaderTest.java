@@ -113,7 +113,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY, NONCURRENT_LIABILITY, OWNER_CAPITAL, OWNER_DRAWINGS, PARTNER_CAPITAL, PARTNER_CURRENT, SHARE_CAPITAL, RETAINED_EARNINGS, ACCUMULATED_SURPLUS, RESERVE, OTHER_EQUITY.",
+        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY, NONCURRENT_LIABILITY, CONTRIBUTED_CAPITAL, DISTRIBUTIONS, ACCUMULATED_RESULT, RESERVE, OTHER_EQUITY.",
         exception.getMessage());
   }
 

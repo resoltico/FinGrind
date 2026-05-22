@@ -92,7 +92,7 @@ class CliFailureOutputRendererTest {
             new CliRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "3000", "OTHER_EQUITY", null),
             new CliRejectionJsonModels.AccountTaxonomyDetails(
-                "POSTABLE", "3010", "RETAINED_EARNINGS", null)),
+                "POSTABLE", "3010", "ACCUMULATED_RESULT", null)),
         "Existing parent account",
         "3000",
         "Existing financial position classification",
@@ -100,7 +100,7 @@ class CliFailureOutputRendererTest {
         "Requested parent account",
         "3010",
         "Requested financial position classification",
-        "RETAINED_EARNINGS");
+        "ACCUMULATED_RESULT");
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
             "4100",
@@ -164,10 +164,6 @@ class CliFailureOutputRendererTest {
         "(none)",
         "Parent profit-and-loss classification",
         "COST_OF_SALES");
-    assertRenderedRejection(
-        new CliRejectionJsonModels.PostingKindDetails("opening-balance"),
-        "Posting kind",
-        "opening-balance");
     assertRenderedRejection(
         new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails("EUR", "USD"),
         "Functional currency",

@@ -360,17 +360,19 @@ final class CliQueryOutputFormatter {
       case NONCURRENT_ASSET -> "Non-current asset";
       case CURRENT_LIABILITY -> "Current liability";
       case NONCURRENT_LIABILITY -> "Non-current liability";
-      case OWNER_CAPITAL -> "Owner capital";
-      case OWNER_DRAWINGS -> "Owner drawings";
-      case PARTNER_CAPITAL -> "Partner capital";
-      case PARTNER_CURRENT -> "Partner current";
-      case SHARE_CAPITAL -> "Share capital";
-      case RETAINED_EARNINGS -> "Retained earnings";
-      case ACCUMULATED_SURPLUS -> "Accumulated surplus";
+      case CONTRIBUTED_CAPITAL -> "Contributed capital";
+      case DISTRIBUTIONS -> "Distributions";
+      case ACCUMULATED_RESULT -> "Accumulated result";
       case RESERVE -> "Reserve";
-      case CURRENT_PERIOD_RESULT -> "Current period result";
       case OTHER_EQUITY -> "Other equity";
     };
+  }
+
+  static String displayFinancialPositionLineClassification(
+      Optional<FinancialPositionLineClassification> lineClassification) {
+    return lineClassification
+        .map(CliQueryOutputFormatter::displayFinancialPositionLineClassification)
+        .orElse("(derived)");
   }
 
   static String displayProfitAndLossLineClassification(
