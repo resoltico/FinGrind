@@ -8,6 +8,7 @@ from .support import parse_json_output, require, require_match, require_no_match
 def verify_rekey_and_wrong_key_semantics(
     config: ReleaseSmokeConfig,
     operation_ids: dict[str, str],
+    error_exit_codes: dict[str, int],
 ) -> None:
     print(f"{config.label}: verifying rekey and wrong-key semantics")
     replacement_key_output = parse_json_output(
@@ -55,14 +56,14 @@ def verify_rekey_and_wrong_key_semantics(
         config.book.argument,
         "--book-key-file",
         config.replacement_book_key.argument,
-        "--effective-date-to",
+        "--effective-date-as-of",
         "2026-04-08",
         "--output",
         "human",
     )
     require(
-        wrong_key_status == 2,
-        f"{config.label} wrong-key listing exited with {wrong_key_status} instead of 2",
+        wrong_key_status == error_exit_codes["protected-book-verification-failed"],
+        f"{config.label} wrong-key listing exited with {wrong_key_status} instead of the published protected-book-verification-failed exit code",
     )
     require_match(
         wrong_key_output,
@@ -84,6 +85,7 @@ def verify_rekey_and_wrong_key_semantics(
 def verify_deterministic_nonsense_workflows(
     config: ReleaseSmokeConfig,
     operation_ids: dict[str, str],
+    error_exit_codes: dict[str, int],
 ) -> None:
     print(f"{config.label}: verifying deterministic nonsense workflows")
     invalid_cursor_output, invalid_cursor_status = run_cli_allow_failure(
@@ -109,16 +111,14 @@ def verify_deterministic_nonsense_workflows(
         config.entity_form,
         "--owner-model",
         config.owner_model,
-        "--reporting-obligation-status",
-        config.reporting_obligation_status,
         "--business-activity-tag",
         *config.business_activity_tags,
         "--functional-currency",
         config.functional_currency,
         "--fiscal-year-start",
         config.fiscal_year_start,
-        "--accounting-basis",
-        config.accounting_basis,
+        "--policy-profile",
+        config.policy_profile,
         "--book-passphrase-prompt",
         "--output",
         "json",
@@ -136,8 +136,8 @@ def verify_deterministic_nonsense_workflows(
         "json",
     )
     require(
-        invalid_cursor_status == 1,
-        f"{config.label} invalid cursor exited with {invalid_cursor_status} instead of 1",
+        invalid_cursor_status == error_exit_codes["invalid-page-cursor"],
+        f"{config.label} invalid cursor exited with {invalid_cursor_status} instead of the published invalid-page-cursor exit code",
     )
     require_match(
         invalid_cursor_output,
@@ -150,8 +150,8 @@ def verify_deterministic_nonsense_workflows(
         f"{config.label} invalid cursor regressed to runtime-failure",
     )
     require(
-        prompt_failure_status == 2,
-        f"{config.label} prompt-unavailable exited with {prompt_failure_status} instead of 2",
+        prompt_failure_status == error_exit_codes["interactive-prompt-unavailable"],
+        f"{config.label} prompt-unavailable exited with {prompt_failure_status} instead of the published interactive-prompt-unavailable exit code",
     )
     require_match(
         prompt_failure_output,
@@ -164,8 +164,8 @@ def verify_deterministic_nonsense_workflows(
         f"{config.label} prompt-unavailable did not report a repair hint",
     )
     require(
-        invalid_request_status == 1,
-        f"{config.label} invalid request exited with {invalid_request_status} instead of 1",
+        invalid_request_status == error_exit_codes["invalid-request"],
+        f"{config.label} invalid request exited with {invalid_request_status} instead of the published invalid-request exit code",
     )
     require_match(
         invalid_request_output,

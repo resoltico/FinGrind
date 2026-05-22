@@ -15,7 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -24,7 +24,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -38,11 +37,10 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
               new BookEntityName("Acme Studio"),
               EntityForm.COMPANY,
               OwnerModel.MULTI_OWNER,
-              ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
               List.of()),
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"),
-          AccountingBasis.ACCRUAL);
+          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
 
   @Test
   void rendering_helpers_cover_blank_csv_json_and_fragment_guards() {

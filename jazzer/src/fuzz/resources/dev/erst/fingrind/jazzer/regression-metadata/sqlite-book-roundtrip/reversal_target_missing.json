@@ -1,28 +1,28 @@
 {
-  "targetKey" : "sqlite-book-roundtrip",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/reversal_target_missing.json",
-  "coverageIntent" : "missing reversal target rejects commit without persisting facts",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "SQLITE_BOOK_ROUND_TRIP",
-      "request" : {
-        "effectiveDate" : "2026-04-08",
-        "idempotencyKey" : "idem-7",
-        "lineCount" : 2,
-        "reversalPresent" : true
+  "targetKey": "sqlite-book-roundtrip",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/reversal_target_missing.json",
+  "coverageIntent": "missing reversal target rejects commit without persisting facts",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "SQLITE_BOOK_ROUND_TRIP",
+      "request": {
+        "effectiveDate": "2026-04-08",
+        "idempotencyKey": "idem-7",
+        "lineCount": 2,
+        "reversalPresent": true
       },
-      "lifecycle" : {
-        "uninitializedCommitStatus" : "posting-book-not-initialized",
-        "undeclaredCommitStatus" : "unknown-account",
-        "inactiveCommitStatus" : "inactive-account"
+      "lifecycle": {
+        "uninitializedCommitStatus": "posting-book-not-initialized",
+        "undeclaredCommitStatus": "unknown-account",
+        "inactiveCommitStatus": "inactive-account"
       },
-      "outcome" : {
-        "finalCommitStatus" : "reversal-target-not-found",
-        "reloadStatus" : "not-run",
-        "duplicateStatus" : "reversal-target-not-found",
-        "storedFactPresent" : false
+      "outcome": {
+        "finalCommitStatus": "reversal-target-not-found",
+        "reloadStatus": "not-run",
+        "duplicateStatus": "reversal-target-not-found",
+        "storedFactPresent": false
       }
     }
   }

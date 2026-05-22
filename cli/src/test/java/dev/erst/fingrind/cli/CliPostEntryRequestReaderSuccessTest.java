@@ -1,8 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
@@ -17,17 +20,111 @@ import org.junit.jupiter.api.Test;
 class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
 
   @Test
+  void readPostEntryCommand_readsCashExpenseEntries() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "CASH_EXPENSE",
+              "effectiveDate": "2026-04-07",
+              "expenseAccountCode": "5000",
+              "cashAccountCode": "1000",
+              "amount": %s,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-cash-expense",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.CashExpense entry =
+        assertInstanceOf(BookkeepingEntry.CashExpense.class, command.entry());
+
+    assertEquals(new AccountCode("5000"), entry.expenseAccountCode());
+    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
+  }
+
+  @Test
+  void readPostEntryCommand_readsOwnerContributionEntries() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "OWNER_CONTRIBUTION",
+              "effectiveDate": "2026-04-07",
+              "cashAccountCode": "1000",
+              "equityAccountCode": "3000",
+              "amount": %s,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-owner-contribution",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.OwnerContribution entry =
+        assertInstanceOf(BookkeepingEntry.OwnerContribution.class, command.entry());
+
+    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(new AccountCode("3000"), entry.equityAccountCode());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
+  }
+
+  @Test
+  void readPostEntryCommand_readsOwnerDrawEntries() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "OWNER_DRAW",
+              "effectiveDate": "2026-04-07",
+              "equityAccountCode": "3000",
+              "cashAccountCode": "1000",
+              "amount": %s,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-owner-draw",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.OwnerDraw entry =
+        assertInstanceOf(BookkeepingEntry.OwnerDraw.class, command.entry());
+
+    assertEquals(new AccountCode("3000"), entry.equityAccountCode());
+    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
+  }
+
+  @Test
   void readPostEntryCommand_readsFromFile() throws IOException {
     Path requestFile = writeRequest(validRequestJson(true));
     CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
+    BookkeepingEntry.ManualAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.ManualAdjustment.class, command.entry());
 
     assertEquals("idem-1", command.requestProvenance().idempotencyKey().value());
     assertEquals(
         Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-0"))),
-        command.reversalReference());
-    assertEquals(Optional.of(new ReversalReason("operator reversal")), command.reversalReason());
+        entry.postingLineage().reversalReference());
+    assertEquals(
+        Optional.of(new ReversalReason("operator reversal")),
+        entry.postingLineage().reversalReason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -38,9 +135,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
+    BookkeepingEntry.CashRevenue entry =
+        assertInstanceOf(BookkeepingEntry.CashRevenue.class, command.entry());
 
-    assertEquals(Optional.empty(), command.reversalReference());
-    assertEquals(Optional.empty(), command.reversalReason());
+    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(new AccountCode("2000"), entry.revenueAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -52,6 +151,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
@@ -80,8 +180,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
+    BookkeepingEntry.ManualAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.ManualAdjustment.class, command.entry());
 
-    assertEquals(Optional.empty(), command.reversalReference());
+    assertEquals(Optional.empty(), entry.postingLineage().reversalReference());
   }
 
   @Test
@@ -92,20 +194,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "amount": %s
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "amount": %s
-                    }
-                  ],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -116,13 +209,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   }
                 }
                 """
-                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
     assertEquals(Optional.empty(), command.requestProvenance().correlationId());
-    assertEquals(Optional.empty(), command.reversalReason());
   }
 
   @Test
@@ -133,20 +225,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "amount": %s
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "amount": %s
-                    }
-                  ],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -158,19 +241,27 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     "sourceDocuments": [
                       {
                         "sourceDocumentId": "invoice-1",
-                        "sourceDocumentType": "invoice"
+                        "sourceDocumentType": "invoice",
+                        "documentDate": "2026-04-07",
+                        "capturedAt": "2026-04-07T10:15:30Z",
+                        "storageLocator": "vault://fixtures/invoice-1",
+                        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
                       }
                     ],
                     "approvals": [
                       {
                         "approvalId": "approval-1",
-                        "approvalType": "manager-signoff"
+                        "approvalType": "manager-signoff",
+                        "approverId": "approver-1",
+                        "approverType": "HUMAN",
+                        "decision": "APPROVED",
+                        "approvedAt": "2026-04-07T10:20:30Z"
                       }
                     ]
                   }
                 }
                 """
-                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
@@ -179,5 +270,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
     assertEquals(1, command.evidence().approvals().size());
     assertEquals("approval-1", command.evidence().approvals().get(0).approvalId().value());
     assertEquals("manager-signoff", command.evidence().approvals().get(0).approvalType().value());
+  }
+
+  private static PostEntryCommand readFromStandardInput(String requestJson) {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(withEvidence(requestJson).getBytes(StandardCharsets.UTF_8)));
+    return requestReader.readPostEntryCommand(Path.of("-"));
   }
 }

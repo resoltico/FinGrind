@@ -401,6 +401,10 @@ class ProtocolCatalogTest {
         ProtocolOptions.optionalOutputSyntax(
             List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV)));
     assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
+    assertEquals("[--detail <compact|full>]", ProtocolOptions.optionalDiscoveryDetailSyntax());
+    assertEquals(
+        "[--detail <compact|full> (json only)]",
+        ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         ProtocolOptions.bookPassphraseOptions());
@@ -593,15 +597,36 @@ class ProtocolCatalogTest {
     assertEquals("netAmount", ProtocolLedgerPlanFields.Assertion.NET_AMOUNT);
     assertEquals("balanceSide", ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE);
     assertEquals(
-        List.of("postingKind", "effectiveDate", "lines", "evidence", "provenance", "reversal"),
+        List.of(
+            "entryKind",
+            "effectiveDate",
+            "cashAccountCode",
+            "revenueAccountCode",
+            "expenseAccountCode",
+            "equityAccountCode",
+            "amount",
+            "postingKind",
+            "lines",
+            "evidence",
+            "provenance",
+            "reversal"),
         ProtocolPostEntryFields.topLevelFields());
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
     assertEquals(List.of("sourceDocuments", "approvals"), ProtocolPostEntryFields.evidenceFields());
     assertEquals(
-        List.of("sourceDocumentId", "sourceDocumentType"),
+        List.of(
+            "sourceDocumentId",
+            "sourceDocumentType",
+            "documentDate",
+            "capturedAt",
+            "storageLocator",
+            "contentSha256"),
         ProtocolPostEntryFields.sourceDocumentFields());
-    assertEquals(List.of("approvalId", "approvalType"), ProtocolPostEntryFields.approvalFields());
+    assertEquals(
+        List.of(
+            "approvalId", "approvalType", "approverId", "approverType", "decision", "approvedAt"),
+        ProtocolPostEntryFields.approvalFields());
     assertEquals(
         List.of(
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),

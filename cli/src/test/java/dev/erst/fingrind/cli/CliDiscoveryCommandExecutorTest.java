@@ -43,11 +43,11 @@ class CliDiscoveryCommandExecutorTest {
         CliWireJson.prettyJsonText(
             CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.DECLARE_ACCOUNT));
 
-    assertTrue(postingTemplate.contains("\"postingKind\""));
-    assertTrue(postEntryTemplate.contains("\"postingKind\""));
-    assertTrue(preflightTemplate.contains("\"postingKind\""));
+    assertTrue(postingTemplate.contains("\"entryKind\""));
+    assertTrue(postEntryTemplate.contains("\"entryKind\""));
+    assertTrue(preflightTemplate.contains("\"entryKind\""));
     assertTrue(declareAccountTemplate.contains("\"accountCode\""));
-    assertTrue(declareAccountTemplate.contains("\"accountRole\""));
+    assertTrue(declareAccountTemplate.contains("\"accountNodeKind\""));
   }
 
   @Test
@@ -69,7 +69,7 @@ class CliDiscoveryCommandExecutorTest {
         new ByteArrayInputStream(
             """
             name=FinGrind
-            version=0.43.0
+            version=0.44.0
             description=Command-line double-entry bookkeeping
             """
                 .getBytes(StandardCharsets.UTF_8)));

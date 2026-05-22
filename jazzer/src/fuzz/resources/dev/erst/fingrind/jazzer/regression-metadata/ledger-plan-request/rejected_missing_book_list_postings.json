@@ -1,25 +1,25 @@
 {
-  "targetKey" : "ledger-plan-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/rejected_missing_book_list_postings.json",
-  "coverageIntent" : "parsed plan rejects as missing-book query workflow without synthetic page facts",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "LEDGER_PLAN_REQUEST",
-      "plan" : {
-        "planId" : "play-1",
-        "stepCount" : 1,
-        "firstStepKind" : "list-postings",
-        "lastStepKind" : "list-postings",
-        "assertionStepCount" : 0,
-        "beginsWithOpenBook" : false
+  "targetKey": "ledger-plan-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/rejected_missing_book_list_postings.json",
+  "coverageIntent": "parsed plan rejects as missing-book query workflow without synthetic page facts",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "LEDGER_PLAN_REQUEST",
+      "plan": {
+        "planId": "play-1",
+        "stepCount": 1,
+        "firstStepKind": "list-postings",
+        "lastStepKind": "list-postings",
+        "assertionStepCount": 0,
+        "beginsWithOpenBook": false
       },
-      "execution" : {
-        "executionStatus" : "rejected",
-        "journalStepCount" : 1,
-        "listQueryStepCount" : 1,
-        "structuredListQueryStepCount" : 0
+      "execution": {
+        "executionStatus": "rejected",
+        "journalStepCount": 1,
+        "listQueryStepCount": 1,
+        "structuredListQueryStepCount": 0
       }
     }
   }

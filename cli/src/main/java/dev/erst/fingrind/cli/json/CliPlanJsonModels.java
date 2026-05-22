@@ -17,7 +17,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Ledger-plan JSON records emitted by the CLI transport layer. */
-public interface CliPlanJsonModels {
+public interface CliPlanJsonModels extends CliBookQueryJsonModels {
 
   record LedgerPlanPayload(
       String planId,
@@ -88,7 +88,7 @@ public interface CliPlanJsonModels {
       LedgerStepStatus status,
       String startedAt,
       String finishedAt,
-      List<LedgerFactPayload> facts,
+      @Nullable LedgerStepDataPayload data,
       @Nullable LedgerStepFailurePayload failure) {
     public LedgerJournalEntryPayload {
       stepId = requireText(stepId, "stepId");
@@ -96,15 +96,139 @@ public interface CliPlanJsonModels {
       status = requireValue(status, "status");
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
-      facts = copyList(facts, "facts");
     }
   }
 
-  record LedgerStepFailurePayload(String code, String message, List<LedgerFactPayload> facts) {
+  record LedgerStepFailurePayload(String code, String message, List<LedgerFactPayload> details) {
     public LedgerStepFailurePayload {
       code = requireText(code, "code");
       message = requireText(message, "message");
-      facts = copyList(facts, "facts");
+      details = copyList(details, "details");
+    }
+  }
+
+  /** Tagged union for typed execute-plan journal step payloads. */
+  sealed interface LedgerStepDataPayload
+      permits OpenBookStepDataPayload,
+          DeclaredAccountStepDataPayload,
+          PreflightEntryStepDataPayload,
+          CommittedEntryStepDataPayload,
+          BookInspectionStepDataPayload,
+          AccountPageStepDataPayload,
+          PostingStepDataPayload,
+          PostingPageStepDataPayload,
+          AccountBalanceStepDataPayload,
+          AccountCodeAssertionStepDataPayload,
+          PostingIdAssertionStepDataPayload,
+          PlanBoundaryStepDataPayload {}
+
+  record OpenBookStepDataPayload(
+      String initializedAt, String entityName, String functionalCurrency, String fiscalYearStart)
+      implements LedgerStepDataPayload {
+    public OpenBookStepDataPayload {
+      initializedAt = requireText(initializedAt, "initializedAt");
+      entityName = requireText(entityName, "entityName");
+      functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
+      fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
+    }
+  }
+
+  record DeclaredAccountStepDataPayload(DeclaredAccountPayload account)
+      implements LedgerStepDataPayload {
+    public DeclaredAccountStepDataPayload {
+      account = requireValue(account, "account");
+    }
+  }
+
+  record PreflightEntryStepDataPayload(String idempotencyKey, String effectiveDate)
+      implements LedgerStepDataPayload {
+    public PreflightEntryStepDataPayload {
+      idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
+      effectiveDate = requireText(effectiveDate, "effectiveDate");
+    }
+  }
+
+  record CommittedEntryStepDataPayload(
+      String postingId, String idempotencyKey, String effectiveDate, String recordedAt)
+      implements LedgerStepDataPayload {
+    public CommittedEntryStepDataPayload {
+      postingId = requireText(postingId, "postingId");
+      idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
+      effectiveDate = requireText(effectiveDate, "effectiveDate");
+      recordedAt = requireText(recordedAt, "recordedAt");
+    }
+  }
+
+  record BookInspectionStepDataPayload(
+      String state, boolean initialized, boolean compatibleWithCurrentBinary)
+      implements LedgerStepDataPayload {
+    public BookInspectionStepDataPayload {
+      state = requireText(state, "state");
+    }
+  }
+
+  record AccountPageStepDataPayload(
+      int count,
+      int pageLimit,
+      @Nullable String nextCursor,
+      boolean hasMore,
+      List<DeclaredAccountPayload> accounts)
+      implements LedgerStepDataPayload {
+    public AccountPageStepDataPayload {
+      nextCursor = requireOptionalText(nextCursor, "nextCursor");
+      accounts = copyList(accounts, "accounts");
+    }
+  }
+
+  record PostingStepDataPayload(PostingPayload posting) implements LedgerStepDataPayload {
+    public PostingStepDataPayload {
+      posting = requireValue(posting, "posting");
+    }
+  }
+
+  record PostingPageStepDataPayload(
+      int count,
+      int pageLimit,
+      @Nullable String nextCursor,
+      boolean hasMore,
+      List<PostingPayload> postings)
+      implements LedgerStepDataPayload {
+    public PostingPageStepDataPayload {
+      nextCursor = requireOptionalText(nextCursor, "nextCursor");
+      postings = copyList(postings, "postings");
+    }
+  }
+
+  record AccountBalanceStepDataPayload(
+      DeclaredAccountPayload account,
+      @Nullable String effectiveDateFrom,
+      @Nullable String effectiveDateTo,
+      int bucketCount,
+      List<BalanceBucketPayload> balances)
+      implements LedgerStepDataPayload {
+    public AccountBalanceStepDataPayload {
+      account = requireValue(account, "account");
+      effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      balances = copyList(balances, "balances");
+    }
+  }
+
+  record AccountCodeAssertionStepDataPayload(String accountCode) implements LedgerStepDataPayload {
+    public AccountCodeAssertionStepDataPayload {
+      accountCode = requireText(accountCode, "accountCode");
+    }
+  }
+
+  record PostingIdAssertionStepDataPayload(String postingId) implements LedgerStepDataPayload {
+    public PostingIdAssertionStepDataPayload {
+      postingId = requireText(postingId, "postingId");
+    }
+  }
+
+  record PlanBoundaryStepDataPayload(String phase) implements LedgerStepDataPayload {
+    public PlanBoundaryStepDataPayload {
+      phase = requireText(phase, "phase");
     }
   }
 

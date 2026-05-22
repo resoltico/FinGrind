@@ -26,6 +26,8 @@ class BookAdministrationRejectionTest {
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",
+            "parent-account-role-conflict",
+            "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
             "closing-equity-account-candidate-missing",
@@ -54,10 +56,12 @@ class BookAdministrationRejectionTest {
                 new BookAdministrationRejection.AccountTaxonomyConflict(
                     new dev.erst.fingrind.core.AccountCode("1000"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                         Optional.empty()),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                         Optional.empty()))),
@@ -76,14 +80,27 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("4000"),
                     dev.erst.fingrind.core.AccountType.REVENUE)),
             BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.ParentAccountRoleConflict(
+                    new dev.erst.fingrind.core.AccountCode("1100"),
+                    dev.erst.fingrind.core.AccountRole.ORDINARY,
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    dev.erst.fingrind.core.AccountRole.CONTRA)),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.ParentAccountNotHeader(
+                    new dev.erst.fingrind.core.AccountCode("1100"),
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE)),
+            BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountTaxonomyConflict(
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new dev.erst.fingrind.core.AccountCode("1000")),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         Optional.empty()),
                     new dev.erst.fingrind.core.AccountCode("5000"),
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.empty(),
                         Optional.of(
@@ -129,6 +146,8 @@ class BookAdministrationRejectionTest {
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",
+            "parent-account-role-conflict",
+            "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
             "closing-equity-account-candidate-missing",

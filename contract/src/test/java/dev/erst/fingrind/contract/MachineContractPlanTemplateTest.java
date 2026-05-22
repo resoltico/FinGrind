@@ -60,8 +60,10 @@ class MachineContractPlanTemplateTest {
     assertEquals("post-journal", postJournal.stepId());
     assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
     assertEquals("2026-01-15", postJournalTemplate.effectiveDate());
-    assertEquals("1000", postJournalTemplate.lines().get(0).accountCode());
-    assertEquals("2000", postJournalTemplate.lines().get(1).accountCode());
+    assertEquals(
+        dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE, postJournalTemplate.entryKind());
+    assertEquals("1000", postJournalTemplate.cashAccountCode());
+    assertEquals("2000", postJournalTemplate.revenueAccountCode());
     assertEquals("operator-demo-1", postJournalTemplate.provenance().actorId());
     assertEquals(ActorType.AGENT, postJournalTemplate.provenance().actorType());
     assertEquals("assert-cash-balance", assertCashBalance.stepId());
@@ -71,7 +73,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.43.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.44.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

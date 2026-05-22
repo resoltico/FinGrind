@@ -105,7 +105,8 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
         workflow.openBook(
             bookAccess,
-            CliFuzzFixtures.openBookCommand(concurrentCommand.journalEntry().currencyUnit())),
+            CliFuzzFixtures.openBookCommand(
+                CliFuzzFixtures.journalEntry(concurrentCommand).currencyUnit())),
         bookPath,
         OutputMode.JSON,
         "\"initializedAt\"");

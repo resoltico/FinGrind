@@ -1,5 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.cli.LedgerPlanFuzzAssertions;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -111,10 +112,10 @@ final class JazzerReplayDetailsMapper {
   static ParsedPostingCommandDetails parsedPostingCommandDetails(PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     return new ParsedPostingCommandDetails(
-        command.journalEntry().effectiveDate().toString(),
+        CliFuzzFixtures.journalEntry(command).effectiveDate().toString(),
         command.requestProvenance().idempotencyKey().value(),
-        command.journalEntry().lines().size(),
-        command.reversalReference().isPresent());
+        CliFuzzFixtures.journalEntry(command).lines().size(),
+        CliFuzzFixtures.reversalReference(command).isPresent());
   }
 
   private static int assertionStepCount(LedgerPlan plan) {

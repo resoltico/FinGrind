@@ -62,8 +62,8 @@ class BookReadServiceAccountQueryTest {
       BookInspection inspection =
           new BookInspection.Initialized(
               BookFormatContract.APPLICATION_ID,
-              12,
-              12,
+              15,
+              15,
               BookReadServiceTestSupport.FIXED_INSTANT,
               bookIdentity(),
               new BookInspection.CloseReadiness(
@@ -82,7 +82,7 @@ class BookReadServiceAccountQueryTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookReadService service = readService(bookSession);
 
-      assertEquals(new BookInspection.Missing(12), service.inspectBook());
+      assertEquals(new BookInspection.Missing(15), service.inspectBook());
     }
   }
 

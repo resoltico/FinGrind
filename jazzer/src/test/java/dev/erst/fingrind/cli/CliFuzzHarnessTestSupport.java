@@ -11,11 +11,68 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 public final class CliFuzzHarnessTestSupport {
   private CliFuzzHarnessTestSupport() {}
+
+  public record RequestContext(
+      String sourceDocumentId,
+      String sourceDocumentType,
+      String documentDate,
+      String actorId,
+      String actorType,
+      String commandId,
+      String idempotencyKey,
+      String causationId,
+      @Nullable String correlationId) {
+    public RequestContext {
+      Objects.requireNonNull(sourceDocumentId, "sourceDocumentId");
+      Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
+      Objects.requireNonNull(documentDate, "documentDate");
+      Objects.requireNonNull(actorId, "actorId");
+      Objects.requireNonNull(actorType, "actorType");
+      Objects.requireNonNull(commandId, "commandId");
+      Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+      Objects.requireNonNull(causationId, "causationId");
+    }
+  }
+
+  public record CashRevenueRequestInput(
+      String effectiveDate,
+      String cashAccountCode,
+      String revenueAccountCode,
+      String currencyCode,
+      String minorUnits,
+      RequestContext context) {
+    public CashRevenueRequestInput {
+      Objects.requireNonNull(effectiveDate, "effectiveDate");
+      Objects.requireNonNull(cashAccountCode, "cashAccountCode");
+      Objects.requireNonNull(revenueAccountCode, "revenueAccountCode");
+      Objects.requireNonNull(currencyCode, "currencyCode");
+      Objects.requireNonNull(minorUnits, "minorUnits");
+      Objects.requireNonNull(context, "context");
+    }
+  }
+
+  public record ManualAdjustmentRequestInput(
+      String effectiveDate,
+      String postingKind,
+      String linesJson,
+      RequestContext context,
+      @Nullable String priorPostingId,
+      @Nullable String reversalReason) {
+    public ManualAdjustmentRequestInput {
+      Objects.requireNonNull(effectiveDate, "effectiveDate");
+      Objects.requireNonNull(postingKind, "postingKind");
+      Objects.requireNonNull(linesJson, "linesJson");
+      Objects.requireNonNull(context, "context");
+    }
+  }
 
   static FuzzedDataProvider fuzzedBytes(byte[] input) {
     InvocationHandler handler = new FuzzedBytesDataProviderHandler(input);
@@ -53,246 +110,166 @@ public final class CliFuzzHarnessTestSupport {
   }
 
   static byte[] validJpyRequestBytes() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-06-01",
-          "lines": [
-            {
-              "accountCode": "1100",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "JPY",
-                "minorUnits": "100"
-              }
-            },
-            {
-              "accountCode": "2100",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "JPY",
-                "minorUnits": "100"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-jpy-1",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-jpy-1",
-            "actorType": "AGENT",
-            "commandId": "command-jpy-1",
-            "idempotencyKey": "idem-jpy-1",
-            "causationId": "cause-jpy-1"
-          }
-        }
-        """
+    return cashRevenueRequestJson(
+            new CashRevenueRequestInput(
+                "2026-06-01",
+                "1100",
+                "2100",
+                "JPY",
+                "100",
+                new RequestContext(
+                    "document-idem-jpy-1",
+                    "invoice",
+                    "2026-06-01",
+                    "actor-jpy-1",
+                    "AGENT",
+                    "command-jpy-1",
+                    "idem-jpy-1",
+                    "cause-jpy-1",
+                    null)))
         .getBytes(UTF_8);
   }
 
   static byte[] validBhdRequestBytes() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-06-02",
-          "lines": [
-            {
-              "accountCode": "1200",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "BHD",
-                "minorUnits": "1250"
-              }
-            },
-            {
-              "accountCode": "2200",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "BHD",
-                "minorUnits": "1250"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-bhd-1",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-bhd-1",
-            "actorType": "AGENT",
-            "commandId": "command-bhd-1",
-            "idempotencyKey": "idem-bhd-1",
-            "causationId": "cause-bhd-1"
-          }
-        }
-        """
+    return cashRevenueRequestJson(
+            new CashRevenueRequestInput(
+                "2026-06-02",
+                "1200",
+                "2200",
+                "BHD",
+                "1250",
+                new RequestContext(
+                    "document-idem-bhd-1",
+                    "invoice",
+                    "2026-06-02",
+                    "actor-bhd-1",
+                    "AGENT",
+                    "command-bhd-1",
+                    "idem-bhd-1",
+                    "cause-bhd-1",
+                    null)))
         .getBytes(UTF_8);
   }
 
   static byte[] invalidExponentAmountRequestBytes() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1e1000000100"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "100"
-              }
-            }
-          ],
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1"
-          }
-        }
-        """
+    return cashRevenueRequestJson(
+            new CashRevenueRequestInput(
+                "2026-04-07",
+                "1000",
+                "2000",
+                "EUR",
+                "1e1000000100",
+                new RequestContext(
+                    "document-idem-1",
+                    "invoice",
+                    "2026-04-07",
+                    "actor-1",
+                    "AGENT",
+                    "command-1",
+                    "idem-1",
+                    "cause-1",
+                    null)))
         .getBytes(UTF_8);
   }
 
   static byte[] invalidBlankActorRequestBytes() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "provenance": {
-            "actorId": "   ",
-            "actorType": "AGENT",
-            "commandId": "command-3",
-            "idempotencyKey": "idem-3",
-            "causationId": "cause-3"
-          }
-        }
-        """
+    return cashRevenueRequestJson(
+            new CashRevenueRequestInput(
+                "2026-04-07",
+                "1000",
+                "2000",
+                "EUR",
+                "1000",
+                new RequestContext(
+                    "document-idem-3",
+                    "invoice",
+                    "2026-04-07",
+                    "   ",
+                    "AGENT",
+                    "command-3",
+                    "idem-3",
+                    "cause-3",
+                    null)))
         .getBytes(UTF_8);
   }
 
   static byte[] missingReversalReasonRequestBytes() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-08",
-          "lines": [
-            {
-              "accountCode": "5000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            },
-            {
-              "accountCode": "6000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            }
-          ],
-          "reversal": {
-            "priorPostingId": "posting-old"
-          },
-          "provenance": {
-            "actorId": "actor-2",
-            "actorType": "HUMAN",
-            "commandId": "command-2",
-            "idempotencyKey": "idem-2",
-            "causationId": "cause-2"
-          }
-        }
-        """
+    return manualAdjustmentRequestJson(
+            new ManualAdjustmentRequestInput(
+                "2026-04-08",
+                "STANDARD",
+                """
+                [
+                  {
+                    "accountCode": "5000",
+                    "side": "CREDIT",
+                    "amount": {
+                      "currencyCode": "GBP",
+                      "minorUnits": "12345"
+                    }
+                  },
+                  {
+                    "accountCode": "6000",
+                    "side": "DEBIT",
+                    "amount": {
+                      "currencyCode": "GBP",
+                      "minorUnits": "12345"
+                    }
+                  }
+                ]
+                """,
+                new RequestContext(
+                    "document-idem-2",
+                    "credit-note",
+                    "2026-04-08",
+                    "actor-2",
+                    "HUMAN",
+                    "command-2",
+                    "idem-2",
+                    "cause-2",
+                    null),
+                "posting-old",
+                null))
         .getBytes(UTF_8);
   }
 
   static String reversalTargetMissingRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-08",
-          "lines": [
-            {
-              "accountCode": "5000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            },
-            {
-              "accountCode": "6000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            }
-          ],
-          "reversal": {
-            "priorPostingId": "posting-missing",
-            "reason": "operator reversal"
-          },
-          "evidence": {
-            "sourceDocuments": [
+    return manualAdjustmentRequestJson(
+        new ManualAdjustmentRequestInput(
+            "2026-04-08",
+            "STANDARD",
+            """
+            [
               {
-                "sourceDocumentId": "document-idem-5",
-                "sourceDocumentType": "credit-note"
+                "accountCode": "5000",
+                "side": "CREDIT",
+                "amount": {
+                  "currencyCode": "GBP",
+                  "minorUnits": "12345"
+                }
+              },
+              {
+                "accountCode": "6000",
+                "side": "DEBIT",
+                "amount": {
+                  "currencyCode": "GBP",
+                  "minorUnits": "12345"
+                }
               }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-5",
-            "actorType": "HUMAN",
-            "commandId": "command-5",
-            "idempotencyKey": "idem-5",
-            "causationId": "cause-5"
-          }
-        }
-        """;
+            ]
+            """,
+            new RequestContext(
+                "document-idem-5",
+                "credit-note",
+                "2026-04-08",
+                "actor-5",
+                "HUMAN",
+                "command-5",
+                "idem-5",
+                "cause-5",
+                null),
+            "posting-missing",
+            "operator reversal"));
   }
 
   static byte[] reversalTargetMissingRequestBytes() {
@@ -347,44 +324,7 @@ public final class CliFuzzHarnessTestSupport {
             {
               "stepId": "post-jpy",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-06-03",
-                "lines": [
-                  {
-                    "accountCode": "1100",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "JPY",
-                      "minorUnits": "100"
-                    }
-                  },
-                  {
-                    "accountCode": "2100",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "JPY",
-                      "minorUnits": "100"
-                    }
-                  }
-                ],
-                "evidence": {
-                  "sourceDocuments": [
-                    {
-                      "sourceDocumentId": "document-idem-jpy-plan-1",
-                      "sourceDocumentType": "invoice"
-                    }
-                  ],
-                  "approvals": []
-                },
-                "provenance": {
-                  "actorId": "agent-jpy-plan-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-jpy-plan-1",
-                  "idempotencyKey": "idem-jpy-plan-1",
-                  "causationId": "cause-jpy-plan-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "assert-jpy",
@@ -411,6 +351,25 @@ public final class CliFuzzHarnessTestSupport {
             declareOrdinaryAccountStepJson(
                     "declare-sales-jpy", "2100", "Sales JPY", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new CashRevenueRequestInput(
+                        "2026-06-03",
+                        "1100",
+                        "2100",
+                        "JPY",
+                        "100",
+                        new RequestContext(
+                            "document-idem-jpy-plan-1",
+                            "invoice",
+                            "2026-06-03",
+                            "agent-jpy-plan-1",
+                            "AGENT",
+                            "command-jpy-plan-1",
+                            "idem-jpy-plan-1",
+                            "cause-jpy-plan-1",
+                            null)))
+                .indent(16)
                 .stripLeading())
         .getBytes(UTF_8);
   }
@@ -430,44 +389,7 @@ public final class CliFuzzHarnessTestSupport {
             {
               "stepId": "post-bhd",
               "kind": "post-entry",
-              "posting": {
-                "postingKind": "STANDARD",
-                "effectiveDate": "2026-06-04",
-                "lines": [
-                  {
-                    "accountCode": "1200",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "BHD",
-                      "minorUnits": "1250"
-                    }
-                  },
-                  {
-                    "accountCode": "2200",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "BHD",
-                      "minorUnits": "1250"
-                    }
-                  }
-                ],
-                "evidence": {
-                  "sourceDocuments": [
-                    {
-                      "sourceDocumentId": "document-idem-bhd-plan-1",
-                      "sourceDocumentType": "invoice"
-                    }
-                  ],
-                  "approvals": []
-                },
-                "provenance": {
-                  "actorId": "agent-bhd-plan-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-bhd-plan-1",
-                  "idempotencyKey": "idem-bhd-plan-1",
-                  "causationId": "cause-bhd-plan-1"
-                }
-              }
+              "posting": %s
             },
             {
               "stepId": "assert-bhd",
@@ -494,6 +416,25 @@ public final class CliFuzzHarnessTestSupport {
             declareOrdinaryAccountStepJson(
                     "declare-sales-bhd", "2200", "Sales BHD", AccountType.REVENUE)
                 .indent(12)
+                .stripLeading(),
+            cashRevenueRequestJson(
+                    new CashRevenueRequestInput(
+                        "2026-06-04",
+                        "1200",
+                        "2200",
+                        "BHD",
+                        "1250",
+                        new RequestContext(
+                            "document-idem-bhd-plan-1",
+                            "invoice",
+                            "2026-06-04",
+                            "agent-bhd-plan-1",
+                            "AGENT",
+                            "command-bhd-plan-1",
+                            "idem-bhd-plan-1",
+                            "cause-bhd-plan-1",
+                            null)))
+                .indent(16)
                 .stripLeading())
         .getBytes(UTF_8);
   }
@@ -504,11 +445,10 @@ public final class CliFuzzHarnessTestSupport {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
           "ownerModel": "MULTI_OWNER",
-          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-          "businessActivityTags": ["translation-services"],
+                    "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
-          "accountingBasis": "ACCRUAL"
+          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
         }
         """
         .formatted(functionalCurrency)
@@ -550,6 +490,7 @@ public final class CliFuzzHarnessTestSupport {
           "accountName": "%s",
           "accountType": "%s",
           "accountRole": "%s",
+          "accountNodeKind": "POSTABLE",
           "financialPositionLineClassification": %s,
           "profitAndLossLineClassification": %s
         }
@@ -561,6 +502,133 @@ public final class CliFuzzHarnessTestSupport {
             accountRole.name(),
             quotedOrNull(financialPositionLineClassificationWireValue(accountType)),
             quotedOrNull(profitAndLossLineClassificationWireValue(accountType)));
+  }
+
+  public static String cashRevenueRequestJson(CashRevenueRequestInput request) {
+    return """
+        {
+          "entryKind": "CASH_REVENUE",
+          "effectiveDate": "%s",
+          "cashAccountCode": "%s",
+          "revenueAccountCode": "%s",
+          "amount": {
+            "currencyCode": "%s",
+            "minorUnits": "%s"
+          },
+          "evidence": %s,
+          "provenance": %s
+        }
+        """
+        .formatted(
+            request.effectiveDate(),
+            request.cashAccountCode(),
+            request.revenueAccountCode(),
+            request.currencyCode(),
+            request.minorUnits(),
+            evidenceJson(
+                    request.context().sourceDocumentId(),
+                    request.context().sourceDocumentType(),
+                    request.context().documentDate())
+                .indent(10)
+                .stripLeading(),
+            provenanceJson(request.context()).indent(10).stripLeading());
+  }
+
+  public static String manualAdjustmentRequestJson(ManualAdjustmentRequestInput request) {
+    String reversalJson =
+        request.priorPostingId() == null
+            ? ""
+            : """
+              ,
+              "reversal": {
+                "priorPostingId": "%s"%s
+              }
+              """
+                .formatted(
+                    request.priorPostingId(),
+                    request.reversalReason() == null
+                        ? ""
+                        : ",\n    \"reason\": \"" + request.reversalReason() + "\"");
+    return """
+        {
+          "entryKind": "MANUAL_ADJUSTMENT",
+          "postingKind": "%s",
+          "effectiveDate": "%s",
+          "lines": %s%s,
+          "evidence": %s,
+          "provenance": %s
+        }
+        """
+        .formatted(
+            request.postingKind(),
+            request.effectiveDate(),
+            request.linesJson().strip(),
+            reversalJson,
+            evidenceJson(
+                    request.context().sourceDocumentId(),
+                    request.context().sourceDocumentType(),
+                    request.context().documentDate())
+                .indent(10)
+                .stripLeading(),
+            provenanceJson(request.context()).indent(10).stripLeading());
+  }
+
+  public static String evidenceJson(
+      String sourceDocumentId, String sourceDocumentType, String documentDate) {
+    return """
+        {
+          "sourceDocuments": [
+            {
+              "sourceDocumentId": "%s",
+              "sourceDocumentType": "%s",
+              "documentDate": "%s",
+              "capturedAt": "%sT10:15:30Z",
+              "storageLocator": "vault://fixtures/%s",
+              "contentSha256": "%s"
+            }
+          ],
+          "approvals": []
+        }
+        """
+        .formatted(
+            sourceDocumentId,
+            sourceDocumentType,
+            documentDate,
+            documentDate,
+            sourceDocumentId,
+            sha256Hex(sourceDocumentId));
+  }
+
+  public static String provenanceJson(RequestContext context) {
+    String correlationField =
+        context.correlationId() == null
+            ? ""
+            : ",\n  \"correlationId\": \"" + context.correlationId() + "\"";
+    return """
+        {
+          "actorId": "%s",
+          "actorType": "%s",
+          "commandId": "%s",
+          "idempotencyKey": "%s",
+          "causationId": "%s"%s
+        }
+        """
+        .formatted(
+            context.actorId(),
+            context.actorType(),
+            context.commandId(),
+            context.idempotencyKey(),
+            context.causationId(),
+            correlationField);
+  }
+
+  private static String sha256Hex(String input) {
+    try {
+      byte[] digest = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
+      return HexFormat.of().formatHex(digest);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("JVM is missing SHA-256 support.", exception);
+    }
   }
 
   private static String quotedOrNull(@Nullable String value) {

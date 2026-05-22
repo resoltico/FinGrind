@@ -10,7 +10,9 @@ import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
@@ -19,17 +21,21 @@ import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -45,6 +51,8 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +72,7 @@ final class CliPostingRequestParser {
         CliJsonRequestSchemas.POST_ENTRY_TOP_LEVEL_FIELDS,
         "Posting request fields must be top-level for direct request files; remove the posting wrapper.");
     rejectForbiddenField(rootNode, ProtocolPostEntryFields.TopLevel.CORRECTION);
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.POST_ENTRY_TOP_LEVEL_FIELDS);
+    BookkeepingEntry entry = readEntry(rootNode);
     ObjectNode provenanceNode =
         requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.REASON);
@@ -74,24 +82,6 @@ final class CliPostingRequestParser {
         provenanceNode,
         ProtocolPostEntryFields.TopLevel.PROVENANCE,
         CliJsonRequestSchemas.PROVENANCE_FIELDS);
-    LocalDate effectiveDate =
-        LocalDate.parse(
-            requiredRealText(
-                rootNode,
-                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-                ScaffoldPlaceholders.EFFECTIVE_DATE,
-                null));
-    PostingKind postingKind =
-        parseWireValue(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
-            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
-            PostingKind.wireValues(),
-            PostingKind::fromWireValue);
-    List<JournalLine> lines =
-        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES));
-    PostingLineage reversal =
-        readReversal(nullableField(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL));
-    JournalEntry journalEntry = new JournalEntry(effectiveDate, lines);
     String actorId =
         requiredRealProvenanceText(
             provenanceNode,
@@ -135,8 +125,7 @@ final class CliPostingRequestParser {
             new IdempotencyKey(idempotencyKey),
             new CausationId(causationId),
             correlationId);
-    return new PostEntryCommand(
-        postingKind, journalEntry, reversal, evidence, requestProvenance, SourceChannel.CLI);
+    return new PostEntryCommand(entry, evidence, requestProvenance, SourceChannel.CLI);
   }
 
   static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
@@ -160,6 +149,11 @@ final class CliPostingRequestParser {
             AccountRole.wireValues(),
             AccountRole::fromWireValue),
         new AccountTaxonomy(
+            parseWireValue(
+                requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND),
+                ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
+                AccountNodeKind.wireValues(),
+                AccountNodeKind::fromWireValue),
             optionalText(rootNode, ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE)
                 .map(AccountCode::new),
             optionalText(
@@ -202,6 +196,94 @@ final class CliPostingRequestParser {
       index++;
     }
     return lines;
+  }
+
+  private static BookkeepingEntry readEntry(ObjectNode rootNode) {
+    BookkeepingEntryKind entryKind =
+        parseWireValue(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.ENTRY_KIND),
+            ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+            BookkeepingEntryKind.wireValues(),
+            BookkeepingEntryKind::fromWireValue);
+    return switch (entryKind) {
+      case CASH_REVENUE -> readCashRevenueEntry(rootNode);
+      case CASH_EXPENSE -> readCashExpenseEntry(rootNode);
+      case OWNER_CONTRIBUTION -> readOwnerContributionEntry(rootNode);
+      case OWNER_DRAW -> readOwnerDrawEntry(rootNode);
+      case MANUAL_ADJUSTMENT -> readManualAdjustmentEntry(rootNode);
+    };
+  }
+
+  private static BookkeepingEntry.CashRevenue readCashRevenueEntry(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.CASH_REVENUE_FIELDS);
+    return new BookkeepingEntry.CashRevenue(
+        requiredEffectiveDate(rootNode),
+        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        new AccountCode(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
+        requiredPositiveAmount(rootNode));
+  }
+
+  private static BookkeepingEntry.CashExpense readCashExpenseEntry(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.CASH_EXPENSE_FIELDS);
+    return new BookkeepingEntry.CashExpense(
+        requiredEffectiveDate(rootNode),
+        new AccountCode(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        requiredPositiveAmount(rootNode));
+  }
+
+  private static BookkeepingEntry.OwnerContribution readOwnerContributionEntry(
+      ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.OWNER_CONTRIBUTION_FIELDS);
+    return new BookkeepingEntry.OwnerContribution(
+        requiredEffectiveDate(rootNode),
+        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        new AccountCode(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
+        requiredPositiveAmount(rootNode));
+  }
+
+  private static BookkeepingEntry.OwnerDraw readOwnerDrawEntry(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.OWNER_DRAW_FIELDS);
+    return new BookkeepingEntry.OwnerDraw(
+        requiredEffectiveDate(rootNode),
+        new AccountCode(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        requiredPositiveAmount(rootNode));
+  }
+
+  private static BookkeepingEntry.ManualAdjustment readManualAdjustmentEntry(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.MANUAL_ADJUSTMENT_FIELDS);
+    PostingKind postingKind =
+        parseWireValue(
+            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.POSTING_KIND),
+            ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+            PostingKind.wireValues(),
+            PostingKind::fromWireValue);
+    List<JournalLine> lines =
+        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES));
+    PostingLineage reversal =
+        readReversal(nullableField(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL));
+    return new BookkeepingEntry.ManualAdjustment(
+        postingKind, new JournalEntry(requiredEffectiveDate(rootNode), lines), reversal);
+  }
+
+  private static LocalDate requiredEffectiveDate(ObjectNode rootNode) {
+    return LocalDate.parse(
+        requiredRealText(
+            rootNode,
+            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+            ScaffoldPlaceholders.EFFECTIVE_DATE,
+            null));
+  }
+
+  private static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode) {
+    return MonetaryAmount.of(
+        CliJsonMoneyParser.requiredPositiveMoney(rootNode, ProtocolPostEntryFields.TopLevel.AMOUNT)
+            .money());
   }
 
   private static PostingLineage readReversal(@Nullable JsonNode reversalNode) {
@@ -252,6 +334,30 @@ final class CliPostingRequestParser {
                       sourceDocumentObject,
                       ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
                       ScaffoldPlaceholders.SOURCE_DOCUMENT_TYPE,
+                      context + ".")),
+              LocalDate.parse(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE,
+                      ScaffoldPlaceholders.EFFECTIVE_DATE,
+                      context + ".")),
+              Instant.parse(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.CAPTURED_AT,
+                      ScaffoldPlaceholders.RECORDED_AT,
+                      context + ".")),
+              new StorageLocator(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.STORAGE_LOCATOR,
+                      ScaffoldPlaceholders.STORAGE_LOCATOR,
+                      context + ".")),
+              new ContentSha256(
+                  requiredRealText(
+                      sourceDocumentObject,
+                      ProtocolPostEntryFields.SourceDocument.CONTENT_SHA256,
+                      ScaffoldPlaceholders.CONTENT_SHA256,
                       context + "."))));
       index++;
     }
@@ -278,6 +384,28 @@ final class CliPostingRequestParser {
                       approvalObject,
                       ProtocolPostEntryFields.Approval.APPROVAL_TYPE,
                       ScaffoldPlaceholders.APPROVAL_TYPE,
+                      context + ".")),
+              new ActorId(
+                  requiredRealText(
+                      approvalObject,
+                      ProtocolPostEntryFields.Approval.APPROVER_ID,
+                      ScaffoldPlaceholders.APPROVER_ID,
+                      context + ".")),
+              parseWireValue(
+                  requiredText(approvalObject, ProtocolPostEntryFields.Approval.APPROVER_TYPE),
+                  context + "." + ProtocolPostEntryFields.Approval.APPROVER_TYPE,
+                  ActorType.wireValues(),
+                  ActorType::fromWireValue),
+              parseWireValue(
+                  requiredText(approvalObject, ProtocolPostEntryFields.Approval.DECISION),
+                  context + "." + ProtocolPostEntryFields.Approval.DECISION,
+                  ApprovalDecision.wireValues(),
+                  ApprovalDecision::fromWireValue),
+              Instant.parse(
+                  requiredRealText(
+                      approvalObject,
+                      ProtocolPostEntryFields.Approval.APPROVED_AT,
+                      ScaffoldPlaceholders.RECORDED_AT,
                       context + "."))));
       index++;
     }

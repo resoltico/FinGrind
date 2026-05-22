@@ -95,7 +95,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "human"
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(6, exitCode);
     String outputText = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(outputText.contains("Rejected"));
     assertTrue(
@@ -157,7 +157,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--replacement-book-key-file",
               tempDirectory.resolve("replacement.key").toString()
             });
-    assertEquals(4, exitCode);
+    assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
@@ -190,7 +190,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             });
-    assertEquals(4, exitCode);
+    assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
@@ -224,7 +224,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             });
-    assertEquals(4, exitCode);
+    assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
@@ -258,7 +258,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             });
-    assertEquals(4, exitCode);
+    assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(

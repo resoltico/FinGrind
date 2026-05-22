@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-06-15",
   "lines": [
@@ -23,7 +24,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-sqlite-bhd-idem-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-06-15",
+        "capturedAt": "2026-06-15T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-seed-sqlite-bhd-idem-1",
+        "contentSha256": "c3ec8d27638795096757656c03401044707ecf770f201a5eefbe7ad8bebc5ee9"
       }
     ],
     "approvals": []

@@ -74,7 +74,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                 new PostingFact(
                     baseFact.postingId(),
                     new JournalEntry(
-                        command.journalEntry().effectiveDate(),
+                        CliFuzzFixtures.journalEntry(command).effectiveDate(),
                         List.of(
                             new JournalLine(
                                 new AccountCode("1000"),
@@ -118,7 +118,13 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                         java.util.List.of(
                             new dev.erst.fingrind.core.SourceDocumentReference(
                                 new dev.erst.fingrind.core.SourceDocumentId("document-idem-2"),
-                                new dev.erst.fingrind.core.SourceDocumentType("invoice"))),
+                                new dev.erst.fingrind.core.SourceDocumentType("invoice"),
+                                java.time.LocalDate.parse("2026-04-07"),
+                                java.time.Instant.parse("2026-04-07T12:00:00Z"),
+                                new dev.erst.fingrind.core.StorageLocator(
+                                    "s3://evidence/document-idem-2.pdf"),
+                                new dev.erst.fingrind.core.ContentSha256(
+                                    "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"))),
                         java.util.List.of()),
                     baseFact.provenance()),
                 committed,

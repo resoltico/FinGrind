@@ -92,11 +92,11 @@ final class CliDiscoveryOutputRenderer {
     String usage =
         helpDescriptor.usage().isEmpty()
             ? "(none)"
-            : CliTextFormat.wrapLineBlock(helpDescriptor.usage(), HUMAN_WRAP_WIDTH);
+            : CliTextFormat.renderLiteralBlock(helpDescriptor.usage(), "");
     String options =
         command.options().isEmpty()
             ? "(none)"
-            : CliTextFormat.wrapLineBlock(command.options(), HUMAN_WRAP_WIDTH);
+            : CliTextFormat.renderLiteralBlock(command.options(), "");
     String requestGuidance = renderRequestGuidance(helpDescriptor, command.name());
     return CliTextFormat.renderTitledBlock(
         command.name().wireName(),
@@ -202,16 +202,10 @@ final class CliDiscoveryOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "Runtime distribution",
+                    "Active runtime",
                     environmentDescriptor.distribution().runtimeDistribution().wireValue()),
                 List.of(
-                    "Public CLI distribution",
-                    environmentDescriptor.distribution().publicCliDistribution().wireValue()),
-                List.of(
-                    "Source checkout runtime",
-                    environmentDescriptor.distribution().sourceCheckoutJava()),
-                List.of(
-                    "Supported bundle targets",
+                    "Published bundle targets",
                     CliTextFormat.joined(
                         environmentDescriptor
                             .distribution()
@@ -220,7 +214,7 @@ final class CliDiscoveryOutputRenderer {
                             .map(WireValue::wireValue)
                             .toList())),
                 List.of(
-                    "Unsupported bundle targets",
+                    "Excluded bundle targets",
                     CliTextFormat.joined(
                         environmentDescriptor
                             .distribution()
@@ -451,7 +445,7 @@ final class CliDiscoveryOutputRenderer {
     sections.add(
         commandExamples.isEmpty()
             ? "(none)"
-            : CliTextFormat.wrapLineBlock(commandExamples, HUMAN_WRAP_WIDTH));
+            : CliTextFormat.renderLiteralBlock(commandExamples, "$ "));
     if (!notes.isEmpty()) {
       sections.add(
           "Notes:"
@@ -568,27 +562,30 @@ final class CliDiscoveryOutputRenderer {
       String shortcutCommand,
       OperationId operationId,
       List<List<String>> acceptedValuesRows) {
-    List<String> paragraphs = new ArrayList<>();
-    paragraphs.add(CliTextFormat.wrap(introduction, HUMAN_WRAP_WIDTH));
-    paragraphs.add(
-        CliTextFormat.wrap(
-            "Generate a runnable sample document with: " + shortcutCommand, HUMAN_WRAP_WIDTH));
-    paragraphs.add(
-        CliTextFormat.wrap(
-            "Inspect the machine-readable contract with: "
-                + CliInvocationText.commandExample(OperationId.HELP)
-                + " "
-                + ProtocolCatalog.operationName(operationId)
-                + " --output json",
-            HUMAN_WRAP_WIDTH));
+    List<String> blocks = new ArrayList<>();
+    blocks.add(CliTextFormat.wrap(introduction, HUMAN_WRAP_WIDTH));
+    blocks.add(labeledLiteralBlock("Scaffold command", List.of(shortcutCommand), "$ "));
+    blocks.add(
+        labeledLiteralBlock(
+            "Contract lookup",
+            List.of(
+                CliInvocationText.commandExample(OperationId.HELP)
+                    + " "
+                    + ProtocolCatalog.operationName(operationId)
+                    + " --output json"),
+            "$ "));
     if (!acceptedValuesRows.isEmpty()) {
-      paragraphs.add(
+      blocks.add(
           "Accepted value vocabularies:"
               + System.lineSeparator()
               + CliTextFormat.renderKeyValueBlock(
                   List.copyOf(acceptedValuesRows), HUMAN_WRAP_WIDTH));
     }
-    return String.join(System.lineSeparator() + System.lineSeparator(), paragraphs);
+    return String.join(System.lineSeparator() + System.lineSeparator(), blocks);
+  }
+
+  private static String labeledLiteralBlock(String label, List<String> lines, String prefix) {
+    return label + System.lineSeparator() + CliTextFormat.renderLiteralBlock(lines, prefix);
   }
 
   private static List<List<String>> acceptedValueRows(

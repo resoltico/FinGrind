@@ -176,7 +176,7 @@ class StatementAndCloseContractTypesTest {
         new ChangesInEquityQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
 
     assertEquals(
-        Optional.of(LocalDate.parse("2026-04-30")), financialPositionQuery.effectiveDateTo());
+        Optional.of(LocalDate.parse("2026-04-30")), financialPositionQuery.effectiveDateAsOf());
     assertSame(financialPositionReport, reportedFinancialPosition.report());
     assertSame(financialPositionRejection, rejectedFinancialPosition.rejection());
     assertSame(incomeStatementReport, reportedIncomeStatement.report());

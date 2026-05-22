@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
@@ -48,10 +49,12 @@ class CliRejectionPayloadMapperTest {
         new BookAdministrationRejection.AccountTaxonomyConflict(
             new AccountCode("3200"),
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                 Optional.empty()),
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                 Optional.empty())),
@@ -108,14 +111,29 @@ class CliRejectionPayloadMapperTest {
         "same accountType as the child account",
         CliRejectionJsonModels.ParentAccountTypeConflictDetails.class);
     assertHint(
+        new BookAdministrationRejection.ParentAccountRoleConflict(
+            new AccountCode("4100"),
+            AccountRole.ORDINARY,
+            new AccountCode("4000"),
+            AccountRole.CONTRA),
+        "same accountRole as the child account",
+        CliRejectionJsonModels.ParentAccountRoleConflictDetails.class);
+    assertHint(
+        new BookAdministrationRejection.ParentAccountNotHeader(
+            new AccountCode("4100"), new AccountCode("4000"), AccountNodeKind.POSTABLE),
+        "declared as HEADER",
+        CliRejectionJsonModels.ParentAccountNodeKindDetails.class);
+    assertHint(
         new BookAdministrationRejection.ParentAccountTaxonomyConflict(
             new AccountCode("4100"),
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("4050")),
                 Optional.empty(),
                 Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
             new AccountCode("4000"),
             new AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.empty(),
                 Optional.of(ProfitAndLossLineClassification.COST_OF_SALES))),
@@ -143,10 +161,12 @@ class CliRejectionPayloadMapperTest {
             new BookAdministrationRejection.AccountTaxonomyConflict(
                 new AccountCode("3200"),
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                     Optional.empty()),
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                     Optional.empty())));
@@ -219,10 +239,12 @@ class CliRejectionPayloadMapperTest {
             new BookAdministrationRejection.AccountTaxonomyConflict(
                 new AccountCode("4100"),
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.of(new AccountCode("4000")),
                     Optional.empty(),
                     Optional.of(ProfitAndLossLineClassification.COST_OF_SALES)),
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.of(new AccountCode("4050")),
                     Optional.empty(),
                     Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE))));
@@ -308,7 +330,9 @@ class CliRejectionPayloadMapperTest {
             new PostingRejection.AccountStateViolations(
                 List.of(
                     new PostingRejection.UnknownAccount(new AccountCode("1000")),
-                    new PostingRejection.InactiveAccount(new AccountCode("2000")))));
+                    new PostingRejection.InactiveAccount(new AccountCode("2000")),
+                    new PostingRejection.NonPostableAccount(
+                        new AccountCode("3000"), AccountNodeKind.HEADER))));
     var duplicateIdempotencyKey =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-dup", new PostingRejection.DuplicateIdempotencyKey());
@@ -335,11 +359,14 @@ class CliRejectionPayloadMapperTest {
         assertInstanceOf(
             CliRejectionJsonModels.AccountStateViolationsDetails.class,
             accountStateViolations.details());
-    assertEquals(2, accountStateDetails.violations().size());
+    assertEquals(3, accountStateDetails.violations().size());
     assertEquals("unknown-account", accountStateDetails.violations().get(0).code());
     assertEquals("1000", accountStateDetails.violations().get(0).accountCode());
     assertEquals("inactive-account", accountStateDetails.violations().get(1).code());
     assertEquals("2000", accountStateDetails.violations().get(1).accountCode());
+    assertEquals("non-postable-account", accountStateDetails.violations().get(2).code());
+    assertEquals("3000", accountStateDetails.violations().get(2).accountCode());
+    assertEquals("HEADER", accountStateDetails.violations().get(2).accountNodeKind());
     assertTrue(
         Objects.requireNonNull(duplicateIdempotencyKey.hint())
             .contains("fresh provenance.idempotencyKey"));

@@ -2,10 +2,12 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.CASH_ACCOUNT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EFFECTIVE_DATE;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_CREDIT_BALANCE;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_DEBIT_BALANCE;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.EUR_NET_ZERO;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.FIXED_INSTANT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REGISTERED_CASH_ACCOUNT;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REGISTERED_REVENUE_ACCOUNT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCOUNT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.currencyBalance;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
@@ -30,12 +32,16 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -66,6 +72,8 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -131,6 +139,40 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                 List.of(postingFact),
                 20,
                 Optional.of(PostingHistoryCursor.fromPosting(postingFact)))));
+  }
+
+  @Test
+  void toPublishedTrialBalance_aggregatesCurrencyTotalsAndBalancedFlags() {
+    CurrencyBalance usdDebitBalance =
+        CurrencyBalance.ofTotals(Money.parse("USD", "5.00"), Money.parse("USD", "0"));
+    TrialBalanceView trialBalanceView =
+        new TrialBalanceView(
+            bookIdentity(),
+            Optional.of(EFFECTIVE_DATE),
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new TrialBalanceRowView(REGISTERED_CASH_ACCOUNT, EUR_DEBIT_BALANCE),
+                new TrialBalanceRowView(REGISTERED_REVENUE_ACCOUNT, EUR_CREDIT_BALANCE),
+                new TrialBalanceRowView(REGISTERED_CASH_ACCOUNT, usdDebitBalance)),
+            List.of(new TrialBalanceRowView(REGISTERED_CASH_ACCOUNT, EUR_DEBIT_BALANCE)));
+
+    assertEquals(
+        new TrialBalanceReport(
+            bookIdentity(),
+            Optional.of(EFFECTIVE_DATE),
+            EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
+            PostingCoverage.ALL_POSTING_KINDS,
+            List.of(
+                new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
+                new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE),
+                new TrialBalanceRow(CASH_ACCOUNT, usdDebitBalance)),
+            List.of(EUR_NET_ZERO, usdDebitBalance),
+            false,
+            List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)),
+            List.of(EUR_DEBIT_BALANCE),
+            false),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(trialBalanceView));
   }
 
   @Test

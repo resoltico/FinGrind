@@ -31,16 +31,22 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   }
 
   record TrialBalancePayload(
-      @Nullable String effectiveDateTo,
+      @Nullable String effectiveDateAsOf,
       ReportContextPayload context,
       List<TrialBalanceRowPayload> rows,
-      List<TrialBalanceRowPayload> comparativeRows)
+      List<BalanceBucketPayload> totals,
+      boolean balanced,
+      List<TrialBalanceRowPayload> comparativeRows,
+      List<BalanceBucketPayload> comparativeTotals,
+      boolean comparativeBalanced)
       implements CliSuccessPayload {
     public TrialBalancePayload {
-      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      effectiveDateAsOf = requireOptionalText(effectiveDateAsOf, "effectiveDateAsOf");
       Objects.requireNonNull(context, "context");
       rows = copyList(rows, "rows");
+      totals = copyList(totals, "totals");
       comparativeRows = copyList(comparativeRows, "comparativeRows");
+      comparativeTotals = copyList(comparativeTotals, "comparativeTotals");
     }
   }
 
@@ -181,13 +187,13 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   }
 
   record FinancialPositionPayload(
-      @Nullable String effectiveDateTo,
+      @Nullable String effectiveDateAsOf,
       ReportContextPayload context,
       List<FinancialPositionSectionPayload> sections,
       List<FinancialPositionSectionPayload> comparativeSections)
       implements CliSuccessPayload {
     public FinancialPositionPayload {
-      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      effectiveDateAsOf = requireOptionalText(effectiveDateAsOf, "effectiveDateAsOf");
       Objects.requireNonNull(context, "context");
       sections = copyList(sections, "sections");
       comparativeSections = copyList(comparativeSections, "comparativeSections");

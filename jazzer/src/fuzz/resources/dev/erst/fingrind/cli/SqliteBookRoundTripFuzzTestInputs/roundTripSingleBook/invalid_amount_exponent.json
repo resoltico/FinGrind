@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-13",
   "lines": [
@@ -23,7 +24,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-sqlite-invalid-2",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-13",
+        "capturedAt": "2026-04-13T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-idem-sqlite-invalid-2",
+        "contentSha256": "d51efa9f66e867bb5bd3ebd6beaab50a0530b675ea6f6bddd666f784791d2fbf"
       }
     ],
     "approvals": []

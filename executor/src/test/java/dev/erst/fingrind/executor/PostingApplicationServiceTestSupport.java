@@ -7,7 +7,11 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdent
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -32,7 +36,6 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -84,8 +87,16 @@ final class PostingApplicationServiceTestSupport {
         bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
   }
 
-  static PostingCommand command(String idempotencyKey) {
-    return command(idempotencyKey, Optional.empty(), Optional.empty(), journalEntry());
+  static PostEntryCommand command(String idempotencyKey) {
+    return new PostEntryCommand(
+        new BookkeepingEntry.CashRevenue(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+        accountingEvidence(idempotencyKey),
+        requestProvenance(idempotencyKey),
+        SourceChannel.CLI);
   }
 
   static PostEntryResult.PreflightRejected preflightRejected(
@@ -98,22 +109,21 @@ final class PostingApplicationServiceTestSupport {
     return new PostEntryResult.CommitRejected(idempotencyKey, rejection);
   }
 
-  static PostingCommand command(
+  static PostEntryCommand command(
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason) {
     return command(idempotencyKey, reversalReference, reason, journalEntry());
   }
 
-  static PostingCommand command(
+  static PostEntryCommand command(
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason,
       JournalEntry journalEntry) {
-    return new PostingCommand(
-        PostingKind.STANDARD,
-        journalEntry,
-        postingLineage(reversalReference, reason),
+    return new PostEntryCommand(
+        new BookkeepingEntry.ManualAdjustment(
+            PostingKind.STANDARD, journalEntry, postingLineage(reversalReference, reason)),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
@@ -148,12 +158,12 @@ final class PostingApplicationServiceTestSupport {
         Optional.of(new CorrelationId("corr-1")));
   }
 
-  static PostingLineageModel postingLineage(
+  static PostingLineage postingLineage(
       Optional<ReversalReference> reversalReference, Optional<ReversalReason> reason) {
     if (reversalReference.isEmpty()) {
-      return PostingLineageModel.direct();
+      return PostingLineage.direct();
     }
-    return PostingLineageModel.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
+    return PostingLineage.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
   }
 
   static JournalEntry journalEntry() {

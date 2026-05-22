@@ -35,26 +35,35 @@ final class SqlitePostingSql {
 
   static final int COL_SOURCE_DOCUMENT_ID = 0;
   static final int COL_SOURCE_DOCUMENT_TYPE = 1;
+  static final int COL_SOURCE_DOCUMENT_DATE = 2;
+  static final int COL_SOURCE_DOCUMENT_CAPTURED_AT = 3;
+  static final int COL_SOURCE_DOCUMENT_STORAGE_LOCATOR = 4;
+  static final int COL_SOURCE_DOCUMENT_CONTENT_SHA256 = 5;
 
   static final int COL_APPROVAL_ID = 0;
   static final int COL_APPROVAL_TYPE = 1;
+  static final int COL_APPROVER_ID = 2;
+  static final int COL_APPROVER_TYPE = 3;
+  static final int COL_APPROVAL_DECISION = 4;
+  static final int COL_APPROVED_AT = 5;
 
   static final int COL_ACCOUNT_CODE = 0;
   static final int COL_ACCOUNT_NAME = 1;
   static final int COL_ACCOUNT_TYPE = 2;
   static final int COL_ACCOUNT_ROLE = 3;
-  static final int COL_ACCOUNT_PARENT_ACCOUNT_CODE = 4;
-  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION = 5;
-  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION = 6;
-  static final int COL_ACCOUNT_ACTIVE = 7;
-  static final int COL_ACCOUNT_DECLARED_AT = 8;
-  static final int COL_REPORT_POSTING_ID = 9;
-  static final int COL_REPORT_ENTRY_SIDE = 10;
-  static final int COL_REPORT_CURRENCY_CODE = 11;
-  static final int COL_REPORT_AMOUNT_MINOR = 12;
-  static final int COL_TOTAL_CURRENCY_CODE = 9;
-  static final int COL_TOTAL_DEBIT_MINOR = 10;
-  static final int COL_TOTAL_CREDIT_MINOR = 11;
+  static final int COL_ACCOUNT_NODE_KIND = 4;
+  static final int COL_ACCOUNT_PARENT_ACCOUNT_CODE = 5;
+  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION = 6;
+  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION = 7;
+  static final int COL_ACCOUNT_ACTIVE = 8;
+  static final int COL_ACCOUNT_DECLARED_AT = 9;
+  static final int COL_REPORT_POSTING_ID = 10;
+  static final int COL_REPORT_ENTRY_SIDE = 11;
+  static final int COL_REPORT_CURRENCY_CODE = 12;
+  static final int COL_REPORT_AMOUNT_MINOR = 13;
+  static final int COL_TOTAL_CURRENCY_CODE = 10;
+  static final int COL_TOTAL_DEBIT_MINOR = 11;
+  static final int COL_TOTAL_CREDIT_MINOR = 12;
 
   private static final String BASE_POSTING_SELECT =
       """
@@ -82,6 +91,7 @@ final class SqlitePostingSql {
           account_name,
           account_type,
           account_role,
+          account_node_kind,
           parent_account_code,
           financial_position_line_classification,
           profit_and_loss_line_classification,
@@ -134,7 +144,11 @@ final class SqlitePostingSql {
 
   static final String FIND_BOOK_IDENTITY_CORE =
       """
-      select entity_name, functional_currency_code, fiscal_year_start
+      select
+          entity_name,
+          functional_currency_code,
+          fiscal_year_start_month,
+          fiscal_year_start_day
       from book_identity
       where singleton_id = 1
       limit 1
@@ -145,7 +159,6 @@ final class SqlitePostingSql {
       select
           entity_form,
           owner_model,
-          reporting_obligation_status,
           business_activity_tags
       from entity_profile
       where singleton_id = 1
@@ -154,7 +167,7 @@ final class SqlitePostingSql {
 
   static final String FIND_BOOK_POLICY =
       """
-      select accounting_basis
+      select policy_profile
       from book_policy
       where singleton_id = 1
       limit 1
@@ -199,7 +212,13 @@ final class SqlitePostingSql {
 
   static final String LOAD_SOURCE_DOCUMENTS =
       """
-      select source_document_id, source_document_type
+      select
+          source_document_id,
+          source_document_type,
+          document_date,
+          captured_at,
+          storage_locator,
+          content_sha256
       from posting_source_document
       where posting_id = ?
       order by source_document_order
@@ -207,7 +226,13 @@ final class SqlitePostingSql {
 
   static final String LOAD_APPROVALS =
       """
-      select approval_id, approval_type
+      select
+          approval_id,
+          approval_type,
+          approver_id,
+          approver_type,
+          decision,
+          approved_at
       from posting_approval
       where posting_id = ?
       order by approval_order
@@ -231,6 +256,7 @@ final class SqlitePostingSql {
           account.account_name,
           account.account_type,
           account.account_role,
+          account.account_node_kind,
           account.parent_account_code,
           account.financial_position_line_classification,
           account.profit_and_loss_line_classification,
@@ -282,8 +308,12 @@ final class SqlitePostingSql {
           posting_id,
           source_document_order,
           source_document_id,
-          source_document_type
-      ) values (?, ?, ?, ?)
+          source_document_type,
+          document_date,
+          captured_at,
+          storage_locator,
+          content_sha256
+      ) values (?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_POSTING_APPROVAL =
@@ -292,8 +322,12 @@ final class SqlitePostingSql {
           posting_id,
           approval_order,
           approval_id,
-          approval_type
-      ) values (?, ?, ?, ?)
+          approval_type,
+          approver_id,
+          approver_type,
+          decision,
+          approved_at
+      ) values (?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_AUDIT_EVENT =
@@ -565,8 +599,9 @@ final class SqlitePostingSql {
           singleton_id,
           entity_name,
           functional_currency_code,
-          fiscal_year_start
-      ) values (1, ?, ?, ?)
+          fiscal_year_start_month,
+          fiscal_year_start_day
+      ) values (1, ?, ?, ?, ?)
       """;
 
   static final String INSERT_ENTITY_PROFILE =
@@ -575,16 +610,15 @@ final class SqlitePostingSql {
           singleton_id,
           entity_form,
           owner_model,
-          reporting_obligation_status,
           business_activity_tags
-      ) values (1, ?, ?, ?, ?)
+      ) values (1, ?, ?, ?)
       """;
 
   static final String INSERT_BOOK_POLICY =
       """
       insert into book_policy (
           singleton_id,
-          accounting_basis
+          policy_profile
       ) values (1, ?)
       """;
 
@@ -595,12 +629,13 @@ final class SqlitePostingSql {
           account_name,
           account_type,
           account_role,
+          account_node_kind,
           parent_account_code,
           financial_position_line_classification,
           profit_and_loss_line_classification,
           active,
           declared_at
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
           active = excluded.active,
@@ -684,7 +719,7 @@ final class SqlitePostingSql {
     if (query.postingCoverage().isNonClosingOnly()) {
       sql.append(" and posting_fact.posting_kind <> 'PERIOD_CLOSE'");
     }
-    if (query.effectiveDateTo().isPresent()) {
+    if (query.effectiveDateAsOf().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
     }
     sql.append(
@@ -695,7 +730,7 @@ final class SqlitePostingSql {
   static String loadAccountTotals(TrialBalanceCriteria query) {
     return loadAccountTotals(
         query
-            .effectiveDateTo()
+            .effectiveDateAsOf()
             .map(EffectiveDateRange::to)
             .orElseGet(EffectiveDateRange::unbounded),
         query.postingCoverage());
@@ -712,6 +747,7 @@ final class SqlitePostingSql {
                     account.account_name,
                     account.account_type,
                     account.account_role,
+                    account.account_node_kind,
                     account.parent_account_code,
                     account.financial_position_line_classification,
                     account.profit_and_loss_line_classification,
@@ -741,6 +777,7 @@ final class SqlitePostingSql {
              account.account_name,
              account.account_type,
              account.account_role,
+             account.account_node_kind,
              account.parent_account_code,
              account.financial_position_line_classification,
              account.profit_and_loss_line_classification,

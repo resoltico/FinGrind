@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
@@ -406,7 +406,7 @@ public sealed interface AccountBalanceResult
 These types own the book-wide trial-balance report surface.
 
 ```java
-public record TrialBalanceQuery(Optional<LocalDate> effectiveDateTo)
+public record TrialBalanceQuery(Optional<LocalDate> effectiveDateAsOf)
 public record TrialBalanceRow(DeclaredAccount account, CurrencyBalance balance)
 public record TrialBalanceReport(...)
 public sealed interface TrialBalanceResult
@@ -460,7 +460,7 @@ public sealed interface PeriodSummaryResult
 These types own the public statement-of-financial-position surface.
 
 ```java
-public record FinancialPositionQuery(Optional<LocalDate> effectiveDateTo)
+public record FinancialPositionQuery(Optional<LocalDate> effectiveDateAsOf)
 public record FinancialPositionRow(...)
 public record FinancialPositionSection(...)
 public record FinancialPositionReport(...)
@@ -516,7 +516,7 @@ These executor-owned local bookkeeping types carry the as-of financial-position 
 projected into public DTOs.
 
 ```java
-public record FinancialPositionCriteria(Optional<LocalDate> effectiveDateTo)
+public record FinancialPositionCriteria(Optional<LocalDate> effectiveDateAsOf)
 public record FinancialPositionRowView(...)
 public record FinancialPositionSectionView(...)
 public record FinancialPositionView(...)

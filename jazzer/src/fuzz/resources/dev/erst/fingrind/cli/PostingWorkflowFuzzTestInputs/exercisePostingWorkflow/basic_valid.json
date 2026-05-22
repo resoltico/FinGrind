@@ -1,4 +1,5 @@
 {
+  "entryKind": "MANUAL_ADJUSTMENT",
   "postingKind": "STANDARD",
   "effectiveDate": "2026-04-10",
   "lines": [
@@ -39,7 +40,11 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-posting-4",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-10",
+        "capturedAt": "2026-04-10T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-idem-posting-4",
+        "contentSha256": "a6947974a6d73d7c77576c5cc21422c8d90ae590a6a99dbc582495bec82b526f"
       }
     ],
     "approvals": []

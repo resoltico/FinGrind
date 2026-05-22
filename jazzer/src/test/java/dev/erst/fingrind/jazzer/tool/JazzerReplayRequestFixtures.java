@@ -1,74 +1,42 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import dev.erst.fingrind.cli.CliFuzzHarnessTestSupport;
+
 final class JazzerReplayRequestFixtures {
   private JazzerReplayRequestFixtures() {}
 
   static String basicValidRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-1",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1"
-          }
-        }
-        """;
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+        new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+            "2026-04-07",
+            "1000",
+            "2000",
+            "EUR",
+            "1000",
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-1",
+                "invoice",
+                "2026-04-07",
+                "actor-1",
+                "AGENT",
+                "command-1",
+                "idem-1",
+                "cause-1",
+                null)));
   }
 
   static String invalidForbiddenRecordedAtRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s,
           "provenance": {
             "actorId": "actor-4",
             "actorType": "AGENT",
@@ -78,93 +46,66 @@ final class JazzerReplayRequestFixtures {
             "recordedAt": "2026-04-07T10:15:30Z"
           }
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-4", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 
   static String invalidMissingProvenanceRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ]
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson(
+                    "document-idem-missing-provenance", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 
   static String invalidExponentAmountRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1e1000000100"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "100"
-              }
-            }
-          ],
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1"
-          }
-        }
-        """;
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+        new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+            "2026-04-07",
+            "1000",
+            "2000",
+            "EUR",
+            "1e1000000100",
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-1",
+                "invoice",
+                "2026-04-07",
+                "actor-1",
+                "AGENT",
+                "command-1",
+                "idem-1",
+                "cause-1",
+                null)));
   }
 
   static String invalidDuplicateIdempotencyKeyRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s,
           "provenance": {
             "actorId": "actor-7",
             "actorType": "AGENT",
@@ -174,32 +115,25 @@ final class JazzerReplayRequestFixtures {
             "causationId": "cause-7"
           }
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 
   static String invalidUnexpectedTopLevelFieldRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s,
           "provenance": {
             "actorId": "actor-8",
             "actorType": "AGENT",
@@ -209,32 +143,25 @@ final class JazzerReplayRequestFixtures {
           },
           "unexpectedField": "should-be-rejected"
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-8", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 
   static String invalidForbiddenSourceChannelRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s,
           "provenance": {
             "actorId": "actor-7",
             "actorType": "AGENT",
@@ -244,144 +171,130 @@ final class JazzerReplayRequestFixtures {
             "sourceChannel": null
           }
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 
   static String invalidBlankActorRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-3",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "   ",
-            "actorType": "AGENT",
-            "commandId": "command-3",
-            "idempotencyKey": "idem-3",
-            "causationId": "cause-3"
-          }
-        }
-        """;
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+        new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+            "2026-04-07",
+            "1000",
+            "2000",
+            "EUR",
+            "1000",
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-3",
+                "invoice",
+                "2026-04-07",
+                "   ",
+                "AGENT",
+                "command-3",
+                "idem-3",
+                "cause-3",
+                null)));
   }
 
   static String reversalTargetMissingRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-08",
-          "lines": [
-            {
-              "accountCode": "5000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            },
-            {
-              "accountCode": "6000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "GBP",
-                "minorUnits": "12345"
-              }
-            }
-          ],
-          "reversal": {
-            "priorPostingId": "posting-missing",
-            "reason": "operator reversal"
-          },
-          "evidence": {
-            "sourceDocuments": [
+    return CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
+        new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+            "2026-04-08",
+            "STANDARD",
+            """
+            [
               {
-                "sourceDocumentId": "document-idem-5",
-                "sourceDocumentType": "credit-note"
+                "accountCode": "5000",
+                "side": "CREDIT",
+                "amount": {
+                  "currencyCode": "GBP",
+                  "minorUnits": "12345"
+                }
+              },
+              {
+                "accountCode": "6000",
+                "side": "DEBIT",
+                "amount": {
+                  "currencyCode": "GBP",
+                  "minorUnits": "12345"
+                }
               }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-5",
-            "actorType": "HUMAN",
-            "commandId": "command-5",
-            "idempotencyKey": "idem-5",
-            "causationId": "cause-5"
-          }
-        }
-        """;
+            ]
+            """,
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-5",
+                "credit-note",
+                "2026-04-08",
+                "actor-5",
+                "HUMAN",
+                "command-5",
+                "idem-5",
+                "cause-5",
+                null),
+            "posting-missing",
+            "operator reversal"));
   }
 
   static String missingReversalReasonRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-08",
-          "lines": [
-            {
-              "accountCode": "3000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "USD",
-                "minorUnits": "9995"
+    return CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
+        new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+            "2026-04-08",
+            "STANDARD",
+            """
+            [
+              {
+                "accountCode": "3000",
+                "side": "CREDIT",
+                "amount": {
+                  "currencyCode": "USD",
+                  "minorUnits": "9995"
+                }
+              },
+              {
+                "accountCode": "4000",
+                "side": "DEBIT",
+                "amount": {
+                  "currencyCode": "USD",
+                  "minorUnits": "9995"
+                }
               }
-            },
-            {
-              "accountCode": "4000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "USD",
-                "minorUnits": "9995"
-              }
-            }
-          ],
-          "reversal": {
-            "priorPostingId": "posting-missing"
-          },
-          "provenance": {
-            "actorId": "actor-6",
-            "actorType": "SYSTEM",
-            "commandId": "command-6",
-            "idempotencyKey": "idem-6",
-            "causationId": "cause-6"
-          }
-        }
-        """;
+            ]
+            """,
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-6",
+                "credit-note",
+                "2026-04-08",
+                "actor-6",
+                "SYSTEM",
+                "command-6",
+                "idem-6",
+                "cause-6",
+                null),
+            "posting-missing",
+            null));
   }
 
   static String invalidWrongTypeRequest() {
     return """
         {
-          "postingKind": "STANDARD",
+          "entryKind": "CASH_REVENUE",
           "effectiveDate": 1,
-          "lines": [],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": %s,
           "provenance": {}
         }
-        """;
+        """
+        .formatted(
+            CliFuzzHarnessTestSupport.evidenceJson(
+                    "document-invalid-wrong-type", "invoice", "2026-04-07")
+                .indent(10)
+                .stripLeading());
   }
 }

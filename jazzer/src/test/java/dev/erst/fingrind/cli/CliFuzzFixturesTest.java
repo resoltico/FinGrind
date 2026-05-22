@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
@@ -16,6 +19,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
@@ -41,6 +45,7 @@ import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,8 +60,7 @@ class CliFuzzFixturesTest {
 
     assertEquals(
         "2026-04-07",
-        CliFuzzFixtures.readPostEntryCommand(requestBytes)
-            .journalEntry()
+        CliFuzzFixtures.journalEntry(CliFuzzFixtures.readPostEntryCommand(requestBytes))
             .effectiveDate()
             .toString());
     assertEquals(
@@ -73,6 +77,97 @@ class CliFuzzFixturesTest {
         NullPointerException.class, () -> CliFuzzFixtures.readPostEntryCommand(nullValue()));
     assertThrows(NullPointerException.class, () -> CliFuzzFixtures.readLedgerPlan(nullValue()));
     assertThrows(NullPointerException.class, () -> CliFuzzFixtures.postingIdGenerator(nullValue()));
+  }
+
+  @Test
+  void bookkeeping_helpers_follow_typed_and_manual_entry_currency_shapes() {
+    var typedCommand =
+        CliFuzzFixtures.readPostEntryCommand(CliFuzzHarnessTestSupport.validJpyRequestBytes());
+    var manualCommand =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzHarnessTestSupport.manualAdjustmentRequestJson(
+                    new CliFuzzHarnessTestSupport.ManualAdjustmentRequestInput(
+                        "2026-04-08",
+                        "STANDARD",
+                        """
+                        [
+                          {
+                            "accountCode": "5000",
+                            "side": "CREDIT",
+                            "amount": {
+                              "currencyCode": "GBP",
+                              "minorUnits": "12345"
+                            }
+                          },
+                          {
+                            "accountCode": "6000",
+                            "side": "DEBIT",
+                            "amount": {
+                              "currencyCode": "GBP",
+                              "minorUnits": "12345"
+                            }
+                          }
+                        ]
+                        """,
+                        new CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-manual-1",
+                            "credit-note",
+                            "2026-04-08",
+                            "actor-manual-1",
+                            "HUMAN",
+                            "command-manual-1",
+                            "idem-manual-1",
+                            "cause-manual-1",
+                            null),
+                        null,
+                        null))
+                .getBytes(UTF_8));
+    PostEntryCommand cashExpenseCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.CashExpense(
+                LocalDate.parse("2026-04-09"),
+                new AccountCode("6100"),
+                new AccountCode("1100"),
+                new MonetaryAmount("CHF", "42")));
+    PostEntryCommand ownerContributionCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.OwnerContribution(
+                LocalDate.parse("2026-04-10"),
+                new AccountCode("1100"),
+                new AccountCode("3100"),
+                new MonetaryAmount("CAD", "750")));
+    PostEntryCommand ownerDrawCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.OwnerDraw(
+                LocalDate.parse("2026-04-11"),
+                new AccountCode("3100"),
+                new AccountCode("1100"),
+                new MonetaryAmount("USD", "55")));
+
+    assertEquals("JPY", CliFuzzFixtures.journalEntry(typedCommand).currencyUnit().code());
+    assertEquals(
+        "JPY",
+        CliFuzzFixtures.bookkeepingCommand(typedCommand).journalEntry().currencyUnit().code());
+    assertEquals("GBP", CliFuzzFixtures.journalEntry(manualCommand).currencyUnit().code());
+    assertEquals(
+        "CHF",
+        CliFuzzFixtures.bookkeepingCommand(cashExpenseCommand)
+            .journalEntry()
+            .currencyUnit()
+            .code());
+    assertEquals(
+        "CAD",
+        CliFuzzFixtures.bookkeepingCommand(ownerContributionCommand)
+            .journalEntry()
+            .currencyUnit()
+            .code());
+    assertEquals(
+        "USD",
+        CliFuzzFixtures.bookkeepingCommand(ownerDrawCommand).journalEntry().currencyUnit().code());
+    assertEquals(PostingKind.STANDARD, CliFuzzFixtures.postingKind(manualCommand));
   }
 
   @Test
@@ -383,26 +478,31 @@ class CliFuzzFixturesTest {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
@@ -435,11 +535,10 @@ class CliFuzzFixturesTest {
           "entityName": "Acme Studio",
           "entityForm": "COMPANY",
           "ownerModel": "MULTI_OWNER",
-          "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-          "businessActivityTags": ["translation-services"],
+                    "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01",
-          "accountingBasis": "ACCRUAL"
+          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
         }
         """
         .formatted(functionalCurrency)
@@ -450,5 +549,10 @@ class CliFuzzFixturesTest {
   @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})
   private static <T> T nullValue() {
     return null;
+  }
+
+  private static PostEntryCommand withEntry(PostEntryCommand template, BookkeepingEntry entry) {
+    return new PostEntryCommand(
+        entry, template.evidence(), template.requestProvenance(), template.sourceChannel());
   }
 }

@@ -73,7 +73,8 @@ final class PostingWorkflowFuzzAssertions {
         CliFuzzFixtures.commit(applicationService, command),
         PostingRejection.BookNotInitialized.class);
 
-    CliFuzzFixtures.openBook(administrationService, command.journalEntry().currencyUnit());
+    CliFuzzFixtures.openBook(
+        administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
         CliFuzzFixtures.preflight(applicationService, command),

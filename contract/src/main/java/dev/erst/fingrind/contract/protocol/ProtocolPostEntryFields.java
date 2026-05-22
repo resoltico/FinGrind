@@ -9,8 +9,14 @@ public final class ProtocolPostEntryFields {
   /** Returns top-level posting request fields in stable wire order. */
   public static List<String> topLevelFields() {
     return List.of(
-        TopLevel.POSTING_KIND,
+        TopLevel.ENTRY_KIND,
         TopLevel.EFFECTIVE_DATE,
+        TopLevel.CASH_ACCOUNT_CODE,
+        TopLevel.REVENUE_ACCOUNT_CODE,
+        TopLevel.EXPENSE_ACCOUNT_CODE,
+        TopLevel.EQUITY_ACCOUNT_CODE,
+        TopLevel.AMOUNT,
+        TopLevel.POSTING_KIND,
         TopLevel.LINES,
         TopLevel.EVIDENCE,
         TopLevel.PROVENANCE,
@@ -40,12 +46,24 @@ public final class ProtocolPostEntryFields {
 
   /** Returns source-document evidence fields in stable wire order. */
   public static List<String> sourceDocumentFields() {
-    return List.of(SourceDocument.SOURCE_DOCUMENT_ID, SourceDocument.SOURCE_DOCUMENT_TYPE);
+    return List.of(
+        SourceDocument.SOURCE_DOCUMENT_ID,
+        SourceDocument.SOURCE_DOCUMENT_TYPE,
+        SourceDocument.DOCUMENT_DATE,
+        SourceDocument.CAPTURED_AT,
+        SourceDocument.STORAGE_LOCATOR,
+        SourceDocument.CONTENT_SHA256);
   }
 
   /** Returns approval evidence fields in stable wire order. */
   public static List<String> approvalFields() {
-    return List.of(Approval.APPROVAL_ID, Approval.APPROVAL_TYPE);
+    return List.of(
+        Approval.APPROVAL_ID,
+        Approval.APPROVAL_TYPE,
+        Approval.APPROVER_ID,
+        Approval.APPROVER_TYPE,
+        Approval.DECISION,
+        Approval.APPROVED_AT);
   }
 
   /** Returns reversal request fields in stable wire order. */
@@ -55,8 +73,14 @@ public final class ProtocolPostEntryFields {
 
   /** Top-level posting request fields. */
   public static final class TopLevel {
+    public static final String ENTRY_KIND = "entryKind";
     public static final String POSTING_KIND = "postingKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
+    public static final String CASH_ACCOUNT_CODE = "cashAccountCode";
+    public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";
+    public static final String EXPENSE_ACCOUNT_CODE = "expenseAccountCode";
+    public static final String EQUITY_ACCOUNT_CODE = "equityAccountCode";
+    public static final String AMOUNT = "amount";
     public static final String LINES = "lines";
     public static final String EVIDENCE = "evidence";
     public static final String PROVENANCE = "provenance";
@@ -102,6 +126,10 @@ public final class ProtocolPostEntryFields {
   public static final class SourceDocument {
     public static final String SOURCE_DOCUMENT_ID = "sourceDocumentId";
     public static final String SOURCE_DOCUMENT_TYPE = "sourceDocumentType";
+    public static final String DOCUMENT_DATE = "documentDate";
+    public static final String CAPTURED_AT = "capturedAt";
+    public static final String STORAGE_LOCATOR = "storageLocator";
+    public static final String CONTENT_SHA256 = "contentSha256";
 
     private SourceDocument() {}
   }
@@ -110,6 +138,10 @@ public final class ProtocolPostEntryFields {
   public static final class Approval {
     public static final String APPROVAL_ID = "approvalId";
     public static final String APPROVAL_TYPE = "approvalType";
+    public static final String APPROVER_ID = "approverId";
+    public static final String APPROVER_TYPE = "approverType";
+    public static final String DECISION = "decision";
+    public static final String APPROVED_AT = "approvedAt";
 
     private Approval() {}
   }

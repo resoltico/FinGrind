@@ -15,14 +15,17 @@ final class ProtocolDiscoveryOperations {
             List.of("--help", "-h"),
             List.of(
                 "[<command>]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN)),
+                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print command usage, examples, and workflow guidance.",
             List.of(
                 ProtocolExampleStep.command("fingrind help post-entry"),
                 ProtocolExampleStep.command("fingrind post-entry --help"),
-                ProtocolExampleStep.command("fingrind help post-entry --output json"))),
+                ProtocolExampleStep.command("fingrind help post-entry --output json"),
+                ProtocolExampleStep.command(
+                    "fingrind help post-entry --output json --detail full"))),
         ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,
@@ -40,11 +43,14 @@ final class ProtocolDiscoveryOperations {
             "Capabilities",
             List.of(),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN)),
+                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
-            List.of()),
+            List.of(
+                ProtocolExampleStep.command("fingrind capabilities --output json"),
+                ProtocolExampleStep.command("fingrind capabilities --output json --detail full"))),
         ProtocolOperationDefinitions.operation(
             OperationId.ENVIRONMENT,
             OperationCategory.DISCOVERY,

@@ -195,7 +195,11 @@ final class CliQueryOutputFormatter {
                 sourceDocument ->
                     new SourceDocumentCsvValue(
                         sourceDocument.sourceDocumentId().value(),
-                        sourceDocument.sourceDocumentType().value()))
+                        sourceDocument.sourceDocumentType().value(),
+                        sourceDocument.documentDate().toString(),
+                        sourceDocument.capturedAt().toString(),
+                        sourceDocument.storageLocator().value(),
+                        sourceDocument.contentSha256().value()))
             .toList());
   }
 
@@ -205,7 +209,12 @@ final class CliQueryOutputFormatter {
             .map(
                 approval ->
                     new ApprovalCsvValue(
-                        approval.approvalId().value(), approval.approvalType().value()))
+                        approval.approvalId().value(),
+                        approval.approvalType().value(),
+                        approval.approverId().value(),
+                        approval.approverType().wireValue(),
+                        approval.decision().wireValue(),
+                        approval.approvedAt().toString()))
             .toList());
   }
 
@@ -236,20 +245,44 @@ final class CliQueryOutputFormatter {
   private static String sourceDocumentLabel(SourceDocumentReference sourceDocument) {
     return sourceDocument.sourceDocumentType().value()
         + " "
-        + sourceDocument.sourceDocumentId().value();
+        + sourceDocument.sourceDocumentId().value()
+        + " on "
+        + sourceDocument.documentDate()
+        + " at "
+        + sourceDocument.storageLocator().value();
   }
 
   private static String approvalLabel(ApprovalReference approval) {
-    return approval.approvalType().value() + " " + approval.approvalId().value();
+    return approval.approvalType().value()
+        + " "
+        + approval.approvalId().value()
+        + " by "
+        + approval.approverType().wireValue()
+        + " "
+        + approval.approverId().value()
+        + " "
+        + approval.decision().wireValue();
   }
 
   private static String evidenceJson(List<?> values) {
     return CliWireJson.jsonText(values);
   }
 
-  private record SourceDocumentCsvValue(String sourceDocumentId, String sourceDocumentType) {}
+  private record SourceDocumentCsvValue(
+      String sourceDocumentId,
+      String sourceDocumentType,
+      String documentDate,
+      String capturedAt,
+      String storageLocator,
+      String contentSha256) {}
 
-  private record ApprovalCsvValue(String approvalId, String approvalType) {}
+  private record ApprovalCsvValue(
+      String approvalId,
+      String approvalType,
+      String approverId,
+      String approverType,
+      String decision,
+      String approvedAt) {}
 
   static String displayBalance(CurrencyBalance balance) {
     return balance.netAmount().currencyUnit().code()

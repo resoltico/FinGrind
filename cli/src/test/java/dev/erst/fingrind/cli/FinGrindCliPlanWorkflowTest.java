@@ -233,28 +233,23 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    JsonNode facts =
+    JsonNode data =
         new ObjectMapper()
             .readTree(outputStream.toByteArray())
             .path("payload")
             .path("journal")
             .path("steps")
             .get(0)
-            .path("facts");
-    assertEquals("count", facts.get(0).path("name").stringValue());
-    assertEquals(1, facts.get(0).path("value").asInt());
-    assertEquals("pageLimit", facts.get(1).path("name").stringValue());
-    assertEquals(1, facts.get(1).path("value").asInt());
-    assertEquals("nextCursor", facts.get(2).path("name").stringValue());
-    assertTrue(facts.get(2).path("value").stringValue().length() > 4);
-    assertEquals("hasMore", facts.get(3).path("name").stringValue());
-    assertTrue(facts.get(3).path("value").asBoolean());
-    assertEquals("account", facts.get(4).path("name").stringValue());
-    assertEquals("1000", facts.get(4).path("facts").get(0).path("value").stringValue());
-    assertEquals("Cash", facts.get(4).path("facts").get(1).path("value").stringValue());
-    assertEquals("ASSET", facts.get(4).path("facts").get(2).path("value").stringValue());
-    assertEquals("ORDINARY", facts.get(4).path("facts").get(3).path("value").stringValue());
-    assertEquals("DEBIT", facts.get(4).path("facts").get(4).path("value").stringValue());
+            .path("data");
+    assertEquals(1, data.path("count").asInt());
+    assertEquals(1, data.path("pageLimit").asInt());
+    assertTrue(data.path("nextCursor").stringValue().length() > 4);
+    assertTrue(data.path("hasMore").asBoolean());
+    assertEquals("1000", data.path("accounts").get(0).path("accountCode").stringValue());
+    assertEquals("Cash", data.path("accounts").get(0).path("accountName").stringValue());
+    assertEquals("ASSET", data.path("accounts").get(0).path("accountType").stringValue());
+    assertEquals("ORDINARY", data.path("accounts").get(0).path("accountRole").stringValue());
+    assertEquals("DEBIT", data.path("accounts").get(0).path("normalBalance").stringValue());
   }
 
   private static String openThenFailAssertionPlanJson() {
@@ -269,11 +264,10 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                     "entityName": "Acme Studio",
                     "entityForm": "COMPANY",
                     "ownerModel": "MULTI_OWNER",
-                    "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-                    "businessActivityTags": ["translation-services"],
+                                        "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01",
-                    "accountingBasis": "ACCRUAL"
+                    "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
                   }
                 },
                 {
@@ -284,6 +278,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                     "accountName": "Cash",
                     "accountType": "ASSET",
                     "accountRole": "ORDINARY",
+                    "accountNodeKind": "POSTABLE",
                     "financialPositionLineClassification": "CURRENT_ASSET"
                   }
                 },

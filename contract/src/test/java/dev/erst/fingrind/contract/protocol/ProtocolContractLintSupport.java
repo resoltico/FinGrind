@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
@@ -455,6 +456,10 @@ class ProtocolContractLintSupport {
             .toList());
     ids.addAll(
         BookQueryRejection.descriptors().stream()
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .toList());
+    ids.addAll(
+        BookMaintenanceRejection.descriptors().stream()
             .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
             .toList());
     ids.addAll(

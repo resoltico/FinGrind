@@ -138,7 +138,7 @@ final class ProtocolQueryOperations {
                 List.of(
                     ProtocolOptions.BOOK_FILE + " <path>",
                     ProtocolOptions.currentPassphraseSourceSyntax(),
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
+                    "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
                     ProtocolOptions.optionalPdfOutSyntax(),
                     ProtocolOptions.optionalOutputSyntax(
                         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
@@ -153,7 +153,7 @@ final class ProtocolQueryOperations {
                                 OperationId.TRIAL_BALANCE.wireName(),
                                 ProtocolOptions.BOOK_FILE,
                                 ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
+                                ProtocolOptions.EFFECTIVE_DATE_AS_OF,
                                 ProtocolOptions.PDF_OUT,
                                 ProtocolOptions.OUTPUT))))),
         ProtocolOperationDefinitions.operation(
@@ -227,7 +227,7 @@ final class ProtocolQueryOperations {
                 List.of(
                     ProtocolOptions.BOOK_FILE + " <path>",
                     ProtocolOptions.currentPassphraseSourceSyntax(),
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
+                    "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
                     ProtocolOptions.optionalPdfOutSyntax(),
                     ProtocolOptions.optionalOutputSyntax(
                         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
@@ -242,7 +242,7 @@ final class ProtocolQueryOperations {
                                 OperationId.FINANCIAL_POSITION.wireName(),
                                 ProtocolOptions.BOOK_FILE,
                                 ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
+                                ProtocolOptions.EFFECTIVE_DATE_AS_OF,
                                 ProtocolOptions.PDF_OUT,
                                 ProtocolOptions.OUTPUT))))),
         ProtocolOperationDefinitions.operation(

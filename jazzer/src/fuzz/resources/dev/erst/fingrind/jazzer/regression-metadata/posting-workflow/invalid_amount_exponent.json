@@ -1,12 +1,12 @@
 {
-  "targetKey" : "posting-workflow",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_amount_exponent.json",
-  "coverageIntent" : "exponent notation rejection with reversal payload present",
-  "expectation" : {
-    "outcomeKind" : "expected-invalid",
-    "message" : "minorUnits must contain ASCII decimal digits only.",
-    "details" : {
-      "type" : "POSTING_WORKFLOW_UNPARSED"
+  "targetKey": "posting-workflow",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_amount_exponent.json",
+  "coverageIntent": "exponent notation rejection with reversal payload present",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "minorUnits must contain ASCII decimal digits only.",
+    "details": {
+      "type": "POSTING_WORKFLOW_UNPARSED"
     }
   }
 }

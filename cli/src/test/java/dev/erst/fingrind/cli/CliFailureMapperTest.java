@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -117,13 +118,51 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void cliExecutionPolicy_mapsFailureFamiliesToDistinctExitCodes() {
+    assertEquals(
+        1,
+        CliExecutionPolicy.contractFailureExitCode(
+            ContractErrors.Descriptor.INVALID_REQUEST.failure(
+                "Invalid request.", "Repair the input.", "--request-file")));
+    assertEquals(
+        5,
+        CliExecutionPolicy.contractFailureExitCode(
+            ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.failure(
+                "Interactive prompt unavailable.", "Use stdin or a key file.", null)));
+    assertEquals(
+        6,
+        CliExecutionPolicy.contractFailureExitCode(
+            ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+                "Verification failed.", "Check the passphrase or key file.", "--book-key-file")));
+    assertEquals(
+        7,
+        CliExecutionPolicy.contractFailureExitCode(
+            ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.failure(
+                "Key file already exists.",
+                "Choose a new destination.",
+                "--backup-book-key-file-out")));
+    assertEquals(
+        4,
+        CliExecutionPolicy.contractFailureExitCode(
+            ContractErrors.Descriptor.RUNTIME_FAILURE.failure(
+                "Runtime failure.", "Inspect the runtime diagnostics.", null)));
+    assertEquals(
+        4,
+        CliExecutionPolicy.failureExitCode(new CliFailure("custom-runtime", "boom", null, null)));
+  }
+
+  @Test
   void outputSelectionHelpers_coverTemplateAndMalformedOutputBranches() {
     BookAccess bookAccess =
         new BookAccess(
             Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")));
     CliCommand.ReportOutput humanReport = new CliCommand.ReportOutput(OutputMode.HUMAN, null);
-    assertEquals(OutputMode.HUMAN, new Help(null, OutputMode.HUMAN).failureOutputMode());
-    assertEquals(OutputMode.JSON, new Capabilities(OutputMode.JSON).failureOutputMode());
+    assertEquals(
+        OutputMode.HUMAN,
+        new Help(null, OutputMode.HUMAN, DiscoveryDetail.COMPACT).failureOutputMode());
+    assertEquals(
+        OutputMode.JSON,
+        new Capabilities(OutputMode.JSON, DiscoveryDetail.COMPACT).failureOutputMode());
     assertEquals(OutputMode.HUMAN, new Version(OutputMode.HUMAN).failureOutputMode());
     assertEquals(OutputMode.JSON, new PrintRequestTemplate().failureOutputMode());
     assertEquals(

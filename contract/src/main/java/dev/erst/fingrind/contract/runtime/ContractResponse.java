@@ -177,16 +177,20 @@ public final class ContractResponse {
   }
 
   /** One stable machine error descriptor. */
-  public record ErrorDescriptor(String code, String description, List<FieldDescriptor> detailFields)
+  public record ErrorDescriptor(
+      String code, int exitCode, String description, List<FieldDescriptor> detailFields)
       implements ResponseDescriptorType {
     /** Creates one error descriptor with no structured detail payload. */
-    public ErrorDescriptor(String code, String description) {
-      this(code, description, List.of());
+    public ErrorDescriptor(String code, int exitCode, String description) {
+      this(code, exitCode, description, List.of());
     }
 
     /** Validates the structured error descriptor payload. */
     public ErrorDescriptor {
       code = ContractDescriptorValidation.requireText(code, "code");
+      if (exitCode < 0) {
+        throw new IllegalArgumentException("exitCode must not be negative.");
+      }
       description = ContractDescriptorValidation.requireText(description, "description");
       detailFields = ContractDescriptorValidation.copyList(detailFields, "detailFields");
     }

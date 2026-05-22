@@ -8,6 +8,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
@@ -21,6 +24,7 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -179,6 +183,33 @@ class LedgerPlanFactMapperTest {
             .count());
   }
 
+  @Test
+  void declaredAccountFacts_includeParentAccountCodeWhenTaxonomyIsNested() {
+    RegisteredAccount account =
+        registeredAccount(
+            new AccountCode("1110"),
+            new AccountName("Operating Cash"),
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.of(new AccountCode("1100")),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty()),
+            true,
+            FIXED_INSTANT);
+
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.declaredAccountFacts(account);
+
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && "parentAccountCode".equals(text.name())
+                        && "1100".equals(text.value())));
+  }
+
   private static PostingFact reversalPostingFact() {
     return new PostingFact(
         new PostingId("posting-1"),
@@ -194,10 +225,21 @@ class LedgerPlanFactMapperTest {
         new AccountingEvidence(
             List.of(
                 new SourceDocumentReference(
-                    new SourceDocumentId("document-idem-1"), new SourceDocumentType("invoice"))),
+                    new SourceDocumentId("document-idem-1"),
+                    new SourceDocumentType("invoice"),
+                    LocalDate.parse("2026-04-07"),
+                    Instant.parse("2026-04-07T10:15:30Z"),
+                    new dev.erst.fingrind.core.StorageLocator("vault://fixtures/document-idem-1"),
+                    new dev.erst.fingrind.core.ContentSha256(
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
             List.of(
                 new ApprovalReference(
-                    new ApprovalId("approval-idem-1"), new ApprovalType("manager-signoff")))),
+                    new ApprovalId("approval-idem-1"),
+                    new ApprovalType("manager-signoff"),
+                    new ActorId("approver-1"),
+                    ActorType.HUMAN,
+                    dev.erst.fingrind.core.ApprovalDecision.APPROVED,
+                    Instant.parse("2026-04-07T10:20:30Z")))),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

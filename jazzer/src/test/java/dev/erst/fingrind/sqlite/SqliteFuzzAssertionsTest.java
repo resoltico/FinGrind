@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
+import dev.erst.fingrind.cli.CliFuzzHarnessTestSupport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import java.lang.reflect.Proxy;
@@ -223,45 +224,22 @@ class SqliteFuzzAssertionsTest {
   }
 
   private static String basicValidRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-1",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1"
-          }
-        }
-        """;
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+        new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+            "2026-04-07",
+            "1000",
+            "2000",
+            "EUR",
+            "1000",
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-1",
+                "invoice",
+                "2026-04-07",
+                "actor-1",
+                "AGENT",
+                "command-1",
+                "idem-1",
+                "cause-1",
+                null)));
   }
 }

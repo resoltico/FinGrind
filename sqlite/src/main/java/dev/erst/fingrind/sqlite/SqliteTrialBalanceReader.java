@@ -19,8 +19,8 @@ final class SqliteTrialBalanceReader {
         SqliteReportRowValues.insertionOrderedMap();
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.loadTrialBalanceLines(query))) {
-      if (query.effectiveDateTo().isPresent()) {
-        statement.bindText(1, query.effectiveDateTo().orElseThrow().toString());
+      if (query.effectiveDateAsOf().isPresent()) {
+        statement.bindText(1, query.effectiveDateAsOf().orElseThrow().toString());
       }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
@@ -45,7 +45,7 @@ final class SqliteTrialBalanceReader {
                     new IllegalStateException("Initialized SQLite book is missing book identity."));
     return new TrialBalanceView(
         bookIdentity,
-        query.effectiveDateTo(),
+        query.effectiveDateAsOf(),
         dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
         query.postingCoverage(),
         rows,

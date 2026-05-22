@@ -83,11 +83,15 @@ class ReportingContractTypesTest {
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
             ContractFixtures.bookIdentity(),
-            trialBalanceQuery.effectiveDateTo(),
+            trialBalanceQuery.effectiveDateAsOf(),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             trialBalanceQuery.postingCoverage(),
             List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)),
-            List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)));
+            List.of(EUR_DEBIT_BALANCE),
+            false,
+            List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)),
+            List.of(EUR_DEBIT_BALANCE),
+            false);
     TrialBalanceResult.Reported reportedTrialBalance =
         new TrialBalanceResult.Reported(trialBalanceReport);
     TrialBalanceResult.Rejected rejectedTrialBalance =
@@ -165,7 +169,7 @@ class ReportingContractTypesTest {
                 List.of(EUR_DEBIT_BALANCE)));
     AccountBalanceResult.Rejected rejectedBalance =
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
-    assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateTo());
+    assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateAsOf());
     assertEquals(PostingCoverage.ALL_POSTING_KINDS, trialBalanceQuery.postingCoverage());
     assertEquals(
         List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)), trialBalanceReport.rows());
@@ -226,7 +230,11 @@ class ReportingContractTypesTest {
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,
                         nullOf(),
-                        List.of()))
+                        List.of(),
+                        false,
+                        List.of(),
+                        List.of(),
+                        false))
             .getMessage());
     assertThrows(
         NullPointerException.class, () -> new TrialBalanceRow(nullOf(), EUR_DEBIT_BALANCE));
@@ -376,6 +384,9 @@ class ReportingContractTypesTest {
         descriptors.stream()
             .anyMatch(descriptor -> "pdf-export-failure".equals(descriptor.code())));
     assertEquals("invalid-page-cursor", ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code());
+    assertEquals(1, ContractErrors.Descriptor.INVALID_PAGE_CURSOR.exitCode());
+    assertEquals(5, ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.exitCode());
+    assertEquals(6, ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.exitCode());
     assertTrue(
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
             .description()

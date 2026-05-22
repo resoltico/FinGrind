@@ -38,17 +38,17 @@ def verify_runtime_contract(
     config: ReleaseSmokeConfig,
     contract: dict[str, object],
     operation_ids: dict[str, str],
-) -> None:
+) -> dict[str, int]:
     print(f"{config.label}: verifying runtime contract")
     capabilities_payload = parse_json_output(
-        run_cli(config, operation_ids["capabilities"], "--output", "json"),
+        run_cli(config, operation_ids["capabilities"], "--output", "json", "--detail", "full"),
         f"{config.label} capabilities output was not valid JSON",
     )
     environment_payload = parse_json_output(
         run_cli(config, operation_ids["environment"], "--output", "json"),
         f"{config.label} environment output was not valid JSON",
     )
-    assert_discovery_payloads(config, contract, capabilities_payload, environment_payload)
+    return assert_discovery_payloads(config, contract, capabilities_payload, environment_payload)
 
 
 def verify_book_key_generation(
@@ -108,11 +108,6 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected owner model",
     )
     require(
-        payload_field(open_payload, "payload", "bookIdentity", "reportingObligationStatus")
-        == config.reporting_obligation_status,
-        f"{config.label} open-book did not echo the expected reporting obligation status",
-    )
-    require(
         payload_field(open_payload, "payload", "bookIdentity", "businessActivityTags")
         == config.business_activity_tags,
         f"{config.label} open-book did not echo the expected business activity tags",
@@ -128,9 +123,9 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected fiscal year start",
     )
     require(
-        payload_field(open_payload, "payload", "bookIdentity", "accountingBasis")
-        == config.accounting_basis,
-        f"{config.label} open-book did not echo the expected accounting basis",
+        payload_field(open_payload, "payload", "bookIdentity", "policyProfile")
+        == config.policy_profile,
+        f"{config.label} open-book did not echo the expected accounting policy profile",
     )
 
 
@@ -204,16 +199,14 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.entity_form,
             "--owner-model",
             config.owner_model,
-            "--reporting-obligation-status",
-            config.reporting_obligation_status,
             "--business-activity-tag",
             *config.business_activity_tags,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
-            "--accounting-basis",
-            config.accounting_basis,
+            "--policy-profile",
+            config.policy_profile,
             "--book-passphrase-stdin",
             stdin_text=generated_passphrase,
         )
@@ -229,16 +222,14 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.entity_form,
             "--owner-model",
             config.owner_model,
-            "--reporting-obligation-status",
-            config.reporting_obligation_status,
             "--business-activity-tag",
             *config.business_activity_tags,
             "--functional-currency",
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
-            "--accounting-basis",
-            config.accounting_basis,
+            "--policy-profile",
+            config.policy_profile,
             "--book-key-file",
             config.book_key.argument,
         )

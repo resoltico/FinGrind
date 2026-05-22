@@ -24,7 +24,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("same book is rejected"));
     assertTrue(guide.contains("--entity-name"));
     assertTrue(guide.contains("--owner-model"));
-    assertTrue(guide.contains("--reporting-obligation-status"));
+    assertTrue(guide.contains("--policy-profile"));
     assertTrue(guide.contains("--business-activity-tag"));
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
@@ -159,7 +159,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
     assertTrue(examplesGuide.contains("--owner-model"));
-    assertTrue(examplesGuide.contains("--reporting-obligation-status"));
+    assertTrue(examplesGuide.contains("--policy-profile"));
     assertTrue(examplesGuide.contains("--business-activity-tag"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
@@ -285,9 +285,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--request-file",
             queryPlanRequestFile.toString());
     assertEquals("ok", queryPlanResult.path("status").stringValue());
-    JsonNode queryFacts =
-        queryPlanResult.path("payload").path("journal").path("steps").get(4).path("facts");
-    assertEquals("count", queryFacts.get(0).path("name").stringValue());
-    assertEquals(1, queryFacts.get(0).path("value").asInt());
+    JsonNode queryData =
+        queryPlanResult.path("payload").path("journal").path("steps").get(4).path("data");
+    assertEquals(1, queryData.path("count").asInt());
   }
 }

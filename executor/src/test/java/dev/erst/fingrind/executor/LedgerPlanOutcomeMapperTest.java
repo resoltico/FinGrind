@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -26,8 +29,6 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -40,7 +41,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
@@ -601,21 +601,13 @@ class LedgerPlanOutcomeMapperTest {
         accountTaxonomy(AccountType.ASSET));
   }
 
-  private static PostingCommand postingCommand(String idempotencyKey) {
-    return new PostingCommand(
-        PostingKind.STANDARD,
-        new JournalEntry(
+  private static PostEntryCommand postingCommand(String idempotencyKey) {
+    return new PostEntryCommand(
+        new BookkeepingEntry.CashRevenue(
             LocalDate.parse("2026-05-05"),
-            List.of(
-                new JournalLine(
-                    new AccountCode("1000"),
-                    JournalLine.EntrySide.DEBIT,
-                    Money.parse("EUR", "10.00")),
-                new JournalLine(
-                    new AccountCode("2000"),
-                    JournalLine.EntrySide.CREDIT,
-                    Money.parse("EUR", "10.00")))),
-        PostingLineageModel.direct(),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -630,7 +622,17 @@ class LedgerPlanOutcomeMapperTest {
   private static CommittedPosting committedPosting() {
     return new CommittedPosting(
         new PostingId("posting-1"),
-        postingCommand("idem-3").journalEntry(),
+        new dev.erst.fingrind.core.JournalEntry(
+            LocalDate.parse("2026-05-05"),
+            List.of(
+                new dev.erst.fingrind.core.JournalLine(
+                    new AccountCode("1000"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new dev.erst.fingrind.core.JournalLine(
+                    new AccountCode("2000"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
         accountingEvidence("idem-3"),

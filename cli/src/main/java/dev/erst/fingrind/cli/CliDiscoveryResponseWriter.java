@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
@@ -16,12 +17,12 @@ final class CliDiscoveryResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
+  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliResponsePayloadMapper.successEnvelope(
-                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor))),
+                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail))),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -29,11 +30,15 @@ final class CliDiscoveryResponseWriter {
         });
   }
 
-  void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
+  void writeCapabilities(
+      CapabilitiesDescriptor capabilitiesDescriptor,
+      OutputMode outputMode,
+      DiscoveryDetail detail) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(capabilitiesDescriptor)),
+                CliResponsePayloadMapper.successEnvelope(
+                    CliDiscoveryPayloadMapper.capabilitiesPayload(capabilitiesDescriptor, detail))),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderCapabilitiesHuman(capabilitiesDescriptor)),

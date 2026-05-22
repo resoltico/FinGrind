@@ -204,6 +204,16 @@ final class CliTextFormat {
             .collect(Collectors.joining(TEXT_LINE_SEPARATOR));
   }
 
+  static String renderLiteralBlock(List<String> lines, String prefix) {
+    Objects.requireNonNull(lines, "lines");
+    Objects.requireNonNull(prefix, "prefix");
+    return lines.isEmpty()
+        ? ""
+        : lines.stream()
+            .map(line -> prefix + Objects.requireNonNull(line, "line"))
+            .collect(Collectors.joining(TEXT_LINE_SEPARATOR));
+  }
+
   private static List<String> wrapLines(String text, int width) {
     Objects.requireNonNull(text, "text");
     if (width == Integer.MAX_VALUE || text.isBlank()) {

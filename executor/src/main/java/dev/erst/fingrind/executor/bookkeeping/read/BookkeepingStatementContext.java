@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
@@ -11,15 +12,11 @@ import java.util.Objects;
 final class BookkeepingStatementContext {
   private final BookLifecycleReader lifecycleReader;
   private final BookkeepingReportStore reportStore;
-  private final BookkeepingPolicyPack policyPack;
 
   BookkeepingStatementContext(
-      BookLifecycleReader lifecycleReader,
-      BookkeepingReportStore reportStore,
-      BookkeepingPolicyPack policyPack) {
+      BookLifecycleReader lifecycleReader, BookkeepingReportStore reportStore) {
     this.lifecycleReader = Objects.requireNonNull(lifecycleReader, "lifecycleReader");
     this.reportStore = Objects.requireNonNull(reportStore, "reportStore");
-    this.policyPack = BookkeepingPolicyPack.requirePolicyPack(policyPack);
   }
 
   BookkeepingReportStore reportStore() {
@@ -27,7 +24,7 @@ final class BookkeepingStatementContext {
   }
 
   BookkeepingPolicyPack policyPack() {
-    return policyPack;
+    return BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity());
   }
 
   BookIdentity bookIdentity() {

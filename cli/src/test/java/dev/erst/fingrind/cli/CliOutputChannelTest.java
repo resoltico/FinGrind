@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +20,15 @@ class CliOutputChannelTest {
 
     outputChannel.writePrettySuccess(
         new CliDiscoveryJsonModels.HelpOverviewPayload(
-            "FinGrind", "0.43.0", "CLI help", List.of(), List.of("help"), List.of(), "hint"));
+            "FinGrind",
+            "0.44.0",
+            "CLI help",
+            DiscoveryDetail.COMPACT,
+            List.of(),
+            List.of("help"),
+            List.of(),
+            "hint",
+            null));
 
     String rendered = output.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains(System.lineSeparator() + "  \"status\" : \"ok\","));

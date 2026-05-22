@@ -1,28 +1,28 @@
 {
-  "targetKey" : "sqlite-book-roundtrip",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/bhd_three_scale_valid.json",
-  "coverageIntent" : "BHD three-scale durable round-trip",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "SQLITE_BOOK_ROUND_TRIP",
-      "request" : {
-        "effectiveDate" : "2026-06-15",
-        "idempotencyKey" : "seed-sqlite-bhd-idem-1",
-        "lineCount" : 2,
-        "reversalPresent" : false
+  "targetKey": "sqlite-book-roundtrip",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/bhd_three_scale_valid.json",
+  "coverageIntent": "BHD three-scale durable round-trip",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "SQLITE_BOOK_ROUND_TRIP",
+      "request": {
+        "effectiveDate": "2026-06-15",
+        "idempotencyKey": "seed-sqlite-bhd-idem-1",
+        "lineCount": 2,
+        "reversalPresent": false
       },
-      "lifecycle" : {
-        "uninitializedCommitStatus" : "posting-book-not-initialized",
-        "undeclaredCommitStatus" : "unknown-account",
-        "inactiveCommitStatus" : "inactive-account"
+      "lifecycle": {
+        "uninitializedCommitStatus": "posting-book-not-initialized",
+        "undeclaredCommitStatus": "unknown-account",
+        "inactiveCommitStatus": "inactive-account"
       },
-      "outcome" : {
-        "finalCommitStatus" : "committed",
-        "reloadStatus" : "reloaded",
-        "duplicateStatus" : "duplicate-idempotency-key",
-        "storedFactPresent" : true
+      "outcome": {
+        "finalCommitStatus": "committed",
+        "reloadStatus": "reloaded",
+        "duplicateStatus": "duplicate-idempotency-key",
+        "storedFactPresent": true
       }
     }
   }

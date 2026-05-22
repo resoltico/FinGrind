@@ -8,11 +8,10 @@
         "entityName": "Plan Seed JPY",
         "entityForm": "COMPANY",
         "ownerModel": "MULTI_OWNER",
-        "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
-        "businessActivityTags": ["translation-services"],
+                "businessActivityTags": ["translation-services"],
         "functionalCurrency": "JPY",
         "fiscalYearStart": "01-01",
-        "accountingBasis": "ACCRUAL"
+        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
       }
     },
     {
@@ -23,6 +22,7 @@
         "accountName": "Cash JPY Seed",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
         "profitAndLossLineClassification": null
       }
@@ -35,6 +35,7 @@
         "accountName": "Sales JPY Seed",
         "accountType": "REVENUE",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
@@ -43,31 +44,23 @@
       "stepId": "post-jpy",
       "kind": "post-entry",
       "posting": {
-        "postingKind": "STANDARD",
+        "entryKind": "CASH_REVENUE",
         "effectiveDate": "2026-06-16",
-        "lines": [
-          {
-            "accountCode": "7110",
-            "side": "DEBIT",
-            "amount": {
-              "currencyCode": "JPY",
-              "minorUnits": "400"
-            }
-          },
-          {
-            "accountCode": "8110",
-            "side": "CREDIT",
-            "amount": {
-              "currencyCode": "JPY",
-              "minorUnits": "400"
-            }
-          }
-        ],
+        "cashAccountCode": "7110",
+        "revenueAccountCode": "8110",
+        "amount": {
+          "currencyCode": "JPY",
+          "minorUnits": "400"
+        },
         "evidence": {
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-seed-plan-jpy-idem-1",
-              "sourceDocumentType": "invoice"
+              "sourceDocumentType": "invoice",
+              "documentDate": "2026-06-16",
+              "capturedAt": "2026-06-16T10:15:30Z",
+              "storageLocator": "vault://fixtures/document-seed-plan-jpy-idem-1",
+              "contentSha256": "ebabeecbc8541f2d4a5cac9f78063deb6532547014b243b2c3d93a3a55476c1a"
             }
           ],
           "approvals": []

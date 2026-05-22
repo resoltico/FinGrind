@@ -7,6 +7,7 @@ import dev.erst.fingrind.buildlogic.ReportBundleArchiveOutputsTask
 import dev.erst.fingrind.buildlogic.WriteDockerBuildContextManifestTask
 import dev.erst.fingrind.buildlogic.WriteBundleManifestTask
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
+import dev.erst.fingrind.buildlogic.WriteSourceFileHashManifestTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.GradleException
@@ -138,6 +139,35 @@ val mirrorRepositoryDockerBuildContext =
         repositoryDockerBuildContextDirectory.asFile.toPath().normalize()
 val dockerBuildContextManifestOutputFile =
     layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
+val sourceCheckoutArtifactManifestOutputFile =
+    layout.buildDirectory.file("generated/source-checkout/source-checkout-artifact-manifest.tsv")
+val sourceCheckoutArtifactSourceIncludePatterns =
+    listOf(
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "gradle.properties",
+        "gradle/libs.versions.toml",
+        "gradle/build-logic/build.gradle.kts",
+        "gradle/build-logic/src/main/**",
+        "cli/build.gradle.kts",
+        "cli/src/main/**",
+        "contract/build.gradle.kts",
+        "contract/src/main/**",
+        "core/build.gradle.kts",
+        "core/src/main/**",
+        "executor/build.gradle.kts",
+        "executor/src/main/**",
+        "report-pdf/build.gradle.kts",
+        "report-pdf/src/main/**",
+        "sqlite/build.gradle.kts",
+        "sqlite/src/main/**",
+    )
+val sourceCheckoutArtifactSourceInputs =
+    objects.fileCollection().from(
+        rootProject.fileTree(repositoryRootDirectory.toFile()) {
+            sourceCheckoutArtifactSourceIncludePatterns.forEach(::include)
+        },
+    )
 val dockerBuildContextSourceIncludePatterns =
     listOf(
         "Dockerfile",
@@ -303,6 +333,23 @@ tasks.named<ShadowJar>("shadowJar") {
             "FinGrind-Source-Checkout-Build-Root" to sourceCheckoutBuildRootDirectory.toString(),
         )
     }
+}
+
+val writeSourceCheckoutArtifactManifest =
+    tasks.register<WriteSourceFileHashManifestTask>("writeSourceCheckoutArtifactManifest") {
+        group = "distribution"
+        description =
+            "Writes the source-hash manifest that proves the checkout-local raw JAR matches the current sources."
+        dependsOn(shadowJarTask)
+        ownerTaskName.set("shadowJar")
+        repositoryRootPath.set(repositoryRootDirectory.toString())
+        sourceFiles.from(sourceCheckoutArtifactSourceInputs)
+        outputFile.set(sourceCheckoutArtifactManifestOutputFile)
+        outputs.upToDateWhen { false }
+    }
+
+shadowJarTask.configure {
+    finalizedBy(writeSourceCheckoutArtifactManifest)
 }
 
 tasks.named<ProcessResources>("processResources") {

@@ -1,11 +1,11 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
-import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import java.util.Objects;
 
@@ -45,7 +45,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Validates one posting request without committing it. */
-  record PreflightEntry(BookWorkflowStepId stepId, PostingCommand command)
+  record PreflightEntry(BookWorkflowStepId stepId, PostEntryCommand command)
       implements BookWorkflowStep {
     /** Validates the step. */
     public PreflightEntry {
@@ -55,7 +55,8 @@ public sealed interface BookWorkflowStep
   }
 
   /** Commits one posting request. */
-  record PostEntry(BookWorkflowStepId stepId, PostingCommand command) implements BookWorkflowStep {
+  record PostEntry(BookWorkflowStepId stepId, PostEntryCommand command)
+      implements BookWorkflowStep {
     /** Validates the step. */
     public PostEntry {
       requireStepId(stepId);

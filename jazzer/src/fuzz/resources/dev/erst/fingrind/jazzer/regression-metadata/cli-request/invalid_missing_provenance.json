@@ -1,12 +1,12 @@
 {
-  "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_missing_provenance.json",
-  "coverageIntent" : "missing provenance object",
-  "expectation" : {
-    "outcomeKind" : "expected-invalid",
-    "message" : "Missing required field: provenance",
-    "details" : {
-      "type" : "CLI_REQUEST_UNPARSED"
+  "targetKey": "cli-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_missing_provenance.json",
+  "coverageIntent": "missing provenance object",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "Missing required field: provenance",
+    "details": {
+      "type": "CLI_REQUEST_UNPARSED"
     }
   }
 }

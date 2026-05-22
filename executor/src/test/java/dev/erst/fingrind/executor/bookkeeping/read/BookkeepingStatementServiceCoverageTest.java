@@ -11,7 +11,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -26,7 +26,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -230,11 +229,10 @@ class BookkeepingStatementServiceCoverageTest {
                 new BookEntityName("Shifted Year Shop"),
                 EntityForm.FREELANCER,
                 OwnerModel.SOLE_OWNER,
-                ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                 List.of()),
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("02-29"),
-            AccountingBasis.ACCRUAL);
+            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
     CoverageBookStore store =
         new CoverageBookStore(
             new BookLifecycleInspection.Initialized(

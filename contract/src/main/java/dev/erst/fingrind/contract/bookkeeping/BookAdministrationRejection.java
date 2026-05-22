@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
@@ -24,6 +25,8 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.ParentAccountMissing,
         BookAdministrationRejection.ParentAccountInactive,
         BookAdministrationRejection.ParentAccountTypeConflict,
+        BookAdministrationRejection.ParentAccountRoleConflict,
+        BookAdministrationRejection.ParentAccountNotHeader,
         BookAdministrationRejection.ParentAccountTaxonomyConflict,
         BookAdministrationRejection.AccountHierarchyCycle,
         BookAdministrationRejection.ClosingEquityAccountCandidateMissing,
@@ -126,6 +129,32 @@ public sealed interface BookAdministrationRejection
     }
   }
 
+  /** Rejection for one child account whose parent account role conflicts with the request. */
+  record ParentAccountRoleConflict(
+      AccountCode accountCode,
+      AccountRole requestedAccountRole,
+      AccountCode parentAccountCode,
+      AccountRole parentAccountRole)
+      implements BookAdministrationRejection {
+    public ParentAccountRoleConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountRole, "requestedAccountRole");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountRole, "parentAccountRole");
+    }
+  }
+
+  /** Rejection for one child account whose parent is not declared as a header node. */
+  record ParentAccountNotHeader(
+      AccountCode accountCode, AccountCode parentAccountCode, AccountNodeKind parentAccountNodeKind)
+      implements BookAdministrationRejection {
+    public ParentAccountNotHeader {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountNodeKind, "parentAccountNodeKind");
+    }
+  }
+
   /** Rejection for one child account whose parent taxonomy family conflicts with the request. */
   record ParentAccountTaxonomyConflict(
       AccountCode accountCode,
@@ -224,6 +253,10 @@ public sealed interface BookAdministrationRejection
           Descriptor.PARENT_ACCOUNT_INACTIVE;
       case BookAdministrationRejection.ParentAccountTypeConflict _ ->
           Descriptor.PARENT_ACCOUNT_TYPE_CONFLICT;
+      case BookAdministrationRejection.ParentAccountRoleConflict _ ->
+          Descriptor.PARENT_ACCOUNT_ROLE_CONFLICT;
+      case BookAdministrationRejection.ParentAccountNotHeader _ ->
+          Descriptor.PARENT_ACCOUNT_NOT_HEADER;
       case BookAdministrationRejection.ParentAccountTaxonomyConflict _ ->
           Descriptor.PARENT_ACCOUNT_TAXONOMY_CONFLICT;
       case BookAdministrationRejection.AccountHierarchyCycle _ ->
@@ -252,6 +285,8 @@ public sealed interface BookAdministrationRejection
     PARENT_ACCOUNT_MISSING,
     PARENT_ACCOUNT_INACTIVE,
     PARENT_ACCOUNT_TYPE_CONFLICT,
+    PARENT_ACCOUNT_ROLE_CONFLICT,
+    PARENT_ACCOUNT_NOT_HEADER,
     PARENT_ACCOUNT_TAXONOMY_CONFLICT,
     ACCOUNT_HIERARCHY_CYCLE,
     CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,
@@ -271,6 +306,8 @@ public sealed interface BookAdministrationRejection
         case PARENT_ACCOUNT_MISSING -> "parent-account-missing";
         case PARENT_ACCOUNT_INACTIVE -> "parent-account-inactive";
         case PARENT_ACCOUNT_TYPE_CONFLICT -> "parent-account-type-conflict";
+        case PARENT_ACCOUNT_ROLE_CONFLICT -> "parent-account-role-conflict";
+        case PARENT_ACCOUNT_NOT_HEADER -> "parent-account-not-header";
         case PARENT_ACCOUNT_TAXONOMY_CONFLICT -> "parent-account-taxonomy-conflict";
         case ACCOUNT_HIERARCHY_CYCLE -> "account-hierarchy-cycle";
         case CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING -> "closing-equity-account-candidate-missing";
@@ -305,6 +342,10 @@ public sealed interface BookAdministrationRejection
             "Account declaration refused because the requested parentAccountCode exists but is inactive.";
         case PARENT_ACCOUNT_TYPE_CONFLICT ->
             "Account declaration refused because the requested parentAccountCode belongs to a different accountType than the child declaration.";
+        case PARENT_ACCOUNT_ROLE_CONFLICT ->
+            "Account declaration refused because the requested parentAccountCode belongs to a different accountRole than the child declaration.";
+        case PARENT_ACCOUNT_NOT_HEADER ->
+            "Account declaration refused because the requested parentAccountCode is not declared as a header node and therefore cannot own child accounts.";
         case PARENT_ACCOUNT_TAXONOMY_CONFLICT ->
             "Account declaration refused because the requested parentAccountCode belongs to a different statement-classification family than the child declaration.";
         case ACCOUNT_HIERARCHY_CYCLE ->
@@ -384,6 +425,31 @@ public sealed interface BookAdministrationRejection
                 detailField(
                     "parentAccountType",
                     "Declared parent accountType that conflicts with the child request."));
+        case PARENT_ACCOUNT_ROLE_CONFLICT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Declared child account code whose requested accountRole conflicts with the parent account."),
+                detailField(
+                    "requestedAccountRole",
+                    "Requested child accountRole that does not match the declared parent account role."),
+                detailField(
+                    "parentAccountCode",
+                    "Requested parentAccountCode whose declared accountRole conflicts with the child."),
+                detailField(
+                    "parentAccountRole",
+                    "Declared parent accountRole that conflicts with the child request."));
+        case PARENT_ACCOUNT_NOT_HEADER ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Declared child account code whose requested parent is not a header node."),
+                detailField(
+                    "parentAccountCode",
+                    "Requested parentAccountCode that cannot own child accounts."),
+                detailField(
+                    "parentAccountNodeKind",
+                    "Declared parent accountNodeKind that forbids child accounts."));
         case PARENT_ACCOUNT_TAXONOMY_CONFLICT ->
             List.of(
                 detailField(
@@ -446,6 +512,8 @@ public sealed interface BookAdministrationRejection
               PARENT_ACCOUNT_MISSING,
               PARENT_ACCOUNT_INACTIVE,
               PARENT_ACCOUNT_TYPE_CONFLICT,
+              PARENT_ACCOUNT_ROLE_CONFLICT,
+              PARENT_ACCOUNT_NOT_HEADER,
               PARENT_ACCOUNT_TAXONOMY_CONFLICT,
               ACCOUNT_HIERARCHY_CYCLE,
               CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,

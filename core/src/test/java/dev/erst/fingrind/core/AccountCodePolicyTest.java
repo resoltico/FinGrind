@@ -52,6 +52,7 @@ class AccountCodePolicyTest {
                 AccountType.ASSET,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty())));
@@ -62,6 +63,7 @@ class AccountCodePolicyTest {
                 AccountType.ASSET,
                 AccountRole.CONTRA,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty())));
@@ -72,6 +74,7 @@ class AccountCodePolicyTest {
                 AccountType.EQUITY,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                     java.util.Optional.empty())));

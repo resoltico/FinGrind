@@ -473,6 +473,180 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void canonicalStrictSchema_rejectsImpossibleFiscalYearAnchors() {
+    Path bookPath = tempDirectory.resolve("invalid-fiscal-year-anchor.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  SqliteNativeException invalidAnchor =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into book_identity (
+                                      singleton_id,
+                                      entity_name,
+                                      functional_currency_code,
+                                      fiscal_year_start_month,
+                                      fiscal_year_start_day
+                                  ) values (
+                                      1,
+                                      'Acme Studio',
+                                      'EUR',
+                                      2,
+                                      30
+                                  )
+                                  """));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAnchor.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAnchor.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from book_identity"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_rejectsJournalLineCurrencyOutsideBookFunctionalCurrency() {
+    Path bookPath = tempDirectory.resolve("journal-line-functional-currency.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database, "4000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(database, "posting-1", "idem-1");
+
+                  SqliteNativeException mismatchedCurrency =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertJournalLineRow(
+                                  database, "posting-1", 0, "1000", "DEBIT", "USD", 1000));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, mismatchedCurrency.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", mismatchedCurrency.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_rejectsNonHeaderAndTaxonomyMismatchedParents() {
+    Path bookPath = tempDirectory.resolve("account-parent-contract.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+
+                  SqliteNativeException nonHeaderParent =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into account (
+                                      account_code,
+                                      account_name,
+                                      account_type,
+                                      account_role,
+                                      account_node_kind,
+                                      parent_account_code,
+                                      financial_position_line_classification,
+                                      profit_and_loss_line_classification,
+                                      active,
+                                      declared_at
+                                  ) values (
+                                      '1010',
+                                      'Petty Cash',
+                                      'ASSET',
+                                      'ORDINARY',
+                                      'POSTABLE',
+                                      '1000',
+                                      'CURRENT_ASSET',
+                                      null,
+                                      1,
+                                      '2026-04-07T10:15:30Z'
+                                  )
+                                  """));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, nonHeaderParent.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", nonHeaderParent.resultName());
+
+                  database.executeStatement(
+                      """
+                      insert into account (
+                          account_code,
+                          account_name,
+                          account_type,
+                          account_role,
+                          account_node_kind,
+                          parent_account_code,
+                          financial_position_line_classification,
+                          profit_and_loss_line_classification,
+                          active,
+                          declared_at
+                      ) values (
+                          '1100',
+                          'Cash Header',
+                          'ASSET',
+                          'ORDINARY',
+                          'HEADER',
+                          null,
+                          'CURRENT_ASSET',
+                          null,
+                          1,
+                          '2026-04-07T10:15:30Z'
+                      )
+                      """);
+
+                  SqliteNativeException taxonomyMismatch =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into account (
+                                      account_code,
+                                      account_name,
+                                      account_type,
+                                      account_role,
+                                      account_node_kind,
+                                      parent_account_code,
+                                      financial_position_line_classification,
+                                      profit_and_loss_line_classification,
+                                      active,
+                                      declared_at
+                                  ) values (
+                                      '1110',
+                                      'Equipment',
+                                      'ASSET',
+                                      'ORDINARY',
+                                      'POSTABLE',
+                                      '1100',
+                                      'NONCURRENT_ASSET',
+                                      null,
+                                      1,
+                                      '2026-04-07T10:15:30Z'
+                                  )
+                                  """));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, taxonomyMismatch.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_TRIGGER", taxonomyMismatch.resultName());
+                  assertEquals(2, queryInt(database, "select count(*) from account"));
+                }));
+  }
+
+  @Test
   void canonicalStrictSchema_rejectsLateOpeningBalanceInsertions() {
     Path bookPath = tempDirectory.resolve("late-opening-balance.sqlite");
     assertDoesNotThrow(

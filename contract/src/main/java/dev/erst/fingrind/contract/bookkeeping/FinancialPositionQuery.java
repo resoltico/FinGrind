@@ -5,9 +5,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** As-of query for one statement of financial position. */
-public record FinancialPositionQuery(Optional<LocalDate> effectiveDateTo) {
+public record FinancialPositionQuery(Optional<LocalDate> effectiveDateAsOf) {
   /** Validates one financial-position query. */
   public FinancialPositionQuery {
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
   }
 }

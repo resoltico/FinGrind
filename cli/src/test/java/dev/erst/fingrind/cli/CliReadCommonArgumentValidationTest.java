@@ -147,7 +147,7 @@ class CliReadCommonArgumentValidationTest extends CliArgumentParsingTestSupport 
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--effective-date-to",
+                      "--effective-date-as-of",
                       "2026-04-30",
                       "--pdf-out",
                       "\u0000bad"

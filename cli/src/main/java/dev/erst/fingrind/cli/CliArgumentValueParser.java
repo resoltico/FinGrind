@@ -2,11 +2,12 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -15,7 +16,6 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -104,26 +104,14 @@ final class CliArgumentValueParser {
     }
   }
 
-  static ReportingObligationStatus parseReportingObligationStatusOption(
+  static AccountingPolicyProfile parseAccountingPolicyProfileOption(
       String rawValue, String optionName) {
     try {
-      return ReportingObligationStatus.fromWireValue(rawValue);
+      return AccountingPolicyProfile.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw invalid(
           optionName,
-          Objects.requireNonNullElse(
-              exception.getMessage(), "Unsupported reporting obligation status."),
-          exception);
-    }
-  }
-
-  static AccountingBasis parseAccountingBasisOption(String rawValue, String optionName) {
-    try {
-      return AccountingBasis.fromWireValue(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw invalid(
-          optionName,
-          Objects.requireNonNullElse(exception.getMessage(), "Unsupported accounting basis."),
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported policy profile."),
           exception);
     }
   }
@@ -296,6 +284,29 @@ final class CliArgumentValueParser {
               + ". Accepted values: "
               + String.join(
                   ", ", dev.erst.fingrind.core.WireValue.wireValues(PlanResultDetail.class))
+              + ".",
+          exception);
+    }
+  }
+
+  static DiscoveryDetail requireDiscoveryDetail(
+      @Nullable DiscoveryDetail currentDetail, ListIterator<String> argumentIterator) {
+    if (currentDetail != null) {
+      throw invalid(ProtocolOptions.DETAIL, "Duplicate argument: " + ProtocolOptions.DETAIL);
+    }
+    String rawValue = requireValue(argumentIterator, ProtocolOptions.DETAIL);
+    try {
+      return DiscoveryDetail.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          ProtocolOptions.DETAIL,
+          "Unsupported discovery detail for "
+              + ProtocolOptions.DETAIL
+              + ": "
+              + rawValue
+              + ". Accepted values: "
+              + String.join(
+                  ", ", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryDetail.class))
               + ".",
           exception);
     }

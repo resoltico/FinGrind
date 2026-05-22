@@ -166,6 +166,16 @@ final class CliRejectionPayloadMapper {
           + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
           + ".";
     }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountRoleConflict) {
+      return "Choose a parentAccountCode with the same accountRole as the child account, or declare the child under the correct doctrinal role before rerunning "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.ParentAccountNotHeader) {
+      return "Choose a parentAccountCode declared as HEADER, or remove parentAccountCode and rerun "
+          + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
+          + ".";
+    }
     if (rejection instanceof BookAdministrationRejection.ParentAccountTaxonomyConflict) {
       return "Choose a parentAccountCode in the same statement-classification family as the child account, or adjust the child taxonomy before rerunning "
           + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
@@ -250,11 +260,11 @@ final class CliRejectionPayloadMapper {
               + artifactBusy.artifactRole().wireValue()
               + " artifact, wait for the active maintenance workflow to finish, then rerun the command.";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
-          "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
+          "Choose a new --backup-file-out path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ ->
-          "Choose a new --backup-book-key-file path or remove the existing key file yourself before rerunning "
+          "Choose a new --backup-book-key-file-out path or remove the existing key file yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
@@ -329,10 +339,19 @@ final class CliRejectionPayloadMapper {
     return switch (violation) {
       case PostingRejection.UnknownAccount unknownAccount ->
           new CliRejectionJsonModels.AccountStateViolationPayload(
-              PostingRejection.wireCode(unknownAccount), unknownAccount.accountCode().value());
+              PostingRejection.wireCode(unknownAccount),
+              unknownAccount.accountCode().value(),
+              null);
       case PostingRejection.InactiveAccount inactiveAccount ->
           new CliRejectionJsonModels.AccountStateViolationPayload(
-              PostingRejection.wireCode(inactiveAccount), inactiveAccount.accountCode().value());
+              PostingRejection.wireCode(inactiveAccount),
+              inactiveAccount.accountCode().value(),
+              null);
+      case PostingRejection.NonPostableAccount nonPostableAccount ->
+          new CliRejectionJsonModels.AccountStateViolationPayload(
+              PostingRejection.wireCode(nonPostableAccount),
+              nonPostableAccount.accountCode().value(),
+              nonPostableAccount.accountNodeKind().wireValue());
     };
   }
 
@@ -369,6 +388,17 @@ final class CliRejectionPayloadMapper {
               conflict.requestedAccountType().wireValue(),
               conflict.parentAccountCode().value(),
               conflict.parentAccountType().wireValue());
+      case BookAdministrationRejection.ParentAccountRoleConflict conflict ->
+          new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
+              conflict.accountCode().value(),
+              conflict.requestedAccountRole().wireValue(),
+              conflict.parentAccountCode().value(),
+              conflict.parentAccountRole().wireValue());
+      case BookAdministrationRejection.ParentAccountNotHeader conflict ->
+          new CliRejectionJsonModels.ParentAccountNodeKindDetails(
+              conflict.accountCode().value(),
+              conflict.parentAccountCode().value(),
+              conflict.parentAccountNodeKind().wireValue());
       case BookAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
           new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
               conflict.accountCode().value(),
@@ -466,6 +496,7 @@ final class CliRejectionPayloadMapper {
   private static CliRejectionJsonModels.AccountTaxonomyDetails taxonomyDetails(
       AccountTaxonomy accountTaxonomy) {
     return new CliRejectionJsonModels.AccountTaxonomyDetails(
+        accountTaxonomy.nodeKind().wireValue(),
         accountTaxonomy.parentAccountCode().map(accountCode -> accountCode.value()).orElse(null),
         accountTaxonomy
             .financialPositionLineClassification()

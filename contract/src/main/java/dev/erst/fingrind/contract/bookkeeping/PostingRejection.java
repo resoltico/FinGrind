@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.PostingId;
@@ -51,7 +52,9 @@ public sealed interface PostingRejection
 
   /** Closed family of account-state issues surfaced while validating one posting request. */
   sealed interface AccountStateViolation
-      permits PostingRejection.UnknownAccount, PostingRejection.InactiveAccount {}
+      permits PostingRejection.UnknownAccount,
+          PostingRejection.InactiveAccount,
+          PostingRejection.NonPostableAccount {}
 
   /** Rejection for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
@@ -79,6 +82,15 @@ public sealed interface PostingRejection
     /** Validates the inactive account descriptor. */
     public InactiveAccount {
       Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
+
+  /** One non-postable header account referenced by a posting request. */
+  record NonPostableAccount(AccountCode accountCode, AccountNodeKind accountNodeKind)
+      implements AccountStateViolation {
+    public NonPostableAccount {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(accountNodeKind, "accountNodeKind");
     }
   }
 

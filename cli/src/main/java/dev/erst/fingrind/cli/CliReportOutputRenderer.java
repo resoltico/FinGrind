@@ -7,10 +7,12 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Renders semantic reporting payloads such as trial balances, ledgers, and period summaries. */
 final class CliReportOutputRenderer {
@@ -30,9 +32,15 @@ final class CliReportOutputRenderer {
                     : EffectiveDateRange.unbounded(),
                 List.of(
                     List.of(
-                        "Effective date to",
+                        "As of",
                         CliQueryOutputFormatter.upperDateBoundaryLabel(
-                            report.effectiveDateTo().orElse(null))))));
+                            report.effectiveDateAsOf().orElse(null))))));
+    String totals =
+        renderTrialBalanceTotals(
+            report.totals(),
+            report.balanced(),
+            report.effectiveDateAsOf().orElse(null),
+            "Current totals");
     String table =
         CliTextFormat.renderAdaptiveTable(
             HUMAN_TABLE_WIDTH,
@@ -60,6 +68,13 @@ final class CliReportOutputRenderer {
                 comparativeReferenceLine(report.comparativeEffectiveDateRange())
                     + System.lineSeparator()
                     + System.lineSeparator()
+                    + renderTrialBalanceTotals(
+                        report.comparativeTotals(),
+                        report.comparativeBalanced(),
+                        report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null),
+                        "Comparative totals")
+                    + System.lineSeparator()
+                    + System.lineSeparator()
                     + CliTextFormat.renderAdaptiveTable(
                         HUMAN_TABLE_WIDTH,
                         List.of(
@@ -83,14 +98,23 @@ final class CliReportOutputRenderer {
     return CliTextFormat.renderTitledBlock(
         "Trial Balance",
         joinSections(
-            header + System.lineSeparator() + System.lineSeparator() + table, comparative));
+            header
+                + System.lineSeparator()
+                + System.lineSeparator()
+                + totals
+                + System.lineSeparator()
+                + System.lineSeparator()
+                + table,
+            comparative));
   }
 
   static String renderTrialBalanceCsv(TrialBalanceReport report) {
     return CliTextFormat.renderCsv(
         List.of(
             "reportBasis",
-            "effectiveDateTo",
+            "recordKind",
+            "effectiveDateAsOf",
+            "balanced",
             "accountCode",
             "accountName",
             "accountType",
@@ -102,14 +126,22 @@ final class CliReportOutputRenderer {
             "creditTotal",
             "netAmount",
             "balanceSide"),
-        java.util.stream.Stream.concat(
+        java.util.stream.Stream.of(
                 report.rows().stream()
                     .map(
                         row ->
                             trialBalanceCsvRow(
                                 "current",
-                                report.effectiveDateTo().map(LocalDate::toString).orElse(""),
+                                report.effectiveDateAsOf().map(LocalDate::toString).orElse(""),
                                 row)),
+                report.totals().stream()
+                    .map(
+                        total ->
+                            trialBalanceTotalCsvRow(
+                                "current",
+                                report.effectiveDateAsOf().map(LocalDate::toString).orElse(""),
+                                report.balanced(),
+                                total)),
                 report.comparativeRows().stream()
                     .map(
                         row ->
@@ -120,7 +152,20 @@ final class CliReportOutputRenderer {
                                     .effectiveDateTo()
                                     .map(LocalDate::toString)
                                     .orElse(""),
-                                row)))
+                                row)),
+                report.comparativeTotals().stream()
+                    .map(
+                        total ->
+                            trialBalanceTotalCsvRow(
+                                "comparative",
+                                report
+                                    .comparativeEffectiveDateRange()
+                                    .effectiveDateTo()
+                                    .map(LocalDate::toString)
+                                    .orElse(""),
+                                report.comparativeBalanced(),
+                                total)))
+            .flatMap(stream -> stream)
             .toList());
   }
 
@@ -419,9 +464,9 @@ final class CliReportOutputRenderer {
                     : EffectiveDateRange.unbounded(),
                 List.of(
                     List.of(
-                        "Effective date to",
+                        "Effective date as of",
                         CliQueryOutputFormatter.upperDateBoundaryLabel(
-                            report.effectiveDateTo().orElse(null))))));
+                            report.effectiveDateAsOf().orElse(null))))));
     String sections = renderFinancialPositionSections(report.sections());
     String comparative =
         !hasComparative
@@ -443,7 +488,7 @@ final class CliReportOutputRenderer {
         List.of(
             "reportBasis",
             "recordKind",
-            "effectiveDateTo",
+            "effectiveDateAsOf",
             "sectionAccountType",
             "lineCode",
             "lineName",
@@ -690,12 +735,7 @@ final class CliReportOutputRenderer {
   private static String renderAccountLedgerEntry(
       dev.erst.fingrind.contract.bookkeeping.DeclaredAccount account,
       dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry entry) {
-    String summary =
-        entry.postingFact().journalEntry().effectiveDate()
-            + " | "
-            + CliQueryOutputFormatter.displayPostingKind(entry.postingFact().postingKind())
-            + " | "
-            + entry.postingFact().postingId().value();
+    String summary = CliPostingOutputRenderer.postingHeadline(entry.postingFact());
     String details =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -812,14 +852,14 @@ final class CliReportOutputRenderer {
       FinancialPositionReport report,
       String reportBasis,
       List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> sections) {
-    String effectiveDateTo =
+    String effectiveDateAsOf =
         "comparative".equals(reportBasis)
             ? report
                 .comparativeEffectiveDateRange()
                 .effectiveDateTo()
                 .map(LocalDate::toString)
                 .orElse("")
-            : report.effectiveDateTo().map(LocalDate::toString).orElse("");
+            : report.effectiveDateAsOf().map(LocalDate::toString).orElse("");
     return sections.stream()
         .flatMap(
             section ->
@@ -830,7 +870,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     reportBasis,
                                     "row",
-                                    effectiveDateTo,
+                                    effectiveDateAsOf,
                                     section.accountType().wireValue(),
                                     row.lineCode(),
                                     row.lineName(),
@@ -853,7 +893,7 @@ final class CliReportOutputRenderer {
                                 List.of(
                                     reportBasis,
                                     "section-total",
-                                    effectiveDateTo,
+                                    effectiveDateAsOf,
                                     section.accountType().wireValue(),
                                     "",
                                     "",
@@ -1134,13 +1174,44 @@ final class CliReportOutputRenderer {
                     total.balanceSide().wireValue()));
   }
 
+  private static String renderTrialBalanceTotals(
+      List<CurrencyBalance> totals,
+      boolean balanced,
+      @Nullable LocalDate effectiveDateAsOf,
+      String title) {
+    String summary =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("As of", CliQueryOutputFormatter.upperDateBoundaryLabel(effectiveDateAsOf)),
+                List.of("Balanced", CliQueryOutputFormatter.displayBooleanLabel(balanced))));
+    String table =
+        CliTextFormat.renderTable(
+            List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
+            totals.stream()
+                .map(
+                    total ->
+                        List.of(
+                            total.netAmount().currencyUnit().code(),
+                            CliQueryOutputFormatter.displayMoney(total.debitTotal()),
+                            CliQueryOutputFormatter.displayMoney(total.creditTotal()),
+                            CliQueryOutputFormatter.displayMoney(total.netAmount()),
+                            total.balanceSide().wireValue()))
+                .toList(),
+            1,
+            2,
+            3);
+    return section(title, joinSections(summary, table));
+  }
+
   private static List<String> trialBalanceCsvRow(
       String reportBasis,
-      String effectiveDateTo,
+      String effectiveDateAsOf,
       dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow row) {
     return List.of(
         reportBasis,
-        effectiveDateTo,
+        "row",
+        effectiveDateAsOf,
+        "",
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
@@ -1152,6 +1223,25 @@ final class CliReportOutputRenderer {
         CliQueryOutputFormatter.displayMoney(row.balance().creditTotal()),
         CliQueryOutputFormatter.displayMoney(row.balance().netAmount()),
         row.balance().balanceSide().wireValue());
+  }
+
+  private static List<String> trialBalanceTotalCsvRow(
+      String reportBasis, String effectiveDateAsOf, boolean balanced, CurrencyBalance total) {
+    return List.of(
+        reportBasis,
+        "total",
+        effectiveDateAsOf,
+        Boolean.toString(balanced),
+        "",
+        "",
+        "",
+        "",
+        "",
+        total.netAmount().currencyUnit().code(),
+        CliQueryOutputFormatter.displayMoney(total.debitTotal()),
+        CliQueryOutputFormatter.displayMoney(total.creditTotal()),
+        CliQueryOutputFormatter.displayMoney(total.netAmount()),
+        total.balanceSide().wireValue());
   }
 
   private static String displayPostingCoverage(PostingCoverage postingCoverage) {

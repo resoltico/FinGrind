@@ -44,7 +44,14 @@ class MachineContractRequestSchemasTest {
     assertEquals(
         MachineContractSchemaSupport.JSON_SCHEMA_DIALECT,
         MachineContractRequestSchemas.JSON_SCHEMA_DIALECT);
-    assertEquals("object", MachineContractRequestSchemas.postEntrySchema().get("type"));
+    assertEquals(
+        MachineContractSchemaSupport.JSON_SCHEMA_DIALECT,
+        MachineContractRequestSchemas.postEntrySchema().get("$schema"));
+    assertEquals(
+        List.of("oneOf"),
+        MachineContractRequestSchemas.postEntrySchema().keySet().stream()
+            .filter("oneOf"::equals)
+            .toList());
     assertEquals("object", MachineContractRequestSchemas.declareAccountSchema().get("type"));
     assertEquals("object", MachineContractRequestSchemas.ledgerPlanSchema().get("type"));
 

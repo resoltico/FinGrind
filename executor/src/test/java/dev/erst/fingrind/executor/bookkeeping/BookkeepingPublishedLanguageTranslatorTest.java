@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -192,10 +193,12 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new BookAdministrationRejection.AccountTaxonomyConflict(
             new AccountCode("1000"),
             new dev.erst.fingrind.core.AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1000")).stream().findFirst(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty()),
             new dev.erst.fingrind.core.AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1099")).stream().findFirst(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty())),
@@ -203,10 +206,12 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
                 new AccountCode("1000"),
                 new dev.erst.fingrind.core.AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     List.of(new AccountCode("1000")).stream().findFirst(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty()),
                 new dev.erst.fingrind.core.AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     List.of(new AccountCode("1099")).stream().findFirst(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty()))));
@@ -271,14 +276,34 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("2000"),
                 AccountType.LIABILITY)));
     assertEquals(
+        new BookAdministrationRejection.ParentAccountRoleConflict(
+            new AccountCode("1010"),
+            AccountRole.ORDINARY,
+            new AccountCode("1100"),
+            AccountRole.CONTRA),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountRoleConflict(
+                new AccountCode("1010"),
+                AccountRole.ORDINARY,
+                new AccountCode("1100"),
+                AccountRole.CONTRA)));
+    assertEquals(
+        new BookAdministrationRejection.ParentAccountNotHeader(
+            new AccountCode("1010"), new AccountCode("1000"), AccountNodeKind.POSTABLE),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.ParentAccountNotHeader(
+                new AccountCode("1010"), new AccountCode("1000"), AccountNodeKind.POSTABLE)));
+    assertEquals(
         new BookAdministrationRejection.ParentAccountTaxonomyConflict(
             new AccountCode("1010"),
             new dev.erst.fingrind.core.AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("1000")),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty()),
             new AccountCode("1000"),
             new dev.erst.fingrind.core.AccountTaxonomy(
+                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("0900")),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty())),
@@ -286,11 +311,13 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict(
                 new AccountCode("1010"),
                 new dev.erst.fingrind.core.AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.of(new AccountCode("1000")),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty()),
                 new AccountCode("1000"),
                 new dev.erst.fingrind.core.AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.of(new AccountCode("0900")),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty()))));
@@ -336,6 +363,16 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ClosingEquityAccountReserved(new AccountCode("3200"))));
+    assertEquals(
+        new PostingRejection.AccountStateViolations(
+            List.of(
+                new PostingRejection.NonPostableAccount(
+                    new AccountCode("1000"), AccountNodeKind.HEADER))),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.AccountStateViolations(
+                List.of(
+                    new BookkeepingPostingRejection.NonPostableAccount(
+                        new AccountCode("1000"), AccountNodeKind.HEADER)))));
     assertEquals(
         new PostingRejection.ReversalTargetNotFound(
             new dev.erst.fingrind.core.PostingId("posting-1")),

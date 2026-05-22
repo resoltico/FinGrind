@@ -31,10 +31,10 @@ final class SqliteRoundTripReplayVerifier {
     if (!postingFact.postingId().equals(committed.postingId())) {
       throw new IllegalStateException("Reloaded posting id differs from the commit result.");
     }
-    if (!postingFact.journalEntry().equals(command.journalEntry())) {
+    if (!postingFact.journalEntry().equals(CliFuzzFixtures.journalEntry(command))) {
       throw new IllegalStateException("Reloaded journal entry differs from the parsed command.");
     }
-    if (!postingFact.reversalReference().equals(command.reversalReference())) {
+    if (!postingFact.reversalReference().equals(CliFuzzFixtures.reversalReference(command))) {
       throw new IllegalStateException("Reloaded reversal differs from the parsed command.");
     }
     if (!postingFact.evidence().equals(command.evidence())) {

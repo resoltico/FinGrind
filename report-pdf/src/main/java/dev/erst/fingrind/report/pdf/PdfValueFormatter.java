@@ -3,7 +3,7 @@ package dev.erst.fingrind.report.pdf;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -150,10 +149,6 @@ final class PdfValueFormatter {
     return wireLabel(entityForm.wireValue()) + " / " + wireLabel(ownerModel.wireValue());
   }
 
-  static String displayReportingProfile(ReportingObligationStatus reportingObligationStatus) {
-    return wireLabel(reportingObligationStatus.wireValue());
-  }
-
   static String displayBusinessActivityTags(List<BusinessActivityTag> businessActivityTags) {
     return businessActivityTags.isEmpty()
         ? "(none)"
@@ -162,8 +157,8 @@ final class PdfValueFormatter {
             .collect(java.util.stream.Collectors.joining(", "));
   }
 
-  static String displayAccountingBasis(AccountingBasis accountingBasis) {
-    return wireLabel(accountingBasis.wireValue());
+  static String displayPolicyProfile(AccountingPolicyProfile policyProfile) {
+    return wireLabel(policyProfile.wireValue());
   }
 
   static String optionalDate(@Nullable LocalDate date) {

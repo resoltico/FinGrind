@@ -18,8 +18,8 @@ final class TrialBalancePdfRenderer {
             report.postingCoverage(),
             List.of(
                 List.of(
-                    "Effective date to",
-                    PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null))))));
+                    "As of",
+                    PdfValueFormatter.optionalDate(report.effectiveDateAsOf().orElse(null))))));
     pageWriter.writeTable(
         "Trial Balance",
         List.of(

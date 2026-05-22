@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -45,6 +46,8 @@ final class MachineContractDeclareAccountSchemas {
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "accountRole", AccountRole.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
+                "accountNodeKind", AccountNodeKind.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
                 "financialPositionLineClassification",
                 FinancialPositionLineClassification.declaredAccountWireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
@@ -78,6 +81,12 @@ final class MachineContractDeclareAccountSchemas {
             MachineContractSchemaSupport.enumStringSchema(
                 "Canonical doctrinal role for the declared account, including ordinary and contra polarity.",
                 AccountRole.wireValues())),
+        MachineContractFieldSpec.required(
+            ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
+            "Canonical chart node kind for the declared account. HEADER accounts organize child nodes and POSTABLE accounts accept direct postings.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Canonical chart node kind for the declared account. HEADER accounts organize child nodes and POSTABLE accounts accept direct postings.",
+                AccountNodeKind.wireValues())),
         MachineContractFieldSpec.optional(
             ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
             "Optional parent account code that places this account inside the declared chart hierarchy.",

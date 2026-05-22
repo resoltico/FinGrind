@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
@@ -23,6 +24,8 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import java.util.Locale;
 import java.util.Optional;
@@ -187,14 +190,14 @@ final class CliExecutionPolicy {
   static int exitCodeFor(BackupBookResult result) {
     return switch (result) {
       case BackupBookResult.BackedUp _ -> 0;
-      case BackupBookResult.Rejected _ -> 2;
+      case BackupBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }
 
   static int exitCodeFor(RestoreBookResult result) {
     return switch (result) {
       case RestoreBookResult.Restored _ -> 0;
-      case RestoreBookResult.Rejected _ -> 2;
+      case RestoreBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }
 
@@ -203,7 +206,7 @@ final class CliExecutionPolicy {
       case RekeyRollbackResult.Inspected _ -> 0;
       case RekeyRollbackResult.Restored _ -> 0;
       case RekeyRollbackResult.Deleted _ -> 0;
-      case RekeyRollbackResult.Rejected _ -> 2;
+      case RekeyRollbackResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }
 
@@ -219,11 +222,37 @@ final class CliExecutionPolicy {
     return 1;
   }
 
-  static int deterministicFailureExitCode() {
-    return 2;
+  static int contractFailureExitCode(ContractFailure failure) {
+    return failure.descriptor().exitCode();
+  }
+
+  static int failureExitCode(CliFailure failure) {
+    String failureCode = failure.code();
+    for (ContractErrors.Descriptor descriptor : ContractErrors.Descriptor.values()) {
+      if (descriptor.code().equals(failureCode)) {
+        return descriptor.exitCode();
+      }
+    }
+    return runtimeFailureExitCode();
   }
 
   static int runtimeFailureExitCode() {
     return 4;
+  }
+
+  private static int exitCodeFor(BookMaintenanceRejection rejection) {
+    return switch (rejection) {
+      case BookMaintenanceRejection.BookHasBlockingArtifacts _ -> 7;
+      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ -> 7;
+      case BookMaintenanceRejection.ArtifactBusy _ -> 7;
+      case BookMaintenanceRejection.BackupDestinationAlreadyExists _ -> 7;
+      case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ -> 7;
+      case BookMaintenanceRejection.ArtifactVerificationFailed _ -> 6;
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ -> 2;
+      case BookMaintenanceRejection.NoRollbackArtifactsFound _ -> 2;
+      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ -> 2;
+      case BookMaintenanceRejection.RollbackArtifactNotFound _ -> 2;
+      case BookMaintenanceRejection.RollbackArtifactNotForBook _ -> 2;
+    };
   }
 }

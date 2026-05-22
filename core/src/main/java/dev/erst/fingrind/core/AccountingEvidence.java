@@ -3,7 +3,7 @@ package dev.erst.fingrind.core;
 import java.util.List;
 import java.util.Objects;
 
-/** First-class source-document and approval references attached to accepted accounting facts. */
+/** First-class retained source-document and approval evidence attached to accounting facts. */
 public record AccountingEvidence(
     List<SourceDocumentReference> sourceDocuments, List<ApprovalReference> approvals) {
   /** Validates one accounting-evidence bundle. */

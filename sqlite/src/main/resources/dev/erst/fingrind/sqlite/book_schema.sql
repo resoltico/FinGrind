@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 12;
+pragma user_version = 15;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -15,9 +15,27 @@ create table if not exists book_identity (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
     ),
-    fiscal_year_start text not null check (
-        length(fiscal_year_start) = 5
-        and fiscal_year_start glob '[0-1][0-9]-[0-3][0-9]'
+    fiscal_year_start_month integer not null check (
+        fiscal_year_start_month between 1 and 12
+    ),
+    fiscal_year_start_day integer not null check (
+        fiscal_year_start_day between 1 and 31
+    ),
+    check (
+        (
+            fiscal_year_start_month in (1, 3, 5, 7, 8, 10, 12)
+            and fiscal_year_start_day between 1 and 31
+        )
+        or
+        (
+            fiscal_year_start_month in (4, 6, 9, 11)
+            and fiscal_year_start_day between 1 and 30
+        )
+        or
+        (
+            fiscal_year_start_month = 2
+            and fiscal_year_start_day between 1 and 29
+        )
     )
 ) strict;
 
@@ -36,12 +54,10 @@ create table if not exists entity_profile (
     ),
     owner_model text not null check (
         owner_model in (
-            'SOLE_OWNER', 'MULTI_OWNER', 'MEMBER_FUNDED', 'INSTITUTIONALLY_GOVERNED', 'UNKNOWN'
-        )
-    ),
-    reporting_obligation_status text not null check (
-        reporting_obligation_status in (
-            'INTERNAL_MANAGEMENT_ONLY', 'EXTERNAL_GENERAL_PURPOSE', 'MIXED', 'UNSPECIFIED'
+            'SOLE_OWNER',
+            'MULTI_OWNER',
+            'MEMBERSHIP_BODY',
+            'NO_PRIVATE_OWNER'
         )
     ),
     business_activity_tags text not null,
@@ -50,7 +66,9 @@ create table if not exists entity_profile (
 
 create table if not exists book_policy (
     singleton_id integer primary key check (singleton_id = 1),
-    accounting_basis text not null check (accounting_basis in ('CASH', 'ACCRUAL')),
+    policy_profile text not null check (
+        policy_profile in ('INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1')
+    ),
     foreign key (singleton_id) references book_identity (singleton_id)
 ) strict;
 
@@ -65,6 +83,7 @@ create table if not exists account (
         account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')
     ),
     account_role text not null check (account_role in ('ORDINARY', 'CONTRA')),
+    account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
     financial_position_line_classification text check (
         financial_position_line_classification is null
@@ -176,6 +195,35 @@ begin
             parent.account_code = new.parent_account_code
             and parent.account_type <> new.account_type
     );
+    select raise(fail, 'account parent must share the child account role.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_role <> new.account_role
+    );
+    select raise(fail, 'account parent must be a header node.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_node_kind <> 'HEADER'
+    );
+    select raise(fail, 'account parent must share the child statement classification.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and (
+                coalesce(parent.financial_position_line_classification, '')
+                    <> coalesce(new.financial_position_line_classification, '')
+                or coalesce(parent.profit_and_loss_line_classification, '')
+                    <> coalesce(new.profit_and_loss_line_classification, '')
+            )
+    );
     with recursive ancestors (account_code, parent_account_code) as (
         select
             account_seed.account_code,
@@ -203,6 +251,7 @@ before update on account
 when
     old.account_type <> new.account_type
     or old.account_role <> new.account_role
+    or old.account_node_kind <> new.account_node_kind
     or coalesce(old.parent_account_code, '') <> coalesce(new.parent_account_code, '')
     or coalesce(old.financial_position_line_classification, '')
     <> coalesce(new.financial_position_line_classification, '')
@@ -296,6 +345,16 @@ create table if not exists posting_source_document (
         and source_document_type glob '[A-Za-z0-9]*'
         and source_document_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
+    document_date text not null,
+    captured_at text not null,
+    storage_locator text not null check (
+        length(trim(storage_locator)) between 1 and 512
+    ),
+    content_sha256 text not null check (
+        length(content_sha256) = 64
+        and content_sha256 glob '[0-9a-f]*'
+        and content_sha256 not glob '*[^0-9a-f]*'
+    ),
     primary key (posting_id, source_document_order),
     unique (posting_id, source_document_id),
     foreign key (posting_id) references posting_fact (posting_id)
@@ -314,6 +373,10 @@ create table if not exists posting_approval (
         and approval_type glob '[A-Za-z0-9]*'
         and approval_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
+    approver_id text not null check (length(trim(approver_id)) > 0),
+    approver_type text not null check (approver_type in ('HUMAN', 'SYSTEM', 'AGENT')),
+    decision text not null check (decision in ('APPROVED', 'REJECTED')),
+    approved_at text not null,
     primary key (posting_id, approval_order),
     unique (posting_id, approval_id),
     foreign key (posting_id) references posting_fact (posting_id)
@@ -348,6 +411,27 @@ begin
         where
             account.account_code = new.account_code
             and account.active = 0
+    );
+    select raise(fail, 'journal-line accounts must be postable.')
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.account_code
+            and account.account_node_kind <> 'POSTABLE'
+    );
+end;
+
+create trigger if not exists journal_line_validate_functional_currency_on_insert
+before insert on journal_line
+begin
+    select raise(fail, 'journal-line currency must match the book functional currency.')
+    where exists (
+        select 1
+        from book_identity
+        where
+            book_identity.singleton_id = 1
+            and new.currency_code <> book_identity.functional_currency_code
     );
 end;
 

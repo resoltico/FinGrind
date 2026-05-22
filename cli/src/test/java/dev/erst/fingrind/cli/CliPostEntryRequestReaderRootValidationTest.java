@@ -37,28 +37,14 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000"
-                      }
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000"
-                      }
-                    }
-                  ],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -69,6 +55,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                   "ignoredTopLevel": true
                 }
                 """
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -83,28 +70,14 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000"
-                      }
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "1000"
-                      }
-                    }
-                  ],
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -115,6 +88,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                   }
                 }
                 """
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

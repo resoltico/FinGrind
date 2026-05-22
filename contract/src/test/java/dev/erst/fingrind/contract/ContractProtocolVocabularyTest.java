@@ -42,16 +42,22 @@ import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.PostingKind;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for protocol vocabulary helpers and descriptor namespaces. */
 class ContractProtocolVocabularyTest {
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   @Test
   void protocolVocabularyHelpersParseWireValuesAndRejectUnknownValues() {
     assertEquals(
@@ -65,7 +71,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(12, BookFormatContract.FORMAT_VERSION);
+    assertEquals(15, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -212,7 +218,10 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.LedgerAssertionTemplateDescriptor.class),
         ContractTemplates.descriptorTypes());
     assertEquals(
-        List.of(), new ContractResponse.ErrorDescriptor("code", "description").detailFields());
+        List.of(), new ContractResponse.ErrorDescriptor("code", 4, "description").detailFields());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ContractResponse.ErrorDescriptor("code", -1, "description"));
     assertEquals(List.of(), leafRejection.detailFields());
     assertEquals(List.of(), leafRejection.detailRejections());
   }
@@ -233,16 +242,18 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
-                dev.erst.fingrind.core.PostingKind.STANDARD,
+                BookkeepingEntryKind.CASH_REVENUE,
                 "2026-04-25",
+                "1000",
+                "4000",
+                null,
+                null,
+                new MonetaryAmount("EUR", "1000"),
+                null,
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000"))),
-                new ContractTemplates.AccountingEvidenceTemplateDescriptor(
-                    List.of(
-                        new ContractTemplates.SourceDocumentTemplateDescriptor(
-                            "document-idem-1", "invoice")),
-                    List.of()),
+                evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
                 null));
@@ -250,18 +261,20 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
-                dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE,
+                BookkeepingEntryKind.MANUAL_ADJUSTMENT,
                 "2026-04-25",
+                null,
+                null,
+                null,
+                null,
+                null,
+                PostingKind.PERIOD_CLOSE,
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
-                new ContractTemplates.AccountingEvidenceTemplateDescriptor(
-                    List.of(
-                        new ContractTemplates.SourceDocumentTemplateDescriptor(
-                            "document-idem-1", "invoice")),
-                    List.of()),
+                evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
                 null));
@@ -278,6 +291,7 @@ class ContractProtocolVocabularyTest {
                     "Cash",
                     AccountType.ASSET,
                     AccountRole.ORDINARY,
+                    AccountNodeKind.POSTABLE,
                     null,
                     FinancialPositionLineClassification.CURRENT_ASSET,
                     null),
@@ -292,5 +306,18 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new ContractTemplates.LedgerPlanQueryTemplateDescriptor(null, null, null, 999, null));
+  }
+
+  private static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate() {
+    return new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+        List.of(
+            new ContractTemplates.SourceDocumentTemplateDescriptor(
+                "document-idem-1",
+                "invoice",
+                "2026-04-25",
+                "2026-04-25T10:15:30Z",
+                "evidence://documents/document-idem-1.pdf",
+                DOCUMENT_SHA256)),
+        List.of());
   }
 }

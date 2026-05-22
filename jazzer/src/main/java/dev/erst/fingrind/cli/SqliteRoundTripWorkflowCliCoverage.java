@@ -49,7 +49,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(command, "workflow");
     PostingId postingId = initializeAndCommitWorkflowBook(workflow, bookAccess, workflowCommand);
     AccountCode primaryAccount = CliFuzzFixtures.firstAccountCode(workflowCommand);
-    LocalDate effectiveDate = workflowCommand.journalEntry().effectiveDate();
+    LocalDate effectiveDate = CliFuzzFixtures.journalEntry(workflowCommand).effectiveDate();
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.inspectBook(bookAccess),
@@ -159,7 +159,8 @@ final class SqliteRoundTripWorkflowCliCoverage {
     Path bookPath = bookAccess.bookFilePath();
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
         workflow.openBook(
-            bookAccess, CliFuzzFixtures.openBookCommand(command.journalEntry().currencyUnit())),
+            bookAccess,
+            CliFuzzFixtures.openBookCommand(CliFuzzFixtures.journalEntry(command).currencyUnit())),
         bookPath,
         OutputMode.JSON,
         "\"initializedAt\"");

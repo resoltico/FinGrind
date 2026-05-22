@@ -122,12 +122,13 @@ final class FinGrindCli {
       responseWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
       return CliExecutionPolicy.invalidInvocationExitCode();
     } catch (ContractFailureException exception) {
-      responseWriter.writeDeterministicFailure(
-          CliFailureMapper.contractFailure(exception.failure()), failureOutputMode);
-      return CliExecutionPolicy.deterministicFailureExitCode();
+      CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
+      responseWriter.writeDeterministicFailure(failure, failureOutputMode);
+      return CliExecutionPolicy.failureExitCode(failure);
     } catch (RuntimeException exception) {
-      responseWriter.writeFailure(CliFailureMapper.runtimeFailure(exception), failureOutputMode);
-      return CliExecutionPolicy.runtimeFailureExitCode();
+      CliFailure failure = CliFailureMapper.runtimeFailure(exception);
+      responseWriter.writeFailure(failure, failureOutputMode);
+      return CliExecutionPolicy.failureExitCode(failure);
     }
   }
 

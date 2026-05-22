@@ -1,12 +1,12 @@
 {
-  "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_legacy_correction.json",
-  "coverageIntent" : "rejected legacy correction request shape",
-  "expectation" : {
-    "outcomeKind" : "expected-invalid",
-    "message" : "Field is no longer accepted: correction",
-    "details" : {
-      "type" : "CLI_REQUEST_UNPARSED"
+  "targetKey": "cli-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_legacy_correction.json",
+  "coverageIntent": "rejected legacy correction request shape",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "Field is no longer accepted: correction",
+    "details": {
+      "type": "CLI_REQUEST_UNPARSED"
     }
   }
 }

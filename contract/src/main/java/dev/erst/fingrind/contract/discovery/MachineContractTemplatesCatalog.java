@@ -5,18 +5,17 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -25,6 +24,11 @@ final class MachineContractTemplatesCatalog {
   private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
   private static final String SAMPLE_SOURCE_DOCUMENT_ID = "invoice-1001";
   private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "invoice";
+  private static final String SAMPLE_DOCUMENT_DATE = "2026-01-15";
+  private static final String SAMPLE_CAPTURED_AT = "2026-01-15T09:00:00Z";
+  private static final String SAMPLE_STORAGE_LOCATOR = "vault://documents/invoice-1001";
+  private static final String SAMPLE_CONTENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   private static final String SAMPLE_ACTOR_ID = "operator-demo-1";
   private static final String SAMPLE_COMMAND_ID = "command-demo-1";
   private static final String SAMPLE_IDEMPOTENCY_KEY = "idem-demo-1";
@@ -36,6 +40,7 @@ final class MachineContractTemplatesCatalog {
         "accountName": "Cash",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET"
       }
       """;
@@ -47,6 +52,7 @@ final class MachineContractTemplatesCatalog {
         "accountName": "Revenue",
         "accountType": "REVENUE",
         "accountRole": "ORDINARY",
+        "accountNodeKind": "POSTABLE",
         "profitAndLossLineClassification": "OPERATING_REVENUE"
       }
       """;
@@ -63,17 +69,24 @@ final class MachineContractTemplatesCatalog {
 
   static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        PostingKind.STANDARD,
+        BookkeepingEntryKind.CASH_REVENUE,
         SAMPLE_EFFECTIVE_DATE,
-        List.of(
-            new ContractTemplates.JournalLineTemplateDescriptor(
-                "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
-            new ContractTemplates.JournalLineTemplateDescriptor(
-                "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
+        "1000",
+        "2000",
+        null,
+        null,
+        new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
         new ContractTemplates.AccountingEvidenceTemplateDescriptor(
             List.of(
                 new ContractTemplates.SourceDocumentTemplateDescriptor(
-                    SAMPLE_SOURCE_DOCUMENT_ID, SAMPLE_SOURCE_DOCUMENT_TYPE)),
+                    SAMPLE_SOURCE_DOCUMENT_ID,
+                    SAMPLE_SOURCE_DOCUMENT_TYPE,
+                    SAMPLE_DOCUMENT_DATE,
+                    SAMPLE_CAPTURED_AT,
+                    SAMPLE_STORAGE_LOCATOR,
+                    SAMPLE_CONTENT_SHA256)),
             List.of()),
         new ContractTemplates.ProvenanceTemplateDescriptor(
             SAMPLE_ACTOR_ID,
@@ -91,6 +104,7 @@ final class MachineContractTemplatesCatalog {
         "Cash",
         AccountType.ASSET,
         AccountRole.ORDINARY,
+        AccountNodeKind.POSTABLE,
         null,
         FinancialPositionLineClassification.CURRENT_ASSET,
         null);
@@ -107,11 +121,10 @@ final class MachineContractTemplatesCatalog {
                     "Acme Studio",
                     EntityForm.FREELANCER,
                     OwnerModel.SOLE_OWNER,
-                    ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                     List.of("translation-services"),
                     "EUR",
                     "01-01",
-                    AccountingBasis.ACCRUAL),
+                    AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1),
                 null,
                 null,
                 null,
@@ -127,6 +140,7 @@ final class MachineContractTemplatesCatalog {
                     "Cash",
                     AccountType.ASSET,
                     AccountRole.ORDINARY,
+                    AccountNodeKind.POSTABLE,
                     null,
                     FinancialPositionLineClassification.CURRENT_ASSET,
                     null),
@@ -143,6 +157,7 @@ final class MachineContractTemplatesCatalog {
                     "Revenue",
                     AccountType.REVENUE,
                     AccountRole.ORDINARY,
+                    AccountNodeKind.POSTABLE,
                     null,
                     null,
                     ProfitAndLossLineClassification.OPERATING_REVENUE),

@@ -36,6 +36,8 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           AccountTaxonomyConflictDetails,
           ParentAccountDetails,
           ParentAccountTypeConflictDetails,
+          ParentAccountRoleConflictDetails,
+          ParentAccountNodeKindDetails,
           ParentAccountTaxonomyConflictDetails,
           ClosingEquityAccountDetails,
           ClosingEquityAccountCandidateMissingDetails,
@@ -72,10 +74,12 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record AccountStateViolationPayload(String code, String accountCode) {
+  record AccountStateViolationPayload(
+      String code, String accountCode, @Nullable String accountNodeKind) {
     public AccountStateViolationPayload {
       code = requireText(code, "code");
       accountCode = requireText(accountCode, "accountCode");
+      accountNodeKind = requireOptionalText(accountNodeKind, "accountNodeKind");
     }
   }
 
@@ -139,6 +143,30 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
+  record ParentAccountRoleConflictDetails(
+      String accountCode,
+      String requestedAccountRole,
+      String parentAccountCode,
+      String parentAccountRole)
+      implements AccountRejectionDetails {
+    public ParentAccountRoleConflictDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      requestedAccountRole = requireText(requestedAccountRole, "requestedAccountRole");
+      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
+      parentAccountRole = requireText(parentAccountRole, "parentAccountRole");
+    }
+  }
+
+  record ParentAccountNodeKindDetails(
+      String accountCode, String parentAccountCode, String parentAccountNodeKind)
+      implements AccountRejectionDetails {
+    public ParentAccountNodeKindDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
+      parentAccountNodeKind = requireText(parentAccountNodeKind, "parentAccountNodeKind");
+    }
+  }
+
   record ParentAccountTaxonomyConflictDetails(
       String accountCode,
       AccountTaxonomyDetails requestedAccountTaxonomy,
@@ -154,10 +182,12 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   }
 
   record AccountTaxonomyDetails(
+      String accountNodeKind,
       @Nullable String parentAccountCode,
       @Nullable String financialPositionLineClassification,
       @Nullable String profitAndLossLineClassification) {
     public AccountTaxonomyDetails {
+      accountNodeKind = requireText(accountNodeKind, "accountNodeKind");
       parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
       financialPositionLineClassification =
           requireOptionalText(

@@ -28,7 +28,7 @@ final class CliReportPayloadMapper {
 
   static CliReportJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
     return new CliReportJsonModels.TrialBalancePayload(
-        report.effectiveDateTo().map(Object::toString).orElse(null),
+        report.effectiveDateAsOf().map(Object::toString).orElse(null),
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),
@@ -36,9 +36,13 @@ final class CliReportPayloadMapper {
                 CliReportSurfacePolicy.hasComparative(report),
                 report.comparativeEffectiveDateRange())),
         report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList(),
+        report.totals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.balanced(),
         report.comparativeRows().stream()
             .map(CliReportPayloadMapper::trialBalanceRowPayload)
-            .toList());
+            .toList(),
+        report.comparativeTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.comparativeBalanced());
   }
 
   static CliReportJsonModels.AccountLedgerPayload accountLedgerPayload(AccountLedgerReport report) {
@@ -79,7 +83,7 @@ final class CliReportPayloadMapper {
   static CliReportJsonModels.FinancialPositionPayload financialPositionPayload(
       FinancialPositionReport report) {
     return new CliReportJsonModels.FinancialPositionPayload(
-        report.effectiveDateTo().map(Object::toString).orElse(null),
+        report.effectiveDateAsOf().map(Object::toString).orElse(null),
         reportContextPayload(
             report.bookIdentity(),
             report.postingCoverage(),

@@ -19,6 +19,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": [
@@ -61,6 +62,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "provenance": {
@@ -89,6 +91,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": "not-an-array",
@@ -118,6 +121,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": null,

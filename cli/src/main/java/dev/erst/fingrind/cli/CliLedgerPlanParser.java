@@ -209,9 +209,6 @@ final class CliLedgerPlanParser {
                 CliArgumentValueParser.parseOwnerModelOption(
                     requiredText(openBookNode, ProtocolOpenBookFields.OWNER_MODEL),
                     "openBook." + ProtocolOpenBookFields.OWNER_MODEL),
-                CliArgumentValueParser.parseReportingObligationStatusOption(
-                    requiredText(openBookNode, ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS),
-                    "openBook." + ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS),
                 requiredBusinessActivityTags(openBookNode)),
             CliArgumentValueParser.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
@@ -219,9 +216,9 @@ final class CliLedgerPlanParser {
             CliArgumentValueParser.parseFiscalYearStartOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
                 "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
-            CliArgumentValueParser.parseAccountingBasisOption(
-                requiredText(openBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
-                "openBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)));
+            CliArgumentValueParser.parseAccountingPolicyProfileOption(
+                requiredText(openBookNode, ProtocolOpenBookFields.POLICY_PROFILE),
+                "openBook." + ProtocolOpenBookFields.POLICY_PROFILE)));
   }
 
   private static List<BusinessActivityTag> requiredBusinessActivityTags(ObjectNode openBookNode) {

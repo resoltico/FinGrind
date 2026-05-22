@@ -83,7 +83,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("Request Document"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
-    assertTrue(help.contains("Generate a runnable sample document with:"));
+    assertTrue(help.contains("Scaffold command"));
+    assertTrue(help.contains("Contract lookup"));
   }
 
   @Test
@@ -120,6 +121,56 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         new ObjectMapper().readTree(capabilitiesOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", capabilitiesEnvelope.path("status").stringValue());
     assertTrue(capabilitiesEnvelope.path("payload").path("commands").isObject());
+  }
+
+  @Test
+  void run_helpFullJsonPublishesExpandedOverviewContract() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"help", "--detail", "full", "--output", "json"});
+
+    assertEquals(0, exitCode);
+    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals("full", payload.path("detail").stringValue());
+    JsonNode fullContract = payload.path("fullContract");
+    assertTrue(fullContract.isObject());
+    assertTrue(fullContract.path("bookModel").isObject());
+    assertTrue(fullContract.path("accountingBaseline").isObject());
+    assertTrue(fullContract.path("currencyModel").isObject());
+    assertTrue(fullContract.path("extensionSurface").isObject());
+    assertTrue(fullContract.path("quickStart").isArray());
+  }
+
+  @Test
+  void run_rejectsHelpDetailOnHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"help", "--output", "human", "--detail", "full"});
+
+    assertEquals(1, exitCode);
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("invalid-request"));
+    assertTrue(output.contains("Argument : --detail"));
+    assertTrue(output.contains("resolved output mode is json"));
+  }
+
+  @Test
+  void run_rejectsCapabilitiesDetailOnHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"capabilities", "--output", "human", "--detail", "full"});
+
+    assertEquals(1, exitCode);
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("invalid-request"));
+    assertTrue(output.contains("Argument : --detail"));
+    assertTrue(output.contains("resolved output mode is json"));
   }
 
   @Test
@@ -223,7 +274,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[] {"capabilities", "--output", "json"});
+    int exitCode = cli.run(new String[] {"capabilities", "--detail", "full", "--output", "json"});
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode payload = new ObjectMapper().readTree(json).path("payload");
@@ -415,44 +466,35 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   }
 
   private static void assertCapabilitiesRequestShapes(JsonNode payload) {
-    assertTrue(payload.path("requestShapes").has("postEntry"));
-    assertTrue(payload.path("requestShapes").has("declareAccount"));
+    JsonNode fullContract = payload.path("fullContract");
+    JsonNode requestShapes = fullContract.path("requestShapes");
+    JsonNode preflight = fullContract.path("preflight");
+    JsonNode currencyModel = fullContract.path("currencyModel");
+    assertTrue(requestShapes.has("postEntry"));
+    assertTrue(requestShapes.has("declareAccount"));
     assertEquals(
         "https://json-schema.org/draft/2020-12/schema",
-        payload.path("requestShapes").path("schemaDialect").stringValue());
-    assertEquals("advisory", payload.path("preflight").path("semantics").stringValue());
-    assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").stringValue());
+        requestShapes.path("schemaDialect").stringValue());
+    assertEquals("advisory", preflight.path("semantics").stringValue());
+    assertEquals("not-guaranteed", preflight.path("commitGuarantee").stringValue());
+    assertEquals("single-functional-currency-per-book", currencyModel.path("scope").stringValue());
+    assertEquals("not-supported", currencyModel.path("multiCurrencyStatus").stringValue());
+    assertTrue(requestShapes.path("postEntry").path("topLevelFields").isArray());
     assertEquals(
-        "single-functional-currency-per-book",
-        payload.path("currencyModel").path("scope").stringValue());
-    assertEquals(
-        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").stringValue());
-    assertTrue(payload.path("requestShapes").path("postEntry").path("topLevelFields").isArray());
-    assertEquals(
-        "postingKind",
-        payload
-            .path("requestShapes")
-            .path("postEntry")
-            .path("topLevelFields")
-            .get(0)
-            .path("name")
-            .stringValue());
+        "entryKind",
+        requestShapes.path("postEntry").path("topLevelFields").get(0).path("name").stringValue());
     assertEquals(
         RequestFieldPresence.REQUIRED.wireValue(),
-        payload
-            .path("requestShapes")
+        requestShapes
             .path("postEntry")
             .path("topLevelFields")
             .get(0)
             .path("presence")
             .stringValue());
-    assertEquals(
-        "object",
-        payload.path("requestShapes").path("postEntry").path("schema").path("type").stringValue());
+    assertTrue(requestShapes.path("postEntry").path("schema").path("oneOf").isArray());
     assertEquals(
         "array",
-        payload
-            .path("requestShapes")
+        requestShapes
             .path("ledgerPlan")
             .path("schema")
             .path("properties")
@@ -461,14 +503,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .stringValue());
     assertEquals(
         "conditional",
-        descriptorField(
-                payload.path("requestShapes").path("ledgerPlan").path("stepFields"), "posting")
+        descriptorField(requestShapes.path("ledgerPlan").path("stepFields"), "posting")
             .path("presence")
             .stringValue());
     assertEquals(
         "conditional",
-        descriptorField(
-                payload.path("requestShapes").path("ledgerPlan").path("queryFields"), "accountCode")
+        descriptorField(requestShapes.path("ledgerPlan").path("queryFields"), "accountCode")
             .path("presence")
             .stringValue());
   }
@@ -572,39 +612,31 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   }
 
   private static void assertCapabilitiesResponseModel(JsonNode payload) {
-    assertTrue(payload.path("responseModel").path("rejections").isArray());
-    assertFalse(payload.path("responseModel").has("rejectionCodes"));
-    assertTrue(payload.path("responseModel").path("errorDescriptors").isArray());
+    JsonNode responseModel = payload.path("fullContract").path("responseModel");
+    assertTrue(responseModel.path("rejections").isArray());
+    assertFalse(responseModel.has("rejectionCodes"));
+    assertTrue(responseModel.path("errorDescriptors").isArray());
+    assertTrue(responseModel.path("errorDescriptors").toString().contains("invalid-page-cursor"));
     assertTrue(
-        payload
-            .path("responseModel")
-            .path("errorDescriptors")
-            .toString()
-            .contains("invalid-page-cursor"));
-    assertTrue(
-        payload
-            .path("responseModel")
+        responseModel
             .path("errorDescriptors")
             .toString()
             .contains("protected-book-verification-failed"));
+    JsonNode protectedBookVerificationDescriptor =
+        java.util.stream.StreamSupport.stream(
+                responseModel.path("errorDescriptors").spliterator(), false)
+            .filter(
+                descriptor ->
+                    "protected-book-verification-failed"
+                        .equals(descriptor.path("code").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(6, protectedBookVerificationDescriptor.path("exitCode").intValue());
     assertTrue(
-        payload
-            .path("responseModel")
-            .path("errorDescriptors")
-            .toString()
-            .contains("managed-runtime-failure"));
+        responseModel.path("errorDescriptors").toString().contains("managed-runtime-failure"));
     assertTrue(
-        payload
-            .path("responseModel")
-            .path("errorDescriptors")
-            .toString()
-            .contains("storage-runtime-failure"));
-    assertTrue(
-        payload
-            .path("responseModel")
-            .path("errorDescriptors")
-            .toString()
-            .contains("pdf-export-failure"));
+        responseModel.path("errorDescriptors").toString().contains("storage-runtime-failure"));
+    assertTrue(responseModel.path("errorDescriptors").toString().contains("pdf-export-failure"));
   }
 
   @Test
@@ -718,7 +750,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
-    assertEquals(2, exitCode);
+    assertEquals(7, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.code(),

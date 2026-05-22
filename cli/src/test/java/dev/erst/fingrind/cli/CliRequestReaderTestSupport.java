@@ -26,32 +26,49 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
   }
 
   static String validRequestJson(boolean includeReversal) {
-    String reversalBlock =
-        includeReversal
-            ? """
-                ,
+    if (includeReversal) {
+      return """
+              {
+                "entryKind": "MANUAL_ADJUSTMENT",
+                "postingKind": "STANDARD",
+                "effectiveDate": "2026-04-07",
+                "lines": [
+                  {
+                    "accountCode": "1000",
+                    "side": "DEBIT",
+                    "amount": %s
+                  },
+                  {
+                    "accountCode": "2000",
+                    "side": "CREDIT",
+                    "amount": %s
+                  }
+                ],
+                "evidence": %s,
+                "provenance": {
+                  "actorId": "actor-1",
+                  "actorType": "AGENT",
+                  "commandId": "command-1",
+                  "idempotencyKey": "idem-1",
+                  "causationId": "cause-1",
+                  "correlationId": "corr-1"
+                },
                 "reversal": {
                   "priorPostingId": "posting-0",
                   "reason": "operator reversal"
                 }
+              }
               """
-            : "";
+          .formatted(
+              eurMoneyJson("1000"), eurMoneyJson("1000"), evidenceJson().indent(14).stripLeading());
+    }
     return """
             {
-              "postingKind": "STANDARD",
+              "entryKind": "CASH_REVENUE",
               "effectiveDate": "2026-04-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "amount": %s
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "amount": %s
-                }
-              ],
+              "cashAccountCode": "1000",
+              "revenueAccountCode": "2000",
+              "amount": %s,
               "evidence": %s,
               "provenance": {
                 "actorId": "actor-1",
@@ -61,14 +78,9 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "causationId": "cause-1",
                 "correlationId": "corr-1"
               }
-            %s
             }
             """
-        .formatted(
-            eurMoneyJson("1000"),
-            eurMoneyJson("1000"),
-            evidenceJson().indent(14).stripLeading(),
-            reversalBlock);
+        .formatted(eurMoneyJson("1000"), evidenceJson().indent(14).stripLeading());
   }
 
   static String validLegacyCorrectionRequestJson() {
@@ -149,11 +161,10 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "entityName": "Acme Studio",
                 "entityForm": "COMPANY",
                 "ownerModel": "MULTI_OWNER",
-                "reportingObligationStatus": "INTERNAL_MANAGEMENT_ONLY",
                 "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
                 "fiscalYearStart": "01-01",
-                "accountingBasis": "ACCRUAL"
+                "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
               }
             },
             {
@@ -164,6 +175,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "accountName": "Cash",
                 "accountType": "ASSET",
                 "accountRole": "ORDINARY",
+                "accountNodeKind": "POSTABLE",
                 "financialPositionLineClassification": "CURRENT_ASSET"
               }
             },

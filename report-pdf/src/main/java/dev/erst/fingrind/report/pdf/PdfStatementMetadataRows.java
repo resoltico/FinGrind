@@ -26,11 +26,6 @@ final class PdfStatementMetadataRows {
                 bookIdentity.entityProfile().ownerModel())));
     statementRows.add(
         List.of(
-            "Reporting profile",
-            PdfValueFormatter.displayReportingProfile(
-                bookIdentity.entityProfile().reportingObligationStatus())));
-    statementRows.add(
-        List.of(
             "Business activity",
             PdfValueFormatter.displayBusinessActivityTags(
                 bookIdentity.entityProfile().businessActivityTags())));
@@ -38,8 +33,8 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     statementRows.add(
         List.of(
-            "Accounting basis",
-            PdfValueFormatter.displayAccountingBasis(bookIdentity.accountingBasis())));
+            "Policy profile",
+            PdfValueFormatter.displayPolicyProfile(bookIdentity.policyProfile())));
     statementRows.add(
         List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
     statementRows.addAll(rows);

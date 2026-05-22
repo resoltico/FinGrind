@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
-import dev.erst.fingrind.contract.bookkeeping.PostingRequest;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -60,11 +60,11 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             new CausationId("cause-1"),
             Optional.empty());
     dev.erst.fingrind.core.JournalEntry requestJournalEntry = journalEntry();
+    BookkeepingEntry.ManualAdjustment manualAdjustment =
+        new BookkeepingEntry.ManualAdjustment(PostingKind.STANDARD, requestJournalEntry, reversal);
     PostEntryCommand command =
         new PostEntryCommand(
-            PostingKind.STANDARD,
-            requestJournalEntry,
-            reversal,
+            manualAdjustment,
             ContractFixtures.accountingEvidence("idem-1"),
             requestProvenance,
             SourceChannel.CLI);
@@ -77,28 +77,6 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             ContractFixtures.accountingEvidence("idem-1"),
             new CommittedProvenance(
                 requestProvenance, Instant.parse("2026-04-07T10:15:30Z"), SourceChannel.CLI));
-    PostingRequest postingRequest =
-        new PostingRequest() {
-          @Override
-          public dev.erst.fingrind.core.JournalEntry journalEntry() {
-            return requestJournalEntry;
-          }
-
-          @Override
-          public PostingLineage postingLineage() {
-            return reversal;
-          }
-
-          @Override
-          public dev.erst.fingrind.core.AccountingEvidence evidence() {
-            return ContractFixtures.accountingEvidence("idem-1");
-          }
-
-          @Override
-          public RequestProvenance requestProvenance() {
-            return requestProvenance;
-          }
-        };
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"), bounded, money("10.00"), BalanceSide.DEBIT);
@@ -167,12 +145,12 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     assertTrue(reversal.isReversal());
     assertEquals(Optional.of(reversalReference), reversal.reversalReference());
     assertEquals(Optional.of(reversalReason), reversal.reversalReason());
-    assertEquals(Optional.of(reversalReference), command.reversalReference());
-    assertEquals(Optional.of(reversalReason), command.reversalReason());
-    assertEquals(Optional.of(reversalReference), ((PostingRequest) command).reversalReference());
-    assertEquals(Optional.of(reversalReason), ((PostingRequest) command).reversalReason());
-    assertEquals(Optional.of(reversalReference), postingRequest.reversalReference());
-    assertEquals(Optional.of(reversalReason), postingRequest.reversalReason());
+    assertEquals(
+        dev.erst.fingrind.core.BookkeepingEntryKind.MANUAL_ADJUSTMENT, command.entry().entryKind());
+    assertEquals(LocalDate.parse("2026-04-07"), command.entry().effectiveDate());
+    assertEquals(
+        Optional.of(reversalReference), manualAdjustment.postingLineage().reversalReference());
+    assertEquals(Optional.of(reversalReason), manualAdjustment.postingLineage().reversalReason());
     assertEquals(Optional.of(reversalReference), postingFact.reversalReference());
     assertEquals(Optional.of(reversalReason), postingFact.reversalReason());
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), assertion.effectiveDateFrom());

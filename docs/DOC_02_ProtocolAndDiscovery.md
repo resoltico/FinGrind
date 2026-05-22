@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -148,6 +148,20 @@ public final class ProtocolOptions
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, date filters, and `execute-plan` result detail
+
+## `DiscoveryDetail`
+
+`DiscoveryDetail` is the typed wire vocabulary for discovery-surface detail selection.
+
+```java
+public enum DiscoveryDetail implements WireValue
+```
+
+- Members: `COMPACT`, `FULL`
+- Purpose: keep discovery detail selection consistent across the parser, discovery contract,
+  help payloads, capabilities payloads, and public documentation
+- Boundary: accepted on JSON discovery surfaces only; human discovery surfaces reject it instead
+  of silently ignoring it
 
 ## `ProtocolContractSchemaKeys`
 
@@ -551,7 +565,8 @@ public final class ContractFailureException extends IllegalStateException
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
   `invalid-page-cursor`, `protected-book-verification-failed`, `managed-runtime-failure`,
-  `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`
+  `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`, plus
+  the published process `exitCode` for each deterministic machine error
 - `invalid-request` now advertises structured `detailFields` when the malformed request reaches
   aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
   set of detected issues
@@ -587,7 +602,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 12`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 15`
 
 ## `ProtectedBookFormatContract`
 

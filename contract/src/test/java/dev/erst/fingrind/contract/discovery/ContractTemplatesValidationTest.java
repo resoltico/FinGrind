@@ -7,21 +7,27 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
+import dev.erst.fingrind.core.PostingKind;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and invariant tests for contract-owned template descriptors. */
 class ContractTemplatesValidationTest {
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   @Test
   void ledgerPlanAndQueryTemplates_validateEmptyAndInRangeCases() {
     assertThrows(
@@ -53,6 +59,7 @@ class ContractTemplatesValidationTest {
             "Cash",
             AccountType.ASSET,
             AccountRole.ORDINARY,
+            AccountNodeKind.POSTABLE,
             "3000",
             FinancialPositionLineClassification.CURRENT_ASSET,
             null);
@@ -66,6 +73,7 @@ class ContractTemplatesValidationTest {
                 "Cash",
                 AccountType.ASSET,
                 AccountRole.ORDINARY,
+                AccountNodeKind.POSTABLE,
                 "cash account",
                 FinancialPositionLineClassification.CURRENT_ASSET,
                 null));
@@ -82,11 +90,10 @@ class ContractTemplatesValidationTest {
                   "Acme Studio",
                   EntityForm.FREELANCER,
                   OwnerModel.SOLE_OWNER,
-                  ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
                   java.util.List.of("translation-services"),
                   "EUR",
                   "01-01",
-                  AccountingBasis.ACCRUAL),
+                  AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1),
               null,
               null,
               null,
@@ -115,6 +122,7 @@ class ContractTemplatesValidationTest {
                   "Cash",
                   AccountType.ASSET,
                   AccountRole.ORDINARY,
+                  AccountNodeKind.POSTABLE,
                   null,
                   FinancialPositionLineClassification.CURRENT_ASSET,
                   null),
@@ -237,17 +245,14 @@ class ContractTemplatesValidationTest {
 
   @Test
   void evidenceAndApprovalTemplates_validateCanonicalShapes() {
-    ContractTemplates.ApprovalTemplateDescriptor approval =
-        new ContractTemplates.ApprovalTemplateDescriptor("approval-1", "manager-signoff");
+    ContractTemplates.ApprovalTemplateDescriptor approval = approvalTemplate();
     ContractTemplates.AccountingEvidenceTemplateDescriptor evidence =
-        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
-            java.util.List.of(
-                new ContractTemplates.SourceDocumentTemplateDescriptor(
-                    "document-idem-1", "invoice")),
-            java.util.List.of(approval));
+        evidenceTemplate(java.util.List.of(approval));
 
     assertEquals("approval-1", approval.approvalId());
     assertEquals("manager-signoff", approval.approvalType());
+    assertEquals("manager-1", approval.approverId());
+    assertEquals(ApprovalDecision.APPROVED, approval.decision());
     assertEquals(1, evidence.sourceDocuments().size());
     assertEquals(1, evidence.approvals().size());
   }
@@ -256,15 +261,355 @@ class ContractTemplatesValidationTest {
   void evidenceAndApprovalTemplates_rejectInvalidEvidencePayloads() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ContractTemplates.ApprovalTemplateDescriptor("approval 1", "manager-signoff"));
+        () ->
+            new ContractTemplates.ApprovalTemplateDescriptor(
+                "approval 1",
+                "manager-signoff",
+                "manager-1",
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                "2026-04-25T10:15:30Z"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ContractTemplates.ApprovalTemplateDescriptor("approval-1", "manager signoff"));
+        () ->
+            new ContractTemplates.ApprovalTemplateDescriptor(
+                "approval-1",
+                "manager signoff",
+                "manager-1",
+                ActorType.HUMAN,
+                ApprovalDecision.APPROVED,
+                "2026-04-25T10:15:30Z"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.AccountingEvidenceTemplateDescriptor(
                 java.util.List.of(), java.util.List.of()));
+  }
+
+  @Test
+  void postingRequestTemplates_coverEveryCanonicalEntryShape() {
+    ContractTemplates.PostingRequestTemplateDescriptor cashRevenue = postingTemplate();
+    ContractTemplates.PostingRequestTemplateDescriptor cashExpense =
+        new ContractTemplates.PostingRequestTemplateDescriptor(
+            BookkeepingEntryKind.CASH_EXPENSE,
+            "2026-04-25",
+            "1000",
+            null,
+            "5000",
+            null,
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            evidenceTemplate(java.util.List.of()),
+            provenanceTemplate(),
+            null);
+    ContractTemplates.PostingRequestTemplateDescriptor ownerContribution =
+        new ContractTemplates.PostingRequestTemplateDescriptor(
+            BookkeepingEntryKind.OWNER_CONTRIBUTION,
+            "2026-04-25",
+            "1000",
+            null,
+            null,
+            "3000",
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            evidenceTemplate(java.util.List.of()),
+            provenanceTemplate(),
+            null);
+    ContractTemplates.PostingRequestTemplateDescriptor ownerDraw =
+        new ContractTemplates.PostingRequestTemplateDescriptor(
+            BookkeepingEntryKind.OWNER_DRAW,
+            "2026-04-25",
+            "1000",
+            null,
+            null,
+            "3010",
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            evidenceTemplate(java.util.List.of()),
+            provenanceTemplate(),
+            null);
+    ContractTemplates.PostingRequestTemplateDescriptor manualAdjustment =
+        new ContractTemplates.PostingRequestTemplateDescriptor(
+            BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+            "2026-04-25",
+            null,
+            null,
+            null,
+            null,
+            null,
+            PostingKind.STANDARD,
+            java.util.List.of(
+                journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+            evidenceTemplate(java.util.List.of()),
+            provenanceTemplate(),
+            null);
+
+    assertEquals(BookkeepingEntryKind.CASH_REVENUE, cashRevenue.entryKind());
+    assertEquals(BookkeepingEntryKind.CASH_EXPENSE, cashExpense.entryKind());
+    assertEquals("5000", cashExpense.expenseAccountCode());
+    assertEquals(BookkeepingEntryKind.OWNER_CONTRIBUTION, ownerContribution.entryKind());
+    assertEquals("3000", ownerContribution.equityAccountCode());
+    assertEquals(BookkeepingEntryKind.OWNER_DRAW, ownerDraw.entryKind());
+    assertEquals("3010", ownerDraw.equityAccountCode());
+    assertEquals(BookkeepingEntryKind.MANUAL_ADJUSTMENT, manualAdjustment.entryKind());
+    assertEquals(PostingKind.STANDARD, manualAdjustment.postingKind());
+    assertEquals(2, java.util.Objects.requireNonNull(manualAdjustment.lines()).size());
+  }
+
+  @Test
+  void postingRequestTemplates_rejectShapeViolationsForTypedEventsAndManualAdjustments() {
+    IllegalArgumentException missingCashAccount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.CASH_REVENUE,
+                    "2026-04-25",
+                    null,
+                    "4000",
+                    null,
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    null,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals("cashAccountCode must not be null.", missingCashAccount.getMessage());
+
+    IllegalArgumentException forbiddenRevenueAccount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.CASH_EXPENSE,
+                    "2026-04-25",
+                    "1000",
+                    "4000",
+                    "5000",
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    null,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "revenueAccountCode must be absent for this entryKind.",
+        forbiddenRevenueAccount.getMessage());
+
+    IllegalArgumentException missingPositiveAmount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.OWNER_CONTRIBUTION,
+                    "2026-04-25",
+                    "1000",
+                    null,
+                    null,
+                    "3000",
+                    null,
+                    null,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals("amount must not be null.", missingPositiveAmount.getMessage());
+
+    IllegalArgumentException zeroAmount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.OWNER_DRAW,
+                    "2026-04-25",
+                    "1000",
+                    null,
+                    null,
+                    "3010",
+                    new MonetaryAmount("EUR", "0"),
+                    null,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals("amount must carry one positive minor-unit value.", zeroAmount.getMessage());
+
+    IllegalArgumentException forbiddenPostingKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.CASH_REVENUE,
+                    "2026-04-25",
+                    "1000",
+                    "4000",
+                    null,
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    PostingKind.STANDARD,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "postingKind must be absent for typed business events.", forbiddenPostingKind.getMessage());
+
+    IllegalArgumentException forbiddenLines =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.CASH_REVENUE,
+                    "2026-04-25",
+                    "1000",
+                    "4000",
+                    null,
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    null,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals("lines must be absent for typed business events.", forbiddenLines.getMessage());
+
+    IllegalArgumentException forbiddenReversal =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.CASH_REVENUE,
+                    "2026-04-25",
+                    "1000",
+                    "4000",
+                    null,
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    null,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    new ContractTemplates.ReversalTemplateDescriptor(
+                        "posting-1", "manual-correction")));
+    assertEquals(
+        "reversal must be absent for typed business events.", forbiddenReversal.getMessage());
+
+    IllegalArgumentException generatedPostingKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    PostingKind.PERIOD_CLOSE,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "postingKind must belong to the caller-authored manual-adjustment surface.",
+        generatedPostingKind.getMessage());
+
+    IllegalArgumentException missingManualPostingKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "postingKind must belong to the caller-authored manual-adjustment surface.",
+        missingManualPostingKind.getMessage());
+
+    IllegalArgumentException tooFewLines =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    PostingKind.OPENING_BALANCE,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "lines must contain at least two journal lines for manualAdjustment.",
+        tooFewLines.getMessage());
+
+    IllegalArgumentException missingManualLines =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    PostingKind.STANDARD,
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "lines must contain at least two journal lines for manualAdjustment.",
+        missingManualLines.getMessage());
+
+    IllegalArgumentException forbiddenManualAmount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.MANUAL_ADJUSTMENT,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    new MonetaryAmount("EUR", "1000"),
+                    PostingKind.STANDARD,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals("amount must be absent for manualAdjustment.", forbiddenManualAmount.getMessage());
   }
 
   @Test
@@ -311,20 +656,54 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        dev.erst.fingrind.core.PostingKind.STANDARD,
+        BookkeepingEntryKind.CASH_REVENUE,
         "2026-04-25",
-        java.util.List.of(
-            new ContractTemplates.JournalLineTemplateDescriptor(
-                "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
-            new ContractTemplates.JournalLineTemplateDescriptor(
-                "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
-        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
-            java.util.List.of(
-                new ContractTemplates.SourceDocumentTemplateDescriptor(
-                    "document-idem-1", "invoice")),
-            java.util.List.of()),
-        new ContractTemplates.ProvenanceTemplateDescriptor(
-            "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
+        "1000",
+        "4000",
+        null,
+        null,
+        new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
+        evidenceTemplate(java.util.List.of()),
+        provenanceTemplate(),
         null);
+  }
+
+  private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
+    return new ContractTemplates.ProvenanceTemplateDescriptor(
+        "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null);
+  }
+
+  private static ContractTemplates.JournalLineTemplateDescriptor journalLineTemplate(
+      String accountCode, JournalLine.EntrySide side, String minorUnits) {
+    return new ContractTemplates.JournalLineTemplateDescriptor(
+        accountCode, side, new MonetaryAmount("EUR", minorUnits));
+  }
+
+  private static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate(
+      java.util.List<ContractTemplates.ApprovalTemplateDescriptor> approvals) {
+    return new ContractTemplates.AccountingEvidenceTemplateDescriptor(
+        java.util.List.of(sourceDocumentTemplate()), approvals);
+  }
+
+  private static ContractTemplates.SourceDocumentTemplateDescriptor sourceDocumentTemplate() {
+    return new ContractTemplates.SourceDocumentTemplateDescriptor(
+        "document-idem-1",
+        "invoice",
+        "2026-04-25",
+        "2026-04-25T10:15:30Z",
+        "evidence://documents/document-idem-1.pdf",
+        DOCUMENT_SHA256);
+  }
+
+  private static ContractTemplates.ApprovalTemplateDescriptor approvalTemplate() {
+    return new ContractTemplates.ApprovalTemplateDescriptor(
+        "approval-1",
+        "manager-signoff",
+        "manager-1",
+        ActorType.HUMAN,
+        ApprovalDecision.APPROVED,
+        "2026-04-25T10:15:30Z");
   }
 }

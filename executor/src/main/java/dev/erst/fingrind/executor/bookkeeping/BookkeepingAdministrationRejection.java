@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
@@ -21,6 +22,8 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.ParentAccountMissing,
         BookkeepingAdministrationRejection.ParentAccountInactive,
         BookkeepingAdministrationRejection.ParentAccountTypeConflict,
+        BookkeepingAdministrationRejection.ParentAccountRoleConflict,
+        BookkeepingAdministrationRejection.ParentAccountNotHeader,
         BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict,
         BookkeepingAdministrationRejection.AccountHierarchyCycle,
         BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing,
@@ -103,6 +106,32 @@ public sealed interface BookkeepingAdministrationRejection
       Objects.requireNonNull(requestedAccountType, "requestedAccountType");
       Objects.requireNonNull(parentAccountCode, "parentAccountCode");
       Objects.requireNonNull(parentAccountType, "parentAccountType");
+    }
+  }
+
+  /** Refusal for one child account whose parent belongs to a conflicting doctrinal role. */
+  record ParentAccountRoleConflict(
+      AccountCode accountCode,
+      AccountRole requestedAccountRole,
+      AccountCode parentAccountCode,
+      AccountRole parentAccountRole)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountRoleConflict {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(requestedAccountRole, "requestedAccountRole");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountRole, "parentAccountRole");
+    }
+  }
+
+  /** Refusal for one child account whose parent is not a header node. */
+  record ParentAccountNotHeader(
+      AccountCode accountCode, AccountCode parentAccountCode, AccountNodeKind parentAccountNodeKind)
+      implements BookkeepingAdministrationRejection {
+    public ParentAccountNotHeader {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
+      Objects.requireNonNull(parentAccountNodeKind, "parentAccountNodeKind");
     }
   }
 

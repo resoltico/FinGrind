@@ -55,6 +55,7 @@ class ContractTestSupport {
         AccountType.ASSET,
         AccountRole.ORDINARY,
         new AccountTaxonomy(
+            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.of(dev.erst.fingrind.core.FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty()),

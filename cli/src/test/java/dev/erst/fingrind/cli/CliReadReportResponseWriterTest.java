@@ -126,8 +126,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             allPostingKinds(),
             List.of(eurDebitBalance));
     TrialBalanceReport trialBalanceReport =
-        new TrialBalanceReport(
-            bookIdentity(),
+        trialBalanceReport(
             Optional.empty(),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -184,13 +183,13 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
-        "Effective date to");
+        "As of");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "reportBasis,effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(

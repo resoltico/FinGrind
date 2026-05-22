@@ -28,7 +28,7 @@ final class IncomeStatementCalculator {
   IncomeStatementCalculator(BookkeepingStatementContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.profitAndLossContributionCalculator =
-        new ProfitAndLossContributionCalculator(context.policyPack());
+        new ProfitAndLossContributionCalculator(context::policyPack);
   }
 
   IncomeStatementView view(IncomeStatementCriteria criteria) {

@@ -1,37 +1,37 @@
 {
-  "targetKey" : "posting-workflow",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/jpy_zero_scale_valid.json",
-  "coverageIntent" : "JPY zero-scale workflow commit",
-  "expectation" : {
-    "outcomeKind" : "success",
-    "message" : "Replay completed without surfacing a bug.",
-    "details" : {
-      "type" : "POSTING_WORKFLOW",
-      "request" : {
-        "effectiveDate" : "2026-06-12",
-        "idempotencyKey" : "seed-posting-jpy-idem-1",
-        "lineCount" : 2,
-        "reversalPresent" : false
+  "targetKey": "posting-workflow",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/jpy_zero_scale_valid.json",
+  "coverageIntent": "JPY zero-scale workflow commit",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "POSTING_WORKFLOW",
+      "request": {
+        "effectiveDate": "2026-06-12",
+        "idempotencyKey": "seed-posting-jpy-idem-1",
+        "lineCount": 2,
+        "reversalPresent": false
       },
-      "lifecycle" : {
-        "uninitialized" : {
-          "preflightStatus" : "posting-book-not-initialized",
-          "commitStatus" : "posting-book-not-initialized"
+      "lifecycle": {
+        "uninitialized": {
+          "preflightStatus": "posting-book-not-initialized",
+          "commitStatus": "posting-book-not-initialized"
         },
-        "undeclared" : {
-          "preflightStatus" : "unknown-account",
-          "commitStatus" : "unknown-account"
+        "undeclared": {
+          "preflightStatus": "unknown-account",
+          "commitStatus": "unknown-account"
         },
-        "inactive" : {
-          "preflightStatus" : "inactive-account",
-          "commitStatus" : "inactive-account"
+        "inactive": {
+          "preflightStatus": "inactive-account",
+          "commitStatus": "inactive-account"
         }
       },
-      "outcome" : {
-        "finalPreflightStatus" : "preflight-accepted",
-        "finalCommitStatus" : "committed",
-        "duplicateStatus" : "duplicate-idempotency-key",
-        "storedFactPresent" : true
+      "outcome": {
+        "finalPreflightStatus": "preflight-accepted",
+        "finalCommitStatus": "committed",
+        "duplicateStatus": "duplicate-idempotency-key",
+        "storedFactPresent": true
       }
     }
   }

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountSemantics;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,34 @@ public final class ChartOfAccounts {
               declaration.accountType(),
               requiredParentAccountCode,
               parentAccount.accountType()));
+    }
+    if (parentAccount.accountRole() != declaration.accountRole()) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.ParentAccountRoleConflict(
+              childAccountCode,
+              declaration.accountRole(),
+              requiredParentAccountCode,
+              parentAccount.accountRole()));
+    }
+    if (!AccountSemantics.allowsChildren(parentAccount.accountTaxonomy())) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.ParentAccountNotHeader(
+              childAccountCode,
+              requiredParentAccountCode,
+              parentAccount.accountTaxonomy().nodeKind()));
+    }
+    if (!AccountSemantics.parentChildHierarchyCompatible(
+        declaration.accountType(),
+        parentAccount.accountRole(),
+        parentAccount.accountTaxonomy(),
+        declaration.accountRole(),
+        declaration.accountTaxonomy())) {
+      return Optional.of(
+          new BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict(
+              childAccountCode,
+              declaration.accountTaxonomy(),
+              requiredParentAccountCode,
+              parentAccount.accountTaxonomy()));
     }
     if (wouldCreateCycle(childAccountCode, requiredParentAccountCode)) {
       return Optional.of(

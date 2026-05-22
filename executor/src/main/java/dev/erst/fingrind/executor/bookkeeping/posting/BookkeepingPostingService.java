@@ -5,7 +5,6 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -27,13 +26,12 @@ public final class BookkeepingPostingService {
       PostingValidationStore validationStore,
       PostingCommitStore commitStore,
       PostingIdGenerator postingIdGenerator,
-      Clock clock,
-      BookkeepingPolicyPack policyPack) {
+      Clock clock) {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
     this.commitStore = Objects.requireNonNull(commitStore, "commitStore");
     this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
-    this.acceptancePolicy = new PostingAcceptancePolicy(policyPack);
+    this.acceptancePolicy = PostingAcceptancePolicy.currentKernel();
   }
 
   /** Validates whether one posting command is admissible for later commit. */

@@ -87,7 +87,8 @@ public final class SqliteRoundTripWorkflowAssertions {
                       CliFuzzFixtures.commit(applicationService, command))
                   .rejection());
 
-      CliFuzzFixtures.openBook(administrationService, command.journalEntry().currencyUnit());
+      CliFuzzFixtures.openBook(
+          administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
       PostingLifecycleStatus undeclaredCommitStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(

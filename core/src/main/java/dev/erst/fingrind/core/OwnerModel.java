@@ -7,8 +7,7 @@ public enum OwnerModel implements WireValue {
   SOLE_OWNER,
   MULTI_OWNER,
   MEMBERSHIP_BODY,
-  NO_PRIVATE_OWNER,
-  UNKNOWN;
+  NO_PRIVATE_OWNER;
 
   @Override
   public String wireValue() {
@@ -17,7 +16,6 @@ public enum OwnerModel implements WireValue {
       case MULTI_OWNER -> "MULTI_OWNER";
       case MEMBERSHIP_BODY -> "MEMBERSHIP_BODY";
       case NO_PRIVATE_OWNER -> "NO_PRIVATE_OWNER";
-      case UNKNOWN -> "UNKNOWN";
     };
   }
 

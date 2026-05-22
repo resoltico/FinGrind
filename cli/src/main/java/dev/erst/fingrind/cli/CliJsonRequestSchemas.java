@@ -15,6 +15,7 @@ final class CliJsonRequestSchemas {
           ProtocolDeclareAccountFields.ACCOUNT_NAME,
           ProtocolDeclareAccountFields.ACCOUNT_TYPE,
           ProtocolDeclareAccountFields.ACCOUNT_ROLE,
+          ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
           ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
           ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
           ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION);
@@ -23,13 +24,57 @@ final class CliJsonRequestSchemas {
           ProtocolOpenBookFields.ENTITY_NAME,
           ProtocolOpenBookFields.ENTITY_FORM,
           ProtocolOpenBookFields.OWNER_MODEL,
-          ProtocolOpenBookFields.REPORTING_OBLIGATION_STATUS,
           ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START,
-          ProtocolOpenBookFields.ACCOUNTING_BASIS);
+          ProtocolOpenBookFields.POLICY_PROFILE);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
+  static final Set<String> CASH_REVENUE_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> CASH_EXPENSE_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> OWNER_CONTRIBUTION_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> OWNER_DRAW_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  static final Set<String> MANUAL_ADJUSTMENT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.POSTING_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE,
+          ProtocolPostEntryFields.TopLevel.REVERSAL);
   static final Set<String> EVIDENCE_FIELDS = Set.copyOf(ProtocolPostEntryFields.evidenceFields());
   static final Set<String> SOURCE_DOCUMENT_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.sourceDocumentFields());

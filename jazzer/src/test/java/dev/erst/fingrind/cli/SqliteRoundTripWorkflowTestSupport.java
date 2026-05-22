@@ -22,7 +22,6 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -56,7 +55,7 @@ final class SqliteRoundTripWorkflowTestSupport {
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
-        command.journalEntry().effectiveDate(),
+        CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant());
   }
 
@@ -67,9 +66,9 @@ final class SqliteRoundTripWorkflowTestSupport {
   static PostingFact matchingPostingFact(PostEntryCommand command, PostingId postingId) {
     return new PostingFact(
         postingId,
-        command.journalEntry(),
-        command.postingLineage(),
-        PostingKind.STANDARD,
+        CliFuzzFixtures.journalEntry(command),
+        CliFuzzFixtures.postingLineage(command),
+        CliFuzzFixtures.postingKind(command),
         command.evidence(),
         new CommittedProvenance(
             command.requestProvenance(),
@@ -87,47 +86,23 @@ final class SqliteRoundTripWorkflowTestSupport {
   }
 
   static String basicValidRequest() {
-    return """
-        {
-          "postingKind": "STANDARD",
-          "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": {
-                "currencyCode": "EUR",
-                "minorUnits": "1000"
-              }
-            }
-          ],
-          "evidence": {
-            "sourceDocuments": [
-              {
-                "sourceDocumentId": "document-idem-1",
-                "sourceDocumentType": "invoice"
-              }
-            ],
-            "approvals": []
-          },
-          "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
-            "idempotencyKey": "idem-1",
-            "causationId": "cause-1",
-            "correlationId": "corr-1"
-          }
-        }
-        """;
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+        new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+            "2026-04-07",
+            "1000",
+            "2000",
+            "EUR",
+            "1000",
+            new CliFuzzHarnessTestSupport.RequestContext(
+                "document-idem-1",
+                "invoice",
+                "2026-04-07",
+                "actor-1",
+                "AGENT",
+                "command-1",
+                "idem-1",
+                "cause-1",
+                "corr-1")));
   }
 
   static DeclaredAccount declaredAccount(AccountCode accountCode, boolean active) {
@@ -327,26 +302,31 @@ final class SqliteRoundTripWorkflowTestSupport {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));

@@ -369,8 +369,8 @@ class CliDiscoveryOutputRendererTest {
 
     String rendered = CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor);
 
-    assertTrue(rendered.contains("Generate a runnable sample document with:"));
-    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertTrue(rendered.contains("Scaffold command"));
+    assertTrue(rendered.contains("Contract lookup"));
     assertTrue(rendered.contains("Accepted value vocabularies:"));
     assertTrue(rendered.contains("steps[].kind (administration)"));
     assertTrue(rendered.contains("steps[].assertion.kind"));
@@ -388,6 +388,7 @@ class CliDiscoveryOutputRendererTest {
             MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT));
 
     assertTrue(postEntryRendered.contains("Accepted value vocabularies:"));
+    assertTrue(postEntryRendered.contains("entryKind"));
     assertTrue(postEntryRendered.contains("postingKind"));
     assertTrue(postEntryRendered.contains("STANDARD, OPENING_BALANCE"));
     assertTrue(postEntryRendered.contains("lineSide"));
@@ -466,6 +467,9 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Output Contract"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
+    assertTrue(rendered.contains("fingrind post-entry --book-file <path>"));
+    assertTrue(rendered.contains("--book-file <path>"));
+    assertTrue(rendered.contains("--request-file <path|->"));
     assertTrue(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -583,9 +587,9 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("Request Document"));
     assertTrue(rendered.contains("Provide one JSON object through --request-file <path|->."));
-    assertTrue(rendered.contains("Generate a runnable sample document with:"));
+    assertTrue(rendered.contains("Scaffold command"));
     assertTrue(rendered.contains("declare-account"));
-    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+    assertTrue(rendered.contains("Contract lookup"));
     assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
     assertTrue(rendered.contains("declare-account --output json"));
     assertFalse(rendered.contains("Top-Level Fields"));
@@ -624,11 +628,10 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(
         rendered.contains("Provide one ledger plan JSON object through --request-file <path|->."));
+    assertTrue(rendered.contains("Scaffold command"));
     assertTrue(
-        rendered.contains(
-            "Generate a runnable sample document with: "
-                + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
-    assertTrue(rendered.contains("Inspect the machine-readable contract with:"));
+        rendered.contains(CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
+    assertTrue(rendered.contains("Contract lookup"));
     assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
     assertTrue(rendered.contains("execute-plan"));
     assertTrue(rendered.contains("--output json"));
@@ -901,7 +904,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderJsonTemplate(MachineContract.requestTemplate(), null);
 
     assertTrue(rendered.startsWith("  {"));
-    assertTrue(rendered.contains("\"postingKind\" : \"STANDARD\""));
+    assertTrue(rendered.contains("\"entryKind\" : \"CASH_REVENUE\""));
     assertFalse(rendered.contains("Shortcut:"));
   }
 
@@ -1170,7 +1173,7 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.43.0"));
+    assertTrue(rendered.contains("0.44.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -1242,7 +1245,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.43.0",
+        "0.44.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

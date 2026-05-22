@@ -179,11 +179,10 @@ TEXT
                 entity_name=''
                 entity_form=''
                 owner_model=''
-                reporting_obligation_status=''
                 business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
-                accounting_basis=''
+                policy_profile=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
@@ -202,10 +201,6 @@ TEXT
                             owner_model="${2}"
                             shift 2
                             ;;
-                        --reporting-obligation-status)
-                            reporting_obligation_status="${2}"
-                            shift 2
-                            ;;
                         --business-activity-tag)
                             business_activity_tag="${2}"
                             shift 2
@@ -218,8 +213,8 @@ TEXT
                             fiscal_year_start="${2}"
                             shift 2
                             ;;
-                        --accounting-basis)
-                            accounting_basis="${2}"
+                        --policy-profile)
+                            policy_profile="${2}"
                             shift 2
                             ;;
                         *)
@@ -230,11 +225,10 @@ TEXT
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
                 [[ "${entity_form}" == 'COMPANY' ]] || exit 1
                 [[ "${owner_model}" == 'MULTI_OWNER' ]] || exit 1
-                [[ "${reporting_obligation_status}" == 'INTERNAL_MANAGEMENT_ONLY' ]] || exit 1
                 [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
-                [[ "${accounting_basis}" == 'ACCRUAL' ]] || exit 1
+                [[ "${policy_profile}" == 'INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
@@ -254,9 +248,15 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
-                grep -Fq '"postingKind": "STANDARD"' "${request_file}" || exit 1
+                grep -Fq '"entryKind": "CASH_REVENUE"' "${request_file}" || exit 1
+                grep -Fq '"cashAccountCode": "1000"' "${request_file}" || exit 1
+                grep -Fq '"revenueAccountCode": "2000"' "${request_file}" || exit 1
                 grep -Fq '"sourceDocumentId": "release-protocol-invoice-1"' "${request_file}" || exit 1
                 grep -Fq '"sourceDocumentType": "invoice"' "${request_file}" || exit 1
+                grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
+                grep -Fq '"capturedAt": "2026-04-08T10:15:30Z"' "${request_file}" || exit 1
+                grep -Fq '"storageLocator": "vault://release-protocol/invoice-1"' "${request_file}" || exit 1
+                grep -Fq '"contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"' "${request_file}" || exit 1
                 grep -Fq '"approvals": []' "${request_file}" || exit 1
                 printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
                 ;;
@@ -289,13 +289,12 @@ Trial Balance
 Entity               : Release Protocol Fixture
 Entity form          : Company
 Owner model          : Unknown
-Reporting obligation : Unspecified
 Business activity    : (none)
 Functional currency  : EUR
 Fiscal year start    : 01-01
-Accounting basis     : Accrual
+Policy profile       : Internal Management Single Entity V1
 Posting coverage     : All posting kinds
-Effective date to    : 2026-04-08
+As of                : 2026-04-08
 
 1000 | Cash
 -----------
@@ -317,13 +316,12 @@ Trial Balance
 Entity               : Release Protocol Fixture
 Entity form          : Company
 Owner model          : Unknown
-Reporting obligation : Unspecified
 Business activity    : (none)
 Functional currency  : EUR
 Fiscal year start    : 01-01
-Accounting basis     : Accrual
+Policy profile       : Internal Management Single Entity V1
 Posting coverage     : All posting kinds
-Effective date to    : 2026-04-08
+As of                : 2026-04-08
 
 1000 | Cash
 -----------

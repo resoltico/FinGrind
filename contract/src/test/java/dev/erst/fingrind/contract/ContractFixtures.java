@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -22,18 +23,24 @@ import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
+import dev.erst.fingrind.core.ApprovalId;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -49,13 +56,13 @@ import dev.erst.fingrind.core.OwnerModel;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -63,6 +70,11 @@ import java.util.Optional;
 
 /** Shared contract test fixtures. */
 final class ContractFixtures {
+  private static final Instant FIXTURE_INSTANT = Instant.parse("2026-04-07T10:15:30Z");
+  private static final LocalDate FIXTURE_DATE = LocalDate.parse("2026-04-07");
+  private static final String DOCUMENT_SHA256 =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
   private ContractFixtures() {}
 
   static BookIdentity bookIdentity() {
@@ -71,11 +83,10 @@ final class ContractFixtures {
             new BookEntityName("Acme Studio"),
             EntityForm.COMPANY,
             OwnerModel.MULTI_OWNER,
-            ReportingObligationStatus.INTERNAL_MANAGEMENT_ONLY,
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"),
-        AccountingBasis.ACCRUAL);
+        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
   }
 
   static OpenBookCommand openBookCommand() {
@@ -107,26 +118,31 @@ final class ContractFixtures {
     return switch (accountType) {
       case ASSET ->
           new AccountTaxonomy(
+              AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty());
       case LIABILITY ->
           new AccountTaxonomy(
+              AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
+              AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
+              AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
       case EXPENSE ->
           new AccountTaxonomy(
+              AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
@@ -208,36 +224,57 @@ final class ContractFixtures {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        PostingKind.STANDARD,
-        new JournalEntry(
-            LocalDate.parse("2026-04-07"),
-            List.of(
-                new JournalLine(
-                    new AccountCode("1000"),
-                    JournalLine.EntrySide.DEBIT,
-                    Money.parse("EUR", "10.00")),
-                new JournalLine(
-                    new AccountCode("2000"),
-                    JournalLine.EntrySide.CREDIT,
-                    Money.parse("EUR", "10.00")))),
-        PostingLineage.direct(),
+        new BookkeepingEntry.ManualAdjustment(
+            PostingKind.STANDARD,
+            new JournalEntry(
+                FIXTURE_DATE,
+                List.of(
+                    new JournalLine(
+                        new AccountCode("1000"),
+                        JournalLine.EntrySide.DEBIT,
+                        Money.parse("EUR", "10.00")),
+                    new JournalLine(
+                        new AccountCode("2000"),
+                        JournalLine.EntrySide.CREDIT,
+                        Money.parse("EUR", "10.00")))),
+            PostingLineage.direct()),
         accountingEvidence(idempotencyKey),
-        new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-1"),
-            new IdempotencyKey(idempotencyKey),
-            new CausationId("cause-1"),
-            Optional.of(new CorrelationId("corr-1"))),
+        requestProvenance(idempotencyKey),
         SourceChannel.CLI);
   }
 
   static AccountingEvidence accountingEvidence(String token) {
-    return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
-        List.of());
+    return new AccountingEvidence(List.of(sourceDocumentReference(token)), List.of());
+  }
+
+  static RequestProvenance requestProvenance(String idempotencyKey) {
+    return new RequestProvenance(
+        new ActorId("actor-1"),
+        ActorType.AGENT,
+        new CommandId("command-1"),
+        new IdempotencyKey(idempotencyKey),
+        new CausationId("cause-1"),
+        Optional.of(new CorrelationId("corr-1")));
+  }
+
+  static SourceDocumentReference sourceDocumentReference(String token) {
+    return new SourceDocumentReference(
+        new SourceDocumentId("document-" + token),
+        new SourceDocumentType("invoice"),
+        FIXTURE_DATE,
+        FIXTURE_INSTANT,
+        new StorageLocator("evidence://documents/document-" + token + ".pdf"),
+        new ContentSha256(DOCUMENT_SHA256));
+  }
+
+  static ApprovalReference approvalReference(String token) {
+    return new ApprovalReference(
+        new ApprovalId("approval-" + token),
+        new ApprovalType("manager-signoff"),
+        new ActorId("manager-1"),
+        ActorType.HUMAN,
+        ApprovalDecision.APPROVED,
+        FIXTURE_INSTANT);
   }
 
   static EnvironmentDescriptor environmentDescriptor() {

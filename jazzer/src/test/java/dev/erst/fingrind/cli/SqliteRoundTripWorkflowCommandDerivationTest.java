@@ -4,18 +4,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -27,7 +33,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     assertEquals(
         2,
         SqliteRoundTripWorkflowCommandDerivation.nonNegatingReversalLines(
-                command.journalEntry().lines())
+                CliFuzzFixtures.journalEntry(command).lines())
             .size());
     assertEquals(
         3,
@@ -79,17 +85,28 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
 
     PostEntryCommand approvalBearingCommand =
         new PostEntryCommand(
-            command.postingKind(),
-            command.journalEntry(),
-            command.postingLineage(),
+            new BookkeepingEntry.ManualAdjustment(
+                CliFuzzFixtures.postingKind(command),
+                CliFuzzFixtures.journalEntry(command),
+                CliFuzzFixtures.postingLineage(command)),
             new AccountingEvidence(
                 List.of(
                     new SourceDocumentReference(
                         new SourceDocumentId("document-approval-seed"),
-                        new SourceDocumentType("invoice"))),
+                        new SourceDocumentType("invoice"),
+                        LocalDate.parse("2026-04-07"),
+                        Instant.parse("2026-04-07T12:00:00Z"),
+                        new StorageLocator("s3://evidence/document-approval-seed.pdf"),
+                        new ContentSha256(
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
                 List.of(
                     new ApprovalReference(
-                        new ApprovalId("approval-seed"), new ApprovalType("manager-signoff")))),
+                        new ApprovalId("approval-seed"),
+                        new ApprovalType("manager-signoff"),
+                        command.requestProvenance().actorId(),
+                        command.requestProvenance().actorType(),
+                        ApprovalDecision.APPROVED,
+                        Instant.parse("2026-04-07T13:00:00Z")))),
             command.requestProvenance(),
             command.sourceChannel());
     PostEntryCommand derivedCommand =

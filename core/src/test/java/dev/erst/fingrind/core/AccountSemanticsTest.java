@@ -51,6 +51,7 @@ class AccountSemanticsTest {
                 AccountType.REVENUE,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     java.util.Optional.empty())));
@@ -62,6 +63,7 @@ class AccountSemanticsTest {
                     AccountType.ASSET,
                     AccountRole.ORDINARY,
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         java.util.Optional.empty(),
                         java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         java.util.Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE))));
@@ -76,6 +78,7 @@ class AccountSemanticsTest {
                     AccountType.ASSET,
                     AccountRole.ORDINARY,
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         java.util.Optional.empty(),
                         java.util.Optional.of(
                             FinancialPositionLineClassification.CURRENT_LIABILITY),
@@ -91,6 +94,7 @@ class AccountSemanticsTest {
                     AccountType.EQUITY,
                     AccountRole.ORDINARY,
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         java.util.Optional.empty(),
                         java.util.Optional.of(
                             FinancialPositionLineClassification.CURRENT_PERIOD_RESULT),
@@ -115,6 +119,7 @@ class AccountSemanticsTest {
                     AccountType.REVENUE,
                     AccountRole.ORDINARY,
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         java.util.Optional.empty(),
                         java.util.Optional.empty(),
                         java.util.Optional.of(ProfitAndLossLineClassification.COST_OF_SALES))));
@@ -129,6 +134,7 @@ class AccountSemanticsTest {
                     AccountType.REVENUE,
                     AccountRole.ORDINARY,
                     new AccountTaxonomy(
+                        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         java.util.Optional.empty(),
                         java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         java.util.Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE))));
@@ -142,6 +148,7 @@ class AccountSemanticsTest {
                 AccountType.EQUITY,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.RETAINED_EARNINGS),
                     java.util.Optional.empty())));
@@ -151,6 +158,7 @@ class AccountSemanticsTest {
                 AccountType.LIABILITY,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
                     java.util.Optional.empty())));
@@ -160,6 +168,7 @@ class AccountSemanticsTest {
                 AccountType.EXPENSE,
                 AccountRole.ORDINARY,
                 new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
                     java.util.Optional.empty(),
                     java.util.Optional.of(ProfitAndLossLineClassification.COST_OF_SALES))));
@@ -245,5 +254,145 @@ class AccountSemanticsTest {
         () ->
             AccountSemantics.profitAndLossContributionMinorUnits(
                 AccountType.REVENUE, AccountRole.ORDINARY, nullOf(), 1L));
+  }
+
+  @Test
+  void allowsPostingAndAllowsChildren_followDeclaredNodeKind() {
+    AccountTaxonomy postableCurrentAsset =
+        balanceSheetTaxonomy(
+            AccountNodeKind.POSTABLE, FinancialPositionLineClassification.CURRENT_ASSET);
+    AccountTaxonomy headerCurrentAsset =
+        balanceSheetTaxonomy(
+            AccountNodeKind.HEADER, FinancialPositionLineClassification.CURRENT_ASSET);
+
+    assertTrue(AccountSemantics.allowsPosting(postableCurrentAsset));
+    assertFalse(AccountSemantics.allowsChildren(postableCurrentAsset));
+    assertFalse(AccountSemantics.allowsPosting(headerCurrentAsset));
+    assertTrue(AccountSemantics.allowsChildren(headerCurrentAsset));
+
+    assertThrows(NullPointerException.class, () -> AccountSemantics.allowsPosting(nullOf()));
+    assertThrows(NullPointerException.class, () -> AccountSemantics.allowsChildren(nullOf()));
+  }
+
+  @Test
+  void parentChildHierarchyCompatible_requiresSharedRoleAndSharedStatementMeaning() {
+    AccountTaxonomy parentAssetHeader =
+        balanceSheetTaxonomy(
+            AccountNodeKind.HEADER, FinancialPositionLineClassification.CURRENT_ASSET);
+    AccountTaxonomy matchingAssetChild =
+        balanceSheetTaxonomy(
+            AccountNodeKind.POSTABLE, FinancialPositionLineClassification.CURRENT_ASSET);
+    AccountTaxonomy mismatchedAssetChild =
+        balanceSheetTaxonomy(
+            AccountNodeKind.POSTABLE, FinancialPositionLineClassification.NONCURRENT_ASSET);
+    AccountTaxonomy parentExpenseHeader =
+        nominalTaxonomy(AccountNodeKind.HEADER, ProfitAndLossLineClassification.OPERATING_EXPENSE);
+    AccountTaxonomy matchingExpenseChild =
+        nominalTaxonomy(
+            AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.OPERATING_EXPENSE);
+    AccountTaxonomy mismatchedExpenseChild =
+        nominalTaxonomy(AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.TAX_EXPENSE);
+
+    assertTrue(
+        AccountSemantics.parentChildHierarchyCompatible(
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            parentAssetHeader,
+            AccountRole.ORDINARY,
+            matchingAssetChild));
+    assertFalse(
+        AccountSemantics.parentChildHierarchyCompatible(
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            parentAssetHeader,
+            AccountRole.ORDINARY,
+            mismatchedAssetChild));
+    assertFalse(
+        AccountSemantics.parentChildHierarchyCompatible(
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
+            parentAssetHeader,
+            AccountRole.CONTRA,
+            matchingAssetChild));
+
+    assertTrue(
+        AccountSemantics.parentChildHierarchyCompatible(
+            AccountType.EXPENSE,
+            AccountRole.ORDINARY,
+            parentExpenseHeader,
+            AccountRole.ORDINARY,
+            matchingExpenseChild));
+    assertFalse(
+        AccountSemantics.parentChildHierarchyCompatible(
+            AccountType.EXPENSE,
+            AccountRole.ORDINARY,
+            parentExpenseHeader,
+            AccountRole.ORDINARY,
+            mismatchedExpenseChild));
+
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountSemantics.parentChildHierarchyCompatible(
+                nullOf(),
+                AccountRole.ORDINARY,
+                parentAssetHeader,
+                AccountRole.ORDINARY,
+                matchingAssetChild));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountSemantics.parentChildHierarchyCompatible(
+                AccountType.ASSET,
+                nullOf(),
+                parentAssetHeader,
+                AccountRole.ORDINARY,
+                matchingAssetChild));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountSemantics.parentChildHierarchyCompatible(
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                nullOf(),
+                AccountRole.ORDINARY,
+                matchingAssetChild));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountSemantics.parentChildHierarchyCompatible(
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                parentAssetHeader,
+                nullOf(),
+                matchingAssetChild));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountSemantics.parentChildHierarchyCompatible(
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                parentAssetHeader,
+                AccountRole.ORDINARY,
+                nullOf()));
+  }
+
+  private static AccountTaxonomy balanceSheetTaxonomy(
+      AccountNodeKind nodeKind,
+      FinancialPositionLineClassification financialPositionLineClassification) {
+    return new AccountTaxonomy(
+        nodeKind,
+        java.util.Optional.empty(),
+        java.util.Optional.of(financialPositionLineClassification),
+        java.util.Optional.empty());
+  }
+
+  private static AccountTaxonomy nominalTaxonomy(
+      AccountNodeKind nodeKind, ProfitAndLossLineClassification profitAndLossLineClassification) {
+    return new AccountTaxonomy(
+        nodeKind,
+        java.util.Optional.empty(),
+        java.util.Optional.empty(),
+        java.util.Optional.of(profitAndLossLineClassification));
   }
 }

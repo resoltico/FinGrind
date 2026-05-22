@@ -242,7 +242,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
                   "--pdf-out",
                   "reports/trial-balance.pdf",
@@ -321,7 +321,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-to",
+                  "--effective-date-as-of",
                   "2026-04-30",
                   "--posting-coverage",
                   "non-closing-postings"

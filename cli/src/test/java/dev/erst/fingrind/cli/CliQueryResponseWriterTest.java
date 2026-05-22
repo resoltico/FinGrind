@@ -186,10 +186,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.HUMAN);
     String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(postingRegisterHuman.contains("2026-04-07 | Reversal | posting-1"));
+    assertTrue(
+        postingRegisterHuman.contains(
+            "2026-04-07 | kind=Standard | role=Reversal | posting=posting-1"));
     assertTrue(postingRegisterHuman.contains("Posting role     : Reversal"));
     assertTrue(postingRegisterHuman.contains("Reverses posting : posting-0"));
-    assertTrue(postingRegisterHuman.contains("Source documents : invoice document-idem-1"));
+    assertTrue(
+        postingRegisterHuman.contains(
+            "Source documents : invoice document-idem-1 on 2026-04-07 at vault://fixtures/document-idem-1"));
     assertTrue(postingRegisterHuman.contains("Approvals        : (none)"));
     assertTrue(postingRegisterHuman.contains("10.00"));
     assertTrue(postingRegisterHuman.contains("posting-1"));
@@ -205,9 +209,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         postingRegisterCsv.contains(
             "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,reversal,EUR,10.00,10.00"));
-    assertTrue(
-        postingRegisterCsv.contains(
-            "\"[{\"\"sourceDocumentId\"\":\"\"document-idem-1\"\",\"\"sourceDocumentType\"\":\"\"invoice\"\"}]\""));
+    assertTrue(postingRegisterCsv.contains("document-idem-1"));
+    assertTrue(postingRegisterCsv.contains("vault://fixtures/document-idem-1"));
+    assertTrue(postingRegisterCsv.contains("contentSha256"));
     assertTrue(postingRegisterCsv.contains("[]"));
     ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
@@ -244,7 +248,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.HUMAN);
     String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(postingRegisterHuman.contains("Approvals        : manager-signoff approval-idem-1"));
+    assertTrue(
+        postingRegisterHuman.contains(
+            "Approvals        : manager-signoff approval-idem-1 by HUMAN approver-approval-idem-1 APPROVED"));
 
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
@@ -266,7 +272,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode trialBalanceJson = readJson(trialBalanceJsonOutput);
     assertEquals("ok", trialBalanceJson.path("status").stringValue());
     assertEquals(
-        "2026-04-30", trialBalanceJson.path("payload").path("effectiveDateTo").stringValue());
+        "2026-04-30", trialBalanceJson.path("payload").path("effectiveDateAsOf").stringValue());
     assertEquals(
         "Acme Studio",
         trialBalanceJson
@@ -293,9 +299,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeTrialBalanceResult(
             new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.HUMAN);
     String trialBalanceHuman = trialBalanceHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(trialBalanceHuman.contains("Effective date to"));
+    assertTrue(trialBalanceHuman.contains("As of"));
     assertTrue(trialBalanceHuman.contains("2026-04-30"));
     assertTrue(trialBalanceHuman.contains("Account"));
+    assertTrue(trialBalanceHuman.contains("Balanced"));
     assertTrue(trialBalanceHuman.contains("6.00"));
   }
 
@@ -370,9 +377,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         accountLedgerCsv.contains(
             "ledger-entry,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "\"[{\"\"sourceDocumentId\"\":\"\"document-idem-1\"\",\"\"sourceDocumentType\"\":\"\"invoice\"\"}]\""));
+    assertTrue(accountLedgerCsv.contains("document-idem-1"));
+    assertTrue(accountLedgerCsv.contains("vault://fixtures/document-idem-1"));
+    assertTrue(accountLedgerCsv.contains("contentSha256"));
     assertTrue(accountLedgerCsv.contains("[]"));
   }
 
@@ -470,7 +477,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode financialPositionJson = readJson(financialPositionJsonOutput);
     assertEquals("ok", financialPositionJson.path("status").stringValue());
     assertEquals(
-        "2026-04-30", financialPositionJson.path("payload").path("effectiveDateTo").stringValue());
+        "2026-04-30",
+        financialPositionJson.path("payload").path("effectiveDateAsOf").stringValue());
     assertEquals(
         "1000",
         financialPositionJson
@@ -501,7 +509,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,effectiveDateAsOf,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -576,8 +584,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
-    return new TrialBalanceReport(
-        bookIdentity(),
+    return trialBalanceReport(
         Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
         allPostingKinds(),

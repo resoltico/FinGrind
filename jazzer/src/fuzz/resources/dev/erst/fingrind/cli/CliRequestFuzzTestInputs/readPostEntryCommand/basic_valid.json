@@ -1,29 +1,21 @@
 {
-  "postingKind": "STANDARD",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-07",
-  "lines": [
-    {
-      "accountCode": "1000",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    },
-    {
-      "accountCode": "2000",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    }
-  ],
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "2000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-1",
-        "sourceDocumentType": "invoice"
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-07",
+        "capturedAt": "2026-04-07T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-idem-1",
+        "contentSha256": "39e3b1427a8ff994093717d1e798039a8662b1b6156eca6e1ff72e90c9b7795d"
       }
     ],
     "approvals": []

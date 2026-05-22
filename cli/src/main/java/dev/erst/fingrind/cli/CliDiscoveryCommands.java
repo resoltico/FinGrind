@@ -1,22 +1,24 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Discovery-oriented CLI commands that never require a book session. */
-record Help(@Nullable OperationId commandTopic, OutputMode outputMode)
+record Help(@Nullable OperationId commandTopic, OutputMode outputMode, DiscoveryDetail detail)
     implements CliCommand.OutputModeCommand {
   Help {
     Objects.requireNonNull(outputMode, "outputMode");
+    Objects.requireNonNull(detail, "detail");
   }
 
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeHelp(commandTopic, outputMode);
+        .writeHelp(commandTopic, outputMode, detail);
   }
 }
 
@@ -35,16 +37,18 @@ record Version(OutputMode outputMode) implements CliCommand.OutputModeCommand {
 }
 
 /** Discovery-oriented CLI commands that never require a book session. */
-record Capabilities(OutputMode outputMode) implements CliCommand.OutputModeCommand {
+record Capabilities(OutputMode outputMode, DiscoveryDetail detail)
+    implements CliCommand.OutputModeCommand {
   Capabilities {
     Objects.requireNonNull(outputMode, "outputMode");
+    Objects.requireNonNull(detail, "detail");
   }
 
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeCapabilities(outputMode);
+        .writeCapabilities(outputMode, detail);
   }
 }
 

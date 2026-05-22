@@ -21,11 +21,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorType": "AGENT",
                     "commandId": "command-1",
@@ -34,7 +37,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -49,11 +52,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": null,
                     "actorType": "AGENT",
@@ -63,7 +69,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -78,11 +84,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": 20260407,
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -92,7 +101,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -107,11 +116,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-02-30",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -121,7 +133,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -136,11 +148,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -150,14 +165,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(
-                        journalLinesJson(
-                            "1000",
-                            "DEBIT",
-                            moneyJson("EUR", "1e1000000100"),
-                            "2000",
-                            "CREDIT",
-                            eurMoneyJson("100")))
+                            .formatted(moneyJson("EUR", "1e1000000100")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -172,11 +180,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -186,14 +197,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(
-                        journalLinesJson(
-                            "1000",
-                            "DEBIT",
-                            moneyJson("EUR", "1E6"),
-                            "2000",
-                            "CREDIT",
-                            eurMoneyJson("100")))
+                            .formatted(moneyJson("EUR", "1E6")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -208,11 +212,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -222,14 +229,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(
-                        journalLinesJson(
-                            "1000",
-                            "DEBIT",
-                            moneyJson("EUR", "abc"),
-                            "2000",
-                            "CREDIT",
-                            eurMoneyJson("100")))
+                            .formatted(moneyJson("EUR", "abc")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -244,8 +244,10 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
@@ -258,7 +260,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(singleJournalLineJson("1000", "DEBIT", eurMoneyJson("1000")))
+                            .formatted(
+                                singleJournalLineJson("1000", "DEBIT", eurMoneyJson("1000"))))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -275,8 +278,10 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
@@ -293,7 +298,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(standardBalancedLinesJson()))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -308,11 +313,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
-                  "postingKind": "STANDARD",
+                  "entryKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
+                  "cashAccountCode": "1000",
+                  "revenueAccountCode": "2000",
+                  "amount": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -323,7 +331,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(standardBalancedLinesJson())
+                            .formatted(eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -386,8 +394,10 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
-                """
+                withEvidence(
+                        """
                 {
+                  "entryKind": "MANUAL_ADJUSTMENT",
                   "postingKind": "STANDARD",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
@@ -400,14 +410,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
-                    .formatted(
-                        journalLinesJson(
-                            "1000",
-                            "DEBIT",
-                            eurMoneyJson("1000"),
-                            "2000",
-                            "DEBIT",
-                            moneyJson("USD", "500")))
+                            .formatted(
+                                journalLinesJson(
+                                    "1000",
+                                    "DEBIT",
+                                    eurMoneyJson("1000"),
+                                    "2000",
+                                    "DEBIT",
+                                    moneyJson("USD", "500"))))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

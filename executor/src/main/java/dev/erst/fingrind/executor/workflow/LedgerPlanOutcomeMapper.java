@@ -47,6 +47,11 @@ public final class LedgerPlanOutcomeMapper {
     return new LedgerPlanStepOutcome.Rejected(postingFailure(rejection));
   }
 
+  /** Converts one published posting rejection into the local workflow outcome model. */
+  public static LedgerPlanStepOutcome postingRejection(PostingRejection rejection) {
+    return new LedgerPlanStepOutcome.Rejected(postingFailure(rejection));
+  }
+
   /** Creates one local assertion-failure outcome with the supplied workflow facts. */
   public static LedgerPlanStepOutcome assertionFailure(String message, BookWorkflowFact... facts) {
     return new LedgerPlanStepOutcome.AssertionFailed(
@@ -211,6 +216,11 @@ public final class LedgerPlanOutcomeMapper {
     PostingRejection publishedRejection =
         dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator.toPublished(
             rejection);
+    return postingFailure(publishedRejection);
+  }
+
+  private static BookWorkflowFailure postingFailure(PostingRejection publishedRejection) {
+    Objects.requireNonNull(publishedRejection, "publishedRejection");
     return new BookWorkflowFailure(
         PostingRejection.wireCode(publishedRejection),
         RejectionNarrative.message(publishedRejection),

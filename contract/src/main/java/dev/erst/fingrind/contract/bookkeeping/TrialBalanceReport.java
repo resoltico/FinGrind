@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
@@ -12,18 +13,25 @@ import java.util.Optional;
 /** Canonical book-wide trial balance as of one optional effective date. */
 public record TrialBalanceReport(
     BookIdentity bookIdentity,
-    Optional<LocalDate> effectiveDateTo,
+    Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<TrialBalanceRow> rows,
-    List<TrialBalanceRow> comparativeRows) {
+    List<CurrencyBalance> totals,
+    boolean balanced,
+    List<TrialBalanceRow> comparativeRows,
+    List<CurrencyBalance> comparativeTotals,
+    boolean comparativeBalanced) {
   /** Validates one trial-balance report. */
   public TrialBalanceReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     rows = ContractDescriptorValidation.copyList(rows, "rows");
+    totals = ContractDescriptorValidation.copyList(totals, "totals");
     comparativeRows = ContractDescriptorValidation.copyList(comparativeRows, "comparativeRows");
+    comparativeTotals =
+        ContractDescriptorValidation.copyList(comparativeTotals, "comparativeTotals");
   }
 }

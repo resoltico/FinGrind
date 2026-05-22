@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.PostingId;
@@ -30,7 +31,8 @@ public sealed interface BookkeepingPostingRejection
   /** Closed family of account-state issues surfaced while validating one posting request. */
   sealed interface AccountStateViolation
       permits BookkeepingPostingRejection.UnknownAccount,
-          BookkeepingPostingRejection.InactiveAccount {}
+          BookkeepingPostingRejection.InactiveAccount,
+          BookkeepingPostingRejection.NonPostableAccount {}
 
   /** Refusal for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
@@ -55,6 +57,15 @@ public sealed interface BookkeepingPostingRejection
   record InactiveAccount(AccountCode accountCode) implements AccountStateViolation {
     public InactiveAccount {
       Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
+
+  /** One non-postable header account referenced by a posting request. */
+  record NonPostableAccount(AccountCode accountCode, AccountNodeKind accountNodeKind)
+      implements AccountStateViolation {
+    public NonPostableAccount {
+      Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(accountNodeKind, "accountNodeKind");
     }
   }
 

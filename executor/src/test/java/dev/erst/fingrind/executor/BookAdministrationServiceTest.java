@@ -111,6 +111,7 @@ class BookAdministrationServiceTest {
                   AccountType.ASSET,
                   accountRole(AccountType.ASSET, NormalBalance.DEBIT),
                   new AccountTaxonomy(
+                      dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                       java.util.Optional.of(new AccountCode("9999")),
                       java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                       java.util.Optional.empty())));

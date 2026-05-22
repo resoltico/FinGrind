@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.43.0"
+version: "0.44.0"
 domain: ADR_10X_ACCOUNTING_FOUNDATION
-updated: "2026-05-20"
+updated: "2026-05-22"
 route:
   keywords: [fingrind, 10x, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
   questions: ["what exactly must fingrind implement to reach a 10 out of 10 accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]

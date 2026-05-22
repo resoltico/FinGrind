@@ -36,6 +36,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
@@ -43,6 +44,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -64,6 +66,7 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -146,20 +149,34 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static AccountingEvidence accountingEvidence(String token) {
     return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
-        List.of());
+        List.of(sourceDocument("document-" + token, "invoice")), List.of());
   }
 
   protected static AccountingEvidence accountingEvidenceWithApproval(String token) {
     return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token), new SourceDocumentType("invoice"))),
-        List.of(
-            new ApprovalReference(
-                new ApprovalId("approval-" + token), new ApprovalType("manager-signoff"))));
+        List.of(sourceDocument("document-" + token, "invoice")),
+        List.of(approval("approval-" + token, "manager-signoff")));
+  }
+
+  private static SourceDocumentReference sourceDocument(
+      String sourceDocumentId, String sourceDocumentType) {
+    return new SourceDocumentReference(
+        new SourceDocumentId(sourceDocumentId),
+        new SourceDocumentType(sourceDocumentType),
+        LocalDate.parse("2026-04-07"),
+        Instant.parse("2026-04-07T10:15:30Z"),
+        new StorageLocator("vault://fixtures/" + sourceDocumentId),
+        new ContentSha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+  }
+
+  private static ApprovalReference approval(String approvalId, String approvalType) {
+    return new ApprovalReference(
+        new ApprovalId(approvalId),
+        new ApprovalType(approvalType),
+        new ActorId("approver-" + approvalId),
+        ActorType.HUMAN,
+        ApprovalDecision.APPROVED,
+        Instant.parse("2026-04-07T10:20:30Z"));
   }
 
   protected static CurrencyBalance eurDebitBalance() {
@@ -179,8 +196,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static TrialBalanceReport trialBalanceReport(
       DeclaredAccount account, CurrencyBalance balance) {
-    return new TrialBalanceReport(
-        bookIdentity(),
+    return trialBalanceReport(
         Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
         allPostingKinds(),
@@ -233,8 +249,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   }
 
   protected static TrialBalanceReport sampleTrialBalanceReport() {
-    return new TrialBalanceReport(
-        bookIdentity(),
+    return trialBalanceReport(
         Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
         allPostingKinds(),

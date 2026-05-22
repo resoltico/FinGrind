@@ -279,6 +279,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             CliRequestReaderTestSupport.withEvidence(
                 """
             {
+              "entryKind": "MANUAL_ADJUSTMENT",
               "postingKind": "STANDARD",
               "effectiveDate": "2026-04-07",
               "lines": %s,
@@ -535,16 +536,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "COMPANY",
               "--owner-model",
               "MULTI_OWNER",
-              "--reporting-obligation-status",
-              "INTERNAL_MANAGEMENT_ONLY",
+              "--policy-profile",
+              "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
               "--business-activity-tag",
               "translation-services",
               "--functional-currency",
               "EUR",
               "--fiscal-year-start",
               "01-01",
-              "--accounting-basis",
-              "ACCRUAL",
               "--output",
               "human",
               "--bogus"

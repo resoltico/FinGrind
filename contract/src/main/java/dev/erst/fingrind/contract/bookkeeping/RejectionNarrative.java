@@ -55,6 +55,19 @@ public final class RejectionNarrative {
                   rejectionTypeConflict.requestedAccountType().wireValue(),
                   rejectionTypeConflict.parentAccountCode().value(),
                   rejectionTypeConflict.parentAccountType().wireValue());
+      case BookAdministrationRejection.ParentAccountRoleConflict rejectionRoleConflict ->
+          "Account '%s' is declared with role '%s', but parent account '%s' uses role '%s'. Parent and child must share one account role."
+              .formatted(
+                  rejectionRoleConflict.accountCode().value(),
+                  rejectionRoleConflict.requestedAccountRole().wireValue(),
+                  rejectionRoleConflict.parentAccountCode().value(),
+                  rejectionRoleConflict.parentAccountRole().wireValue());
+      case BookAdministrationRejection.ParentAccountNotHeader rejectionNotHeader ->
+          "Account '%s' names parent account '%s', but that parent is declared as '%s' and cannot own child accounts."
+              .formatted(
+                  rejectionNotHeader.accountCode().value(),
+                  rejectionNotHeader.parentAccountCode().value(),
+                  rejectionNotHeader.parentAccountNodeKind().wireValue());
       case BookAdministrationRejection.ParentAccountTaxonomyConflict rejectionTaxonomyConflict ->
           "Account '%s' names parent account '%s', but the child and parent do not share one statement-classification family."
               .formatted(
@@ -168,7 +181,7 @@ public final class RejectionNarrative {
               + OPEN_BOOK_OPERATION
               + ".";
       case PostingRejection.AccountStateViolations violations ->
-          "Posting references undeclared or inactive accounts."
+          "Posting references undeclared, inactive, or non-postable accounts."
               + " Fix every issue in details.violations before retrying."
               + " Reported issues: "
               + violations.violations().size();

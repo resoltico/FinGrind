@@ -1,26 +1,31 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.StorageLocator;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -32,9 +37,10 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand syntheticDirectCommand(PostEntryCommand command, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        PostingKind.STANDARD,
-        command.journalEntry(),
-        PostingLineage.direct(),
+        new BookkeepingEntry.ManualAdjustment(
+            CliFuzzFixtures.postingKind(command),
+            CliFuzzFixtures.journalEntry(command),
+            PostingLineage.direct()),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -44,12 +50,13 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        command.postingKind(),
-        new JournalEntry(
-            command.journalEntry().effectiveDate().plusDays(1),
-            exactReversalLines(command.journalEntry().lines())),
-        PostingLineage.reversal(
-            new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
+        new BookkeepingEntry.ManualAdjustment(
+            CliFuzzFixtures.postingKind(command),
+            new JournalEntry(
+                CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
+                exactReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
+            PostingLineage.reversal(
+                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -59,12 +66,13 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        command.postingKind(),
-        new JournalEntry(
-            command.journalEntry().effectiveDate().plusDays(1),
-            nonNegatingReversalLines(command.journalEntry().lines())),
-        PostingLineage.reversal(
-            new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
+        new BookkeepingEntry.ManualAdjustment(
+            CliFuzzFixtures.postingKind(command),
+            new JournalEntry(
+                CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
+                nonNegatingReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
+            PostingLineage.reversal(
+                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -134,14 +142,23 @@ final class SqliteRoundTripWorkflowCommandDerivation {
                     new SourceDocumentReference(
                         new SourceDocumentId(
                             sourceDocument.sourceDocumentId().value() + "-" + stableToken),
-                        new SourceDocumentType(sourceDocument.sourceDocumentType().value())))
+                        new SourceDocumentType(sourceDocument.sourceDocumentType().value()),
+                        sourceDocument.documentDate(),
+                        sourceDocument.capturedAt(),
+                        new StorageLocator(
+                            sourceDocument.storageLocator().value() + "-" + stableToken),
+                        new ContentSha256(sourceDocument.contentSha256().value())))
             .toList(),
         evidence.approvals().stream()
             .map(
                 approval ->
                     new ApprovalReference(
                         new ApprovalId(approval.approvalId().value() + "-" + stableToken),
-                        new ApprovalType(approval.approvalType().value())))
+                        new ApprovalType(approval.approvalType().value()),
+                        new ActorId(approval.approverId().value() + "-" + stableToken),
+                        ActorType.AGENT,
+                        ApprovalDecision.APPROVED,
+                        approval.approvedAt()))
             .toList());
   }
 

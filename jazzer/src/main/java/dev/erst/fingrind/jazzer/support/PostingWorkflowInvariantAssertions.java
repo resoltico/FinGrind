@@ -49,7 +49,7 @@ public final class PostingWorkflowInvariantAssertions {
     if (!accepted.idempotencyKey().equals(command.requestProvenance().idempotencyKey())) {
       throw new IllegalStateException("Preflight changed the idempotency key.");
     }
-    if (!accepted.effectiveDate().equals(command.journalEntry().effectiveDate())) {
+    if (!accepted.effectiveDate().equals(CliFuzzFixtures.journalEntry(command).effectiveDate())) {
       throw new IllegalStateException("Preflight changed the effective date.");
     }
   }
@@ -86,10 +86,10 @@ public final class PostingWorkflowInvariantAssertions {
     if (!postingFact.postingId().equals(committed.postingId())) {
       throw new IllegalStateException("Stored posting id differs from the commit result.");
     }
-    if (!postingFact.journalEntry().equals(command.journalEntry())) {
+    if (!postingFact.journalEntry().equals(CliFuzzFixtures.journalEntry(command))) {
       throw new IllegalStateException("Stored journal entry differs from the parsed command.");
     }
-    if (!postingFact.reversalReference().equals(command.reversalReference())) {
+    if (!postingFact.reversalReference().equals(CliFuzzFixtures.reversalReference(command))) {
       throw new IllegalStateException("Stored reversal differs from the parsed command.");
     }
     if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {

@@ -6,7 +6,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.OwnerModel;
-import dev.erst.fingrind.core.ReportingObligationStatus;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -32,11 +31,10 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.ENTITY_NAME,
               ProtocolOptions.ENTITY_FORM,
               ProtocolOptions.OWNER_MODEL,
-              ProtocolOptions.REPORTING_OBLIGATION_STATUS,
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
-              ProtocolOptions.ACCOUNTING_BASIS,
+              ProtocolOptions.POLICY_PROFILE,
               ProtocolOptions.OUTPUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec CLOSE_PERIOD_ARGUMENTS =
@@ -49,8 +47,8 @@ final class CliLifecycleMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.BACKUP_FILE,
-              ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+              ProtocolOptions.BACKUP_FILE_OUT,
+              ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
               ProtocolOptions.OUTPUT),
           List.of());
   private static final String DELETE_REKEY_ROLLBACK_COMMAND =
@@ -109,12 +107,10 @@ final class CliLifecycleMutationArguments {
                     requireOpenBookEntityName(argumentValues.entityName),
                     requireOpenBookEntityForm(argumentValues.entityForm),
                     requireOpenBookOwnerModel(argumentValues.ownerModel),
-                    requireOpenBookReportingObligationStatus(
-                        argumentValues.reportingObligationStatus),
                     requireOpenBookBusinessActivityTags(argumentValues.businessActivityTags)),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
                 requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
-                requireOpenBookAccountingBasis(argumentValues.accountingBasis))),
+                requireOpenBookPolicyProfile(argumentValues.policyProfile))),
         CliArgumentValueParser.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -150,12 +146,6 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.OWNER_MODEL),
                   ProtocolOptions.OWNER_MODEL);
-      case ProtocolOptions.REPORTING_OBLIGATION_STATUS ->
-          argumentValues.reportingObligationStatus =
-              CliArgumentValueParser.parseReportingObligationStatusOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.REPORTING_OBLIGATION_STATUS),
-                  ProtocolOptions.REPORTING_OBLIGATION_STATUS);
       case ProtocolOptions.BUSINESS_ACTIVITY_TAG ->
           argumentValues.businessActivityTags.add(
               CliArgumentValueParser.parseBusinessActivityTagOption(
@@ -174,12 +164,12 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
                   ProtocolOptions.FISCAL_YEAR_START);
-      case ProtocolOptions.ACCOUNTING_BASIS ->
-          argumentValues.accountingBasis =
-              CliArgumentValueParser.parseAccountingBasisOption(
+      case ProtocolOptions.POLICY_PROFILE ->
+          argumentValues.policyProfile =
+              CliArgumentValueParser.parseAccountingPolicyProfileOption(
                   CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
-                  ProtocolOptions.ACCOUNTING_BASIS);
+                      argumentIterator, ProtocolOptions.POLICY_PROFILE),
+                  ProtocolOptions.POLICY_PROFILE);
       case ProtocolOptions.OUTPUT ->
           argumentValues.outputMode =
               CliArgumentValueParser.requireOutputMode(
@@ -229,14 +219,14 @@ final class CliLifecycleMutationArguments {
     return fiscalYearStart;
   }
 
-  private static AccountingBasis requireOpenBookAccountingBasis(
-      @Nullable AccountingBasis accountingBasis) {
-    if (accountingBasis == null) {
+  private static AccountingPolicyProfile requireOpenBookPolicyProfile(
+      @Nullable AccountingPolicyProfile policyProfile) {
+    if (policyProfile == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ACCOUNTING_BASIS,
-          "A " + ProtocolOptions.ACCOUNTING_BASIS + " argument is required.");
+          ProtocolOptions.POLICY_PROFILE,
+          "A " + ProtocolOptions.POLICY_PROFILE + " argument is required.");
     }
-    return accountingBasis;
+    return policyProfile;
   }
 
   private static OwnerModel requireOpenBookOwnerModel(@Nullable OwnerModel ownerModel) {
@@ -246,16 +236,6 @@ final class CliLifecycleMutationArguments {
           "A " + ProtocolOptions.OWNER_MODEL + " argument is required.");
     }
     return ownerModel;
-  }
-
-  private static ReportingObligationStatus requireOpenBookReportingObligationStatus(
-      @Nullable ReportingObligationStatus reportingObligationStatus) {
-    if (reportingObligationStatus == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REPORTING_OBLIGATION_STATUS,
-          "A " + ProtocolOptions.REPORTING_OBLIGATION_STATUS + " argument is required.");
-    }
-    return reportingObligationStatus;
   }
 
   private static List<BusinessActivityTag> requireOpenBookBusinessActivityTags(
@@ -274,10 +254,9 @@ final class CliLifecycleMutationArguments {
     private @Nullable BookEntityName entityName;
     private @Nullable EntityForm entityForm;
     private @Nullable OwnerModel ownerModel;
-    private @Nullable ReportingObligationStatus reportingObligationStatus;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
-    private @Nullable AccountingBasis accountingBasis;
+    private @Nullable AccountingPolicyProfile policyProfile;
     private @Nullable OutputMode outputMode;
   }
 
@@ -404,23 +383,24 @@ final class CliLifecycleMutationArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.BACKUP_FILE.equals(argument)) {
+      if (ProtocolOptions.BACKUP_FILE_OUT.equals(argument)) {
         if (backupFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_FILE, "Duplicate argument: " + ProtocolOptions.BACKUP_FILE);
+              ProtocolOptions.BACKUP_FILE_OUT,
+              "Duplicate argument: " + ProtocolOptions.BACKUP_FILE_OUT);
         }
         backupFilePath =
             CliArgumentValueParser.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.BACKUP_FILE);
-      } else if (ProtocolOptions.BACKUP_BOOK_KEY_FILE.equals(argument)) {
+                argumentIterator, ProtocolOptions.BACKUP_FILE_OUT);
+      } else if (ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT.equals(argument)) {
         if (backupBookKeyFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_BOOK_KEY_FILE,
-              "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+              ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
+              "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT);
         }
         backupBookKeyFilePath =
             CliArgumentValueParser.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+                argumentIterator, ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT);
       } else {
         outputMode =
             CliArgumentValueParser.requireOutputMode(
@@ -431,13 +411,13 @@ final class CliLifecycleMutationArguments {
     }
     if (backupFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
-          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
+          ProtocolOptions.BACKUP_FILE_OUT,
+          "A " + ProtocolOptions.BACKUP_FILE_OUT + " argument is required.");
     }
     if (backupBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
-          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE + " argument is required.");
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
+          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT + " argument is required.");
     }
     CliBookPathValidator.validateDistinctBackupPaths(
         parsedArguments.bookAccess().bookFilePath(),

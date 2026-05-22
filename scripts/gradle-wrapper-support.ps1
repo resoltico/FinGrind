@@ -133,3 +133,123 @@ function Get-FinGrindProjectBuildDir {
 
     return (Join-Path (Join-Path $RepositoryRoot $ProjectSegment) "build")
 }
+
+function Get-FinGrindSourceCheckoutArtifactManifestPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectSegment
+    )
+
+    $buildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $RepositoryRoot -ProjectSegment $ProjectSegment
+    return (Join-Path $buildDir "generated/source-checkout/source-checkout-artifact-manifest.tsv")
+}
+
+function Get-FinGrindFileMtimeUtcTicks {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return (Get-Item -LiteralPath $Path).LastWriteTimeUtc.Ticks
+}
+
+function Test-FinGrindSourceCheckoutArtifactNeedsRefresh {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) {
+        return $true
+    }
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        return $true
+    }
+    $manifestMtimeUtcTicks = Get-FinGrindFileMtimeUtcTicks -Path $ManifestPath
+
+    foreach ($line in [System.IO.File]::ReadAllLines($ManifestPath, [System.Text.Encoding]::UTF8)) {
+        if ($line.StartsWith("sourceFile`t")) {
+            $parts = $line.Split("`t")
+            if ($parts.Length -ne 3) {
+                return $true
+            }
+            $relativePath = $parts[1]
+            $sourcePath = Join-Path $RepositoryRoot $relativePath
+            if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+                return $true
+            }
+            $sourceMtimeUtcTicks = Get-FinGrindFileMtimeUtcTicks -Path $sourcePath
+            if ($sourceMtimeUtcTicks -gt $manifestMtimeUtcTicks) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+function Invoke-FinGrindEnsureSourceCheckoutArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ArtifactLabel,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$GradleTasks
+    )
+
+    $needsRefresh =
+        Test-FinGrindSourceCheckoutArtifactNeedsRefresh `
+            -RepositoryRoot $RepositoryRoot `
+            -ManifestPath $ManifestPath `
+            -ArtifactPath $ArtifactPath
+    if ($needsRefresh) {
+        $gradleWrapper =
+            if (Get-FinGrindIsWindowsHost) {
+                Join-Path $RepositoryRoot "gradlew.bat"
+            } else {
+                Join-Path $RepositoryRoot "gradlew"
+            }
+        Push-Location $RepositoryRoot
+        try {
+            & $gradleWrapper @GradleTasks "--no-daemon" "--quiet" *> $null
+            if ($LASTEXITCODE -ne 0) {
+                throw "failed to refresh $ArtifactLabel via $gradleWrapper $($GradleTasks -join ' ')"
+            }
+        } finally {
+            Pop-Location
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) {
+        throw "missing $ArtifactLabel at $ArtifactPath; run .\\gradlew.bat $($GradleTasks -join ' ')"
+    }
+
+    $artifactMatchesCheckout =
+        -not (
+            Test-FinGrindSourceCheckoutArtifactNeedsRefresh `
+                -RepositoryRoot $RepositoryRoot `
+                -ManifestPath $ManifestPath `
+                -ArtifactPath $ArtifactPath
+        )
+    if (-not $artifactMatchesCheckout) {
+        throw "$ArtifactLabel at $ArtifactPath is not synchronized with the current checkout; rerun .\\gradlew.bat $($GradleTasks -join ' ')"
+    }
+}

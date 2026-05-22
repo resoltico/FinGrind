@@ -62,12 +62,16 @@ class CliFailureOutputRendererTest {
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountStateViolationsDetails(
             List.of(
-                new CliRejectionJsonModels.AccountStateViolationPayload("unknown-account", "1000"),
                 new CliRejectionJsonModels.AccountStateViolationPayload(
-                    "inactive-account", "2000"))),
+                    "unknown-account", "1000", null),
+                new CliRejectionJsonModels.AccountStateViolationPayload(
+                    "inactive-account", "2000", null),
+                new CliRejectionJsonModels.AccountStateViolationPayload(
+                    "non-postable-account", "3000", "HEADER"))),
         "Violations",
         "unknown-account (1000)",
-        "inactive-account (2000)");
+        "inactive-account (2000)",
+        "non-postable-account (3000, HEADER)");
     assertRenderedRejection(
         new CliRejectionJsonModels.PriorPostingDetails("posting-9"),
         "Prior posting id",
@@ -85,8 +89,10 @@ class CliFailureOutputRendererTest {
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
             "3200",
-            new CliRejectionJsonModels.AccountTaxonomyDetails("3000", "OTHER_EQUITY", null),
-            new CliRejectionJsonModels.AccountTaxonomyDetails("3010", "RETAINED_EARNINGS", null)),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", "3000", "OTHER_EQUITY", null),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", "3010", "RETAINED_EARNINGS", null)),
         "Existing parent account",
         "3000",
         "Existing financial position classification",
@@ -98,8 +104,10 @@ class CliFailureOutputRendererTest {
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
             "4100",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES"),
-            new CliRejectionJsonModels.AccountTaxonomyDetails("4000", null, "OPERATING_EXPENSE")),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", null, null, "COST_OF_SALES"),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", "4000", null, "OPERATING_EXPENSE")),
         "Existing parent account",
         "(none)",
         "Existing financial position classification",
@@ -126,11 +134,26 @@ class CliFailureOutputRendererTest {
         "Parent account type",
         "REVENUE");
     assertRenderedRejection(
+        new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
+            "4100", "ORDINARY", "4000", "CONTRA"),
+        "Requested account role",
+        "ORDINARY",
+        "Parent account role",
+        "CONTRA");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE"),
+        "Parent account code",
+        "4000",
+        "Parent account node kind",
+        "POSTABLE");
+    assertRenderedRejection(
         new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
             "4100",
-            new CliRejectionJsonModels.AccountTaxonomyDetails("4050", null, "OPERATING_EXPENSE"),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", "4050", null, "OPERATING_EXPENSE"),
             "4000",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(null, null, "COST_OF_SALES")),
+            new CliRejectionJsonModels.AccountTaxonomyDetails(
+                "POSTABLE", null, null, "COST_OF_SALES")),
         "Requested parent account",
         "4050",
         "Requested profit-and-loss classification",
@@ -247,7 +270,8 @@ class CliFailureOutputRendererTest {
                     LedgerStepStatus.REJECTED,
                     "2026-05-13T10:15:30Z",
                     "2026-05-13T10:15:31Z",
-                    List.of(new CliPlanJsonModels.TextLedgerFactPayload("text", "result", "no")),
+                    new CliPlanJsonModels.CommittedEntryStepDataPayload(
+                        "posting-1", "idem-1", "2026-05-13", "2026-05-13T10:15:31Z"),
                     null))));
   }
 }

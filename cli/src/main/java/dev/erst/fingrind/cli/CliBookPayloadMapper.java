@@ -80,13 +80,12 @@ final class CliBookPayloadMapper {
         bookIdentity.entityName().value(),
         bookIdentity.entityProfile().entityForm().wireValue(),
         bookIdentity.entityProfile().ownerModel().wireValue(),
-        bookIdentity.entityProfile().reportingObligationStatus().wireValue(),
         bookIdentity.entityProfile().businessActivityTags().stream()
             .map(value -> value.value())
             .toList(),
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue(),
-        bookIdentity.accountingBasis().wireValue());
+        bookIdentity.policyProfile().wireValue());
   }
 
   static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(
@@ -108,6 +107,7 @@ final class CliBookPayloadMapper {
         account.accountName().value(),
         account.accountType().wireValue(),
         account.accountRole().wireValue(),
+        account.accountTaxonomy().nodeKind().wireValue(),
         account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null),
         account
             .accountTaxonomy()
@@ -251,13 +251,23 @@ final class CliBookPayloadMapper {
   private static CliBookQueryJsonModels.SourceDocumentPayload sourceDocumentPayload(
       SourceDocumentReference sourceDocument) {
     return new CliBookQueryJsonModels.SourceDocumentPayload(
-        sourceDocument.sourceDocumentId().value(), sourceDocument.sourceDocumentType().value());
+        sourceDocument.sourceDocumentId().value(),
+        sourceDocument.sourceDocumentType().value(),
+        sourceDocument.documentDate().toString(),
+        sourceDocument.capturedAt().toString(),
+        sourceDocument.storageLocator().value(),
+        sourceDocument.contentSha256().value());
   }
 
   private static CliBookQueryJsonModels.ApprovalPayload approvalPayload(
       ApprovalReference approval) {
     return new CliBookQueryJsonModels.ApprovalPayload(
-        approval.approvalId().value(), approval.approvalType().value());
+        approval.approvalId().value(),
+        approval.approvalType().value(),
+        approval.approverId().value(),
+        approval.approverType().wireValue(),
+        approval.decision().wireValue(),
+        approval.approvedAt().toString());
   }
 
   private static String absolutePath(Path bookFilePath) {
