@@ -482,8 +482,12 @@ The repository ships four workflow files and six named CI jobs:
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
 2. `windows-bundle-smoke` — builds and smokes the Windows bundle on `windows-2022` after `check`
-   passes. Excludes the workspace and Gradle user home from Windows Defender before any Gradle
-   operations begin, removing antivirus scan overhead from file writes during compilation.
+   passes. Uses the repo-owned
+   [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
+   owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
+   home before Gradle work begins. The exclusion attempt is a performance optimization only: an
+   unavailable Defender service must warn and continue instead of blocking the product-verification
+   lane.
 3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-24.04`
    after `check` passes.
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files

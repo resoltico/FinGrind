@@ -44,6 +44,11 @@ grep -Fq 'uv.exe' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
 grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the Windows MSVC environment through the repo-owned PowerShell owner"
+grep -Fq '.\scripts\configure-windows-defender-build-exclusions.ps1' "${workflow_file}" || die \
+    "CI workflow no longer delegates Windows Defender build exclusions to the repo-owned PowerShell owner"
+if grep -Fq 'Add-MpPreference -ExclusionPath' "${workflow_file}"; then
+    die "CI workflow still carries inline Windows Defender exclusion calls instead of the repo-owned PowerShell owner"
+fi
 if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
     die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
 fi

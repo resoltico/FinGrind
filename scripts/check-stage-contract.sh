@@ -42,6 +42,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-gradle-wrapper-support.sh
     scripts/test-gradle-wrapper-support-powershell.sh
     scripts/test-setup-msvc-dev-cmd.sh
+    scripts/test-configure-windows-defender-build-exclusions.sh
     scripts/test-jazzer-stale-class-pruning.sh
     scripts/test-jazzer-stale-resource-pruning.sh
     scripts/test-check-monitor-common.sh
