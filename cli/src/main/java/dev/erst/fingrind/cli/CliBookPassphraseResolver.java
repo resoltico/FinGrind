@@ -149,9 +149,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
   private static @Nullable PromptingConsole systemPromptingConsole() {
     return systemPromptingConsole(
-        availableSystemConsole(),
-        java.io.Console::isTerminal,
-        (console, prompt) -> console.readPassword("%s", prompt));
+        availableSystemConsole(), java.io.Console::isTerminal, java.io.Console::readPassword);
   }
 
   private static java.io.@Nullable Console availableSystemConsole() {
@@ -169,7 +167,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   static <T> @Nullable PromptingConsole systemPromptingConsole(
       @Nullable T source,
       TerminalStateExtractor<? super T> terminalStateExtractor,
-      PasswordPromptReader<? super T> passwordPromptReader) {
+      FormattedPasswordPromptReader<? super T> passwordPromptReader) {
     Objects.requireNonNull(terminalStateExtractor, "terminalStateExtractor");
     Objects.requireNonNull(passwordPromptReader, "passwordPromptReader");
     if (source == null) {
@@ -177,7 +175,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     }
     return interactiveSystemPromptingConsole(
         () -> terminalStateExtractor.isTerminal(source),
-        prompt -> passwordPromptReader.readPassword(source, prompt));
+        prompt -> passwordPromptReader.readPassword(source, "%s", prompt));
   }
 
   static @Nullable PromptingConsole interactiveSystemPromptingConsole(
@@ -236,9 +234,9 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
   /** Typed prompt-aware password reader for one system-console-like source object. */
   @FunctionalInterface
-  interface PasswordPromptReader<T> {
-    /** Reads one password from the supplied source for the supplied prompt. */
-    char @Nullable [] readPassword(T source, String prompt);
+  interface FormattedPasswordPromptReader<T> {
+    /** Reads one password from the supplied source for the supplied prompt format and value. */
+    char @Nullable [] readPassword(T source, String promptFormat, String prompt);
   }
 
   /** Typed terminal-state reader for one system-console-like source object. */

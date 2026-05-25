@@ -533,7 +533,7 @@ class CliBookPassphraseResolverTest {
             source -> {
               throw new AssertionError("Missing sources must not inspect terminal state.");
             },
-            (source, prompt) -> {
+            (source, promptFormat, prompt) -> {
               throw new AssertionError("Missing sources must not read passwords.");
             }));
   }
@@ -544,7 +544,7 @@ class CliBookPassphraseResolverTest {
         CliBookPassphraseResolver.systemPromptingConsole(
             "console-source",
             source -> false,
-            (source, prompt) -> {
+            (source, promptFormat, prompt) -> {
               throw new AssertionError("Non-interactive consoles must not prompt.");
             }));
   }
@@ -556,7 +556,8 @@ class CliBookPassphraseResolverTest {
         CliBookPassphraseResolver.systemPromptingConsole(
             "console-source",
             source -> true,
-            (source, prompt) -> {
+            (source, promptFormat, prompt) -> {
+              assertEquals("%s", promptFormat);
               promptCapture.append(source).append(':').append(prompt);
               return "console-secret".toCharArray();
             });
