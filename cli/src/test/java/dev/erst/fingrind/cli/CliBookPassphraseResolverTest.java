@@ -574,6 +574,35 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void interactiveSystemPromptingConsole_reportsUnavailableWhenNotInteractive() {
+    assertNull(
+        CliBookPassphraseResolver.interactiveSystemPromptingConsole(
+            () -> false,
+            prompt -> {
+              throw new AssertionError("Non-interactive consoles must not prompt.");
+            }));
+  }
+
+  @Test
+  void interactiveSystemPromptingConsole_preservesInteractivePromptReads() {
+    StringBuilder promptCapture = new StringBuilder();
+    CliBookPassphraseResolver.PromptingConsole promptingConsole =
+        CliBookPassphraseResolver.interactiveSystemPromptingConsole(
+            () -> true,
+            prompt -> {
+              promptCapture.append(prompt);
+              return "bridge-secret".toCharArray();
+            });
+
+    assertEquals(
+        "bridge-secret",
+        new String(
+            Objects.requireNonNull(promptingConsole, "promptingConsole")
+                .readPassword("book.sqlite")));
+    assertEquals("book.sqlite", promptCapture.toString());
+  }
+
+  @Test
   void wrappedSystemConsole_delegatesTerminalStateAndPromptReads() {
     StringBuilder promptCapture = new StringBuilder();
     CliBookPassphraseResolver.SystemPromptingConsole systemConsole =

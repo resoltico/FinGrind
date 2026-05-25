@@ -14,7 +14,6 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -150,12 +149,10 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
   private static @Nullable PromptingConsole systemPromptingConsole() {
     java.io.Console console = availableSystemConsole();
-    return Optional.ofNullable(console)
-        .map(
-            c ->
-                availableSystemPromptingConsole(
-                    wrap(c::isTerminal, prompt -> c.readPassword("%s", prompt))))
-        .orElse(null);
+    return console == null
+        ? null
+        : interactiveSystemPromptingConsole(
+            console::isTerminal, prompt -> console.readPassword("%s", prompt));
   }
 
   private static java.io.@Nullable Console availableSystemConsole() {
@@ -168,6 +165,13 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
       return null;
     }
     return systemConsole;
+  }
+
+  static @Nullable PromptingConsole interactiveSystemPromptingConsole(
+      TerminalState terminalState, PasswordReader passwordReader) {
+    Objects.requireNonNull(terminalState, "terminalState");
+    Objects.requireNonNull(passwordReader, "passwordReader");
+    return availableSystemPromptingConsole(wrap(terminalState, passwordReader));
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */
