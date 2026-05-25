@@ -148,11 +148,10 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   private static @Nullable PromptingConsole systemPromptingConsole() {
-    java.io.Console console = availableSystemConsole();
-    return console == null
-        ? null
-        : interactiveSystemPromptingConsole(
-            console::isTerminal, prompt -> console.readPassword("%s", prompt));
+    return systemPromptingConsole(
+        availableSystemConsole(),
+        java.io.Console::isTerminal,
+        (console, prompt) -> console.readPassword("%s", prompt));
   }
 
   private static java.io.@Nullable Console availableSystemConsole() {
@@ -165,6 +164,20 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
       return null;
     }
     return systemConsole;
+  }
+
+  static <T> @Nullable PromptingConsole systemPromptingConsole(
+      @Nullable T source,
+      TerminalStateExtractor<? super T> terminalStateExtractor,
+      PasswordPromptReader<? super T> passwordPromptReader) {
+    Objects.requireNonNull(terminalStateExtractor, "terminalStateExtractor");
+    Objects.requireNonNull(passwordPromptReader, "passwordPromptReader");
+    if (source == null) {
+      return null;
+    }
+    return interactiveSystemPromptingConsole(
+        () -> terminalStateExtractor.isTerminal(source),
+        prompt -> passwordPromptReader.readPassword(source, prompt));
   }
 
   static @Nullable PromptingConsole interactiveSystemPromptingConsole(
@@ -219,6 +232,20 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   interface PasswordReader {
     /** Reads one password for the supplied prompt and may return {@code null} on EOF. */
     char @Nullable [] readPassword(String prompt);
+  }
+
+  /** Typed prompt-aware password reader for one system-console-like source object. */
+  @FunctionalInterface
+  interface PasswordPromptReader<T> {
+    /** Reads one password from the supplied source for the supplied prompt. */
+    char @Nullable [] readPassword(T source, String prompt);
+  }
+
+  /** Typed terminal-state reader for one system-console-like source object. */
+  @FunctionalInterface
+  interface TerminalStateExtractor<T> {
+    /** Reports whether the supplied source is interactive for password prompting. */
+    boolean isTerminal(T source);
   }
 
   static SystemPromptingConsole wrap(TerminalState terminalState, PasswordReader passwordReader) {
