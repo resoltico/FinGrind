@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -48,6 +49,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -113,7 +115,7 @@ class CliFuzzFixturesTest {
                             "credit-note",
                             "2026-04-08",
                             "actor-manual-1",
-                            "HUMAN",
+                            "PERSON",
                             "command-manual-1",
                             "idem-manual-1",
                             "cause-manual-1",
@@ -127,18 +129,18 @@ class CliFuzzFixturesTest {
                 new AccountCode("6100"),
                 new AccountCode("1100"),
                 new MonetaryAmount("CHF", "42")));
-    PostEntryCommand ownerContributionCommand =
+    PostEntryCommand equityContributionCommand =
         withEntry(
             typedCommand,
-            new BookkeepingEntry.OwnerContribution(
+            new BookkeepingEntry.EquityContribution(
                 LocalDate.parse("2026-04-10"),
                 new AccountCode("1100"),
                 new AccountCode("3100"),
                 new MonetaryAmount("CAD", "750")));
-    PostEntryCommand ownerDrawCommand =
+    PostEntryCommand equityWithdrawalCommand =
         withEntry(
             typedCommand,
-            new BookkeepingEntry.OwnerDraw(
+            new BookkeepingEntry.EquityWithdrawal(
                 LocalDate.parse("2026-04-11"),
                 new AccountCode("3100"),
                 new AccountCode("1100"),
@@ -191,13 +193,16 @@ class CliFuzzFixturesTest {
             .code());
     assertEquals(
         "CAD",
-        CliFuzzFixtures.bookkeepingCommand(ownerContributionCommand)
+        CliFuzzFixtures.bookkeepingCommand(equityContributionCommand)
             .journalEntry()
             .currencyUnit()
             .code());
     assertEquals(
         "USD",
-        CliFuzzFixtures.bookkeepingCommand(ownerDrawCommand).journalEntry().currencyUnit().code());
+        CliFuzzFixtures.bookkeepingCommand(equityWithdrawalCommand)
+            .journalEntry()
+            .currencyUnit()
+            .code());
     assertEquals(
         "SEK",
         CliFuzzFixtures.bookkeepingCommand(openingBalanceCommand)
@@ -248,6 +253,211 @@ class CliFuzzFixturesTest {
                 declareAccountCommand ->
                     declareAccountCommand.accountRole() != AccountRole.ORDINARY
                         && declareAccountCommand.accountRole() != AccountRole.CONTRA));
+  }
+
+  @Test
+  void typed_entry_account_declarations_follow_entry_semantics() {
+    PostEntryCommand cashRevenueCommand =
+        CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
+    PostEntryCommand cashExpenseCommand =
+        withEntry(
+            cashRevenueCommand,
+            new BookkeepingEntry.CashExpense(
+                LocalDate.parse("2026-04-09"),
+                new AccountCode("6100"),
+                new AccountCode("1100"),
+                new MonetaryAmount("CHF", "42")));
+    PostEntryCommand equityContributionCommand =
+        withEntry(
+            cashRevenueCommand,
+            new BookkeepingEntry.EquityContribution(
+                LocalDate.parse("2026-04-10"),
+                new AccountCode("1100"),
+                new AccountCode("3100"),
+                new MonetaryAmount("CAD", "750")));
+    PostEntryCommand equityWithdrawalCommand =
+        withEntry(
+            cashRevenueCommand,
+            new BookkeepingEntry.EquityWithdrawal(
+                LocalDate.parse("2026-04-11"),
+                new AccountCode("3100"),
+                new AccountCode("1100"),
+                new MonetaryAmount("USD", "55")));
+
+    assertEquals(
+        List.of(
+            declaredAccountCommand(
+                "1000",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+            declaredAccountCommand(
+                "2000",
+                AccountType.REVENUE,
+                AccountRole.ORDINARY,
+                profitAndLossTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE))),
+        CliFuzzFixtures.declarePostingAccountCommands(cashRevenueCommand));
+    assertEquals(
+        List.of(
+            declaredAccountCommand(
+                "6100",
+                AccountType.EXPENSE,
+                AccountRole.ORDINARY,
+                profitAndLossTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
+            declaredAccountCommand(
+                "1100",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET))),
+        CliFuzzFixtures.declarePostingAccountCommands(cashExpenseCommand));
+    assertEquals(
+        List.of(
+            declaredAccountCommand(
+                "1100",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+            declaredAccountCommand(
+                "3100",
+                AccountType.EQUITY,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(
+                    FinancialPositionLineClassification.EQUITY_CONTRIBUTION))),
+        CliFuzzFixtures.declarePostingAccountCommands(equityContributionCommand));
+    assertEquals(
+        List.of(
+            declaredAccountCommand(
+                "3100",
+                AccountType.EQUITY,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
+            declaredAccountCommand(
+                "1100",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET))),
+        CliFuzzFixtures.declarePostingAccountCommands(equityWithdrawalCommand));
+  }
+
+  @Test
+  void administrative_entry_account_declarations_preserve_distinct_line_order() {
+    PostEntryCommand typedCommand =
+        CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
+    PostEntryCommand openingBalanceCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.OpeningBalanceAdjustment(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-12"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            dev.erst.fingrind.core.Money.parse("SEK", "42.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("3000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            dev.erst.fingrind.core.Money.parse("SEK", "42.00"))))));
+    PostEntryCommand correctionCommand =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzHarnessTestSupport.correctionAdjustmentRequestJson(
+                    new CliFuzzHarnessTestSupport.CorrectionAdjustmentRequestInput(
+                        "2026-04-08",
+                        """
+                        [
+                          {
+                            "accountCode": "5000",
+                            "side": "CREDIT",
+                            "amount": {
+                              "currencyCode": "GBP",
+                              "minorUnits": "12345"
+                            }
+                          },
+                          {
+                            "accountCode": "5000",
+                            "side": "DEBIT",
+                            "amount": {
+                              "currencyCode": "GBP",
+                              "minorUnits": "2345"
+                            }
+                          },
+                          {
+                            "accountCode": "6000",
+                            "side": "DEBIT",
+                            "amount": {
+                              "currencyCode": "GBP",
+                              "minorUnits": "10000"
+                            }
+                          }
+                        ]
+                        """,
+                        new CliFuzzHarnessTestSupport.RequestContext(
+                            "document-idem-manual-2",
+                            "credit-note",
+                            "2026-04-08",
+                            "actor-manual-2",
+                            "PERSON",
+                            "command-manual-2",
+                            "idem-manual-2",
+                            "cause-manual-2",
+                            null)))
+                .getBytes(UTF_8));
+    PostEntryCommand reversalCommand =
+        withEntry(
+            typedCommand,
+            new BookkeepingEntry.ReversalAdjustment(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-13"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")))),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(
+                        new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal"))));
+
+    assertEquals(
+        List.of("1000", "3000"),
+        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(openingBalanceCommand)));
+    assertEquals(
+        List.of("5000", "6000"),
+        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(correctionCommand)));
+    assertEquals(
+        List.of("1000", "2000"),
+        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(reversalCommand)));
+  }
+
+  @Test
+  void administrative_entry_account_declarations_cover_numeric_prefixes_and_hash_fallback() {
+    PostEntryCommand command =
+        correctionAdjustmentCommand(
+            "2000",
+            "3000",
+            "4000",
+            "5000",
+            zeroLeadingFallbackCode(),
+            hashedFallbackCodeForBucket(0),
+            hashedFallbackCodeForBucket(1),
+            hashedFallbackCodeForBucket(2),
+            hashedFallbackCodeForBucket(3),
+            hashedFallbackCodeForBucket(4));
+
+    Map<String, AccountType> accountTypes =
+        CliFuzzFixtures.declarePostingAccountCommands(command).stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    declareAccountCommand -> declareAccountCommand.accountCode().value(),
+                    DeclareAccountCommand::accountType));
+
+    for (String accountCode : accountTypes.keySet()) {
+      assertEquals(expectedSyntheticAccountType(accountCode), accountTypes.get(accountCode));
+    }
   }
 
   @Test
@@ -554,6 +764,101 @@ class CliFuzzFixturesTest {
     return SqliteRoundTripWorkflowTestSupport.basicValidRequest();
   }
 
+  private static List<String> accountCodes(List<DeclareAccountCommand> commands) {
+    return commands.stream().map(command -> command.accountCode().value()).toList();
+  }
+
+  private static PostEntryCommand correctionAdjustmentCommand(String... accountCodes) {
+    List<dev.erst.fingrind.core.JournalLine> lines = new ArrayList<>();
+    for (String accountCode : accountCodes) {
+      lines.add(
+          new dev.erst.fingrind.core.JournalLine(
+              new AccountCode(accountCode),
+              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+              dev.erst.fingrind.core.Money.parse("EUR", "1.00")));
+      lines.add(
+          new dev.erst.fingrind.core.JournalLine(
+              new AccountCode(accountCode),
+              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+              dev.erst.fingrind.core.Money.parse("EUR", "1.00")));
+    }
+    return withEntry(
+        CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
+        new BookkeepingEntry.CorrectionAdjustment(
+            new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines)));
+  }
+
+  private static String hashedFallbackCodeForBucket(int bucket) {
+    for (int candidate = 0; candidate < 10_000; candidate++) {
+      String accountCode = "A" + candidate;
+      if (Math.floorMod(accountCode.hashCode(), 5) == bucket) {
+        return accountCode;
+      }
+    }
+    throw new IllegalStateException(
+        "No synthetic fallback account code found for bucket " + bucket);
+  }
+
+  private static String zeroLeadingFallbackCode() {
+    return "0fallback";
+  }
+
+  private static AccountType expectedSyntheticAccountType(String accountCode) {
+    char first = accountCode.charAt(0);
+    if (Character.isDigit(first)) {
+      return switch (first) {
+        case '1' -> AccountType.ASSET;
+        case '2' -> AccountType.LIABILITY;
+        case '3' -> AccountType.EQUITY;
+        case '4' -> AccountType.REVENUE;
+        case '5', '6', '7', '8', '9' -> AccountType.EXPENSE;
+        default -> hashedAccountType(accountCode);
+      };
+    }
+    return hashedAccountType(accountCode);
+  }
+
+  private static AccountType hashedAccountType(String accountCode) {
+    return switch (Math.floorMod(accountCode.hashCode(), 5)) {
+      case 0 -> AccountType.ASSET;
+      case 1 -> AccountType.LIABILITY;
+      case 2 -> AccountType.EQUITY;
+      case 3 -> AccountType.REVENUE;
+      default -> AccountType.EXPENSE;
+    };
+  }
+
+  private static DeclareAccountCommand declaredAccountCommand(
+      String accountCode,
+      AccountType accountType,
+      AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy) {
+    return new DeclareAccountCommand(
+        new AccountCode(accountCode),
+        new AccountName("Synthetic " + accountCode),
+        accountType,
+        accountRole,
+        accountTaxonomy);
+  }
+
+  private static AccountTaxonomy financialPositionTaxonomy(
+      FinancialPositionLineClassification classification) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(classification),
+        Optional.empty());
+  }
+
+  private static AccountTaxonomy profitAndLossTaxonomy(
+      ProfitAndLossLineClassification classification) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.of(classification));
+  }
+
   private static String basicValidLedgerPlan() {
     return """
         {
@@ -576,8 +881,7 @@ class CliFuzzFixturesTest {
           "entityName": "Acme Studio",
           "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01",
-          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+          "fiscalYearStart": "01-01"
         }
         """
         .formatted(functionalCurrency)

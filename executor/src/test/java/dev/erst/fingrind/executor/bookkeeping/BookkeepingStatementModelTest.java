@@ -36,7 +36,9 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Direct model-validation coverage for the accounting reporting and close-period surface. */
+/**
+ * Direct model-validation coverage for the accounting reporting and transfer-period-result surface.
+ */
 class BookkeepingStatementModelTest {
   private static final Instant FIXED_INSTANT = Instant.parse("2026-05-12T13:45:00Z");
 
@@ -127,20 +129,21 @@ class BookkeepingStatementModelTest {
   @Test
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
-        FinancialPositionLineClassification.ACCUMULATED_RESULT,
-        new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+        FinancialPositionLineClassification.RESULT_HOLDING,
+        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .requiredFinancialPositionLineClassification());
     assertEquals(
         List.of(new AccountCode("3200")),
-        new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .inactiveCandidateAccountCodes());
     assertEquals(
         LocalDate.parse("2026-05-13"),
-        new BookkeepingAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-05-13"))
+        new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
+                LocalDate.parse("2026-05-13"))
             .attemptedEffectiveDateTo());
     assertEquals(
         "accountCode",
@@ -163,7 +166,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
+                    new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
                         nullOf(FinancialPositionLineClassification.class), List.of()))
             .getMessage());
     assertEquals(
@@ -171,7 +174,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.PeriodCloseMustStartAt(
+                    new BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt(
                         nullOf(LocalDate.class)))
             .getMessage());
     assertEquals(
@@ -179,7 +182,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+                    new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
                         nullOf(FinancialPositionLineClassification.class),
                         List.of(new AccountCode("3200"))))
             .getMessage());
@@ -208,7 +211,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.PeriodCloseFutureDate(
+                    new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
                         nullOf(LocalDate.class)))
             .getMessage());
   }
@@ -326,7 +329,7 @@ class BookkeepingStatementModelTest {
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))));
     List<PostingDraft> closingPostings = new ArrayList<>(List.of(postingDraft()));
-    List<PostingId> closingPostingIds = new ArrayList<>(List.of(new PostingId("posting-1")));
+    List<PostingId> transferPostingIds = new ArrayList<>(List.of(new PostingId("posting-1")));
 
     FinancialPositionView financialPositionView =
         new FinancialPositionView(
@@ -362,33 +365,33 @@ class BookkeepingStatementModelTest {
             List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
-    PeriodCloseDraft periodCloseDraft =
-        new PeriodCloseDraft(
+    PeriodResultTransferDraft periodResultTransferDraft =
+        new PeriodResultTransferDraft(
             new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
             new AccountCode("3200"),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             FIXED_INSTANT,
             closingPostings);
-    ClosedPeriod closedPeriod =
-        new ClosedPeriod(
+    TransferredPeriodResult transferredPeriodResult =
+        new TransferredPeriodResult(
             1,
             new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
             new AccountCode("3200"),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             FIXED_INSTANT,
-            closingPostingIds);
+            transferPostingIds);
 
     financialPositionSections.clear();
     incomeSections.clear();
     equityRows.clear();
     closingPostings.clear();
-    closingPostingIds.clear();
+    transferPostingIds.clear();
 
     assertEquals(1, financialPositionView.sections().size());
     assertEquals(1, incomeStatementView.sections().size());
     assertEquals(1, changesInEquityView.rows().size());
-    assertEquals(1, periodCloseDraft.closingPostings().size());
-    assertEquals(1, closedPeriod.closingPostingIds().size());
+    assertEquals(1, periodResultTransferDraft.closingPostings().size());
+    assertEquals(1, transferredPeriodResult.transferPostingIds().size());
 
     assertThrows(
         IllegalArgumentException.class,
@@ -433,7 +436,7 @@ class BookkeepingStatementModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ClosedPeriod(
+            new TransferredPeriodResult(
                 0,
                 new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
                 new AccountCode("3200"),
@@ -456,8 +459,9 @@ class BookkeepingStatementModelTest {
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "1.00")))),
         PostingLineageModel.direct(),
-        PostingKind.PERIOD_CLOSE,
-        generatedEvidence("period-close-eur", "period-close-plan"),
+        PostingKind.PERIOD_RESULT_TRANSFER,
+        dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+        generatedEvidence("period-result-transfer-eur", "period-result-transfer-plan"),
         new CommittedProvenance(
             new RequestProvenance(
                 new dev.erst.fingrind.core.ActorId("actor-1"),

@@ -179,7 +179,7 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
-  void rejectionFor_rejectsClosedPeriodAttemptsBeforeAccountChecks() {
+  void rejectionFor_rejectsTransferredPeriodResultAttemptsBeforeAccountChecks() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
     book.closedThrough = Optional.of(LocalDate.parse("2026-04-07"));
@@ -189,7 +189,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.ClosedPeriodViolation(
+            new BookkeepingPostingRejection.TransferredPeriodResultViolation(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))),
         rejection);
     assertEquals(0, book.findAccountsCalls);
@@ -199,13 +199,13 @@ class PostingAcceptancePolicyTest {
   void rejectionFor_allowsSystemGeneratedPostingKindsFromPostingCommands() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
-    RegisteredAccount retainedEarnings =
+    RegisteredAccount resultHolding =
         new RegisteredAccount(
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+            financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -216,13 +216,14 @@ class PostingAcceptancePolicyTest {
             NormalBalance.CREDIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(resultHolding.accountCode(), resultHolding);
     book.accounts.put(revenue.accountCode(), revenue);
 
     Optional<BookkeepingPostingRejection> rejection =
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
-                PostingKind.PERIOD_CLOSE,
+                PostingKind.PERIOD_RESULT_TRANSFER,
+                dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
                 "idem-system-command",
                 SourceChannel.SYSTEM,
                 List.of(
@@ -242,6 +243,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 "idem-usd",
                 SourceChannel.CLI,
                 List.of(
@@ -285,6 +287,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
                 "idem-opening-revenue",
                 SourceChannel.CLI,
                 List.of(
@@ -326,6 +329,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
                 "idem-opening-expense",
                 SourceChannel.CLI,
                 List.of(
@@ -367,6 +371,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
                 "idem-opening-balance-sheet",
                 SourceChannel.CLI,
                 List.of(
@@ -408,6 +413,7 @@ class PostingAcceptancePolicyTest {
                 openingPosting.journalEntry(),
                 openingPosting.postingLineage(),
                 PostingKind.OPENING_BALANCE,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
                 openingPosting.evidence(),
                 openingPosting.provenance()),
             ordinaryPosting);
@@ -416,6 +422,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
                 "idem-opening-late",
                 SourceChannel.CLI,
                 List.of(
@@ -431,16 +438,16 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
-  void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodClosePosting() {
+  void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodResultTransferPosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
-    RegisteredAccount retainedEarnings =
+    RegisteredAccount resultHolding =
         new RegisteredAccount(
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+            financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount balancingAccount =
@@ -451,7 +458,7 @@ class PostingAcceptancePolicyTest {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(resultHolding.accountCode(), resultHolding);
     book.accounts.put(balancingAccount.accountCode(), balancingAccount);
 
     Optional<BookkeepingPostingRejection> rejection =
@@ -465,22 +472,22 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.ClosingEquityAccountReserved(
-                retainedEarnings.accountCode())),
+            new BookkeepingPostingRejection.ResultHoldingAccountReserved(
+                resultHolding.accountCode())),
         rejection);
   }
 
   @Test
-  void rejectionFor_allowsRetainedEarningsAccountInsidePeriodClosePosting() {
+  void rejectionFor_allowsRetainedEarningsAccountInsidePeriodResultTransferPosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
-    RegisteredAccount retainedEarnings =
+    RegisteredAccount resultHolding =
         new RegisteredAccount(
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
             AccountRole.ORDINARY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+            financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -491,7 +498,7 @@ class PostingAcceptancePolicyTest {
             NormalBalance.CREDIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(resultHolding.accountCode(), resultHolding);
     book.accounts.put(revenue.accountCode(), revenue);
 
     PostingDraft closingCommand =
@@ -502,8 +509,9 @@ class PostingAcceptancePolicyTest {
                     line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
                     line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
             PostingLineageModel.direct(),
-            PostingKind.PERIOD_CLOSE,
-            generatedEvidence("idem-close", "period-close-plan"),
+            PostingKind.PERIOD_RESULT_TRANSFER,
+            dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+            generatedEvidence("idem-close", "period-result-transfer-plan"),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("actor-1"),
@@ -549,6 +557,7 @@ class PostingAcceptancePolicyTest {
   private static PostingCommand command(String idempotencyKey) {
     return command(
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         idempotencyKey,
         SourceChannel.CLI,
         List.of(
@@ -557,16 +566,23 @@ class PostingAcceptancePolicyTest {
   }
 
   private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
-    return command(PostingKind.STANDARD, idempotencyKey, SourceChannel.CLI, lines);
+    return command(
+        PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        idempotencyKey,
+        SourceChannel.CLI,
+        lines);
   }
 
   private static PostingCommand command(
       PostingKind postingKind,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
       String idempotencyKey,
       SourceChannel sourceChannel,
       List<JournalLine> lines) {
     return new PostingCommand(
         postingKind,
+        postingOriginKind,
         new JournalEntry(LocalDate.parse("2026-04-07"), lines),
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
@@ -590,6 +606,7 @@ class PostingAcceptancePolicyTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
@@ -676,7 +693,7 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
       return closedThrough;
     }
   }
@@ -727,7 +744,7 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
       return Optional.empty();
     }
   }

@@ -108,7 +108,7 @@ The repository root `README.md` is a special case. Treat it as the front window 
 Root `README.md` rules:
 
 - Do not add AFAD frontmatter, symbol atoms, exhaustive API signatures, or schema tables to the root `README.md`.
-- Optimize for a human first impression: what the project is, why it matters, how to install or run it, the shortest credible example, and where to go next.
+- Optimize for a reader-first impression: what the project is, why it matters, how to install or run it, the shortest credible example, and where to go next.
 - Keep runnable snippets, but prefer brevity over completeness.
 - Link to AFAD-managed docs, reference files, guides, changelogs, or runbooks for detail.
 - Preserve project-specific brand, tone, and release positioning unless the user asks to change them.

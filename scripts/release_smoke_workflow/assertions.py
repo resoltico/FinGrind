@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import json
 import re
 from hashlib import sha256
 from io import StringIO
@@ -38,7 +37,7 @@ def expected_source_document(
 ) -> dict[str, str]:
     return {
         "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": document_date,
         "capturedAt": f"{document_date}T10:15:30Z",
         "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",
@@ -160,16 +159,16 @@ def assert_discovery_payloads(
         query_commands_by_name, require_string(operation_ids, "periodSummary")
     )
     require(
-        required_list(trial_balance, "outputModes") == ["json", "human", "csv"],
-        f"{config.label} trial-balance did not report json,human,csv stdout modes",
+        required_list(trial_balance, "outputModes") == ["json", "text", "csv"],
+        f"{config.label} trial-balance did not report json,text,csv stdout modes",
     )
     require(
-        required_list(account_ledger, "outputModes") == ["json", "human", "csv"],
-        f"{config.label} account-ledger did not report json,human,csv stdout modes",
+        required_list(account_ledger, "outputModes") == ["json", "text", "csv"],
+        f"{config.label} account-ledger did not report json,text,csv stdout modes",
     )
     require(
-        required_list(period_summary, "outputModes") == ["json", "human", "csv"],
-        f"{config.label} period-summary did not report json,human,csv stdout modes",
+        required_list(period_summary, "outputModes") == ["json", "text", "csv"],
+        f"{config.label} period-summary did not report json,text,csv stdout modes",
     )
     trial_balance_artifacts = required_list(trial_balance, "artifactOutputs")
     require(
@@ -261,13 +260,13 @@ def assert_discovery_payloads(
 def assert_operator_queries_and_reports(
     config: ReleaseSmokeConfig,
     list_postings_second_page_output: str,
-    list_postings_human_output: str,
-    account_balance_human_output: str,
-    trial_balance_human_output: str,
+    list_postings_text_output: str,
+    account_balance_text_output: str,
+    trial_balance_text_output: str,
     pdf_stdout: str,
     pdf_stderr: str,
     account_ledger_csv_output: str,
-    period_summary_human_output: str,
+    period_summary_text_output: str,
 ) -> None:
     require_match(
         list_postings_second_page_output,
@@ -275,62 +274,62 @@ def assert_operator_queries_and_reports(
         f"{config.label} second posting page did not round-trip the opaque nextCursor",
     )
     require_match(
-        list_postings_human_output,
+        list_postings_text_output,
         r"^Postings$",
-        f"{config.label} human posting register did not render the report title",
+        f"{config.label} text posting register did not render the report title",
     )
     require_match(
-        list_postings_human_output,
+        list_postings_text_output,
         r"Returned postings[[:space:]]+:[[:space:]]+2",
-        f"{config.label} human posting register did not render the returned-posting count",
+        f"{config.label} text posting register did not render the returned-posting count",
     )
     require_match(
-        list_postings_human_output,
+        list_postings_text_output,
         r"2026-04-08",
-        f"{config.label} human posting register did not render the latest effective date",
+        f"{config.label} text posting register did not render the latest effective date",
     )
     require_match(
-        list_postings_human_output,
+        list_postings_text_output,
         r"2026-04-07",
-        f"{config.label} human posting register did not render the earlier effective date",
+        f"{config.label} text posting register did not render the earlier effective date",
     )
     require_match(
-        list_postings_human_output,
+        list_postings_text_output,
         r"10\.00",
-        f"{config.label} human posting register did not render accounting-scale amounts",
+        f"{config.label} text posting register did not render accounting-scale amounts",
     )
     require_match(
-        account_balance_human_output,
+        account_balance_text_output,
         r"^Account Balance$",
-        f"{config.label} human account-balance output did not render the report title",
+        f"{config.label} text account-balance output did not render the report title",
     )
     require_match(
-        account_balance_human_output,
+        account_balance_text_output,
         r"Account[[:space:]]+:[[:space:]]+1000",
-        f"{config.label} human account-balance output did not render the selected account",
+        f"{config.label} text account-balance output did not render the selected account",
     )
     require_match(
-        account_balance_human_output,
+        account_balance_text_output,
         r"6\.00",
-        f"{config.label} human account-balance output did not render the expected net balance",
+        f"{config.label} text account-balance output did not render the expected net balance",
     )
     require_match(
-        trial_balance_human_output,
+        trial_balance_text_output,
         r"^Trial Balance$",
         f"{config.label} trial-balance output did not render the report title",
     )
     require_match(
-        trial_balance_human_output,
+        trial_balance_text_output,
         r"As of[[:space:]]+:[[:space:]]+2026-04-08",
         f"{config.label} trial-balance output did not render the as-of date",
     )
     require_match(
-        trial_balance_human_output,
+        trial_balance_text_output,
         r"1000",
         f"{config.label} trial-balance output did not render account 1000",
     )
     require_match(
-        trial_balance_human_output,
+        trial_balance_text_output,
         r"6\.00",
         f"{config.label} trial-balance output did not render the expected net amount",
     )
@@ -343,8 +342,8 @@ def assert_operator_queries_and_reports(
         f"{config.label} trial-balance PDF artifact did not start with %PDF-",
     )
     require(
-        pdf_stdout == trial_balance_human_output,
-        f"{config.label} PDF export changed stdout instead of preserving the human report surface",
+        pdf_stdout == trial_balance_text_output,
+        f"{config.label} PDF export changed stdout instead of preserving the text report surface",
     )
     require_match(
         pdf_stderr,
@@ -370,79 +369,87 @@ def assert_operator_queries_and_reports(
         account_ledger_csv_output, f"{config.label} account-ledger CSV output"
     )
     expected_account_ledger_header = [
-        "recordKind",
+        "rowKind",
+        "accountCode",
+        "accountName",
+        "accountType",
+        "accountRole",
+        "normalBalance",
+        "active",
+        "effectiveDateFrom",
+        "effectiveDateTo",
         "currencyCode",
-        "bucketDebitTotal",
-        "bucketCreditTotal",
-        "bucketNetAmount",
-        "bucketBalanceSide",
-        "postingId",
-        "postingKind",
-        "reversalState",
-        "reversalTarget",
+        "openingDebitTotal",
+        "openingCreditTotal",
+        "openingNetAmount",
+        "openingBalanceSide",
+        "closingDebitTotal",
+        "closingCreditTotal",
+        "closingNetAmount",
+        "closingBalanceSide",
         "effectiveDate",
         "recordedAt",
+        "postingId",
+        "postingKind",
+        "postingOriginKind",
+        "reversalState",
+        "reversalTarget",
         "debitAmount",
         "creditAmount",
         "runningNetAmount",
         "runningBalanceSide",
         "counterpartAccounts",
-        "sourceDocuments",
-        "approvals",
+        "sourceDocumentIds",
+        "sourceDocumentTypes",
+        "approvalIds",
+        "approvalDecisions",
     ]
     require(
         account_ledger_header == expected_account_ledger_header,
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
     require(
-        len(account_ledger_rows) == 4,
+        len(account_ledger_rows) == 2,
         f"{config.label} account-ledger CSV output did not render the expected row count",
     )
-    opening_balance, opening_entry, adjustment_entry, closing_balance = account_ledger_rows
+    opening_entry, adjustment_entry = account_ledger_rows
     require(
-        opening_balance
-        == {
-            "recordKind": "opening-balance",
-            "currencyCode": "EUR",
-            "bucketDebitTotal": "0.00",
-            "bucketCreditTotal": "0.00",
-            "bucketNetAmount": "0.00",
-            "bucketBalanceSide": "ZERO",
-            "postingId": "",
-            "postingKind": "",
-            "reversalState": "",
-            "reversalTarget": "",
-            "effectiveDate": "",
-            "recordedAt": "",
-            "debitAmount": "",
-            "creditAmount": "",
-            "runningNetAmount": "",
-            "runningBalanceSide": "",
-            "counterpartAccounts": "",
-            "sourceDocuments": "",
-            "approvals": "",
-        },
-        f"{config.label} account-ledger CSV output did not render the opening-balance row",
-    )
-    require(
-        opening_entry["recordKind"] == "ledger-entry"
+        opening_entry["rowKind"] == "entry"
+        and opening_entry["accountCode"] == "1000"
+        and opening_entry["accountName"] == "Cash"
+        and opening_entry["accountType"] == "ASSET"
+        and opening_entry["accountRole"] == "ORDINARY"
+        and opening_entry["normalBalance"] == "DEBIT"
+        and opening_entry["active"] == "true"
+        and opening_entry["effectiveDateFrom"] == "2026-04-07"
+        and opening_entry["effectiveDateTo"] == "2026-04-08"
         and opening_entry["currencyCode"] == "EUR"
-        and opening_entry["bucketDebitTotal"] == ""
-        and opening_entry["bucketCreditTotal"] == ""
-        and opening_entry["bucketNetAmount"] == ""
-        and opening_entry["bucketBalanceSide"] == ""
+        and opening_entry["openingDebitTotal"] == "0.00"
+        and opening_entry["openingCreditTotal"] == "0.00"
+        and opening_entry["openingNetAmount"] == "0.00"
+        and opening_entry["openingBalanceSide"] == "ZERO"
+        and opening_entry["closingDebitTotal"] == "10.00"
+        and opening_entry["closingCreditTotal"] == "4.00"
+        and opening_entry["closingNetAmount"] == "6.00"
+        and opening_entry["closingBalanceSide"] == "DEBIT"
+        and opening_entry["effectiveDate"] == "2026-04-07"
+        and opening_entry["recordedAt"] != ""
+        and opening_entry["postingId"] != ""
         and opening_entry["postingKind"] == "STANDARD"
+        and opening_entry["postingOriginKind"] == "CASH_REVENUE"
         and opening_entry["reversalState"] == "direct"
         and opening_entry["reversalTarget"] == ""
-        and opening_entry["effectiveDate"] == "2026-04-07"
         and opening_entry["debitAmount"] == "10.00"
         and opening_entry["creditAmount"] == "0.00"
         and opening_entry["runningNetAmount"] == "10.00"
         and opening_entry["runningBalanceSide"] == "DEBIT"
         and opening_entry["counterpartAccounts"] == "2000"
-        and json.loads(opening_entry["sourceDocuments"])
-        == [expected_source_document(config.actor_prefix, "sale", "2026-04-07")]
-        and json.loads(opening_entry["approvals"]) == [],
+        and opening_entry["sourceDocumentIds"]
+        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentId"]
+        and opening_entry["sourceDocumentTypes"]
+        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentType"]
+        and opening_entry["approvalIds"] == ""
+        and opening_entry["approvalDecisions"] == "",
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
@@ -456,24 +463,46 @@ def assert_operator_queries_and_reports(
         f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the opening ledger movement row",
     )
     require(
-        adjustment_entry["recordKind"] == "ledger-entry"
+        adjustment_entry["rowKind"] == "entry"
+        and adjustment_entry["accountCode"] == "1000"
+        and adjustment_entry["accountName"] == "Cash"
+        and adjustment_entry["accountType"] == "ASSET"
+        and adjustment_entry["accountRole"] == "ORDINARY"
+        and adjustment_entry["normalBalance"] == "DEBIT"
+        and adjustment_entry["active"] == "true"
+        and adjustment_entry["effectiveDateFrom"] == "2026-04-07"
+        and adjustment_entry["effectiveDateTo"] == "2026-04-08"
         and adjustment_entry["currencyCode"] == "EUR"
-        and adjustment_entry["bucketDebitTotal"] == ""
-        and adjustment_entry["bucketCreditTotal"] == ""
-        and adjustment_entry["bucketNetAmount"] == ""
-        and adjustment_entry["bucketBalanceSide"] == ""
+        and adjustment_entry["openingDebitTotal"] == "0.00"
+        and adjustment_entry["openingCreditTotal"] == "0.00"
+        and adjustment_entry["openingNetAmount"] == "0.00"
+        and adjustment_entry["openingBalanceSide"] == "ZERO"
+        and adjustment_entry["closingDebitTotal"] == "10.00"
+        and adjustment_entry["closingCreditTotal"] == "4.00"
+        and adjustment_entry["closingNetAmount"] == "6.00"
+        and adjustment_entry["closingBalanceSide"] == "DEBIT"
+        and adjustment_entry["effectiveDate"] == "2026-04-08"
+        and adjustment_entry["recordedAt"] != ""
+        and adjustment_entry["postingId"] != ""
         and adjustment_entry["postingKind"] == "STANDARD"
+        and adjustment_entry["postingOriginKind"] == "CORRECTION_ADJUSTMENT"
         and adjustment_entry["reversalState"] == "direct"
         and adjustment_entry["reversalTarget"] == ""
-        and adjustment_entry["effectiveDate"] == "2026-04-08"
         and adjustment_entry["debitAmount"] == "0.00"
         and adjustment_entry["creditAmount"] == "4.00"
         and adjustment_entry["runningNetAmount"] == "6.00"
         and adjustment_entry["runningBalanceSide"] == "DEBIT"
         and adjustment_entry["counterpartAccounts"] == "2000"
-        and json.loads(adjustment_entry["sourceDocuments"])
-        == [expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")]
-        and json.loads(adjustment_entry["approvals"]) == [],
+        and adjustment_entry["sourceDocumentIds"]
+        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
+            "sourceDocumentId"
+        ]
+        and adjustment_entry["sourceDocumentTypes"]
+        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
+            "sourceDocumentType"
+        ]
+        and adjustment_entry["approvalIds"] == ""
+        and adjustment_entry["approvalDecisions"] == "",
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )
     require_match(
@@ -486,43 +515,18 @@ def assert_operator_queries_and_reports(
         r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$",
         f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the running-balance adjustment row",
     )
-    require(
-        closing_balance
-        == {
-            "recordKind": "closing-balance",
-            "currencyCode": "EUR",
-            "bucketDebitTotal": "10.00",
-            "bucketCreditTotal": "4.00",
-            "bucketNetAmount": "6.00",
-            "bucketBalanceSide": "DEBIT",
-            "postingId": "",
-            "postingKind": "",
-            "reversalState": "",
-            "reversalTarget": "",
-            "effectiveDate": "",
-            "recordedAt": "",
-            "debitAmount": "",
-            "creditAmount": "",
-            "runningNetAmount": "",
-            "runningBalanceSide": "",
-            "counterpartAccounts": "",
-            "sourceDocuments": "",
-            "approvals": "",
-        },
-        f"{config.label} account-ledger CSV output did not render the closing-balance row",
-    )
     require_match(
-        period_summary_human_output,
+        period_summary_text_output,
         r"^Period Summary$",
         f"{config.label} period-summary output did not render the report title",
     )
     require_match(
-        period_summary_human_output,
+        period_summary_text_output,
         r"Posting count",
         f"{config.label} period-summary output did not render posting-count metadata",
     )
     require_match(
-        period_summary_human_output,
+        period_summary_text_output,
         r"2",
         f"{config.label} period-summary output did not render the expected posting count",
     )

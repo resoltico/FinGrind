@@ -173,9 +173,10 @@ record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode output
 }
 
 /** Administrative CLI command that closes one contiguous reporting period. */
-record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+record TransferPeriodResult(
+    BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
-  ClosePeriod {
+  TransferPeriodResult {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(outputMode, "outputMode");
@@ -185,6 +186,6 @@ record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, Outpu
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runClosePeriodCommand(bookAccess, reportingPeriod, outputMode);
+        .runPeriodResultTransferCommand(bookAccess, reportingPeriod, outputMode);
   }
 }

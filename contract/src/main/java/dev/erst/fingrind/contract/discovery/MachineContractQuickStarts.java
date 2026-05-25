@@ -41,7 +41,7 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
@@ -75,7 +75,7 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE),
                         paths.requestFile())),
             WorkflowStepDescriptor.note(
-                "The emitted request document is runnable as-is for the demo workflow. Replace the sample evidence and provenance values in "
+                "The emitted request document is a placeholder-first scaffold. Replace the evidence and provenance placeholders in "
                     + paths.requestFile()
                     + " before using it for real-world bookkeeping."),
             WorkflowStepDescriptor.note(
@@ -97,7 +97,7 @@ final class MachineContractQuickStarts {
                         paths.bookKeyFile(),
                         paths.requestFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --output human"
+                "%s %s --book-file %s --book-key-file %s --output text"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE),

@@ -9,7 +9,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
@@ -278,7 +277,7 @@ public final class ContractTemplates {
     forbidReversal(reversal);
   }
 
-  private static void validateOwnerContributionTemplate(
+  private static void validateEquityContributionTemplate(
       @Nullable String cashAccountCode,
       @Nullable String revenueAccountCode,
       @Nullable String expenseAccountCode,
@@ -295,7 +294,7 @@ public final class ContractTemplates {
     forbidReversal(reversal);
   }
 
-  private static void validateOwnerDrawTemplate(
+  private static void validateEquityWithdrawalTemplate(
       @Nullable String cashAccountCode,
       @Nullable String revenueAccountCode,
       @Nullable String expenseAccountCode,
@@ -408,10 +407,10 @@ public final class ContractTemplates {
         ContractTemplates::validateCashRevenueTemplate,
         BookkeepingEntryKind.CASH_EXPENSE,
         ContractTemplates::validateCashExpenseTemplate,
-        BookkeepingEntryKind.OWNER_CONTRIBUTION,
-        ContractTemplates::validateOwnerContributionTemplate,
-        BookkeepingEntryKind.OWNER_DRAW,
-        ContractTemplates::validateOwnerDrawTemplate,
+        BookkeepingEntryKind.EQUITY_CONTRIBUTION,
+        ContractTemplates::validateEquityContributionTemplate,
+        BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+        ContractTemplates::validateEquityWithdrawalTemplate,
         BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
         (cashAccountCode,
             revenueAccountCode,
@@ -515,8 +514,7 @@ public final class ContractTemplates {
       String entityName,
       List<String> businessActivityTags,
       String functionalCurrency,
-      String fiscalYearStart,
-      AccountingPolicyProfile policyProfile)
+      String fiscalYearStart)
       implements TemplateDescriptorType {
     /** Validates one open-book template descriptor payload. */
     public OpenBookTemplateDescriptor {
@@ -531,7 +529,6 @@ public final class ContractTemplates {
       fiscalYearStart =
           ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
       FiscalYearStart.parse(fiscalYearStart);
-      policyProfile = ContractDescriptorValidation.requireValue(policyProfile, "policyProfile");
     }
   }
 

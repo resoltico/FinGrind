@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -37,9 +37,10 @@ public sealed interface BookkeepingEntry
 public enum BookkeepingEntryKind
 ```
 
-- Typed events: `CashRevenue`, `CashExpense`, `OwnerContribution`, and `OwnerDraw`
-- Explicit exception path: `ManualAdjustment` is the narrow raw-journal route for openings,
-  reversals, and exceptional adjustments that do not belong to one supported typed business event
+- Typed events: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal`
+- Administrative adjustments: `OpeningBalanceAdjustment`, `CorrectionAdjustment`, and
+  `ReversalAdjustment` are the explicit non-business-event routes for adoption balances,
+  corrections, and exact reversal postings
 - Purpose: keep business-event intent explicit at the public boundary before the executor projects
   it into canonical journal postings
 
@@ -58,15 +59,15 @@ public record PostEntryCommand(
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
   caller-authored business event plus first-class retained evidence and provenance
-- Boundary: typed business events are primary; raw journal lines appear only through
-  `BookkeepingEntry.ManualAdjustment`
+- Boundary: typed business events are primary; raw journal lines appear only through the named
+  administrative adjustment variants
 - Money policy: typed entry amounts arrive as exact positive `MonetaryAmount` values, while the
-  explicit manual-adjustment path carries one already-validated `JournalEntry`
+  administrative adjustment variants carry one already-validated `JournalEntry`
 
 ## `PostEntryCommandTranslator`
 
 `PostEntryCommandTranslator` maps one published `PostEntryCommand` into the local posting command
-required by the selected `AccountingPolicyProfile`.
+required by the built-in bookkeeping kernel.
 
 ```java
 public final class PostEntryCommandTranslator
@@ -74,9 +75,9 @@ public final class PostEntryCommandTranslator
 
 - Purpose: keep typed business-event recipes owned at the application boundary instead of leaking
   raw journal construction into the CLI, request loaders, or posting service
-- Current scope: `CashRevenue`, `CashExpense`, `OwnerContribution`, and `OwnerDraw` become
-  canonical standard postings, while `BookkeepingEntry.ManualAdjustment` remains the explicit
-  exceptional route that carries a caller-authored `JournalEntry`
+- Current scope: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal` become
+  canonical standard postings, while the three named administrative adjustment variants preserve
+  explicit caller-authored `JournalEntry` handling for their bounded purposes
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -102,12 +103,13 @@ public record PostingDraft(
     JournalEntry journalEntry,
     PostingLineage postingLineage,
     PostingKind postingKind,
+    PostingOriginKind postingOriginKind,
     AccountingEvidence evidence,
     CommittedProvenance provenance)
 ```
 
 - Purpose: separate accepted commit metadata, canonical durable posting kind, and durable id
-  assignment
+  assignment from the preserved typed posting-origin fact
 - Surface: `materialize(PostingId)` creates the final internal committed posting fact
 - Boundary: this is an executor bookkeeping model, not the public published language
 
@@ -145,7 +147,7 @@ public final class BookkeepingPublishedLanguageTranslator
 
 - `PostingAcceptancePolicy`: composes the bookkeeping-side admission rules for initialization,
   duplicate idempotency, caller-authored posting family, functional-currency alignment,
-  closed-period checks, opening-balance restrictions, account state, closing-equity reservation,
+  closed-period checks, opening-balance restrictions, account state, result-holding reservation,
   and reversal admissibility against one `PostingValidationStore`
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
@@ -330,10 +332,10 @@ public final class PostingApplicationService
 ```
 
 - Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
-- Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
-- Boundary: the service operates after the published `PostEntryCommand` has crossed the
-  bookkeeping translator edge and become one local `PostingCommand`, then delegates local
-  admission and commit semantics to `executor.bookkeeping.posting.BookkeepingPostingService`
+- Surface: `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
+- Boundary: the service owns application-boundary entry semantics first, then translates the
+  published `PostEntryCommand` into one local `PostingCommand` before delegating commit semantics
+  to `executor.bookkeeping.posting.BookkeepingPostingService`
 
 ## `BookkeepingPostingService`
 
@@ -345,10 +347,10 @@ public final class BookkeepingPostingService
 ```
 
 - Constructor: requires `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`,
-  `Clock`, and one explicit `BookkeepingPolicyPack`
+  `Clock`, and one explicit `KernelAccountingRules`
 - Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
-- Boundary: this service stays inside the bookkeeping context, applies one explicit bookkeeping
-  policy profile, and returns only local admission and commit outcomes
+- Boundary: this service stays inside the bookkeeping context, applies the built-in bookkeeping
+  kernel rules, and returns only local admission and commit outcomes
 
 ## `BookWorkflowExecutionService`
 

@@ -138,14 +138,14 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
           insertJournalLineRow(database, "posting-usd", 1, "2000", "CREDIT", "USD", 1000);
         });
     assertIncompleteStateAfterCorruption(
-        "book-state-invalid-period-close-target.sqlite",
+        "book-state-invalid-period-result-transfer-target.sqlite",
         database -> {
           database.executeStatement(
-              "drop trigger period_close_validate_closing_equity_account_on_insert");
+              "drop trigger period_result_transfer_validate_closing_equity_account_on_insert");
           database.executeStatement(
               """
-              insert into period_close (
-                  period_close_order,
+              insert into period_result_transfer (
+                  period_result_transfer_order,
                   effective_date_from,
                   effective_date_to,
                   closing_equity_account_code,
@@ -220,7 +220,7 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                 SqliteBookContract.BOOK_STATE_READER.bookState(
                     InterceptingSqliteNativeDatabase.replacing(
                         database,
-                        SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT,
+                        SqlitePostingSql.FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT,
                         "select 1"))));
   }
 

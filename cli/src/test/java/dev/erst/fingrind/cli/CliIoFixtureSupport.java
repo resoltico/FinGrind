@@ -24,7 +24,6 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -169,8 +168,7 @@ class CliIoFixtureSupport {
             new BookEntityName("Acme Studio"),
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   protected static OpenBookCommand openBookCommand() {
@@ -191,9 +189,7 @@ class CliIoFixtureSupport {
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue(),
-      ProtocolOptions.POLICY_PROFILE,
-      bookIdentity().policyProfile().wireValue()
+      bookIdentity().fiscalYearStart().wireValue()
     };
   }
 
@@ -210,9 +206,7 @@ class CliIoFixtureSupport {
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue(),
-      ProtocolOptions.POLICY_PROFILE,
-      bookIdentity().policyProfile().wireValue()
+      bookIdentity().fiscalYearStart().wireValue()
     };
   }
 
@@ -222,6 +216,8 @@ class CliIoFixtureSupport {
       ProtocolOptions.BOOK_FILE,
       bookFilePath.toString(),
       ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
+      ProtocolOptions.OUTPUT,
+      "text",
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
       ProtocolOptions.BUSINESS_ACTIVITY_TAG,
@@ -229,9 +225,7 @@ class CliIoFixtureSupport {
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue(),
-      ProtocolOptions.POLICY_PROFILE,
-      bookIdentity().policyProfile().wireValue()
+      bookIdentity().fiscalYearStart().wireValue()
     };
   }
 
@@ -267,13 +261,13 @@ class CliIoFixtureSupport {
         supportedBookFormatVersion,
         initializedAt,
         bookIdentity(),
-        closeReadyInspection());
+        resultTransferReadyInspection());
   }
 
-  protected static BookInspection.CloseReadiness closeReadyInspection() {
-    return new BookInspection.CloseReadiness(
+  protected static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
+    return new BookInspection.ResultTransferReadiness(
         true,
-        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
         new AccountCode("3200"),
         null,
         null,
@@ -349,7 +343,7 @@ class CliIoFixtureSupport {
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-1",
-              "sourceDocumentType": "invoice",
+              "sourceDocumentType": "cash-receipt",
               "documentDate": "2026-04-07",
               "capturedAt": "2026-04-07T10:15:30Z",
               "storageLocator": "vault://fixtures/document-1",
@@ -395,8 +389,7 @@ class CliIoFixtureSupport {
                     "entityName": "Acme Studio",
                     "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01",
-                    "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                    "fiscalYearStart": "01-01"
                   }
                 }
               ]

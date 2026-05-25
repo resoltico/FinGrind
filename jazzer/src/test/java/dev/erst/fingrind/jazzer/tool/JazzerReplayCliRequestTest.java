@@ -16,7 +16,7 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("basic_valid.json").getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -34,7 +34,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidForbiddenRecordedAtRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_forbidden_recorded_at.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -48,7 +49,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidForbiddenSourceChannelRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_forbidden_source_channel.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -61,7 +63,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidMissingProvenanceRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_missing_provenance.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -74,7 +77,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidExponentAmountRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_amount_exponent.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -87,7 +91,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidDuplicateIdempotencyKeyRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_duplicate_idempotency_key.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -100,7 +105,8 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.cliRequest(),
-            JazzerReplayRequestFixtures.invalidUnexpectedTopLevelFieldRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.cliRequest("invalid_unexpected_top_level_field.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);

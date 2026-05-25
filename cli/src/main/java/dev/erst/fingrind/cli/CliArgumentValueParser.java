@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -76,18 +75,6 @@ final class CliArgumentValueParser {
           optionName,
           Objects.requireNonNullElse(
               exception.getMessage(), "Option must use MM-DD for " + optionName + "."),
-          exception);
-    }
-  }
-
-  static AccountingPolicyProfile parseAccountingPolicyProfileOption(
-      String rawValue, String optionName) {
-    try {
-      return AccountingPolicyProfile.fromWireValue(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw invalid(
-          optionName,
-          Objects.requireNonNullElse(exception.getMessage(), "Unsupported policy profile."),
           exception);
     }
   }

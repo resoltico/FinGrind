@@ -26,11 +26,11 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.ParentAccountNotHeader,
         BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict,
         BookkeepingAdministrationRejection.AccountHierarchyCycle,
-        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing,
-        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous,
-        BookkeepingAdministrationRejection.PeriodCloseMustStartAt,
-        BookkeepingAdministrationRejection.PeriodCloseFutureDate,
-        BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary {
+        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing,
+        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous,
+        BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt,
+        BookkeepingAdministrationRejection.PeriodResultTransferFutureDate,
+        BookkeepingAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary {
 
   /** Refusal for an explicit open-book request against an initialized book. */
   record BookAlreadyInitialized() implements BookkeepingAdministrationRejection {}
@@ -159,12 +159,14 @@ public sealed interface BookkeepingAdministrationRejection
     }
   }
 
-  /** Refusal for period close when policy finds no active declared close target. */
-  record ClosingEquityAccountCandidateMissing(
+  /**
+   * Refusal for period-result transfer when policy finds no active declared result-holding target.
+   */
+  record ResultHoldingAccountCandidateMissing(
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
       List<AccountCode> inactiveCandidateAccountCodes)
       implements BookkeepingAdministrationRejection {
-    public ClosingEquityAccountCandidateMissing {
+    public ResultHoldingAccountCandidateMissing {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
@@ -172,12 +174,15 @@ public sealed interface BookkeepingAdministrationRejection
     }
   }
 
-  /** Refusal for period close when policy finds more than one active declared close target. */
-  record ClosingEquityAccountCandidateAmbiguous(
+  /**
+   * Refusal for period-result transfer when policy finds more than one active declared
+   * result-holding target.
+   */
+  record ResultHoldingAccountCandidateAmbiguous(
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
       List<AccountCode> candidateAccountCodes)
       implements BookkeepingAdministrationRejection {
-    public ClosingEquityAccountCandidateAmbiguous {
+    public ResultHoldingAccountCandidateAmbiguous {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
@@ -185,29 +190,37 @@ public sealed interface BookkeepingAdministrationRejection
     }
   }
 
-  /** Refusal for period close when the requested period start is not the live unclosed horizon. */
-  record PeriodCloseMustStartAt(LocalDate requiredEffectiveDateFrom)
+  /**
+   * Refusal for period-result transfer when the requested period start is not the live transfer
+   * horizon.
+   */
+  record PeriodResultTransferMustStartAt(LocalDate requiredEffectiveDateFrom)
       implements BookkeepingAdministrationRejection {
-    public PeriodCloseMustStartAt {
+    public PeriodResultTransferMustStartAt {
       Objects.requireNonNull(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
     }
   }
 
-  /** Refusal for period close when the requested period ends after the current UTC date. */
-  record PeriodCloseFutureDate(LocalDate attemptedEffectiveDateTo)
+  /**
+   * Refusal for period-result transfer when the requested period end lies after the current UTC
+   * date.
+   */
+  record PeriodResultTransferFutureDate(LocalDate attemptedEffectiveDateTo)
       implements BookkeepingAdministrationRejection {
-    public PeriodCloseFutureDate {
+    public PeriodResultTransferFutureDate {
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
 
-  /** Refusal for period close when the requested range spans more than one fiscal year. */
-  record PeriodCloseCrossesFiscalYearBoundary(
+  /**
+   * Refusal for period-result transfer when the requested range spans more than one fiscal year.
+   */
+  record PeriodResultTransferCrossesFiscalYearBoundary(
       LocalDate attemptedEffectiveDateFrom,
       LocalDate attemptedEffectiveDateTo,
       FiscalYearStart fiscalYearStart)
       implements BookkeepingAdministrationRejection {
-    public PeriodCloseCrossesFiscalYearBoundary {
+    public PeriodResultTransferCrossesFiscalYearBoundary {
       Objects.requireNonNull(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
       Objects.requireNonNull(fiscalYearStart, "fiscalYearStart");

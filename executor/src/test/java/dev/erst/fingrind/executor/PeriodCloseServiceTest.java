@@ -42,14 +42,14 @@ import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
-import dev.erst.fingrind.executor.spi.PeriodCloseStore;
+import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -66,8 +66,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Direct coverage for close-period bookkeeping generation and rejection rules. */
-class PeriodCloseServiceTest {
+/** Direct coverage for transfer-period-result bookkeeping generation and rejection rules. */
+class PeriodResultTransferServiceTest {
   private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
   private static final LocalDate OPENING_DATE = LocalDate.parse("2026-04-01");
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
@@ -75,19 +75,19 @@ class PeriodCloseServiceTest {
   private static final ReportingPeriod FULL_PERIOD = new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
 
   @Test
-  void closePeriod_rejectsUninitializedBook() {
+  void transferPeriodResult_rejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, PERIOD);
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
+          new PeriodResultTransferOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_rejectsMissingRetainedEarningsAccount() {
+  void transferPeriodResult_rejectsMissingRetainedEarningsAccount() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
@@ -95,36 +95,36 @@ class PeriodCloseServiceTest {
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, FULL_PERIOD);
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, FULL_PERIOD);
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of())),
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                  FinancialPositionLineClassification.RESULT_HOLDING, List.of())),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_rejectsInactiveRetainedEarningsAccount() {
+  void transferPeriodResult_rejectsInactiveRetainedEarningsAccount() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       bookSession.deactivateAccount(new AccountCode("3200"));
       seedProfitAndLossPosting(bookSession);
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, PERIOD);
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                  FinancialPositionLineClassification.RESULT_HOLDING,
                   List.of(new AccountCode("3200")))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_rejectsAmbiguousRetainedEarningsCandidates() {
+  void transferPeriodResult_rejectsAmbiguousRetainedEarningsCandidates() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
@@ -134,7 +134,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings A",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
       declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
@@ -145,21 +145,21 @@ class PeriodCloseServiceTest {
           "Retained Earnings Duplicate",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, PERIOD);
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+                  FinancialPositionLineClassification.RESULT_HOLDING,
                   List.of(new AccountCode("3200"), new AccountCode("3210")))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_acceptsOnePolicySelectedRetainedEarningsCandidate() {
+  void transferPeriodResult_acceptsOnePolicySelectedRetainedEarningsCandidate() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
@@ -169,7 +169,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings A",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
       declareAccount(
           bookSession,
           "3210",
@@ -181,16 +181,18 @@ class PeriodCloseServiceTest {
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       seedProfitAndLossPosting(bookSession);
 
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, closePeriod(bookSession, FULL_PERIOD))
-              .closedPeriod();
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+          assertInstanceOf(
+                  PeriodResultTransferOutcome.Transferred.class,
+                  transferPeriodResult(bookSession, FULL_PERIOD))
+              .transferredPeriodResult();
 
-      assertEquals(new AccountCode("3200"), closedPeriod.closingEquityAccountCode());
+      assertEquals(new AccountCode("3200"), transferredPeriodResult.resultHoldingAccountCode());
     }
   }
 
   @Test
-  void closePeriod_allowsFirstCloseToStartBeforeEarliestPosting() {
+  void transferPeriodResult_allowsFirstCloseToStartBeforeEarliestPosting() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       commitPosting(
@@ -202,37 +204,40 @@ class PeriodCloseServiceTest {
               line("1000", JournalLine.EntrySide.DEBIT, "50.00"),
               line("4000", JournalLine.EntrySide.CREDIT, "50.00")));
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, FULL_PERIOD);
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, FULL_PERIOD);
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+          assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
+              .transferredPeriodResult();
 
-      assertEquals(FULL_PERIOD, closedPeriod.reportingPeriod());
+      assertEquals(FULL_PERIOD, transferredPeriodResult.reportingPeriod());
     }
   }
 
   @Test
-  void closePeriod_rejectsNonContiguousStartAfterExistingClose() {
+  void transferPeriodResult_rejectsNonContiguousStartAfterExistingClose() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       seedProfitAndLossPosting(bookSession);
-      assertInstanceOf(PeriodCloseOutcome.Closed.class, closePeriod(bookSession, FULL_PERIOD));
+      assertInstanceOf(
+          PeriodResultTransferOutcome.Transferred.class,
+          transferPeriodResult(bookSession, FULL_PERIOD));
 
-      PeriodCloseOutcome outcome =
-          closePeriod(
+      PeriodResultTransferOutcome outcome =
+          transferPeriodResult(
               bookSession,
               clockAt(PERIOD_DATE.plusDays(2)),
               new ReportingPeriod(PERIOD_DATE.plusDays(2), PERIOD_DATE.plusDays(2)));
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.PeriodCloseMustStartAt(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt(
                   PERIOD_DATE.plusDays(1))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_allowsEmptyDraftWhenNoProfitAndLossAccountsMoved() {
+  void transferPeriodResult_allowsEmptyDraftWhenNoProfitAndLossAccountsMoved() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       commitPosting(
@@ -244,28 +249,31 @@ class PeriodCloseServiceTest {
               line("1000", JournalLine.EntrySide.DEBIT, "50.00"),
               line("3000", JournalLine.EntrySide.CREDIT, "50.00")));
 
-      PeriodCloseOutcome outcome = closePeriod(bookSession, PERIOD);
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
+      PeriodResultTransferOutcome outcome = transferPeriodResult(bookSession, PERIOD);
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+          assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
+              .transferredPeriodResult();
 
-      assertEquals(1, closedPeriod.closeOrder());
-      assertEquals(List.of(), closedPeriod.closingPostingIds());
+      assertEquals(1, transferredPeriodResult.transferOrder());
+      assertEquals(List.of(), transferredPeriodResult.transferPostingIds());
     }
   }
 
   @Test
-  void closePeriod_generatesOnePeriodClosePostingAndIgnoresPriorCloseFacts() {
+  void transferPeriodResult_generatesOnePeriodResultTransferPostingAndIgnoresPriorCloseFacts() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       seedProfitAndLossPosting(bookSession);
 
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod firstClose =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, closePeriod(bookSession, FULL_PERIOD))
-              .closedPeriod();
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult firstClose =
+          assertInstanceOf(
+                  PeriodResultTransferOutcome.Transferred.class,
+                  transferPeriodResult(bookSession, FULL_PERIOD))
+              .transferredPeriodResult();
       CommittedPosting closingPosting =
-          bookSession.findPosting(firstClose.closingPostingIds().getFirst()).orElseThrow();
+          bookSession.findPosting(firstClose.transferPostingIds().getFirst()).orElseThrow();
 
-      assertEquals(PostingKind.PERIOD_CLOSE, closingPosting.postingKind());
+      assertEquals(PostingKind.PERIOD_RESULT_TRANSFER, closingPosting.postingKind());
       assertEquals(
           new JournalEntry(
               PERIOD_DATE,
@@ -275,15 +283,15 @@ class PeriodCloseServiceTest {
                   line("3200", JournalLine.EntrySide.CREDIT, "75.00"))),
           closingPosting.journalEntry());
 
-      PeriodCloseOutcome secondClose =
-          closePeriod(
+      PeriodResultTransferOutcome secondClose =
+          transferPeriodResult(
               bookSession,
               clockAt(PERIOD_DATE.plusDays(1)),
               new ReportingPeriod(PERIOD_DATE.plusDays(1), PERIOD_DATE.plusDays(1)));
 
       assertEquals(
-          new PeriodCloseOutcome.Closed(
-              new dev.erst.fingrind.executor.bookkeeping.ClosedPeriod(
+          new PeriodResultTransferOutcome.Transferred(
+              new dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult(
                   2,
                   new ReportingPeriod(PERIOD_DATE.plusDays(1), PERIOD_DATE.plusDays(1)),
                   new AccountCode("3200"),
@@ -296,7 +304,7 @@ class PeriodCloseServiceTest {
 
   @Test
   void
-      closePeriod_skipsNonStandardUnknownAndZeroedTemporaryBuckets_andOrdersGeneratedDraftsByCurrency() {
+      transferPeriodResult_skipsNonStandardUnknownAndZeroedTemporaryBuckets_andOrdersGeneratedDraftsByCurrency() {
     RecordingCloseBook book = new RecordingCloseBook();
     book.accounts =
         List.of(
@@ -306,14 +314,15 @@ class PeriodCloseServiceTest {
                 "Retained Earnings",
                 AccountType.EQUITY,
                 AccountRole.ORDINARY,
-                financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT)),
+                financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
             account("4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY),
             account("5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY));
     book.postings =
         List.of(
             posting(
                 "existing-close",
-                PostingKind.PERIOD_CLOSE,
+                PostingKind.PERIOD_RESULT_TRANSFER,
+                dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("4000", JournalLine.EntrySide.DEBIT, "EUR", "1.00"),
@@ -321,6 +330,7 @@ class PeriodCloseServiceTest {
             posting(
                 "eur-revenue-credit",
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -328,6 +338,7 @@ class PeriodCloseServiceTest {
             posting(
                 "eur-revenue-debit",
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("4000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -335,6 +346,7 @@ class PeriodCloseServiceTest {
             posting(
                 "eur-unknown",
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "9.00"),
@@ -342,6 +354,7 @@ class PeriodCloseServiceTest {
             posting(
                 "usd-revenue",
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "USD", "30.00"),
@@ -349,20 +362,22 @@ class PeriodCloseServiceTest {
             posting(
                 "bhd-expense",
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("5000", JournalLine.EntrySide.DEBIT, "BHD", "7.000"),
                     moneyLine("1000", JournalLine.EntrySide.CREDIT, "BHD", "7.000"))));
 
-    PeriodCloseOutcome outcome =
-        new PeriodCloseService(
+    PeriodResultTransferOutcome outcome =
+        new PeriodResultTransferService(
                 book, book, book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
-            .closePeriod(PERIOD);
-    dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-        assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
+            .transferPeriodResult(PERIOD);
+    dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+        assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
+            .transferredPeriodResult();
 
     assertEquals(
-        new dev.erst.fingrind.executor.bookkeeping.ClosedPeriod(
+        new dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult(
             1,
             PERIOD,
             new AccountCode("3200"),
@@ -371,9 +386,9 @@ class PeriodCloseServiceTest {
                 CurrencyBalance.ofTotals(Money.parse("USD", "0.00"), Money.parse("USD", "30.00"))),
             FIXED_INSTANT,
             List.of(new PostingId("generated-1"), new PostingId("generated-2"))),
-        closedPeriod);
+        transferredPeriodResult);
     assertEquals(
-        new PeriodCloseDraft(
+        new PeriodResultTransferDraft(
             PERIOD,
             new AccountCode("3200"),
             List.of(
@@ -388,9 +403,10 @@ class PeriodCloseServiceTest {
                             moneyLine("5000", JournalLine.EntrySide.CREDIT, "BHD", "7.000"),
                             moneyLine("3200", JournalLine.EntrySide.DEBIT, "BHD", "7.000"))),
                     PostingLineageModel.direct(),
-                    PostingKind.PERIOD_CLOSE,
-                    generatedPeriodCloseEvidence("BHD"),
-                    periodCloseProvenance("BHD")),
+                    PostingKind.PERIOD_RESULT_TRANSFER,
+                    dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+                    generatedPeriodResultTransferEvidence("BHD"),
+                    periodResultTransferProvenance("BHD")),
                 new PostingDraft(
                     new JournalEntry(
                         PERIOD_DATE,
@@ -398,47 +414,48 @@ class PeriodCloseServiceTest {
                             moneyLine("4000", JournalLine.EntrySide.DEBIT, "USD", "30.00"),
                             moneyLine("3200", JournalLine.EntrySide.CREDIT, "USD", "30.00"))),
                     PostingLineageModel.direct(),
-                    PostingKind.PERIOD_CLOSE,
-                    generatedPeriodCloseEvidence("USD"),
-                    periodCloseProvenance("USD")))),
+                    PostingKind.PERIOD_RESULT_TRANSFER,
+                    dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+                    generatedPeriodResultTransferEvidence("USD"),
+                    periodResultTransferProvenance("USD")))),
         book.recordedDraft);
   }
 
   @Test
-  void closePeriod_rejectsFutureEffectiveDateTo() {
+  void transferPeriodResult_rejectsFutureEffectiveDateTo() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
 
-      PeriodCloseOutcome outcome =
-          closePeriod(
+      PeriodResultTransferOutcome outcome =
+          transferPeriodResult(
               bookSession,
               new ReportingPeriod(
                   PERIOD_DATE,
                   FIXED_CLOCK.instant().atZone(ZoneOffset.UTC).toLocalDate().plusDays(1)));
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.PeriodCloseFutureDate(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
                   PERIOD_DATE.plusDays(1))),
           outcome);
     }
   }
 
   @Test
-  void closePeriod_rejectsRangesThatCrossTheConfiguredFiscalYearBoundary() {
+  void transferPeriodResult_rejectsRangesThatCrossTheConfiguredFiscalYearBoundary() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareRetainedEarningsFixture(bookSession);
       Clock clock = clockAt(LocalDate.parse("2027-01-20"));
 
-      PeriodCloseOutcome outcome =
-          closePeriod(
+      PeriodResultTransferOutcome outcome =
+          transferPeriodResult(
               bookSession,
               clock,
               new ReportingPeriod(LocalDate.parse("2026-12-15"), LocalDate.parse("2027-01-15")));
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
-              new BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
                   LocalDate.parse("2026-12-15"),
                   LocalDate.parse("2027-01-15"),
                   bookIdentity().fiscalYearStart())),
@@ -447,7 +464,7 @@ class PeriodCloseServiceTest {
   }
 
   @Test
-  void closePeriod_offsetsContraRevenueAndContraExpenseIntoBalancedRetainedEarnings() {
+  void transferPeriodResult_offsetsContraRevenueAndContraExpenseIntoBalancedRetainedEarnings() {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(
@@ -459,7 +476,7 @@ class PeriodCloseServiceTest {
           "Retained Earnings",
           AccountType.EQUITY,
           AccountRole.ORDINARY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
       declareAccount(
           bookSession, "4000", "Sales Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(
@@ -509,11 +526,15 @@ class PeriodCloseServiceTest {
               line("1000", JournalLine.EntrySide.DEBIT, "5.00"),
               line("5090", JournalLine.EntrySide.CREDIT, "5.00")));
 
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, closePeriod(bookSession, FULL_PERIOD))
-              .closedPeriod();
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+          assertInstanceOf(
+                  PeriodResultTransferOutcome.Transferred.class,
+                  transferPeriodResult(bookSession, FULL_PERIOD))
+              .transferredPeriodResult();
       CommittedPosting closingPosting =
-          bookSession.findPosting(closedPeriod.closingPostingIds().getFirst()).orElseThrow();
+          bookSession
+              .findPosting(transferredPeriodResult.transferPostingIds().getFirst())
+              .orElseThrow();
 
       assertEquals(
           new JournalEntry(
@@ -528,24 +549,24 @@ class PeriodCloseServiceTest {
       assertEquals(
           List.of(
               CurrencyBalance.ofTotals(Money.parse("EUR", "0.00"), Money.parse("EUR", "75.00"))),
-          closedPeriod.closedTotals());
+          transferredPeriodResult.transferredTotals());
     }
   }
 
-  private static PeriodCloseService service(InMemoryBookSession bookSession, Clock clock) {
+  private static PeriodResultTransferService service(InMemoryBookSession bookSession, Clock clock) {
     PostingIdGenerator postingIdGenerator = new SequencePostingIdGenerator();
-    return new PeriodCloseService(
+    return new PeriodResultTransferService(
         bookSession, bookSession, bookSession, bookSession, postingIdGenerator, clock);
   }
 
-  private static PeriodCloseOutcome closePeriod(
+  private static PeriodResultTransferOutcome transferPeriodResult(
       InMemoryBookSession bookSession, ReportingPeriod reportingPeriod) {
-    return closePeriod(bookSession, FIXED_CLOCK, reportingPeriod);
+    return transferPeriodResult(bookSession, FIXED_CLOCK, reportingPeriod);
   }
 
-  private static PeriodCloseOutcome closePeriod(
+  private static PeriodResultTransferOutcome transferPeriodResult(
       InMemoryBookSession bookSession, Clock clock, ReportingPeriod reportingPeriod) {
-    return service(bookSession, clock).closePeriod(reportingPeriod);
+    return service(bookSession, clock).transferPeriodResult(reportingPeriod);
   }
 
   private static Clock clockAt(LocalDate date) {
@@ -567,7 +588,7 @@ class PeriodCloseServiceTest {
         "Retained Earnings",
         AccountType.EQUITY,
         AccountRole.ORDINARY,
-        financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+        financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
     declareAccount(bookSession, "4000", "Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
     declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
   }
@@ -660,12 +681,17 @@ class PeriodCloseServiceTest {
   }
 
   private static CommittedPosting posting(
-      String postingId, PostingKind postingKind, LocalDate effectiveDate, List<JournalLine> lines) {
+      String postingId,
+      PostingKind postingKind,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
+      LocalDate effectiveDate,
+      List<JournalLine> lines) {
     return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
+        postingOriginKind,
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
@@ -679,16 +705,16 @@ class PeriodCloseServiceTest {
             SourceChannel.CLI));
   }
 
-  private static CommittedProvenance periodCloseProvenance(String currencyCode) {
+  private static CommittedProvenance periodResultTransferProvenance(String currencyCode) {
     String closeToken = PERIOD_DATE + ":" + PERIOD_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:periodClose"),
+            new ActorId("system:periodResultTransfer"),
             ActorType.SYSTEM,
-            new CommandId("periodClose:" + closeToken + ":" + currencyCode),
-            new IdempotencyKey("periodClose:" + closeToken + ":" + currencyCode),
-            new CausationId("periodClose:" + closeToken),
-            Optional.of(new CorrelationId("periodClose:" + closeToken)));
+            new CommandId("periodResultTransfer:" + closeToken + ":" + currencyCode),
+            new IdempotencyKey("periodResultTransfer:" + closeToken + ":" + currencyCode),
+            new CausationId("periodResultTransfer:" + closeToken),
+            Optional.of(new CorrelationId("periodResultTransfer:" + closeToken)));
     return new CommittedProvenance(requestProvenance, FIXED_INSTANT, SourceChannel.SYSTEM);
   }
 
@@ -704,6 +730,7 @@ class PeriodCloseServiceTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
@@ -720,13 +747,13 @@ class PeriodCloseServiceTest {
 
   private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
       String token, PostingKind postingKind) {
-    if (postingKind == PostingKind.PERIOD_CLOSE) {
-      return generatedEvidence(token, "period-close-plan");
+    if (postingKind == PostingKind.PERIOD_RESULT_TRANSFER) {
+      return generatedEvidence(token, "period-result-transfer-plan");
     }
     return accountingEvidence("idem-" + token);
   }
 
-  private static dev.erst.fingrind.core.AccountingEvidence generatedPeriodCloseEvidence(
+  private static dev.erst.fingrind.core.AccountingEvidence generatedPeriodResultTransferEvidence(
       String currencyCode) {
     String closeToken =
         "%s:%s:%s:%d"
@@ -738,11 +765,11 @@ class PeriodCloseServiceTest {
     return new dev.erst.fingrind.core.AccountingEvidence(
         List.of(
             new SourceDocumentReference(
-                new SourceDocumentId("periodClose:" + closeToken),
-                new SourceDocumentType("period-close-plan"),
+                new SourceDocumentId("periodResultTransfer:" + closeToken),
+                new SourceDocumentType("period-result-transfer-plan"),
                 PERIOD.effectiveDateTo(),
                 FIXED_INSTANT,
-                new StorageLocator("system://period-close/" + closeToken),
+                new StorageLocator("system://period-result-transfer/" + closeToken),
                 new ContentSha256(sha256Hex(closeToken)))),
         List.of());
   }
@@ -756,7 +783,7 @@ class PeriodCloseServiceTest {
     }
   }
 
-  /** Deterministic posting id generator for generated close postings. */
+  /** Deterministic posting id generator for generated transfer postings. */
   private static final class SequencePostingIdGenerator implements PostingIdGenerator {
     private int nextValue = 1;
 
@@ -764,17 +791,21 @@ class PeriodCloseServiceTest {
     public PostingId nextPostingId() {
       int currentValue = nextValue;
       nextValue = currentValue + 1;
-      return new PostingId("period-close-" + currentValue);
+      return new PostingId("period-result-transfer-" + currentValue);
     }
   }
 
   /** Recording book double that captures generated close drafts and account/posting inputs. */
   private static final class RecordingCloseBook
-      implements BookLifecycleReader, AccountCatalogStore, PostingRangeStore, PeriodCloseStore {
+      implements BookLifecycleReader,
+          AccountCatalogStore,
+          PostingRangeStore,
+          PeriodResultTransferStore {
     private List<RegisteredAccount> accounts = List.of();
     private List<CommittedPosting> postings = List.of();
-    private PeriodCloseDraft recordedDraft =
-        new PeriodCloseDraft(PERIOD, new AccountCode("3200"), List.of(), FIXED_INSTANT, List.of());
+    private PeriodResultTransferDraft recordedDraft =
+        new PeriodResultTransferDraft(
+            PERIOD, new AccountCode("3200"), List.of(), FIXED_INSTANT, List.of());
 
     @Override
     public BookLifecycleInspection inspectBook() {
@@ -812,25 +843,26 @@ class PeriodCloseServiceTest {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
       return Optional.empty();
     }
 
     @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      recordedDraft = periodCloseDraft;
+    public PeriodResultTransferOutcome transferPeriodResult(
+        PeriodResultTransferDraft periodResultTransferDraft,
+        PostingIdGenerator postingIdGenerator) {
+      recordedDraft = periodResultTransferDraft;
       List<PostingId> generatedPostingIds = new ArrayList<>();
-      for (int index = 0; index < periodCloseDraft.closingPostings().size(); index++) {
+      for (int index = 0; index < periodResultTransferDraft.closingPostings().size(); index++) {
         generatedPostingIds.add(new PostingId("generated-" + (index + 1)));
       }
-      return new PeriodCloseOutcome.Closed(
-          new dev.erst.fingrind.executor.bookkeeping.ClosedPeriod(
+      return new PeriodResultTransferOutcome.Transferred(
+          new dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult(
               1,
-              periodCloseDraft.reportingPeriod(),
-              periodCloseDraft.closingEquityAccountCode(),
-              periodCloseDraft.closedTotals(),
-              periodCloseDraft.closedAt(),
+              periodResultTransferDraft.reportingPeriod(),
+              periodResultTransferDraft.resultHoldingAccountCode(),
+              periodResultTransferDraft.transferredTotals(),
+              periodResultTransferDraft.transferredAt(),
               generatedPostingIds));
     }
 

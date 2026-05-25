@@ -21,6 +21,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
@@ -28,7 +29,7 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StorageLocator;
-import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.ResultTransferPolicy;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -44,26 +45,28 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Domain planner for contiguous reporting-period close behavior. */
-public final class PeriodClosePlanner {
-  private static final ActorId PERIOD_CLOSE_ACTOR_ID = new ActorId("system:periodClose");
-  private static final ActorType PERIOD_CLOSE_ACTOR_TYPE = ActorType.SYSTEM;
-  private static final SourceChannel PERIOD_CLOSE_SOURCE_CHANNEL = SourceChannel.SYSTEM;
-  private static final String PERIOD_CLOSE_REQUEST_TOKEN = "periodClose";
+/** Domain planner for contiguous period-result-transfer behavior. */
+public final class PeriodResultTransferPlanner {
+  private static final ActorId PERIOD_RESULT_TRANSFER_ACTOR_ID =
+      new ActorId("system:periodResultTransfer");
+  private static final ActorType PERIOD_RESULT_TRANSFER_ACTOR_TYPE = ActorType.SYSTEM;
+  private static final SourceChannel PERIOD_RESULT_TRANSFER_SOURCE_CHANNEL = SourceChannel.SYSTEM;
+  private static final String PERIOD_RESULT_TRANSFER_REQUEST_TOKEN = "periodResultTransfer";
 
-  private final ClosePolicy closePolicy;
+  private final ResultTransferPolicy resultTransferPolicy;
 
-  /** Creates one period-close planner from the selected close policy. */
-  public PeriodClosePlanner(ClosePolicy closePolicy) {
-    this.closePolicy = Objects.requireNonNull(closePolicy, "closePolicy");
+  /** Creates one period-result-transfer planner from the selected result-transfer policy. */
+  public PeriodResultTransferPlanner(ResultTransferPolicy resultTransferPolicy) {
+    this.resultTransferPolicy =
+        Objects.requireNonNull(resultTransferPolicy, "resultTransferPolicy");
   }
 
-  /** Selects the single active closing-equity account required by the close policy. */
-  public ClosingEquitySelection closingEquityAccount(
+  /** Selects the single active result-holding account required by the result-transfer policy. */
+  public ResultHoldingSelection resultHoldingAccount(
       BookIdentity bookIdentity, List<RegisteredAccount> accounts) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(accounts, "accounts");
-    var requiredClassification = closePolicy.closingEquityLineClassification(bookIdentity);
+    var requiredClassification = resultTransferPolicy.resultHoldingLineClassification(bookIdentity);
     List<RegisteredAccount> matchingCandidates =
         accounts.stream()
             .filter(account -> account.accountType() == AccountType.EQUITY)
@@ -79,18 +82,18 @@ public final class PeriodClosePlanner {
     List<RegisteredAccount> activeCandidates =
         matchingCandidates.stream().filter(RegisteredAccount::active).toList();
     if (activeCandidates.isEmpty()) {
-      return new RejectedClosingEquitySelection(
-          new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing(
+      return new RejectedResultHoldingSelection(
+          new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
               requiredClassification,
               matchingCandidates.stream().map(RegisteredAccount::accountCode).toList()));
     }
     if (activeCandidates.size() > 1) {
-      return new RejectedClosingEquitySelection(
-          new BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+      return new RejectedResultHoldingSelection(
+          new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
               requiredClassification,
               activeCandidates.stream().map(RegisteredAccount::accountCode).toList()));
     }
-    return new AcceptedClosingEquitySelection(activeCandidates.getFirst());
+    return new AcceptedResultHoldingSelection(activeCandidates.getFirst());
   }
 
   /** Returns the first deterministic close-horizon rejection for the selected period, if any. */
@@ -98,14 +101,14 @@ public final class PeriodClosePlanner {
       ReportingPeriod reportingPeriod,
       BookIdentity bookIdentity,
       LocalDate currentUtcDate,
-      Optional<LocalDate> closedThroughEffectiveDate) {
+      Optional<LocalDate> transferredThroughEffectiveDate) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
-    Objects.requireNonNull(closedThroughEffectiveDate, "closedThroughEffectiveDate");
+    Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
     if (reportingPeriod.effectiveDateTo().isAfter(currentUtcDate)) {
       return Optional.of(
-          new BookkeepingAdministrationRejection.PeriodCloseFutureDate(
+          new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
               reportingPeriod.effectiveDateTo()));
     }
     if (!bookIdentity
@@ -113,30 +116,30 @@ public final class PeriodClosePlanner {
         .containsSingleFiscalYear(
             reportingPeriod.effectiveDateFrom(), reportingPeriod.effectiveDateTo())) {
       return Optional.of(
-          new BookkeepingAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+          new BookkeepingAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
               reportingPeriod.effectiveDateFrom(),
               reportingPeriod.effectiveDateTo(),
               bookIdentity.fiscalYearStart()));
     }
-    return closedThroughEffectiveDate
+    return transferredThroughEffectiveDate
         .map(closedThrough -> closedThrough.plusDays(1))
         .filter(requiredStart -> !requiredStart.equals(reportingPeriod.effectiveDateFrom()))
         .<BookkeepingAdministrationRejection>map(
-            BookkeepingAdministrationRejection.PeriodCloseMustStartAt::new);
+            BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt::new);
   }
 
-  /** Plans durable period-close postings and the published close totals they produce. */
-  public PeriodClosePlan closingPostings(
+  /** Plans durable period-result-transfer postings and the published close totals they produce. */
+  public PeriodResultTransferPlan closingPostings(
       ReportingPeriod reportingPeriod,
-      RegisteredAccount closingEquityAccount,
+      RegisteredAccount resultHoldingAccount,
       List<RegisteredAccount> accounts,
       List<CommittedPosting> postings,
-      Instant closedAt) {
+      Instant transferredAt) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(closingEquityAccount, "closingEquityAccount");
+    Objects.requireNonNull(resultHoldingAccount, "resultHoldingAccount");
     Objects.requireNonNull(accounts, "accounts");
     Objects.requireNonNull(postings, "postings");
-    Objects.requireNonNull(closedAt, "closedAt");
+    Objects.requireNonNull(transferredAt, "transferredAt");
     Map<AccountCode, RegisteredAccount> accountsByCode =
         accounts.stream()
             .collect(
@@ -149,7 +152,7 @@ public final class PeriodClosePlanner {
       }
       for (JournalLine line : posting.journalEntry().lines()) {
         RegisteredAccount account = accountsByCode.get(line.accountCode());
-        if (account == null || !closePolicy.closesAccountType(account.accountType())) {
+        if (account == null || !resultTransferPolicy.closesAccountType(account.accountType())) {
           continue;
         }
         totalsByCurrency.record(line);
@@ -157,7 +160,7 @@ public final class PeriodClosePlanner {
     }
 
     List<PostingDraft> drafts = new ArrayList<>();
-    List<CurrencyBalance> closedTotals = new ArrayList<>();
+    List<CurrencyBalance> transferredTotals = new ArrayList<>();
     for (Map.Entry<CurrencyUnit, Map<AccountCode, Totals>> currencyEntry :
         totalsByCurrency.orderedEntries()) {
       Optional<CurrencyCloseDraft> currencyCloseDraft =
@@ -166,15 +169,15 @@ public final class PeriodClosePlanner {
               currencyEntry.getKey(),
               currencyEntry.getValue(),
               accountsByCode,
-              closingEquityAccount,
-              closedAt);
+              resultHoldingAccount,
+              transferredAt);
       if (currencyCloseDraft.isPresent()) {
         CurrencyCloseDraft closeDraft = currencyCloseDraft.orElseThrow();
         drafts.add(closeDraft.postingDraft());
-        closedTotals.add(closeDraft.closedTotal());
+        transferredTotals.add(closeDraft.closedTotal());
       }
     }
-    return new PeriodClosePlan(List.copyOf(drafts), List.copyOf(closedTotals));
+    return new PeriodResultTransferPlan(List.copyOf(drafts), List.copyOf(transferredTotals));
   }
 
   private Optional<CurrencyCloseDraft> closingDraftForCurrency(
@@ -182,8 +185,8 @@ public final class PeriodClosePlanner {
       CurrencyUnit currencyUnit,
       Map<AccountCode, Totals> accountTotals,
       Map<AccountCode, RegisteredAccount> accountsByCode,
-      RegisteredAccount closingEquityAccount,
-      Instant closedAt) {
+      RegisteredAccount resultHoldingAccount,
+      Instant transferredAt) {
     List<JournalLine> lines = new ArrayList<>();
     long netIncomeMinor = 0L;
     List<Map.Entry<AccountCode, Totals>> orderedAccounts =
@@ -216,7 +219,7 @@ public final class PeriodClosePlanner {
     if (netIncomeMinor != 0L) {
       lines.add(
           new JournalLine(
-              closingEquityAccount.accountCode(),
+              resultHoldingAccount.accountCode(),
               netIncomeMinor > 0L ? JournalLine.EntrySide.CREDIT : JournalLine.EntrySide.DEBIT,
               Money.ofMinorUnits(currencyUnit, Math.absExact(netIncomeMinor))));
     }
@@ -225,40 +228,46 @@ public final class PeriodClosePlanner {
     }
     return Optional.of(
         new CurrencyCloseDraft(
-            periodCloseDraft(reportingPeriod, currencyUnit, List.copyOf(lines), closedAt),
-            closingEquityMovement(currencyUnit, netIncomeMinor)));
+            periodResultTransferDraft(
+                reportingPeriod, currencyUnit, List.copyOf(lines), transferredAt),
+            resultHoldingMovement(currencyUnit, netIncomeMinor)));
   }
 
-  private PostingDraft periodCloseDraft(
+  private PostingDraft periodResultTransferDraft(
       ReportingPeriod reportingPeriod,
       CurrencyUnit currencyUnit,
       List<JournalLine> lines,
-      Instant closedAt) {
+      Instant transferredAt) {
     String closeToken =
         reportingPeriod.effectiveDateFrom()
             + ":"
             + reportingPeriod.effectiveDateTo()
             + ":"
-            + closedAt.toEpochMilli();
+            + transferredAt.toEpochMilli();
     String currencyToken = currencyUnit.code();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            PERIOD_CLOSE_ACTOR_ID,
-            PERIOD_CLOSE_ACTOR_TYPE,
-            new CommandId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
-            new IdempotencyKey(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
-            new CausationId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken),
-            Optional.of(new CorrelationId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken)));
+            PERIOD_RESULT_TRANSFER_ACTOR_ID,
+            PERIOD_RESULT_TRANSFER_ACTOR_TYPE,
+            new CommandId(
+                PERIOD_RESULT_TRANSFER_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
+            new IdempotencyKey(
+                PERIOD_RESULT_TRANSFER_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
+            new CausationId(PERIOD_RESULT_TRANSFER_REQUEST_TOKEN + ":" + closeToken),
+            Optional.of(
+                new CorrelationId(PERIOD_RESULT_TRANSFER_REQUEST_TOKEN + ":" + closeToken)));
     return new PostingDraft(
         new JournalEntry(reportingPeriod.effectiveDateTo(), lines),
         PostingLineageModel.direct(),
-        PostingKind.PERIOD_CLOSE,
-        periodCloseEvidence(reportingPeriod, currencyUnit, closedAt),
-        new CommittedProvenance(requestProvenance, closedAt, PERIOD_CLOSE_SOURCE_CHANNEL));
+        PostingKind.PERIOD_RESULT_TRANSFER,
+        PostingOriginKind.PERIOD_RESULT_TRANSFER,
+        periodResultTransferEvidence(reportingPeriod, currencyUnit, transferredAt),
+        new CommittedProvenance(
+            requestProvenance, transferredAt, PERIOD_RESULT_TRANSFER_SOURCE_CHANNEL));
   }
 
-  private static AccountingEvidence periodCloseEvidence(
-      ReportingPeriod reportingPeriod, CurrencyUnit currencyUnit, Instant closedAt) {
+  private static AccountingEvidence periodResultTransferEvidence(
+      ReportingPeriod reportingPeriod, CurrencyUnit currencyUnit, Instant transferredAt) {
     String closeToken =
         reportingPeriod.effectiveDateFrom()
             + ":"
@@ -266,15 +275,15 @@ public final class PeriodClosePlanner {
             + ":"
             + currencyUnit.code()
             + ":"
-            + closedAt.toEpochMilli();
+            + transferredAt.toEpochMilli();
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
-                new SourceDocumentId(PERIOD_CLOSE_REQUEST_TOKEN + ":" + closeToken),
-                new SourceDocumentType("period-close-plan"),
+                new SourceDocumentId(PERIOD_RESULT_TRANSFER_REQUEST_TOKEN + ":" + closeToken),
+                new SourceDocumentType("period-result-transfer-plan"),
                 reportingPeriod.effectiveDateTo(),
-                closedAt,
-                new StorageLocator("system://period-close/" + closeToken),
+                transferredAt,
+                new StorageLocator("system://period-result-transfer/" + closeToken),
                 new ContentSha256(sha256Hex(closeToken)))),
         List.of());
   }
@@ -289,50 +298,50 @@ public final class PeriodClosePlanner {
   }
 
   /** One complete close plan containing durable drafts and their published close totals. */
-  public record PeriodClosePlan(
-      List<PostingDraft> closingPostings, List<CurrencyBalance> closedTotals) {
-    public PeriodClosePlan {
+  public record PeriodResultTransferPlan(
+      List<PostingDraft> closingPostings, List<CurrencyBalance> transferredTotals) {
+    public PeriodResultTransferPlan {
       Objects.requireNonNull(closingPostings, "closingPostings");
-      Objects.requireNonNull(closedTotals, "closedTotals");
+      Objects.requireNonNull(transferredTotals, "transferredTotals");
       closingPostings = List.copyOf(closingPostings);
-      closedTotals = List.copyOf(closedTotals);
+      transferredTotals = List.copyOf(transferredTotals);
     }
   }
 
-  /** Resolution outcome for selecting the single closing-equity account required by a close. */
-  public sealed interface ClosingEquitySelection
-      permits AcceptedClosingEquitySelection, RejectedClosingEquitySelection {}
+  /** Resolution outcome for selecting the single result-holding account required by a close. */
+  public sealed interface ResultHoldingSelection
+      permits AcceptedResultHoldingSelection, RejectedResultHoldingSelection {}
 
-  /** Successful selection of the only valid active closing-equity account. */
-  public static final class AcceptedClosingEquitySelection implements ClosingEquitySelection {
+  /** Successful selection of the only valid active result-holding account. */
+  public static final class AcceptedResultHoldingSelection implements ResultHoldingSelection {
     private final RegisteredAccount account;
 
-    /** Creates one accepted selection for the resolved closing-equity account. */
-    public AcceptedClosingEquitySelection(RegisteredAccount account) {
+    /** Creates one accepted selection for the resolved result-holding account. */
+    public AcceptedResultHoldingSelection(RegisteredAccount account) {
       this.account = Objects.requireNonNull(account, "account");
     }
 
-    /** Returns the selected active closing-equity account. */
+    /** Returns the selected active result-holding account. */
     public RegisteredAccount account() {
       return account;
     }
   }
 
-  /** Deterministic close rejection caused by missing or ambiguous closing-equity candidates. */
-  public static final class RejectedClosingEquitySelection implements ClosingEquitySelection {
+  /** Deterministic close rejection caused by missing or ambiguous result-holding candidates. */
+  public static final class RejectedResultHoldingSelection implements ResultHoldingSelection {
     private final BookkeepingAdministrationRejection rejection;
     private final List<AccountCode> candidateAccountCodes;
 
-    /** Creates one rejected selection for missing active closing-equity candidates. */
-    public RejectedClosingEquitySelection(
-        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateMissing rejection) {
+    /** Creates one rejected selection for missing active result-holding candidates. */
+    public RejectedResultHoldingSelection(
+        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing rejection) {
       this.rejection = Objects.requireNonNull(rejection, "rejection");
       this.candidateAccountCodes = rejection.inactiveCandidateAccountCodes();
     }
 
-    /** Creates one rejected selection for ambiguous active closing-equity candidates. */
-    public RejectedClosingEquitySelection(
-        BookkeepingAdministrationRejection.ClosingEquityAccountCandidateAmbiguous rejection) {
+    /** Creates one rejected selection for ambiguous active result-holding candidates. */
+    public RejectedResultHoldingSelection(
+        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejection) {
       this.rejection = Objects.requireNonNull(rejection, "rejection");
       this.candidateAccountCodes = rejection.candidateAccountCodes();
     }
@@ -398,7 +407,7 @@ public final class PeriodClosePlanner {
     }
   }
 
-  /** One generated posting draft plus the closing-equity movement it closes. */
+  /** One generated posting draft plus the result-holding movement it closes. */
   private record CurrencyCloseDraft(PostingDraft postingDraft, CurrencyBalance closedTotal) {
     private CurrencyCloseDraft {
       Objects.requireNonNull(postingDraft, "postingDraft");
@@ -406,10 +415,10 @@ public final class PeriodClosePlanner {
     }
   }
 
-  private static CurrencyBalance closingEquityMovement(
+  private static CurrencyBalance resultHoldingMovement(
       CurrencyUnit currencyUnit, long netIncomeMinor) {
-    long retainedEarningsDebit = netIncomeMinor < 0L ? Math.absExact(netIncomeMinor) : 0L;
-    long retainedEarningsCredit = netIncomeMinor > 0L ? netIncomeMinor : 0L;
-    return BalanceMath.currencyBalance(currencyUnit, retainedEarningsDebit, retainedEarningsCredit);
+    long resultHoldingDebit = netIncomeMinor < 0L ? Math.absExact(netIncomeMinor) : 0L;
+    long resultHoldingCredit = netIncomeMinor > 0L ? netIncomeMinor : 0L;
+    return BalanceMath.currencyBalance(currencyUnit, resultHoldingDebit, resultHoldingCredit);
   }
 }

@@ -8,7 +8,6 @@ public record BookkeepingKernelFacts(
     String scope,
     List<String> builtInStatements,
     List<ReportCapabilityFacts> reportCapabilities,
-    AccountingPolicyProfileFacts policyProfile,
     String description) {
   /** Validates one published bookkeeping-kernel fact family. */
   public BookkeepingKernelFacts {
@@ -16,7 +15,6 @@ public record BookkeepingKernelFacts(
     builtInStatements = List.copyOf(Objects.requireNonNull(builtInStatements, "builtInStatements"));
     reportCapabilities =
         List.copyOf(Objects.requireNonNull(reportCapabilities, "reportCapabilities"));
-    Objects.requireNonNull(policyProfile, "policyProfile");
     Objects.requireNonNull(description, "description");
     List<String> publishedStatementIds =
         reportCapabilities.stream().map(ReportCapabilityFacts::statementId).toList();

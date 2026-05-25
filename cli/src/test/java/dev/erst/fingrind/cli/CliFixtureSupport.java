@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
-import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
@@ -18,6 +17,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
@@ -109,6 +109,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
@@ -134,11 +135,12 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     new AccountCode("1000"), JournalLine.EntrySide.CREDIT, money("EUR", "5.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-2"),
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 new CommandId("command-2"),
                 new IdempotencyKey("idem-2"),
                 new CausationId("cause-2"),
@@ -149,12 +151,12 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static AccountingEvidence accountingEvidence(String token) {
     return new AccountingEvidence(
-        List.of(sourceDocument("document-" + token, "invoice")), List.of());
+        List.of(sourceDocument("document-" + token, "cash-receipt")), List.of());
   }
 
   protected static AccountingEvidence accountingEvidenceWithApproval(String token) {
     return new AccountingEvidence(
-        List.of(sourceDocument("document-" + token, "invoice")),
+        List.of(sourceDocument("document-" + token, "cash-receipt")),
         List.of(approval("approval-" + token, "manager-signoff")));
   }
 
@@ -174,7 +176,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         new ApprovalId(approvalId),
         new ApprovalType(approvalType),
         new ActorId("approver-" + approvalId),
-        ActorType.HUMAN,
+        ActorType.PERSON,
         ApprovalDecision.APPROVED,
         Instant.parse("2026-04-07T10:20:30Z"));
   }
@@ -344,7 +346,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "Retained Earnings",
                         AccountType.EQUITY,
                         AccountRole.ORDINARY,
-                        FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                        FinancialPositionLineClassification.RESULT_HOLDING,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))));
     return new FinancialPositionReport(
@@ -397,7 +399,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 "3200",
                 "Retained Earnings",
                 AccountRole.ORDINARY,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 openingBalance,
                 movementBalance,
                 closingBalance));
@@ -417,8 +419,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(closingBalance));
   }
 
-  protected static ClosedPeriod sampleClosedPeriod() {
-    return new ClosedPeriod(
+  protected static TransferredPeriodResult sampleTransferredPeriodResult() {
+    return new TransferredPeriodResult(
         1,
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         new AccountCode("3200"),

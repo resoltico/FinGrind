@@ -35,7 +35,7 @@ final class CliQueryResponseWriter {
                     CliResponsePayloadMapper.bookInspectionPayload(bookFilePath, inspection))),
         () ->
             outputChannel.writeText(
-                CliQueryOutputRenderer.renderBookInspectionHuman(bookFilePath, inspection)),
+                CliQueryOutputRenderer.renderBookInspectionText(bookFilePath, inspection)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.INSPECT_BOOK));
@@ -51,8 +51,7 @@ final class CliQueryResponseWriter {
                       CliResponsePayloadMapper.successEnvelope(
                           CliResponsePayloadMapper.accountPagePayload(listed.page()))),
               () ->
-                  outputChannel.writeText(
-                      CliQueryOutputRenderer.renderAccountsHuman(listed.page())),
+                  outputChannel.writeText(CliQueryOutputRenderer.renderAccountsText(listed.page())),
               () ->
                   outputChannel.writeText(CliQueryOutputRenderer.renderAccountsCsv(listed.page())));
       case ListAccountsResult.Rejected rejected ->
@@ -72,7 +71,7 @@ final class CliQueryResponseWriter {
                               found.bookIdentity(), found.postingFact()))),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderPostingHuman(
+                      CliQueryOutputRenderer.renderPostingText(
                           found.bookIdentity(), found.postingFact())),
               () -> {
                 throw new IllegalArgumentException(
@@ -94,7 +93,7 @@ final class CliQueryResponseWriter {
                           CliResponsePayloadMapper.postingPagePayload(listed.page()))),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderPostingRegisterHuman(listed.page())),
+                      CliQueryOutputRenderer.renderPostingRegisterText(listed.page())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPostingRegisterCsv(listed.page())));
@@ -120,7 +119,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderAccountBalanceHuman(reported.snapshot())),
+                      CliQueryOutputRenderer.renderAccountBalanceText(reported.snapshot())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountBalanceCsv(reported.snapshot())));
@@ -146,7 +145,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderTrialBalanceHuman(reported.report())),
+                      CliQueryOutputRenderer.renderTrialBalanceText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderTrialBalanceCsv(reported.report())));
@@ -172,7 +171,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderAccountLedgerHuman(reported.report())),
+                      CliQueryOutputRenderer.renderAccountLedgerText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountLedgerCsv(reported.report())));
@@ -198,7 +197,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderPeriodSummaryHuman(reported.report())),
+                      CliQueryOutputRenderer.renderPeriodSummaryText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPeriodSummaryCsv(reported.report())));
@@ -224,7 +223,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderFinancialPositionHuman(reported.report())),
+                      CliQueryOutputRenderer.renderFinancialPositionText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderFinancialPositionCsv(reported.report())));
@@ -250,7 +249,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderIncomeStatementHuman(reported.report())),
+                      CliQueryOutputRenderer.renderIncomeStatementText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderIncomeStatementCsv(reported.report())));
@@ -276,7 +275,7 @@ final class CliQueryResponseWriter {
                           exportedArtifactPath)),
               () ->
                   outputChannel.writeText(
-                      CliQueryOutputRenderer.renderChangesInEquityHuman(reported.report())),
+                      CliQueryOutputRenderer.renderChangesInEquityText(reported.report())),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderChangesInEquityCsv(reported.report())));
@@ -287,8 +286,6 @@ final class CliQueryResponseWriter {
   }
 
   void writeLedgerPlanResult(LedgerPlanResult result, PlanResultDetail resultDetail) {
-    outputChannel.writeEnvelope(
-        CliResponsePayloadMapper.successEnvelope(
-            CliResponsePayloadMapper.ledgerPlanPayload(result, resultDetail)));
+    outputChannel.writeEnvelope(CliResponsePayloadMapper.ledgerPlanEnvelope(result, resultDetail));
   }
 }

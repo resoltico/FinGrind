@@ -32,7 +32,7 @@ final class MachineContractResponseDescriptors {
             new ContractResponse.FieldDescriptor("status", "Literal rejection status."),
             new ContractResponse.FieldDescriptor("code", "Stable machine rejection code."),
             new ContractResponse.FieldDescriptor(
-                "message", "Human-readable explanation of the rejection."),
+                "message", "Plain-language explanation of the rejection."),
             new ContractResponse.FieldDescriptor(
                 "hint", "Optional operator hint for repairing or rerunning the request."),
             new ContractResponse.FieldDescriptor(
@@ -41,7 +41,7 @@ final class MachineContractResponseDescriptors {
             new ContractResponse.FieldDescriptor("status", "Literal rejection status."),
             new ContractResponse.FieldDescriptor("code", "Stable machine rejection code."),
             new ContractResponse.FieldDescriptor(
-                "message", "Human-readable explanation of the rejection."),
+                "message", "Plain-language explanation of the rejection."),
             new ContractResponse.FieldDescriptor(
                 "hint", "Optional operator hint for repairing or rerunning the request."),
             new ContractResponse.FieldDescriptor(
@@ -53,7 +53,7 @@ final class MachineContractResponseDescriptors {
                 "status", "Literal runtime or invalid-request error status."),
             new ContractResponse.FieldDescriptor("code", "Stable machine error code."),
             new ContractResponse.FieldDescriptor(
-                "message", "Human-readable explanation of the error."),
+                "message", "Plain-language explanation of the error."),
             new ContractResponse.FieldDescriptor(
                 "hint", "Optional operator hint for repairing the invocation."),
             new ContractResponse.FieldDescriptor(

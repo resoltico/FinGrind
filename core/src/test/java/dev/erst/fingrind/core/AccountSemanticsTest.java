@@ -9,7 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-/** Direct doctrinal coverage for account polarity and period-close contribution semantics. */
+/**
+ * Direct doctrinal coverage for account polarity and period-result-transfer contribution semantics.
+ */
 class AccountSemanticsTest {
   @Test
   void validate_andNormalBalance_coverOrdinaryContraAndRequiredTaxonomy() {
@@ -134,7 +136,7 @@ class AccountSemanticsTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
-                    java.util.Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                    java.util.Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                     java.util.Optional.empty())));
     assertDoesNotThrow(
         () ->
@@ -275,7 +277,7 @@ class AccountSemanticsTest {
         nominalTaxonomy(
             AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.OPERATING_EXPENSE);
     AccountTaxonomy mismatchedExpenseChild =
-        nominalTaxonomy(AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.TAX_EXPENSE);
+        nominalTaxonomy(AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.OTHER_EXPENSE);
 
     assertTrue(
         AccountSemantics.parentChildHierarchyCompatible(

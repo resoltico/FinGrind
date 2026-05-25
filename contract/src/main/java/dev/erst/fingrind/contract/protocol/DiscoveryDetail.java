@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /** Selects how much discovery-surface detail the CLI returns. */
 public enum DiscoveryDetail implements WireValue {
+  MINIMAL("minimal"),
   COMPACT("compact"),
   FULL("full");
 

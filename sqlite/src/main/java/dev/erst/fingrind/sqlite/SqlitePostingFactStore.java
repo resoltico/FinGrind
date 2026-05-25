@@ -23,8 +23,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
@@ -193,9 +193,9 @@ class SqlitePostingFactStore implements AutoCloseable {
     return readOperations.earliestPostingEffectiveDate();
   }
 
-  Optional<LocalDate> closedThroughEffectiveDate() {
+  Optional<LocalDate> transferredThroughEffectiveDate() {
     threadOwner.requireOwnerThread();
-    return readOperations.closedThroughEffectiveDate();
+    return readOperations.transferredThroughEffectiveDate();
   }
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
@@ -246,10 +246,10 @@ class SqlitePostingFactStore implements AutoCloseable {
     return mutationOperations.commit(postingDraft, postingIdGenerator);
   }
 
-  PeriodCloseOutcome closePeriod(
-      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+  PeriodResultTransferOutcome transferPeriodResult(
+      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
     threadOwner.requireOwnerThread();
-    return mutationOperations.closePeriod(periodCloseDraft, postingIdGenerator);
+    return mutationOperations.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
   }
 
   RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {

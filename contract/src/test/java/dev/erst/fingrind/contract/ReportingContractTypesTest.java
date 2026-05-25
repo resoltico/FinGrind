@@ -463,11 +463,12 @@ class ReportingContractTypesTest {
                     Money.parse("EUR", "15.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 new CommandId("command-1"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),

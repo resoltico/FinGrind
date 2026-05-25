@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -76,22 +75,10 @@ class CliArgumentValueParserTest {
   @Test
   void parseStructuredOpenBookValueOptions_acceptValidValuesAndRejectInvalidOnes() {
     assertEquals(
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
-        CliArgumentValueParser.parseAccountingPolicyProfileOption(
-            "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1", "--policy-profile"));
-    assertEquals(
         new BusinessActivityTag("translation,localization"),
         CliArgumentValueParser.parseBusinessActivityTagOption(
             "translation,localization", "--business-activity-tag"));
 
-    assertEquals(
-        "--policy-profile",
-        assertThrows(
-                CliArgumentsException.class,
-                () ->
-                    CliArgumentValueParser.parseAccountingPolicyProfileOption(
-                        "NOPE", "--policy-profile"))
-            .argument());
     assertEquals(
         "--business-activity-tag",
         assertThrows(
@@ -177,6 +164,6 @@ class CliArgumentValueParserTest {
     assertEquals(ProtocolOptions.DETAIL, invalidException.argument());
     assertTrue(
         Objects.requireNonNull(invalidException.getMessage())
-            .contains("Accepted values: compact, full."));
+            .contains("Accepted values: minimal, compact, full."));
   }
 }

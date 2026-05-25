@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -443,7 +443,7 @@ Never create a second tag or move an existing release tag just to retry CI.
 
 The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`
 internally before they build or publish anything. That guard is intentional: tag-driven release
-publication must not depend on a human remembering the verification step only from the prose
+publication must not depend on an operator remembering the verification step only from the prose
 protocol.
 
 ### Step 6
@@ -611,7 +611,7 @@ Do not declare the release done until the GitHub Release exists and the operator
 container surface verifier succeeds. The verifier uses a temporary Docker config directory so you
 are testing the public surface, not cached owner credentials, and so you do not mutate the
 operator's normal Docker login state. It also uses machine-readable `version --output json`
-checks plus exact human trial-balance row assertions so the operator is not left guessing about
+checks plus exact text trial-balance row assertions so the operator is not left guessing about
 free-form CLI text:
 
 ```bash
@@ -627,16 +627,16 @@ actually runnable. The `docker run ... version --output json` check is the defin
 
 The temporary mounted-book workflow is also mandatory. It proves that the published public image
 can still perform one end-to-end bookkeeping/reporting loop, not just print discovery metadata.
-`trial-balance --output human` must render the posted Cash and Revenue rows for the seeded EUR
+`trial-balance --output text` must render the posted Cash and Revenue rows for the seeded EUR
 10.00 entry rather than failing in book initialization, key handling, or reporting. The same
 anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
 mounted workspace. The mounted-workspace commands in that verifier must run the container as the
 caller's numeric `UID:GID`, matching the repo-owned `docker-smoke` contract, so bind-mounted key,
 book, and PDF artifacts remain owned and readable by the invoking operator on Linux hosts.
 
-Because this verifier asserts human statement output and drives a real mounted-book initialization
+Because this verifier asserts text statement output and drives a real mounted-book initialization
 and posting path, it is part of the published bookkeeping contract, not just the
-container-publication machinery. When the human `trial-balance` layout changes — for example new
+container-publication machinery. When the text `trial-balance` layout changes — for example new
 bookkeeping columns appear — or when the mounted workflow grammar changes — for example
 `open-book` starts requiring additional identity flags or `post-entry` starts requiring new
 request fields — or when the mounted-workspace user contract changes — update
@@ -799,7 +799,7 @@ git worktree remove "$RELEASE_WORKTREE"
 ## Dependabot Approval Strategy
 
 FinGrind is a financial application. **No Dependabot PR may be auto-merged.** Every update —
-regardless of ecosystem, scope, or whether it is flagged as a security fix — requires a human
+regardless of ecosystem, scope, or whether it is flagged as a security fix — requires an operator
 decision before landing on `main`.
 
 ### Triage tiers

@@ -53,6 +53,12 @@ final class CliResponsePayloadMapper {
         ProtocolSuccessStatus.OK, payload, artifacts);
   }
 
+  static CliEnvelopeJsonModels.PlanEnvelope<CliPlanJsonModels.LedgerPlanPayload> ledgerPlanEnvelope(
+      LedgerPlanResult result, PlanResultDetail resultDetail) {
+    CliPlanJsonModels.LedgerPlanPayload payload = ledgerPlanPayload(result, resultDetail);
+    return new CliEnvelopeJsonModels.PlanEnvelope<>(result.status(), payload, null);
+  }
+
   static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
     CliErrorJsonModels.@org.jspecify.annotations.Nullable ErrorDetails details = failure.details();
     return new CliEnvelopeJsonModels.FailureEnvelope(

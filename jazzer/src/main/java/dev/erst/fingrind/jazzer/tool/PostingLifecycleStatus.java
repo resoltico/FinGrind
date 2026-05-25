@@ -13,6 +13,7 @@ public enum PostingLifecycleStatus implements WireValue {
   RELOADED("reloaded"),
   BOOK_NOT_INITIALIZED(PostingRejection.bookNotInitializedCode()),
   ACCOUNT_STATE_VIOLATIONS("account-state-violations"),
+  ENTRY_SEMANTICS_VIOLATIONS("entry-semantics-violations"),
   UNKNOWN_ACCOUNT("unknown-account"),
   INACTIVE_ACCOUNT("inactive-account"),
   DUPLICATE_IDEMPOTENCY_KEY("duplicate-idempotency-key"),
@@ -20,7 +21,7 @@ public enum PostingLifecycleStatus implements WireValue {
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
   OPENING_BALANCE_WINDOW_CLOSED("opening-balance-window-closed"),
   OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT("opening-balance-touches-nominal-account"),
-  CLOSING_EQUITY_ACCOUNT_RESERVED("closing-equity-account-reserved"),
+  RESULT_HOLDING_ACCOUNT_RESERVED("result-holding-account-reserved"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),
   REVERSAL_ALREADY_EXISTS("reversal-already-exists"),
   REVERSAL_DOES_NOT_NEGATE_TARGET("reversal-does-not-negate-target");

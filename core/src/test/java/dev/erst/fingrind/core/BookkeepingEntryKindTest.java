@@ -13,8 +13,8 @@ class BookkeepingEntryKindTest {
   void wireHelpers_publishStableVocabularyInDeclarationOrder() {
     assertEquals("CASH_REVENUE", BookkeepingEntryKind.CASH_REVENUE.wireValue());
     assertEquals("CASH_EXPENSE", BookkeepingEntryKind.CASH_EXPENSE.wireValue());
-    assertEquals("OWNER_CONTRIBUTION", BookkeepingEntryKind.OWNER_CONTRIBUTION.wireValue());
-    assertEquals("OWNER_DRAW", BookkeepingEntryKind.OWNER_DRAW.wireValue());
+    assertEquals("EQUITY_CONTRIBUTION", BookkeepingEntryKind.EQUITY_CONTRIBUTION.wireValue());
+    assertEquals("EQUITY_WITHDRAWAL", BookkeepingEntryKind.EQUITY_WITHDRAWAL.wireValue());
     assertEquals(
         "OPENING_BALANCE_ADJUSTMENT", BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT.wireValue());
     assertEquals("CORRECTION_ADJUSTMENT", BookkeepingEntryKind.CORRECTION_ADJUSTMENT.wireValue());
@@ -23,8 +23,8 @@ class BookkeepingEntryKindTest {
         List.of(
             "CASH_REVENUE",
             "CASH_EXPENSE",
-            "OWNER_CONTRIBUTION",
-            "OWNER_DRAW",
+            "EQUITY_CONTRIBUTION",
+            "EQUITY_WITHDRAWAL",
             "OPENING_BALANCE_ADJUSTMENT",
             "CORRECTION_ADJUSTMENT",
             "REVERSAL_ADJUSTMENT"),
@@ -38,9 +38,11 @@ class BookkeepingEntryKindTest {
     assertEquals(
         BookkeepingEntryKind.CASH_EXPENSE, BookkeepingEntryKind.fromWireValue("CASH_EXPENSE"));
     assertEquals(
-        BookkeepingEntryKind.OWNER_CONTRIBUTION,
-        BookkeepingEntryKind.fromWireValue("OWNER_CONTRIBUTION"));
-    assertEquals(BookkeepingEntryKind.OWNER_DRAW, BookkeepingEntryKind.fromWireValue("OWNER_DRAW"));
+        BookkeepingEntryKind.EQUITY_CONTRIBUTION,
+        BookkeepingEntryKind.fromWireValue("EQUITY_CONTRIBUTION"));
+    assertEquals(
+        BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+        BookkeepingEntryKind.fromWireValue("EQUITY_WITHDRAWAL"));
     assertEquals(
         BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
         BookkeepingEntryKind.fromWireValue("OPENING_BALANCE_ADJUSTMENT"));

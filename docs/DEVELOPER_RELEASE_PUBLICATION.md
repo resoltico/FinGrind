@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -166,14 +166,14 @@ run manual Git housekeeping first and remove that log only after a successful cl
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,
-submit one current posting request, render the current human `trial-balance` layout for that
+submit one current posting request, render the current text `trial-balance` layout for that
 workflow, and expose the published native-provenance files through a shell probe that does not
 route filesystem checks back through the FinGrind entrypoint. The mounted-workspace portion of
 that verifier must run the container as the caller's numeric `UID:GID`, matching the repo-owned
 `docker-smoke` contract, so Linux bind-mounted book, key, and PDF artifacts are owned by the
 invoking operator instead of by container-root. The tagged container workflow now runs this same
 verifier after push, so workflow automation and the operator's Step 9 command are held to one
-public surface contract. When that mounted-book grammar changes, that human report layout changes,
+public surface contract. When that mounted-book grammar changes, that text report layout changes,
 the mounted-workspace user contract changes, or the container-native provenance surface moves,
 repair the verifier and its mock-backed shell regression harness together before trusting the
 release protocol again.

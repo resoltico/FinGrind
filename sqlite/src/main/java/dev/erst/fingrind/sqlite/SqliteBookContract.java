@@ -13,12 +13,11 @@ final class SqliteBookContract {
   static final String AUDIT_EVENT_TABLE = "audit_event";
   static final String BOOK_IDENTITY_TABLE = "book_identity";
   static final String BOOK_META_TABLE = "book_meta";
-  static final String BOOK_POLICY_TABLE = "book_policy";
   static final String ENTITY_PROFILE_TABLE = "entity_profile";
   static final String JOURNAL_LINE_TABLE = "journal_line";
-  static final String PERIOD_CLOSE_POSTING_TABLE = "period_close_posting";
-  static final String PERIOD_CLOSE_TABLE = "period_close";
-  static final String PERIOD_CLOSE_TOTAL_TABLE = "period_close_total";
+  static final String PERIOD_RESULT_TRANSFER_POSTING_TABLE = "period_result_transfer_posting";
+  static final String PERIOD_RESULT_TRANSFER_TABLE = "period_result_transfer";
+  static final String PERIOD_RESULT_TRANSFER_TOTAL_TABLE = "period_result_transfer_total";
   static final String POSTING_FACT_TABLE = "posting_fact";
 
   static final SqliteBookStateReader BOOK_STATE_READER =
@@ -29,13 +28,12 @@ final class SqliteBookContract {
               BOOK_META_TABLE,
               BOOK_IDENTITY_TABLE,
               ENTITY_PROFILE_TABLE,
-              BOOK_POLICY_TABLE,
               ACCOUNT_TABLE,
               POSTING_FACT_TABLE,
               JOURNAL_LINE_TABLE,
-              PERIOD_CLOSE_TABLE,
-              PERIOD_CLOSE_TOTAL_TABLE,
-              PERIOD_CLOSE_POSTING_TABLE,
+              PERIOD_RESULT_TRANSFER_TABLE,
+              PERIOD_RESULT_TRANSFER_TOTAL_TABLE,
+              PERIOD_RESULT_TRANSFER_POSTING_TABLE,
               AUDIT_EVENT_TABLE));
 
   private SqliteBookContract() {}

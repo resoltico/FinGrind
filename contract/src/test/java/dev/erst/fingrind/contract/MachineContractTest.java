@@ -86,9 +86,6 @@ class MachineContractTest {
     assertTrue(
         capabilities.bookkeepingKernel().reportCapabilities().stream()
             .allMatch(reportCapability -> reportCapability.comparativeSupported()));
-    assertEquals(
-        "internal-management-single-entity-v1",
-        capabilities.bookkeepingKernel().policyProfile().profileId());
     assertTrue(capabilities.bookkeepingKernel().description().contains("cash-oriented"));
   }
 
@@ -104,10 +101,10 @@ class MachineContractTest {
             .anyMatch(semantic -> semantic.contains("4096-byte UTF-8 limit")));
     assertEquals("--output", capabilities.requestInput().outputOption());
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN),
+        List.of(OutputMode.JSON, OutputMode.TEXT),
         command(capabilities.commands().discovery(), OperationId.VERSION).outputModes());
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
         command(capabilities.commands().query(), OperationId.TRIAL_BALANCE).outputModes());
     assertEquals(
         List.of(),
@@ -123,10 +120,10 @@ class MachineContractTest {
     assertNotNull(capabilities.requestShapes());
     assertEquals("--output", capabilities.requestInput().outputOption());
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN),
+        List.of(OutputMode.JSON, OutputMode.TEXT),
         command(capabilities.commands().discovery(), OperationId.VERSION).outputModes());
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
         command(capabilities.commands().query(), OperationId.TRIAL_BALANCE).outputModes());
     assertEquals(
         List.of(),
@@ -255,7 +252,7 @@ class MachineContractTest {
             .get(2)
             .contains("--replacement-book-passphrase-prompt"));
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
         command(help.commands(), OperationId.TRIAL_BALANCE).outputModes());
     assertEquals(
         "pdf",
@@ -320,7 +317,8 @@ class MachineContractTest {
             .anyMatch(
                 step ->
                     step instanceof WorkflowStepDescriptor.Note(String text)
-                        && text.contains("sample evidence and provenance values")));
+                        && text.contains("placeholder")
+                        && text.contains("real-world bookkeeping")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
@@ -360,9 +358,9 @@ class MachineContractTest {
     assertEquals("1000", template.cashAccountCode());
     assertEquals("2000", template.revenueAccountCode());
     assertEquals(null, template.lines());
-    assertEquals("operator-demo-1", template.provenance().actorId());
-    assertEquals(ActorType.AGENT, template.provenance().actorType());
-    assertEquals("idem-demo-1", template.provenance().idempotencyKey());
+    assertEquals("replace-with-actor-id", template.provenance().actorId());
+    assertEquals(ActorType.PERSON, template.provenance().actorType());
+    assertEquals("replace-with-idempotency-key", template.provenance().idempotencyKey());
     assertEquals("1000", declareAccountTemplate.accountCode());
     assertEquals(AccountRole.ORDINARY, declareAccountTemplate.accountRole());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
@@ -426,7 +424,7 @@ class MachineContractTest {
         List.of(
             "fingrind post-entry --book-file <path> [--book-key-file <path> |"
                 + " --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->"
-                + " [--output <json|human>]"),
+                + " [--output <json|text>]"),
         help.usage());
     assertEquals(1, help.commands().size());
     assertEquals(OperationId.POST_ENTRY, help.commands().getFirst().name());
@@ -485,10 +483,11 @@ class MachineContractTest {
         new ApplicationIdentity("FinGrind", "0.9.0", "Finance-grade bookkeeping kernel");
     EnvironmentDescriptor environment = ContractFixtures.environmentDescriptor();
 
-    HelpDescriptor help = MachineContract.help(identity, environment, OperationId.CLOSE_PERIOD);
+    HelpDescriptor help =
+        MachineContract.help(identity, environment, OperationId.TRANSFER_PERIOD_RESULT);
 
     assertEquals(1, help.commands().size());
-    assertEquals(OperationId.CLOSE_PERIOD, help.commands().getFirst().name());
+    assertEquals(OperationId.TRANSFER_PERIOD_RESULT, help.commands().getFirst().name());
     assertNull(help.requestShapes());
     assertNull(help.requestTemplate());
     assertNull(help.declareAccountTemplate());

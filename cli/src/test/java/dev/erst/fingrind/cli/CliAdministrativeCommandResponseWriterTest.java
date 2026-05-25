@@ -9,11 +9,11 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
@@ -36,37 +36,35 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for {@link CliResponseWriter}. */
 class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
-  void writeAdministrativeAndWriteSuccesses_supportHumanOutput() {
+  void writeAdministrativeAndWriteSuccesses_supportTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
         new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
             Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Key File Generated"));
     outputStream.reset();
     responseWriter.writeOpenBookResult(
         Path.of("books/book.sqlite"),
         openedBookResult(Instant.parse("2026-04-17T10:15:30Z")),
-        OutputMode.HUMAN);
-    String openBookHuman = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(openBookHuman.contains("Book Initialized"));
-    assertTrue(openBookHuman.contains("Entity"));
-    assertTrue(openBookHuman.contains("Acme Studio"));
-    assertTrue(openBookHuman.contains("Policy profile"));
-    assertTrue(openBookHuman.contains("Functional currency"));
-    assertTrue(openBookHuman.contains("Fiscal year start"));
-    assertTrue(openBookHuman.contains("Internal Management Single Entity V1"));
+        OutputMode.TEXT);
+    String openBookText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(openBookText.contains("Book Initialized"));
+    assertTrue(openBookText.contains("Entity"));
+    assertTrue(openBookText.contains("Acme Studio"));
+    assertTrue(openBookText.contains("Functional currency"));
+    assertTrue(openBookText.contains("Fiscal year start"));
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),
         new BookAccess.PassphraseSource.KeyFile(Path.of("keys/rotated.key")),
-        OutputMode.HUMAN);
-    String rekeyHuman = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(rekeyHuman.contains("Book Rekeyed"));
-    assertTrue(rekeyHuman.contains("Replacement secret source"));
-    assertTrue(rekeyHuman.contains("Key file"));
-    assertTrue(rekeyHuman.contains("rotated.key"));
+        OutputMode.TEXT);
+    String rekeyText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rekeyText.contains("Book Rekeyed"));
+    assertTrue(rekeyText.contains("Replacement secret source"));
+    assertTrue(rekeyText.contains("Key file"));
+    assertTrue(rekeyText.contains("rotated.key"));
     outputStream.reset();
     responseWriter.writeDeclareAccountResult(
         new DeclareAccountResult.Declared(
@@ -77,17 +75,19 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-17T10:15:30Z"))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Account Declared"));
     outputStream.reset();
-    responseWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.HUMAN);
+    responseWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Transferred(
+            CliFixtureSupport.sampleTransferredPeriodResult()),
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Period Closed"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Preflight Accepted"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
@@ -96,17 +96,17 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-17"),
             Instant.parse("2026-04-17T10:15:31Z")),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Committed"));
   }
 
   @Test
-  void writeClosePeriodResult_rendersExplicitEmptyClosingPostingSet() {
+  void writePeriodResultTransferResult_rendersExplicitEmptyClosingPostingSet() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    responseWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Closed(
-            new dev.erst.fingrind.contract.bookkeeping.ClosedPeriod(
+    responseWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Transferred(
+            new dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult(
                 1,
                 new dev.erst.fingrind.core.ReportingPeriod(
                     LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -114,33 +114,35 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 List.of(),
                 Instant.parse("2026-04-30T12:00:00Z"),
                 List.of())),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
 
-    String human = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(human.contains("Closing postings"));
-    assertTrue(human.contains("(none)"));
-    assertTrue(human.contains("No closing movements were required"));
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Closing postings"));
+    assertTrue(text.contains("(none)"));
+    assertTrue(text.contains("No closing movements were required"));
   }
 
   @Test
-  void writeClosePeriodResult_omitsEmptyOutcomeWhenClosingMovementsExist() {
+  void writePeriodResultTransferResult_omitsEmptyOutcomeWhenClosingMovementsExist() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    responseWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.HUMAN);
+    responseWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Transferred(
+            CliFixtureSupport.sampleTransferredPeriodResult()),
+        OutputMode.TEXT);
 
-    String human = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(human.contains("Closing postings"));
-    assertFalse(human.contains("No closing movements were required"));
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Closing postings"));
+    assertFalse(text.contains("No closing movements were required"));
   }
 
   @Test
-  void writeClosePeriodResult_omitsEmptyOutcomeWhenPostingIdsExistWithoutClosedTotals() {
+  void writePeriodResultTransferResult_omitsEmptyOutcomeWhenPostingIdsExistWithoutClosedTotals() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    responseWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Closed(
-            new dev.erst.fingrind.contract.bookkeeping.ClosedPeriod(
+    responseWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Transferred(
+            new dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult(
                 1,
                 new dev.erst.fingrind.core.ReportingPeriod(
                     LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -148,11 +150,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 List.of(),
                 Instant.parse("2026-04-30T12:00:00Z"),
                 List.of(new PostingId("posting-close-1")))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
 
-    String human = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(human.contains("Closing postings"));
-    assertFalse(human.contains("No closing movements were required"));
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Closing postings"));
+    assertFalse(text.contains("No closing movements were required"));
   }
 
   @Test
@@ -196,8 +198,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            responseWriter.writeClosePeriodResult(
-                new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()),
+            responseWriter.writePeriodResultTransferResult(
+                new PeriodResultTransferResult.Transferred(
+                    CliFixtureSupport.sampleTransferredPeriodResult()),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -219,33 +222,33 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeAdministrativeAndWriteRejections_supportHumanOutput() {
+  void writeAdministrativeAndWriteRejections_supportTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeOpenBookResult(
         Path.of("books/book.sqlite"),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("book-already-initialized"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Idempotency key"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("duplicate-idempotency-key"));
     outputStream.reset();
-    responseWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
+    responseWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Rejected(
+            new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of())),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("closing-equity-account-candidate-missing"));
+            .contains("result-holding-account-candidate-missing"));
   }
 
   @Test
@@ -300,27 +303,27 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
 
   @Test
   void writeRekeyBookResult_supportsNonFileReplacementSecretSources() {
-    ByteArrayOutputStream standardInputHumanOutput = new ByteArrayOutputStream();
-    CliResponseWriter standardInputHumanWriter =
-        new CliResponseWriter(utf8PrintStream(standardInputHumanOutput));
-    standardInputHumanWriter.writeRekeyBookResult(
+    ByteArrayOutputStream standardInputTextOutput = new ByteArrayOutputStream();
+    CliResponseWriter standardInputTextWriter =
+        new CliResponseWriter(utf8PrintStream(standardInputTextOutput));
+    standardInputTextWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
         BookAccess.PassphraseSource.StandardInput.INSTANCE,
-        OutputMode.HUMAN);
-    String standardInputHuman = standardInputHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(standardInputHuman.contains("Standard input"));
-    assertFalse(standardInputHuman.contains("Replacement key file"));
+        OutputMode.TEXT);
+    String standardInputText = standardInputTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(standardInputText.contains("Standard input"));
+    assertFalse(standardInputText.contains("Replacement key file"));
 
-    ByteArrayOutputStream interactivePromptHumanOutput = new ByteArrayOutputStream();
-    CliResponseWriter interactivePromptHumanWriter =
-        new CliResponseWriter(utf8PrintStream(interactivePromptHumanOutput));
-    interactivePromptHumanWriter.writeRekeyBookResult(
+    ByteArrayOutputStream interactivePromptTextOutput = new ByteArrayOutputStream();
+    CliResponseWriter interactivePromptTextWriter =
+        new CliResponseWriter(utf8PrintStream(interactivePromptTextOutput));
+    interactivePromptTextWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
         BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-        OutputMode.HUMAN);
-    String interactivePromptHuman = interactivePromptHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(interactivePromptHuman.contains("Interactive prompt"));
-    assertFalse(interactivePromptHuman.contains("Replacement key file"));
+        OutputMode.TEXT);
+    String interactivePromptText = interactivePromptTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(interactivePromptText.contains("Interactive prompt"));
+    assertFalse(interactivePromptText.contains("Replacement key file"));
 
     ByteArrayOutputStream standardInputJsonOutput = new ByteArrayOutputStream();
     CliResponseWriter standardInputJsonWriter =
@@ -345,7 +348,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeMaintenanceResults_supportSuccessEnvelopesAndHumanOutput() {
+  void writeMaintenanceResults_supportSuccessEnvelopesAndTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeBackupBookResult(
@@ -353,11 +356,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("backup/entity.sqlite")),
             hint(Path.of("backup/entity.key"))),
-        OutputMode.HUMAN);
-    String backupHuman = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(backupHuman.contains("Book Backed Up"));
-    assertTrue(backupHuman.contains("Backup file"));
-    assertTrue(backupHuman.contains("entity.sqlite"));
+        OutputMode.TEXT);
+    String backupText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(backupText.contains("Book Backed Up"));
+    assertTrue(backupText.contains("Backup file"));
+    assertTrue(backupText.contains("entity.sqlite"));
     outputStream.reset();
 
     responseWriter.writeRestoreBookResult(
@@ -365,10 +368,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("backup/entity.sqlite")),
             hint(Path.of("backup/entity.key"))),
-        OutputMode.HUMAN);
-    String restoreHuman = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(restoreHuman.contains("Book Restored"));
-    assertTrue(restoreHuman.contains("Book key file"));
+        OutputMode.TEXT);
+    String restoreText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(restoreText.contains("Book Restored"));
+    assertTrue(restoreText.contains("Book key file"));
     outputStream.reset();
 
     responseWriter.writeInspectRekeyRollbackResult(
@@ -377,11 +380,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             List.of(
                 hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
                 hint(Path.of("books/entity.rekey-rollback-b.sqlite")))),
-        OutputMode.HUMAN);
-    String inspectHuman = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(inspectHuman.contains("Rekey Rollback Artifacts"));
-    assertTrue(inspectHuman.contains("rollback-a"));
-    assertTrue(inspectHuman.contains("rollback-b"));
+        OutputMode.TEXT);
+    String inspectText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(inspectText.contains("Rekey Rollback Artifacts"));
+    assertTrue(inspectText.contains("rollback-a"));
+    assertTrue(inspectText.contains("rollback-b"));
     outputStream.reset();
 
     responseWriter.writeRestoreRekeyRollbackResult(
@@ -405,11 +408,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 List.of(
                     hint(Path.of("books/entity.sqlite-wal")),
                     hint(Path.of("books/entity.sqlite-shm"))))),
-        OutputMode.HUMAN);
-    String human = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(human.contains("Rejected"));
-    assertTrue(human.contains("book-has-blocking-artifacts"));
-    assertTrue(human.contains("Blocking artifacts"));
+        OutputMode.TEXT);
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Rejected"));
+    assertTrue(text.contains("book-has-blocking-artifacts"));
+    assertTrue(text.contains("Blocking artifacts"));
     outputStream.reset();
 
     responseWriter.writeInspectRekeyRollbackResult(
@@ -449,14 +452,14 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeRekeyRollbackRestoreAndDelete_supportHumanAndRejectCsv() {
+  void writeRekeyRollbackRestoreAndDelete_supportTextAndRejectCsv() {
     ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
     CliResponseWriter restoreWriter = new CliResponseWriter(utf8PrintStream(restoreOutput));
     restoreWriter.writeRestoreRekeyRollbackResult(
         new RekeyRollbackResult.Restored(
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(
         restoreOutput.toString(StandardCharsets.UTF_8).contains("Book Restored From Rollback"));
 
@@ -466,7 +469,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new RekeyRollbackResult.Deleted(
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(deleteOutput.toString(StandardCharsets.UTF_8).contains("Rollback Artifact Deleted"));
 
     IllegalArgumentException restoreCsv =
@@ -519,11 +522,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 List.of(
                     hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
 
-    String human = deleteOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(human.contains("Rejected"));
-    assertTrue(human.contains("rollback-artifact-selection-required"));
+    String text = deleteOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Rejected"));
+    assertTrue(text.contains("rollback-artifact-selection-required"));
   }
 
   @Test
@@ -628,43 +631,46 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeClosePeriodResult_writesSuccessAndDetailedRejectionEnvelopes() {
+  void writePeriodResultTransferResult_writesSuccessAndDetailedRejectionEnvelopes() {
     ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
     CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
-    successWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.JSON);
+    successWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Transferred(
+            CliFixtureSupport.sampleTransferredPeriodResult()),
+        OutputMode.JSON);
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
     assertJsonContains(successJson, "\"status\":\"ok\"");
-    assertJsonContains(successJson, "\"closeOrder\":1");
-    assertJsonContains(successJson, "\"closingPostingIds\":[\"posting-close-1\"]");
+    assertJsonContains(successJson, "\"transferOrder\":1");
+    assertJsonContains(successJson, "\"transferPostingIds\":[\"posting-close-1\"]");
 
     ByteArrayOutputStream missingOutput = new ByteArrayOutputStream();
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
-    missingWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
+    missingWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Rejected(
+            new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))),
         OutputMode.JSON);
-    assertJsonContains(missingOutput, "\"code\":\"closing-equity-account-candidate-missing\"");
+    assertJsonContains(missingOutput, "\"code\":\"result-holding-account-candidate-missing\"");
     assertJsonContains(
-        missingOutput, "\"requiredFinancialPositionLineClassification\":\"ACCUMULATED_RESULT\"");
+        missingOutput, "\"requiredFinancialPositionLineClassification\":\"RESULT_HOLDING\"");
 
     ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
     CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
-    horizonWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-01"))),
+    horizonWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Rejected(
+            new BookAdministrationRejection.PeriodResultTransferMustStartAt(
+                LocalDate.parse("2026-04-01"))),
         OutputMode.JSON);
     String horizonJson = horizonOutput.toString(StandardCharsets.UTF_8);
-    assertJsonContains(horizonJson, "\"code\":\"period-close-must-start-at\"");
+    assertJsonContains(horizonJson, "\"code\":\"period-result-transfer-must-start-at\"");
     assertJsonContains(horizonJson, "\"requiredEffectiveDateFrom\":\"2026-04-01\"");
 
     ByteArrayOutputStream typeConflictOutput = new ByteArrayOutputStream();
     CliResponseWriter typeConflictWriter =
         new CliResponseWriter(utf8PrintStream(typeConflictOutput));
-    typeConflictWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Rejected(
+    typeConflictWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Rejected(
             new BookAdministrationRejection.AccountTypeConflict(
                 new AccountCode("3200"),
                 dev.erst.fingrind.core.AccountType.EQUITY,
@@ -676,34 +682,35 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
 
     ByteArrayOutputStream ambiguousOutput = new ByteArrayOutputStream();
     CliResponseWriter ambiguousWriter = new CliResponseWriter(utf8PrintStream(ambiguousOutput));
-    ambiguousWriter.writeClosePeriodResult(
-        new ClosePeriodResult.Rejected(
-            new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+    ambiguousWriter.writePeriodResultTransferResult(
+        new PeriodResultTransferResult.Rejected(
+            new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
                 dev.erst.fingrind.core.FinancialPositionLineClassification.OTHER_EQUITY,
                 List.of(new AccountCode("3200"), new AccountCode("3210")))),
         OutputMode.JSON);
-    assertJsonContains(ambiguousOutput, "\"code\":\"closing-equity-account-candidate-ambiguous\"");
+    assertJsonContains(ambiguousOutput, "\"code\":\"result-holding-account-candidate-ambiguous\"");
     assertEquals(
         2,
         CliExecutionPolicy.exitCodeFor(
-            new ClosePeriodResult.Rejected(
-                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    dev.erst.fingrind.core.FinancialPositionLineClassification.ACCUMULATED_RESULT,
+            new PeriodResultTransferResult.Rejected(
+                new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                    dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of()))));
   }
 
   @Test
   void writePostingRejections_includesStructuredCloseAndReversalDetails() {
-    String closedPeriodJson =
+    String transferredPeriodResultJson =
         rejectedJson(
-            new PostingRejection.ClosedPeriodViolation(
+            new PostingRejection.TransferredPeriodResultViolation(
                 LocalDate.parse("2026-04-30"), LocalDate.parse("2026-05-01")));
-    assertJsonContains(closedPeriodJson, "\"closedThroughEffectiveDate\":\"2026-04-30\"");
-    assertJsonContains(closedPeriodJson, "\"attemptedEffectiveDate\":\"2026-05-01\"");
+    assertJsonContains(
+        transferredPeriodResultJson, "\"transferredThroughEffectiveDate\":\"2026-04-30\"");
+    assertJsonContains(transferredPeriodResultJson, "\"attemptedEffectiveDate\":\"2026-05-01\"");
 
-    String retainedEarningsJson =
-        rejectedJson(new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")));
-    assertJsonContains(retainedEarningsJson, "\"accountCode\":\"3200\"");
+    String resultHoldingJson =
+        rejectedJson(new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3200")));
+    assertJsonContains(resultHoldingJson, "\"accountCode\":\"3200\"");
 
     String missingPriorPostingJson =
         rejectedJson(new PostingRejection.ReversalTargetNotFound(new PostingId("posting-9")));

@@ -262,26 +262,28 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
           insertPostingFactRow(
               database,
-              "posting-period-close",
-              "PERIOD_CLOSE",
+              "posting-period-result-transfer",
+              "PERIOD_RESULT_TRANSFER",
               "2026-04-30",
               "2026-04-30T23:59:59Z",
               new PostingFactSqlLiterals(
-                  "system:periodClose",
+                  "system:periodResultTransfer",
                   "SYSTEM",
-                  "periodClose:2026-04",
-                  "periodClose:2026-04",
-                  "periodClose:2026-04",
-                  "'periodClose:2026-04'",
+                  "periodResultTransfer:2026-04",
+                  "periodResultTransfer:2026-04",
+                  "periodResultTransfer:2026-04",
+                  "'periodResultTransfer:2026-04'",
                   "null",
                   "SYSTEM",
                   "null"));
-          insertJournalLineRow(database, "posting-period-close", 0, "2000", "DEBIT", "EUR", 1000);
-          insertJournalLineRow(database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-period-result-transfer", 0, "2000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
           database.executeStatement(
               """
-              insert into period_close (
-                  period_close_order,
+              insert into period_result_transfer (
+                  period_result_transfer_order,
                   effective_date_from,
                   effective_date_to,
                   closing_equity_account_code,
@@ -296,12 +298,12 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               """);
           database.executeStatement(
               """
-              insert into period_close_posting (
-                  period_close_order,
+              insert into period_result_transfer_posting (
+                  period_result_transfer_order,
                   posting_id
               ) values (
                   1,
-                  'posting-period-close'
+                  'posting-period-result-transfer'
               )
               """);
           insertPostingFactRow(
@@ -322,9 +324,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   "null"));
         });
     assertRejectedPersistedPostingLifecycle(
-        "persisted-period-close-link.sqlite",
+        "persisted-period-result-transfer-link.sqlite",
         """
-        drop trigger period_close_posting_validate_period_close_posting_on_insert
+        drop trigger period_result_transfer_posting_validate_period_result_transfer_posting_on_insert
         """,
         database -> {
           insertAccountRow(
@@ -334,8 +336,8 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           insertJournalLineRow(database, "posting-standard", 1, "2000", "CREDIT", "EUR", 1000);
           database.executeStatement(
               """
-              insert into period_close (
-                  period_close_order,
+              insert into period_result_transfer (
+                  period_result_transfer_order,
                   effective_date_from,
                   effective_date_to,
                   closing_equity_account_code,
@@ -350,8 +352,8 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               """);
           database.executeStatement(
               """
-              insert into period_close_posting (
-                  period_close_order,
+              insert into period_result_transfer_posting (
+                  period_result_transfer_order,
                   posting_id
               ) values (
                   1,
@@ -360,43 +362,45 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               """);
         });
     assertRejectedPersistedPostingLifecycle(
-        "persisted-unlinked-period-close.sqlite",
+        "persisted-unlinked-period-result-transfer.sqlite",
         """
-        drop trigger posting_fact_validate_period_close_provenance_on_insert
+        drop trigger posting_fact_validate_period_result_transfer_provenance_on_insert
         """,
         database -> {
           insertAccountRow(
               database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
           insertPostingFactRow(
               database,
-              "posting-period-close",
-              "PERIOD_CLOSE",
+              "posting-period-result-transfer",
+              "PERIOD_RESULT_TRANSFER",
               "2026-04-30",
               "2026-04-30T23:59:59Z",
               new PostingFactSqlLiterals(
-                  "system:periodClose",
+                  "system:periodResultTransfer",
                   "SYSTEM",
-                  "periodClose:2026-04",
-                  "periodClose:2026-04",
-                  "periodClose:2026-04",
-                  "'periodClose:2026-04'",
+                  "periodResultTransfer:2026-04",
+                  "periodResultTransfer:2026-04",
+                  "periodResultTransfer:2026-04",
+                  "'periodResultTransfer:2026-04'",
                   "null",
                   "SYSTEM",
                   "null"));
-          insertJournalLineRow(database, "posting-period-close", 0, "2000", "DEBIT", "EUR", 1000);
-          insertJournalLineRow(database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-period-result-transfer", 0, "2000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
         });
     assertRejectedPersistedPostingLifecycle(
-        "persisted-invalid-period-close-target.sqlite",
+        "persisted-invalid-period-result-transfer-target.sqlite",
         """
-        drop trigger period_close_validate_closing_equity_account_on_insert
+        drop trigger period_result_transfer_validate_closing_equity_account_on_insert
         """,
         database -> {
           database.executeStatement("update account set active = 0 where account_code = '1000'");
           database.executeStatement(
               """
-              insert into period_close (
-                  period_close_order,
+              insert into period_result_transfer (
+                  period_result_transfer_order,
                   effective_date_from,
                   effective_date_to,
                   closing_equity_account_code,
@@ -559,11 +563,13 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
       String effectiveDate,
       String recordedAt,
       PostingFactSqlLiterals sqlLiterals) {
+    String postingOriginKind = defaultPostingOriginKind(postingKind, sqlLiterals);
     database.executeStatement(
         """
         insert into posting_fact (
             posting_id,
             posting_kind,
+            posting_origin_kind,
             effective_date,
             recorded_at,
             actor_id,
@@ -585,6 +591,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             '%s',
             '%s',
             '%s',
+            '%s',
             %s,
             %s,
             '%s',
@@ -594,6 +601,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             .formatted(
                 postingId,
                 postingKind,
+                postingOriginKind,
                 effectiveDate,
                 recordedAt,
                 sqlLiterals.actorId(),
@@ -605,6 +613,25 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                 sqlLiterals.reasonSqlLiteral(),
                 sqlLiterals.sourceChannel(),
                 sqlLiterals.priorPostingIdSqlLiteral()));
+  }
+
+  private static String defaultPostingOriginKind(
+      String postingKind, PostingFactSqlLiterals sqlLiterals) {
+    return switch (postingKind) {
+      case "OPENING_BALANCE" ->
+          dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT.wireValue();
+      case "PERIOD_RESULT_TRANSFER" ->
+          dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue();
+      default ->
+          isReversal(sqlLiterals)
+              ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue()
+              : dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue();
+    };
+  }
+
+  private static boolean isReversal(PostingFactSqlLiterals sqlLiterals) {
+    return !"null".equals(sqlLiterals.reasonSqlLiteral())
+        || !"null".equals(sqlLiterals.priorPostingIdSqlLiteral());
   }
 
   private record PostingFactSqlLiterals(

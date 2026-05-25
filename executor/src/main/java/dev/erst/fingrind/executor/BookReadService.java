@@ -28,7 +28,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
@@ -57,7 +57,7 @@ public final class BookReadService {
           initialized.supportedBookFormatVersion(),
           initialized.initializedAt(),
           initialized.bookIdentity(),
-          closeReadiness(initialized.bookIdentity()));
+          resultTransferReadiness(initialized.bookIdentity()));
     }
     return BookInspectionPublishedLanguageTranslator.toPublished(inspection);
   }
@@ -224,24 +224,25 @@ public final class BookReadService {
     return requireInitializedBookIdentity(bookkeepingReadService.inspectBook());
   }
 
-  private BookInspection.CloseReadiness closeReadiness(BookIdentity bookIdentity) {
+  private BookInspection.ResultTransferReadiness resultTransferReadiness(
+      BookIdentity bookIdentity) {
     var requiredClassification =
-        bookkeepingReadService.requiredClosingEquityClassification(bookIdentity);
-    PeriodClosePlanner.ClosingEquitySelection selection =
-        bookkeepingReadService.closingEquitySelection(bookIdentity);
+        bookkeepingReadService.requiredResultHoldingClassification(bookIdentity);
+    PeriodResultTransferPlanner.ResultHoldingSelection selection =
+        bookkeepingReadService.resultHoldingSelection(bookIdentity);
     return switch (selection) {
-      case PeriodClosePlanner.AcceptedClosingEquitySelection accepted ->
-          new BookInspection.CloseReadiness(
+      case PeriodResultTransferPlanner.AcceptedResultHoldingSelection accepted ->
+          new BookInspection.ResultTransferReadiness(
               true,
               requiredClassification,
               accepted.account().accountCode(),
               null,
               null,
               List.of());
-      case PeriodClosePlanner.RejectedClosingEquitySelection rejected -> {
+      case PeriodResultTransferPlanner.RejectedResultHoldingSelection rejected -> {
         BookAdministrationRejection published =
             BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection());
-        yield new BookInspection.CloseReadiness(
+        yield new BookInspection.ResultTransferReadiness(
             false,
             requiredClassification,
             null,

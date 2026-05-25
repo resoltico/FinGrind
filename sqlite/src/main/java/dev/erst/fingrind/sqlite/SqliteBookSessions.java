@@ -126,27 +126,28 @@ public final class SqliteBookSessions {
         SqliteCapabilitySessions::posting);
   }
 
-  /** Opens one period-close session. */
-  public static SqlitePeriodCloseSession openPeriodClose(
+  /** Opens one period-result-transfer session. */
+  public static SqlitePeriodResultTransferSession openPeriodResultTransfer(
       BookAccess bookAccess,
       SqlitePassphraseResolver passphraseResolver,
       SqlitePassphraseIntent passphraseIntent) {
-    return openResolvedPeriodClose(bookAccess, passphraseResolver, passphraseIntent)
+    return openResolvedPeriodResultTransfer(bookAccess, passphraseResolver, passphraseIntent)
         .requireAccepted();
   }
 
-  /** Opens and primes one period-close session for explicit result handling. */
-  public static ContractDecision<SqlitePeriodCloseSession> openResolvedPeriodClose(
-      BookAccess bookAccess,
-      SqlitePassphraseResolver passphraseResolver,
-      SqlitePassphraseIntent passphraseIntent) {
+  /** Opens and primes one period-result-transfer session for explicit result handling. */
+  public static ContractDecision<SqlitePeriodResultTransferSession>
+      openResolvedPeriodResultTransfer(
+          BookAccess bookAccess,
+          SqlitePassphraseResolver passphraseResolver,
+          SqlitePassphraseIntent passphraseIntent) {
     return project(
         openResolvedStore(
             bookAccess,
             SqliteBookSessionMode.READ_WRITE_EXISTING,
             passphraseResolver,
             passphraseIntent),
-        SqliteCapabilitySessions::periodClose);
+        SqliteCapabilitySessions::periodResultTransfer);
   }
 
   /** Opens one plan-execution session. */

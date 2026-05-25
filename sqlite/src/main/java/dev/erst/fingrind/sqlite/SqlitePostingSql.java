@@ -16,17 +16,18 @@ final class SqlitePostingSql {
 
   static final int COL_POSTING_ID = 0;
   static final int COL_POSTING_KIND = 1;
-  static final int COL_EFFECTIVE_DATE = 2;
-  static final int COL_RECORDED_AT = 3;
-  static final int COL_ACTOR_ID = 4;
-  static final int COL_ACTOR_TYPE = 5;
-  static final int COL_COMMAND_ID = 6;
-  static final int COL_IDEMPOTENCY_KEY = 7;
-  static final int COL_CAUSATION_ID = 8;
-  static final int COL_CORRELATION_ID = 9;
-  static final int COL_REASON = 10;
-  static final int COL_SOURCE_CHANNEL = 11;
-  static final int COL_PRIOR_POSTING_ID = 12;
+  static final int COL_POSTING_ORIGIN_KIND = 2;
+  static final int COL_EFFECTIVE_DATE = 3;
+  static final int COL_RECORDED_AT = 4;
+  static final int COL_ACTOR_ID = 5;
+  static final int COL_ACTOR_TYPE = 6;
+  static final int COL_COMMAND_ID = 7;
+  static final int COL_IDEMPOTENCY_KEY = 8;
+  static final int COL_CAUSATION_ID = 9;
+  static final int COL_CORRELATION_ID = 10;
+  static final int COL_REASON = 11;
+  static final int COL_SOURCE_CHANNEL = 12;
+  static final int COL_PRIOR_POSTING_ID = 13;
 
   static final int COL_LINE_ACCOUNT_CODE = 0;
   static final int COL_LINE_ENTRY_SIDE = 1;
@@ -70,6 +71,7 @@ final class SqlitePostingSql {
       select
           posting_id,
           posting_kind,
+          posting_origin_kind,
           effective_date,
           recorded_at,
           actor_id,
@@ -159,14 +161,6 @@ final class SqlitePostingSql {
       select
           business_activity_tags
       from entity_profile
-      where singleton_id = 1
-      limit 1
-      """;
-
-  static final String FIND_BOOK_POLICY =
-      """
-      select policy_profile
-      from book_policy
       where singleton_id = 1
       limit 1
       """;
@@ -274,6 +268,7 @@ final class SqlitePostingSql {
       insert into posting_fact (
           posting_id,
           posting_kind,
+          posting_origin_kind,
           effective_date,
           recorded_at,
           actor_id,
@@ -285,7 +280,7 @@ final class SqlitePostingSql {
           reason,
           source_channel,
           prior_posting_id
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_JOURNAL_LINE =
@@ -335,35 +330,35 @@ final class SqlitePostingSql {
           event_kind,
           account_code,
           posting_id,
-          period_close_order
+          period_result_transfer_order
       ) values (?, ?, ?, ?, ?)
       """;
 
-  static final String INSERT_PERIOD_CLOSE =
+  static final String INSERT_PERIOD_RESULT_TRANSFER =
       """
-      insert into period_close (
+      insert into period_result_transfer (
           effective_date_from,
           effective_date_to,
           closing_equity_account_code,
           closed_at
       ) values (?, ?, ?, ?)
-      returning period_close_order
+      returning period_result_transfer_order
       """;
 
-  static final String INSERT_PERIOD_CLOSE_TOTAL =
+  static final String INSERT_PERIOD_RESULT_TRANSFER_TOTAL =
       """
-      insert into period_close_total (
-          period_close_order,
+      insert into period_result_transfer_total (
+          period_result_transfer_order,
           currency_code,
           debit_total_minor,
           credit_total_minor
       ) values (?, ?, ?, ?)
       """;
 
-  static final String INSERT_PERIOD_CLOSE_POSTING =
+  static final String INSERT_PERIOD_RESULT_TRANSFER_POSTING =
       """
-      insert into period_close_posting (
-          period_close_order,
+      insert into period_result_transfer_posting (
+          period_result_transfer_order,
           posting_id
       ) values (?, ?)
       """;
@@ -371,8 +366,8 @@ final class SqlitePostingSql {
   static final String FIND_CLOSED_THROUGH_EFFECTIVE_DATE =
       """
       select effective_date_to
-      from period_close
-      order by period_close_order desc
+      from period_result_transfer
+      order by period_result_transfer_order desc
       limit 1
       """;
 
@@ -517,50 +512,50 @@ final class SqlitePostingSql {
       """
       select posting_fact.posting_id
       from posting_fact
-      inner join period_close
-        on posting_fact.effective_date <= period_close.effective_date_to
-      inner join period_close_posting
-        on period_close_posting.period_close_order = period_close.period_close_order
+      inner join period_result_transfer
+        on posting_fact.effective_date <= period_result_transfer.effective_date_to
+      inner join period_result_transfer_posting
+        on period_result_transfer_posting.period_result_transfer_order = period_result_transfer.period_result_transfer_order
       inner join posting_fact as close_posting
-        on close_posting.posting_id = period_close_posting.posting_id
+        on close_posting.posting_id = period_result_transfer_posting.posting_id
       where
-          posting_fact.posting_kind <> 'PERIOD_CLOSE'
+          posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'
           and posting_fact.posting_order > close_posting.posting_order
       limit 1
       """;
 
-  static final String FIND_UNLINKED_PERIOD_CLOSE_POSTING =
+  static final String FIND_UNLINKED_PERIOD_RESULT_TRANSFER_POSTING =
       """
       select posting_fact.posting_id
       from posting_fact
-      left join period_close_posting on period_close_posting.posting_id = posting_fact.posting_id
+      left join period_result_transfer_posting on period_result_transfer_posting.posting_id = posting_fact.posting_id
       where
-          posting_fact.posting_kind = 'PERIOD_CLOSE'
-          and period_close_posting.posting_id is null
+          posting_fact.posting_kind = 'PERIOD_RESULT_TRANSFER'
+          and period_result_transfer_posting.posting_id is null
       limit 1
       """;
 
-  static final String FIND_INVALID_PERIOD_CLOSE_LINK =
+  static final String FIND_INVALID_PERIOD_RESULT_TRANSFER_LINK =
       """
-      select period_close_posting.posting_id
-      from period_close_posting
-      inner join period_close
-        on period_close.period_close_order = period_close_posting.period_close_order
+      select period_result_transfer_posting.posting_id
+      from period_result_transfer_posting
+      inner join period_result_transfer
+        on period_result_transfer.period_result_transfer_order = period_result_transfer_posting.period_result_transfer_order
       inner join posting_fact
-        on posting_fact.posting_id = period_close_posting.posting_id
+        on posting_fact.posting_id = period_result_transfer_posting.posting_id
       where
-          posting_fact.posting_kind <> 'PERIOD_CLOSE'
+          posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'
           or posting_fact.actor_type <> 'SYSTEM'
           or posting_fact.source_channel <> 'SYSTEM'
-          or posting_fact.effective_date <> period_close.effective_date_to
+          or posting_fact.effective_date <> period_result_transfer.effective_date_to
       limit 1
       """;
 
-  static final String FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT =
+  static final String FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT =
       """
-      select period_close.period_close_order
-      from period_close
-      inner join account on account.account_code = period_close.closing_equity_account_code
+      select period_result_transfer.period_result_transfer_order
+      from period_result_transfer
+      inner join account on account.account_code = period_result_transfer.closing_equity_account_code
       where
           account.account_type <> 'EQUITY'
           or account.active = 0
@@ -607,14 +602,6 @@ final class SqlitePostingSql {
       insert into entity_profile (
           singleton_id,
           business_activity_tags
-      ) values (1, ?)
-      """;
-
-  static final String INSERT_BOOK_POLICY =
-      """
-      insert into book_policy (
-          singleton_id,
-          policy_profile
       ) values (1, ?)
       """;
 
@@ -713,7 +700,7 @@ final class SqlitePostingSql {
             .append(BASE_REPORT_LINE_SELECT)
             .append(" where 1 = 1");
     if (query.postingCoverage().isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> 'PERIOD_CLOSE'");
+      sql.append(" and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'");
     }
     if (query.effectiveDateAsOf().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
@@ -758,7 +745,7 @@ final class SqlitePostingSql {
                 where 1 = 1
                 """);
     if (postingCoverage.isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> 'PERIOD_CLOSE'");
+      sql.append(" and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'");
     }
     if (effectiveDateRange.effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");

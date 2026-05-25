@@ -160,8 +160,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "entityName": "Acme Studio",
                 "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01",
-                "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                "fiscalYearStart": "01-01"
               }
             },
             {

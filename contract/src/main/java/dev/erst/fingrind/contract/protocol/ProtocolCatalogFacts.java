@@ -46,11 +46,7 @@ final class ProtocolCatalogFacts {
                   OperationId.CHANGES_IN_EQUITY.wireName(),
                   true,
                   "Built into the current kernel as one internal management statement.")),
-          new AccountingPolicyProfileFacts(
-              "internal-management-single-entity-v1",
-              "Internal Management Single-Entity V1",
-              "Current persisted accounting policy profile for the built-in cash-oriented, single-entity, single-functional-currency internal-management bookkeeping kernel."),
-          "Current built-in cash-oriented bookkeeping kernel facts for one single-entity, single-functional-currency internal-management book with three built-in statements and one persisted accounting policy profile.");
+          "Current built-in cash-oriented bookkeeping kernel facts for one single-entity, single-functional-currency internal-management book with three built-in statements.");
   private static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",

@@ -10,7 +10,7 @@ final class CliJsonRequestHints {
   static String postEntryRequestHint() {
     return "Run '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-        + "' for the canonical request scaffold, then replace its sample evidence and provenance values before real-world use, or run '"
+        + "' for the canonical request scaffold, then replace its placeholder evidence and provenance values before real-world use, or run '"
         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
         + "' for accepted enums and fields.";
   }
@@ -30,7 +30,7 @@ final class CliJsonRequestHints {
   static String ledgerPlanRequestHint() {
     return "Run '"
         + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)
-        + "' for the canonical ledger plan scaffold, then replace its sample evidence and provenance values before real-world use, or run '"
+        + "' for the canonical ledger plan scaffold, then replace its placeholder evidence and provenance values before real-world use, or run '"
         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
         + "' for accepted enums and fields.";
   }

@@ -18,6 +18,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Executes reporting CLI commands and exports optional PDF artifacts. */
@@ -40,6 +41,16 @@ final class CliReportCommandExecutor {
 
   int runAccountBalanceCommand(
       BookAccess bookAccess, AccountBalanceQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.accountBalance(bookAccess, query),
         output.outputMode(),
@@ -55,6 +66,16 @@ final class CliReportCommandExecutor {
 
   int runTrialBalanceCommand(
       BookAccess bookAccess, TrialBalanceQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.trialBalance(bookAccess, query),
         output.outputMode(),
@@ -69,6 +90,16 @@ final class CliReportCommandExecutor {
 
   int runAccountLedgerCommand(
       BookAccess bookAccess, AccountLedgerQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.accountLedger(bookAccess, query),
         output.outputMode(),
@@ -84,6 +115,16 @@ final class CliReportCommandExecutor {
 
   int runPeriodSummaryCommand(
       BookAccess bookAccess, PeriodSummaryQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.periodSummary(bookAccess, query),
         output.outputMode(),
@@ -99,6 +140,16 @@ final class CliReportCommandExecutor {
 
   int runFinancialPositionCommand(
       BookAccess bookAccess, FinancialPositionQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.financialPosition(bookAccess, query),
         output.outputMode(),
@@ -115,6 +166,16 @@ final class CliReportCommandExecutor {
 
   int runIncomeStatementCommand(
       BookAccess bookAccess, IncomeStatementQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.incomeStatement(bookAccess, query),
         output.outputMode(),
@@ -130,6 +191,16 @@ final class CliReportCommandExecutor {
 
   int runChangesInEquityCommand(
       BookAccess bookAccess, ChangesInEquityQuery query, CliCommand.ReportOutput output) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                output.outputMode(), bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, output.outputMode(), responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.changesInEquity(bookAccess, query),
         output.outputMode(),

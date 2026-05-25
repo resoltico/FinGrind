@@ -28,8 +28,8 @@ final class CliRejectionPayloadMapper {
       ProtocolCatalog.operationName(OperationId.BACKUP_BOOK);
   private static final String RESTORE_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.RESTORE_BOOK);
-  private static final String CLOSE_PERIOD_OPERATION =
-      ProtocolCatalog.operationName(OperationId.CLOSE_PERIOD);
+  private static final String TRANSFER_PERIOD_RESULT_OPERATION =
+      ProtocolCatalog.operationName(OperationId.TRANSFER_PERIOD_RESULT);
   private static final String INSPECT_REKEY_ROLLBACK_OPERATION =
       ProtocolCatalog.operationName(OperationId.INSPECT_REKEY_ROLLBACK);
   private static final String DELETE_REKEY_ROLLBACK_OPERATION =
@@ -91,12 +91,14 @@ final class CliRejectionPayloadMapper {
               + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
       case PostingRejection.AccountStateViolations _ ->
           "Declare or reactivate every account named in details.violations, then rerun the request with a fresh provenance.idempotencyKey.";
+      case PostingRejection.EntrySemanticsViolations _ ->
+          "Choose accounts and source-document types that match the selected entry kind, then rerun the request with a fresh provenance.idempotencyKey.";
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
-      case PostingRejection.ClosedPeriodViolation _ ->
-          "Use an effective date after the closed-through horizon, or close the next contiguous reporting period before posting into later dates.";
+      case PostingRejection.TransferredPeriodResultViolation _ ->
+          "Use an effective date after the transferred-through horizon, or close the next contiguous reporting period before posting into later dates.";
       case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
           "Opening balances are only accepted before the first committed posting in the book. The window closed with "
               + rejectionWindowClosed.firstBlockingPostingKind().wireValue()
@@ -105,10 +107,10 @@ final class CliRejectionPayloadMapper {
               + "; create a new book if the opening statement was not seeded completely.";
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           "Opening-balance postings may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
-      case PostingRejection.ClosingEquityAccountReserved _ ->
+      case PostingRejection.ResultHoldingAccountReserved _ ->
           "Post directly to ordinary accounts only; let "
-              + CLOSE_PERIOD_OPERATION
-              + " generate closing-equity postings automatically.";
+              + TRANSFER_PERIOD_RESULT_OPERATION
+              + " generate result-holding postings automatically.";
       case PostingRejection.ReversalTargetNotFound _ ->
           "Use "
               + GET_POSTING_OPERATION
@@ -183,36 +185,36 @@ final class CliRejectionPayloadMapper {
           + ".";
     }
     if (rejection
-        instanceof BookAdministrationRejection.ClosingEquityAccountCandidateMissing missing) {
+        instanceof BookAdministrationRejection.ResultHoldingAccountCandidateMissing missing) {
       return missing.inactiveCandidateAccountCodes().isEmpty()
           ? "Declare one active equity account whose financialPositionLineClassification is "
               + missing.requiredFinancialPositionLineClassification().wireValue()
               + ", then rerun "
-              + CLOSE_PERIOD_OPERATION
+              + TRANSFER_PERIOD_RESULT_OPERATION
               + "."
           : "Reactivate one of the matching equity accounts or declare exactly one active replacement with financialPositionLineClassification "
               + missing.requiredFinancialPositionLineClassification().wireValue()
               + ", then rerun "
-              + CLOSE_PERIOD_OPERATION
+              + TRANSFER_PERIOD_RESULT_OPERATION
               + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous) {
+    if (rejection instanceof BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous) {
       return "Leave exactly one active equity account with the built-in closing classification for this book, then rerun "
-          + CLOSE_PERIOD_OPERATION
+          + TRANSFER_PERIOD_RESULT_OPERATION
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.PeriodCloseMustStartAt) {
+    if (rejection instanceof BookAdministrationRejection.PeriodResultTransferMustStartAt) {
       return "Rerun "
-          + CLOSE_PERIOD_OPERATION
+          + TRANSFER_PERIOD_RESULT_OPERATION
           + " with the required --effective-date-from value and the next contiguous unclosed end date.";
     }
-    if (rejection instanceof BookAdministrationRejection.PeriodCloseFutureDate) {
+    if (rejection instanceof BookAdministrationRejection.PeriodResultTransferFutureDate) {
       return "Choose an --effective-date-to on or before the current UTC date, then rerun "
-          + CLOSE_PERIOD_OPERATION
+          + TRANSFER_PERIOD_RESULT_OPERATION
           + ".";
     }
     return "Choose --effective-date-from and --effective-date-to that remain inside one fiscal year for this book, then rerun "
-        + CLOSE_PERIOD_OPERATION
+        + TRANSFER_PERIOD_RESULT_OPERATION
         + ".";
   }
 
@@ -295,14 +297,19 @@ final class CliRejectionPayloadMapper {
               violations.violations().stream()
                   .map(CliRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
+      case PostingRejection.EntrySemanticsViolations violations ->
+          new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+              violations.violations().stream()
+                  .map(CliRejectionPayloadMapper::entrySemanticsViolationPayload)
+                  .toList());
       case PostingRejection.DuplicateIdempotencyKey _ -> null;
       case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
           new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
               rejectionCurrencyMismatch.functionalCurrency().code(),
               rejectionCurrencyMismatch.attemptedCurrency().code());
-      case PostingRejection.ClosedPeriodViolation violation ->
-          new CliRejectionJsonModels.ClosedPeriodViolationDetails(
-              violation.closedThroughEffectiveDate().toString(),
+      case PostingRejection.TransferredPeriodResultViolation violation ->
+          new CliRejectionJsonModels.TransferredPeriodResultViolationDetails(
+              violation.transferredThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
       case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
           new CliRejectionJsonModels.OpeningBalanceWindowClosedDetails(
@@ -312,8 +319,8 @@ final class CliRejectionPayloadMapper {
           new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails(
               rejectionOpeningBalance.accountCode().value(),
               rejectionOpeningBalance.accountType().wireValue());
-      case PostingRejection.ClosingEquityAccountReserved rejectionReserved ->
-          new CliRejectionJsonModels.ClosingEquityAccountDetails(
+      case PostingRejection.ResultHoldingAccountReserved rejectionReserved ->
+          new CliRejectionJsonModels.ResultHoldingAccountDetails(
               rejectionReserved.accountCode().value());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           new CliRejectionJsonModels.PriorPostingDetails(
@@ -346,6 +353,12 @@ final class CliRejectionPayloadMapper {
               nonPostableAccount.accountCode().value(),
               nonPostableAccount.accountNodeKind().wireValue());
     };
+  }
+
+  private static CliRejectionJsonModels.EntrySemanticsViolationPayload
+      entrySemanticsViolationPayload(PostingRejection.EntrySemanticsViolation violation) {
+    return new CliRejectionJsonModels.EntrySemanticsViolationPayload(
+        violation.code(), violation.field(), violation.message());
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
@@ -401,22 +414,22 @@ final class CliRejectionPayloadMapper {
       case BookAdministrationRejection.AccountHierarchyCycle conflict ->
           new CliRejectionJsonModels.ParentAccountDetails(
               conflict.accountCode().value(), conflict.parentAccountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountCandidateMissing conflict ->
-          new CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails(
+      case BookAdministrationRejection.ResultHoldingAccountCandidateMissing conflict ->
+          new CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.inactiveCandidateAccountCodes().stream().map(code -> code.value()).toList());
-      case BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous conflict ->
-          new CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails(
+      case BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous conflict ->
+          new CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.candidateAccountCodes().stream().map(code -> code.value()).toList());
-      case BookAdministrationRejection.PeriodCloseMustStartAt conflict ->
-          new CliRejectionJsonModels.PeriodCloseStartDetails(
+      case BookAdministrationRejection.PeriodResultTransferMustStartAt conflict ->
+          new CliRejectionJsonModels.PeriodResultTransferStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
-      case BookAdministrationRejection.PeriodCloseFutureDate conflict ->
-          new CliRejectionJsonModels.PeriodCloseFutureDateDetails(
+      case BookAdministrationRejection.PeriodResultTransferFutureDate conflict ->
+          new CliRejectionJsonModels.PeriodResultTransferFutureDateDetails(
               conflict.attemptedEffectiveDateTo().toString());
-      case BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary conflict ->
-          new CliRejectionJsonModels.PeriodCloseFiscalYearDetails(
+      case BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary conflict ->
+          new CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails(
               conflict.attemptedEffectiveDateFrom().toString(),
               conflict.attemptedEffectiveDateTo().toString(),
               conflict.fiscalYearStart().wireValue());

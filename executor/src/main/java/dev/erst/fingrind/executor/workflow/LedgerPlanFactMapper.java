@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -86,6 +87,8 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.text("postingId", postingFact.postingId().value()));
     facts.add(BookWorkflowFact.text("postingKind", postingFact.postingKind().wireValue()));
     facts.add(
+        BookWorkflowFact.text("postingOriginKind", postingFact.postingOriginKind().wireValue()));
+    facts.add(
         BookWorkflowFact.text(
             "reversalState", postingFact.reversalReference().isPresent() ? "reversal" : "direct"));
     facts.add(
@@ -97,6 +100,14 @@ public final class LedgerPlanFactMapper {
             "effectiveDate", postingFact.journalEntry().effectiveDate().toString()));
     facts.add(
         BookWorkflowFact.text("recordedAt", postingFact.provenance().recordedAt().toString()));
+    facts.add(
+        BookWorkflowFact.money("debitTotal", MonetaryAmount.of(postingDebitTotal(postingFact))));
+    facts.add(
+        BookWorkflowFact.money("creditTotal", MonetaryAmount.of(postingCreditTotal(postingFact))));
+    postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .distinct()
+        .forEach(accountCode -> facts.add(BookWorkflowFact.text("accountCode", accountCode)));
     facts.add(BookWorkflowFact.group("provenance", provenanceFacts(postingFact.provenance())));
     facts.add(BookWorkflowFact.group("evidence", evidenceFacts(postingFact.evidence())));
     postingFact
@@ -118,6 +129,24 @@ public final class LedgerPlanFactMapper {
               facts.add(BookWorkflowFact.group("reversal", List.copyOf(reversalFacts)));
             });
     return List.copyOf(facts);
+  }
+
+  private static Money postingDebitTotal(CommittedPosting postingFact) {
+    long debitMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == JournalLine.EntrySide.DEBIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return Money.ofMinorUnits(postingFact.journalEntry().currencyUnit(), debitMinorUnits);
+  }
+
+  private static Money postingCreditTotal(CommittedPosting postingFact) {
+    long creditMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == JournalLine.EntrySide.CREDIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return Money.ofMinorUnits(postingFact.journalEntry().currencyUnit(), creditMinorUnits);
   }
 
   /** Expands one local account-balance view into workflow-owned machine facts. */

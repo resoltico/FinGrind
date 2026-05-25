@@ -161,7 +161,7 @@ Notable 3.53.1 behavior for agents:
 - `ALTER TABLE` can add and remove `NOT NULL` and `CHECK` constraints. Use this only when migration compatibility is acceptable.
 - `REINDEX EXPRESSIONS` can rebuild expression indexes. Prefer it when repairing stale expression-index state rather than inventing application-level workarounds.
 - `json_array_insert()` and `jsonb_array_insert()` are available in the 3.53.1 baseline.
-- The CLI output defaults changed for interactive sessions through QRF. Tests and scripts must set explicit output modes instead of relying on human-oriented defaults.
+- The CLI output defaults changed for interactive sessions through QRF. Tests and scripts must set explicit output modes instead of relying on operator-oriented defaults.
 - Bare semicolons at the end of dot-commands are silently ignored. Treat CLI script compatibility deliberately.
 - New C interfaces such as `sqlite3_str_truncate()`, `sqlite3_str_free()`, `sqlite3_carray_bind_v2()`, `SQLITE_PREPARE_FROM_DDL`, `SQLITE_UTF8_ZT`, `SQLITE_LIMIT_PARSER_DEPTH`, and `SQLITE_DBCONFIG_FP_DIGITS` are available only when the runtime really is 3.53.1+.
 - Floating-point text conversion behavior changed to round by default to 17 significant digits instead of the previous 15. Review golden outputs, text dumps, hash inputs, and deterministic serialization tests.
@@ -458,7 +458,7 @@ If a repository supports multiple SQLite baselines, write migrations and SQL to 
 
 ### 8.3 CLI scripts and golden outputs
 
-SQLite 3.53.1 changed human-oriented CLI formatting through QRF.
+SQLite 3.53.1 changed reader-oriented CLI formatting through QRF.
 
 For tests and automation:
 

@@ -48,7 +48,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString(),
               "--output",
-              "human",
+              "text",
               "--pdf-out",
               pdfOutputPath.toString()
             });

@@ -23,7 +23,7 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-posting-jpy-idem-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-06-12",
         "capturedAt": "2026-06-12T10:15:30Z",
         "storageLocator": "vault://fixtures/document-seed-posting-jpy-idem-1",

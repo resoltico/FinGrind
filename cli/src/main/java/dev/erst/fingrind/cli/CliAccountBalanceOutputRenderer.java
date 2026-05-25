@@ -4,11 +4,11 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Renders account-balance query payloads for human and CSV output modes. */
+/** Renders account-balance query payloads for text and CSV output modes. */
 final class CliAccountBalanceOutputRenderer {
   private CliAccountBalanceOutputRenderer() {}
 
-  static String renderHuman(AccountBalanceSnapshot snapshot) {
+  static String renderText(AccountBalanceSnapshot snapshot) {
     List<List<String>> headerRows =
         new java.util.ArrayList<>(CliBookIdentityDisplay.summaryRows(snapshot.bookIdentity()));
     headerRows.add(
@@ -42,7 +42,7 @@ final class CliAccountBalanceOutputRenderer {
     String balances =
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
-            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceHumanRow).toList(),
+            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceTextRow).toList(),
             1,
             2,
             3);

@@ -217,6 +217,90 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     assertEquals(1, failureGroup.facts().size());
   }
 
+  @Test
+  void ledgerPlanPayload_mapsPostingPageSummariesWithoutReversalFacts() {
+    Instant startedAt = Instant.parse("2026-05-15T10:00:00Z");
+    Instant finishedAt = Instant.parse("2026-05-15T10:00:01Z");
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Succeeded(
+                planId("plan-3"),
+                new LedgerExecutionJournal(
+                    startedAt,
+                    finishedAt,
+                    List.of(
+                        new LedgerJournalEntry.Succeeded(
+                            stepId("list-postings"),
+                            LedgerJournalStep.standard(LedgerStepKind.LIST_POSTINGS),
+                            startedAt,
+                            finishedAt,
+                            postingPageFactsWithoutReversal())))),
+            PlanResultDetail.FULL);
+
+    CliPlanJsonModels.PostingPageStepDataPayload postingPage =
+        assertInstanceOf(
+            CliPlanJsonModels.PostingPageStepDataPayload.class,
+            Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
+    assertEquals(1, postingPage.postings().size());
+    assertNull(postingPage.postings().getFirst().reversalTarget());
+    assertEquals(List.of("approval-idem-1"), postingPage.postings().getFirst().approvalIds());
+  }
+
+  @Test
+  void ledgerPlanPayload_mapsPostingPageSummariesWithReversalFacts() {
+    Instant startedAt = Instant.parse("2026-05-15T10:00:00Z");
+    Instant finishedAt = Instant.parse("2026-05-15T10:00:01Z");
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Succeeded(
+                planId("plan-3b"),
+                new LedgerExecutionJournal(
+                    startedAt,
+                    finishedAt,
+                    List.of(
+                        new LedgerJournalEntry.Succeeded(
+                            stepId("list-postings"),
+                            LedgerJournalStep.standard(LedgerStepKind.LIST_POSTINGS),
+                            startedAt,
+                            finishedAt,
+                            postingPageFactsWithReversal())))),
+            PlanResultDetail.FULL);
+
+    CliPlanJsonModels.PostingPageStepDataPayload postingPage =
+        assertInstanceOf(
+            CliPlanJsonModels.PostingPageStepDataPayload.class,
+            Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
+    assertEquals("prior-posting-1", postingPage.postings().getFirst().reversalTarget());
+  }
+
+  @Test
+  void ledgerPlanPayload_mapsPostingFactsWithoutReversalDetails() {
+    Instant startedAt = Instant.parse("2026-05-15T10:00:00Z");
+    Instant finishedAt = Instant.parse("2026-05-15T10:00:01Z");
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Succeeded(
+                planId("plan-3c"),
+                new LedgerExecutionJournal(
+                    startedAt,
+                    finishedAt,
+                    List.of(
+                        new LedgerJournalEntry.Succeeded(
+                            stepId("get-posting"),
+                            LedgerJournalStep.standard(LedgerStepKind.GET_POSTING),
+                            startedAt,
+                            finishedAt,
+                            postingFactsWithoutReversal())))),
+            PlanResultDetail.FULL);
+
+    CliPlanJsonModels.PostingStepDataPayload posting =
+        assertInstanceOf(
+            CliPlanJsonModels.PostingStepDataPayload.class,
+            Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
+    assertNull(posting.posting().reversal());
+    assertEquals("direct", posting.posting().reversalState());
+  }
+
   private static List<LedgerFact> preflightFacts() {
     return List.of(
         LedgerFact.text("idempotencyKey", "idem-1"),
@@ -234,6 +318,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     return List.of(
         LedgerFact.text("postingId", "posting-1"),
         LedgerFact.text("postingKind", "STANDARD"),
+        LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
         LedgerFact.text("reversalState", "reversal"),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -254,7 +339,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                     "sourceDocument",
                     List.of(
                         LedgerFact.text("sourceDocumentId", "document-idem-1"),
-                        LedgerFact.text("sourceDocumentType", "invoice"),
+                        LedgerFact.text("sourceDocumentType", "cash-receipt"),
                         LedgerFact.text("documentDate", "2026-05-14"),
                         LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
                         LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
@@ -267,7 +352,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                         LedgerFact.text("approvalId", "approval-idem-1"),
                         LedgerFact.text("approvalType", "manager-signoff"),
                         LedgerFact.text("approverId", "approver-1"),
-                        LedgerFact.text("approverType", "HUMAN"),
+                        LedgerFact.text("approverType", "PERSON"),
                         LedgerFact.text("decision", "APPROVED"),
                         LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))))),
         LedgerFact.group(
@@ -281,6 +366,147 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                 LedgerFact.text("accountCode", "1000"),
                 LedgerFact.text("side", "DEBIT"),
                 LedgerFact.money("amount", new MonetaryAmount("EUR", "1000")))));
+  }
+
+  private static List<LedgerFact> postingFactsWithoutReversal() {
+    return List.of(
+        LedgerFact.text("postingId", "posting-1"),
+        LedgerFact.text("postingKind", "STANDARD"),
+        LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+        LedgerFact.text("reversalState", "direct"),
+        LedgerFact.text("effectiveDate", "2026-05-14"),
+        LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
+        LedgerFact.group(
+            "provenance",
+            List.of(
+                LedgerFact.text("actorId", "actor-1"),
+                LedgerFact.text("actorType", "AGENT"),
+                LedgerFact.text("commandId", "command-1"),
+                LedgerFact.text("idempotencyKey", "idem-1"),
+                LedgerFact.text("causationId", "cause-1"),
+                LedgerFact.text("correlationId", "corr-1"),
+                LedgerFact.text("sourceChannel", "CLI"))),
+        LedgerFact.group(
+            "evidence",
+            List.of(
+                LedgerFact.group(
+                    "sourceDocument",
+                    List.of(
+                        LedgerFact.text("sourceDocumentId", "document-idem-1"),
+                        LedgerFact.text("sourceDocumentType", "cash-receipt"),
+                        LedgerFact.text("documentDate", "2026-05-14"),
+                        LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
+                        LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
+                        LedgerFact.text(
+                            "contentSha256",
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                LedgerFact.group(
+                    "approval",
+                    List.of(
+                        LedgerFact.text("approvalId", "approval-idem-1"),
+                        LedgerFact.text("approvalType", "manager-signoff"),
+                        LedgerFact.text("approverId", "approver-1"),
+                        LedgerFact.text("approverType", "PERSON"),
+                        LedgerFact.text("decision", "APPROVED"),
+                        LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))))),
+        LedgerFact.group(
+            "line",
+            List.of(
+                LedgerFact.text("accountCode", "1000"),
+                LedgerFact.text("side", "DEBIT"),
+                LedgerFact.money("amount", new MonetaryAmount("EUR", "1000")))));
+  }
+
+  private static List<LedgerFact> postingPageFactsWithoutReversal() {
+    List<LedgerFact> evidenceFacts =
+        List.of(
+            LedgerFact.group(
+                "sourceDocument",
+                List.of(
+                    LedgerFact.text("sourceDocumentId", "document-idem-1"),
+                    LedgerFact.text("sourceDocumentType", "cash-receipt"),
+                    LedgerFact.text("documentDate", "2026-05-14"),
+                    LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
+                    LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
+                    LedgerFact.text(
+                        "contentSha256",
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+            LedgerFact.group(
+                "approval",
+                List.of(
+                    LedgerFact.text("approvalId", "approval-idem-1"),
+                    LedgerFact.text("approvalType", "manager-signoff"),
+                    LedgerFact.text("approverId", "approver-1"),
+                    LedgerFact.text("approverType", "PERSON"),
+                    LedgerFact.text("decision", "APPROVED"),
+                    LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))));
+    List<LedgerFact> postingFacts =
+        List.of(
+            LedgerFact.text("postingId", "posting-1"),
+            LedgerFact.text("postingKind", "STANDARD"),
+            LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+            LedgerFact.text("reversalState", "direct"),
+            LedgerFact.text("effectiveDate", "2026-05-14"),
+            LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
+            LedgerFact.money("debitTotal", new MonetaryAmount("EUR", "1000")),
+            LedgerFact.money("creditTotal", new MonetaryAmount("EUR", "1000")),
+            LedgerFact.text("accountCode", "1000"),
+            LedgerFact.text("accountCode", "2000"),
+            LedgerFact.group("evidence", evidenceFacts));
+    return List.of(
+        LedgerFact.count("count", 1),
+        LedgerFact.count("pageLimit", 10),
+        LedgerFact.flag("hasMore", false),
+        LedgerFact.group("posting", postingFacts));
+  }
+
+  private static List<LedgerFact> postingPageFactsWithReversal() {
+    List<LedgerFact> evidenceFacts =
+        List.of(
+            LedgerFact.group(
+                "sourceDocument",
+                List.of(
+                    LedgerFact.text("sourceDocumentId", "document-idem-1"),
+                    LedgerFact.text("sourceDocumentType", "cash-receipt"),
+                    LedgerFact.text("documentDate", "2026-05-14"),
+                    LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
+                    LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
+                    LedgerFact.text(
+                        "contentSha256",
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+            LedgerFact.group(
+                "approval",
+                List.of(
+                    LedgerFact.text("approvalId", "approval-idem-1"),
+                    LedgerFact.text("approvalType", "manager-signoff"),
+                    LedgerFact.text("approverId", "approver-1"),
+                    LedgerFact.text("approverType", "PERSON"),
+                    LedgerFact.text("decision", "APPROVED"),
+                    LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))));
+    List<LedgerFact> postingFacts =
+        List.of(
+            LedgerFact.text("postingId", "posting-1"),
+            LedgerFact.text("postingKind", "STANDARD"),
+            LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+            LedgerFact.text("reversalState", "reversal"),
+            LedgerFact.text("priorPostingId", "prior-posting-1"),
+            LedgerFact.text("effectiveDate", "2026-05-14"),
+            LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
+            LedgerFact.money("debitTotal", new MonetaryAmount("EUR", "1000")),
+            LedgerFact.money("creditTotal", new MonetaryAmount("EUR", "1000")),
+            LedgerFact.text("accountCode", "1000"),
+            LedgerFact.text("accountCode", "2000"),
+            LedgerFact.group("evidence", evidenceFacts),
+            LedgerFact.group(
+                "reversal",
+                List.of(
+                    LedgerFact.text("priorPostingId", "prior-posting-1"),
+                    LedgerFact.text("reason", "operator reversal"))));
+    return List.of(
+        LedgerFact.count("count", 1),
+        LedgerFact.count("pageLimit", 10),
+        LedgerFact.flag("hasMore", false),
+        LedgerFact.group("posting", postingFacts));
   }
 
   private static List<LedgerFact> accountBalanceFacts() {

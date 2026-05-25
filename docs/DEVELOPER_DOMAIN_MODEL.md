@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -148,7 +148,7 @@ Current accounting-standards scope:
 - the current built-in reporting surface is financial position, income statement, and changes in
   equity
 - comparative windows and comparative payload data for those built-in statements are derived from
-  one book's declared fiscal-year anchor through the built-in bookkeeping policy profile
+  one book's declared fiscal-year anchor through the built-in bookkeeping kernel
 - statement of cash flows, OCI, note/disclosure packages, and multi-currency translation remain
   separate future domains
 - tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent

@@ -66,7 +66,7 @@ public final class JazzerFindingSupport {
     return ReplayFindingClassification.fromOutcome(outcome);
   }
 
-  /** Returns the human-readable replay message associated with one raw finding classification. */
+  /** Returns the readable replay message associated with one raw finding classification. */
   public static String replayMessage(ReplayOutcome outcome) {
     return Objects.requireNonNull(outcome, "outcome must not be null").message();
   }

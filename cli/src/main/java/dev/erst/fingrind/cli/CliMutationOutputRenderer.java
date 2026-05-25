@@ -1,24 +1,24 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
 
-/** Shared human-readable rendering for administrative and write command successes. */
+/** Shared plain-language rendering for administrative and write command successes. */
 final class CliMutationOutputRenderer {
   private CliMutationOutputRenderer() {}
 
-  static String renderGeneratedBookKeyFileHuman(
+  static String renderGeneratedBookKeyFileText(
       SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile) {
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated",
@@ -30,16 +30,16 @@ final class CliMutationOutputRenderer {
                 List.of("Permissions", generatedKeyFile.permissions()))));
   }
 
-  static String renderOpenBookHuman(Path bookFilePath, OpenBookResult.Opened opened) {
+  static String renderOpenBookText(Path bookFilePath, OpenBookResult.Opened opened) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", absolutePath(bookFilePath)));
     rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
-    rows.add(List.of("Initialized at", CliHumanDisplay.instant(opened.initializedAt())));
+    rows.add(List.of("Initialized at", CliTextDisplay.instant(opened.initializedAt())));
     return CliTextFormat.renderTitledBlock(
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderRekeyBookHuman(
+  static String renderRekeyBookText(
       RekeyBookResult.Rekeyed rekeyed, BookAccess.PassphraseSource replacementPassphraseSource) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", absolutePath(rekeyed.bookFilePath())));
@@ -53,7 +53,7 @@ final class CliMutationOutputRenderer {
         "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderBackupBookHuman(BackupBookResult.BackedUp backedUp) {
+  static String renderBackupBookText(BackupBookResult.BackedUp backedUp) {
     return CliTextFormat.renderTitledBlock(
         "Book Backed Up",
         CliTextFormat.renderKeyValueBlock(
@@ -63,7 +63,7 @@ final class CliMutationOutputRenderer {
                 List.of("Backup key file", absolutePath(backedUp.backupBookKeyFilePath())))));
   }
 
-  static String renderRestoreBookHuman(RestoreBookResult.Restored restored) {
+  static String renderRestoreBookText(RestoreBookResult.Restored restored) {
     return CliTextFormat.renderTitledBlock(
         "Book Restored",
         CliTextFormat.renderKeyValueBlock(
@@ -73,7 +73,7 @@ final class CliMutationOutputRenderer {
                 List.of("Book key file", absolutePath(restored.backupBookKeyFilePath())))));
   }
 
-  static String renderInspectRekeyRollbackHuman(RekeyRollbackResult.Inspected inspected) {
+  static String renderInspectRekeyRollbackText(RekeyRollbackResult.Inspected inspected) {
     String rollbackArtifacts =
         inspected.rollbackArtifactPaths().isEmpty()
             ? "(none)"
@@ -88,7 +88,7 @@ final class CliMutationOutputRenderer {
                 List.of("Rollback artifacts", rollbackArtifacts))));
   }
 
-  static String renderRestoreRekeyRollbackHuman(RekeyRollbackResult.Restored restored) {
+  static String renderRestoreRekeyRollbackText(RekeyRollbackResult.Restored restored) {
     return CliTextFormat.renderTitledBlock(
         "Book Restored From Rollback",
         CliTextFormat.renderKeyValueBlock(
@@ -97,7 +97,7 @@ final class CliMutationOutputRenderer {
                 List.of("Rollback artifact", absolutePath(restored.rollbackArtifactPath())))));
   }
 
-  static String renderDeleteRekeyRollbackHuman(RekeyRollbackResult.Deleted deleted) {
+  static String renderDeleteRekeyRollbackText(RekeyRollbackResult.Deleted deleted) {
     return CliTextFormat.renderTitledBlock(
         "Rollback Artifact Deleted",
         CliTextFormat.renderKeyValueBlock(
@@ -106,7 +106,7 @@ final class CliMutationOutputRenderer {
                 List.of("Rollback artifact", absolutePath(deleted.rollbackArtifactPath())))));
   }
 
-  static String renderDeclaredAccountHuman(DeclaredAccount account) {
+  static String renderDeclaredAccountText(DeclaredAccount account) {
     return CliTextFormat.renderTitledBlock(
         "Account Declared",
         CliTextFormat.renderKeyValueBlock(
@@ -144,32 +144,37 @@ final class CliMutationOutputRenderer {
                     "Normal balance",
                     CliQueryOutputFormatter.displayNormalBalanceLabel(account.normalBalance())),
                 List.of("Active", CliQueryOutputFormatter.displayBooleanLabel(account.active())),
-                List.of("Declared at", CliHumanDisplay.instant(account.declaredAt())))));
+                List.of("Declared at", CliTextDisplay.instant(account.declaredAt())))));
   }
 
-  static String renderClosedPeriodHuman(ClosedPeriod closedPeriod) {
+  static String renderTransferredPeriodResultText(TransferredPeriodResult transferredPeriodResult) {
     List<List<String>> rows = new java.util.ArrayList<>();
-    rows.add(List.of("Close order", Integer.toString(closedPeriod.closeOrder())));
+    rows.add(List.of("Transfer order", Integer.toString(transferredPeriodResult.transferOrder())));
     rows.add(
         List.of(
             "Effective date range",
-            closedPeriod.reportingPeriod().effectiveDateFrom()
+            transferredPeriodResult.reportingPeriod().effectiveDateFrom()
                 + " to "
-                + closedPeriod.reportingPeriod().effectiveDateTo()));
-    rows.add(List.of("Closing equity account", closedPeriod.closingEquityAccountCode().value()));
+                + transferredPeriodResult.reportingPeriod().effectiveDateTo()));
     rows.add(
         List.of(
-            "Closed totals", CliQueryOutputFormatter.joinedBalances(closedPeriod.closedTotals())));
-    rows.add(List.of("Closed at", CliHumanDisplay.instant(closedPeriod.closedAt())));
+            "Result-holding account", transferredPeriodResult.resultHoldingAccountCode().value()));
+    rows.add(
+        List.of(
+            "Transferred totals",
+            CliQueryOutputFormatter.joinedBalances(transferredPeriodResult.transferredTotals())));
+    rows.add(
+        List.of("Transferred at", CliTextDisplay.instant(transferredPeriodResult.transferredAt())));
     rows.add(
         List.of(
             "Closing postings",
-            closedPeriod.closingPostingIds().isEmpty()
+            transferredPeriodResult.transferPostingIds().isEmpty()
                 ? "(none)"
-                : closedPeriod.closingPostingIds().stream()
+                : transferredPeriodResult.transferPostingIds().stream()
                     .map(dev.erst.fingrind.core.PostingId::value)
                     .collect(java.util.stream.Collectors.joining(", "))));
-    if (closedPeriod.closedTotals().isEmpty() && closedPeriod.closingPostingIds().isEmpty()) {
+    if (transferredPeriodResult.transferredTotals().isEmpty()
+        && transferredPeriodResult.transferPostingIds().isEmpty()) {
       rows.add(
           List.of(
               "Outcome", "No closing movements were required for the selected reporting period."));
@@ -178,7 +183,7 @@ final class CliMutationOutputRenderer {
         "Period Closed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderPreflightAcceptedHuman(PostEntryResult.PreflightAccepted accepted) {
+  static String renderPreflightAcceptedText(PostEntryResult.PreflightAccepted accepted) {
     return CliTextFormat.renderTitledBlock(
         "Entry Preflight Accepted",
         CliTextFormat.renderKeyValueBlock(
@@ -187,7 +192,7 @@ final class CliMutationOutputRenderer {
                 List.of("Effective date", accepted.effectiveDate().toString()))));
   }
 
-  static String renderCommittedHuman(PostEntryResult.Committed committed) {
+  static String renderCommittedText(PostEntryResult.Committed committed) {
     return CliTextFormat.renderTitledBlock(
         "Entry Committed",
         CliTextFormat.renderKeyValueBlock(
@@ -195,15 +200,15 @@ final class CliMutationOutputRenderer {
                 List.of("Posting id", committed.postingId().value()),
                 List.of("Idempotency key", committed.idempotencyKey().value()),
                 List.of("Effective date", committed.effectiveDate().toString()),
-                List.of("Recorded at", CliHumanDisplay.instant(committed.recordedAt())))));
+                List.of("Recorded at", CliTextDisplay.instant(committed.recordedAt())))));
   }
 
   private static String absolutePath(Path path) {
-    return CliHumanDisplay.path(path);
+    return CliTextDisplay.path(path);
   }
 
   private static String absolutePath(PublicPathHint pathHint) {
-    return CliHumanDisplay.path(pathHint);
+    return CliTextDisplay.path(pathHint);
   }
 
   private static String displayPassphraseSourceKind(BookAccess.PassphraseSource passphraseSource) {

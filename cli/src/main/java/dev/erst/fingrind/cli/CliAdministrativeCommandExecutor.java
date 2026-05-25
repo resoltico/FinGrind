@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Executes administrative CLI commands that mutate book setup or key material. */
@@ -40,6 +41,15 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.openBook(bookAccess, command),
         outputMode,
@@ -50,6 +60,16 @@ final class CliAdministrativeCommandExecutor {
 
   int runRekeyBookCommand(
       BookAccess bookAccess, PassphraseSource replacementPassphraseSource, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                outputMode, bookAccess.passphraseSource(), replacementPassphraseSource)
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
         outputMode,
@@ -64,6 +84,15 @@ final class CliAdministrativeCommandExecutor {
       Path backupFilePath,
       Path backupBookKeyFilePath,
       OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
         outputMode,
@@ -96,6 +125,15 @@ final class CliAdministrativeCommandExecutor {
       @Nullable Path rollbackArtifactPath,
       PassphraseSource expectedPassphraseSource,
       OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, expectedPassphraseSource)
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.restoreRekeyRollback(
             bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
@@ -107,6 +145,15 @@ final class CliAdministrativeCommandExecutor {
 
   int runDeleteRekeyRollbackCommand(
       BookAccess bookAccess, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
         outputMode,
@@ -116,6 +163,15 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.declareAccount(bookAccess, command),
@@ -125,12 +181,22 @@ final class CliAdministrativeCommandExecutor {
         responseWriter);
   }
 
-  int runClosePeriodCommand(
+  int runPeriodResultTransferCommand(
       BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.closePeriod(bookAccess, new ClosePeriodCommand(reportingPeriod)),
+        bookWorkflow.transferPeriodResult(
+            bookAccess, new PeriodResultTransferCommand(reportingPeriod)),
         outputMode,
-        result -> responseWriter.writeClosePeriodResult(result, outputMode),
+        result -> responseWriter.writePeriodResultTransferResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }

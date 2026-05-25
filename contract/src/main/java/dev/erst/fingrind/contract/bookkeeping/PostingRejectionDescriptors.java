@@ -34,16 +34,18 @@ final class PostingRejectionDescriptors {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case PostingRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations _ -> Descriptor.ACCOUNT_STATE_VIOLATIONS;
+      case PostingRejection.EntrySemanticsViolations _ -> Descriptor.ENTRY_SEMANTICS_VIOLATIONS;
       case PostingRejection.DuplicateIdempotencyKey _ -> Descriptor.DUPLICATE_IDEMPOTENCY_KEY;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
-      case PostingRejection.ClosedPeriodViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.TransferredPeriodResultViolation _ ->
+          Descriptor.CLOSED_PERIOD_VIOLATION;
       case PostingRejection.OpeningBalanceWindowClosed _ ->
           Descriptor.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           Descriptor.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.ClosingEquityAccountReserved _ ->
-          Descriptor.CLOSING_EQUITY_ACCOUNT_RESERVED;
+      case PostingRejection.ResultHoldingAccountReserved _ ->
+          Descriptor.RESULT_HOLDING_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ -> Descriptor.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ -> Descriptor.REVERSAL_ALREADY_EXISTS;
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
@@ -65,12 +67,13 @@ final class PostingRejectionDescriptors {
   enum Descriptor {
     BOOK_NOT_INITIALIZED,
     ACCOUNT_STATE_VIOLATIONS,
+    ENTRY_SEMANTICS_VIOLATIONS,
     DUPLICATE_IDEMPOTENCY_KEY,
     BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
     CLOSED_PERIOD_VIOLATION,
     OPENING_BALANCE_WINDOW_CLOSED,
     OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-    CLOSING_EQUITY_ACCOUNT_RESERVED,
+    RESULT_HOLDING_ACCOUNT_RESERVED,
     REVERSAL_TARGET_NOT_FOUND,
     REVERSAL_ALREADY_EXISTS,
     REVERSAL_DOES_NOT_NEGATE_TARGET;
@@ -79,12 +82,13 @@ final class PostingRejectionDescriptors {
       return switch (this) {
         case BOOK_NOT_INITIALIZED -> "posting-book-not-initialized";
         case ACCOUNT_STATE_VIOLATIONS -> "account-state-violations";
+        case ENTRY_SEMANTICS_VIOLATIONS -> "entry-semantics-violations";
         case DUPLICATE_IDEMPOTENCY_KEY -> "duplicate-idempotency-key";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH -> "book-functional-currency-mismatch";
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
         case OPENING_BALANCE_WINDOW_CLOSED -> "opening-balance-window-closed";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT -> "opening-balance-touches-nominal-account";
-        case CLOSING_EQUITY_ACCOUNT_RESERVED -> "closing-equity-account-reserved";
+        case RESULT_HOLDING_ACCOUNT_RESERVED -> "result-holding-account-reserved";
         case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
         case REVERSAL_ALREADY_EXISTS -> "reversal-already-exists";
         case REVERSAL_DOES_NOT_NEGATE_TARGET -> "reversal-does-not-negate-target";
@@ -99,18 +103,20 @@ final class PostingRejectionDescriptors {
                 + ".";
         case ACCOUNT_STATE_VIOLATIONS ->
             "Posting refused because one or more journal lines reference undeclared or inactive accounts.";
+        case ENTRY_SEMANTICS_VIOLATIONS ->
+            "Posting refused because the selected typed entry contradicts its own published accounting semantics.";
         case DUPLICATE_IDEMPOTENCY_KEY ->
             "Posting refused because the selected book already contains the same idempotency key.";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
             "Posting refused because the journal-entry currency does not match the selected book functional currency.";
         case CLOSED_PERIOD_VIOLATION ->
-            "Posting refused because its effective date falls inside one closed reporting period.";
+            "Posting refused because its effective date falls inside one transferred reporting period.";
         case OPENING_BALANCE_WINDOW_CLOSED ->
             "Posting refused because opening-balance entries are allowed only before the first committed posting in the selected book.";
         case OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT ->
             "Posting refused because opening-balance entries may seed only asset, liability, or equity accounts.";
-        case CLOSING_EQUITY_ACCOUNT_RESERVED ->
-            "Posting refused because the closing-equity account is reserved for generated period-close postings.";
+        case RESULT_HOLDING_ACCOUNT_RESERVED ->
+            "Posting refused because the result-holding account is reserved for generated period-result-transfer postings.";
         case REVERSAL_TARGET_NOT_FOUND ->
             "Posting refused because reversal.priorPostingId does not identify a committed posting in this book.";
         case REVERSAL_ALREADY_EXISTS ->
@@ -128,6 +134,11 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "violations",
                     "Array of per-line account-state issue objects with stable code and accountCode."));
+        case ENTRY_SEMANTICS_VIOLATIONS ->
+            List.of(
+                detailField(
+                    "violations",
+                    "Array of typed-entry semantic issue objects with stable code, field, and message."));
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
             List.of(
                 detailField(
@@ -138,7 +149,7 @@ final class PostingRejectionDescriptors {
         case CLOSED_PERIOD_VIOLATION ->
             List.of(
                 detailField(
-                    "closedThroughEffectiveDate",
+                    "transferredThroughEffectiveDate",
                     "Inclusive effective date through which postings are already closed."),
                 detailField(
                     "attemptedEffectiveDate", "Rejected effective date from the posting request."));
@@ -158,11 +169,11 @@ final class PostingRejectionDescriptors {
                 detailField(
                     "accountType",
                     "Nominal accountType that opening-balance postings are not allowed to touch."));
-        case CLOSING_EQUITY_ACCOUNT_RESERVED ->
+        case RESULT_HOLDING_ACCOUNT_RESERVED ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Closing-equity accountCode reserved for generated period-close postings."));
+                    "Closing-equity accountCode reserved for generated period-result-transfer postings."));
         case REVERSAL_TARGET_NOT_FOUND ->
             List.of(
                 detailField(
@@ -185,12 +196,13 @@ final class PostingRejectionDescriptors {
       return switch (this) {
         case ACCOUNT_STATE_VIOLATIONS -> AccountStateDetailDescriptor.descriptors();
         case BOOK_NOT_INITIALIZED,
+            ENTRY_SEMANTICS_VIOLATIONS,
             DUPLICATE_IDEMPOTENCY_KEY,
             BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
             OPENING_BALANCE_WINDOW_CLOSED,
             OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-            CLOSING_EQUITY_ACCOUNT_RESERVED,
+            RESULT_HOLDING_ACCOUNT_RESERVED,
             REVERSAL_TARGET_NOT_FOUND,
             REVERSAL_ALREADY_EXISTS,
             REVERSAL_DOES_NOT_NEGATE_TARGET ->
@@ -206,13 +218,14 @@ final class PostingRejectionDescriptors {
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
       return List.of(
               BOOK_NOT_INITIALIZED,
+              ENTRY_SEMANTICS_VIOLATIONS,
               ACCOUNT_STATE_VIOLATIONS,
               DUPLICATE_IDEMPOTENCY_KEY,
               BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
               CLOSED_PERIOD_VIOLATION,
               OPENING_BALANCE_WINDOW_CLOSED,
               OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-              CLOSING_EQUITY_ACCOUNT_RESERVED,
+              RESULT_HOLDING_ACCOUNT_RESERVED,
               REVERSAL_TARGET_NOT_FOUND,
               REVERSAL_ALREADY_EXISTS,
               REVERSAL_DOES_NOT_NEGATE_TARGET)

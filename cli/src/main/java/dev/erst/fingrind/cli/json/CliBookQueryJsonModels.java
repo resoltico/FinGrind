@@ -88,6 +88,7 @@ public interface CliBookQueryJsonModels {
   record PostingPayload(
       String postingId,
       String postingKind,
+      String postingOriginKind,
       String reversalState,
       String effectiveDate,
       String recordedAt,
@@ -105,6 +106,7 @@ public interface CliBookQueryJsonModels {
     public PostingPayload {
       postingId = requireText(postingId, "postingId");
       postingKind = requireText(postingKind, "postingKind");
+      postingOriginKind = requireText(postingOriginKind, "postingOriginKind");
       reversalState = requireText(reversalState, "reversalState");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
@@ -117,6 +119,35 @@ public interface CliBookQueryJsonModels {
       sourceChannel = requireText(sourceChannel, "sourceChannel");
       Objects.requireNonNull(evidence, "evidence");
       lines = copyList(lines, "lines");
+    }
+  }
+
+  record PostingSummaryPayload(
+      String postingId,
+      String postingKind,
+      String postingOriginKind,
+      String reversalState,
+      @Nullable String reversalTarget,
+      String effectiveDate,
+      String recordedAt,
+      MonetaryAmount debitTotal,
+      MonetaryAmount creditTotal,
+      List<String> accountCodes,
+      List<String> sourceDocumentIds,
+      List<String> approvalIds) {
+    public PostingSummaryPayload {
+      postingId = requireText(postingId, "postingId");
+      postingKind = requireText(postingKind, "postingKind");
+      postingOriginKind = requireText(postingOriginKind, "postingOriginKind");
+      reversalState = requireText(reversalState, "reversalState");
+      reversalTarget = requireOptionalText(reversalTarget, "reversalTarget");
+      effectiveDate = requireText(effectiveDate, "effectiveDate");
+      recordedAt = requireText(recordedAt, "recordedAt");
+      Objects.requireNonNull(debitTotal, "debitTotal");
+      Objects.requireNonNull(creditTotal, "creditTotal");
+      accountCodes = copyList(accountCodes, "accountCodes");
+      sourceDocumentIds = copyList(sourceDocumentIds, "sourceDocumentIds");
+      approvalIds = copyList(approvalIds, "approvalIds");
     }
   }
 
@@ -172,7 +203,7 @@ public interface CliBookQueryJsonModels {
       PostingQueryContextPayload context,
       int limit,
       @Nullable String nextCursor,
-      List<PostingPayload> postings)
+      List<PostingSummaryPayload> postings)
       implements CliSuccessPayload {
     public PostingListPayload {
       Objects.requireNonNull(context, "context");

@@ -233,7 +233,7 @@ class SqliteFuzzAssertionsTest {
             "1000",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-1",
-                "invoice",
+                "cash-receipt",
                 "2026-04-07",
                 "actor-1",
                 "AGENT",

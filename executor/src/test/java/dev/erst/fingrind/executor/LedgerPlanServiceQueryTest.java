@@ -125,7 +125,7 @@ class LedgerPlanServiceQueryTest {
                                               "sourceDocumentId",
                                               "document-idem-setup",
                                               "sourceDocumentType",
-                                              "invoice"))));
+                                              "cash-receipt"))));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(
@@ -182,7 +182,7 @@ class LedgerPlanServiceQueryTest {
                                                               "sourceDocumentId",
                                                               "document-idem-setup",
                                                               "sourceDocumentType",
-                                                              "invoice")))));
+                                                              "cash-receipt")))));
 
       List<LedgerFact> balanceFacts = result.journal().steps().get(3).facts();
       assertTrue(

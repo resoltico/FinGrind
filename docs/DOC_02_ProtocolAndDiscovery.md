@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -100,7 +100,7 @@ public enum ExecutionMode implements WireValue
 public enum OutputMode implements WireValue
 ```
 
-- Members: `JSON`, `HUMAN`, `CSV`
+- Members: `JSON`, `TEXT`, `CSV`
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
@@ -160,7 +160,7 @@ public enum DiscoveryDetail implements WireValue
 - Members: `COMPACT`, `FULL`
 - Purpose: keep discovery detail selection consistent across the parser, discovery contract,
   help payloads, capabilities payloads, and public documentation
-- Boundary: accepted on JSON discovery surfaces only; human discovery surfaces reject it instead
+- Boundary: accepted on JSON discovery surfaces only; text discovery surfaces reject it instead
   of silently ignoring it
 
 ## `ProtocolContractSchemaKeys`
@@ -320,7 +320,7 @@ public final class SqliteRuntimeStateValidator
   consume the same protocol-owned runtime-surface contract instead of carrying private copies of
   those wire values
 
-## `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `AccountingPolicyProfileFacts`, `PreflightFacts`, And `PlanExecutionFacts`
+## `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts`
 
 These typed records publish FinGrind's hard public model facts.
 
@@ -329,7 +329,6 @@ public record BookModelFacts(...)
 public record CurrencyFacts(...)
 public record BookkeepingKernelFacts(...)
 public record ReportCapabilityFacts(...)
-public record AccountingPolicyProfileFacts(...)
 public record PreflightFacts(...)
 public record PlanExecutionFacts(...)
 ```
@@ -341,12 +340,10 @@ public record PlanExecutionFacts(...)
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
   and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
 - `BookkeepingKernelFacts`: publishes the live executable kernel scope, the built-in statement
-  inventory, the per-report capability inventory, the persisted policy-profile identity, and the
-  concise machine description of the shipped bookkeeping kernel
+  inventory, the per-report capability inventory, and the concise machine description of the
+  shipped bookkeeping kernel
 - `ReportCapabilityFacts`: publishes the statement id, comparative support flag, and contract
   description for each built-in report
-- `AccountingPolicyProfileFacts`: publishes the persisted policy-profile id, display name, and the
-  machine description of that profile
 
 ## `MonetaryAmount`
 
@@ -431,11 +428,11 @@ public final class MachineContract
   `./bin/fingrind` or `.\bin\fingrind.ps1`; request-file commands additionally inline the
   canonical request template, accepted field tables, and enum vocabularies so a caller can form a
   valid payload from the CLI alone
-- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic runnable sample
-  documents with demo evidence and provenance values, while the CLI raw-template commands now
-  route both help snippets and `print-request-template` / `print-plan-template` through the same
-  canonical serializer so checked-in template fixtures remain byte-identical to live command
-  output without drifting into stale placeholder doctrine
+- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic placeholder-first
+  sample documents, while the CLI raw-template commands now route both help snippets and
+  `print-request-template` / `print-plan-template` through the same canonical serializer so
+  checked-in template fixtures remain byte-identical to live command output without drifting away
+  from the placeholder scaffold contract
 
 ## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 
@@ -584,7 +581,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 17`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 20`
 
 ## `ProtectedBookFormatContract`
 

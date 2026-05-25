@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.policy;
 
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.Objects;
@@ -9,11 +8,12 @@ import org.jspecify.annotations.NullMarked;
 
 /** Current FinGrind bookkeeping policy pack for the built-in internal-management kernel. */
 @NullMarked
-public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
-  private static final CoreBookkeepingPolicyPack CURRENT = new CoreBookkeepingPolicyPack();
+public final class InternalManagementKernelAccountingRules implements KernelAccountingRules {
+  private static final InternalManagementKernelAccountingRules CURRENT =
+      new InternalManagementKernelAccountingRules();
   private static final ChartPolicy CHART_POLICY = () -> true;
-  private static final ClosePolicy CLOSE_POLICY =
-      new ClosePolicy() {
+  private static final ResultTransferPolicy CLOSE_POLICY =
+      new ResultTransferPolicy() {
         @Override
         public boolean closesAccountType(AccountType accountType) {
           return switch (accountType) {
@@ -23,10 +23,10 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
         }
 
         @Override
-        public FinancialPositionLineClassification closingEquityLineClassification(
+        public FinancialPositionLineClassification resultHoldingLineClassification(
             BookIdentity bookIdentity) {
           Objects.requireNonNull(bookIdentity, "bookIdentity");
-          return FinancialPositionLineClassification.ACCUMULATED_RESULT;
+          return FinancialPositionLineClassification.RESULT_HOLDING;
         }
       };
   private static final StatementPresentationPolicy STATEMENT_PRESENTATION_POLICY =
@@ -46,16 +46,11 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   private final StatementComparativePolicy statementComparativePolicy =
       new FiscalYearAnchoredStatementComparativePolicy();
 
-  private CoreBookkeepingPolicyPack() {}
+  private InternalManagementKernelAccountingRules() {}
 
   /** Returns the built-in bookkeeping policy pack. */
-  public static CoreBookkeepingPolicyPack current() {
+  public static InternalManagementKernelAccountingRules current() {
     return CURRENT;
-  }
-
-  @Override
-  public AccountingPolicyProfile profile() {
-    return AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1;
   }
 
   @Override
@@ -69,7 +64,7 @@ public final class CoreBookkeepingPolicyPack implements BookkeepingPolicyPack {
   }
 
   @Override
-  public ClosePolicy closePolicy() {
+  public ResultTransferPolicy resultTransferPolicy() {
     return CLOSE_POLICY;
   }
 

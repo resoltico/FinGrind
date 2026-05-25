@@ -60,7 +60,7 @@ final class CliBookPayloadMapper {
               migrationPolicyPayload(initialized.migrationPolicy()),
               initialized.initializedAt().toString(),
               bookIdentityPayload(initialized.bookIdentity()),
-              closeReadinessPayload(initialized.closeReadiness()));
+              resultTransferReadinessPayload(initialized.resultTransferReadiness()));
     };
   }
 
@@ -82,21 +82,20 @@ final class CliBookPayloadMapper {
             .map(value -> value.value())
             .toList(),
         bookIdentity.functionalCurrency().code(),
-        bookIdentity.fiscalYearStart().wireValue(),
-        bookIdentity.policyProfile().wireValue());
+        bookIdentity.fiscalYearStart().wireValue());
   }
 
-  static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(
-      BookInspection.CloseReadiness closeReadiness) {
-    return new CliAdministrationJsonModels.CloseReadinessPayload(
-        closeReadiness.ready(),
-        closeReadiness.requiredFinancialPositionLineClassification().wireValue(),
-        closeReadiness.closingEquityAccountCode() == null
+  static CliAdministrationJsonModels.ResultTransferReadinessPayload resultTransferReadinessPayload(
+      BookInspection.ResultTransferReadiness resultTransferReadiness) {
+    return new CliAdministrationJsonModels.ResultTransferReadinessPayload(
+        resultTransferReadiness.ready(),
+        resultTransferReadiness.requiredFinancialPositionLineClassification().wireValue(),
+        resultTransferReadiness.resultHoldingAccountCode() == null
             ? null
-            : closeReadiness.closingEquityAccountCode().value(),
-        closeReadiness.blockingCode(),
-        closeReadiness.blockingMessage(),
-        closeReadiness.candidateAccountCodes().stream().map(AccountCode::value).toList());
+            : resultTransferReadiness.resultHoldingAccountCode().value(),
+        resultTransferReadiness.blockingCode(),
+        resultTransferReadiness.blockingMessage(),
+        resultTransferReadiness.candidateAccountCodes().stream().map(AccountCode::value).toList());
   }
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
@@ -126,6 +125,7 @@ final class CliBookPayloadMapper {
     return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -153,6 +153,33 @@ final class CliBookPayloadMapper {
             .orElse(null),
         postingFact.journalEntry().lines().stream()
             .map(CliBookPayloadMapper::linePayload)
+            .toList());
+  }
+
+  static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      PostingFact postingFact) {
+    return new CliBookQueryJsonModels.PostingSummaryPayload(
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        postingFact.reversalReference().isPresent() ? "reversal" : "direct",
+        postingFact
+            .reversalReference()
+            .map(reference -> reference.priorPostingId().value())
+            .orElse(null),
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        MonetaryAmount.of(postingDebitTotal(postingFact)),
+        MonetaryAmount.of(postingCreditTotal(postingFact)),
+        postingFact.journalEntry().lines().stream()
+            .map(line -> line.accountCode().value())
+            .distinct()
+            .toList(),
+        postingFact.evidence().sourceDocuments().stream()
+            .map(sourceDocument -> sourceDocument.sourceDocumentId().value())
+            .toList(),
+        postingFact.evidence().approvals().stream()
+            .map(approval -> approval.approvalId().value())
             .toList());
   }
 
@@ -193,7 +220,7 @@ final class CliBookPayloadMapper {
             page.effectiveDateRange().effectiveDateTo().orElse(null)),
         page.limit(),
         page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
-        page.postings().stream().map(CliBookPayloadMapper::postingPayload).toList());
+        page.postings().stream().map(CliBookPayloadMapper::postingSummaryPayload).toList());
   }
 
   static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
@@ -266,6 +293,26 @@ final class CliBookPayloadMapper {
         approval.approverType().wireValue(),
         approval.decision().wireValue(),
         approval.approvedAt().toString());
+  }
+
+  private static dev.erst.fingrind.core.Money postingDebitTotal(PostingFact postingFact) {
+    long debitMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return dev.erst.fingrind.core.Money.ofMinorUnits(
+        postingFact.journalEntry().currencyUnit(), debitMinorUnits);
+  }
+
+  private static dev.erst.fingrind.core.Money postingCreditTotal(PostingFact postingFact) {
+    long creditMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return dev.erst.fingrind.core.Money.ofMinorUnits(
+        postingFact.journalEntry().currencyUnit(), creditMinorUnits);
   }
 
   private static String absolutePath(Path bookFilePath) {

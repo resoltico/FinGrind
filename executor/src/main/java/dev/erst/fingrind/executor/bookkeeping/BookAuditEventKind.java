@@ -14,8 +14,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   ACCOUNT_DECLARED("ACCOUNT_DECLARED") {
@@ -23,9 +24,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
+        @Nullable Integer periodResultTransferOrder) {
       Objects.requireNonNull(accountCode, "accountCode");
-      rejectPostingAndCloseOrder(wireValue(), postingId, periodCloseOrder);
+      rejectPostingAndCloseOrder(wireValue(), postingId, periodResultTransferOrder);
     }
   },
   ACCOUNT_REACTIVATED("ACCOUNT_REACTIVATED") {
@@ -33,9 +34,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
+        @Nullable Integer periodResultTransferOrder) {
       Objects.requireNonNull(accountCode, "accountCode");
-      rejectPostingAndCloseOrder(wireValue(), postingId, periodCloseOrder);
+      rejectPostingAndCloseOrder(wireValue(), postingId, periodResultTransferOrder);
     }
   },
   POSTING_COMMITTED("POSTING_COMMITTED") {
@@ -43,8 +44,8 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountAndCloseOrder(wireValue(), accountCode, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountAndCloseOrder(wireValue(), accountCode, periodResultTransferOrder);
       Objects.requireNonNull(postingId, "postingId");
     }
   },
@@ -53,8 +54,8 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountAndCloseOrder(wireValue(), accountCode, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountAndCloseOrder(wireValue(), accountCode, periodResultTransferOrder);
       Objects.requireNonNull(postingId, "postingId");
     }
   },
@@ -63,8 +64,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   BACKUP_CREATED("BACKUP_CREATED") {
@@ -72,8 +74,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   BACKUP_RESTORED("BACKUP_RESTORED") {
@@ -81,8 +84,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   REKEY_ROLLBACK_RESTORED("REKEY_ROLLBACK_RESTORED") {
@@ -90,8 +94,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   REKEY_ROLLBACK_DELETED("REKEY_ROLLBACK_DELETED") {
@@ -99,8 +104,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   BACKUP_CREATED_COMPENSATED("BACKUP_CREATED_COMPENSATED") {
@@ -108,8 +114,9 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
   REKEY_ROLLBACK_DELETED_COMPENSATED("REKEY_ROLLBACK_DELETED_COMPENSATED") {
@@ -117,18 +124,19 @@ public enum BookAuditEventKind implements WireValue {
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, periodCloseOrder);
+        @Nullable Integer periodResultTransferOrder) {
+      rejectAccountPostingAndCloseOrder(
+          wireValue(), accountCode, postingId, periodResultTransferOrder);
     }
   },
-  PERIOD_CLOSED("PERIOD_CLOSED") {
+  PERIOD_RESULT_TRANSFERRED("PERIOD_RESULT_TRANSFERRED") {
     @Override
     void validatePayload(
         @Nullable AccountCode accountCode,
         @Nullable PostingId postingId,
-        @Nullable Integer periodCloseOrder) {
+        @Nullable Integer periodResultTransferOrder) {
       rejectAccountAndPosting(wireValue(), accountCode, postingId);
-      Objects.requireNonNull(periodCloseOrder, "periodCloseOrder");
+      Objects.requireNonNull(periodResultTransferOrder, "periodResultTransferOrder");
     }
   };
 
@@ -151,32 +159,37 @@ public enum BookAuditEventKind implements WireValue {
   abstract void validatePayload(
       @Nullable AccountCode accountCode,
       @Nullable PostingId postingId,
-      @Nullable Integer periodCloseOrder);
+      @Nullable Integer periodResultTransferOrder);
 
   private static void rejectAccountPostingAndCloseOrder(
       String wireValue,
       @Nullable AccountCode accountCode,
       @Nullable PostingId postingId,
-      @Nullable Integer periodCloseOrder) {
-    if (accountCode != null || postingId != null || periodCloseOrder != null) {
+      @Nullable Integer periodResultTransferOrder) {
+    if (accountCode != null || postingId != null || periodResultTransferOrder != null) {
       throw new IllegalArgumentException(
-          wireValue + " audit events must not carry accountCode, postingId, or periodCloseOrder.");
+          wireValue
+              + " audit events must not carry accountCode, postingId, or periodResultTransferOrder.");
     }
   }
 
   private static void rejectPostingAndCloseOrder(
-      String wireValue, @Nullable PostingId postingId, @Nullable Integer periodCloseOrder) {
-    if (postingId != null || periodCloseOrder != null) {
+      String wireValue,
+      @Nullable PostingId postingId,
+      @Nullable Integer periodResultTransferOrder) {
+    if (postingId != null || periodResultTransferOrder != null) {
       throw new IllegalArgumentException(
-          wireValue + " audit events must not carry postingId or periodCloseOrder.");
+          wireValue + " audit events must not carry postingId or periodResultTransferOrder.");
     }
   }
 
   private static void rejectAccountAndCloseOrder(
-      String wireValue, @Nullable AccountCode accountCode, @Nullable Integer periodCloseOrder) {
-    if (accountCode != null || periodCloseOrder != null) {
+      String wireValue,
+      @Nullable AccountCode accountCode,
+      @Nullable Integer periodResultTransferOrder) {
+    if (accountCode != null || periodResultTransferOrder != null) {
       throw new IllegalArgumentException(
-          wireValue + " audit events must not carry accountCode or periodCloseOrder.");
+          wireValue + " audit events must not carry accountCode or periodResultTransferOrder.");
     }
   }
 

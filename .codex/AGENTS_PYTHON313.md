@@ -714,7 +714,7 @@ For SQLAlchemy, Django ORM, async ORMs, migrations, or raw SQL:
 For CLIs:
 
 - treat flags, env vars, config files, output, and exit codes as public contracts;
-- keep human-readable and machine-readable output distinct;
+- keep operator-readable and machine-readable output distinct;
 - avoid logging to stdout when stdout is data;
 - test help text only where it is a maintained contract;
 - preserve shell completion and packaging entry points.
@@ -746,7 +746,7 @@ Python-specific documentation rules:
 - use docstrings for local API semantics and AFAD-managed docs for broader contract theory;
 - inline comments are reserved for the *why* (per universal contract §1.5 Justification) — non-obvious invariants, safety constraints, framework gotchas, or external-contract reasons. Do not restate what the code says.
 
-Root `README.md` remains a storefront. Keep it human-first and link to detailed docs rather than turning it into a reference database.
+Root `README.md` remains a storefront. Keep it reader-first and link to detailed docs rather than turning it into a reference database.
 
 ---
 

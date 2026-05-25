@@ -6,7 +6,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -33,12 +32,11 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
-import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
@@ -47,6 +45,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
@@ -54,7 +53,7 @@ import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PeriodCloseStore;
+import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -79,7 +78,7 @@ public final class InMemoryBookSession
         BookkeepingReadStore,
         PostingValidationStore,
         PostingCommitStore,
-        PeriodCloseStore,
+        PeriodResultTransferStore,
         LedgerPlanTransaction,
         AutoCloseable {
   private final ReentrantLock lock = new ReentrantLock();
@@ -87,7 +86,7 @@ public final class InMemoryBookSession
   private final Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey = mutableMap();
   private final Map<PostingId, CommittedPosting> postingsByPostingId = mutableMap();
   private final Map<PostingId, CommittedPosting> reversalsByPriorPostingId = mutableMap();
-  private final List<ClosedPeriod> closedPeriods = new ArrayList<>();
+  private final List<TransferredPeriodResult> transferredPeriodResults = new ArrayList<>();
   private final PostingAcceptancePolicy postingAcceptancePolicy =
       PostingAcceptancePolicy.currentKernel();
   private @Nullable Snapshot transactionSnapshot;
@@ -97,8 +96,7 @@ public final class InMemoryBookSession
       new BookIdentity(
           new EntityProfile(new BookEntityName("FinGrind Test Entity"), List.of()),
           CurrencyUnit.of("USD"),
-          new FiscalYearStart(1, 1),
-          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+          new FiscalYearStart(1, 1));
 
   @Override
   public BookLifecycleInspection inspectBook() {
@@ -244,11 +242,13 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public Optional<LocalDate> closedThroughEffectiveDate() {
+  public Optional<LocalDate> transferredThroughEffectiveDate() {
     return withLock(
         () ->
-            closedPeriods.stream()
-                .map(closedPeriod -> closedPeriod.reportingPeriod().effectiveDateTo())
+            transferredPeriodResults.stream()
+                .map(
+                    transferredPeriodResult ->
+                        transferredPeriodResult.reportingPeriod().effectiveDateTo())
                 .max(Comparator.naturalOrder()));
   }
 
@@ -301,48 +301,49 @@ public final class InMemoryBookSession
             postingFact.journalEntry(),
             postingFact.postingLineage(),
             postingFact.postingKind(),
+            postingFact.postingOriginKind(),
             postingFact.evidence(),
             postingFact.provenance()),
         postingFact::postingId);
   }
 
   @Override
-  public PeriodCloseOutcome closePeriod(
-      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-    Objects.requireNonNull(periodCloseDraft, "periodCloseDraft");
+  public PeriodResultTransferOutcome transferPeriodResult(
+      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(periodResultTransferDraft, "periodResultTransferDraft");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     return withLock(
         () -> {
           if (!initialized) {
-            return new PeriodCloseOutcome.Rejected(
+            return new PeriodResultTransferOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized());
           }
 
           Snapshot rollbackSnapshot = snapshotState();
-          List<PostingId> closingPostingIds = new ArrayList<>();
+          List<PostingId> transferPostingIds = new ArrayList<>();
           boolean committed = false;
           try {
-            for (PostingDraft closingPostingDraft : periodCloseDraft.closingPostings()) {
+            for (PostingDraft closingPostingDraft : periodResultTransferDraft.closingPostings()) {
               PostingCommitResult commitResult = commit(closingPostingDraft, postingIdGenerator);
               if (commitResult instanceof PostingCommitResult.Rejected rejected) {
                 throw new IllegalStateException(
-                    "Generated period-close posting failed bookkeeping acceptance: "
+                    "Generated period-result-transfer posting failed bookkeeping acceptance: "
                         + rejected.rejection());
               }
-              closingPostingIds.add(
+              transferPostingIds.add(
                   ((PostingCommitResult.Committed) commitResult).postingFact().postingId());
             }
-            ClosedPeriod closedPeriod =
-                new ClosedPeriod(
-                    closedPeriods.size() + 1,
-                    periodCloseDraft.reportingPeriod(),
-                    periodCloseDraft.closingEquityAccountCode(),
-                    periodCloseDraft.closedTotals(),
-                    periodCloseDraft.closedAt(),
-                    closingPostingIds);
-            closedPeriods.add(closedPeriod);
+            TransferredPeriodResult transferredPeriodResult =
+                new TransferredPeriodResult(
+                    transferredPeriodResults.size() + 1,
+                    periodResultTransferDraft.reportingPeriod(),
+                    periodResultTransferDraft.resultHoldingAccountCode(),
+                    periodResultTransferDraft.transferredTotals(),
+                    periodResultTransferDraft.transferredAt(),
+                    transferPostingIds);
+            transferredPeriodResults.add(transferredPeriodResult);
             committed = true;
-            return new PeriodCloseOutcome.Closed(closedPeriod);
+            return new PeriodResultTransferOutcome.Transferred(transferredPeriodResult);
           } finally {
             if (!committed) {
               restoreSnapshot(rollbackSnapshot);
@@ -650,7 +651,7 @@ public final class InMemoryBookSession
                   Map.copyOf(postingsByIdempotencyKey),
                   Map.copyOf(postingsByPostingId),
                   Map.copyOf(reversalsByPriorPostingId),
-                  List.copyOf(closedPeriods));
+                  List.copyOf(transferredPeriodResults));
         });
   }
 
@@ -683,8 +684,8 @@ public final class InMemoryBookSession
           postingsByPostingId.putAll(snapshot.postingsByPostingId());
           reversalsByPriorPostingId.clear();
           reversalsByPriorPostingId.putAll(snapshot.reversalsByPriorPostingId());
-          closedPeriods.clear();
-          closedPeriods.addAll(snapshot.closedPeriods());
+          transferredPeriodResults.clear();
+          transferredPeriodResults.addAll(snapshot.transferredPeriodResults());
           transactionSnapshot = null;
         });
   }
@@ -849,7 +850,7 @@ public final class InMemoryBookSession
         Map.copyOf(postingsByIdempotencyKey),
         Map.copyOf(postingsByPostingId),
         Map.copyOf(reversalsByPriorPostingId),
-        List.copyOf(closedPeriods));
+        List.copyOf(transferredPeriodResults));
   }
 
   private void restoreSnapshot(Snapshot snapshot) {
@@ -864,8 +865,8 @@ public final class InMemoryBookSession
     postingsByPostingId.putAll(snapshot.postingsByPostingId());
     reversalsByPriorPostingId.clear();
     reversalsByPriorPostingId.putAll(snapshot.reversalsByPriorPostingId());
-    closedPeriods.clear();
-    closedPeriods.addAll(snapshot.closedPeriods());
+    transferredPeriodResults.clear();
+    transferredPeriodResults.addAll(snapshot.transferredPeriodResults());
   }
 
   /** Mutable debit and credit accumulators for one currency bucket. */
@@ -882,5 +883,5 @@ public final class InMemoryBookSession
       Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey,
       Map<PostingId, CommittedPosting> postingsByPostingId,
       Map<PostingId, CommittedPosting> reversalsByPriorPostingId,
-      List<ClosedPeriod> closedPeriods) {}
+      List<TransferredPeriodResult> transferredPeriodResults) {}
 }

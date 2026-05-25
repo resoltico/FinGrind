@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
-import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRules;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
@@ -23,8 +23,8 @@ final class BookkeepingStatementContext {
     return reportStore;
   }
 
-  BookkeepingPolicyPack policyPack() {
-    return BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity());
+  KernelAccountingRules accountingRules() {
+    return KernelAccountingRulesResolver.forBookIdentity(bookIdentity());
   }
 
   BookIdentity bookIdentity() {

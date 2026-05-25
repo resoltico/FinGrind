@@ -191,7 +191,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels {
       int pageLimit,
       @Nullable String nextCursor,
       boolean hasMore,
-      List<PostingPayload> postings)
+      List<PostingSummaryPayload> postings)
       implements LedgerStepDataPayload {
     public PostingPageStepDataPayload {
       nextCursor = requireOptionalText(nextCursor, "nextCursor");

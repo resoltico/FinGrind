@@ -15,17 +15,21 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsHelpWhenArgumentsAreEmpty() {
-    assertInstanceOf(Help.class, CliArguments.parse(new String[0]));
+    Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[0]));
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
   }
 
   @Test
   void parse_returnsCapabilitiesWhenCommandIsCapabilities() {
-    assertInstanceOf(Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
+    Capabilities command =
+        assertInstanceOf(Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
   }
 
   @Test
   void parse_returnsHelpForFlagAlias() {
-    assertInstanceOf(Help.class, CliArguments.parse(new String[] {"--help"}));
+    Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[] {"--help"}));
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
   }
 
   @Test
@@ -86,15 +90,13 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
-  void parse_rejectsDiscoveryDetailWhenCommandHelpResolvesToHumanOutput() {
+  void parse_rejectsDiscoveryDetailWhenCommandHelpResolvesToTextOutput() {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
             () ->
                 CliArguments.parse(
-                    new String[] {
-                      "post-entry", "--help", "--output", "human", "--detail", "full"
-                    }));
+                    new String[] {"post-entry", "--help", "--output", "text", "--detail", "full"}));
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--detail", exception.argument());

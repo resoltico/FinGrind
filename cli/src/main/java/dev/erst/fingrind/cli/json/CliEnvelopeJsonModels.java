@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -30,6 +31,15 @@ public interface CliEnvelopeJsonModels {
     }
   }
 
+  record PlanEnvelope<T extends ProtocolSuccessPayload>(
+      LedgerPlanStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
+    public PlanEnvelope {
+      status = requireValue(status, "status");
+      payload = requireValue(payload, "payload");
+      artifacts = artifacts == null ? null : java.util.List.copyOf(artifacts);
+    }
+  }
+
   record FailureEnvelope(
       ProtocolFailureStatus status,
       String code,
@@ -37,7 +47,7 @@ public interface CliEnvelopeJsonModels {
       @Nullable String hint,
       @Nullable String argument,
       CliErrorJsonModels.@Nullable ErrorDetails details) {
-    /** Creates one deterministic failure envelope for machine and human CLI output. */
+    /** Creates one deterministic failure envelope for machine and text CLI output. */
     public FailureEnvelope(
         ProtocolFailureStatus status,
         String code,
@@ -61,7 +71,7 @@ public interface CliEnvelopeJsonModels {
       @Nullable String hint,
       @Nullable String idempotencyKey,
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
-    /** Creates one deterministic rejection envelope for machine and human CLI output. */
+    /** Creates one deterministic rejection envelope for machine and text CLI output. */
     public RejectedEnvelope(
         ProtocolRejectionStatus status,
         String code,

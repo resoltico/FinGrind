@@ -222,6 +222,15 @@ class JazzerReplayInternalsTest {
                     new PostingRejection.UnknownAccount(accountCode),
                     new PostingRejection.InactiveAccount(accountCode)))));
     assertEquals(
+        PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.EntrySemanticsViolations(
+                java.util.List.of(
+                    new PostingRejection.EntrySemanticsViolation(
+                        "source-document-type-not-accepted",
+                        "evidence.sourceDocuments[].sourceDocumentType",
+                        "Cash revenue does not accept invoice evidence.")))));
+    assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
@@ -233,7 +242,7 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         JazzerReplayDetailsMapper.rejectionStatus(
-            new PostingRejection.ClosedPeriodViolation(
+            new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
@@ -246,9 +255,9 @@ class JazzerReplayInternalsTest {
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
-        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
         JazzerReplayDetailsMapper.rejectionStatus(
-            new PostingRejection.ClosingEquityAccountReserved(accountCode)));
+            new PostingRejection.ResultHoldingAccountReserved(accountCode)));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayDetailsMapper.rejectionStatus(
@@ -349,6 +358,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     command.evidence(),
                     new CommittedProvenance(
                         command.requestProvenance(),
@@ -477,8 +487,9 @@ class JazzerReplayInternalsTest {
     assertEquals(ReplayOutcomeKind.SUCCESS, ReplayOutcomeKind.fromWireValue("success"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("opening-balance-window-closed"));
-    assertTrue(PostingLifecycleStatus.wireValues().contains("closing-equity-account-reserved"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("result-holding-account-reserved"));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         PostingLifecycleStatus.fromWireValue("duplicate-idempotency-key"));
@@ -486,11 +497,14 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         PostingLifecycleStatus.fromWireValue("closed-period-violation"));
     assertEquals(
+        PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
+        PostingLifecycleStatus.fromWireValue("entry-semantics-violations"));
+    assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
         PostingLifecycleStatus.fromWireValue("opening-balance-window-closed"));
     assertEquals(
-        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
-        PostingLifecycleStatus.fromWireValue("closing-equity-account-reserved"));
+        PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.fromWireValue("result-holding-account-reserved"));
     assertEquals(
         Path.of("/tmp/project/src/fuzz/resources/example.json"),
         metadata.inputPath(Path.of("/tmp/project")));
@@ -558,6 +572,7 @@ class JazzerReplayInternalsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
@@ -575,7 +590,7 @@ class JazzerReplayInternalsTest {
         List.of(
             new SourceDocumentReference(
                 new SourceDocumentId("document-evidence-mismatch"),
-                new SourceDocumentType("invoice"),
+                new SourceDocumentType("cash-receipt"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T12:00:00Z"),
                 new StorageLocator("s3://evidence/document-evidence-mismatch.pdf"),

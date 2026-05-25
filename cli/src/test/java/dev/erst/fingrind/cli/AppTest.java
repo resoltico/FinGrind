@@ -144,7 +144,7 @@ class AppTest {
     try (PrintStream redirectedOut = new PrintStream(outputStream, false, StandardCharsets.UTF_8)) {
       System.setIn(new ByteArrayInputStream(new byte[0]));
       System.setOut(redirectedOut);
-      App.main(new String[] {"help", "--output", "human"});
+      App.main(new String[] {"help", "--output", "text"});
     } finally {
       System.setIn(previousStreams.in());
       System.setOut(previousStreams.out());

@@ -11,8 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -27,6 +25,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -52,7 +52,7 @@ import tools.jackson.databind.ObjectMapper;
 /** End-to-end CLI tests for read and report commands. */
 class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
   @Test
-  void run_executesHumanReadAndReportCommandsAgainstDefaultSqliteWorkflow() throws IOException {
+  void run_executesTextReadAndReportCommandsAgainstDefaultSqliteWorkflow() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path declareCashFile =
         writeNamedRequest(
@@ -129,7 +129,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--book-key-file",
           bookKeyFilePath.toString(),
           "--output",
-          "human"
+          "text"
         },
         "State");
     assertCommandOutputContains(
@@ -153,7 +153,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--posting-id",
           postingId,
           "--output",
-          "human"
+          "text"
         },
         "Posting id");
     assertCommandOutputContains(
@@ -168,7 +168,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocuments,approvals");
+        "effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions");
     assertCommandOutputContains(
         new String[] {
           "account-balance",
@@ -179,7 +179,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--account-code",
           "1000",
           "--output",
-          "human"
+          "text"
         },
         "Account");
     assertCommandOutputContains(
@@ -203,9 +203,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--account-code",
           "1000",
           "--output",
-          "human"
+          "text"
         },
-        "Source documents");
+        "Counterparts");
     assertCommandOutputContains(
         new String[] {
           "period-summary",
@@ -220,11 +220,11 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "recordKind,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
+        "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit");
   }
 
   @Test
-  void run_executesClosePeriodAndPrimaryStatementCommandsAgainstDefaultSqliteWorkflow()
+  void run_executesTransferPeriodResultAndPrimaryStatementCommandsAgainstDefaultSqliteWorkflow()
       throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path declareCashFile =
@@ -236,7 +236,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         writeNamedRequest(
             "close-declare-retained-earnings.json",
             declareAccountJson(
-                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "ACCUMULATED_RESULT", null));
+                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "RESULT_HOLDING", null));
     Path bookFilePath = tempDirectory.resolve("statement-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
 
@@ -318,7 +318,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(closeOutput), fixedClock())
             .run(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   bookFilePath.toString(),
                   "--book-key-file",
@@ -328,7 +328,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   "--effective-date-to",
                   "2026-04-07",
                   "--output",
-                  "human"
+                  "text"
                 }));
     assertTrue(closeOutput.toString(StandardCharsets.UTF_8).contains("Period Closed"));
 
@@ -342,7 +342,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--effective-date-as-of",
           "2026-04-07",
           "--output",
-          "human"
+          "text"
         },
         "Financial Position");
     assertCommandOutputContains(
@@ -374,7 +374,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "json"
         },
-        "\"status\" : \"ok\"");
+        "\"status\":\"ok\"");
   }
 
   @Test
@@ -490,9 +490,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     }
 
     @Override
-    public ContractDecision<ClosePeriodResult> closePeriod(
-        BookAccess bookAccess, ClosePeriodCommand command) {
-      throw new AssertionError("closePeriod should not be called in this test");
+    public ContractDecision<PeriodResultTransferResult> transferPeriodResult(
+        BookAccess bookAccess, PeriodResultTransferCommand command) {
+      throw new AssertionError("transferPeriodResult should not be called in this test");
     }
 
     @Override

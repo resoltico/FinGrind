@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -75,8 +74,6 @@ final class SqliteStatementQueries {
       int fiscalYearStartDay) {}
 
   private record EntityProfileRow(String businessActivityTags) {}
-
-  private record BookPolicyRow(String policyProfile) {}
 
   private SqliteStatementQueries() {}
 
@@ -215,8 +212,6 @@ final class SqliteStatementQueries {
     EntityProfileRow entityProfileRow =
         loadRequiredEntityProfile(
             activeDatabase, "Initialized SQLite book is missing entity profile.");
-    BookPolicyRow bookPolicyRow =
-        loadRequiredBookPolicy(activeDatabase, "Initialized SQLite book is missing book policy.");
     BookIdentityCoreRow coreRow = identityCoreRow.orElseThrow();
     return Optional.of(
         new BookIdentity(
@@ -224,8 +219,7 @@ final class SqliteStatementQueries {
                 new BookEntityName(coreRow.entityName()),
                 decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
-            new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay()),
-            AccountingPolicyProfile.fromWireValue(bookPolicyRow.policyProfile())));
+            new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay())));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {
@@ -333,23 +327,6 @@ final class SqliteStatementQueries {
           if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite entity profile query returned more than one row.");
-          }
-          return row;
-        });
-  }
-
-  private static BookPolicyRow loadRequiredBookPolicy(
-      SqliteNativeDatabase activeDatabase, String missingMessage) {
-    return withStatement(
-        activeDatabase,
-        SqlitePostingSql.FIND_BOOK_POLICY,
-        statement -> {
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
-            throw new IllegalStateException(missingMessage);
-          }
-          BookPolicyRow row = new BookPolicyRow(SqlitePostingMapper.requiredText(statement, 0));
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
-            throw new IllegalStateException("SQLite book policy query returned more than one row.");
           }
           return row;
         });

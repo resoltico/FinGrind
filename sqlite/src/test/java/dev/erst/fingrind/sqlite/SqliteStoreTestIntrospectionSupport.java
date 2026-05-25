@@ -154,6 +154,7 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
         postingFact.journalEntry(),
         postingFact.postingLineage(),
         postingFact.postingKind(),
+        postingFact.postingOriginKind(),
         postingFact.evidence(),
         postingFact.provenance());
   }

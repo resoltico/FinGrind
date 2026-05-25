@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -20,17 +19,18 @@ import org.jspecify.annotations.Nullable;
 /** Canonical machine-contract templates and scaffold examples. */
 final class MachineContractTemplatesCatalog {
   private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
-  private static final String SAMPLE_SOURCE_DOCUMENT_ID = "invoice-1001";
-  private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "invoice";
+  private static final String SAMPLE_SOURCE_DOCUMENT_ID = "replace-with-cash-receipt-id";
+  private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "cash-receipt";
   private static final String SAMPLE_DOCUMENT_DATE = "2026-01-15";
   private static final String SAMPLE_CAPTURED_AT = "2026-01-15T09:00:00Z";
-  private static final String SAMPLE_STORAGE_LOCATOR = "vault://documents/invoice-1001";
+  private static final String SAMPLE_STORAGE_LOCATOR =
+      "replace-with-secure-storage-locator://cash-receipt";
   private static final String SAMPLE_CONTENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-  private static final String SAMPLE_ACTOR_ID = "operator-demo-1";
-  private static final String SAMPLE_COMMAND_ID = "command-demo-1";
-  private static final String SAMPLE_IDEMPOTENCY_KEY = "idem-demo-1";
-  private static final String SAMPLE_CAUSATION_ID = "cause-demo-1";
+      "0000000000000000000000000000000000000000000000000000000000000000";
+  private static final String SAMPLE_ACTOR_ID = "replace-with-actor-id";
+  private static final String SAMPLE_COMMAND_ID = "replace-with-command-id";
+  private static final String SAMPLE_IDEMPOTENCY_KEY = "replace-with-idempotency-key";
+  private static final String SAMPLE_CAUSATION_ID = "replace-with-causation-id";
   private static final String DECLARE_ACCOUNT_CASH_JSON =
       """
       {
@@ -87,7 +87,7 @@ final class MachineContractTemplatesCatalog {
             List.of()),
         new ContractTemplates.ProvenanceTemplateDescriptor(
             SAMPLE_ACTOR_ID,
-            ActorType.AGENT,
+            ActorType.PERSON,
             SAMPLE_COMMAND_ID,
             SAMPLE_IDEMPOTENCY_KEY,
             SAMPLE_CAUSATION_ID,
@@ -115,11 +115,7 @@ final class MachineContractTemplatesCatalog {
                 "initialize-book",
                 LedgerStepKind.OPEN_BOOK,
                 new ContractTemplates.OpenBookTemplateDescriptor(
-                    "Acme Studio",
-                    List.of("translation-services"),
-                    "EUR",
-                    "01-01",
-                    AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1),
+                    "Acme Studio", List.of("translation-services"), "EUR", "01-01"),
                 null,
                 null,
                 null,

@@ -38,7 +38,7 @@ class CliReportArgumentParsingTest {
                   "--book-key-file",
                   keyFile.toString(),
                   "--output",
-                  "human"
+                  "text"
                 }));
     TrialBalance defaultTrialBalance =
         assertInstanceOf(
@@ -96,7 +96,7 @@ class CliReportArgumentParsingTest {
                   "--effective-date-to",
                   "2026-04-30",
                   "--output",
-                  "human"
+                  "text"
                 }));
     PeriodSummary periodSummary =
         assertInstanceOf(
@@ -154,7 +154,7 @@ class CliReportArgumentParsingTest {
                   "--effective-date-as-of",
                   "2026-04-30",
                   "--output",
-                  "human",
+                  "text",
                   "--pdf-out",
                   "reports/position.pdf"
                 }));
@@ -192,12 +192,12 @@ class CliReportArgumentParsingTest {
                   "--effective-date-to",
                   "2026-04-30",
                   "--output",
-                  "human",
+                  "text",
                   "--pdf-out",
                   "reports/equity.pdf"
                 }));
     assertEquals(OutputMode.JSON, defaultInspectBook.outputMode());
-    assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
+    assertEquals(OutputMode.TEXT, inspectBook.outputMode());
     assertEquals(OutputMode.JSON, defaultTrialBalance.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), trialBalance.query().effectiveDateAsOf());
@@ -211,7 +211,7 @@ class CliReportArgumentParsingTest {
         Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateAsOf());
     assertEquals(OutputMode.CSV, incomeStatement.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-01"), incomeStatement.query().effectiveDateFrom());
-    assertEquals(OutputMode.HUMAN, changesInEquity.output().outputMode());
+    assertEquals(OutputMode.TEXT, changesInEquity.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquity.query().effectiveDateTo());
   }
 
@@ -243,7 +243,7 @@ class CliReportArgumentParsingTest {
                   "--book-key-file",
                   keyFile.toString(),
                   "--output",
-                  "human",
+                  "text",
                   "--output",
                   "json"
                 }));
@@ -363,7 +363,7 @@ class CliReportArgumentParsingTest {
                   "--account-code",
                   "1000",
                   "--output",
-                  "human",
+                  "text",
                   "--output",
                   "json"
                 }));
@@ -457,7 +457,7 @@ class CliReportArgumentParsingTest {
                   "--effective-date-to",
                   "2026-04-30",
                   "--output",
-                  "human",
+                  "text",
                   "--output",
                   "json"
                 }));

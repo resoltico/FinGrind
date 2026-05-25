@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -54,7 +53,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.45.0",
+                "0.46.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -70,7 +69,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.45.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.46.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -171,7 +170,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.45.0");
+    return new PdfDocumentFactory("FinGrind", "0.46.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -203,8 +202,7 @@ class PdfReportCoverageTest {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   private static List<List<String>> paginatedKeyValueRows() {

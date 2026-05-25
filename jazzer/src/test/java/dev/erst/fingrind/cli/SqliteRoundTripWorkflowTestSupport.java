@@ -22,6 +22,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -69,6 +70,7 @@ final class SqliteRoundTripWorkflowTestSupport {
         CliFuzzFixtures.journalEntry(command),
         CliFuzzFixtures.postingLineage(command),
         CliFuzzFixtures.postingKind(command),
+        PostingOriginKind.CORRECTION_ADJUSTMENT,
         command.evidence(),
         new CommittedProvenance(
             command.requestProvenance(),
@@ -95,7 +97,7 @@ final class SqliteRoundTripWorkflowTestSupport {
             "1000",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-1",
-                "invoice",
+                "cash-receipt",
                 "2026-04-07",
                 "actor-1",
                 "AGENT",

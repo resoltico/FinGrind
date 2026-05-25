@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -30,10 +29,9 @@ final class CliLifecycleMutationArguments {
               ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
-              ProtocolOptions.POLICY_PROFILE,
               ProtocolOptions.OUTPUT),
           List.of());
-  private static final CliBookArgumentParser.CommandArgumentSpec CLOSE_PERIOD_ARGUMENTS =
+  private static final CliBookArgumentParser.CommandArgumentSpec TRANSFER_PERIOD_RESULT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.EFFECTIVE_DATE_FROM,
@@ -76,7 +74,7 @@ final class CliLifecycleMutationArguments {
                 CliArgumentValueParser.requireOutputMode(
                     outputMode,
                     CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default ->
             throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
@@ -103,8 +101,7 @@ final class CliLifecycleMutationArguments {
                     requireOpenBookEntityName(argumentValues.entityName),
                     requireOpenBookBusinessActivityTags(argumentValues.businessActivityTags)),
                 requireOpenBookFunctionalCurrency(argumentValues.functionalCurrency),
-                requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart),
-                requireOpenBookPolicyProfile(argumentValues.policyProfile))),
+                requireOpenBookFiscalYearStart(argumentValues.fiscalYearStart))),
         CliArgumentValueParser.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -146,18 +143,12 @@ final class CliLifecycleMutationArguments {
                   CliArgumentValueParser.requireValue(
                       argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
                   ProtocolOptions.FISCAL_YEAR_START);
-      case ProtocolOptions.POLICY_PROFILE ->
-          argumentValues.policyProfile =
-              CliArgumentValueParser.parseAccountingPolicyProfileOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.POLICY_PROFILE),
-                  ProtocolOptions.POLICY_PROFILE);
       case ProtocolOptions.OUTPUT ->
           argumentValues.outputMode =
               CliArgumentValueParser.requireOutputMode(
                   argumentValues.outputMode,
                   CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                  CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                  CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       default ->
           throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
@@ -192,16 +183,6 @@ final class CliLifecycleMutationArguments {
     return fiscalYearStart;
   }
 
-  private static AccountingPolicyProfile requireOpenBookPolicyProfile(
-      @Nullable AccountingPolicyProfile policyProfile) {
-    if (policyProfile == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.POLICY_PROFILE,
-          "A " + ProtocolOptions.POLICY_PROFILE + " argument is required.");
-    }
-    return policyProfile;
-  }
-
   private static List<BusinessActivityTag> requireOpenBookBusinessActivityTags(
       List<BusinessActivityTag> businessActivityTags) {
     if (businessActivityTags.isEmpty()) {
@@ -218,7 +199,6 @@ final class CliLifecycleMutationArguments {
     private @Nullable BookEntityName entityName;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
-    private @Nullable AccountingPolicyProfile policyProfile;
     private @Nullable OutputMode outputMode;
   }
 
@@ -289,7 +269,7 @@ final class CliLifecycleMutationArguments {
                 CliArgumentValueParser.requireOutputMode(
                     outputMode,
                     CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default ->
             throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
@@ -368,7 +348,7 @@ final class CliLifecycleMutationArguments {
             CliArgumentValueParser.requireOutputMode(
                 outputMode,
                 CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       }
     }
     if (backupFilePath == null) {
@@ -435,7 +415,7 @@ final class CliLifecycleMutationArguments {
                 CliArgumentValueParser.requireOutputMode(
                     outputMode,
                     CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default ->
             throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
@@ -575,7 +555,7 @@ final class CliLifecycleMutationArguments {
                 CliArgumentValueParser.requireOutputMode(
                     outputMode,
                     CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default ->
             throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
@@ -621,18 +601,21 @@ final class CliLifecycleMutationArguments {
       CliBookPassphraseParser.@Nullable PassphraseSourceKind passphraseSourceKind,
       @Nullable OutputMode outputMode) {}
 
-  static CliCommand parseClosePeriodCommand(List<String> arguments) {
+  static CliCommand parsePeriodResultTransferCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments, CLOSE_PERIOD_ARGUMENTS);
-    ParsedClosePeriodArguments parsedClosePeriodArguments =
-        parseClosePeriodArguments(parsedArguments.commandArguments());
-    return new ClosePeriod(
+        CliBookArgumentParser.parseBookAndCommandArguments(
+            arguments, TRANSFER_PERIOD_RESULT_ARGUMENTS);
+    ParsedTransferPeriodResultArguments parsedTransferPeriodResultArguments =
+        parseTransferPeriodResultArguments(parsedArguments.commandArguments());
+    return new TransferPeriodResult(
         parsedArguments.bookAccess(),
-        parsedClosePeriodArguments.reportingPeriod(),
-        CliArgumentValueParser.resolvedOutputMode(parsedClosePeriodArguments.outputMode()));
+        parsedTransferPeriodResultArguments.reportingPeriod(),
+        CliArgumentValueParser.resolvedOutputMode(
+            parsedTransferPeriodResultArguments.outputMode()));
   }
 
-  static ParsedClosePeriodArguments parseClosePeriodArguments(List<String> commandArguments) {
+  static ParsedTransferPeriodResultArguments parseTransferPeriodResultArguments(
+      List<String> commandArguments) {
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
@@ -656,7 +639,7 @@ final class CliLifecycleMutationArguments {
             CliArgumentValueParser.requireOutputMode(
                 outputMode,
                 CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
       throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
@@ -678,10 +661,10 @@ final class CliLifecycleMutationArguments {
         resolvedEffectiveDateTo,
         ProtocolOptions.EFFECTIVE_DATE_FROM,
         ProtocolOptions.EFFECTIVE_DATE_TO);
-    return new ParsedClosePeriodArguments(
+    return new ParsedTransferPeriodResultArguments(
         new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo), outputMode);
   }
 
-  record ParsedClosePeriodArguments(
+  record ParsedTransferPeriodResultArguments(
       ReportingPeriod reportingPeriod, @Nullable OutputMode outputMode) {}
 }

@@ -392,6 +392,7 @@ class PostingWorkflowInvariantAssertionsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }

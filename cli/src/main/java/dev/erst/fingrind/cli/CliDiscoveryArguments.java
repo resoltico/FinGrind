@@ -26,7 +26,7 @@ final class CliDiscoveryArguments {
             CliArgumentValueParser.requireOutputMode(
                 outputMode,
                 CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
       if (ProtocolOptions.DETAIL.equals(argument)) {
@@ -41,7 +41,7 @@ final class CliDiscoveryArguments {
     OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
     requireJsonDiscoveryDetail(detail, resolvedOutputMode);
     return new Help(
-        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.MINIMAL : detail);
   }
 
   static CliCommand parseCommandHelp(OperationId commandTopic, List<String> arguments) {
@@ -55,7 +55,7 @@ final class CliDiscoveryArguments {
             CliArgumentValueParser.requireOutputMode(
                 outputMode,
                 CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
       if (ProtocolOptions.DETAIL.equals(argument)) {
@@ -67,7 +67,7 @@ final class CliDiscoveryArguments {
     OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
     requireJsonDiscoveryDetail(detail, resolvedOutputMode);
     return new Help(
-        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.MINIMAL : detail);
   }
 
   static CliCommand parseVersion(List<String> arguments) {
@@ -85,7 +85,7 @@ final class CliDiscoveryArguments {
             CliArgumentValueParser.requireOutputMode(
                 outputMode,
                 CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+                CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
       if (ProtocolOptions.DETAIL.equals(argument)) {
@@ -96,7 +96,7 @@ final class CliDiscoveryArguments {
     }
     OutputMode resolvedOutputMode = CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode);
     requireJsonDiscoveryDetail(detail, resolvedOutputMode);
-    return new Capabilities(resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+    return new Capabilities(resolvedOutputMode, detail == null ? DiscoveryDetail.MINIMAL : detail);
   }
 
   static CliCommand parseEnvironment(List<String> arguments) {
@@ -145,7 +145,7 @@ final class CliDiscoveryArguments {
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return commandFactory.create(CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
   }

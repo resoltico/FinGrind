@@ -15,9 +15,9 @@ final class ProtocolAdministrationOperations {
             List.of(),
             List.of(
                 ProtocolOptions.BOOK_KEY_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
                 ProtocolExampleStep.note(
@@ -39,14 +39,13 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BUSINESS_ACTIVITY_TAG + " <business-activity-tag> ...",
                 ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
                 ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
-                ProtocolOptions.POLICY_PROFILE + " <policy-profile>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Initialize a new book file with the canonical schema.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s translation-services %s EUR %s 01-01"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
@@ -54,10 +53,9 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.ENTITY_NAME,
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
-                            ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.POLICY_PROFILE)),
+                            ProtocolOptions.FISCAL_YEAR_START)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
+                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
@@ -65,10 +63,9 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.POLICY_PROFILE,
                             ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
                 ProtocolExampleStep.command(
-                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 %s"
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
@@ -76,7 +73,6 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
-                            ProtocolOptions.POLICY_PROFILE,
                             ProtocolOptions.BOOK_PASSPHRASE_STDIN)))),
         ProtocolOperationDefinitions.operation(
             OperationId.REKEY_BOOK,
@@ -87,9 +83,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.replacementPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Rotate the passphrase that protects one existing book.",
             List.of(
                 ProtocolExampleStep.command(
@@ -121,9 +117,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.BACKUP_FILE_OUT + " <path>",
                 ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Export one closed encrypted-book backup pair without overwriting any existing destination.",
             List.of(
                 ProtocolExampleStep.note(
@@ -145,9 +141,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.BACKUP_FILE + " <path>",
                 ProtocolOptions.BACKUP_BOOK_KEY_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Restore one verified encrypted-book backup pair onto the selected live book path.",
             List.of(
                 ProtocolExampleStep.note(
@@ -168,9 +164,9 @@ final class ProtocolAdministrationOperations {
             List.of(),
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Inspect stale sibling rekey rollback artifacts for the selected book path.",
             List.of(
                 ProtocolExampleStep.command(
@@ -187,9 +183,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Delete one selected stale sibling rekey rollback artifact.",
             List.of(
                 ProtocolExampleStep.command(
@@ -208,9 +204,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Restore one selected stale sibling rekey rollback artifact onto the live book path.",
             List.of(
                 ProtocolExampleStep.command(
@@ -229,9 +225,9 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Declare or reactivate one account in the selected book.",
             List.of(
                 ProtocolExampleStep.command(
@@ -249,27 +245,27 @@ final class ProtocolAdministrationOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)))),
         ProtocolOperationDefinitions.operation(
-            OperationId.CLOSE_PERIOD,
+            OperationId.TRANSFER_PERIOD_RESULT,
             OperationCategory.ADMINISTRATION,
-            "Close Period",
+            "Transfer Period Result",
             List.of(),
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
                 ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
-            "Close one contiguous reporting period into one policy-selected closing equity account.",
+            List.of(OutputMode.JSON, OutputMode.TEXT),
+            "Transfer one contiguous reporting period into one policy-selected result-holding account.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Built-in close uses one neutral accumulated-result target. Declare one active EQUITY account classified as ACCUMULATED_RESULT before closing a period."),
+                    "Built-in period-result transfer uses one neutral accumulated-result target. Declare one active EQUITY account classified as RESULT_HOLDING before transferring one period result."),
                 ProtocolExampleStep.note(
-                    "Declare exactly one active and postable EQUITY account classified as ACCUMULATED_RESULT. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
+                    "Declare exactly one active and postable EQUITY account classified as RESULT_HOLDING. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
                 ProtocolExampleStep.note(
-                    "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon and remain inside one fiscal year."),
+                    "The first transfer may begin before the earliest posting date. After one transfer is recorded, later transfers must start on the day after the transferred-through horizon and remain inside one fiscal year."),
                 ProtocolExampleStep.command(
-                    "fingrind close-period --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --effective-date-from 2026-04-01 --effective-date-to 2026-04-30"))));
+                    "fingrind transfer-period-result --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --effective-date-from 2026-04-01 --effective-date-to 2026-04-30"))));
   }
 }

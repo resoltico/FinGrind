@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -25,7 +25,7 @@ Each published archive contains:
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite native library pinned by the canonical managed-SQLite contract for that target
-- a top-level `README.md` for local human bootstrap
+- a top-level `README.md` for local operator bootstrap
 - a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
 - top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-SIL-OFL-1.1`,
   `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
@@ -279,7 +279,7 @@ Every GitHub release must publish:
 Every release must verify:
 - the extracted bundle runs without ambient Java
 - the extracted bundle runs without a preconfigured `FINGRIND_SQLITE_LIBRARY`
-- the extracted bundle contains a top-level human `README.md` and machine-readable
+- the extracted bundle contains a top-level operator `README.md` and machine-readable
   `bundle-manifest.json`
 - the shipped `bundle-manifest.json` points machine clients at the canonical `help`,
   `capabilities`, `print-request-template`, and `print-plan-template` operations instead of

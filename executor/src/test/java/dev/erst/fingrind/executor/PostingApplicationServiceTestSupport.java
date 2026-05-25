@@ -144,6 +144,7 @@ final class PostingApplicationServiceTestSupport {
         journalEntry(),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }
@@ -291,7 +292,7 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
       return Optional.empty();
     }
 

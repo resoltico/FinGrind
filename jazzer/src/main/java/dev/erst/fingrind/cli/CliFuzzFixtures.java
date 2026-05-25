@@ -16,10 +16,10 @@ import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -75,8 +75,7 @@ public final class CliFuzzFixtures {
   public static dev.erst.fingrind.executor.bookkeeping.PostingCommand bookkeepingCommand(
       PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return PostEntryCommandTranslator.toPostingCommand(
-        bookIdentity(entryCurrencyUnit(command.entry())), command);
+    return PostEntryCommandTranslator.toPostingCommand(command);
   }
 
   /** Returns the derived journal entry carried by one published command. */
@@ -131,8 +130,7 @@ public final class CliFuzzFixtures {
             new BookEntityName("Acme Studio"),
             List.of(new BusinessActivityTag("translation-services"))),
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */
@@ -230,11 +228,62 @@ public final class CliFuzzFixtures {
   public static List<DeclareAccountCommand> declarePostingAccountCommands(
       PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return journalEntry(command).lines().stream()
-        .map(line -> line.accountCode())
-        .distinct()
-        .map(CliFuzzFixtures::syntheticDeclareAccountCommand)
-        .toList();
+    return switch (command.entry()) {
+      case BookkeepingEntry.CashRevenue event ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  event.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+              syntheticDeclareAccountCommand(
+                  event.revenueAccountCode(),
+                  AccountType.REVENUE,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE)));
+      case BookkeepingEntry.CashExpense event ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  event.expenseAccountCode(),
+                  AccountType.EXPENSE,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
+              syntheticDeclareAccountCommand(
+                  event.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
+      case BookkeepingEntry.EquityContribution event ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  event.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+              syntheticDeclareAccountCommand(
+                  event.equityAccountCode(),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(
+                      FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
+      case BookkeepingEntry.EquityWithdrawal event ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  event.equityAccountCode(),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
+              syntheticDeclareAccountCommand(
+                  event.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
+      case BookkeepingEntry.OpeningBalanceAdjustment _ ->
+          distinctJournalLineAccountDeclarations(command);
+      case BookkeepingEntry.CorrectionAdjustment _ ->
+          distinctJournalLineAccountDeclarations(command);
+      case BookkeepingEntry.ReversalAdjustment _ -> distinctJournalLineAccountDeclarations(command);
+    };
   }
 
   /** Returns the first journal-line account code for lifecycle assertions. */
@@ -347,21 +396,13 @@ public final class CliFuzzFixtures {
             BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
-  private static CurrencyUnit entryCurrencyUnit(BookkeepingEntry entry) {
-    Objects.requireNonNull(entry, "entry");
-    return switch (entry) {
-      case BookkeepingEntry.CashRevenue event -> CurrencyUnit.of(event.amount().currencyCode());
-      case BookkeepingEntry.CashExpense event -> CurrencyUnit.of(event.amount().currencyCode());
-      case BookkeepingEntry.OwnerContribution event ->
-          CurrencyUnit.of(event.amount().currencyCode());
-      case BookkeepingEntry.OwnerDraw event -> CurrencyUnit.of(event.amount().currencyCode());
-      case BookkeepingEntry.OpeningBalanceAdjustment adjustment ->
-          adjustment.journalEntry().currencyUnit();
-      case BookkeepingEntry.CorrectionAdjustment adjustment ->
-          adjustment.journalEntry().currencyUnit();
-      case BookkeepingEntry.ReversalAdjustment adjustment ->
-          adjustment.journalEntry().currencyUnit();
-    };
+  private static List<DeclareAccountCommand> distinctJournalLineAccountDeclarations(
+      PostEntryCommand command) {
+    return journalEntry(command).lines().stream()
+        .map(line -> line.accountCode())
+        .distinct()
+        .map(CliFuzzFixtures::syntheticDeclareAccountCommand)
+        .toList();
   }
 
   private static AccountName syntheticAccountName(AccountCode accountCode) {
@@ -371,12 +412,17 @@ public final class CliFuzzFixtures {
   private static DeclareAccountCommand syntheticDeclareAccountCommand(AccountCode accountCode) {
     AccountType accountType = syntheticAccountType(accountCode);
     AccountRole accountRole = syntheticAccountRole(accountCode);
+    return syntheticDeclareAccountCommand(
+        accountCode, accountType, accountRole, syntheticAccountTaxonomy(accountType));
+  }
+
+  private static DeclareAccountCommand syntheticDeclareAccountCommand(
+      AccountCode accountCode,
+      AccountType accountType,
+      AccountRole accountRole,
+      AccountTaxonomy accountTaxonomy) {
     return new DeclareAccountCommand(
-        accountCode,
-        syntheticAccountName(accountCode),
-        accountType,
-        accountRole,
-        syntheticAccountTaxonomy(accountType));
+        accountCode, syntheticAccountName(accountCode), accountType, accountRole, accountTaxonomy);
   }
 
   private static AccountRole syntheticAccountRole(AccountCode accountCode) {
@@ -388,7 +434,22 @@ public final class CliFuzzFixtures {
   }
 
   private static AccountType syntheticAccountType(AccountCode accountCode) {
-    return switch (Math.floorMod(accountCode.value().hashCode(), 5)) {
+    String normalized = Objects.requireNonNull(accountCode, "accountCode").value().strip();
+    if (Character.isDigit(normalized.charAt(0))) {
+      return switch (normalized.charAt(0)) {
+        case '1' -> AccountType.ASSET;
+        case '2' -> AccountType.LIABILITY;
+        case '3' -> AccountType.EQUITY;
+        case '4' -> AccountType.REVENUE;
+        case '5', '6', '7', '8', '9' -> AccountType.EXPENSE;
+        default -> hashedAccountType(normalized);
+      };
+    }
+    return hashedAccountType(normalized);
+  }
+
+  private static AccountType hashedAccountType(String normalizedAccountCode) {
+    return switch (Math.floorMod(normalizedAccountCode.hashCode(), 5)) {
       case 0 -> AccountType.ASSET;
       case 1 -> AccountType.LIABILITY;
       case 2 -> AccountType.EQUITY;
@@ -399,36 +460,30 @@ public final class CliFuzzFixtures {
 
   private static AccountTaxonomy syntheticAccountTaxonomy(AccountType accountType) {
     return switch (accountType) {
-      case ASSET ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+      case ASSET -> syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET);
       case LIABILITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
-              Optional.empty());
-      case EQUITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
-              Optional.empty());
-      case REVENUE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
-      case EXPENSE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+          syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_LIABILITY);
+      case EQUITY -> syntheticAccountTaxonomy(FinancialPositionLineClassification.OTHER_EQUITY);
+      case REVENUE -> syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE);
+      case EXPENSE -> syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE);
     };
+  }
+
+  private static AccountTaxonomy syntheticAccountTaxonomy(
+      FinancialPositionLineClassification classification) {
+    return new AccountTaxonomy(
+        AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(Objects.requireNonNull(classification, "classification")),
+        Optional.empty());
+  }
+
+  private static AccountTaxonomy syntheticAccountTaxonomy(
+      ProfitAndLossLineClassification classification) {
+    return new AccountTaxonomy(
+        AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.of(Objects.requireNonNull(classification, "classification")));
   }
 }

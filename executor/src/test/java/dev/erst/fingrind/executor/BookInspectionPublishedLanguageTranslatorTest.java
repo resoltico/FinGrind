@@ -68,7 +68,7 @@ class BookInspectionPublishedLanguageTranslatorTest {
                 BookInspectionPublishedLanguageTranslator.toPublished(
                     initializedLifecycleInspection(9, 4, 5, initializedAt)));
     assertEquals(
-        "Initialized inspections require BookReadService close-readiness enrichment.",
+        "Initialized inspections require BookReadService result-transfer-readiness enrichment.",
         exception.getMessage());
   }
 

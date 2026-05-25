@@ -23,7 +23,7 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-sqlite-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-04-11",
         "capturedAt": "2026-04-11T10:15:30Z",
         "storageLocator": "vault://fixtures/document-idem-sqlite-1",

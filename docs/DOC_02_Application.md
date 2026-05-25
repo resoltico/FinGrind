@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: CONTRACT_EXECUTOR_INDEX
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, contract, executor, api, overview, routing, protocol, reports, ledger-plan]
   questions: ["where is the split contract and executor api reference in fingrind", "which doc covers protocol discovery versus reports in fingrind", "where should I look for posting and ledger plan contract types"]

@@ -12,8 +12,8 @@ import java.util.Objects;
 public sealed interface BookkeepingEntry
     permits BookkeepingEntry.CashRevenue,
         BookkeepingEntry.CashExpense,
-        BookkeepingEntry.OwnerContribution,
-        BookkeepingEntry.OwnerDraw,
+        BookkeepingEntry.EquityContribution,
+        BookkeepingEntry.EquityWithdrawal,
         BookkeepingEntry.OpeningBalanceAdjustment,
         BookkeepingEntry.CorrectionAdjustment,
         BookkeepingEntry.ReversalAdjustment {
@@ -65,14 +65,14 @@ public sealed interface BookkeepingEntry
     }
   }
 
-  /** Owner capital introduced into the book through cash. */
-  record OwnerContribution(
+  /** Equity contribution introduced into the book through cash. */
+  record EquityContribution(
       LocalDate effectiveDate,
       AccountCode cashAccountCode,
       AccountCode equityAccountCode,
       MonetaryAmount amount)
       implements BookkeepingEntry {
-    public OwnerContribution {
+    public EquityContribution {
       Objects.requireNonNull(effectiveDate, "effectiveDate");
       Objects.requireNonNull(cashAccountCode, "cashAccountCode");
       Objects.requireNonNull(equityAccountCode, "equityAccountCode");
@@ -82,18 +82,18 @@ public sealed interface BookkeepingEntry
 
     @Override
     public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.OWNER_CONTRIBUTION;
+      return BookkeepingEntryKind.EQUITY_CONTRIBUTION;
     }
   }
 
-  /** Owner draw taken out of the book through cash. */
-  record OwnerDraw(
+  /** Equity withdrawal taken out of the book through cash. */
+  record EquityWithdrawal(
       LocalDate effectiveDate,
       AccountCode equityAccountCode,
       AccountCode cashAccountCode,
       MonetaryAmount amount)
       implements BookkeepingEntry {
-    public OwnerDraw {
+    public EquityWithdrawal {
       Objects.requireNonNull(effectiveDate, "effectiveDate");
       Objects.requireNonNull(equityAccountCode, "equityAccountCode");
       Objects.requireNonNull(cashAccountCode, "cashAccountCode");
@@ -103,7 +103,7 @@ public sealed interface BookkeepingEntry
 
     @Override
     public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.OWNER_DRAW;
+      return BookkeepingEntryKind.EQUITY_WITHDRAWAL;
     }
   }
 

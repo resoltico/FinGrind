@@ -29,7 +29,7 @@ The root `README.md` exemption is defined in `AGENTS.md` because it is a reposit
 
 Nested README files are not automatically exempt. Classify them by function:
 
-- user-facing landing page for a package/example/integration: keep human-first and light;
+- user-facing landing page for a package/example/integration: keep reader-first and light;
 - component guide or operational documentation: use the auxiliary-doc rules;
 - API/reference material disguised as a README: convert or link to AFAD reference docs.
 
@@ -88,7 +88,7 @@ docs/DOC_06_Testing.md
 
 ### 2.2 Auxiliary documents
 
-Auxiliary documents are human-guided but still agent-maintainable. They may be narrative when narrative improves understanding.
+Auxiliary documents are reader-guided but still agent-maintainable. They may be narrative when narrative improves understanding.
 
 Examples:
 
@@ -677,7 +677,7 @@ Rejected options and why.
 
 Nested READMEs should serve their directory's user.
 
-- Package/example landing page: short, human-first, no AFAD atom structure.
+- Package/example landing page: short, reader-first, no AFAD atom structure.
 - Component guide: guide structure is appropriate.
 - Reference material: move or link to `DOC_*.md` instead of embedding full API docs.
 
@@ -791,7 +791,7 @@ Recovery:
 | Anti-pattern | Why it is wrong | Fix |
 |---|---|---|
 | Long quick index listing every section | Consumes tokens and goes stale | Use compact routing gateway and clear headings |
-| Root `README.md` forced into AFAD | Damages storefront role | Keep root README human-first and link to docs |
+| Root `README.md` forced into AFAD | Damages storefront role | Keep root README reader-first and link to docs |
 | Types repeated in parameter tables | Creates second drift source | Keep types in signature only |
 | Full API reference inside a guide | Duplicates reference docs | Link to `DOC_*.md` atoms |
 | Generic route keywords | Poor retrieval disambiguation | Use distinctive domain terms |
@@ -814,7 +814,7 @@ P0 Accuracy and safety
 P1 Canonical ownership
 P2 Completeness of intended contract surface
 P3 Retrieval structure
-P4 Human readability
+P4 Reader readability
 P5 Style economy
 ```
 

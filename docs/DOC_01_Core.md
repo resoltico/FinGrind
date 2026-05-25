@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: CORE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -91,22 +91,6 @@ public record BusinessActivityTag(String value)
 
 - Purpose: keep declared business activity cues typed instead of burying them in free-form notes
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `AccountingPolicyProfile`
-
-`AccountingPolicyProfile` is the canonical persisted bookkeeping-policy profile selected when one
-book is initialized.
-
-```java
-public enum AccountingPolicyProfile implements WireValue
-```
-
-- Purpose: bind one behavior-owning bookkeeping profile to the book boundary instead of carrying
-  inert reporting or basis labels
-- Current scope: `INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1` for the internal-management single-entity
-  kernel shipped today
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
 
 ## `AccountingEvidence`
 
@@ -200,16 +184,14 @@ public record EntityProfile(
 public record BookIdentity(
     EntityProfile entityProfile,
     CurrencyUnit functionalCurrency,
-    FiscalYearStart fiscalYearStart,
-    AccountingPolicyProfile policyProfile)
+    FiscalYearStart fiscalYearStart)
 ```
 
-- Purpose: couple entity profile, functional currency, fiscal-year anchor, and policy profile as
-  one typed bookkeeping fact for one initialized book
+- Purpose: couple entity profile, functional currency, and fiscal-year anchor as one typed
+  bookkeeping fact for one initialized book
 - Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
   full entity profile
-- Validation: rejects `null` entity profile, functional currency, fiscal-year start, and
-  policy profile
+- Validation: rejects `null` entity profile, functional currency, and fiscal-year start
 
 ## `AccountType`
 
@@ -290,8 +272,8 @@ public enum FinancialPositionLineClassification implements WireValue
 ```
 
 - Scope: classifies ASSET, LIABILITY, and EQUITY lines, including current/noncurrent buckets and
-  entity-form-sensitive equity classes such as `CONTRIBUTED_CAPITAL`, `DISTRIBUTIONS`,
-  `ACCUMULATED_RESULT`, and derived `CURRENT_PERIOD_RESULT` statement rows
+  entity-form-sensitive equity classes such as `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`,
+  `RESULT_HOLDING`, and derived `CURRENT_PERIOD_RESULT` statement rows
 - Surface: `accountType()` maps each classification back to its owning `AccountType`
 - Wire contract: `wireValue()`, `wireValues()`, `declaredAccountWireValues()`, and
   `fromWireValue(...)` own the stable public vocabulary
@@ -306,7 +288,7 @@ public enum ProfitAndLossLineClassification implements WireValue
 ```
 
 - Scope: classifies REVENUE and EXPENSE lines such as `OPERATING_REVENUE`, `COST_OF_SALES`, and
-  `TAX_EXPENSE`
+  `OTHER_EXPENSE`
 - Surface: `accountType()` maps each classification back to REVENUE or EXPENSE ownership
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
@@ -341,7 +323,7 @@ public final class AccountSemantics
   `profitAndLossContributionMinorUnits(...)`
 - Doctrine: ordinary balance polarity is derived from `AccountType`, `CONTRA` reverses that
   polarity deliberately, and built-in close destinations are selected through
-  `FinancialPositionLineClassification.ACCUMULATED_RESULT` inside `AccountTaxonomy`
+  `FinancialPositionLineClassification.RESULT_HOLDING` inside `AccountTaxonomy`
 
 ## `ActorId`
 
@@ -360,13 +342,13 @@ public record ActorId(String value)
 
 ```java
 public enum ActorType implements WireValue {
-  HUMAN,
+  PERSON,
   SYSTEM,
   AGENT
 }
 ```
 
-- Purpose: distinguish human, system, and agent callers without free-form strings
+- Purpose: distinguish person, system, and agent callers without free-form strings
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
@@ -473,7 +455,7 @@ public record FiscalYearStart(MonthDay value)
 ```
 
 - Purpose: make fiscal-year configuration explicit in book identity and enforce that one
-  `close-period` range stays inside one fiscal year while comparative statement windows can be
+  `transfer-period-result` range stays inside one fiscal year while comparative statement windows can be
   derived from the same declared anchor
 - Validation: rejects invalid month-day values; `toString()` renders the canonical `MM-dd` form
   used on public command surfaces
@@ -590,7 +572,7 @@ public final class Money implements Comparable<Money>
   rejects redundant leading zeroes, and enforces the selected currency unit's exact fractional
   scale
 - Representation: the authoritative stored state is `minorUnits()` plus `currencyUnit()`, while
-  `canonicalDecimal()` projects the stable human/machine decimal form at the currency unit's scale
+  `canonicalDecimal()` projects the stable operator/machine decimal form at the currency unit's scale
 - Bounds: parsing and arithmetic reject values outside FinGrind's supported exact minor-unit range
 - Usage: reused by balances and reports that legitimately need zero-valued totals
 - Boundary: `Money` is only for posted monetary facts; future tax rates, percentages, exchange
@@ -653,24 +635,49 @@ public enum NormalBalance implements WireValue {
 public enum PostingKind implements WireValue {
   STANDARD,
   OPENING_BALANCE,
-  PERIOD_CLOSE
+  PERIOD_RESULT_TRANSFER
 }
 ```
 
 - Purpose: distinguish ordinary business postings, opening adoption balances, and generated
-  period-close postings without leaking implementation-specific marker strings
+  period-result-transfer postings without leaking implementation-specific marker strings
 - Opening-balance boundary: `OPENING_BALANCE` is a one-time adoption-state posting family that is
   admitted only before the first committed posting enters the book
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 - Surface: committed postings publish one durable `PostingKind`, while caller-authored
   `BookkeepingEntryKind` inputs determine whether FinGrind derives `STANDARD`,
-  `OPENING_BALANCE`, or internal `PERIOD_CLOSE` postings
+  `OPENING_BALANCE`, or internal `PERIOD_RESULT_TRANSFER` postings
+
+## `PostingOriginKind`
+
+`PostingOriginKind` is the durable origin vocabulary preserved for one committed posting after
+FinGrind has projected a published bookkeeping entry into canonical journal lines.
+
+```java
+public enum PostingOriginKind implements WireValue {
+  CASH_REVENUE,
+  CASH_EXPENSE,
+  EQUITY_CONTRIBUTION,
+  EQUITY_WITHDRAWAL,
+  OPENING_BALANCE_ADJUSTMENT,
+  CORRECTION_ADJUSTMENT,
+  REVERSAL_ADJUSTMENT,
+  PERIOD_RESULT_TRANSFER
+}
+```
+
+- Purpose: preserve the originating published entry family after all ordinary typed entries have
+  converged into `PostingKind.STANDARD`
+- Surface: committed postings and adapter projections expose `postingOriginKind` as a durable fact
+  for auditing, analytics, and future adjacent-context integration
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `PostingCoverage`
 
 `PostingCoverage` is the canonical vocabulary for whether one read path includes all posting kinds
-or excludes generated close postings.
+or excludes generated transfer postings.
 
 ```java
 public enum PostingCoverage implements WireValue {
@@ -697,14 +704,14 @@ public record PostingId(String value)
 
 ## `ReportingPeriod`
 
-`ReportingPeriod` is the inclusive bounded period used by close-period administration, income
+`ReportingPeriod` is the inclusive bounded period used by transfer-period-result administration, income
 statements, and statements of changes in equity.
 
 ```java
 public record ReportingPeriod(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
 ```
 
-- Purpose: keep period-close and bounded-report semantics structural instead of treating them as
+- Purpose: keep period-result-transfer and bounded-report semantics structural instead of treating them as
   parallel pairs of raw dates
 - Validation: rejects `null` bounds and rejects `effectiveDateFrom` after `effectiveDateTo`
 - Surface: `effectiveDateRange()`, `contains(...)`, and `dayAfter()`
@@ -798,7 +805,7 @@ public record SourceDocumentReference(
 
 ## `ReversalReason`
 
-`ReversalReason` is the human-readable reason recorded for a reversal posting.
+`ReversalReason` is the plain-language reason recorded for a reversal posting.
 
 ```java
 public record ReversalReason(String value)
@@ -830,7 +837,7 @@ public enum SourceChannel implements WireValue {
 ```
 
 - Purpose: record whether one committed posting came from the operator-facing CLI surface or an
-  internal system workflow such as period close
+  internal system workflow such as period-result transfer
 - Current scope: `CLI` for operator-issued commands and `SYSTEM` for FinGrind-generated
   administrative postings
 - Wire contract: `wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the

@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -145,15 +144,15 @@ class PdfValueFormatterTest {
     assertEquals(
         "Contributed capital",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.CONTRIBUTED_CAPITAL));
+            FinancialPositionLineClassification.EQUITY_CONTRIBUTION));
     assertEquals(
         "Distributions",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.DISTRIBUTIONS));
+            FinancialPositionLineClassification.EQUITY_WITHDRAWAL));
     assertEquals(
         "Accumulated result",
         PdfValueFormatter.displayFinancialPositionLineClassification(
-            FinancialPositionLineClassification.ACCUMULATED_RESULT));
+            FinancialPositionLineClassification.RESULT_HOLDING));
     assertEquals(
         "Reserve",
         PdfValueFormatter.displayFinancialPositionLineClassification(
@@ -200,7 +199,7 @@ class PdfValueFormatterTest {
     assertEquals(
         "Tax expense",
         PdfValueFormatter.displayProfitAndLossLineClassification(
-            ProfitAndLossLineClassification.TAX_EXPENSE));
+            ProfitAndLossLineClassification.OTHER_EXPENSE));
     assertEquals(
         "Direct",
         PdfValueFormatter.postingRole(postingFact("posting-1", "idem-1", PostingLineage.direct())));
@@ -214,6 +213,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -239,6 +239,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -274,16 +275,12 @@ class PdfValueFormatterTest {
         "All posting kinds",
         PdfValueFormatter.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
     assertEquals(
-        "Non-closing postings",
+        "Non-transfer postings",
         PdfValueFormatter.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
   }
 
   @Test
   void displayIdentityProfileValuesFormatsPolicyAndActivityFacts() {
-    assertEquals(
-        "Internal Management Single Entity V1",
-        PdfValueFormatter.displayPolicyProfile(
-            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
     assertEquals(
         "translation-services, advisory",
         PdfValueFormatter.displayBusinessActivityTags(
@@ -296,7 +293,9 @@ class PdfValueFormatterTest {
   @Test
   void displayPostingKindFormatsEveryVariant() {
     assertEquals("Standard", PdfValueFormatter.displayPostingKind(PostingKind.STANDARD));
-    assertEquals("Period close", PdfValueFormatter.displayPostingKind(PostingKind.PERIOD_CLOSE));
+    assertEquals(
+        "Period result transfer",
+        PdfValueFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
     assertEquals(
         "Opening balance", PdfValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
   }
@@ -366,6 +365,7 @@ class PdfValueFormatterTest {
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("undo test posting")),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             evidence("idem-1"),
             direct.provenance());
 
@@ -380,6 +380,7 @@ class PdfValueFormatterTest {
         journalEntry(),
         postingLineage,
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -398,7 +399,7 @@ class PdfValueFormatterTest {
         List.of(
             new SourceDocumentReference(
                 new SourceDocumentId("document-" + token),
-                new SourceDocumentType("invoice"),
+                new SourceDocumentType("cash-receipt"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 new StorageLocator("evidence://documents/document-" + token + ".pdf"),

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -67,7 +67,7 @@ through [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/
 [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
 [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
 [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
-[`SqlitePeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodCloseSession.java),
+[`SqlitePeriodResultTransferSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodResultTransferSession.java),
 [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
 and [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java).
 The package-private backing implementation remains
@@ -173,7 +173,7 @@ The SQLite adapter is split into focused collaborators:
 - [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
   [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
   [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
-  [`SqlitePeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodCloseSession.java),
+  [`SqlitePeriodResultTransferSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodResultTransferSession.java),
   [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
   [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
@@ -402,7 +402,7 @@ The repository's canonical threat boundary is documented in
   rolled-back write failure
 - commit rolls back on failure and closes the handle when the session closes
 
-This keeps ordinary duplicate outcomes deterministic without parsing human-readable SQLite error
+This keeps ordinary duplicate outcomes deterministic without parsing plain-language SQLite error
 text or re-querying after rollback.
 
 ## Canonical Schema Policy

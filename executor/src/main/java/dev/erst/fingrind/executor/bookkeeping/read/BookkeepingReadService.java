@@ -18,7 +18,7 @@ import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
-import dev.erst.fingrind.executor.bookkeeping.PeriodClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -26,7 +26,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
@@ -167,23 +167,27 @@ public final class BookkeepingReadService {
   }
 
   /**
-   * Returns the current close-policy selection for the initialized book's closing-equity account.
+   * Returns the current result-transfer-rule selection for the initialized book's result-holding
+   * account.
    */
-  public PeriodClosePlanner.ClosingEquitySelection closingEquitySelection(
+  public PeriodResultTransferPlanner.ResultHoldingSelection resultHoldingSelection(
       BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return new PeriodClosePlanner(
-            BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity).closePolicy())
-        .closingEquityAccount(bookIdentity, bookStore.allAccounts());
+    return new PeriodResultTransferPlanner(
+            KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy())
+        .resultHoldingAccount(bookIdentity, bookStore.allAccounts());
   }
 
-  /** Returns the required closing-equity classification for the selected book's close policy. */
-  public FinancialPositionLineClassification requiredClosingEquityClassification(
+  /**
+   * Returns the required result-holding classification for the selected book's result-transfer
+   * policy.
+   */
+  public FinancialPositionLineClassification requiredResultHoldingClassification(
       BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity)
-        .closePolicy()
-        .closingEquityLineClassification(bookIdentity);
+    return KernelAccountingRulesResolver.forBookIdentity(bookIdentity)
+        .resultTransferPolicy()
+        .resultHoldingLineClassification(bookIdentity);
   }
 
   private Optional<BookkeepingQueryRejection> accountRejection(Optional<AccountCode> accountCode) {
@@ -195,9 +199,9 @@ public final class BookkeepingReadService {
 
   private TrialBalanceView trialBalanceView(TrialBalanceCriteria query) {
     TrialBalanceView currentView = bookStore.trialBalance(query);
-    var policyPack = BuiltInBookkeepingPolicyPacks.forBookIdentity(currentView.bookIdentity());
+    var accountingRules = KernelAccountingRulesResolver.forBookIdentity(currentView.bookIdentity());
     var comparativeRange =
-        policyPack
+        accountingRules
             .statementComparativePolicy()
             .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateAsOf());
     return new TrialBalanceView(

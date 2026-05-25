@@ -24,8 +24,7 @@ final class CliJsonRequestSchemas {
           ProtocolOpenBookFields.ENTITY_NAME,
           ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
-          ProtocolOpenBookFields.FISCAL_YEAR_START,
-          ProtocolOpenBookFields.POLICY_PROFILE);
+          ProtocolOpenBookFields.FISCAL_YEAR_START);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   static final Set<String> CASH_REVENUE_FIELDS =
@@ -46,7 +45,7 @@ final class CliJsonRequestSchemas {
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  static final Set<String> OWNER_CONTRIBUTION_FIELDS =
+  static final Set<String> EQUITY_CONTRIBUTION_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
@@ -55,7 +54,7 @@ final class CliJsonRequestSchemas {
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  static final Set<String> OWNER_DRAW_FIELDS =
+  static final Set<String> EQUITY_WITHDRAWAL_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,

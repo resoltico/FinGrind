@@ -214,8 +214,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersCliRequestExceptionInHumanMode() throws IOException {
-    Path requestFile = writeNamedRequest("broken-declare-account-human.json", "{");
+  void run_rendersCliRequestExceptionInTextMode() throws IOException {
+    Path requestFile = writeNamedRequest("broken-declare-account-text.json", "{");
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
@@ -256,7 +256,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString(),
               "--output",
-              "human"
+              "text"
             });
     assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
@@ -491,7 +491,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersCliArgumentsExceptionInHumanMode() throws IOException {
+  void run_rendersCliArgumentsExceptionInTextMode() throws IOException {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
@@ -531,8 +531,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--entity-name",
               "Acme Studio",
-              "--policy-profile",
-              "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
               "--business-activity-tag",
               "translation-services",
               "--functional-currency",
@@ -540,7 +538,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--fiscal-year-start",
               "01-01",
               "--output",
-              "human",
+              "text",
               "--bogus"
             });
     assertEquals(1, exitCode);

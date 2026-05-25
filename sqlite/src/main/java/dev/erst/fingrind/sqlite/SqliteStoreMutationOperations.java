@@ -13,12 +13,12 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
-import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -201,12 +201,12 @@ final class SqliteStoreMutationOperations {
         });
   }
 
-  PeriodCloseOutcome closePeriod(
-      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+  PeriodResultTransferOutcome transferPeriodResult(
+      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     if (Files.notExists(context.bookPath())) {
-      return new PeriodCloseOutcome.Rejected(
+      return new PeriodResultTransferOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
@@ -215,7 +215,7 @@ final class SqliteStoreMutationOperations {
           boolean committed = false;
           try {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new PeriodCloseOutcome.Rejected(
+              return new PeriodResultTransferOutcome.Rejected(
                   new BookkeepingAdministrationRejection.BookNotInitialized());
             }
 
@@ -225,33 +225,34 @@ final class SqliteStoreMutationOperations {
             PostingIdGenerator requiredPostingIdGenerator =
                 Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
             List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
-            for (PostingDraft closingPostingDraft : periodCloseDraft.closingPostings()) {
+            for (PostingDraft closingPostingDraft : periodResultTransferDraft.closingPostings()) {
               Optional<BookkeepingPostingRejection> rejection =
                   postingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
               if (rejection.isPresent()) {
                 throw new IllegalStateException(
-                    "Generated period-close posting failed bookkeeping acceptance: "
+                    "Generated period-result-transfer posting failed bookkeeping acceptance: "
                         + rejection.orElseThrow());
               }
               closingPostings.add(
                   persistAcceptedPosting(
                       activeDatabase, closingPostingDraft, requiredPostingIdGenerator));
             }
-            ClosedPeriod closedPeriod =
-                SqliteMutationWriter.insertPeriodClose(
+            TransferredPeriodResult transferredPeriodResult =
+                SqliteMutationWriter.insertPeriodResultTransfer(
                     activeDatabase,
-                    periodCloseDraft.reportingPeriod(),
-                    periodCloseDraft.closingEquityAccountCode(),
-                    periodCloseDraft.closedTotals(),
-                    periodCloseDraft.closedAt(),
+                    periodResultTransferDraft.reportingPeriod(),
+                    periodResultTransferDraft.resultHoldingAccountCode(),
+                    periodResultTransferDraft.transferredTotals(),
+                    periodResultTransferDraft.transferredAt(),
                     closingPostings);
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase,
-                BookAuditEvent.periodClosed(
-                    periodCloseDraft.closedAt(), closedPeriod.closeOrder()));
+                BookAuditEvent.periodResultTransferred(
+                    periodResultTransferDraft.transferredAt(),
+                    transferredPeriodResult.transferOrder()));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
-            return new PeriodCloseOutcome.Closed(closedPeriod);
+            return new PeriodResultTransferOutcome.Transferred(transferredPeriodResult);
           } catch (SqliteNativeException exception) {
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to close one SQLite reporting period.", exception);

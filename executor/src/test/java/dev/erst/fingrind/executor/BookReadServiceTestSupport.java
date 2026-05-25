@@ -41,8 +41,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -163,6 +163,7 @@ final class BookReadServiceTestSupport {
                     REVENUE_ACCOUNT.accountCode().value(), JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -295,9 +296,10 @@ final class BookReadServiceTestSupport {
       return delegate.periodSummary(query);
     }
 
-    PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.closePeriod(periodCloseDraft, postingIdGenerator);
+    PeriodResultTransferOutcome transferPeriodResult(
+        PeriodResultTransferDraft periodResultTransferDraft,
+        PostingIdGenerator postingIdGenerator) {
+      return delegate.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
     }
 
     int findAccountCalls() {

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 /** Coverage-focused tests for private close-planner helpers that guard durable evidence facts. */
-class PeriodClosePlannerTest {
+class PeriodResultTransferPlannerTest {
   private static final MethodHandle SHA256_HEX = plannerHelper("sha256Hex");
 
   @Test
@@ -22,7 +22,8 @@ class PeriodClosePlannerTest {
     try {
       removeSha256Providers();
       IllegalStateException exception =
-          assertThrows(IllegalStateException.class, () -> sha256Hex("period-close-material"));
+          assertThrows(
+              IllegalStateException.class, () -> sha256Hex("period-result-transfer-material"));
 
       assertEquals("SHA-256 is unavailable in this Java runtime.", exception.getMessage());
     } finally {
@@ -45,9 +46,11 @@ class PeriodClosePlannerTest {
   private static MethodHandle plannerHelper(String methodName) {
     try {
       MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(PeriodClosePlanner.class, MethodHandles.lookup());
+          MethodHandles.privateLookupIn(PeriodResultTransferPlanner.class, MethodHandles.lookup());
       return lookup.findStatic(
-          PeriodClosePlanner.class, methodName, MethodType.methodType(String.class, String.class));
+          PeriodResultTransferPlanner.class,
+          methodName,
+          MethodType.methodType(String.class, String.class));
     } catch (IllegalAccessException | NoSuchMethodException exception) {
       throw new LinkageError("Failed to bind close-planner helper: " + methodName, exception);
     }

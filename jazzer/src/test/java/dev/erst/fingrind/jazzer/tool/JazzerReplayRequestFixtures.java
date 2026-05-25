@@ -15,7 +15,7 @@ final class JazzerReplayRequestFixtures {
             "1000",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-1",
-                "invoice",
+                "cash-receipt",
                 "2026-04-07",
                 "actor-1",
                 "AGENT",
@@ -48,7 +48,7 @@ final class JazzerReplayRequestFixtures {
         }
         """
         .formatted(
-            CliFuzzHarnessTestSupport.evidenceJson("document-idem-4", "invoice", "2026-04-07")
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-4", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }
@@ -69,7 +69,7 @@ final class JazzerReplayRequestFixtures {
         """
         .formatted(
             CliFuzzHarnessTestSupport.evidenceJson(
-                    "document-idem-missing-provenance", "invoice", "2026-04-07")
+                    "document-idem-missing-provenance", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }
@@ -84,7 +84,7 @@ final class JazzerReplayRequestFixtures {
             "1e1000000100",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-1",
-                "invoice",
+                "cash-receipt",
                 "2026-04-07",
                 "actor-1",
                 "AGENT",
@@ -117,7 +117,7 @@ final class JazzerReplayRequestFixtures {
         }
         """
         .formatted(
-            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "invoice", "2026-04-07")
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }
@@ -145,7 +145,7 @@ final class JazzerReplayRequestFixtures {
         }
         """
         .formatted(
-            CliFuzzHarnessTestSupport.evidenceJson("document-idem-8", "invoice", "2026-04-07")
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-8", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }
@@ -173,7 +173,7 @@ final class JazzerReplayRequestFixtures {
         }
         """
         .formatted(
-            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "invoice", "2026-04-07")
+            CliFuzzHarnessTestSupport.evidenceJson("document-idem-7", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }
@@ -188,7 +188,7 @@ final class JazzerReplayRequestFixtures {
             "1000",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-3",
-                "invoice",
+                "cash-receipt",
                 "2026-04-07",
                 "   ",
                 "AGENT",
@@ -227,7 +227,7 @@ final class JazzerReplayRequestFixtures {
                 "credit-note",
                 "2026-04-08",
                 "actor-5",
-                "HUMAN",
+                "PERSON",
                 "command-5",
                 "idem-5",
                 "cause-5",
@@ -291,7 +291,7 @@ final class JazzerReplayRequestFixtures {
         """
         .formatted(
             CliFuzzHarnessTestSupport.evidenceJson(
-                    "document-invalid-wrong-type", "invoice", "2026-04-07")
+                    "document-invalid-wrong-type", "cash-receipt", "2026-04-07")
                 .indent(10)
                 .stripLeading());
   }

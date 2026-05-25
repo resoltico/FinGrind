@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -58,8 +57,7 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"),
-            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+            FiscalYearStart.parse("01-01"));
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
 
@@ -73,9 +71,19 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals(1, payload.sourceDocuments().size());
     assertEquals("document-1", payload.sourceDocuments().get(0).sourceDocumentId());
-    assertEquals("invoice", payload.sourceDocuments().get(0).sourceDocumentType());
+    assertEquals("cash-receipt", payload.sourceDocuments().get(0).sourceDocumentType());
     assertEquals(1, payload.approvals().size());
     assertEquals("approval-1", payload.approvals().get(0).approvalId());
     assertEquals("manager-signoff", payload.approvals().get(0).approvalType());
+  }
+
+  @Test
+  void postingSummaryPayload_mapsApprovalIdsWhenPresent() {
+    CliBookQueryJsonModels.PostingSummaryPayload payload =
+        CliBookPayloadMapper.postingSummaryPayload(
+            CliResponseWriterTestSupport.postingFactWithApproval());
+
+    assertEquals(List.of("document-idem-1"), payload.sourceDocumentIds());
+    assertEquals(List.of("approval-idem-1"), payload.approvalIds());
   }
 }

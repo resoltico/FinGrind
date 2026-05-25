@@ -92,7 +92,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                 List.of(
                     new SourceDocumentReference(
                         new SourceDocumentId("document-approval-seed"),
-                        new SourceDocumentType("invoice"),
+                        new SourceDocumentType("cash-receipt"),
                         LocalDate.parse("2026-04-07"),
                         Instant.parse("2026-04-07T12:00:00Z"),
                         new StorageLocator("s3://evidence/document-approval-seed.pdf"),
@@ -176,31 +176,31 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                 .entry()
             instanceof BookkeepingEntry.CorrectionAdjustment);
 
-    PostEntryCommand ownerContributionCommand =
+    PostEntryCommand equityContributionCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.OwnerContribution(
+            new BookkeepingEntry.EquityContribution(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("1000"),
                 new AccountCode("3000"),
                 new MonetaryAmount("EUR", "2500")));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
-                    ownerContributionCommand, "owner-contribution-direct")
+                    equityContributionCommand, "equity-contribution-direct")
                 .entry()
             instanceof BookkeepingEntry.CorrectionAdjustment);
 
-    PostEntryCommand ownerDrawCommand =
+    PostEntryCommand equityWithdrawalCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.OwnerDraw(
+            new BookkeepingEntry.EquityWithdrawal(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("3000"),
                 new AccountCode("1000"),
                 new MonetaryAmount("EUR", "2500")));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
-                    ownerDrawCommand, "owner-draw-direct")
+                    equityWithdrawalCommand, "equity-withdrawal-direct")
                 .entry()
             instanceof BookkeepingEntry.CorrectionAdjustment);
 

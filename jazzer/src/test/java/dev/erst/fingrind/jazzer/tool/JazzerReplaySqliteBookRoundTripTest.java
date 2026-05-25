@@ -14,12 +14,13 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.sqliteBookRoundTrip("basic_valid.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
+            new ParsedPostingCommandDetails("2026-04-11", "idem-sqlite-1", 2, false),
             new SqliteBookRoundTripLifecycleDetails(
                 PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
                 PostingLifecycleStatus.UNKNOWN_ACCOUNT,
@@ -37,12 +38,13 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            JazzerReplayRequestFixtures.reversalTargetMissingRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.sqliteBookRoundTrip("reversal_target_missing.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-08", "idem-5", 2, true),
+            new ParsedPostingCommandDetails("2026-04-08", "idem-7", 2, true),
             new SqliteBookRoundTripLifecycleDetails(
                 PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
                 PostingLifecycleStatus.UNKNOWN_ACCOUNT,
@@ -60,7 +62,9 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            JazzerReplayRequestFixtures.missingReversalReasonRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.sqliteBookRoundTrip(
+                    "invalid_missing_reversal_reason.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -73,7 +77,8 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            JazzerReplayRequestFixtures.invalidWrongTypeRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.sqliteBookRoundTrip("invalid_wrong_type.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -86,7 +91,8 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            JazzerReplayRequestFixtures.invalidExponentAmountRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.sqliteBookRoundTrip("invalid_amount_exponent.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);

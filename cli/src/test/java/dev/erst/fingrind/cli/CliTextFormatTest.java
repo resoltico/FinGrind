@@ -81,4 +81,20 @@ class CliTextFormatTest {
     assertEquals(
         "  first\n  second", CliTextFormat.renderLiteralBlock(List.of("first", "second"), "  "));
   }
+
+  @Test
+  void shellCommandRenderers_coverEmptyAndWrappedCommandBranches() {
+    assertEquals("", CliTextFormat.renderShellCommandBlock(List.of(), 20));
+    assertEquals("$", CliTextFormat.renderShellCommandBlock(List.of("   "), 20));
+    assertEquals(
+        "$ alpha beta",
+        CliTextFormat.renderShellCommandBlock(List.of("alpha beta"), Integer.MAX_VALUE));
+
+    String wrapped = CliTextFormat.renderShellCommandBlock(List.of("alpha superlongtoken"), 12);
+
+    assertTrue(wrapped.startsWith("$ alpha \\"));
+    assertTrue(wrapped.contains("super"));
+    assertTrue(wrapped.contains(System.lineSeparator() + "  "));
+    assertTrue(wrapped.endsWith("en"));
+  }
 }

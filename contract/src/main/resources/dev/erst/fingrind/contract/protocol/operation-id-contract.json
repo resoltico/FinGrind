@@ -14,7 +14,7 @@
   "DELETE_REKEY_ROLLBACK": "delete-rekey-rollback",
   "RESTORE_REKEY_ROLLBACK": "restore-rekey-rollback",
   "DECLARE_ACCOUNT": "declare-account",
-  "CLOSE_PERIOD": "close-period",
+  "TRANSFER_PERIOD_RESULT": "transfer-period-result",
   "INSPECT_BOOK": "inspect-book",
   "LIST_ACCOUNTS": "list-accounts",
   "GET_POSTING": "get-posting",

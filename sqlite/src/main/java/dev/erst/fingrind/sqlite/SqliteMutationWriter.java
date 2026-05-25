@@ -6,9 +6,9 @@ import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -42,11 +42,6 @@ final class SqliteMutationWriter {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_ENTITY_PROFILE)) {
       statement.bindText(1, encodedBusinessActivityTags);
-      statement.step();
-    }
-    try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_POLICY)) {
-      statement.bindText(1, bookIdentity.policyProfile().wireValue());
       statement.step();
     }
   }
@@ -101,25 +96,26 @@ final class SqliteMutationWriter {
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
       statement.bindText(1, postingFact.postingId().value());
       statement.bindText(2, postingFact.postingKind().wireValue());
-      statement.bindText(3, postingFact.journalEntry().effectiveDate().toString());
-      statement.bindText(4, postingFact.provenance().recordedAt().toString());
-      statement.bindText(5, requestProvenance.actorId().value());
-      statement.bindText(6, requestProvenance.actorType().wireValue());
-      statement.bindText(7, requestProvenance.commandId().value());
-      statement.bindText(8, requestProvenance.idempotencyKey().value());
-      statement.bindText(9, requestProvenance.causationId().value());
-      bindOptionalText(
-          statement,
-          10,
-          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
+      statement.bindText(3, postingFact.postingOriginKind().wireValue());
+      statement.bindText(4, postingFact.journalEntry().effectiveDate().toString());
+      statement.bindText(5, postingFact.provenance().recordedAt().toString());
+      statement.bindText(6, requestProvenance.actorId().value());
+      statement.bindText(7, requestProvenance.actorType().wireValue());
+      statement.bindText(8, requestProvenance.commandId().value());
+      statement.bindText(9, requestProvenance.idempotencyKey().value());
+      statement.bindText(10, requestProvenance.causationId().value());
       bindOptionalText(
           statement,
           11,
-          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
-      statement.bindText(12, postingFact.provenance().sourceChannel().wireValue());
+          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
       bindOptionalText(
           statement,
-          13,
+          12,
+          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
+      statement.bindText(13, postingFact.provenance().sourceChannel().wireValue());
+      bindOptionalText(
+          statement,
+          14,
           postingFact
               .postingLineage()
               .reversalReference()
@@ -183,33 +179,34 @@ final class SqliteMutationWriter {
     clearPendingJournalLineTable(activeDatabase);
   }
 
-  static ClosedPeriod insertPeriodClose(
+  static TransferredPeriodResult insertPeriodResultTransfer(
       SqliteNativeDatabase activeDatabase,
       dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
-      AccountCode closingEquityAccountCode,
-      List<CurrencyBalance> closedTotals,
-      Instant closedAt,
+      AccountCode resultHoldingAccountCode,
+      List<CurrencyBalance> transferredTotals,
+      Instant transferredAt,
       List<CommittedPosting> closingPostings) {
-    int closeOrder;
+    int transferOrder;
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE)) {
+        activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER)) {
       statement.bindText(1, reportingPeriod.effectiveDateFrom().toString());
       statement.bindText(2, reportingPeriod.effectiveDateTo().toString());
-      statement.bindText(3, closingEquityAccountCode.value());
-      statement.bindText(4, closedAt.toString());
+      statement.bindText(3, resultHoldingAccountCode.value());
+      statement.bindText(4, transferredAt.toString());
       if (statement.step() != SqliteNativeResultCodes.ROW) {
-        throw new IllegalStateException("SQLite period close insert returned no close order.");
+        throw new IllegalStateException(
+            "SQLite period result transfer insert returned no transfer order.");
       }
-      closeOrder = statement.columnInt(0);
+      transferOrder = statement.columnInt(0);
       if (statement.step() != SqliteNativeResultCodes.DONE) {
         throw new IllegalStateException(
-            "SQLite period close insert returned more than one close order.");
+            "SQLite period result transfer insert returned more than one transfer order.");
       }
     }
-    for (CurrencyBalance closedTotal : closedTotals) {
+    for (CurrencyBalance closedTotal : transferredTotals) {
       try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE_TOTAL)) {
-        statement.bindInt(1, closeOrder);
+          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER_TOTAL)) {
+        statement.bindInt(1, transferOrder);
         statement.bindText(2, closedTotal.debitTotal().currencyUnit().code());
         statement.bindLong(3, closedTotal.debitTotal().minorUnits());
         statement.bindLong(4, closedTotal.creditTotal().minorUnits());
@@ -218,18 +215,18 @@ final class SqliteMutationWriter {
     }
     for (CommittedPosting closingPosting : closingPostings) {
       try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE_POSTING)) {
-        statement.bindInt(1, closeOrder);
+          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER_POSTING)) {
+        statement.bindInt(1, transferOrder);
         statement.bindText(2, closingPosting.postingId().value());
         statement.step();
       }
     }
-    return new ClosedPeriod(
-        closeOrder,
+    return new TransferredPeriodResult(
+        transferOrder,
         reportingPeriod,
-        closingEquityAccountCode,
-        closedTotals,
-        closedAt,
+        resultHoldingAccountCode,
+        transferredTotals,
+        transferredAt,
         closingPostings.stream().map(CommittedPosting::postingId).toList());
   }
 

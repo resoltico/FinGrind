@@ -2,7 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.util.Objects;
 
-/** Human-readable reason recorded for a reversal posting. */
+/** Plain-language reason recorded for a reversal posting. */
 public record ReversalReason(String value) {
   /** Validates one reversal reason while preserving the submitted wording. */
   public ReversalReason {

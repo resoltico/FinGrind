@@ -32,7 +32,7 @@ final class CliCommandParsingRegistry {
       case DELETE_REKEY_ROLLBACK -> CliMutationArguments::parseDeleteRekeyRollbackCommand;
       case RESTORE_REKEY_ROLLBACK -> CliMutationArguments::parseRestoreRekeyRollbackCommand;
       case DECLARE_ACCOUNT -> CliMutationArguments::parseDeclareAccountCommand;
-      case CLOSE_PERIOD -> CliMutationArguments::parseClosePeriodCommand;
+      case TRANSFER_PERIOD_RESULT -> CliMutationArguments::parsePeriodResultTransferCommand;
       case INSPECT_BOOK -> CliReadArguments::parseInspectBookCommand;
       case LIST_ACCOUNTS -> CliReadArguments::parseListAccountsCommand;
       case GET_POSTING -> CliReadArguments::parseGetPostingCommand;

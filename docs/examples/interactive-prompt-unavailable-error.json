@@ -1,1 +1,0 @@
-{"status":"error","code":"interactive-prompt-unavailable","message":"FinGrind cannot prompt for a book passphrase because no interactive console is available.","hint":"Rerun the command from an interactive terminal, or use --book-key-file or --book-passphrase-stdin instead."}

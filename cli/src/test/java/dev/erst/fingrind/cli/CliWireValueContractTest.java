@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,6 +70,12 @@ class CliWireValueContractTest {
     assertTrue(message.contains("must implement WireValue"));
   }
 
+  @Test
+  void jsonText_serializesWireValuePayloads() {
+    assertEquals(
+        "{\"status\":\"ok\"}", CliWireJson.jsonText(new ValidPayload(ProtocolSuccessStatus.OK)));
+  }
+
   private static Stream<Enum<?>[]> wireEnumFamilies() {
     return Stream.<Enum<?>[]>of(
         ActorType.values(),
@@ -95,6 +102,8 @@ class CliWireValueContractTest {
   }
 
   private record BrokenPayload(BrokenEnum status) {}
+
+  private record ValidPayload(ProtocolSuccessStatus status) {}
 
   /** Deliberately not a WireValue to prove contract enforcement. */
   private enum BrokenEnum {

@@ -1,19 +1,19 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.contract.runtime.BookInspection.CloseReadiness;
+import dev.erst.fingrind.contract.runtime.BookInspection.ResultTransferReadiness;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Renders book-inspection payloads for human output. */
+/** Renders book-inspection payloads for text output. */
 final class CliBookInspectionOutputRenderer {
-  private static final int HUMAN_WRAP_WIDTH = 96;
+  private static final int TEXT_WRAP_WIDTH = 96;
 
   private CliBookInspectionOutputRenderer() {}
 
-  static String renderHuman(Path bookFilePath, BookInspection inspection) {
+  static String renderText(Path bookFilePath, BookInspection inspection) {
     BookInspection.Status status = inspection.status();
     return CliTextFormat.renderTitledBlock(
         "Book Inspection",
@@ -22,7 +22,7 @@ final class CliBookInspectionOutputRenderer {
                 "Book State",
                 CliTextFormat.renderKeyValueBlock(
                     List.of(
-                        List.of("Book file", CliHumanDisplay.path(bookFilePath)),
+                        List.of("Book file", CliTextDisplay.path(bookFilePath)),
                         List.of("State", displayStatus(status)),
                         List.of(
                             "Initialized",
@@ -35,11 +35,11 @@ final class CliBookInspectionOutputRenderer {
                             CliOperationText.initializeWithOpenBookLabel(),
                             CliQueryOutputFormatter.displayBooleanLabel(
                                 status.canInitializeWithOpenBook()))),
-                    HUMAN_WRAP_WIDTH)),
+                    TEXT_WRAP_WIDTH)),
             section(
                 "Format Compatibility",
-                CliTextFormat.renderKeyValueBlock(formatRows(inspection), HUMAN_WRAP_WIDTH)),
-            closeReadinessSection(inspection),
+                CliTextFormat.renderKeyValueBlock(formatRows(inspection), TEXT_WRAP_WIDTH)),
+            resultTransferReadinessSection(inspection),
             identitySection(inspection)));
   }
 
@@ -95,8 +95,7 @@ final class CliBookInspectionOutputRenderer {
     if (inspection instanceof BookInspection.Initialized initialized) {
       return section(
           "Book Identity",
-          CliTextFormat.renderKeyValueBlock(
-              initializedIdentityRows(initialized), HUMAN_WRAP_WIDTH));
+          CliTextFormat.renderKeyValueBlock(initializedIdentityRows(initialized), TEXT_WRAP_WIDTH));
     }
     return "";
   }
@@ -105,43 +104,46 @@ final class CliBookInspectionOutputRenderer {
       BookInspection.Initialized initialized) {
     List<List<String>> rows =
         new ArrayList<>(CliBookIdentityDisplay.rows(initialized.bookIdentity()));
-    rows.add(List.of("Initialized at", CliHumanDisplay.instant(initialized.initializedAt())));
+    rows.add(List.of("Initialized at", CliTextDisplay.instant(initialized.initializedAt())));
     return List.copyOf(rows);
   }
 
-  private static String closeReadinessSection(BookInspection inspection) {
+  private static String resultTransferReadinessSection(BookInspection inspection) {
     if (!(inspection instanceof BookInspection.Initialized initialized)) {
       return "";
     }
     return section(
         "Close Readiness",
         CliTextFormat.renderKeyValueBlock(
-            closeReadinessRows(initialized.closeReadiness()), HUMAN_WRAP_WIDTH));
+            resultTransferReadinessRows(initialized.resultTransferReadiness()), TEXT_WRAP_WIDTH));
   }
 
-  private static List<List<String>> closeReadinessRows(CloseReadiness closeReadiness) {
+  private static List<List<String>> resultTransferReadinessRows(
+      ResultTransferReadiness resultTransferReadiness) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Ready", CliQueryOutputFormatter.displayBooleanLabel(closeReadiness.ready())));
     rows.add(
         List.of(
-            "Required closing-equity classification",
+            "Ready", CliQueryOutputFormatter.displayBooleanLabel(resultTransferReadiness.ready())));
+    rows.add(
+        List.of(
+            "Required result-holding classification",
             CliQueryOutputFormatter.displayFinancialPositionLineClassification(
-                closeReadiness.requiredFinancialPositionLineClassification())));
+                resultTransferReadiness.requiredFinancialPositionLineClassification())));
     rows.add(
         List.of(
-            "Closing equity account",
-            closeReadiness.closingEquityAccountCode() == null
+            "Result-holding account",
+            resultTransferReadiness.resultHoldingAccountCode() == null
                 ? "(none)"
-                : closeReadiness.closingEquityAccountCode().value()));
-    if (!closeReadiness.ready()) {
-      rows.add(List.of("Blocking code", closeReadiness.blockingCode()));
-      rows.add(List.of("Blocking reason", closeReadiness.blockingMessage()));
+                : resultTransferReadiness.resultHoldingAccountCode().value()));
+    if (!resultTransferReadiness.ready()) {
+      rows.add(List.of("Blocking code", resultTransferReadiness.blockingCode()));
+      rows.add(List.of("Blocking reason", resultTransferReadiness.blockingMessage()));
       rows.add(
           List.of(
               "Candidate accounts",
-              closeReadiness.candidateAccountCodes().isEmpty()
+              resultTransferReadiness.candidateAccountCodes().isEmpty()
                   ? "(none)"
-                  : closeReadiness.candidateAccountCodes().stream()
+                  : resultTransferReadiness.candidateAccountCodes().stream()
                       .map(dev.erst.fingrind.core.AccountCode::value)
                       .collect(java.util.stream.Collectors.joining(", "))));
     }

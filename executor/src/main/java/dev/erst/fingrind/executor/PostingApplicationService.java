@@ -22,6 +22,7 @@ import java.util.Objects;
 public final class PostingApplicationService {
   private final PostingValidationStore validationStore;
   private final BookkeepingPostingService bookkeepingPostingService;
+  private final PostEntrySemanticsPolicy entryAcceptancePolicy;
 
   /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
@@ -30,6 +31,7 @@ public final class PostingApplicationService {
       PostingIdGenerator postingIdGenerator,
       java.time.Clock clock) {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
+    this.entryAcceptancePolicy = PostEntrySemanticsPolicy.currentKernel();
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
             this.validationStore,
@@ -46,6 +48,13 @@ public final class PostingApplicationService {
           command,
           BookkeepingPublishedLanguageTranslator.toPublished(
               new BookkeepingPostingRejection.BookNotInitialized()));
+    }
+    java.util.Optional<BookkeepingPostingRejection> entryRejection =
+        entryAcceptancePolicy.rejectionFor(command, validationStore);
+    if (entryRejection.isPresent()) {
+      return rejectedPreflight(
+          command,
+          BookkeepingPublishedLanguageTranslator.toPublished(entryRejection.orElseThrow()));
     }
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.preflight(postingCommand)) {
@@ -66,6 +75,13 @@ public final class PostingApplicationService {
           command,
           BookkeepingPublishedLanguageTranslator.toPublished(
               new BookkeepingPostingRejection.BookNotInitialized()));
+    }
+    java.util.Optional<BookkeepingPostingRejection> entryRejection =
+        entryAcceptancePolicy.rejectionFor(command, validationStore);
+    if (entryRejection.isPresent()) {
+      return rejectedCommit(
+          command,
+          BookkeepingPublishedLanguageTranslator.toPublished(entryRejection.orElseThrow()));
     }
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.commit(postingCommand)) {
@@ -101,9 +117,6 @@ public final class PostingApplicationService {
   }
 
   private PostingCommand localPostingCommand(PostEntryCommand command) {
-    BookLifecycleInspection inspection = validationStore.inspectBook();
-    BookLifecycleInspection.Initialized initialized =
-        (BookLifecycleInspection.Initialized) inspection;
-    return PostEntryCommandTranslator.toPostingCommand(initialized.bookIdentity(), command);
+    return PostEntryCommandTranslator.toPostingCommand(command);
   }
 }

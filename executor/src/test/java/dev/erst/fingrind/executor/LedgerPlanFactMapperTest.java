@@ -222,11 +222,12 @@ class LedgerPlanFactMapperTest {
             new ReversalReference(new PostingId("prior-posting")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         new AccountingEvidence(
             List.of(
                 new SourceDocumentReference(
                     new SourceDocumentId("document-idem-1"),
-                    new SourceDocumentType("invoice"),
+                    new SourceDocumentType("cash-receipt"),
                     LocalDate.parse("2026-04-07"),
                     Instant.parse("2026-04-07T10:15:30Z"),
                     new dev.erst.fingrind.core.StorageLocator("vault://fixtures/document-idem-1"),
@@ -237,7 +238,7 @@ class LedgerPlanFactMapperTest {
                     new ApprovalId("approval-idem-1"),
                     new ApprovalType("manager-signoff"),
                     new ActorId("approver-1"),
-                    ActorType.HUMAN,
+                    ActorType.PERSON,
                     dev.erst.fingrind.core.ApprovalDecision.APPROVED,
                     Instant.parse("2026-04-07T10:20:30Z")))),
         new CommittedProvenance(

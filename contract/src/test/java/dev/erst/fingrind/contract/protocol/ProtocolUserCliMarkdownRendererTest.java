@@ -18,9 +18,9 @@ class ProtocolUserCliMarkdownRendererTest {
   void commandTableBlock_preservesCanonicalOptionSyntaxWithoutLossyNormalization() {
     String block = ProtocolUserCliMarkdownRenderer.commandTableBlock();
 
-    assertTrue(block.contains("<code>[--output &lt;json|human&gt;]</code>"));
+    assertTrue(block.contains("<code>[--output &lt;json|text&gt;]</code>"));
     assertTrue(block.contains("<code>--request-file &lt;path|-&gt;</code>"));
-    assertFalse(block.contains("<json or human>"));
+    assertFalse(block.contains("<json or text>"));
     assertFalse(block.contains("<path or ->"));
   }
 

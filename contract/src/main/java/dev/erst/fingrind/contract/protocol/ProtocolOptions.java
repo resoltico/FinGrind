@@ -73,10 +73,7 @@ public final class ProtocolOptions {
   /** Option selecting the {@code MM-DD} fiscal-year start used when initializing one new book. */
   public static final String FISCAL_YEAR_START = "--fiscal-year-start";
 
-  /** Option selecting the accounting policy profile used when initializing one new book. */
-  public static final String POLICY_PROFILE = "--policy-profile";
-
-  /** Option selecting the closing equity account used by one close-period command. */
+  /** Option selecting the result-holding account used by one transfer-period-result command. */
 
   /** Option selecting which posting kinds one report query should include. */
   public static final String POSTING_COVERAGE = "--posting-coverage";

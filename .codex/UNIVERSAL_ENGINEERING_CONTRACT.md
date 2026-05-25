@@ -9,7 +9,7 @@
 
 This contract is a method. Per Naur (*Programming as Theory Building*, 1985), no method substitutes for the *theory* held by the people who build and maintain a system — the tacit grasp of how the code maps to the world, why each part is what it is, and how new demands can be absorbed without destroying structure. Theory cannot be fully written down, and revival of a program from its artifacts alone is, in Naur's words, "strictly impossible."
 
-The purpose of this contract is therefore not to capture theory, but to keep its absence visible. It is a discipline for working agents — human or otherwise — who are *transient theory-holders*: they enter cold, build a partial theory of the slice they touch, and leave. That transience makes two things obligatory:
+The purpose of this contract is therefore not to capture theory, but to keep its absence visible. It is a discipline for working agents — person-operated or otherwise — who are *transient theory-holders*: they enter cold, build a partial theory of the slice they touch, and leave. That transience makes two things obligatory:
 
 1. **Surface the tacit gap.** Where the change depends on theory the agent does not fully have, say so. Do not paper over it with confident output.
 2. **Re-cue the next reader.** Leave artifacts that help the next person reconstruct the relevant slice — knowing those artifacts are aids to a theory that lives elsewhere, not the theory itself.
@@ -49,7 +49,7 @@ A change without evidence is incomplete unless there is a clear, stated reason e
 
 - What breaks if this file, function, module, class, endpoint, table, message, job, flag, or configuration disappears?
 - Who calls it directly?
-- Who depends on it indirectly through reflection, routing, serialization, dependency injection, schemas, generated code, conventions, plugins, events, queues, webhooks, cron jobs, dashboards, documentation, or human workflow?
+- Who depends on it indirectly through reflection, routing, serialization, dependency injection, schemas, generated code, conventions, plugins, events, queues, webhooks, cron jobs, dashboards, documentation, or manual workflow?
 - What is the blast radius across code, data, runtime behavior, users, and operations?
 
 Do not rely only on intuition. Prove blast radius with the available tools: search, static analysis, dependency graphs, tests, traces, logs, schemas, build output, or runtime inspection.
@@ -74,7 +74,7 @@ If the answer is not available — from code, history, conversation, or reasonin
 
 ### 1.6 Re-cueing — what must the next reader be able to rebuild?
 
-The relevant theory cannot be fully written down. What can be written down is the set of cues that help the next reader — human or agent — rebuild the slice of theory needed to act safely.
+The relevant theory cannot be fully written down. What can be written down is the set of cues that help the next reader — person or agent — rebuild the slice of theory needed to act safely.
 
 - What did this change depend on that is not obvious from the diff?
 - Where should those cues live so they survive: tests, names, types, schemas, comments where the *why* is non-obvious, runbooks, ADRs, architecture notes, agent directive files?
@@ -201,7 +201,7 @@ Before deleting or simplifying, check for:
 - external consumers;
 - scheduled jobs and asynchronous workers;
 - observability, alerting, and operations dependencies;
-- documentation and human processes.
+- documentation and manual processes.
 
 If safe deletion cannot be proven fully, reduce uncertainty with tooling and make the smallest reversible change.
 

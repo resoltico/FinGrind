@@ -147,7 +147,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "2026-04-08"));
     recordTextFixture(
         recordedFixtures,
-        "trial-balance-human.txt",
+        "trial-balance-text.txt",
         runPlainCommand(
             "trial-balance",
             "--book-file",
@@ -157,7 +157,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--effective-date-as-of",
             "2026-04-08",
             "--output",
-            "human"));
+            "text"));
     recordJsonFixture(
         recordedFixtures,
         "account-ledger-response.json",
@@ -201,7 +201,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "2026-04-08"));
     recordTextFixture(
         recordedFixtures,
-        "period-summary-human.txt",
+        "period-summary-text.txt",
         runPlainCommand(
             "period-summary",
             "--book-file",
@@ -213,7 +213,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--effective-date-to",
             "2026-04-08",
             "--output",
-            "human"));
+            "text"));
 
     recordJsonFixture(
         recordedFixtures,
@@ -249,11 +249,17 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             brokenBookFile.toString(),
             "--book-key-file",
             brokenBookKeyFile.toString()));
-    recordJsonFixture(
+    recordTextFixture(
         recordedFixtures,
-        "interactive-prompt-unavailable-error.json",
-        runJsonCommandExpectingExit(
-            5, "inspect-book", "--book-file", bookFile.toString(), "--book-passphrase-prompt"));
+        "interactive-prompt-unavailable-error.txt",
+        runPlainCommand(
+            5,
+            "inspect-book",
+            "--book-file",
+            bookFile.toString(),
+            "--book-passphrase-prompt",
+            "--output",
+            "text"));
 
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =

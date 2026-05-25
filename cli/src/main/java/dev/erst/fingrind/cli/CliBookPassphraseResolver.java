@@ -99,7 +99,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private ContractDecision<SqliteBookPassphrase> readFromInteractivePrompt(
       Path bookFilePath, PromptStyle promptStyle) {
     Path normalizedPath = bookFilePath.toAbsolutePath().normalize();
-    String displayPath = CliHumanDisplay.path(normalizedPath);
+    String displayPath = CliTextDisplay.path(normalizedPath);
     ContractDecision<char[]> passwordDecision =
         terminal.readPassword(promptStyle.primaryPrompt(displayPath));
     char[] password;
@@ -151,7 +151,10 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private static @Nullable PromptingConsole systemPromptingConsole() {
     java.io.Console console = availableSystemConsole();
     return Optional.ofNullable(console)
-        .map(c -> availableSystemPromptingConsole(wrap(c::isTerminal, c::readPassword)))
+        .map(
+            c ->
+                availableSystemPromptingConsole(
+                    wrap(c::isTerminal, prompt -> c.readPassword("%s", prompt))))
         .orElse(null);
   }
 
@@ -190,7 +193,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   /** Typed console seam for password prompts used by the interactive CLI flow. */
   @FunctionalInterface
   interface PromptingConsole {
-    /** Reads one password from the underlying console prompt and may return {@code null} on EOF. */
+    /** Reads one password for the supplied prompt and may return {@code null} on EOF. */
     char @Nullable [] readPassword(String prompt);
   }
 
@@ -207,26 +210,23 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     boolean isTerminal();
   }
 
-  /** Typed formatted-password seam matching the JDK console contract. */
+  /** Typed password-reader seam matching the JDK console prompt-aware read contract. */
   @FunctionalInterface
-  interface FormattedPasswordReader {
-    /**
-     * Reads a password with one format string plus arguments and may return {@code null} on EOF.
-     */
-    char @Nullable [] readPassword(String format, Object... arguments);
+  interface PasswordReader {
+    /** Reads one password for the supplied prompt and may return {@code null} on EOF. */
+    char @Nullable [] readPassword(String prompt);
   }
 
-  static SystemPromptingConsole wrap(
-      TerminalState terminalState, FormattedPasswordReader passwordReader) {
+  static SystemPromptingConsole wrap(TerminalState terminalState, PasswordReader passwordReader) {
     return new WrappedConsole(terminalState, passwordReader);
   }
 
   /** JDK console adapter that exposes one interactive-terminal check plus prompt reads. */
   static final class WrappedConsole implements SystemPromptingConsole {
     private final TerminalState terminalState;
-    private final FormattedPasswordReader passwordReader;
+    private final PasswordReader passwordReader;
 
-    WrappedConsole(TerminalState terminalState, FormattedPasswordReader passwordReader) {
+    WrappedConsole(TerminalState terminalState, PasswordReader passwordReader) {
       this.terminalState = Objects.requireNonNull(terminalState, "terminalState");
       this.passwordReader = Objects.requireNonNull(passwordReader, "passwordReader");
     }
@@ -238,7 +238,8 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
     @Override
     public char @Nullable [] readPassword(String prompt) {
-      return passwordReader.readPassword("%s", prompt);
+      Objects.requireNonNull(prompt, "prompt");
+      return passwordReader.readPassword(prompt);
     }
   }
 

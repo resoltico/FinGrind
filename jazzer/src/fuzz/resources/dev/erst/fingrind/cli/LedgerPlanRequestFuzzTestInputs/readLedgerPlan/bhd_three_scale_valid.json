@@ -8,8 +8,7 @@
         "entityName": "Plan Seed BHD",
         "businessActivityTags": ["translation-services"],
         "functionalCurrency": "BHD",
-        "fiscalYearStart": "01-01",
-        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+        "fiscalYearStart": "01-01"
       }
     },
     {
@@ -54,7 +53,7 @@
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-seed-plan-bhd-idem-1",
-              "sourceDocumentType": "invoice",
+              "sourceDocumentType": "cash-receipt",
               "documentDate": "2026-06-17",
               "capturedAt": "2026-06-17T10:15:30Z",
               "storageLocator": "vault://fixtures/document-seed-plan-bhd-idem-1",

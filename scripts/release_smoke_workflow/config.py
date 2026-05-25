@@ -62,7 +62,6 @@ def load_config() -> ReleaseSmokeConfig:
         business_activity_tags=scenario.business_activity_tags,
         functional_currency=scenario.functional_currency,
         fiscal_year_start=scenario.fiscal_year_start,
-        policy_profile=scenario.policy_profile,
     )
 
 

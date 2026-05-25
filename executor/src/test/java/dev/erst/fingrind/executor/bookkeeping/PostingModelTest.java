@@ -49,6 +49,7 @@ class PostingModelTest {
     PostingRequestModel request =
         new PostingCommand(
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             testJournalEntry(),
             PostingLineageModel.reversal(reversalReference, reversalReason),
             accountingEvidence("idem-1"),

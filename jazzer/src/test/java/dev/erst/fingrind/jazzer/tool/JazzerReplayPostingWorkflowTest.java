@@ -14,12 +14,12 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.postingWorkflow("basic_valid.json").getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
+            new ParsedPostingCommandDetails("2026-04-10", "idem-posting-4", 4, false),
             new PostingWorkflowLifecycleDetails(
                 new PostingGateDetails(
                     PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
@@ -42,7 +42,8 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            JazzerReplayRequestFixtures.reversalTargetMissingRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.postingWorkflow("reversal_target_missing.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -70,7 +71,8 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            JazzerReplayRequestFixtures.missingReversalReasonRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.postingWorkflow("invalid_missing_reversal_reason.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -83,7 +85,8 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            JazzerReplayRequestFixtures.invalidBlankActorRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.postingWorkflow("invalid_blank_actor.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -96,7 +99,8 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            JazzerReplayRequestFixtures.invalidExponentAmountRequest().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.postingWorkflow("invalid_amount_exponent.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);

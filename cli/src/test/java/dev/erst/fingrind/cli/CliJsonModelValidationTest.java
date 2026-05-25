@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static dev.erst.fingrind.cli.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
@@ -25,6 +26,7 @@ import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -78,7 +80,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.45.0",
+                "0.46.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 List.of(),
@@ -91,7 +93,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.45.0",
+                "0.46.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -104,7 +106,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.45.0",
+                "0.46.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -116,13 +118,56 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.45.0",
+                "0.46.0",
                 DiscoveryDetail.COMPACT,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
                 capabilitiesDescriptor.requestInput(),
                 List.of("Prefer --output json for agents."),
                 capabilitiesDescriptor));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
+                "FinGrind",
+                "0.46.0",
+                "Discovery overview",
+                DiscoveryDetail.COMPACT,
+                List.of(),
+                "Run fingrind help --output json --detail compact.",
+                "Run fingrind help --output json --detail full."));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
+                "FinGrind",
+                "0.46.0",
+                DiscoveryDetail.FULL,
+                capabilitiesDescriptor.storage().bookBoundary(),
+                List.of(),
+                "Run fingrind capabilities --output json --detail compact.",
+                "Run fingrind capabilities --output json --detail full."));
+
+    CliEnvelopeJsonModels.PlanEnvelope<CliDiscoveryJsonModels.CapabilitiesPayload> envelope =
+        new CliEnvelopeJsonModels.PlanEnvelope<>(
+            LedgerPlanStatus.SUCCEEDED,
+            new CliDiscoveryJsonModels.CapabilitiesPayload(
+                "FinGrind",
+                "0.46.0",
+                DiscoveryDetail.FULL,
+                capabilitiesDescriptor.storage(),
+                capabilitiesDescriptor.commands(),
+                capabilitiesDescriptor.requestInput(),
+                List.of("Prefer --output json for agents."),
+                capabilitiesDescriptor),
+            new ArrayList<>(
+                List.of(new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"))));
+    List<CliEnvelopeJsonModels.SuccessArtifact> artifacts = envelope.artifacts();
+    assertNotNull(artifacts);
+    assertEquals(1, artifacts.size());
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> artifacts.add(new CliEnvelopeJsonModels.SuccessArtifact("json", "/tmp/out.json")));
   }
 
   @Test
@@ -330,7 +375,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.45.0",
+        "0.46.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

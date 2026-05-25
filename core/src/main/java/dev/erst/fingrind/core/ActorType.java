@@ -4,7 +4,7 @@ import java.util.List;
 
 /** Classifies the actor that initiated one posting request. */
 public enum ActorType implements WireValue {
-  HUMAN,
+  PERSON,
   SYSTEM,
   AGENT;
 
@@ -12,7 +12,7 @@ public enum ActorType implements WireValue {
   @Override
   public String wireValue() {
     return switch (this) {
-      case HUMAN -> "HUMAN";
+      case PERSON -> "PERSON";
       case SYSTEM -> "SYSTEM";
       case AGENT -> "AGENT";
     };

@@ -10,7 +10,7 @@ public sealed interface PostingLineage permits PostingLineage.Direct, PostingLin
   /** Returns the optional prior posting that this lineage reverses. */
   Optional<ReversalReference> reversalReference();
 
-  /** Returns the optional human-readable reason carried by reversal postings. */
+  /** Returns the optional plain-language reason carried by reversal postings. */
   Optional<ReversalReason> reversalReason();
 
   /** Returns whether this lineage records a reversal of one prior posting. */

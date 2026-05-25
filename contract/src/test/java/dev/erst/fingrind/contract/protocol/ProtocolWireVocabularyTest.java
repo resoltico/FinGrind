@@ -26,7 +26,8 @@ class ProtocolWireVocabularyTest {
     assertEquals(List.of("summary", "full"), PlanResultDetail.wireValues());
     assertEquals("summary", PlanResultDetail.SUMMARY.toString());
     assertEquals("full", PlanResultDetail.FULL.toString());
-    assertEquals(List.of("compact", "full"), DiscoveryDetail.wireValues());
+    assertEquals(List.of("minimal", "compact", "full"), DiscoveryDetail.wireValues());
+    assertEquals("minimal", DiscoveryDetail.MINIMAL.toString());
     assertEquals("compact", DiscoveryDetail.COMPACT.toString());
     assertEquals("full", DiscoveryDetail.FULL.toString());
     assertEquals(
@@ -67,6 +68,7 @@ class ProtocolWireVocabularyTest {
         PlanFailurePolicy.fromWireValue("halt-on-first-failure"));
     assertEquals(PlanResultDetail.SUMMARY, PlanResultDetail.fromWireValue("summary"));
     assertEquals(PlanResultDetail.FULL, PlanResultDetail.fromWireValue("full"));
+    assertEquals(DiscoveryDetail.MINIMAL, DiscoveryDetail.fromWireValue("minimal"));
     assertEquals(DiscoveryDetail.COMPACT, DiscoveryDetail.fromWireValue("compact"));
     assertEquals(DiscoveryDetail.FULL, DiscoveryDetail.fromWireValue("full"));
     assertEquals(

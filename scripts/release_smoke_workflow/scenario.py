@@ -11,7 +11,6 @@ ENTITY_NAME = "Acme Studio"
 BUSINESS_ACTIVITY_TAGS = ["consulting-services"]
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
-POLICY_PROFILE = "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
 
 
 def build_release_smoke_scenario(
@@ -94,7 +93,6 @@ def build_release_smoke_scenario(
         business_activity_tags=BUSINESS_ACTIVITY_TAGS,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,
-        policy_profile=POLICY_PROFILE,
     )
 
 

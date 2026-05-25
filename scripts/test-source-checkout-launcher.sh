@@ -143,12 +143,11 @@ readonly entity_name='Launcher Smoke Co'
 readonly business_activity_tag='translation-services'
 readonly functional_currency='EUR'
 readonly fiscal_year_start='01-01'
-readonly policy_profile='INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1'
 [[ ! -e "$(dirname "${book_file}")" ]] || die "source-checkout launcher book parent started pre-created"
 [[ ! -e "$(dirname "${key_file}")" ]] || die "source-checkout launcher key parent started pre-created"
 
 progress 'source-checkout help surface'
-"${launcher_wrapper}" help --output human >"${help_stdout}" 2>"${help_stderr}" ||
+"${launcher_wrapper}" help --output text >"${help_stdout}" 2>"${help_stderr}" ||
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
@@ -270,8 +269,6 @@ if "reportingObligationStatus" in open_book:
     raise SystemExit("source-checkout launcher plan template leaked retired reporting status")
 if "accountingBasis" in open_book:
     raise SystemExit("source-checkout launcher plan template leaked retired accounting basis")
-if open_book["policyProfile"] != "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1":
-    raise SystemExit("source-checkout launcher plan template omitted policyProfile")
 declare_account = document["steps"][1]["declareAccount"]
 if declare_account["accountNodeKind"] != "POSTABLE":
     raise SystemExit("source-checkout launcher plan template omitted accountNodeKind")
@@ -358,7 +355,6 @@ progress 'source-checkout open-book'
     --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --policy-profile "${policy_profile}" \
     --output json >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
@@ -376,7 +372,7 @@ if parent_mode != 0o700:
         "source-checkout launcher open-book did not create an owner-only parent directory"
     )
 PY
-python3 - "${open_stdout}" "${entity_name}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" "${policy_profile}" <<'PY'
+python3 - "${open_stdout}" "${entity_name}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
 import json
 import pathlib
 import sys
@@ -394,14 +390,12 @@ if book_identity["functionalCurrency"] != sys.argv[4]:
     raise SystemExit("source-checkout launcher open-book returned the wrong functional currency")
 if book_identity["fiscalYearStart"] != sys.argv[5]:
     raise SystemExit("source-checkout launcher open-book returned the wrong fiscal year start")
-if book_identity["policyProfile"] != sys.argv[6]:
-    raise SystemExit("source-checkout launcher open-book returned the wrong accounting policy profile")
 PY
 
 [[ -f "${raw_jar}" ]] || die "missing developer application JAR"
 
 progress 'direct-java help surface'
-"${raw_java_wrapper}" help --output human >"${raw_help_stdout}" 2>"${raw_help_stderr}" ||
+"${raw_java_wrapper}" help --output text >"${raw_help_stdout}" 2>"${raw_help_stderr}" ||
     die "developer direct-Java help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
@@ -415,7 +409,7 @@ if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been call
 fi
 
 progress 'direct-java command help surface'
-"${raw_java_wrapper}" help open-book --output human >"${raw_command_help_stdout}" \
+"${raw_java_wrapper}" help open-book --output text >"${raw_command_help_stdout}" \
     2>"${raw_command_help_stderr}" || die "developer direct-Java command help failed"
 
 [[ ! -s "${raw_command_help_stderr}" ]] || die "developer direct-Java command help wrote diagnostics"
@@ -463,12 +457,11 @@ progress 'direct-java open-book'
     --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --policy-profile "${policy_profile}" \
     --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer direct-Java open-book failed"
 
 [[ ! -s "${raw_open_stderr}" ]] || die "developer direct-Java open-book wrote diagnostics"
-python3 - "${raw_open_stdout}" "${entity_name}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" "${policy_profile}" <<'PY'
+python3 - "${raw_open_stdout}" "${entity_name}" "${business_activity_tag}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
 import json
 import pathlib
 import sys
@@ -486,12 +479,10 @@ if book_identity["functionalCurrency"] != sys.argv[4]:
     raise SystemExit("developer direct-Java open-book returned the wrong functional currency")
 if book_identity["fiscalYearStart"] != sys.argv[5]:
     raise SystemExit("developer direct-Java open-book returned the wrong fiscal year start")
-if book_identity["policyProfile"] != sys.argv[6]:
-    raise SystemExit("developer direct-Java open-book returned the wrong accounting policy profile")
 PY
 
 progress 'raw java -jar help surface'
-java -jar "${raw_jar}" help --output human >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
+java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
@@ -542,7 +533,6 @@ java -jar "${raw_jar}" \
     --business-activity-tag "${business_activity_tag}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
-    --policy-profile "${policy_profile}" \
     --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
 raw_jar_open_exit=$?
 set -e

@@ -84,7 +84,7 @@ class AccountingEvidenceTest {
   @Test
   void sourceDocumentReference_requiresRetainedDocumentFact() {
     SourceDocumentId sourceDocumentId = new SourceDocumentId("invoice-1");
-    SourceDocumentType sourceDocumentType = new SourceDocumentType("invoice");
+    SourceDocumentType sourceDocumentType = new SourceDocumentType("cash-receipt");
     StorageLocator storageLocator = new StorageLocator("evidence://documents/invoice-1.pdf");
     ContentSha256 contentSha256 = new ContentSha256(DOCUMENT_SHA256);
     SourceDocumentReference reference =
@@ -173,13 +173,13 @@ class AccountingEvidenceTest {
             approvalId,
             approvalType,
             approverId,
-            ActorType.HUMAN,
+            ActorType.PERSON,
             ApprovalDecision.APPROVED,
             APPROVED_AT);
     assertEquals(approvalId, reference.approvalId());
     assertEquals(approvalType, reference.approvalType());
     assertEquals(approverId, reference.approverId());
-    assertEquals(ActorType.HUMAN, reference.approverType());
+    assertEquals(ActorType.PERSON, reference.approverType());
     assertEquals(ApprovalDecision.APPROVED, reference.decision());
     assertEquals(APPROVED_AT, reference.approvedAt());
     assertThrows(
@@ -189,7 +189,7 @@ class AccountingEvidenceTest {
                 nullOf(),
                 approvalType,
                 approverId,
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -199,7 +199,7 @@ class AccountingEvidenceTest {
                 approvalId,
                 nullOf(),
                 approverId,
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -209,7 +209,7 @@ class AccountingEvidenceTest {
                 approvalId,
                 approvalType,
                 nullOf(),
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -226,7 +226,7 @@ class AccountingEvidenceTest {
         NullPointerException.class,
         () ->
             new ApprovalReference(
-                approvalId, approvalType, approverId, ActorType.HUMAN, nullOf(), APPROVED_AT));
+                approvalId, approvalType, approverId, ActorType.PERSON, nullOf(), APPROVED_AT));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -234,7 +234,7 @@ class AccountingEvidenceTest {
                 approvalId,
                 approvalType,
                 approverId,
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 nullOf()));
   }
@@ -279,7 +279,7 @@ class AccountingEvidenceTest {
   private static SourceDocumentReference sourceDocumentReference(String token) {
     return new SourceDocumentReference(
         new SourceDocumentId(token),
-        new SourceDocumentType("invoice"),
+        new SourceDocumentType("cash-receipt"),
         DOCUMENT_DATE,
         CAPTURED_AT,
         new StorageLocator("evidence://documents/%s.pdf".formatted(token)),
@@ -291,7 +291,7 @@ class AccountingEvidenceTest {
         new ApprovalId(token),
         new ApprovalType("manager-signoff"),
         new ActorId("manager-1"),
-        ActorType.HUMAN,
+        ActorType.PERSON,
         ApprovalDecision.APPROVED,
         APPROVED_AT);
   }

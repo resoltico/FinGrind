@@ -6,12 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
-/** Shared human-readable rendering for deterministic CLI errors and rejections. */
+/** Shared plain-language rendering for deterministic CLI errors and rejections. */
 final class CliFailureOutputRenderer {
   private CliFailureOutputRenderer() {}
 
-  static String renderFailureHuman(CliFailure failure) {
-    return renderHumanDocument(
+  static String renderFailureText(CliFailure failure) {
+    return renderTextDocument(
         "Error",
         failure.code(),
         failure.message(),
@@ -22,8 +22,8 @@ final class CliFailureOutputRenderer {
         null);
   }
 
-  static String renderDeterministicFailureHuman(CliFailure failure) {
-    return renderHumanDocument(
+  static String renderDeterministicFailureText(CliFailure failure) {
+    return renderTextDocument(
         "Rejected",
         failure.code(),
         failure.message(),
@@ -34,8 +34,8 @@ final class CliFailureOutputRenderer {
         null);
   }
 
-  static String renderWarningHuman(CliFailure failure) {
-    return renderHumanDocument(
+  static String renderWarningText(CliFailure failure) {
+    return renderTextDocument(
         "Warning",
         failure.code(),
         failure.message(),
@@ -46,8 +46,8 @@ final class CliFailureOutputRenderer {
         null);
   }
 
-  static String renderInfoHuman(CliFailure failure) {
-    return renderHumanDocument(
+  static String renderInfoText(CliFailure failure) {
+    return renderTextDocument(
         "Info",
         failure.code(),
         failure.message(),
@@ -58,17 +58,16 @@ final class CliFailureOutputRenderer {
         null);
   }
 
-  static String renderRejectedHuman(
+  static String renderRejectedText(
       String code,
       String message,
       @Nullable String hint,
       @Nullable String idempotencyKey,
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
-    return renderHumanDocument(
-        "Rejected", code, message, hint, null, idempotencyKey, null, details);
+    return renderTextDocument("Rejected", code, message, hint, null, idempotencyKey, null, details);
   }
 
-  private static String renderHumanDocument(
+  private static String renderTextDocument(
       String title,
       String code,
       String message,
@@ -115,6 +114,8 @@ final class CliFailureOutputRenderer {
     switch (rejectionDetails) {
       case CliRejectionJsonModels.AccountStateViolationsDetails details ->
           appendPostingRejectionDetails(rows, details);
+      case CliRejectionJsonModels.EntrySemanticsViolationsDetails details ->
+          appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.PriorPostingDetails details ->
           appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details ->
@@ -123,7 +124,7 @@ final class CliFailureOutputRenderer {
           appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details ->
           appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ClosedPeriodViolationDetails details ->
+      case CliRejectionJsonModels.TransferredPeriodResultViolationDetails details ->
           appendPostingRejectionDetails(rows, details);
       case CliRejectionJsonModels.AccountRoleConflictDetails details ->
           appendAccountRejectionDetails(rows, details);
@@ -141,18 +142,18 @@ final class CliFailureOutputRenderer {
           appendAccountRejectionDetails(rows, details);
       case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details ->
           appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
+      case CliRejectionJsonModels.ResultHoldingAccountDetails details ->
           appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails details ->
+      case CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails details ->
           appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails details ->
+      case CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails details ->
           appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodCloseStartDetails details ->
-          appendPeriodCloseRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodCloseFutureDateDetails details ->
-          appendPeriodCloseRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodCloseFiscalYearDetails details ->
-          appendPeriodCloseRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodResultTransferStartDetails details ->
+          appendPeriodResultTransferRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodResultTransferFutureDateDetails details ->
+          appendPeriodResultTransferRejectionDetails(rows, details);
+      case CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails details ->
+          appendPeriodResultTransferRejectionDetails(rows, details);
       case CliRejectionJsonModels.UnknownAccountDetails details ->
           appendQueryOrPlanRejectionDetails(rows, details);
       case CliRejectionJsonModels.PostingNotFoundDetails details ->
@@ -200,6 +201,20 @@ final class CliFailureOutputRenderer {
                                       : ", " + violation.accountNodeKind())
                                   + ")")
                       .collect(java.util.stream.Collectors.joining(", "))));
+      case CliRejectionJsonModels.EntrySemanticsViolationsDetails violations ->
+          rows.add(
+              List.of(
+                  "Violations",
+                  violations.violations().stream()
+                      .map(
+                          violation ->
+                              violation.code()
+                                  + " ("
+                                  + (violation.field() == null
+                                      ? violation.message()
+                                      : violation.field() + ": " + violation.message())
+                                  + ")")
+                      .collect(java.util.stream.Collectors.joining(", "))));
       case CliRejectionJsonModels.PriorPostingDetails details ->
           rows.add(List.of("Prior posting id", details.priorPostingId()));
       case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
@@ -214,8 +229,8 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));
       }
-      case CliRejectionJsonModels.ClosedPeriodViolationDetails details -> {
-        rows.add(List.of("Closed through", details.closedThroughEffectiveDate()));
+      case CliRejectionJsonModels.TransferredPeriodResultViolationDetails details -> {
+        rows.add(List.of("Transferred through", details.transferredThroughEffectiveDate()));
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
       }
     }
@@ -266,9 +281,9 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Parent account code", details.parentAccountCode()));
         appendTaxonomyRows(rows, "Parent", details.parentAccountTaxonomy());
       }
-      case CliRejectionJsonModels.ClosingEquityAccountDetails details ->
+      case CliRejectionJsonModels.ResultHoldingAccountDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
-      case CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails details -> {
+      case CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails details -> {
         rows.add(
             List.of(
                 "Required financial position classification",
@@ -278,7 +293,7 @@ final class CliFailureOutputRenderer {
                 "Inactive candidate account codes",
                 CliTextFormat.joined(details.inactiveCandidateAccountCodes())));
       }
-      case CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails details -> {
+      case CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails details -> {
         rows.add(
             List.of(
                 "Required financial position classification",
@@ -290,15 +305,15 @@ final class CliFailureOutputRenderer {
     }
   }
 
-  private static void appendPeriodCloseRejectionDetails(
+  private static void appendPeriodResultTransferRejectionDetails(
       List<List<String>> rows,
-      CliRejectionJsonModels.PeriodCloseRejectionDetails rejectionDetails) {
+      CliRejectionJsonModels.PeriodResultTransferRejectionDetails rejectionDetails) {
     switch (rejectionDetails) {
-      case CliRejectionJsonModels.PeriodCloseStartDetails details ->
+      case CliRejectionJsonModels.PeriodResultTransferStartDetails details ->
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
-      case CliRejectionJsonModels.PeriodCloseFutureDateDetails details ->
+      case CliRejectionJsonModels.PeriodResultTransferFutureDateDetails details ->
           rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
-      case CliRejectionJsonModels.PeriodCloseFiscalYearDetails details -> {
+      case CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails details -> {
         rows.add(List.of("Attempted start date", details.attemptedEffectiveDateFrom()));
         rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
         rows.add(List.of("Fiscal year start", details.fiscalYearStart()));

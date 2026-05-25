@@ -115,9 +115,8 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected fiscal year start",
     )
     require(
-        payload_field(open_payload, "payload", "bookIdentity", "policyProfile")
-        == config.policy_profile,
-        f"{config.label} open-book did not echo the expected accounting policy profile",
+        "policyProfile" not in payload_field(open_payload, "payload", "bookIdentity"),
+        f"{config.label} open-book leaked retired policy-profile identity",
     )
 
 
@@ -193,8 +192,6 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
-            "--policy-profile",
-            config.policy_profile,
             "--book-passphrase-stdin",
             stdin_text=generated_passphrase,
         )
@@ -212,8 +209,6 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.functional_currency,
             "--fiscal-year-start",
             config.fiscal_year_start,
-            "--policy-profile",
-            config.policy_profile,
             "--book-key-file",
             config.book_key.argument,
         )

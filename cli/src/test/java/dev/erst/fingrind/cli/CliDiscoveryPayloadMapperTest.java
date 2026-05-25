@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
@@ -24,17 +25,31 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for {@link CliDiscoveryPayloadMapper}. */
 class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   @Test
-  void helpPayload_mapsRootHelpToOverviewPayload() {
-    CliDiscoveryJsonModels.HelpOverviewPayload payload =
+  void helpPayload_mapsRootHelpToMinimalOverviewPayload() {
+    CliDiscoveryJsonModels.HelpOverviewMinimalPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewPayload.class,
+            CliDiscoveryJsonModels.HelpOverviewMinimalPayload.class,
+            minimalHelpPayload(MachineContract.help(identity(), environment())));
+
+    assertEquals("FinGrind", payload.application());
+    assertEquals(DiscoveryDetail.MINIMAL, payload.detail());
+    assertFalse(payload.commands().isEmpty());
+    assertTrue(payload.compactDetailHint().contains("--detail compact"));
+    assertTrue(payload.fullDetailHint().contains("--detail full"));
+  }
+
+  @Test
+  void helpPayload_mapsRootHelpToOverviewPayload() {
+    CliDiscoveryJsonModels.HelpOverviewCompactPayload payload =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.HelpOverviewCompactPayload.class,
             compactHelpPayload(MachineContract.help(identity(), environment())));
 
     assertEquals("FinGrind", payload.application());
     assertEquals(DiscoveryDetail.COMPACT, payload.detail());
-    assertTrue(payload.gettingStarted().getFirst().contains("help <command>"));
+    assertFalse(payload.commands().isEmpty());
     assertTrue(payload.capabilitiesHint().contains("capabilities --output json"));
-    assertNull(payload.fullContract());
+    assertTrue(payload.fullDetailHint().contains("--detail full"));
   }
 
   @Test
@@ -48,6 +63,35 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertNotNull(payload.fullContract());
     assertEquals("FinGrind", payload.fullContract().application());
     assertFalse(payload.fullContract().quickStart().isEmpty());
+  }
+
+  @Test
+  void capabilitiesPayloads_mapMinimalAndFullDiscoveryVariants() {
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    CliDiscoveryJsonModels.CapabilitiesMinimalPayload minimal =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesMinimalPayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
+                capabilitiesDescriptor, DiscoveryDetail.MINIMAL));
+    CliDiscoveryJsonModels.CapabilitiesCompactPayload compact =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCompactPayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor, DiscoveryDetail.COMPACT));
+    CliDiscoveryJsonModels.CapabilitiesPayload full =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesPayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor, DiscoveryDetail.FULL));
+
+    assertEquals(DiscoveryDetail.MINIMAL, minimal.detail());
+    assertTrue(minimal.compactDetailHint().contains("--detail compact"));
+    assertEquals(DiscoveryDetail.COMPACT, compact.detail());
+    assertFalse(compact.commands().isEmpty());
+    assertNotNull(compact.requestInput());
+    assertEquals(DiscoveryDetail.FULL, full.detail());
+    assertNotNull(full.fullContract());
   }
 
   @Test
@@ -78,7 +122,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 canonical.preflight(),
                 canonical.currencyModel()));
 
-    assertInstanceOf(CliDiscoveryJsonModels.HelpOverviewPayload.class, payload);
+    assertInstanceOf(CliDiscoveryJsonModels.HelpOverviewCompactPayload.class, payload);
   }
 
   @Test
@@ -495,6 +539,10 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.COMPACT);
   }
 
+  private static Object minimalHelpPayload(HelpDescriptor helpDescriptor) {
+    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.MINIMAL);
+  }
+
   private static Object fullHelpPayload(HelpDescriptor helpDescriptor) {
     return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.FULL);
   }
@@ -502,7 +550,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.45.0",
+        "0.46.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

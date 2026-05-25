@@ -7,8 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -23,6 +21,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -75,9 +75,9 @@ interface CliBookWorkflow {
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
 
-  /** Closes one contiguous reporting period into the policy-selected closing equity account. */
-  ContractDecision<ClosePeriodResult> closePeriod(
-      BookAccess bookAccess, ClosePeriodCommand command);
+  /** Transfers one contiguous reporting period into the policy-selected result-holding account. */
+  ContractDecision<PeriodResultTransferResult> transferPeriodResult(
+      BookAccess bookAccess, PeriodResultTransferCommand command);
 
   /** Inspects one selected book for lifecycle and compatibility state. */
   ContractDecision<BookInspection> inspectBook(BookAccess bookAccess);

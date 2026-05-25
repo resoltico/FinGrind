@@ -28,7 +28,7 @@ final class FinancialPositionStatementCalculator {
   FinancialPositionStatementCalculator(BookkeepingStatementContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.profitAndLossContributionCalculator =
-        new ProfitAndLossContributionCalculator(context::policyPack);
+        new ProfitAndLossContributionCalculator(context::accountingRules);
   }
 
   FinancialPositionView view(FinancialPositionCriteria criteria) {
@@ -36,7 +36,7 @@ final class FinancialPositionStatementCalculator {
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
     EffectiveDateRange comparativeRange =
         context
-            .policyPack()
+            .accountingRules()
             .statementComparativePolicy()
             .comparativeAsOf(bookIdentity, criteria.effectiveDateAsOf());
     List<FinancialPositionSectionView> sections =
@@ -72,7 +72,10 @@ final class FinancialPositionStatementCalculator {
   private List<FinancialPositionSectionView> sections(
       BookIdentity bookIdentity, List<AccountCurrencyTotals> accountTotals) {
     DerivedEquityLine currentPeriodResultLine =
-        context.policyPack().statementPresentationPolicy().currentPeriodResultLine(bookIdentity);
+        context
+            .accountingRules()
+            .statementPresentationPolicy()
+            .currentPeriodResultLine(bookIdentity);
     FinancialPositionRows rows = new FinancialPositionRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       if (!isFinancialPositionAccount(accountTotal.account().accountType())) {

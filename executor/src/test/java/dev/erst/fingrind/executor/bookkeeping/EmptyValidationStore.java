@@ -53,7 +53,7 @@ abstract class EmptyValidationStore implements PostingValidationStore {
   }
 
   @Override
-  public Optional<LocalDate> closedThroughEffectiveDate() {
+  public Optional<LocalDate> transferredThroughEffectiveDate() {
     return Optional.empty();
   }
 }

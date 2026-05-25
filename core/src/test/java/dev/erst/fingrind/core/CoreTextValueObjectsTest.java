@@ -96,56 +96,22 @@ class CoreTextValueObjectsTest {
     EntityProfile entityProfile = new EntityProfile(entityName, List.of());
 
     BookIdentity bookIdentity =
-        new BookIdentity(
-            entityProfile,
-            functionalCurrency,
-            fiscalYearStart,
-            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart);
 
     assertEquals(entityName, bookIdentity.entityName());
     assertThrows(
         NullPointerException.class,
-        () ->
-            new BookIdentity(
-                nullOf(),
-                functionalCurrency,
-                fiscalYearStart,
-                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
+        () -> new BookIdentity(nullOf(), functionalCurrency, fiscalYearStart));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new BookIdentity(
-                entityProfile,
-                nullOf(),
-                fiscalYearStart,
-                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
+        () -> new BookIdentity(entityProfile, nullOf(), fiscalYearStart));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new BookIdentity(
-                entityProfile,
-                functionalCurrency,
-                nullOf(),
-                AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart, nullOf()));
+        () -> new BookIdentity(entityProfile, functionalCurrency, nullOf()));
   }
 
   @Test
-  void accountingPolicyAndChartNodeWireVocabulariesParseStableValuesAndRejectUnknownValues() {
-    assertEquals(
-        "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1.wireValue());
-    assertEquals(
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
-        AccountingPolicyProfile.fromWireValue("INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"));
-    assertEquals(
-        List.of("INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"), AccountingPolicyProfile.wireValues());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> AccountingPolicyProfile.fromWireValue("internal-management"));
-
+  void chartNodeWireVocabularyParsesStableValuesAndRejectsUnknownValues() {
     assertEquals("HEADER", AccountNodeKind.HEADER.wireValue());
     assertEquals("POSTABLE", AccountNodeKind.POSTABLE.wireValue());
     assertEquals(AccountNodeKind.HEADER, AccountNodeKind.fromWireValue("HEADER"));
@@ -186,9 +152,9 @@ class CoreTextValueObjectsTest {
             "NONCURRENT_ASSET",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
-            "CONTRIBUTED_CAPITAL",
-            "DISTRIBUTIONS",
-            "ACCUMULATED_RESULT",
+            "EQUITY_CONTRIBUTION",
+            "EQUITY_WITHDRAWAL",
+            "RESULT_HOLDING",
             "RESERVE",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.wireValues());
@@ -198,9 +164,9 @@ class CoreTextValueObjectsTest {
             "NONCURRENT_ASSET",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
-            "CONTRIBUTED_CAPITAL",
-            "DISTRIBUTIONS",
-            "ACCUMULATED_RESULT",
+            "EQUITY_CONTRIBUTION",
+            "EQUITY_WITHDRAWAL",
+            "RESULT_HOLDING",
             "RESERVE",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.declaredAccountWireValues());
@@ -220,11 +186,11 @@ class CoreTextValueObjectsTest {
         AccountType.LIABILITY,
         FinancialPositionLineClassification.NONCURRENT_LIABILITY.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.CONTRIBUTED_CAPITAL.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.EQUITY_CONTRIBUTION.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.DISTRIBUTIONS.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.EQUITY_WITHDRAWAL.accountType());
     assertEquals(
-        AccountType.EQUITY, FinancialPositionLineClassification.ACCUMULATED_RESULT.accountType());
+        AccountType.EQUITY, FinancialPositionLineClassification.RESULT_HOLDING.accountType());
     assertEquals(AccountType.EQUITY, FinancialPositionLineClassification.RESERVE.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.OTHER_EQUITY.accountType());
@@ -244,7 +210,7 @@ class CoreTextValueObjectsTest {
             "OPERATING_EXPENSE",
             "DEPRECIATION_AND_AMORTIZATION",
             "FINANCE_EXPENSE",
-            "TAX_EXPENSE"),
+            "OTHER_EXPENSE"),
         ProfitAndLossLineClassification.wireValues());
     for (ProfitAndLossLineClassification classification :
         ProfitAndLossLineClassification.values()) {
@@ -264,7 +230,7 @@ class CoreTextValueObjectsTest {
         ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION.accountType());
     assertEquals(
         AccountType.EXPENSE, ProfitAndLossLineClassification.FINANCE_EXPENSE.accountType());
-    assertEquals(AccountType.EXPENSE, ProfitAndLossLineClassification.TAX_EXPENSE.accountType());
+    assertEquals(AccountType.EXPENSE, ProfitAndLossLineClassification.OTHER_EXPENSE.accountType());
     assertThrows(
         IllegalArgumentException.class,
         () -> ProfitAndLossLineClassification.fromWireValue("operating-revenue"));
@@ -341,11 +307,11 @@ class CoreTextValueObjectsTest {
     assertEquals(java.util.List.of("DEBIT", "CREDIT", "ZERO"), BalanceSide.wireValues());
     assertThrows(IllegalArgumentException.class, () -> BalanceSide.fromWireValue("debit"));
 
-    assertEquals("HUMAN", ActorType.HUMAN.wireValue());
+    assertEquals("PERSON", ActorType.PERSON.wireValue());
     assertEquals("SYSTEM", ActorType.SYSTEM.wireValue());
     assertEquals("AGENT", ActorType.AGENT.wireValue());
-    assertEquals(java.util.List.of("HUMAN", "SYSTEM", "AGENT"), ActorType.wireValues());
-    assertEquals(ActorType.HUMAN, ActorType.fromWireValue("HUMAN"));
+    assertEquals(java.util.List.of("PERSON", "SYSTEM", "AGENT"), ActorType.wireValues());
+    assertEquals(ActorType.PERSON, ActorType.fromWireValue("PERSON"));
     assertEquals(ActorType.SYSTEM, ActorType.fromWireValue("SYSTEM"));
     assertEquals(ActorType.AGENT, ActorType.fromWireValue("AGENT"));
     assertThrows(IllegalArgumentException.class, () -> ActorType.fromWireValue("ROBOT"));
@@ -397,18 +363,20 @@ class CoreTextValueObjectsTest {
   void postingKindWireVocabularyAndClassificationRemainStable() {
     assertEquals("STANDARD", PostingKind.STANDARD.wireValue());
     assertEquals("OPENING_BALANCE", PostingKind.OPENING_BALANCE.wireValue());
-    assertEquals("PERIOD_CLOSE", PostingKind.PERIOD_CLOSE.wireValue());
+    assertEquals("PERIOD_RESULT_TRANSFER", PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
     assertEquals(PostingKind.STANDARD, PostingKind.fromWireValue("STANDARD"));
     assertEquals(PostingKind.OPENING_BALANCE, PostingKind.fromWireValue("OPENING_BALANCE"));
-    assertEquals(PostingKind.PERIOD_CLOSE, PostingKind.fromWireValue("PERIOD_CLOSE"));
     assertEquals(
-        java.util.List.of("STANDARD", "OPENING_BALANCE", "PERIOD_CLOSE"), PostingKind.wireValues());
+        PostingKind.PERIOD_RESULT_TRANSFER, PostingKind.fromWireValue("PERIOD_RESULT_TRANSFER"));
+    assertEquals(
+        java.util.List.of("STANDARD", "OPENING_BALANCE", "PERIOD_RESULT_TRANSFER"),
+        PostingKind.wireValues());
     assertThrows(IllegalArgumentException.class, () -> PostingKind.fromWireValue("CLOSING"));
     assertTrue(PostingKind.STANDARD.isStandard());
     assertTrue(PostingKind.OPENING_BALANCE.isOpeningBalance());
-    assertTrue(PostingKind.PERIOD_CLOSE.isGenerated());
-    assertFalse(PostingKind.PERIOD_CLOSE.isStandard());
-    assertFalse(PostingKind.PERIOD_CLOSE.isOpeningBalance());
+    assertTrue(PostingKind.PERIOD_RESULT_TRANSFER.isGenerated());
+    assertFalse(PostingKind.PERIOD_RESULT_TRANSFER.isStandard());
+    assertFalse(PostingKind.PERIOD_RESULT_TRANSFER.isOpeningBalance());
     assertFalse(PostingKind.STANDARD.isGenerated());
     assertFalse(PostingKind.OPENING_BALANCE.isGenerated());
   }
@@ -432,10 +400,10 @@ class CoreTextValueObjectsTest {
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.isNonClosingOnly());
     assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.STANDARD));
     assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.OPENING_BALANCE));
-    assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.PERIOD_CLOSE));
+    assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.PERIOD_RESULT_TRANSFER));
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.STANDARD));
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.OPENING_BALANCE));
-    assertFalse(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.PERIOD_CLOSE));
+    assertFalse(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.PERIOD_RESULT_TRANSFER));
     assertThrows(
         NullPointerException.class, () -> PostingCoverage.ALL_POSTING_KINDS.includes(nullOf()));
   }

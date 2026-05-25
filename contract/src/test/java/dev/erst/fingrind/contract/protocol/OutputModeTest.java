@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 class OutputModeTest {
   @Test
   void wireValuesAndParsing_followTheCanonicalVocabulary() {
-    assertEquals(List.of("json", "human", "csv"), OutputMode.wireValues());
+    assertEquals(List.of("json", "text", "csv"), OutputMode.wireValues());
     assertEquals(OutputMode.JSON, OutputMode.fromWireValue("json"));
-    assertEquals(OutputMode.HUMAN, OutputMode.fromWireValue("human"));
+    assertEquals(OutputMode.TEXT, OutputMode.fromWireValue("text"));
     assertEquals(OutputMode.CSV, OutputMode.fromWireValue("csv"));
     assertEquals("json", OutputMode.JSON.wireValue());
-    assertEquals("human", OutputMode.HUMAN.wireValue());
+    assertEquals("text", OutputMode.TEXT.wireValue());
     assertEquals("csv", OutputMode.CSV.wireValue());
     assertThrows(NullPointerException.class, () -> OutputMode.fromWireValue(nullOf()));
     assertThrows(
@@ -30,7 +30,7 @@ class OutputModeTest {
     OutputMode.JSON.run(
         counter::incrementAndGet, () -> counter.addAndGet(10), () -> counter.addAndGet(100));
     assertEquals(1, counter.get());
-    OutputMode.HUMAN.run(
+    OutputMode.TEXT.run(
         counter::incrementAndGet, () -> counter.addAndGet(10), () -> counter.addAndGet(100));
     assertEquals(11, counter.get());
     OutputMode.CSV.run(
@@ -39,7 +39,7 @@ class OutputModeTest {
     assertThrows(
         NullPointerException.class, () -> OutputMode.JSON.run(nullOf(), () -> {}, () -> {}));
     assertThrows(
-        NullPointerException.class, () -> OutputMode.HUMAN.run(() -> {}, nullOf(), () -> {}));
+        NullPointerException.class, () -> OutputMode.TEXT.run(() -> {}, nullOf(), () -> {}));
     assertThrows(
         NullPointerException.class, () -> OutputMode.CSV.run(() -> {}, () -> {}, nullOf()));
   }

@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 
-/** Human-facing documentation facts for one canonical public protocol operation. */
+/** Operator-facing documentation facts for one canonical public protocol operation. */
 public record ProtocolOperationDocumentation(
     String analysisSummary, List<ProtocolExampleStep> exampleSteps) {
   /** Validates one operation-documentation descriptor. */

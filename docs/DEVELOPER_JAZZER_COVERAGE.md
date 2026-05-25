@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -100,7 +100,7 @@ What it asserts:
 - reloading by idempotency returns the same fact shape
 - duplicate commit attempts are rejected in the same book
 - parent-directory creation works for nested arbitrary paths
-- read/report surfaces render non-blank machine/human/CSV documents from the real workflow path
+- read/report surfaces render non-blank machine/text/CSV documents from the real workflow path
 - unknown posting and unknown-account read/report rejections render through the same owned
   envelope writers
 - directory-backed and plaintext pre-schema book paths do not commit or open, and any thrown

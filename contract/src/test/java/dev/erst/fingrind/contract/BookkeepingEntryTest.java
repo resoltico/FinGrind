@@ -32,14 +32,14 @@ class BookkeepingEntryTest {
             new AccountCode("5000"),
             new AccountCode("1000"),
             new MonetaryAmount("EUR", "1000"));
-    BookkeepingEntry.OwnerContribution ownerContribution =
-        new BookkeepingEntry.OwnerContribution(
+    BookkeepingEntry.EquityContribution equityContribution =
+        new BookkeepingEntry.EquityContribution(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("3000"),
             new MonetaryAmount("EUR", "1000"));
-    BookkeepingEntry.OwnerDraw ownerDraw =
-        new BookkeepingEntry.OwnerDraw(
+    BookkeepingEntry.EquityWithdrawal equityWithdrawal =
+        new BookkeepingEntry.EquityWithdrawal(
             LocalDate.parse("2026-04-25"),
             new AccountCode("3010"),
             new AccountCode("1000"),
@@ -47,9 +47,9 @@ class BookkeepingEntryTest {
 
     assertEquals(BookkeepingEntryKind.CASH_REVENUE, cashRevenue.entryKind());
     assertEquals(BookkeepingEntryKind.CASH_EXPENSE, cashExpense.entryKind());
-    assertEquals(BookkeepingEntryKind.OWNER_CONTRIBUTION, ownerContribution.entryKind());
-    assertEquals(BookkeepingEntryKind.OWNER_DRAW, ownerDraw.entryKind());
-    assertEquals(LocalDate.parse("2026-04-25"), ownerDraw.effectiveDate());
+    assertEquals(BookkeepingEntryKind.EQUITY_CONTRIBUTION, equityContribution.entryKind());
+    assertEquals(BookkeepingEntryKind.EQUITY_WITHDRAWAL, equityWithdrawal.entryKind());
+    assertEquals(LocalDate.parse("2026-04-25"), equityWithdrawal.effectiveDate());
 
     IllegalArgumentException nonPositiveAmount =
         assertThrows(
@@ -103,7 +103,7 @@ class BookkeepingEntryTest {
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookkeepingEntry.OwnerContribution(
+            new BookkeepingEntry.EquityContribution(
                 LocalDate.parse("2026-04-25"),
                 nullOf(),
                 new AccountCode("3000"),
@@ -111,7 +111,7 @@ class BookkeepingEntryTest {
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookkeepingEntry.OwnerDraw(
+            new BookkeepingEntry.EquityWithdrawal(
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("3010"),
                 new AccountCode("1000"),

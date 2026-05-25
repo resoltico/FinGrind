@@ -20,7 +20,7 @@ final class CliDiagnosticsWriter {
   void writePdfExportInfo(java.nio.file.Path outputPath) {
     Objects.requireNonNull(outputPath, "outputPath");
     diagnosticsStream.print(
-        CliFailureOutputRenderer.renderInfoHuman(
+        CliFailureOutputRenderer.renderInfoText(
             new CliFailure(
                 ProtocolDiagnosticCode.PDF_EXPORTED.wireValue(),
                 PDF_EXPORT_INFO_MESSAGE_PREFIX + CliPublicPaths.normalizedValue(outputPath),
@@ -36,7 +36,7 @@ final class CliDiagnosticsWriter {
         Objects.requireNonNullElse(
             exception.getMessage(), "Failed to render or write the requested PDF report artifact.");
     diagnosticsStream.print(
-        CliFailureOutputRenderer.renderWarningHuman(
+        CliFailureOutputRenderer.renderWarningText(
             new CliFailure(
                 ProtocolDiagnosticCode.PDF_EXPORT_WARNING.wireValue(),
                 message,

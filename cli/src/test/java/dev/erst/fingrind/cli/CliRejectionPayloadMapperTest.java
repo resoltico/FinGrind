@@ -56,42 +56,43 @@ class CliRejectionPayloadMapperTest {
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
-                Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                 Optional.empty())),
         "existing taxonomy",
         CliRejectionJsonModels.AccountTaxonomyConflictDetails.class);
     assertHint(
-        new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-            FinancialPositionLineClassification.ACCUMULATED_RESULT, List.of()),
+        new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+            FinancialPositionLineClassification.RESULT_HOLDING, List.of()),
         "Declare one active equity account",
-        CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails.class);
+        CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails.class);
     assertHint(
-        new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-            FinancialPositionLineClassification.ACCUMULATED_RESULT,
-            List.of(new AccountCode("3200"))),
+        new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+            FinancialPositionLineClassification.RESULT_HOLDING, List.of(new AccountCode("3200"))),
         "Reactivate one of the matching equity accounts",
-        CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails.class);
+        CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails.class);
     assertHint(
-        new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+        new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
             FinancialPositionLineClassification.OTHER_EQUITY,
             List.of(new AccountCode("3200"), new AccountCode("3210"))),
         "Leave exactly one active equity account",
-        CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails.class);
+        CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails.class);
     assertHint(
-        new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-01")),
+        new BookAdministrationRejection.PeriodResultTransferMustStartAt(
+            LocalDate.parse("2026-04-01")),
         "--effective-date-from",
-        CliRejectionJsonModels.PeriodCloseStartDetails.class);
+        CliRejectionJsonModels.PeriodResultTransferStartDetails.class);
     assertHint(
-        new BookAdministrationRejection.PeriodCloseFutureDate(LocalDate.parse("2026-04-30")),
+        new BookAdministrationRejection.PeriodResultTransferFutureDate(
+            LocalDate.parse("2026-04-30")),
         "--effective-date-to",
-        CliRejectionJsonModels.PeriodCloseFutureDateDetails.class);
+        CliRejectionJsonModels.PeriodResultTransferFutureDateDetails.class);
     assertHint(
-        new BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+        new BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
             LocalDate.parse("2026-12-15"),
             LocalDate.parse("2027-01-15"),
             FiscalYearStart.parse("01-01")),
         "inside one fiscal year",
-        CliRejectionJsonModels.PeriodCloseFiscalYearDetails.class);
+        CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails.class);
     assertHint(
         new BookAdministrationRejection.ParentAccountMissing(
             new AccountCode("4100"), new AccountCode("4000")),
@@ -168,16 +169,16 @@ class CliRejectionPayloadMapperTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
-                    Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                    Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                     Optional.empty())));
-    var retainedEarningsMissingEnvelope =
+    var resultHoldingMissingEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
-            new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+            new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200"))));
-    var retainedEarningsAmbiguousEnvelope =
+    var resultHoldingAmbiguousEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
-            new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+            new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
                 FinancialPositionLineClassification.OTHER_EQUITY,
                 List.of(new AccountCode("3200"), new AccountCode("3210"))));
 
@@ -193,16 +194,15 @@ class CliRejectionPayloadMapperTest {
         assertInstanceOf(
             CliRejectionJsonModels.AccountTaxonomyConflictDetails.class,
             taxonomyConflictEnvelope.details());
-    CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails
-        retainedEarningsMissingDetails =
+    CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails resultHoldingMissingDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails.class,
+            resultHoldingMissingEnvelope.details());
+    CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails
+        resultHoldingAmbiguousDetails =
             assertInstanceOf(
-                CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails.class,
-                retainedEarningsMissingEnvelope.details());
-    CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails
-        retainedEarningsAmbiguousDetails =
-            assertInstanceOf(
-                CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails.class,
-                retainedEarningsAmbiguousEnvelope.details());
+                CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails.class,
+                resultHoldingAmbiguousEnvelope.details());
 
     assertEquals("3200", typeDetails.accountCode());
     assertEquals("EQUITY", typeDetails.existingAccountType());
@@ -217,19 +217,19 @@ class CliRejectionPayloadMapperTest {
     assertEquals(null, taxonomyDetails.existingAccountTaxonomy().parentAccountCode());
     assertEquals(null, taxonomyDetails.existingAccountTaxonomy().profitAndLossLineClassification());
     assertEquals(
-        "ACCUMULATED_RESULT",
+        "RESULT_HOLDING",
         taxonomyDetails.requestedAccountTaxonomy().financialPositionLineClassification());
     assertEquals(null, taxonomyDetails.requestedAccountTaxonomy().parentAccountCode());
     assertEquals(
         null, taxonomyDetails.requestedAccountTaxonomy().profitAndLossLineClassification());
     assertEquals(
-        "ACCUMULATED_RESULT",
-        retainedEarningsMissingDetails.requiredFinancialPositionLineClassification());
-    assertEquals(List.of("3200"), retainedEarningsMissingDetails.inactiveCandidateAccountCodes());
+        "RESULT_HOLDING",
+        resultHoldingMissingDetails.requiredFinancialPositionLineClassification());
+    assertEquals(List.of("3200"), resultHoldingMissingDetails.inactiveCandidateAccountCodes());
     assertEquals(
         "OTHER_EQUITY",
-        retainedEarningsAmbiguousDetails.requiredFinancialPositionLineClassification());
-    assertEquals(List.of("3200", "3210"), retainedEarningsAmbiguousDetails.candidateAccountCodes());
+        resultHoldingAmbiguousDetails.requiredFinancialPositionLineClassification());
+    assertEquals(List.of("3200", "3210"), resultHoldingAmbiguousDetails.candidateAccountCodes());
   }
 
   @Test
@@ -328,15 +328,15 @@ class CliRejectionPayloadMapperTest {
     var duplicateIdempotencyKey =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-dup", new PostingRejection.DuplicateIdempotencyKey());
-    var closedPeriodViolation =
+    var transferredPeriodResultViolation =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-closed",
-            new PostingRejection.ClosedPeriodViolation(
+            new PostingRejection.TransferredPeriodResultViolation(
                 LocalDate.parse("2026-04-30"), LocalDate.parse("2026-05-01")));
-    var closingEquityAccountReserved =
+    var resultHoldingAccountReserved =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-close",
-            new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200")));
+            new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3200")));
     var reversalAlreadyExists =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-exists", new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2")));
@@ -362,19 +362,20 @@ class CliRejectionPayloadMapperTest {
     assertTrue(
         Objects.requireNonNull(duplicateIdempotencyKey.hint())
             .contains("fresh provenance.idempotencyKey"));
-    CliRejectionJsonModels.ClosedPeriodViolationDetails closedPeriodDetails =
+    CliRejectionJsonModels.TransferredPeriodResultViolationDetails transferredPeriodResultDetails =
         assertInstanceOf(
-            CliRejectionJsonModels.ClosedPeriodViolationDetails.class,
-            closedPeriodViolation.details());
-    assertEquals("2026-04-30", closedPeriodDetails.closedThroughEffectiveDate());
-    assertEquals("2026-05-01", closedPeriodDetails.attemptedEffectiveDate());
-    CliRejectionJsonModels.ClosingEquityAccountDetails closingEquityDetails =
+            CliRejectionJsonModels.TransferredPeriodResultViolationDetails.class,
+            transferredPeriodResultViolation.details());
+    assertEquals("2026-04-30", transferredPeriodResultDetails.transferredThroughEffectiveDate());
+    assertEquals("2026-05-01", transferredPeriodResultDetails.attemptedEffectiveDate());
+    CliRejectionJsonModels.ResultHoldingAccountDetails closingEquityDetails =
         assertInstanceOf(
-            CliRejectionJsonModels.ClosingEquityAccountDetails.class,
-            closingEquityAccountReserved.details());
+            CliRejectionJsonModels.ResultHoldingAccountDetails.class,
+            resultHoldingAccountReserved.details());
     assertEquals("3200", closingEquityDetails.accountCode());
     assertTrue(
-        Objects.requireNonNull(closingEquityAccountReserved.hint()).contains("close-period"));
+        Objects.requireNonNull(resultHoldingAccountReserved.hint())
+            .contains("transfer-period-result"));
     assertEquals(
         "posting-2",
         assertInstanceOf(
@@ -390,6 +391,64 @@ class CliRejectionPayloadMapperTest {
     assertTrue(
         Objects.requireNonNull(reversalDoesNotNegateTarget.hint())
             .contains("full negating journal entry"));
+  }
+
+  @Test
+  void postingRejectedEnvelope_mapsEntrySemanticsViolationsDetails() {
+    var envelope =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-semantics",
+            new PostingRejection.EntrySemanticsViolations(
+                List.of(
+                    new PostingRejection.EntrySemanticsViolation(
+                        "account-type-mismatch",
+                        "cashAccountCode",
+                        "cash account must be declared as ASSET"),
+                    new PostingRejection.EntrySemanticsViolation(
+                        "source-document-type-not-accepted",
+                        null,
+                        "invoice does not prove cash receipt"))));
+
+    assertTrue(
+        Objects.requireNonNull(envelope.hint())
+            .contains("Choose accounts and source-document types"));
+    CliRejectionJsonModels.EntrySemanticsViolationsDetails details =
+        assertInstanceOf(
+            CliRejectionJsonModels.EntrySemanticsViolationsDetails.class, envelope.details());
+    assertEquals(2, details.violations().size());
+    assertEquals("account-type-mismatch", details.violations().get(0).code());
+    assertEquals("cashAccountCode", details.violations().get(0).field());
+    assertEquals("cash account must be declared as ASSET", details.violations().get(0).message());
+    assertEquals("source-document-type-not-accepted", details.violations().get(1).code());
+    assertNull(details.violations().get(1).field());
+    assertEquals("invoice does not prove cash receipt", details.violations().get(1).message());
+  }
+
+  @Test
+  void entrySemanticsCliJsonModels_validatePayloadsAndRejectEmptyOrBlankValues() {
+    IllegalArgumentException emptyViolations =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new CliRejectionJsonModels.EntrySemanticsViolationsDetails(List.of()));
+    IllegalArgumentException blankCode =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliRejectionJsonModels.EntrySemanticsViolationPayload(" ", "field", "message"));
+    IllegalArgumentException blankField =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliRejectionJsonModels.EntrySemanticsViolationPayload("code", " ", "message"));
+    IllegalArgumentException blankMessage =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new CliRejectionJsonModels.EntrySemanticsViolationPayload("code", null, " "));
+
+    assertEquals("violations must not be empty.", emptyViolations.getMessage());
+    assertEquals("code must not be blank.", blankCode.getMessage());
+    assertEquals("field must not be blank.", blankField.getMessage());
+    assertEquals("message must not be blank.", blankMessage.getMessage());
   }
 
   @Test

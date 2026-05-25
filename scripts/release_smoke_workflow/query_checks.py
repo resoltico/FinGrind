@@ -90,7 +90,7 @@ def verify_operator_queries_and_reports(
         "--limit",
         "25",
     )
-    list_postings_human_output = run_cli(
+    list_postings_text_output = run_cli(
         config,
         operation_ids["listPostings"],
         "--book-file",
@@ -100,9 +100,9 @@ def verify_operator_queries_and_reports(
         "--limit",
         "25",
         "--output",
-        "human",
+        "text",
     )
-    account_balance_human_output = run_cli(
+    account_balance_text_output = run_cli(
         config,
         operation_ids["accountBalance"],
         "--book-file",
@@ -112,9 +112,9 @@ def verify_operator_queries_and_reports(
         "--account-code",
         "1000",
         "--output",
-        "human",
+        "text",
     )
-    trial_balance_human_output = run_cli(
+    trial_balance_text_output = run_cli(
         config,
         operation_ids["trialBalance"],
         "--book-file",
@@ -124,7 +124,7 @@ def verify_operator_queries_and_reports(
         "--effective-date-as-of",
         "2026-04-08",
         "--output",
-        "human",
+        "text",
     )
     pdf_stdout, pdf_stderr = run_cli_with_split_streams(
         config,
@@ -136,7 +136,7 @@ def verify_operator_queries_and_reports(
         "--effective-date-as-of",
         "2026-04-08",
         "--output",
-        "human",
+        "text",
         "--pdf-out",
         config.trial_balance_pdf.argument,
     )
@@ -157,7 +157,7 @@ def verify_operator_queries_and_reports(
         "--output",
         "csv",
     )
-    period_summary_human_output = run_cli(
+    period_summary_text_output = run_cli(
         config,
         operation_ids["periodSummary"],
         "--book-file",
@@ -169,16 +169,16 @@ def verify_operator_queries_and_reports(
         "--effective-date-to",
         "2026-04-08",
         "--output",
-        "human",
+        "text",
     )
     assert_operator_queries_and_reports(
         config,
         list_postings_second_page_output,
-        list_postings_human_output,
-        account_balance_human_output,
-        trial_balance_human_output,
+        list_postings_text_output,
+        account_balance_text_output,
+        trial_balance_text_output,
         pdf_stdout,
         pdf_stderr,
         account_ledger_csv_output,
-        period_summary_human_output,
+        period_summary_text_output,
     )

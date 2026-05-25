@@ -35,8 +35,8 @@ public enum OperationId implements WireValue {
   RESTORE_REKEY_ROLLBACK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
-  /** Closes one contiguous reporting period into the policy-selected closing equity account. */
-  CLOSE_PERIOD,
+  /** Transfers one contiguous reporting period into the policy-selected result-holding account. */
+  TRANSFER_PERIOD_RESULT,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
   /** Lists the declared account registry. */

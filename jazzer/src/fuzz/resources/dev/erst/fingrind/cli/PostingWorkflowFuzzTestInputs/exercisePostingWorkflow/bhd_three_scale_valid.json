@@ -23,7 +23,7 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-seed-posting-bhd-idem-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-06-13",
         "capturedAt": "2026-06-13T10:15:30Z",
         "storageLocator": "vault://fixtures/document-seed-posting-bhd-idem-1",

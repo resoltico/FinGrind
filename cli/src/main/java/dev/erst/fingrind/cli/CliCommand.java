@@ -29,7 +29,7 @@ sealed interface CliCommand
           RestoreRekeyRollback,
           DeleteRekeyRollback,
           DeclareAccount,
-          ClosePeriod,
+          TransferPeriodResult,
           InspectBook,
           ListAccounts,
           GetPosting,

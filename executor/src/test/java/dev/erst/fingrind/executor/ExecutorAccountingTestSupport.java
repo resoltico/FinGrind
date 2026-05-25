@@ -16,7 +16,6 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -189,8 +188,7 @@ public final class ExecutorAccountingTestSupport {
             new BookEntityName("Acme Studio"),
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   /**
@@ -226,14 +224,16 @@ public final class ExecutorAccountingTestSupport {
         supportedBookFormatVersion,
         initializedAt,
         bookIdentity(),
-        closeReadyInspection());
+        resultTransferReadyInspection());
   }
 
-  /** Returns one canonical close-readiness fixture for initialized inspection snapshots. */
-  public static BookInspection.CloseReadiness closeReadyInspection() {
-    return new BookInspection.CloseReadiness(
+  /**
+   * Returns one canonical result-transfer-readiness fixture for initialized inspection snapshots.
+   */
+  public static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
+    return new BookInspection.ResultTransferReadiness(
         true,
-        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
         new AccountCode("3200"),
         null,
         null,
@@ -250,7 +250,7 @@ public final class ExecutorAccountingTestSupport {
     return PostingCoverage.ALL_POSTING_KINDS;
   }
 
-  /** Returns the report coverage used by fixtures that intentionally exclude closing postings. */
+  /** Returns the report coverage used by fixtures that intentionally exclude transfer postings. */
   public static PostingCoverage standardOnly() {
     return PostingCoverage.NON_CLOSING_POSTINGS;
   }
@@ -259,7 +259,7 @@ public final class ExecutorAccountingTestSupport {
   public static AccountingEvidence accountingEvidence(String token) {
     Objects.requireNonNull(token, "token");
     return new AccountingEvidence(
-        List.of(sourceDocumentReference("document-" + token, "invoice")), List.of());
+        List.of(sourceDocumentReference("document-" + token, "cash-receipt")), List.of());
   }
 
   /** Returns one canonical internal evidence bundle for system-generated accounting facts. */

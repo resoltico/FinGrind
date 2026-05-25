@@ -14,10 +14,10 @@ final class SqliteAuditEventWriter {
       statement.bindText(
           3, auditEvent.accountCode() == null ? null : auditEvent.accountCode().value());
       statement.bindText(4, auditEvent.postingId() == null ? null : auditEvent.postingId().value());
-      if (auditEvent.periodCloseOrder() == null) {
+      if (auditEvent.periodResultTransferOrder() == null) {
         statement.bindText(5, null);
       } else {
-        statement.bindInt(5, auditEvent.periodCloseOrder());
+        statement.bindInt(5, auditEvent.periodResultTransferOrder());
       }
       statement.step();
     }

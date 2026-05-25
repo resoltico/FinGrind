@@ -29,7 +29,7 @@ final class CliOutputModeDefaults {
   }
 
   static OutputMode defaultSelectableOutputMode(boolean interactiveConsoleAvailable) {
-    return interactiveConsoleAvailable ? OutputMode.HUMAN : OutputMode.JSON;
+    return interactiveConsoleAvailable ? OutputMode.TEXT : OutputMode.JSON;
   }
 
   static OutputMode defaultDiscoveryOutputMode() {
@@ -37,7 +37,7 @@ final class CliOutputModeDefaults {
   }
 
   static OutputMode defaultDiscoveryOutputMode(boolean interactiveConsoleAvailable) {
-    return interactiveConsoleAvailable ? OutputMode.HUMAN : OutputMode.JSON;
+    return interactiveConsoleAvailable ? OutputMode.TEXT : OutputMode.JSON;
   }
 
   private static boolean interactiveConsoleAvailable() {

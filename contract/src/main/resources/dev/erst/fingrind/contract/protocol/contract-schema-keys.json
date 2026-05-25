@@ -71,7 +71,7 @@
     "deleteRekeyRollback": "DELETE_REKEY_ROLLBACK",
     "restoreRekeyRollback": "RESTORE_REKEY_ROLLBACK",
     "declareAccount": "DECLARE_ACCOUNT",
-    "closePeriod": "CLOSE_PERIOD",
+    "transferPeriodResult": "TRANSFER_PERIOD_RESULT",
     "inspectBook": "INSPECT_BOOK",
     "listAccounts": "LIST_ACCOUNTS",
     "getPosting": "GET_POSTING",

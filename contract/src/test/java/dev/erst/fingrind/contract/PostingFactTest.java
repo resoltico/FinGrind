@@ -37,6 +37,7 @@ class PostingFactTest {
             journalEntry(),
             PostingLineage.direct(),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             ContractFixtures.accountingEvidence("idem-1"),
             provenance("idem-1"));
     assertEquals("posting-1", postingFact.postingId().value());
@@ -52,6 +53,7 @@ class PostingFactTest {
                 journalEntry(),
                 PostingLineage.direct(),
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 ContractFixtures.accountingEvidence("idem-1"),
                 provenance("idem-1")));
   }
@@ -66,6 +68,7 @@ class PostingFactTest {
                 journalEntry(),
                 nullOf(),
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 ContractFixtures.accountingEvidence("idem-1"),
                 provenance("idem-1")));
   }

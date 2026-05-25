@@ -3,18 +3,19 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingKind;
-import dev.erst.fingrind.executor.bookkeeping.policy.ClosePolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.ResultTransferPolicy;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Reserves policy-owned closing equity accounts from ordinary caller-authored postings. */
-final class ClosingEquityReservationPolicy {
-  private final ClosePolicy closePolicy;
+/** Reserves policy-owned result-holding accounts from ordinary caller-authored postings. */
+final class ResultHoldingReservationPolicy {
+  private final ResultTransferPolicy resultTransferPolicy;
 
-  ClosingEquityReservationPolicy(ClosePolicy closePolicy) {
-    this.closePolicy = Objects.requireNonNull(closePolicy, "closePolicy");
+  ResultHoldingReservationPolicy(ResultTransferPolicy resultTransferPolicy) {
+    this.resultTransferPolicy =
+        Objects.requireNonNull(resultTransferPolicy, "resultTransferPolicy");
   }
 
   Optional<BookkeepingPostingRejection> rejectionFor(
@@ -25,7 +26,7 @@ final class ClosingEquityReservationPolicy {
     if (postingRequest.postingKind() != PostingKind.STANDARD) {
       return Optional.empty();
     }
-    var reservedClassification = closePolicy.closingEquityLineClassification(bookIdentity);
+    var reservedClassification = resultTransferPolicy.resultHoldingLineClassification(bookIdentity);
     Set<AccountCode> requestedAccounts = PostingRequestAccounts.requestedAccounts(postingRequest);
     Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
     AccountCode reservedAccountCode = null;
@@ -44,6 +45,6 @@ final class ClosingEquityReservationPolicy {
     return reservedAccountCode == null
         ? Optional.empty()
         : Optional.of(
-            new BookkeepingPostingRejection.ClosingEquityAccountReserved(reservedAccountCode));
+            new BookkeepingPostingRejection.ResultHoldingAccountReserved(reservedAccountCode));
   }
 }

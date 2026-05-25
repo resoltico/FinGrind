@@ -22,7 +22,7 @@ public final class BookInspectionPublishedLanguageTranslator {
           existing.supportedBookFormatVersion());
     }
     throw new IllegalStateException(
-        "Initialized inspections require BookReadService close-readiness enrichment.");
+        "Initialized inspections require BookReadService result-transfer-readiness enrichment.");
   }
 
   private static BookInspection.Status toPublishedExistingStatus(

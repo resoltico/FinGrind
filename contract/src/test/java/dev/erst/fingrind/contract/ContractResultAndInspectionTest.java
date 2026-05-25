@@ -97,7 +97,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BookFormatContract.FORMAT_VERSION,
             Instant.parse("2026-04-07T10:15:30Z"),
             bookIdentity(),
-            closeReadyInspection());
+            resultTransferReadyInspection());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             bookIdentity(),
@@ -159,7 +159,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.FORMAT_VERSION,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
-                closeReadyInspection()),
+                resultTransferReadyInspection()),
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 0x12345678,
@@ -240,27 +240,27 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 1,
                 nullOf(),
                 bookIdentity(),
-                closeReadyInspection()));
+                resultTransferReadyInspection()));
   }
 
   @Test
-  void closeReadiness_readyStateRejectsBlockingMetadata() {
+  void resultTransferReadiness_readyStateRejectsBlockingMetadata() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 true,
-                FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+                FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                 new AccountCode("3200"),
-                "closing-equity-account-candidate-missing",
+                "result-holding-account-candidate-missing",
                 "Blocked",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 true,
-                FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+                FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                 new AccountCode("3200"),
                 null,
                 "Blocked",
@@ -268,82 +268,82 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   }
 
   @Test
-  void closeReadiness_blockedStateRejectsClosingEquityAccountCode() {
+  void resultTransferReadiness_blockedStateRejectsResultHoldingAccountCode() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 false,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 new AccountCode("3200"),
-                "closing-equity-account-candidate-missing",
-                "Missing retained earnings account.",
+                "result-holding-account-candidate-missing",
+                "Missing result-holding account.",
                 List.of()));
   }
 
   @Test
-  void closeReadiness_blockedStateRequiresBlockingMetadata() {
+  void resultTransferReadiness_blockedStateRequiresBlockingMetadata() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 false,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
                 " ",
-                "Missing retained earnings account.",
+                "Missing result-holding account.",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 false,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
-                "closing-equity-account-candidate-missing",
+                "result-holding-account-candidate-missing",
                 " ",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 false,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
                 null,
-                "Missing retained earnings account.",
+                "Missing result-holding account.",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.CloseReadiness(
+            new BookInspection.ResultTransferReadiness(
                 false,
-                FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
-                "closing-equity-account-candidate-missing",
+                "result-holding-account-candidate-missing",
                 null,
                 List.of()));
   }
 
   @Test
-  void closeReadiness_copiesCandidateAccountCodes() {
+  void resultTransferReadiness_copiesCandidateAccountCodes() {
     List<AccountCode> candidates = new ArrayList<>(List.of(new AccountCode("3200")));
-    BookInspection.CloseReadiness readiness =
-        new BookInspection.CloseReadiness(
+    BookInspection.ResultTransferReadiness readiness =
+        new BookInspection.ResultTransferReadiness(
             false,
-            FinancialPositionLineClassification.ACCUMULATED_RESULT,
+            FinancialPositionLineClassification.RESULT_HOLDING,
             null,
-            "closing-equity-account-candidate-ambiguous",
-            "Multiple retained earnings candidates are active.",
+            "result-holding-account-candidate-ambiguous",
+            "Multiple result-holding candidates are active.",
             candidates);
     candidates.clear();
     assertEquals(List.of(new AccountCode("3200")), readiness.candidateAccountCodes());
   }
 
-  private static BookInspection.CloseReadiness closeReadyInspection() {
-    return new BookInspection.CloseReadiness(
+  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
+    return new BookInspection.ResultTransferReadiness(
         true,
-        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
         new AccountCode("3200"),
         null,
         null,

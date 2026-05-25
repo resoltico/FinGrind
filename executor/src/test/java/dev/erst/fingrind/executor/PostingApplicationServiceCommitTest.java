@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.FIXED_CLOCK;
@@ -10,20 +11,26 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.de
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.existingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.mappedOutcomeBookSession;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalJournalEntry;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
@@ -93,6 +100,49 @@ class PostingApplicationServiceCommitTest {
               new IdempotencyKey("idem-1"),
               LocalDate.parse("2026-04-07"),
               FIXED_CLOCK.instant()),
+          result);
+    }
+  }
+
+  @Test
+  void commit_rejectsTypedEntryWhenAccountsAndEvidenceContradictEntryKind() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.CashRevenue(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("2000"),
+                  new AccountCode("1000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+              generatedEvidence("idem-semantics", "invoice"),
+              requestProvenance("idem-semantics"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.commit(command);
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-semantics"),
+              new PostingRejection.EntrySemanticsViolations(
+                  List.of(
+                      PostingRejection.accountTypeMismatch(
+                          command.entry().entryKind(),
+                          "cashAccountCode",
+                          new AccountCode("2000"),
+                          AccountType.ASSET,
+                          AccountType.REVENUE),
+                      PostingRejection.accountTypeMismatch(
+                          command.entry().entryKind(),
+                          "revenueAccountCode",
+                          new AccountCode("1000"),
+                          AccountType.REVENUE,
+                          AccountType.ASSET),
+                      PostingRejection.sourceDocumentTypeNotAccepted(
+                          command.entry().entryKind(),
+                          new dev.erst.fingrind.core.SourceDocumentType("invoice"),
+                          List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);
     }
   }

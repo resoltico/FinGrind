@@ -79,12 +79,16 @@ final class SqliteBookIntegrityVerifier {
             SqlitePostingSql.FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD,
             statement -> {})
         && !SqliteStatementQueries.existsRow(
-            activeDatabase, SqlitePostingSql.FIND_UNLINKED_PERIOD_CLOSE_POSTING, statement -> {})
-        && !SqliteStatementQueries.existsRow(
-            activeDatabase, SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_LINK, statement -> {})
+            activeDatabase,
+            SqlitePostingSql.FIND_UNLINKED_PERIOD_RESULT_TRANSFER_POSTING,
+            statement -> {})
         && !SqliteStatementQueries.existsRow(
             activeDatabase,
-            SqlitePostingSql.FIND_INVALID_PERIOD_CLOSE_TARGET_ACCOUNT,
+            SqlitePostingSql.FIND_INVALID_PERIOD_RESULT_TRANSFER_LINK,
+            statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase,
+            SqlitePostingSql.FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT,
             statement -> {});
   }
 
