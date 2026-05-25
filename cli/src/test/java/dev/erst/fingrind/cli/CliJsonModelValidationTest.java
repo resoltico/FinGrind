@@ -298,10 +298,11 @@ class CliJsonModelValidationTest {
             .violations());
     assertThrows(IllegalArgumentException.class, () -> new CliFailure(" ", "message", null, null));
     assertThrows(IllegalArgumentException.class, () -> new CliFailure("code", " ", null, null));
-    assertThrows(
-        IllegalArgumentException.class, () -> new CliFailure("code", "message", " ", null));
-    assertThrows(
-        IllegalArgumentException.class, () -> new CliFailure("code", "message", null, " "));
+    CliFailure blankOptionalFields = new CliFailure("code", "message", " ", " ");
+    assertEquals("code", blankOptionalFields.code());
+    assertEquals("message", blankOptionalFields.message());
+    assertEquals(null, blankOptionalFields.hint());
+    assertEquals(null, blankOptionalFields.argument());
   }
 
   @Test
