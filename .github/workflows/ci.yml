@@ -112,11 +112,12 @@ jobs:
         shell: pwsh
         run: .\scripts\setup-msvc-dev-cmd.ps1 -Arch x64
 
-      - name: Exclude build directories from Windows Defender
-        shell: powershell
+      - name: Configure Windows Defender build exclusions
+        shell: pwsh
         run: |
-          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
-          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.gradle"
+          .\scripts\configure-windows-defender-build-exclusions.ps1 `
+            -WorkspacePath "${{ github.workspace }}" `
+            -GradleUserHome "$env:USERPROFILE\.gradle"
 
       - name: Install repo-owned Python tools
         shell: pwsh

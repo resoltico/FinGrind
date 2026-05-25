@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the Windows CI bundle lane so the repo-owned Defender exclusion owner now treats an
+  unavailable Windows Defender service as a warning instead of a release-blocking workflow
+  failure. The Windows product gate keeps proving the real Gradle, runtime, and bundle smoke
+  surfaces, while the antivirus exclusion remains an optional performance optimization.
 - Fixed posting and report CSV exports so they are now scalar-only and rectangular. Nested evidence
   metadata no longer appears as escaped JSON inside cells, `account-ledger` uses one repeated
   entry-row model instead of mixed opening/entry/closing record kinds, and the statement CSV
