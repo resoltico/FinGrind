@@ -31,7 +31,7 @@ class CliOutputChannelTest {
             null));
 
     String rendered = output.toString(StandardCharsets.UTF_8);
-    assertTrue(rendered.contains(System.lineSeparator() + "  \"status\" : \"ok\","));
-    assertTrue(rendered.contains(System.lineSeparator() + "  \"payload\" : {"));
+    assertTrue(rendered.contains("\n  \"status\" : \"ok\","));
+    assertTrue(rendered.contains("\n  \"payload\" : {"));
   }
 }

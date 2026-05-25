@@ -94,7 +94,7 @@ class CliTextFormatTest {
 
     assertTrue(wrapped.startsWith("$ alpha \\"));
     assertTrue(wrapped.contains("super"));
-    assertTrue(wrapped.contains(System.lineSeparator() + "  "));
+    assertTrue(wrapped.contains("\n  "));
     assertTrue(wrapped.endsWith("en"));
   }
 }
