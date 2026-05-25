@@ -180,10 +180,17 @@ TEXT
                 business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
+                book_file=''
+                book_key_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
-                            : > "$(translate_path "${2}")"
+                            book_file="$(translate_path "${2}")"
+                            : > "${book_file}"
+                            shift 2
+                            ;;
+                        --book-key-file)
+                            book_key_file="$(translate_path "${2}")"
                             shift 2
                             ;;
                         --entity-name)
@@ -203,10 +210,13 @@ TEXT
                             shift 2
                             ;;
                         *)
-                            shift
+                            printf 'unsupported open-book argument: %s\n' "${1}" >&2
+                            exit 1
                             ;;
                     esac
                 done
+                [[ -n "${book_file}" ]] || exit 1
+                [[ -n "${book_key_file}" ]] || exit 1
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
                 [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
@@ -214,18 +224,33 @@ TEXT
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
+                while [[ $# -gt 0 ]]; do
+                    case "${1}" in
+                        --book-file|--book-key-file|--request-file)
+                            shift 2
+                            ;;
+                        *)
+                            printf 'unsupported declare-account argument: %s\n' "${1}" >&2
+                            exit 1
+                            ;;
+                    esac
+                done
                 printf '{"status":"ok","payload":{"accountCode":"1000"}}\n'
                 ;;
             post-entry)
                 request_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
+                        --book-file|--book-key-file)
+                            shift 2
+                            ;;
                         --request-file)
                             request_file="$(translate_path "${2}")"
                             shift 2
                             ;;
                         *)
-                            shift
+                            printf 'unsupported post-entry argument: %s\n' "${1}" >&2
+                            exit 1
                             ;;
                     esac
                 done
@@ -246,12 +271,16 @@ TEXT
                 pdf_out=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
+                        --book-file|--book-key-file|--effective-date-as-of|--output)
+                            shift 2
+                            ;;
                         --pdf-out)
                             pdf_out="$(translate_path "${2}")"
                             shift 2
                             ;;
                         *)
-                            shift
+                            printf 'unsupported trial-balance argument: %s\n' "${1}" >&2
+                            exit 1
                             ;;
                     esac
                 done
@@ -274,24 +303,17 @@ As of            : 2026-04-08
 
 Current totals
 --------------
-As of    : 2026-04-08
-Balanced : Yes
+As of         : 2026-04-08
+Balance state : Balanced
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | ZERO
+EUR      |       10.00 |        10.00 |       0.00 | Zero
 
-1000 | Cash
------------
-Account type   : Asset
-Account role   : Ordinary
-Normal balance : Debit
-Active         : Yes
-Currency       : USD
-Debit total    : 10.00
-Credit total   : 0.00
-Net amount     : 10.00
-Balance side   : Debit
+Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | USD      |       10.00 |         0.00 |      10.00 | Debit
+2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 TEXT
                 else
                     cat <<TEXT
@@ -304,36 +326,17 @@ As of            : 2026-04-08
 
 Current totals
 --------------
-As of    : 2026-04-08
-Balanced : Yes
+As of         : 2026-04-08
+Balance state : Balanced
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | ZERO
+EUR      |       10.00 |        10.00 |       0.00 | Zero
 
-1000 | Cash
------------
-Account type   : Asset
-Account role   : Ordinary
-Normal balance : Debit
-Active         : Yes
-Currency       : EUR
-Debit total    : 10.00
-Credit total   : 0.00
-Net amount     : 10.00
-Balance side   : Debit
-
-2000 | Revenue
---------------
-Account type   : Revenue
-Account role   : Ordinary
-Normal balance : Credit
-Active         : Yes
-Currency       : EUR
-Debit total    : 0.00
-Credit total   : 10.00
-Net amount     : 10.00
-Balance side   : Credit
+Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
+2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 TEXT
                 fi
                 ;;
@@ -404,7 +407,7 @@ if [[ ${failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a broken trial-balance report"
 fi
 printf '%s\n' "${failure_output}" | grep -Fq \
-    'published text trial balance did not report the expected Cash trial-balance row' || die \
+    'published text trial balance did not render the expected account summary rows' || die \
     "public container surface verifier did not report the broken text trial-balance row"
 
 set +e

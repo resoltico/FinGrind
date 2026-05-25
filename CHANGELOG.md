@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the public container verifier and tag-driven container publication checks so the mounted
+  `open-book` workflow no longer emits a malformed blank argument token. The workflow-owned fake
+  Docker regression harness now rejects unexpected verifier arguments instead of silently tolerating
+  them, and the CLI deterministic-failure envelope now normalizes blank optional argument metadata
+  to absence instead of crashing while rendering an invalid-request response.
 - Fixed the Windows CI bundle lane so the repo-owned Defender exclusion owner now treats an
   unavailable Windows Defender service as a warning instead of a release-blocking workflow
   failure. The Windows product gate keeps proving the real Gradle, runtime, and bundle smoke

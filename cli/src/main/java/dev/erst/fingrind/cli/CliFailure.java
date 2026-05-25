@@ -19,8 +19,8 @@ record CliFailure(
   CliFailure {
     code = requireText(code, "code");
     message = requireText(message, "message");
-    hint = requireOptionalText(hint, "hint");
-    argument = requireOptionalText(argument, "argument");
+    hint = requireOptionalText(hint);
+    argument = requireOptionalText(argument);
     details = requireSupportedDetails(details);
   }
 
@@ -38,11 +38,15 @@ record CliFailure(
     return normalized;
   }
 
-  private static @Nullable String requireOptionalText(@Nullable String value, String fieldName) {
+  private static @Nullable String requireOptionalText(@Nullable String value) {
     if (value == null) {
       return null;
     }
-    return requireText(value, fieldName);
+    String normalized = value.strip();
+    if (normalized.isEmpty()) {
+      return null;
+    }
+    return normalized;
   }
 
   private static CliErrorJsonModels.@Nullable ErrorDetails requireSupportedDetails(

@@ -548,4 +548,45 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
     assertFalse(workflow.workflowInvoked());
   }
+
+  @Test
+  void run_rendersDeterministicJsonForBlankUnsupportedArgument() throws IOException {
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new DeclareAccountResult.Declared(
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    int exitCode = cli.run(new String[] {"capabilities", "--output", "json", " "});
+
+    assertEquals(1, exitCode);
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertJsonContains(outputStream, "\"code\":\"invalid-request\"");
+    assertTrue(output.contains("Unsupported argument:"));
+    assertFalse(output.contains("\"argument\""));
+    assertFalse(output.contains("IllegalArgumentException"));
+    assertFalse(workflow.workflowInvoked());
+  }
 }

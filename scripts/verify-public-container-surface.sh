@@ -145,7 +145,7 @@ JSON
 
 verify_text_trial_balance() {
     local text_output=$1
-    local header_block totals_block cash_block revenue_block
+    local header_block totals_block account_table_block
 
     header_block="$(cat <<'TEXT'
 Book             : Release Protocol Fixture | Currency EUR | FY 01-01
@@ -156,41 +156,20 @@ TEXT
     totals_block="$(cat <<'TEXT'
 Current totals
 --------------
-As of    : 2026-04-08
-Balanced : Yes
+As of         : 2026-04-08
+Balance state : Balanced
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | ZERO
+EUR      |       10.00 |        10.00 |       0.00 | Zero
 TEXT
 )"
 
-    cash_block="$(cat <<'TEXT'
-1000 | Cash
------------
-Account type   : Asset
-Account role   : Ordinary
-Normal balance : Debit
-Active         : Yes
-Currency       : EUR
-Debit total    : 10.00
-Credit total   : 0.00
-Net amount     : 10.00
-Balance side   : Debit
-TEXT
-)"
-    revenue_block="$(cat <<'TEXT'
-2000 | Revenue
---------------
-Account type   : Revenue
-Account role   : Ordinary
-Normal balance : Credit
-Active         : Yes
-Currency       : EUR
-Debit total    : 0.00
-Credit total   : 10.00
-Net amount     : 10.00
-Balance side   : Credit
+    account_table_block="$(cat <<'TEXT'
+Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
+2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 TEXT
 )"
 
@@ -200,10 +179,8 @@ TEXT
         || die "published text trial balance did not render the expected book header"
     require_literal_block "${text_output}" "${totals_block}" \
         || die "published text trial balance did not render the expected totals block"
-    require_literal_block "${text_output}" "${cash_block}" \
-        || die "published text trial balance did not report the expected Cash trial-balance row"
-    require_literal_block "${text_output}" "${revenue_block}" \
-        || die "published text trial balance did not report the expected Revenue trial-balance row"
+    require_literal_block "${text_output}" "${account_table_block}" \
+        || die "published text trial balance did not render the expected account summary rows"
 }
 
 verify_mounted_book_surface() {
@@ -221,7 +198,7 @@ verify_mounted_book_surface() {
         --entity-name "${fixture_entity_name}" \
         --business-activity-tag "${fixture_business_activity_tag}" \
         --functional-currency "${fixture_functional_currency}" \
-        --fiscal-year-start "${fixture_fiscal_year_start}" \ >/dev/null
+        --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
     mounted_container_run "${image_ref}" \
