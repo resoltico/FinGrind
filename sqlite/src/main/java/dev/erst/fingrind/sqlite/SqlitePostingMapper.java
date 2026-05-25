@@ -24,6 +24,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -94,6 +95,8 @@ final class SqlitePostingMapper {
         journalEntry,
         readPostingLineageModel(postingRow),
         PostingKind.fromWireValue(requiredText(postingRow, SqlitePostingSql.COL_POSTING_KIND)),
+        PostingOriginKind.fromWireValue(
+            requiredText(postingRow, SqlitePostingSql.COL_POSTING_ORIGIN_KIND)),
         evidence,
         provenance);
   }

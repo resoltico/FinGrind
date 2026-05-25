@@ -19,6 +19,6 @@ public interface PostingRangeStore {
   /** Returns the earliest committed effective date when one posting already exists. */
   Optional<LocalDate> earliestPostingEffectiveDate();
 
-  /** Returns the inclusive closed-through effective date when one period has been closed. */
-  Optional<LocalDate> closedThroughEffectiveDate();
+  /** Returns the inclusive transferred-through effective date when one period has been closed. */
+  Optional<LocalDate> transferredThroughEffectiveDate();
 }

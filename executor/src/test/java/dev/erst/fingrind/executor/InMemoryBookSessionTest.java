@@ -641,6 +641,7 @@ class InMemoryBookSessionTest {
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey, recordedAt));
   }
@@ -653,6 +654,7 @@ class InMemoryBookSessionTest {
             new ReversalReference(new PostingId(priorPostingId)),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }

@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor.bookkeeping.policy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -20,14 +19,12 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
       new BookIdentity(
           new EntityProfile(new BookEntityName("Leap Shop"), java.util.List.of()),
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("02-29"),
-          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+          FiscalYearStart.parse("02-29"));
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Calendar Shop"), java.util.List.of()),
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"),
-          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+          FiscalYearStart.parse("01-01"));
 
   @Test
   void comparativePeriod_rejectsInvertedDateRange() {

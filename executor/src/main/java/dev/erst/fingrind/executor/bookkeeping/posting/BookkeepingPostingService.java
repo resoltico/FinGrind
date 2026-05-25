@@ -54,6 +54,7 @@ public final class BookkeepingPostingService {
             command.journalEntry(),
             command.postingLineage(),
             command.postingKind(),
+            command.postingOriginKind(),
             command.evidence(),
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));

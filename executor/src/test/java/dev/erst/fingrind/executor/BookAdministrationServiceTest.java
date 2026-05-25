@@ -18,7 +18,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -125,7 +125,7 @@ class BookAdministrationServiceTest {
   }
 
   @Test
-  void closePeriod_delegatesToBookSession() {
+  void transferPeriodResult_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
@@ -150,7 +150,7 @@ class BookAdministrationServiceTest {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT)));
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("4000"),
@@ -175,6 +175,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
+              dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
@@ -202,6 +203,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "12.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
+              dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
@@ -214,24 +216,24 @@ class BookAdministrationServiceTest {
                   FIXED_CLOCK.instant(),
                   dev.erst.fingrind.core.SourceChannel.CLI)));
 
-      PeriodCloseOutcome outcome =
-          new PeriodCloseService(
+      PeriodResultTransferOutcome outcome =
+          new PeriodResultTransferService(
                   bookSession,
                   bookSession,
                   bookSession,
                   bookSession,
-                  () -> new dev.erst.fingrind.core.PostingId("period-close-1"),
+                  () -> new dev.erst.fingrind.core.PostingId("period-result-transfer-1"),
                   FIXED_CLOCK)
-              .closePeriod(
+              .transferPeriodResult(
                   new ReportingPeriod(
                       LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")));
 
       org.junit.jupiter.api.Assertions.assertEquals(
           1,
           org.junit.jupiter.api.Assertions.assertInstanceOf(
-                  PeriodCloseOutcome.Closed.class, outcome)
-              .closedPeriod()
-              .closingPostingIds()
+                  PeriodResultTransferOutcome.Transferred.class, outcome)
+              .transferredPeriodResult()
+              .transferPostingIds()
               .size());
     }
   }

@@ -42,15 +42,15 @@ import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PeriodCloseStore;
+import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -231,7 +231,7 @@ final class LedgerPlanServiceTestSupport {
           BookkeepingReadStore,
           PostingValidationStore,
           PostingCommitStore,
-          PeriodCloseStore,
+          PeriodResultTransferStore,
           AccountCatalogStore,
           AutoCloseable {}
 
@@ -310,8 +310,8 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
-      return delegate.closedThroughEffectiveDate();
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
+      return delegate.transferredThroughEffectiveDate();
     }
 
     @Override
@@ -358,9 +358,10 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.closePeriod(periodCloseDraft, postingIdGenerator);
+    public PeriodResultTransferOutcome transferPeriodResult(
+        PeriodResultTransferDraft periodResultTransferDraft,
+        PostingIdGenerator postingIdGenerator) {
+      return delegate.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
     }
 
     @Override

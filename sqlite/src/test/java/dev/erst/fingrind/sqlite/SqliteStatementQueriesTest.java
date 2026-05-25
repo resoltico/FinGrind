@@ -115,23 +115,6 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               "SQLite entity profile query returned more than one row.",
               entityProfileFailure.getMessage());
-
-          IllegalStateException bookPolicyFailure =
-              assertThrows(
-                  IllegalStateException.class,
-                  () ->
-                      SqliteStatementQueries.loadBookIdentity(
-                          redirectedDatabase(
-                              database,
-                              SqlitePostingSql.FIND_BOOK_POLICY,
-                              """
-                              select 'ACCRUAL'
-                              union all
-                              select 'ACCRUAL'
-                              """)));
-          assertEquals(
-              "SQLite book policy query returned more than one row.",
-              bookPolicyFailure.getMessage());
         });
   }
 

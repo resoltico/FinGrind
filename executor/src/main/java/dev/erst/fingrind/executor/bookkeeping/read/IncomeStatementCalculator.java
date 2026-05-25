@@ -28,7 +28,7 @@ final class IncomeStatementCalculator {
   IncomeStatementCalculator(BookkeepingStatementContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.profitAndLossContributionCalculator =
-        new ProfitAndLossContributionCalculator(context::policyPack);
+        new ProfitAndLossContributionCalculator(context::accountingRules);
   }
 
   IncomeStatementView view(IncomeStatementCriteria criteria) {
@@ -36,7 +36,7 @@ final class IncomeStatementCalculator {
     PostingCoverage postingCoverage = PostingCoverage.NON_CLOSING_POSTINGS;
     EffectiveDateRange comparativeRange =
         context
-            .policyPack()
+            .accountingRules()
             .statementComparativePolicy()
             .comparativePeriod(
                 bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
@@ -65,8 +65,8 @@ final class IncomeStatementCalculator {
     IncomeStatementRows rows = new IncomeStatementRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       if (!context
-          .policyPack()
-          .closePolicy()
+          .accountingRules()
+          .resultTransferPolicy()
           .closesAccountType(accountTotal.account().accountType())) {
         continue;
       }

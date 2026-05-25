@@ -7,8 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -23,6 +21,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -41,7 +41,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
-import dev.erst.fingrind.executor.PeriodCloseService;
+import dev.erst.fingrind.executor.PeriodResultTransferService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
@@ -50,7 +50,7 @@ import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.SqlitePeriodCloseSession;
+import dev.erst.fingrind.sqlite.SqlitePeriodResultTransferSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
@@ -153,21 +153,22 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   }
 
   @Override
-  public ContractDecision<ClosePeriodResult> closePeriod(
-      BookAccess bookAccess, ClosePeriodCommand command) {
-    return withPeriodCloseSession(
-        SqliteBookSessions.openResolvedPeriodClose(
+  public ContractDecision<PeriodResultTransferResult> transferPeriodResult(
+      BookAccess bookAccess, PeriodResultTransferCommand command) {
+    return withPeriodResultTransferSession(
+        SqliteBookSessions.openResolvedPeriodResultTransfer(
             bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
-                new PeriodCloseService(
+                new PeriodResultTransferService(
                         bookSession,
                         bookSession,
                         bookSession,
                         bookSession,
                         new UuidV7PostingIdGenerator(),
                         clock)
-                    .closePeriod(BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+                    .transferPeriodResult(
+                        BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
@@ -349,12 +350,12 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         ContractDecision::rejected);
   }
 
-  private static <T> ContractDecision<T> withPeriodCloseSession(
-      ContractDecision<SqlitePeriodCloseSession> decision,
-      Function<SqlitePeriodCloseSession, T> work) {
+  private static <T> ContractDecision<T> withPeriodResultTransferSession(
+      ContractDecision<SqlitePeriodResultTransferSession> decision,
+      Function<SqlitePeriodResultTransferSession, T> work) {
     return decision.fold(
         bookSession -> {
-          try (SqlitePeriodCloseSession ignored = bookSession) {
+          try (SqlitePeriodResultTransferSession ignored = bookSession) {
             return ContractDecision.accepted(work.apply(bookSession));
           }
         },

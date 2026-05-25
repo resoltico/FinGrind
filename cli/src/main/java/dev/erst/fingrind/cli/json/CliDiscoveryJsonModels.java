@@ -14,7 +14,9 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemp
 import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
@@ -23,6 +25,38 @@ import org.jspecify.annotations.Nullable;
 
 /** Discovery-oriented JSON records emitted by the CLI transport layer. */
 public interface CliDiscoveryJsonModels {
+
+  record CommandIndexPayload(OperationId name, String category, String summary)
+      implements ProtocolSuccessPayload {
+    public CommandIndexPayload {
+      name = requireValue(name, "name");
+      category = requireText(category, "category");
+      summary = requireText(summary, "summary");
+    }
+  }
+
+  record HelpOverviewMinimalPayload(
+      String application,
+      String version,
+      String description,
+      DiscoveryDetail detail,
+      List<CommandIndexPayload> commands,
+      String compactDetailHint,
+      String fullDetailHint)
+      implements ProtocolSuccessPayload {
+    public HelpOverviewMinimalPayload {
+      application = requireText(application, "application");
+      version = requireText(version, "version");
+      description = requireText(description, "description");
+      detail = requireValue(detail, "detail");
+      commands = copyList(commands, "commands");
+      compactDetailHint = requireText(compactDetailHint, "compactDetailHint");
+      fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
+      if (detail != DiscoveryDetail.MINIMAL) {
+        throw new IllegalArgumentException("minimal help overview requires minimal detail.");
+      }
+    }
+  }
 
   record HelpOverviewPayload(
       String application,
@@ -49,6 +83,31 @@ public interface CliDiscoveryJsonModels {
       }
       if (detail != DiscoveryDetail.FULL && fullContract != null) {
         throw new IllegalArgumentException("fullContract must be absent unless detail is full.");
+      }
+    }
+  }
+
+  record HelpOverviewCompactPayload(
+      String application,
+      String version,
+      String description,
+      DiscoveryDetail detail,
+      List<CommandIndexPayload> commands,
+      List<ExitCodeDescriptor> exitCodes,
+      String capabilitiesHint,
+      String fullDetailHint)
+      implements ProtocolSuccessPayload {
+    public HelpOverviewCompactPayload {
+      application = requireText(application, "application");
+      version = requireText(version, "version");
+      description = requireText(description, "description");
+      detail = requireValue(detail, "detail");
+      commands = copyList(commands, "commands");
+      exitCodes = copyList(exitCodes, "exitCodes");
+      capabilitiesHint = requireText(capabilitiesHint, "capabilitiesHint");
+      fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
+      if (detail != DiscoveryDetail.COMPACT) {
+        throw new IllegalArgumentException("compact help overview requires compact detail.");
       }
     }
   }
@@ -80,6 +139,29 @@ public interface CliDiscoveryJsonModels {
     }
   }
 
+  record CapabilitiesMinimalPayload(
+      String application,
+      String version,
+      DiscoveryDetail detail,
+      String bookBoundary,
+      List<CommandIndexPayload> commands,
+      String compactDetailHint,
+      String fullDetailHint)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesMinimalPayload {
+      application = requireText(application, "application");
+      version = requireText(version, "version");
+      detail = requireValue(detail, "detail");
+      bookBoundary = requireText(bookBoundary, "bookBoundary");
+      commands = copyList(commands, "commands");
+      compactDetailHint = requireText(compactDetailHint, "compactDetailHint");
+      fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
+      if (detail != DiscoveryDetail.MINIMAL) {
+        throw new IllegalArgumentException("minimal capabilities payload requires minimal detail.");
+      }
+    }
+  }
+
   record CapabilitiesPayload(
       String application,
       String version,
@@ -103,6 +185,73 @@ public interface CliDiscoveryJsonModels {
       }
       if (detail != DiscoveryDetail.FULL && fullContract != null) {
         throw new IllegalArgumentException("fullContract must be absent unless detail is full.");
+      }
+    }
+  }
+
+  record CommandSurfacePayload(
+      OperationId name,
+      String category,
+      String summary,
+      List<String> aliases,
+      List<String> options,
+      String executionMode,
+      List<String> outputModes,
+      @Nullable SelectableOutputDefaultsDescriptor selectableOutputDefaults,
+      List<String> artifactOutputs,
+      boolean requestFileCommand)
+      implements ProtocolSuccessPayload {
+    public CommandSurfacePayload {
+      name = requireValue(name, "name");
+      category = requireText(category, "category");
+      summary = requireText(summary, "summary");
+      aliases = copyList(aliases, "aliases");
+      options = copyList(options, "options");
+      executionMode = requireText(executionMode, "executionMode");
+      outputModes = copyList(outputModes, "outputModes");
+      artifactOutputs = copyList(artifactOutputs, "artifactOutputs");
+    }
+  }
+
+  record RequestInputCompactPayload(
+      String bookFileOption,
+      List<String> bookPassphraseOptions,
+      String requestFileOption,
+      List<String> requestFileCommands,
+      String stdinToken,
+      String outputOption)
+      implements ProtocolSuccessPayload {
+    public RequestInputCompactPayload {
+      bookFileOption = requireText(bookFileOption, "bookFileOption");
+      bookPassphraseOptions = copyList(bookPassphraseOptions, "bookPassphraseOptions");
+      requestFileOption = requireText(requestFileOption, "requestFileOption");
+      requestFileCommands = copyList(requestFileCommands, "requestFileCommands");
+      stdinToken = requireText(stdinToken, "stdinToken");
+      outputOption = requireText(outputOption, "outputOption");
+    }
+  }
+
+  record CapabilitiesCompactPayload(
+      String application,
+      String version,
+      DiscoveryDetail detail,
+      String bookBoundary,
+      List<String> storageEngines,
+      RequestInputCompactPayload requestInput,
+      List<CommandSurfacePayload> commands,
+      String fullDetailHint)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesCompactPayload {
+      application = requireText(application, "application");
+      version = requireText(version, "version");
+      detail = requireValue(detail, "detail");
+      bookBoundary = requireText(bookBoundary, "bookBoundary");
+      storageEngines = copyList(storageEngines, "storageEngines");
+      requestInput = requireValue(requestInput, "requestInput");
+      commands = copyList(commands, "commands");
+      fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
+      if (detail != DiscoveryDetail.COMPACT) {
+        throw new IllegalArgumentException("compact capabilities payload requires compact detail.");
       }
     }
   }

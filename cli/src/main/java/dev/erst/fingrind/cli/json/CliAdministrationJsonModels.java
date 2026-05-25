@@ -24,33 +24,31 @@ public interface CliAdministrationJsonModels {
       String entityName,
       java.util.List<String> businessActivityTags,
       String functionalCurrency,
-      String fiscalYearStart,
-      String policyProfile) {
+      String fiscalYearStart) {
     public BookIdentityPayload {
       entityName = requireText(entityName, "entityName");
       businessActivityTags =
           CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
-      policyProfile = requireText(policyProfile, "policyProfile");
     }
   }
 
-  record CloseReadinessPayload(
+  record ResultTransferReadinessPayload(
       boolean ready,
       String requiredFinancialPositionLineClassification,
-      @Nullable String closingEquityAccountCode,
+      @Nullable String resultHoldingAccountCode,
       @Nullable String blockingCode,
       @Nullable String blockingMessage,
       java.util.List<String> candidateAccountCodes) {
-    public CloseReadinessPayload {
+    public ResultTransferReadinessPayload {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
               "requiredFinancialPositionLineClassification");
-      closingEquityAccountCode =
+      resultHoldingAccountCode =
           CliJsonModelValidation.requireOptionalText(
-              closingEquityAccountCode, "closingEquityAccountCode");
+              resultHoldingAccountCode, "resultHoldingAccountCode");
       blockingCode = CliJsonModelValidation.requireOptionalText(blockingCode, "blockingCode");
       blockingMessage =
           CliJsonModelValidation.requireOptionalText(blockingMessage, "blockingMessage");
@@ -134,23 +132,24 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record ClosedPeriodPayload(
-      int closeOrder,
+  record TransferredPeriodResultPayload(
+      int transferOrder,
       String effectiveDateFrom,
       String effectiveDateTo,
-      String closingEquityAccountCode,
-      java.util.List<CliBookQueryJsonModels.BalanceBucketPayload> closedTotals,
-      String closedAt,
-      java.util.List<String> closingPostingIds)
+      String resultHoldingAccountCode,
+      java.util.List<CliBookQueryJsonModels.BalanceBucketPayload> transferredTotals,
+      String transferredAt,
+      java.util.List<String> transferPostingIds)
       implements CliSuccessPayload {
-    public ClosedPeriodPayload {
-      requirePositive(closeOrder, "closeOrder");
+    public TransferredPeriodResultPayload {
+      requirePositive(transferOrder, "transferOrder");
       effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
-      closingEquityAccountCode = requireText(closingEquityAccountCode, "closingEquityAccountCode");
-      closedTotals = CliJsonModelValidation.copyList(closedTotals, "closedTotals");
-      closedAt = requireText(closedAt, "closedAt");
-      closingPostingIds = CliJsonModelValidation.copyList(closingPostingIds, "closingPostingIds");
+      resultHoldingAccountCode = requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
+      transferredTotals = CliJsonModelValidation.copyList(transferredTotals, "transferredTotals");
+      transferredAt = requireText(transferredAt, "transferredAt");
+      transferPostingIds =
+          CliJsonModelValidation.copyList(transferPostingIds, "transferPostingIds");
     }
   }
 
@@ -200,7 +199,7 @@ public interface CliAdministrationJsonModels {
       MigrationPolicyPayload migrationPolicy,
       String initializedAt,
       BookIdentityPayload bookIdentity,
-      CloseReadinessPayload closeReadiness)
+      ResultTransferReadinessPayload resultTransferReadiness)
       implements CliSuccessPayload {
     public InitializedBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -210,7 +209,7 @@ public interface CliAdministrationJsonModels {
       java.util.Objects.requireNonNull(migrationPolicy, "migrationPolicy");
       initializedAt = requireText(initializedAt, "initializedAt");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
-      java.util.Objects.requireNonNull(closeReadiness, "closeReadiness");
+      java.util.Objects.requireNonNull(resultTransferReadiness, "resultTransferReadiness");
     }
   }
 }

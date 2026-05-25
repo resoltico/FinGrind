@@ -363,13 +363,12 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
                 SqliteBookContract.BOOK_META_TABLE,
                 SqliteBookContract.BOOK_IDENTITY_TABLE,
                 SqliteBookContract.ENTITY_PROFILE_TABLE,
-                SqliteBookContract.BOOK_POLICY_TABLE,
                 SqliteBookContract.ACCOUNT_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_TOTAL_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_POSTING_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_TOTAL_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_POSTING_TABLE,
                 SqliteBookContract.AUDIT_EVENT_TABLE));
     Path blankBookPath = tempDirectory.resolve("helper-blank.sqlite");
     createEmptySqliteFile(blankBookPath);

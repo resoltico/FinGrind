@@ -69,6 +69,7 @@ class ContractTestSupport {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(

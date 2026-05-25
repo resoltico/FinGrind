@@ -56,8 +56,8 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void insertPeriodClose_requiresExactlyOneReturnedCloseOrderRow() {
-    Path bookPath = tempDirectory.resolve("period-close-return-shapes.sqlite");
+  void insertPeriodResultTransfer_requiresExactlyOneReturnedCloseOrderRow() {
+    Path bookPath = tempDirectory.resolve("period-result-transfer-return-shapes.sqlite");
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -66,14 +66,14 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   database,
                   sql ->
                       database.prepare(
-                          SqlitePostingSql.INSERT_PERIOD_CLOSE.equals(sql)
+                          SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER.equals(sql)
                               ? "select ?1 as close_order where 0 and ?2 is not null and ?3 is not null and ?4 is not null"
                               : sql));
           IllegalStateException noRowFailure =
               assertThrows(
                   IllegalStateException.class,
                   () ->
-                      SqliteMutationWriter.insertPeriodClose(
+                      SqliteMutationWriter.insertPeriodResultTransfer(
                           noRowDatabase,
                           new dev.erst.fingrind.core.ReportingPeriod(
                               LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -82,21 +82,22 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                           Instant.parse("2026-04-30T10:15:30Z"),
                           List.of()));
           assertEquals(
-              "SQLite period close insert returned no close order.", noRowFailure.getMessage());
+              "SQLite period result transfer insert returned no transfer order.",
+              noRowFailure.getMessage());
 
           SqliteStatementRedirectingDatabase extraRowDatabase =
               new SqliteStatementRedirectingDatabase(
                   database,
                   sql ->
                       database.prepare(
-                          SqlitePostingSql.INSERT_PERIOD_CLOSE.equals(sql)
+                          SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER.equals(sql)
                               ? "select ?1 as close_order union all select ?2 where ?3 is not null and ?4 is not null"
                               : sql));
           IllegalStateException extraRowFailure =
               assertThrows(
                   IllegalStateException.class,
                   () ->
-                      SqliteMutationWriter.insertPeriodClose(
+                      SqliteMutationWriter.insertPeriodResultTransfer(
                           extraRowDatabase,
                           new dev.erst.fingrind.core.ReportingPeriod(
                               LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -105,14 +106,14 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                           Instant.parse("2026-04-30T10:15:30Z"),
                           List.of()));
           assertEquals(
-              "SQLite period close insert returned more than one close order.",
+              "SQLite period result transfer insert returned more than one transfer order.",
               extraRowFailure.getMessage());
         });
   }
 
   @Test
-  void insertPeriodClose_persistsClosedTotalsRows() {
-    Path bookPath = tempDirectory.resolve("period-close-totals.sqlite");
+  void insertPeriodResultTransfer_persistsClosedTotalsRows() {
+    Path bookPath = tempDirectory.resolve("period-result-transfer-totals.sqlite");
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -121,7 +122,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
           SqliteStoreFixtureSupport.insertAccountRow(
               database, "3200", "Retained earnings", "EQUITY", "CREDIT", 1, "2026-01-01T00:00:00Z");
 
-          SqliteMutationWriter.insertPeriodClose(
+          SqliteMutationWriter.insertPeriodResultTransfer(
               database,
               new dev.erst.fingrind.core.ReportingPeriod(
                   LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -136,7 +137,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               1,
               SqliteStatementQueries.querySingleInt(
-                  database, "select count(*) from period_close_total"));
+                  database, "select count(*) from period_result_transfer_total"));
         });
   }
 

@@ -54,7 +54,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                 }));
     assertEquals(Path.of("backup/entity.sqlite"), backupBook.backupFilePath());
 
-    BackupBook backupBookWithHumanOutput =
+    BackupBook backupBookWithTextOutput =
         assertInstanceOf(
             BackupBook.class,
             CliArguments.parse(
@@ -69,9 +69,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                   "--backup-book-key-file-out",
                   "backup/entity.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
-    assertEquals(OutputMode.HUMAN, backupBookWithHumanOutput.outputMode());
+    assertEquals(OutputMode.TEXT, backupBookWithTextOutput.outputMode());
 
     RestoreBook restoreBook =
         assertInstanceOf(
@@ -86,9 +86,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                   "--backup-book-key-file",
                   "backup/entity.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
-    assertEquals(OutputMode.HUMAN, restoreBook.outputMode());
+    assertEquals(OutputMode.TEXT, restoreBook.outputMode());
 
     CliArgumentsException missingBackupFile =
         assertThrows(
@@ -329,14 +329,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         "--rollback-file is accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
         inspectRollbackPathRejected.getMessage());
 
-    InspectRekeyRollback inspectWithHumanOutput =
+    InspectRekeyRollback inspectWithTextOutput =
         assertInstanceOf(
             InspectRekeyRollback.class,
             CliArguments.parse(
                 new String[] {
-                  "inspect-rekey-rollback", "--book-file", "book.sqlite", "--output", "human"
+                  "inspect-rekey-rollback", "--book-file", "book.sqlite", "--output", "text"
                 }));
-    assertEquals(OutputMode.HUMAN, inspectWithHumanOutput.outputMode());
+    assertEquals(OutputMode.TEXT, inspectWithTextOutput.outputMode());
 
     CliArgumentsException duplicateInspectBookFile =
         assertThrows(
@@ -365,7 +365,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     CliArgumentsException missingInspectBookFile =
         assertThrows(
             CliArgumentsException.class,
-            () -> CliArguments.parse(new String[] {"inspect-rekey-rollback", "--output", "human"}));
+            () -> CliArguments.parse(new String[] {"inspect-rekey-rollback", "--output", "text"}));
     assertEquals("--book-file", missingInspectBookFile.argument());
   }
 
@@ -755,7 +755,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void mutationWriters_renderMaintenanceJsonAndHumanVariantsAndRejectCsv() throws Exception {
+  void mutationWriters_renderMaintenanceJsonAndTextVariantsAndRejectCsv() throws Exception {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     CliMutationResponseWriter writer =
         new CliMutationResponseWriter(new CliOutputChannel(utf8PrintStream(output)));
@@ -802,7 +802,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         new RekeyRollbackResult.Deleted(
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(output.toString(StandardCharsets.UTF_8).contains("Rollback Artifact Deleted"));
     output.reset();
 
@@ -824,7 +824,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         new RekeyRollbackResult.Restored(
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     assertTrue(output.toString(StandardCharsets.UTF_8).contains("Book Restored From Rollback"));
     output.reset();
 
@@ -905,18 +905,18 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
 
   @Test
   void mutationOutputRenderer_rendersRollbackRecoveryVariants() {
-    String inspectedHuman =
-        CliMutationOutputRenderer.renderInspectRekeyRollbackHuman(
+    String inspectedText =
+        CliMutationOutputRenderer.renderInspectRekeyRollbackText(
             new RekeyRollbackResult.Inspected(hint(Path.of("books/entity.sqlite")), List.of()));
-    assertTrue(inspectedHuman.contains("Rollback artifacts"));
-    assertTrue(inspectedHuman.contains("(none)"));
+    assertTrue(inspectedText.contains("Rollback artifacts"));
+    assertTrue(inspectedText.contains("(none)"));
 
-    String restoredHuman =
-        CliMutationOutputRenderer.renderRestoreRekeyRollbackHuman(
+    String restoredText =
+        CliMutationOutputRenderer.renderRestoreRekeyRollbackText(
             new RekeyRollbackResult.Restored(
                 hint(Path.of("books/entity.sqlite")),
                 hint(Path.of("books/entity.rekey-rollback.sqlite"))));
-    assertTrue(restoredHuman.contains("Book Restored From Rollback"));
+    assertTrue(restoredText.contains("Book Restored From Rollback"));
   }
 
   @Test
@@ -994,7 +994,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   private static void assertRenderedMaintenanceDetails(
       CliRejectionJsonModels.RejectionDetails details, String... fragments) {
     String rendered =
-        CliFailureOutputRenderer.renderRejectedHuman(
+        CliFailureOutputRenderer.renderRejectedText(
             "maintenance-rejected", "Maintenance rejected.", "Repair it.", null, details);
     for (String fragment : fragments) {
       assertTrue(rendered.contains(fragment));

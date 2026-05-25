@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -25,37 +26,95 @@ final class CliDiscoveryPayloadMapper {
     Objects.requireNonNull(detail, "detail");
     return isCommandScoped(helpDescriptor)
         ? commandHelpPayload(helpDescriptor, detail)
-        : helpOverviewPayload(helpDescriptor, detail);
+        : switch (detail) {
+          case MINIMAL -> minimalHelpOverviewPayload(helpDescriptor);
+          case COMPACT -> compactHelpOverviewPayload(helpDescriptor);
+          case FULL -> helpOverviewPayload(helpDescriptor);
+        };
   }
 
-  static CliDiscoveryJsonModels.CapabilitiesPayload capabilitiesPayload(
+  static ProtocolSuccessPayload capabilitiesPayloadAny(
       CapabilitiesDescriptor capabilitiesDescriptor, DiscoveryDetail detail) {
     Objects.requireNonNull(capabilitiesDescriptor, "capabilitiesDescriptor");
     Objects.requireNonNull(detail, "detail");
-    return new CliDiscoveryJsonModels.CapabilitiesPayload(
+    return switch (detail) {
+      case MINIMAL -> minimalCapabilitiesPayload(capabilitiesDescriptor);
+      case COMPACT -> compactCapabilitiesPayload(capabilitiesDescriptor);
+      case FULL -> fullCapabilitiesPayload(capabilitiesDescriptor);
+    };
+  }
+
+  static ProtocolSuccessPayload capabilitiesPayload(
+      CapabilitiesDescriptor capabilitiesDescriptor, DiscoveryDetail detail) {
+    return capabilitiesPayloadAny(capabilitiesDescriptor, detail);
+  }
+
+  private static CliDiscoveryJsonModels.HelpOverviewMinimalPayload minimalHelpOverviewPayload(
+      HelpDescriptor helpDescriptor) {
+    return new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
+        helpDescriptor.application(),
+        helpDescriptor.version(),
+        helpDescriptor.description(),
+        DiscoveryDetail.MINIMAL,
+        commandIndexPayloads(helpDescriptor.commands()),
+        "Rerun with '"
+            + CliInvocationText.commandExample(OperationId.HELP)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " compact' for stable usage, options, and output-contract descriptors.",
+        "Rerun with '"
+            + CliInvocationText.commandExample(OperationId.HELP)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " full' for the exhaustive discovery descriptor.");
+  }
+
+  private static CliDiscoveryJsonModels.CapabilitiesMinimalPayload minimalCapabilitiesPayload(
+      CapabilitiesDescriptor capabilitiesDescriptor) {
+    return new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
-        detail,
-        capabilitiesDescriptor.storage(),
-        capabilitiesDescriptor.commands(),
-        capabilitiesDescriptor.requestInput(),
-        List.of(
-            "Use compact detail for stable command, storage, and request-entry discovery.",
-            "Rerun with '"
-                + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                + " --output json "
-                + ProtocolOptions.DETAIL
-                + " full' when you need the exhaustive schema and response contract."),
-        detail == DiscoveryDetail.FULL ? capabilitiesDescriptor : null);
+        DiscoveryDetail.MINIMAL,
+        capabilitiesDescriptor.storage().bookBoundary(),
+        commandIndexPayloads(capabilitiesDescriptor.commands().allCommands()),
+        "Rerun with '"
+            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " compact' for stable command, storage, and request-entry discovery.",
+        "Rerun with '"
+            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " full' for the exhaustive schema and response contract.");
+  }
+
+  private static CliDiscoveryJsonModels.HelpOverviewCompactPayload compactHelpOverviewPayload(
+      HelpDescriptor helpDescriptor) {
+    return new CliDiscoveryJsonModels.HelpOverviewCompactPayload(
+        helpDescriptor.application(),
+        helpDescriptor.version(),
+        helpDescriptor.description(),
+        DiscoveryDetail.COMPACT,
+        commandIndexPayloads(helpDescriptor.commands()),
+        helpDescriptor.exitCodes(),
+        "Run '"
+            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+            + " --output json' for the stable machine-readable command contract.",
+        "Run '"
+            + CliInvocationText.commandExample(OperationId.HELP)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " full' for exhaustive discovery grammar, templates, and response contract details.");
   }
 
   private static CliDiscoveryJsonModels.HelpOverviewPayload helpOverviewPayload(
-      HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+      HelpDescriptor helpDescriptor) {
     return new CliDiscoveryJsonModels.HelpOverviewPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
-        detail,
+        DiscoveryDetail.FULL,
         helpDescriptor.commands(),
         List.of(
             "Run '"
@@ -71,7 +130,7 @@ final class CliDiscoveryPayloadMapper {
         "Run '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json' for the stable machine-readable command contract.",
-        detail == DiscoveryDetail.FULL ? helpDescriptor : null);
+        helpDescriptor);
   }
 
   private static CliDiscoveryJsonModels.CommandHelpPayload commandHelpPayload(
@@ -112,7 +171,7 @@ final class CliDiscoveryPayloadMapper {
           INSPECT_REKEY_ROLLBACK,
           DELETE_REKEY_ROLLBACK,
           RESTORE_REKEY_ROLLBACK,
-          CLOSE_PERIOD,
+          TRANSFER_PERIOD_RESULT,
           INSPECT_BOOK,
           LIST_ACCOUNTS,
           GET_POSTING,
@@ -202,6 +261,80 @@ final class CliDiscoveryPayloadMapper {
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
   }
 
+  private static CliDiscoveryJsonModels.CapabilitiesCompactPayload compactCapabilitiesPayload(
+      CapabilitiesDescriptor capabilitiesDescriptor) {
+    List<String> requestFileCommands = capabilitiesDescriptor.requestInput().requestFileCommands();
+    return new CliDiscoveryJsonModels.CapabilitiesCompactPayload(
+        capabilitiesDescriptor.application(),
+        capabilitiesDescriptor.version(),
+        DiscoveryDetail.COMPACT,
+        capabilitiesDescriptor.storage().bookBoundary(),
+        capabilitiesDescriptor.storage().engines().stream().map(Object::toString).toList(),
+        requestInputCompactPayload(capabilitiesDescriptor),
+        capabilitiesDescriptor.commands().allCommands().stream()
+            .map(command -> commandSurfacePayload(command, requestFileCommands))
+            .toList(),
+        "Run '"
+            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+            + " --output json "
+            + ProtocolOptions.DETAIL
+            + " full' for exhaustive schema, response, and doctrine details.");
+  }
+
+  private static CliDiscoveryJsonModels.CapabilitiesPayload fullCapabilitiesPayload(
+      CapabilitiesDescriptor capabilitiesDescriptor) {
+    return new CliDiscoveryJsonModels.CapabilitiesPayload(
+        capabilitiesDescriptor.application(),
+        capabilitiesDescriptor.version(),
+        DiscoveryDetail.FULL,
+        capabilitiesDescriptor.storage(),
+        capabilitiesDescriptor.commands(),
+        capabilitiesDescriptor.requestInput(),
+        List.of(
+            "Use compact detail for stable command, storage, and request-entry discovery.",
+            "Rerun with '"
+                + CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                + " --output json "
+                + ProtocolOptions.DETAIL
+                + " full' when you need the exhaustive schema and response contract."),
+        capabilitiesDescriptor);
+  }
+
+  private static CliDiscoveryJsonModels.CommandSurfacePayload commandSurfacePayload(
+      CommandDescriptor command, List<String> requestFileCommands) {
+    return new CliDiscoveryJsonModels.CommandSurfacePayload(
+        command.name(),
+        ProtocolCatalog.operation(command.name()).category().name().toLowerCase(Locale.ROOT),
+        command.summary(),
+        command.aliases(),
+        command.options(),
+        executionModeWireValue(command),
+        command.outputModes().stream().map(outputMode -> outputMode.wireValue()).toList(),
+        command.selectableOutputDefaults(),
+        command.artifactOutputs().stream()
+            .map(artifact -> artifact.format() + " via " + artifact.option())
+            .toList(),
+        requestFileCommands.contains(command.name().wireName()));
+  }
+
+  private static CliDiscoveryJsonModels.RequestInputCompactPayload requestInputCompactPayload(
+      CapabilitiesDescriptor capabilitiesDescriptor) {
+    return new CliDiscoveryJsonModels.RequestInputCompactPayload(
+        capabilitiesDescriptor.requestInput().bookFileOption(),
+        capabilitiesDescriptor.requestInput().bookPassphraseOptions(),
+        capabilitiesDescriptor.requestInput().requestFileOption(),
+        capabilitiesDescriptor.requestInput().requestFileCommands(),
+        capabilitiesDescriptor.requestInput().stdinToken(),
+        capabilitiesDescriptor.requestInput().outputOption());
+  }
+
+  private static String executionModeWireValue(CommandDescriptor command) {
+    return switch (command.executionMode()) {
+      case JSON_ENVELOPE -> "json-envelope";
+      case RAW_JSON -> "raw-json";
+    };
+  }
+
   private static List<String> commandExamples(ProtocolOperation operation) {
     return operation.exampleSteps().stream()
         .filter(ProtocolExampleStep.Command.class::isInstance)
@@ -219,5 +352,20 @@ final class CliDiscoveryPayloadMapper {
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {
     return helpDescriptor.commands().size() == 1 && helpDescriptor.quickStart().isEmpty();
+  }
+
+  private static List<CliDiscoveryJsonModels.CommandIndexPayload> commandIndexPayloads(
+      List<CommandDescriptor> commands) {
+    return commands.stream()
+        .map(
+            command ->
+                new CliDiscoveryJsonModels.CommandIndexPayload(
+                    command.name(),
+                    ProtocolCatalog.operation(command.name())
+                        .category()
+                        .name()
+                        .toLowerCase(Locale.ROOT),
+                    command.summary()))
+        .toList();
   }
 }

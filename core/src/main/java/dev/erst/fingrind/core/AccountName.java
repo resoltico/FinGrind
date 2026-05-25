@@ -2,7 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.util.Objects;
 
-/** Human-readable display name for one declared ledger account. */
+/** Plain-language display name for one declared ledger account. */
 public record AccountName(String value) {
   /** Validates an account name without imposing jurisdiction-specific vocabulary. */
   public AccountName {

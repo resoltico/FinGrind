@@ -6,7 +6,7 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-invalid_wrong_type",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-04-07",
         "capturedAt": "2026-04-07T10:15:30Z",
         "storageLocator": "vault://fixtures/document-invalid_wrong_type",

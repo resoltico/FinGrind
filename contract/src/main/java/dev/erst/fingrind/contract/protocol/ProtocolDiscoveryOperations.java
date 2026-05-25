@@ -15,10 +15,10 @@ final class ProtocolDiscoveryOperations {
             List.of("--help", "-h"),
             List.of(
                 "[<command>]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN)),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
                 ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print command usage, examples, and workflow guidance.",
             List.of(
                 ProtocolExampleStep.command("fingrind help post-entry"),
@@ -32,9 +32,9 @@ final class ProtocolDiscoveryOperations {
             "Version",
             List.of("--version"),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print application identity, version, and description.",
             List.of()),
         ProtocolOperationDefinitions.operation(
@@ -43,10 +43,10 @@ final class ProtocolDiscoveryOperations {
             "Capabilities",
             List.of(),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN)),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
                 ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of(
                 ProtocolExampleStep.command("fingrind capabilities --output json"),
@@ -57,9 +57,9 @@ final class ProtocolDiscoveryOperations {
             "Environment",
             List.of(),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print live runtime, distribution, and SQLite provenance facts for this launcher instance.",
             List.of()),
         ProtocolOperationDefinitions.operation(
@@ -78,7 +78,7 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "The emitted JSON is a runnable sample document. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
+                    "The emitted JSON is a runnable sample document. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
@@ -92,6 +92,6 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s > plan.json"
                         .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "The emitted plan is a runnable sample workflow for a fresh book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))));
+                    "The emitted plan is a runnable sample workflow for a fresh book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))));
   }
 }

@@ -52,14 +52,15 @@ class PostingAcceptancePolicyInternalTest {
     assertTrue(
         PostingAcceptancePolicy.isInternalSystemPosting(
             new PostingCommand(
-                PostingKind.PERIOD_CLOSE,
+                PostingKind.PERIOD_RESULT_TRANSFER,
+                dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
                 new JournalEntry(
                     LocalDate.parse("2026-04-07"),
                     List.of(
                         line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
                         line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                 PostingLineageModel.direct(),
-                generatedEvidence("period-close-command", "period-close-plan"),
+                generatedEvidence("period-result-transfer-command", "period-result-transfer-plan"),
                 new RequestProvenance(
                     new ActorId("actor-1"),
                     ActorType.SYSTEM,
@@ -72,6 +73,7 @@ class PostingAcceptancePolicyInternalTest {
         PostingAcceptancePolicy.isInternalSystemPosting(
             new PostingCommand(
                 PostingKind.STANDARD,
+                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                 new JournalEntry(
                     LocalDate.parse("2026-04-07"),
                     List.of(
@@ -81,7 +83,7 @@ class PostingAcceptancePolicyInternalTest {
                 generatedEvidence("operator-correction", "operator-correction"),
                 new RequestProvenance(
                     new ActorId("actor-1"),
-                    ActorType.HUMAN,
+                    ActorType.PERSON,
                     new CommandId("command-correction"),
                     new IdempotencyKey("idem-command-cli"),
                     new CausationId("cause-correction"),
@@ -102,8 +104,9 @@ class PostingAcceptancePolicyInternalTest {
                 line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
-        PostingKind.PERIOD_CLOSE,
-        generatedEvidence(idempotencyKey, "period-close-plan"),
+        PostingKind.PERIOD_RESULT_TRANSFER,
+        dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+        generatedEvidence(idempotencyKey, "period-result-transfer-plan"),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /** Captures whether replaying a committed FinGrind Jazzer input succeeded or failed. */
 public sealed interface ReplayOutcome
     permits ReplayOutcome.ExpectedInvalid, ReplayOutcome.Success, ReplayOutcome.UnexpectedFailure {
-  /** Human-readable success message shared by replay-clean outcomes. */
+  /** Readable success message shared by replay-clean outcomes. */
   String SUCCESS_MESSAGE = "Replay completed without surfacing a bug.";
 
   /** Returns the harness key that produced this replay outcome. */

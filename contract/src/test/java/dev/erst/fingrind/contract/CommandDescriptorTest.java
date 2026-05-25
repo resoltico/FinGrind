@@ -23,8 +23,8 @@ class CommandDescriptorTest {
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
-            new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
+            new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.JSON),
             List.of(),
             "Show help");
     CommandDescriptor fixedEnvelope =
@@ -47,7 +47,7 @@ class CommandDescriptorTest {
             "Print one plan template");
 
     assertEquals(
-        "json, human (via --output; default: human interactive, json redirected)",
+        "json, text (via --output; default: text interactive, json redirected)",
         selectable.stdoutContractSummary());
     assertEquals("json envelope (fixed)", fixedEnvelope.stdoutContractSummary());
     assertEquals("raw json (fixed)", fixedRawJson.stdoutContractSummary());
@@ -65,7 +65,7 @@ class CommandDescriptorTest {
                     List.of(),
                     ExecutionMode.JSON_ENVELOPE,
                     List.of(),
-                    new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.HUMAN),
+                    new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.TEXT),
                     List.of(),
                     "Show help"));
 
@@ -82,7 +82,7 @@ class CommandDescriptorTest {
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(),
             "Show help");
     CommandDescriptor declareAccount =
@@ -91,7 +91,7 @@ class CommandDescriptorTest {
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(),
             "Declare one account");
     CommandDescriptor fixedEnvelope =
@@ -121,7 +121,7 @@ class CommandDescriptorTest {
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(),
             "Show help");
     CommandDescriptor fixedEnvelope =
@@ -143,7 +143,7 @@ class CommandDescriptorTest {
             List.of(),
             "Print one plan template");
 
-    assertEquals("json | human", selectable.outputModeSummary());
+    assertEquals("json | text", selectable.outputModeSummary());
     assertEquals("json envelope", fixedEnvelope.outputModeSummary());
     assertEquals("raw json", fixedRawJson.outputModeSummary());
   }

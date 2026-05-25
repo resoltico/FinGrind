@@ -12,12 +12,12 @@ public record BookAuditEvent(
     BookAuditEventKind kind,
     @Nullable AccountCode accountCode,
     @Nullable PostingId postingId,
-    @Nullable Integer periodCloseOrder) {
+    @Nullable Integer periodResultTransferOrder) {
   /** Validates one append-only bookkeeping audit event before durable persistence. */
   public BookAuditEvent {
     Objects.requireNonNull(recordedAt, "recordedAt");
     Objects.requireNonNull(kind, "kind");
-    kind.validatePayload(accountCode, postingId, periodCloseOrder);
+    kind.validatePayload(accountCode, postingId, periodResultTransferOrder);
   }
 
   /** Returns one audit event recording that a book session opened successfully. */
@@ -89,8 +89,13 @@ public record BookAuditEvent(
   }
 
   /** Returns one audit event recording that one reporting period was closed durably. */
-  public static BookAuditEvent periodClosed(Instant recordedAt, int periodCloseOrder) {
+  public static BookAuditEvent periodResultTransferred(
+      Instant recordedAt, int periodResultTransferOrder) {
     return new BookAuditEvent(
-        recordedAt, BookAuditEventKind.PERIOD_CLOSED, null, null, periodCloseOrder);
+        recordedAt,
+        BookAuditEventKind.PERIOD_RESULT_TRANSFERRED,
+        null,
+        null,
+        periodResultTransferOrder);
   }
 }

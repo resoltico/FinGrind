@@ -30,7 +30,6 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -88,13 +87,12 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.45.0", CLOCK);
+      new PdfReportService("FinGrind", "0.46.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"),
-          AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+          FiscalYearStart.parse("01-01"));
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -139,7 +137,8 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Internal Management Single Entity V1"));
+    assertTrue(trialBalanceText.contains("Functional currency"));
+    assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
@@ -215,11 +214,12 @@ class PdfReportServiceTest {
                 new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000000")),
                 new ReversalReason("duplicate-charge")),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("office-worker"),
-                    ActorType.HUMAN,
+                    ActorType.PERSON,
                     new CommandId("command-reversal"),
                     new IdempotencyKey("idem-reversal"),
                     new CausationId("cause-reversal"),
@@ -351,11 +351,12 @@ class PdfReportServiceTest {
                         CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "10.00")))),
             PostingLineage.direct(),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("office-worker"),
-                    ActorType.HUMAN,
+                    ActorType.PERSON,
                     new CommandId("command-self"),
                     new IdempotencyKey("idem-self"),
                     new CausationId("cause-self"),
@@ -461,7 +462,7 @@ class PdfReportServiceTest {
                     "3000",
                     "Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+                    FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -473,7 +474,7 @@ class PdfReportServiceTest {
                     "3000",
                     "Prior Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+                    FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT))),
@@ -502,7 +503,7 @@ class PdfReportServiceTest {
     assertTrue(financialPositionText.contains("Equivalents"));
     assertTrue(incomeStatementText.contains("Subscription Revenue"));
     assertTrue(incomeStatementText.contains("Income Statement"));
-    assertTrue(incomeStatementText.contains("Non-closing postings"));
+    assertTrue(incomeStatementText.contains("Non-transfer postings"));
     assertTrue(incomeStatementText.contains("Ordinary"));
     assertTrue(incomeStatementText.contains("Comparative Revenue"));
     assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
@@ -573,7 +574,7 @@ class PdfReportServiceTest {
                     "3000",
                     "Contributed Capital",
                     AccountRole.ORDINARY,
-                    FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+                    FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
@@ -702,10 +703,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.45.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.46.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.45.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.46.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -722,7 +723,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.45.0", information.getCreator());
+      assertEquals("FinGrind 0.46.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -795,11 +796,12 @@ class PdfReportServiceTest {
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("office-worker"),
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 new CommandId("command-%03d".formatted(index)),
                 new IdempotencyKey("idem-%03d".formatted(index)),
                 new CausationId("cause-%03d".formatted(index)),
@@ -813,7 +815,7 @@ class PdfReportServiceTest {
         List.of(
             new SourceDocumentReference(
                 new SourceDocumentId("document-" + token),
-                new SourceDocumentType("invoice"),
+                new SourceDocumentType("cash-receipt"),
                 LocalDate.parse("2026-04-19"),
                 Instant.parse("2026-04-19T10:15:30Z"),
                 new StorageLocator("evidence://documents/document-" + token + ".pdf"),
@@ -907,7 +909,7 @@ class PdfReportServiceTest {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CONTRIBUTED_CAPITAL),
+              Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** Shared human-facing identity rows for one accounting book. */
+/** Shared operator-facing identity rows for one accounting book. */
 final class CliBookIdentityDisplay {
   private CliBookIdentityDisplay() {}
 
@@ -20,9 +20,6 @@ final class CliBookIdentityDisplay {
             businessActivityTags(bookIdentity.entityProfile().businessActivityTags())));
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
-    rows.add(
-        List.of(
-            "Policy profile", CliHumanDisplay.wireLabel(bookIdentity.policyProfile().wireValue())));
     return List.copyOf(rows);
   }
 
@@ -48,8 +45,6 @@ final class CliBookIdentityDisplay {
         + " | Currency "
         + bookIdentity.functionalCurrency().code()
         + " | FY "
-        + bookIdentity.fiscalYearStart().wireValue()
-        + " | Policy "
-        + CliHumanDisplay.wireLabel(bookIdentity.policyProfile().wireValue());
+        + bookIdentity.fiscalYearStart().wireValue();
   }
 }

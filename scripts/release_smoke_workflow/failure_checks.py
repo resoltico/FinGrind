@@ -59,7 +59,7 @@ def verify_rekey_and_wrong_key_semantics(
         "--effective-date-as-of",
         "2026-04-08",
         "--output",
-        "human",
+        "text",
     )
     require(
         wrong_key_status == error_exit_codes["protected-book-verification-failed"],
@@ -100,7 +100,7 @@ def verify_deterministic_nonsense_workflows(
         "--output",
         "json",
     )
-    prompt_failure_output, prompt_failure_status = run_cli_allow_failure(
+    machine_prompt_failure_output, machine_prompt_failure_status = run_cli_allow_failure(
         config,
         operation_ids["openBook"],
         "--book-file",
@@ -113,11 +113,26 @@ def verify_deterministic_nonsense_workflows(
         config.functional_currency,
         "--fiscal-year-start",
         config.fiscal_year_start,
-        "--policy-profile",
-        config.policy_profile,
         "--book-passphrase-prompt",
         "--output",
         "json",
+    )
+    terminal_prompt_failure_output, terminal_prompt_failure_status = run_cli_allow_failure(
+        config,
+        operation_ids["openBook"],
+        "--book-file",
+        config.prompt_failure_book.argument,
+        "--entity-name",
+        config.entity_name,
+        "--business-activity-tag",
+        *config.business_activity_tags,
+        "--functional-currency",
+        config.functional_currency,
+        "--fiscal-year-start",
+        config.fiscal_year_start,
+        "--book-passphrase-prompt",
+        "--output",
+        "text",
     )
     invalid_request_output, invalid_request_status = run_cli_allow_failure(
         config,
@@ -146,16 +161,30 @@ def verify_deterministic_nonsense_workflows(
         f"{config.label} invalid cursor regressed to runtime-failure",
     )
     require(
-        prompt_failure_status == error_exit_codes["interactive-prompt-unavailable"],
-        f"{config.label} prompt-unavailable exited with {prompt_failure_status} instead of the published interactive-prompt-unavailable exit code",
+        machine_prompt_failure_status == error_exit_codes["invalid-request"],
+        f"{config.label} machine-output prompt request exited with {machine_prompt_failure_status} instead of the published invalid-request exit code",
     )
     require_match(
-        prompt_failure_output,
-        r'"code"[[:space:]]*:[[:space:]]*"interactive-prompt-unavailable"',
+        machine_prompt_failure_output,
+        r'"code"[[:space:]]*:[[:space:]]*"invalid-request"',
+        f"{config.label} machine-output prompt request did not report invalid-request",
+    )
+    require_match(
+        machine_prompt_failure_output,
+        r"--output text",
+        f"{config.label} machine-output prompt request did not report the text-output repair hint",
+    )
+    require(
+        terminal_prompt_failure_status == error_exit_codes["interactive-prompt-unavailable"],
+        f"{config.label} prompt-unavailable exited with {terminal_prompt_failure_status} instead of the published interactive-prompt-unavailable exit code",
+    )
+    require_match(
+        terminal_prompt_failure_output,
+        r"interactive-prompt-unavailable",
         f"{config.label} prompt-unavailable did not report interactive-prompt-unavailable",
     )
     require_match(
-        prompt_failure_output,
+        terminal_prompt_failure_output,
         r"--book-passphrase-stdin",
         f"{config.label} prompt-unavailable did not report a repair hint",
     )

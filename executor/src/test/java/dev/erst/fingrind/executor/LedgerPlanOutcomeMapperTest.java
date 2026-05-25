@@ -418,11 +418,11 @@ class LedgerPlanOutcomeMapperTest {
                     .BookFunctionalCurrencyMismatch(
                     dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
                     dev.erst.fingrind.core.CurrencyUnit.of("USD")));
-    var closedPeriodViolation =
+    var transferredPeriodResultViolation =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanOutcomeMapper.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ClosedPeriodViolation(
+                    .TransferredPeriodResultViolation(
                     LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-06")));
     var openingBalanceWindowClosed =
         (LedgerPlanStepOutcome.Rejected)
@@ -436,11 +436,11 @@ class LedgerPlanOutcomeMapperTest {
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .OpeningBalanceTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE));
-    var retainedEarningsReserved =
+    var resultHoldingReserved =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanOutcomeMapper.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ClosingEquityAccountReserved(new AccountCode("3200")));
+                    .ResultHoldingAccountReserved(new AccountCode("3200")));
 
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals("duplicate-idempotency-key", duplicateIdempotencyKey.failure().code());
@@ -448,11 +448,11 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("reversal-already-exists", reversalAlreadyExists.failure().code());
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
     assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
-    assertEquals("closed-period-violation", closedPeriodViolation.failure().code());
+    assertEquals("closed-period-violation", transferredPeriodResultViolation.failure().code());
     assertEquals("opening-balance-window-closed", openingBalanceWindowClosed.failure().code());
     assertEquals(
         "opening-balance-touches-nominal-account", openingBalanceNominalAccount.failure().code());
-    assertEquals("closing-equity-account-reserved", retainedEarningsReserved.failure().code());
+    assertEquals("result-holding-account-reserved", resultHoldingReserved.failure().code());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
         reversalTargetNotFound.failure().facts());
@@ -469,9 +469,9 @@ class LedgerPlanOutcomeMapperTest {
         functionalCurrencyMismatch.failure().facts());
     assertEquals(
         List.of(
-            BookWorkflowFact.text("closedThroughEffectiveDate", "2026-04-07"),
+            BookWorkflowFact.text("transferredThroughEffectiveDate", "2026-04-07"),
             BookWorkflowFact.text("attemptedEffectiveDate", "2026-04-06")),
-        closedPeriodViolation.failure().facts());
+        transferredPeriodResultViolation.failure().facts());
     assertEquals(
         List.of(
             BookWorkflowFact.text("firstBlockingPostingKind", PostingKind.STANDARD.wireValue()),
@@ -484,7 +484,7 @@ class LedgerPlanOutcomeMapperTest {
         openingBalanceNominalAccount.failure().facts());
     assertEquals(
         List.of(BookWorkflowFact.text("accountCode", "3200")),
-        retainedEarningsReserved.failure().facts());
+        resultHoldingReserved.failure().facts());
   }
 
   @Test
@@ -508,6 +508,65 @@ class LedgerPlanOutcomeMapperTest {
                 BookWorkflowFact.text("code", "inactive-account"),
                 BookWorkflowFact.text("accountCode", "2000"))),
         rejected.failure().facts().get(1));
+  }
+
+  @Test
+  void postingRejection_recordsNonPostableAndEntrySemanticsViolationsInWorkflowFacts() {
+    var nonPostableRejected =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .AccountStateViolations(
+                    List.of(
+                        new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                            .NonPostableAccount(
+                            new AccountCode("3000"),
+                            dev.erst.fingrind.core.AccountNodeKind.HEADER))));
+    var entrySemanticsRejected =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                    .EntrySemanticsViolations(
+                    List.of(
+                        new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                            .EntrySemanticsViolation(
+                            "account-type-mismatch",
+                            "cashAccountCode",
+                            "cash account must be an ASSET"),
+                        new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                            .EntrySemanticsViolation(
+                            "source-document-type-not-accepted",
+                            null,
+                            "invoice does not prove cash receipt"))));
+
+    assertEquals("account-state-violations", nonPostableRejected.failure().code());
+    assertEquals(
+        BookWorkflowFact.group(
+            "violation",
+            List.of(
+                BookWorkflowFact.text("code", "non-postable-account"),
+                BookWorkflowFact.text("accountCode", "3000"),
+                BookWorkflowFact.text("accountNodeKind", "HEADER"))),
+        nonPostableRejected.failure().facts().get(1));
+    assertEquals("entry-semantics-violations", entrySemanticsRejected.failure().code());
+    assertEquals(
+        BookWorkflowFact.count("violationCount", 2),
+        entrySemanticsRejected.failure().facts().getFirst());
+    assertEquals(
+        BookWorkflowFact.group(
+            "violation",
+            List.of(
+                BookWorkflowFact.text("code", "account-type-mismatch"),
+                BookWorkflowFact.text("field", "cashAccountCode"),
+                BookWorkflowFact.text("message", "cash account must be an ASSET"))),
+        entrySemanticsRejected.failure().facts().get(1));
+    assertEquals(
+        BookWorkflowFact.group(
+            "violation",
+            List.of(
+                BookWorkflowFact.text("code", "source-document-type-not-accepted"),
+                BookWorkflowFact.text("message", "invoice does not prove cash receipt"))),
+        entrySemanticsRejected.failure().facts().get(2));
   }
 
   @Test
@@ -626,6 +685,7 @@ class LedgerPlanOutcomeMapperTest {
                     Money.parse("EUR", "10.00")))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence("idem-3"),
         new CommittedProvenance(
             new RequestProvenance(

@@ -43,7 +43,6 @@ class ReleaseSmokeConfig:
     business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
-    policy_profile: str
 
 
 @dataclass(frozen=True)
@@ -65,7 +64,6 @@ class ReleaseSmokeScenario:
     business_activity_tags: list[str]
     functional_currency: str
     fiscal_year_start: str
-    policy_profile: str
 
 
 class ReleaseSmokeFailure(RuntimeError):

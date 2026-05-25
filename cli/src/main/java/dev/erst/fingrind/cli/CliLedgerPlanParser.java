@@ -209,10 +209,7 @@ final class CliLedgerPlanParser {
                 "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
             CliArgumentValueParser.parseFiscalYearStartOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
-                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
-            CliArgumentValueParser.parseAccountingPolicyProfileOption(
-                requiredText(openBookNode, ProtocolOpenBookFields.POLICY_PROFILE),
-                "openBook." + ProtocolOpenBookFields.POLICY_PROFILE)));
+                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
   }
 
   private static List<BusinessActivityTag> requiredBusinessActivityTags(ObjectNode openBookNode) {

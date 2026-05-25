@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -18,6 +19,9 @@ public sealed interface PostingRequestModel
 
   /** Returns the canonical durable posting kind for this posting attempt. */
   PostingKind postingKind();
+
+  /** Returns the durable origin kind preserved for this posting attempt. */
+  PostingOriginKind postingOriginKind();
 
   /** Returns the optional reversal target. */
   default java.util.Optional<ReversalReference> reversalReference() {

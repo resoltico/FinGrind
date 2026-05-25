@@ -13,36 +13,36 @@ import org.jspecify.annotations.Nullable;
 public sealed interface BookInspection
     permits BookInspection.Missing, BookInspection.Existing, BookInspection.Initialized {
   /** Close-period configuration readiness published for one initialized book. */
-  record CloseReadiness(
+  record ResultTransferReadiness(
       boolean ready,
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
-      @Nullable AccountCode closingEquityAccountCode,
+      @Nullable AccountCode resultHoldingAccountCode,
       @Nullable String blockingCode,
       @Nullable String blockingMessage,
       List<AccountCode> candidateAccountCodes) {
-    public CloseReadiness {
+    public ResultTransferReadiness {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
       candidateAccountCodes = List.copyOf(candidateAccountCodes);
       if (ready) {
-        Objects.requireNonNull(closingEquityAccountCode, "closingEquityAccountCode");
+        Objects.requireNonNull(resultHoldingAccountCode, "resultHoldingAccountCode");
         if (blockingCode != null || blockingMessage != null) {
           throw new IllegalArgumentException(
-              "Ready close-readiness must not carry blocking metadata.");
+              "Ready result-transfer-readiness must not carry blocking metadata.");
         }
       } else {
-        if (closingEquityAccountCode != null) {
+        if (resultHoldingAccountCode != null) {
           throw new IllegalArgumentException(
-              "Blocked close-readiness must not carry one closing-equity account code.");
+              "Blocked result-transfer-readiness must not carry one result-holding account code.");
         }
         if (blockingCode == null || blockingCode.isBlank()) {
           throw new IllegalArgumentException(
-              "Blocked close-readiness must carry one blockingCode.");
+              "Blocked result-transfer-readiness must carry one blockingCode.");
         }
         if (blockingMessage == null || blockingMessage.isBlank()) {
           throw new IllegalArgumentException(
-              "Blocked close-readiness must carry one blockingMessage.");
+              "Blocked result-transfer-readiness must carry one blockingMessage.");
         }
       }
     }
@@ -175,7 +175,7 @@ public sealed interface BookInspection
       int supportedBookFormatVersion,
       Instant initializedAt,
       BookIdentity bookIdentity,
-      CloseReadiness closeReadiness)
+      ResultTransferReadiness resultTransferReadiness)
       implements BookInspection {
     /** Validates one initialized-book inspection snapshot. */
     public Initialized {
@@ -183,7 +183,7 @@ public sealed interface BookInspection
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
       Objects.requireNonNull(initializedAt, "initializedAt");
       Objects.requireNonNull(bookIdentity, "bookIdentity");
-      Objects.requireNonNull(closeReadiness, "closeReadiness");
+      Objects.requireNonNull(resultTransferReadiness, "resultTransferReadiness");
     }
 
     @Override

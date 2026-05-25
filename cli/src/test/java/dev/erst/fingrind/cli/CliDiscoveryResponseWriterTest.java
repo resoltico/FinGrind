@@ -138,7 +138,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeHelp_supportsJsonAndHumanButRejectsCsv() throws IOException {
+  void writeHelp_supportsJsonAndTextButRejectsCsv() throws IOException {
     HelpDescriptor helpDescriptor =
         MachineContract.help(
             new ApplicationIdentity(
@@ -156,10 +156,10 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter jsonWriter = new CliResponseWriter(utf8PrintStream(jsonOutput));
     jsonWriter.writeHelp(helpDescriptor);
     assertEquals("ok", readJson(jsonOutput).path("status").stringValue());
-    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
-    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
-    humanWriter.writeHelp(helpDescriptor, OutputMode.HUMAN);
-    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
+    ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
+    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    textWriter.writeHelp(helpDescriptor, OutputMode.TEXT);
+    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
     CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
     assertThrows(
@@ -167,7 +167,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeCapabilities_usesCompactDefaultPayload() throws IOException {
+  void writeCapabilities_usesMinimalDefaultPayload() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeCapabilities(
@@ -178,27 +178,29 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "Command-line double-entry bookkeeping with one protected book per accounting entity")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
-    assertEquals("compact", payload.path("detail").stringValue());
-    assertTrue(payload.has("storage"));
+    assertEquals("minimal", payload.path("detail").stringValue());
+    assertTrue(payload.has("bookBoundary"));
     assertTrue(payload.has("commands"));
-    assertTrue(payload.has("requestInput"));
-    assertTrue(payload.has("machineGuidance"));
+    assertTrue(payload.has("compactDetailHint"));
+    assertTrue(payload.has("fullDetailHint"));
+    assertFalse(payload.has("storage"));
+    assertFalse(payload.has("requestInput"));
+    assertFalse(payload.has("machineGuidance"));
     assertFalse(payload.has("fullContract"));
-    assertFalse(payload.has("environment"));
   }
 
   @Test
-  void writeCapabilities_supportsHumanButRejectsCsv() {
+  void writeCapabilities_supportsTextButRejectsCsv() {
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
                 "Command-line double-entry bookkeeping with one protected book per accounting entity"));
-    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
-    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
-    humanWriter.writeCapabilities(capabilities, OutputMode.HUMAN);
-    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Capabilities"));
+    ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
+    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    textWriter.writeCapabilities(capabilities, OutputMode.TEXT);
+    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Capabilities"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
     CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
     assertThrows(
@@ -207,7 +209,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeEnvironment_supportsHumanButRejectsCsv() {
+  void writeEnvironment_supportsTextButRejectsCsv() {
     var environment =
         environmentDescriptor(
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
@@ -216,10 +218,10 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             "3.53.1",
             "2.3.4",
             nullOf());
-    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
-    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
-    humanWriter.writeEnvironment(environment, OutputMode.HUMAN);
-    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Environment"));
+    ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
+    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    textWriter.writeEnvironment(environment, OutputMode.TEXT);
+    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Environment"));
 
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
     CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
@@ -229,16 +231,16 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeVersion_supportsHumanButRejectsCsv() {
+  void writeVersion_supportsTextButRejectsCsv() {
     VersionDescriptor versionDescriptor =
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
             "Command-line double-entry bookkeeping with one protected book per accounting entity");
-    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
-    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
-    humanWriter.writeVersion(versionDescriptor, OutputMode.HUMAN);
-    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("Version"));
+    ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
+    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    textWriter.writeVersion(versionDescriptor, OutputMode.TEXT);
+    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("Version"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
     CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
     assertThrows(

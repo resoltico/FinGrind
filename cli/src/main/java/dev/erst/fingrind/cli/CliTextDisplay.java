@@ -10,22 +10,22 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Shared human-facing formatting helpers for concise operator output. */
-final class CliHumanDisplay {
-  private static final DateTimeFormatter HUMAN_INSTANT_FORMATTER =
+/** Shared text-rendering helpers for concise operator output. */
+final class CliTextDisplay {
+  private static final DateTimeFormatter TEXT_INSTANT_FORMATTER =
       DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
-  private CliHumanDisplay() {}
+  private CliTextDisplay() {}
 
   static String instant(Instant instant) {
-    return HUMAN_INSTANT_FORMATTER.format(Objects.requireNonNull(instant, "instant"));
+    return TEXT_INSTANT_FORMATTER.format(Objects.requireNonNull(instant, "instant"));
   }
 
   static String path(Path path) {
     Path normalizedPath = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
     int segmentCount = normalizedPath.getNameCount();
     if (segmentCount == 0) {
-      return humanPathText(normalizedPath);
+      return pathText(normalizedPath);
     }
     if (segmentCount == 1) {
       return normalizedPath.getFileName().toString();
@@ -59,7 +59,7 @@ final class CliHumanDisplay {
         .collect(java.util.stream.Collectors.joining(" "));
   }
 
-  private static String humanPathText(Path path) {
+  private static String pathText(Path path) {
     return path.toString().replace('\\', '/');
   }
 }

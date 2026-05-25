@@ -5,23 +5,28 @@ import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Closed family of domain rejections that can refuse a posting request deterministically. */
 public sealed interface PostingRejection
     permits PostingRejection.BookNotInitialized,
         PostingRejection.AccountStateViolations,
+        PostingRejection.EntrySemanticsViolations,
         PostingRejection.DuplicateIdempotencyKey,
         PostingRejection.BookFunctionalCurrencyMismatch,
-        PostingRejection.ClosedPeriodViolation,
+        PostingRejection.TransferredPeriodResultViolation,
         PostingRejection.OpeningBalanceWindowClosed,
         PostingRejection.OpeningBalanceTouchesNominalAccount,
-        PostingRejection.ClosingEquityAccountReserved,
+        PostingRejection.ResultHoldingAccountReserved,
         PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
@@ -68,6 +73,27 @@ public sealed interface PostingRejection
     }
   }
 
+  /** Stable structured entry-semantics issue emitted for one rejected typed entry. */
+  record EntrySemanticsViolation(String code, @Nullable String field, String message) {
+    public EntrySemanticsViolation {
+      code = ContractDescriptorValidation.requireText(code, "code");
+      field = ContractDescriptorValidation.requireOptionalText(field, "field");
+      message = ContractDescriptorValidation.requireText(message, "message");
+    }
+  }
+
+  /** Rejection for one typed entry whose own semantics are incompatible with the selected book. */
+  record EntrySemanticsViolations(List<EntrySemanticsViolation> violations)
+      implements PostingRejection {
+    public EntrySemanticsViolations {
+      violations = ContractDescriptorValidation.copyList(violations, "violations");
+      if (violations.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Entry semantics violations must contain at least one issue.");
+      }
+    }
+  }
+
   /** One undeclared account referenced by a posting request. */
   record UnknownAccount(AccountCode accountCode) implements AccountStateViolation {
     /** Validates the missing account descriptor. */
@@ -105,12 +131,12 @@ public sealed interface PostingRejection
     }
   }
 
-  /** Rejection for a posting attempt whose effective date falls inside one closed period. */
-  record ClosedPeriodViolation(
-      LocalDate closedThroughEffectiveDate, LocalDate attemptedEffectiveDate)
+  /** Rejection for a posting attempt whose effective date falls inside one transferred period. */
+  record TransferredPeriodResultViolation(
+      LocalDate transferredThroughEffectiveDate, LocalDate attemptedEffectiveDate)
       implements PostingRejection {
-    public ClosedPeriodViolation {
-      Objects.requireNonNull(closedThroughEffectiveDate, "closedThroughEffectiveDate");
+    public TransferredPeriodResultViolation {
+      Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
     }
   }
@@ -134,9 +160,9 @@ public sealed interface PostingRejection
     }
   }
 
-  /** Rejection for one direct posting that attempts to use the active closing-equity account. */
-  record ClosingEquityAccountReserved(AccountCode accountCode) implements PostingRejection {
-    public ClosingEquityAccountReserved {
+  /** Rejection for one direct posting that attempts to use the active result-holding account. */
+  record ResultHoldingAccountReserved(AccountCode accountCode) implements PostingRejection {
+    public ResultHoldingAccountReserved {
       Objects.requireNonNull(accountCode, "accountCode");
     }
   }
@@ -163,5 +189,74 @@ public sealed interface PostingRejection
     public ReversalDoesNotNegateTarget {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
+  }
+
+  /** Returns one typed-entry violation for an account whose declared type contradicts the entry. */
+  static EntrySemanticsViolation accountTypeMismatch(
+      BookkeepingEntryKind entryKind,
+      String field,
+      AccountCode accountCode,
+      AccountType expectedAccountType,
+      AccountType actualAccountType) {
+    Objects.requireNonNull(entryKind, "entryKind");
+    Objects.requireNonNull(field, "field");
+    Objects.requireNonNull(accountCode, "accountCode");
+    Objects.requireNonNull(expectedAccountType, "expectedAccountType");
+    Objects.requireNonNull(actualAccountType, "actualAccountType");
+    return new EntrySemanticsViolation(
+        "account-type-mismatch",
+        field,
+        "Entry kind '%s' requires %s '%s' to be account type '%s', but the declared account type is '%s'."
+            .formatted(
+                entryKind.wireValue(),
+                field,
+                accountCode.value(),
+                expectedAccountType.wireValue(),
+                actualAccountType.wireValue()));
+  }
+
+  /**
+   * Returns one typed-entry violation for an account whose declared financial-position
+   * classification contradicts the entry.
+   */
+  static EntrySemanticsViolation financialPositionClassificationMismatch(
+      BookkeepingEntryKind entryKind,
+      String field,
+      AccountCode accountCode,
+      FinancialPositionLineClassification expectedClassification,
+      @Nullable FinancialPositionLineClassification actualClassification) {
+    Objects.requireNonNull(entryKind, "entryKind");
+    Objects.requireNonNull(field, "field");
+    Objects.requireNonNull(accountCode, "accountCode");
+    Objects.requireNonNull(expectedClassification, "expectedClassification");
+    return new EntrySemanticsViolation(
+        "financial-position-classification-mismatch",
+        field,
+        "Entry kind '%s' requires %s '%s' to use financialPositionLineClassification '%s', but the declared account uses '%s'."
+            .formatted(
+                entryKind.wireValue(),
+                field,
+                accountCode.value(),
+                expectedClassification.wireValue(),
+                actualClassification == null ? "<absent>" : actualClassification.wireValue()));
+  }
+
+  /** Returns one typed-entry violation for evidence whose source-document type is not admitted. */
+  static EntrySemanticsViolation sourceDocumentTypeNotAccepted(
+      BookkeepingEntryKind entryKind,
+      SourceDocumentType sourceDocumentType,
+      List<String> acceptedTypes) {
+    Objects.requireNonNull(entryKind, "entryKind");
+    Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
+    List<String> acceptedTypeValues =
+        List.copyOf(Objects.requireNonNull(acceptedTypes, "acceptedTypes"));
+    return new EntrySemanticsViolation(
+        "source-document-type-not-accepted",
+        "evidence.sourceDocuments[].sourceDocumentType",
+        "Entry kind '%s' does not accept sourceDocumentType '%s'. Accepted values: %s."
+            .formatted(
+                entryKind.wireValue(),
+                sourceDocumentType.value(),
+                String.join(", ", acceptedTypeValues)));
   }
 }

@@ -56,7 +56,7 @@ import dev.erst.fingrind.core.StatementLineKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -75,13 +75,13 @@ class BookReadServiceStatementQueryTest {
   private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
   private static final LocalDate OPENING_DATE = LocalDate.parse("2026-04-01");
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
-  private static final ReportingPeriod CLOSE_PERIOD =
+  private static final ReportingPeriod TRANSFER_PERIOD_RESULT =
       new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
 
   private static final AccountCode CASH_ACCOUNT_CODE = new AccountCode("1000");
   private static final AccountCode CONTRA_ASSET_ACCOUNT_CODE = new AccountCode("1090");
   private static final AccountCode CAPITAL_ACCOUNT_CODE = new AccountCode("3000");
-  private static final AccountCode ACCUMULATED_RESULT_ACCOUNT_CODE = new AccountCode("3200");
+  private static final AccountCode RESULT_HOLDING_ACCOUNT_CODE = new AccountCode("3200");
   private static final AccountCode REVENUE_ACCOUNT_CODE = new AccountCode("4000");
   private static final AccountCode EXPENSE_ACCOUNT_CODE = new AccountCode("5000");
 
@@ -177,27 +177,30 @@ class BookReadServiceStatementQueryTest {
   }
 
   @Test
-  void closePeriod_rollsIncomeIntoRetainedEarningsAndLeavesIncomeStatementOnStandardPostings() {
+  void
+      transferPeriodResult_rollsIncomeIntoRetainedEarningsAndLeavesIncomeStatementOnStandardPostings() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareStatementAccounts(bookSession);
       seedStatementPostings(bookSession);
-      PeriodCloseService closeService =
-          new PeriodCloseService(
+      PeriodResultTransferService closeService =
+          new PeriodResultTransferService(
               bookSession,
               bookSession,
               bookSession,
               bookSession,
-              () -> new PostingId("period-close-1"),
+              () -> new PostingId("period-result-transfer-1"),
               FIXED_CLOCK);
 
-      PeriodCloseOutcome outcome = closeService.closePeriod(CLOSE_PERIOD);
-      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod =
-          assertInstanceOf(PeriodCloseOutcome.Closed.class, outcome).closedPeriod();
+      PeriodResultTransferOutcome outcome =
+          closeService.transferPeriodResult(TRANSFER_PERIOD_RESULT);
+      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
+          assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
+              .transferredPeriodResult();
 
-      assertEquals(1, closedPeriod.closeOrder());
-      assertEquals(CLOSE_PERIOD, closedPeriod.reportingPeriod());
-      assertEquals(FIXED_INSTANT, closedPeriod.closedAt());
-      assertEquals(1, closedPeriod.closingPostingIds().size());
+      assertEquals(1, transferredPeriodResult.transferOrder());
+      assertEquals(TRANSFER_PERIOD_RESULT, transferredPeriodResult.reportingPeriod());
+      assertEquals(FIXED_INSTANT, transferredPeriodResult.transferredAt());
+      assertEquals(1, transferredPeriodResult.transferPostingIds().size());
 
       BookReadService readService = readService(bookSession);
 
@@ -244,18 +247,18 @@ class BookReadServiceStatementQueryTest {
       assertEquals(
           List.of(
               positionRow(
-                  "3200",
-                  "Retained Earnings",
-                  AccountType.EQUITY,
-                  AccountRole.ORDINARY,
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
-              positionRow(
                   "3000",
                   "Owner Capital",
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT))),
+                  currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
+              positionRow(
+                  "3200",
+                  "Retained Earnings",
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  FinancialPositionLineClassification.RESULT_HOLDING,
+                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT))),
           equitySection.rows());
 
       ChangesInEquityReport changesInEquity =
@@ -267,20 +270,20 @@ class BookReadServiceStatementQueryTest {
       assertEquals(
           List.of(
               equityRow(
-                  "3200",
-                  "Retained Earnings",
-                  AccountRole.ORDINARY,
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
-                  currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT),
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
-              equityRow(
                   "3000",
                   "Owner Capital",
                   AccountRole.ORDINARY,
                   currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT),
                   currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
-                  currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT))),
+                  currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
+              equityRow(
+                  "3200",
+                  "Retained Earnings",
+                  AccountRole.ORDINARY,
+                  FinancialPositionLineClassification.RESULT_HOLDING,
+                  currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
+                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT),
+                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT))),
           changesInEquity.rows());
       assertEquals(
           List.of(currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
@@ -409,6 +412,7 @@ class BookReadServiceStatementQueryTest {
                 posting(
                     "posting-unknown-profit",
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     PERIOD_DATE,
                     List.of(
                         moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -453,11 +457,11 @@ class BookReadServiceStatementQueryTest {
         AccountRole.ORDINARY);
     declareAccount(
         bookSession,
-        ACCUMULATED_RESULT_ACCOUNT_CODE,
+        RESULT_HOLDING_ACCOUNT_CODE,
         "Retained Earnings",
         AccountType.EQUITY,
         AccountRole.ORDINARY,
-        financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT));
+        financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
     declareAccount(
         bookSession,
         REVENUE_ACCOUNT_CODE,
@@ -567,12 +571,17 @@ class BookReadServiceStatementQueryTest {
   }
 
   private static CommittedPosting posting(
-      String postingId, PostingKind postingKind, LocalDate effectiveDate, List<JournalLine> lines) {
+      String postingId,
+      PostingKind postingKind,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
+      LocalDate effectiveDate,
+      List<JournalLine> lines) {
     return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
+        postingOriginKind,
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
@@ -598,6 +607,7 @@ class BookReadServiceStatementQueryTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
@@ -616,8 +626,8 @@ class BookReadServiceStatementQueryTest {
 
   private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
       String token, PostingKind postingKind) {
-    if (postingKind == PostingKind.PERIOD_CLOSE) {
-      return generatedEvidence(token, "period-close-plan");
+    if (postingKind == PostingKind.PERIOD_RESULT_TRANSFER) {
+      return generatedEvidence(token, "period-result-transfer-plan");
     }
     return accountingEvidence("idem-" + token);
   }

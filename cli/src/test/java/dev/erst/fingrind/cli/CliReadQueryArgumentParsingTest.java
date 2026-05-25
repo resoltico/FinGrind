@@ -210,10 +210,10 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--pdf-out",
                   "reports/balance.pdf",
                   "--output",
-                  "human"
+                  "text"
                 }));
 
-    assertEquals(OutputMode.HUMAN, command.output().outputMode());
+    assertEquals(OutputMode.TEXT, command.output().outputMode());
     assertEquals(Path.of("reports/balance.pdf"), command.output().pdfOutPath());
   }
 
@@ -230,7 +230,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-key-file",
                   "book.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
     TrialBalance trialBalance =
         assertInstanceOf(
@@ -268,7 +268,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--pdf-out",
                   "reports/cash-ledger.pdf",
                   "--output",
-                  "human"
+                  "text"
                 }));
     PeriodSummary periodSummary =
         assertInstanceOf(
@@ -290,7 +290,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "csv"
                 }));
 
-    assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
+    assertEquals(OutputMode.TEXT, inspectBook.outputMode());
     assertEquals(
         new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30")), allPostingKinds()),
         trialBalance.query());
@@ -300,7 +300,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
         new AccountLedgerQuery(
             new AccountCode("1000"), LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         accountLedger.query());
-    assertEquals(OutputMode.HUMAN, accountLedger.output().outputMode());
+    assertEquals(OutputMode.TEXT, accountLedger.output().outputMode());
     assertEquals(Path.of("reports/cash-ledger.pdf"), accountLedger.output().pdfOutPath());
     assertEquals(
         new PeriodSummaryQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -446,7 +446,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--posting-id",
                   "posting-1",
                   "--output",
-                  "human"
+                  "text"
                 }));
     ListAccounts listAccounts =
         assertInstanceOf(
@@ -472,12 +472,12 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-key-file",
                   "book.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
 
-    assertEquals(OutputMode.HUMAN, getPosting.outputMode());
+    assertEquals(OutputMode.TEXT, getPosting.outputMode());
     assertEquals(OutputMode.CSV, listAccounts.outputMode());
-    assertEquals(OutputMode.HUMAN, listPostings.outputMode());
+    assertEquals(OutputMode.TEXT, listPostings.outputMode());
   }
 
   @Test

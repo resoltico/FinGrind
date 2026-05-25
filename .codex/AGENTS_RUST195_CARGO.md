@@ -79,7 +79,7 @@ Apply the universal contract §1 system map to the touched surface. Rust-specifi
 
 - **Truth:** source of truth for the relevant state, config, schema, generated artifact, feature flag, or protocol value; mutation paths; derived/cached/generated copies (bindgen, prost, sqlx, build-script outputs).
 - **Evidence:** existing checks (`cargo check`/`test`/`doc`/`clippy`/`fmt`, contract tests, integration tests, property tests, fuzz/Miri/Loom, CI); missing feedback worth adding.
-- **Consequence:** direct Rust dependencies (callers, trait impls, re-exports, features, cfg arms, tests); indirect (serialization, FFI, generated code, build scripts, CLI output, docs, dashboards, human workflows).
+- **Consequence:** direct Rust dependencies (callers, trait impls, re-exports, features, cfg arms, tests); indirect (serialization, FFI, generated code, build scripts, CLI output, docs, dashboards, manual workflows).
 - **Invariant:** type, ownership, concurrency, memory-safety, protocol, or compatibility rule that must remain true.
 - **Justification:** why each touched type, lifetime, trait bound, feature, and `unsafe` block is the way it is — and which are inherited rather than chosen. If the answer is not available, surface that gap.
 - **Re-cueing:** where the learned theory should live — type, test, rustdoc, `SAFETY:` comment, module name, build check, generated artifact, README, runbook. Flag the parts of the theory that cannot be written down, and who currently holds them.
@@ -491,7 +491,7 @@ For CLIs and process integration:
 
 - exit codes are contracts;
 - stdout/stderr separation is a contract;
-- human output and machine-readable output should not be casually mixed;
+- operator-readable output and machine-readable output should not be casually mixed;
 - environment variables and config keys must have canonical owners (per universal contract §5);
 - secrets must not appear in logs, panic messages, debug output, or error chains.
 
@@ -631,7 +631,7 @@ Per universal contract §8. Rust-specific blast-radius surfaces beyond the unive
 - proc macro or generated references;
 - serialization formats and stored data;
 - FFI symbols, `no_mangle`, exported names, and linker scripts;
-- build scripts, examples, tests, benches, docs, CI, and human workflows.
+- build scripts, examples, tests, benches, docs, CI, and manual workflows.
 
 Deleting dead code is good. Deleting untraced contract surface is breakage.
 

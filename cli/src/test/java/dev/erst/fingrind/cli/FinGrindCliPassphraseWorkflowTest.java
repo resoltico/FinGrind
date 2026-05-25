@@ -58,17 +58,15 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(openBookPromptArguments(bookFilePath));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals(
-        ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code(),
-        failureEnvelope.path("code").stringValue());
+    String outputText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(outputText.contains("Rejected"));
     assertTrue(
-        failureEnvelope
-            .path("message")
-            .stringValue()
-            .contains(
-                "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
-    assertTrue(failureEnvelope.path("hint").stringValue().contains("--book-key-file"));
+        outputText.contains(ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code()));
+    assertTrue(
+        outputText.contains(
+            "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
+    assertTrue(outputText.contains("--book-key-file"));
+    assertFalse(outputText.contains("\"status\""));
   }
 
   @Test
@@ -88,8 +86,10 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         0,
         openCli.run(openBookPromptArguments(bookFilePath)),
         openOutput.toString(StandardCharsets.UTF_8));
-    assertJsonContains(openOutput, "\"initializedAt\"");
-    assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
+    String openText = openOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(openText.contains("Book Initialized"));
+    assertTrue(openText.contains("Acme Studio"));
+    assertTrue(openText.contains("Functional currency"));
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
         cli(
@@ -101,9 +101,16 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         0,
         listCli.run(
             new String[] {
-              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-passphrase-prompt",
+              "--output",
+              "text"
             }));
-    assertJsonContains(listOutput, "\"status\":\"ok\"");
+    String listText = listOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(listText.contains("Accounts"));
+    assertTrue(listText.contains("Acme Studio"));
   }
 
   @Test
@@ -136,9 +143,9 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_listAccountsWithWrongStandardInputPassphrase_rendersRejectedHumanOutput()
+  void run_listAccountsWithWrongStandardInputPassphrase_rendersRejectedTextOutput()
       throws IOException {
-    Path bookFilePath = tempDirectory.resolve("wrong-stdin-human-books").resolve("entity.sqlite");
+    Path bookFilePath = tempDirectory.resolve("wrong-stdin-text-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
@@ -161,7 +168,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-passphrase-stdin",
               "--output",
-              "human"
+              "text"
             }));
 
     String outputText = listOutput.toString(StandardCharsets.UTF_8);

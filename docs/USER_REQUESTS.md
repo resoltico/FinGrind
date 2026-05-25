@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
-domain: HUMAN_REQUESTS
-updated: "2026-05-22"
+version: "0.46.0"
+domain: OPERATOR_REQUESTS
+updated: "2026-05-25"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -28,7 +28,9 @@ owner-only protection; when it already exists, FinGrind requires it to remain ow
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload up to 4096 bytes from standard
   input
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt whose normalized UTF-8
-  payload must also fit within the same 4096-byte limit
+  payload must also fit within the same 4096-byte limit; this prompt route is accepted only when
+  the selected stdout format is `text`, and machine stdout formats reject it as
+  `invalid-request`
 
 Every request JSON document must fit within FinGrind's `1048576`-byte UTF-8 payload limit whether
 it comes from `--request-file <path>` or `--request-file -`.
@@ -51,10 +53,10 @@ Or, in a source checkout, inspect the checked-in exact scaffold:
 cat docs/examples/request-template.json
 ```
 
-The scaffold is intentionally agent-first: `provenance.actorType` is `AGENT`, and the emitted
-document is a runnable sample with demo `effectiveDate`, source-document identity, and
-provenance values. Replace that sample business context before real-world use. On one book, an
-`idempotencyKey` becomes single-use per book after the first committed posting.
+The scaffold is intentionally placeholder-first: `provenance.actorType` defaults to `PERSON`, the
+emitted document carries explicit `replace-with-...` evidence and provenance tokens, and those
+placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
+becomes single-use per book after the first committed posting.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help post-entry`, `help declare-account`, and `help execute-plan` inline one canonical template
@@ -75,8 +77,8 @@ Current posting-request rules:
 - `effectiveDate`, `evidence`, and `provenance` are required for every entry kind
 - `CASH_REVENUE` requires `cashAccountCode`, `revenueAccountCode`, and `amount`
 - `CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
-- `OWNER_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
-- `OWNER_DRAW` requires `equityAccountCode`, `cashAccountCode`, and `amount`
+- `EQUITY_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
+- `EQUITY_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
 - `OPENING_BALANCE_ADJUSTMENT` requires `lines`
 - `CORRECTION_ADJUSTMENT` requires `lines`
 - `REVERSAL_ADJUSTMENT` requires `lines` plus `reversal`
@@ -173,7 +175,7 @@ Current ledger-plan rules:
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `open-book` uses nested `openBook`, which requires `entityName`,
-  `businessActivityTags`, `functionalCurrency`, `fiscalYearStart`, and `policyProfile`
+  `businessActivityTags`, `functionalCurrency`, and `fiscalYearStart`
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request, including required `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -191,8 +193,8 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the canonical `execute-plan` scaffold shape as one runnable demo
-  workflow; replace the sample evidence and provenance values before real-world use
+- `print-plan-template` emits the canonical `execute-plan` scaffold shape as one placeholder-first
+  workflow; replace the placeholder evidence and provenance values before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
   one bounded aggregate summary by default, and return one complete journal when
   `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,
@@ -209,9 +211,9 @@ Current ledger-plan rules:
   `hasMore`, and repeated typed `postings[]` with nested `provenance`, `evidence`, `lines`, and
   optional `reversal`
 
-Human rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
+Text rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
 top-level `message`, optional `hint`, and any typed rejection details that identify the failing
-posting id, closing-equity classification mismatch, account-state violation set, or related
+posting id, result-holding classification mismatch, account-state violation set, or related
 deterministic repair data.
 
 ## Accepted Values
@@ -219,12 +221,12 @@ deterministic repair data.
 | Field | Accepted Values |
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
-| `provenance.actorType` | `HUMAN`, `SYSTEM`, `AGENT` |
+| `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountRole` | `ORDINARY`, `CONTRA` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
-| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `CONTRIBUTED_CAPITAL`, `DISTRIBUTIONS`, `ACCUMULATED_RESULT`, `RESERVE`, `OTHER_EQUITY` |
-| `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `TAX_EXPENSE` |
+| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RESERVE`, `OTHER_EQUITY` |
+| `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
 
 ## CLI Output Shapes
 
@@ -242,15 +244,14 @@ Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
   captures of `print-request-template` and `print-plan-template`; both intentionally publish
-  runnable sample documents whose demo evidence and provenance values should be replaced before
+  placeholder-first sample documents whose evidence and provenance values should be replaced before
   real-world use
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.businessActivityTags`,
-  `.functionalCurrency`, `.fiscalYearStart`, and
-  `.policyProfile` echo the persisted initialized-book identity
+  `.functionalCurrency` and `.fiscalYearStart` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
@@ -265,7 +266,7 @@ Dynamic fields:
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries
-  `businessActivityTags` and `policyProfile`
+  `businessActivityTags`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `post-entry` and `get-posting` plan steps emit typed `evidence` data with source
@@ -280,15 +281,21 @@ validation against the current book state, but it is not a durable commit guaran
 `post-entry` performs its authoritative transactional checks before committing.
 
 Discovery output also has two intentionally different JSON scopes:
-- `--detail compact|full` is accepted only when the resolved discovery output mode is JSON
-- `help --output json` returns a concise overview payload with command summaries, getting-started
-  hints, and exit codes
+- `--detail minimal|compact|full` is accepted only when the resolved discovery output mode is JSON
+- `help --output json` defaults to the minimal overview payload with command summaries and
+  discovery-upgrade hints
+- `help --output json --detail compact` returns the concise stable discovery payload with usage,
+  getting-started hints, and exit codes
 - `help <command> --output json` returns one narrow command-local payload with usage, options,
   examples, operator notes, and request-file guidance when that command accepts `--request-file`
+- `help <command> --output json --detail compact` returns the stable command-local descriptor with
+  usage, options, examples, operator notes, and request-file guidance
 - `help --output json --detail full` and `help <command> --output json --detail full` include the
   extended discovery body such as embedded templates, enum vocabularies, and request-shape details
-- `capabilities --output json` defaults to the compact machine contract, while
-  `capabilities --output json --detail full` expands to the full doctrine, command grammar,
+- `capabilities --output json` defaults to the minimal machine contract index, while
+- `capabilities --output json --detail compact` expands to the stable command, storage, and
+  request-entry discovery contract
+- `capabilities --output json --detail full` expands to the full doctrine, command grammar,
   request shapes, and cross-command facts
 - `environment --output json` is the live runtime contract for distribution, runtime provenance,
   loaded SQLite facts, and launcher-local storage paths
@@ -325,9 +332,7 @@ rendered:
   cash-oriented internal-management single-entity bookkeeping kernel
 - `bookkeepingKernel.builtInStatements` lists the shipped statement ids
 - `bookkeepingKernel.reportCapabilities[]` describes each built-in statement id, whether
-  comparatives are supported, and the live human description published by the contract
-- `bookkeepingKernel.policyProfile` publishes the persisted policy-profile id, name, and its
-  contract description
+  comparatives are supported, and the live text description published by the contract
 - `bookkeepingKernel.description` carries the current machine-published summary of that live
   bookkeeping kernel
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
@@ -349,7 +354,6 @@ Shared initialized-book identity payload:
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`
-- `policyProfile`
 
 Shared posting payload:
 - `postingId`
@@ -569,23 +573,23 @@ Shared report context payload:
 - `steps[]`, where each entry includes `stepId`, `kind`, `status`, `startedAt`, `finishedAt`,
   typed `data`, optional `detailKind`, and optional `failure`
 
-Commands that advertise `--output` default successful stdout to human text on an interactive
+Commands that advertise `--output` default successful stdout to text on an interactive
 terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
-read/report commands can also render operator-facing `--output human`, and the tabular
+read/report commands can also render operator-facing `--output text`, and the tabular
 read/report commands support `--output csv` for spreadsheet import. Invalid invocation failures
-default to human repair guidance unless callers select one recognized machine output mode
+default to text repair guidance unless callers select one recognized machine output mode
 explicitly, such as `--output json`.
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
 JSON report payload itself, but successful JSON success envelopes now also publish one
-`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful human and
+`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful text and
 CSV exports also emit a diagnostics info message with the same normalized artifact path. If the report result
 succeeds but the PDF artifact later fails, stdout still carries the same report payload while
 diagnostics emit a repair warning for the `--pdf-out` path.
-Deterministic failures for commands that accept `--output human` are rendered in the same
-human-facing format instead of falling back to JSON envelopes. Deterministic non-business contract
-failures render with the `Rejected` heading in human mode so operator refusals do not masquerade
+Deterministic failures for commands that accept `--output text` are rendered in the same
+operator-facing format instead of falling back to JSON envelopes. Deterministic non-business contract
+failures render with the `Rejected` heading in text mode so operator refusals do not masquerade
 as generic runtime crashes.
 
 Statement-report context also includes one comparative reference window derived from the selected
@@ -603,9 +607,9 @@ Checked-in examples for the read/report surface:
 - [examples/trial-balance-response.json](./examples/trial-balance-response.json)
 - [examples/account-ledger-response.json](./examples/account-ledger-response.json)
 - [examples/period-summary-response.json](./examples/period-summary-response.json)
-- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt)
+- [examples/trial-balance-text.txt](./examples/trial-balance-text.txt)
 - [examples/account-ledger.csv](./examples/account-ledger.csv)
-- [examples/period-summary-human.txt](./examples/period-summary-human.txt)
+- [examples/period-summary-text.txt](./examples/period-summary-text.txt)
 
 FinGrind does not check PDF binaries into `docs/examples`; PDF export is verified through CLI,
 bundle, and Docker smoke flows instead.
@@ -658,7 +662,7 @@ callers can repair the whole request before retrying without scraping prose.
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
-- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)
+- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt)
 
 When you want those malformed-input or deterministic-error examples as JSON from the live CLI,
 request them explicitly with `--output json` on commands that support output negotiation.

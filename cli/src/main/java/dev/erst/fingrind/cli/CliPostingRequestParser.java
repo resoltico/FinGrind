@@ -207,8 +207,8 @@ final class CliPostingRequestParser {
     return switch (entryKind) {
       case CASH_REVENUE -> readCashRevenueEntry(rootNode);
       case CASH_EXPENSE -> readCashExpenseEntry(rootNode);
-      case OWNER_CONTRIBUTION -> readOwnerContributionEntry(rootNode);
-      case OWNER_DRAW -> readOwnerDrawEntry(rootNode);
+      case EQUITY_CONTRIBUTION -> readEquityContributionEntry(rootNode);
+      case EQUITY_WITHDRAWAL -> readEquityWithdrawalEntry(rootNode);
       case OPENING_BALANCE_ADJUSTMENT -> readOpeningBalanceAdjustmentEntry(rootNode);
       case CORRECTION_ADJUSTMENT -> readCorrectionAdjustmentEntry(rootNode);
       case REVERSAL_ADJUSTMENT -> readReversalAdjustmentEntry(rootNode);
@@ -235,10 +235,10 @@ final class CliPostingRequestParser {
         requiredPositiveAmount(rootNode));
   }
 
-  private static BookkeepingEntry.OwnerContribution readOwnerContributionEntry(
+  private static BookkeepingEntry.EquityContribution readEquityContributionEntry(
       ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.OWNER_CONTRIBUTION_FIELDS);
-    return new BookkeepingEntry.OwnerContribution(
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.EQUITY_CONTRIBUTION_FIELDS);
+    return new BookkeepingEntry.EquityContribution(
         requiredEffectiveDate(rootNode),
         new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
         new AccountCode(
@@ -246,9 +246,9 @@ final class CliPostingRequestParser {
         requiredPositiveAmount(rootNode));
   }
 
-  private static BookkeepingEntry.OwnerDraw readOwnerDrawEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.OWNER_DRAW_FIELDS);
-    return new BookkeepingEntry.OwnerDraw(
+  private static BookkeepingEntry.EquityWithdrawal readEquityWithdrawalEntry(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.EQUITY_WITHDRAWAL_FIELDS);
+    return new BookkeepingEntry.EquityWithdrawal(
         requiredEffectiveDate(rootNode),
         new AccountCode(
             requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),

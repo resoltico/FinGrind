@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 
-/** Shared report-surface policy that keeps human and machine renderers aligned. */
+/** Shared report-surface policy that keeps text and machine renderers aligned. */
 final class CliReportSurfacePolicy {
   private CliReportSurfacePolicy() {}
 

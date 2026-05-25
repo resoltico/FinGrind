@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
@@ -64,8 +63,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
@@ -109,6 +107,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         journalEntry(reversalReference),
         postingLineage(reversalReference, reason),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
@@ -133,6 +132,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -148,12 +148,12 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static AccountingEvidence accountingEvidence(String token) {
     return new AccountingEvidence(
-        List.of(sourceDocument("document-" + token, "invoice")), List.of());
+        List.of(sourceDocument("document-" + token, "cash-receipt")), List.of());
   }
 
   static AccountingEvidence accountingEvidenceWithApproval(String token) {
     return new AccountingEvidence(
-        List.of(sourceDocument("document-" + token, "invoice")),
+        List.of(sourceDocument("document-" + token, "cash-receipt")),
         List.of(approval("approval-" + token, "manager-signoff")));
   }
 
@@ -178,7 +178,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new ApprovalId(approvalId),
         new ApprovalType(approvalType),
         new ActorId("approver-" + approvalId),
-        ActorType.HUMAN,
+        ActorType.PERSON,
         ApprovalDecision.APPROVED,
         Instant.parse("2026-04-07T10:20:30Z"));
   }
@@ -392,11 +392,14 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static void insertPostingFactRow(
       SqliteNativeDatabase database, String postingId, String idempotencyKey) {
+    String postingOriginKind =
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue();
     database.executeStatement(
         """
         insert into posting_fact (
             posting_id,
             posting_kind,
+            posting_origin_kind,
             effective_date,
             recorded_at,
             actor_id,
@@ -411,6 +414,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         ) values (
             '%s',
             'STANDARD',
+            '%s',
             '2026-04-07',
             '2026-04-07T10:15:30Z',
             'actor-1',
@@ -424,6 +428,11 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             null
         )
         """
-            .formatted(postingId, postingId, idempotencyKey, SourceChannel.CLI.wireValue()));
+            .formatted(
+                postingId,
+                postingOriginKind,
+                postingId,
+                idempotencyKey,
+                SourceChannel.CLI.wireValue()));
   }
 }

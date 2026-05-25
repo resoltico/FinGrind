@@ -36,12 +36,12 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeFailure_supportsHumanOutput() {
+  void writeFailure_supportsTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeFailure(
         new CliFailure("invalid-request", "Unsupported argument: --bogus", "Try help", "--bogus"),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     String text = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(text.contains("Error"));
     assertTrue(text.contains("invalid-request"));
@@ -50,7 +50,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeFailure_supportsHumanOutputWithStructuredViolations() {
+  void writeFailure_supportsTextOutputWithStructuredViolations() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeFailure(
@@ -61,14 +61,14 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
             null,
             new CliErrorJsonModels.InvalidRequestDetails(
                 List.of("Journal entry must balance debits and credits."))),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     String text = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(text.contains("Violations"));
     assertTrue(text.contains("Journal entry must balance debits and credits."));
   }
 
   @Test
-  void writeDeterministicFailure_supportsHumanOutput() {
+  void writeDeterministicFailure_supportsTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
@@ -78,7 +78,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
             "FinGrind could not verify the selected protected book with the supplied passphrase source.",
             "Inspect the passphrase source and the protected book, then rerun the command.",
             null),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
 
     String text = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(text.contains("Rejected"));

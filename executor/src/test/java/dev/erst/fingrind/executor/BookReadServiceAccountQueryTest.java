@@ -66,19 +66,19 @@ class BookReadServiceAccountQueryTest {
               BookFormatContract.FORMAT_VERSION,
               BookReadServiceTestSupport.FIXED_INSTANT,
               bookIdentity(),
-              new BookInspection.CloseReadiness(
+              new BookInspection.ResultTransferReadiness(
                   false,
-                  FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                  FinancialPositionLineClassification.RESULT_HOLDING,
                   null,
-                  "closing-equity-account-candidate-missing",
-                  "No active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT'.",
+                  "result-holding-account-candidate-missing",
+                  "No active declared result-holding account satisfies required classification 'RESULT_HOLDING'.",
                   List.of()));
       assertEquals(inspection, service.inspectBook());
     }
   }
 
   @Test
-  void inspectBook_projectsNonInitializedInspectionWithoutCloseReadiness() {
+  void inspectBook_projectsNonInitializedInspectionWithoutResultTransferReadiness() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookReadService service = readService(bookSession);
 
@@ -88,58 +88,58 @@ class BookReadServiceAccountQueryTest {
   }
 
   @Test
-  void inspectBook_reportsAcceptedCloseReadinessWhenOneRetainedEarningsAccountIsActive() {
+  void inspectBook_reportsAcceptedResultTransferReadinessWhenOneRetainedEarningsAccountIsActive() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       bookSession.declareAccount(
           new AccountCode("3200"),
           new AccountName("Retained Earnings"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
-          new BookInspection.CloseReadiness(
+          new BookInspection.ResultTransferReadiness(
               true,
-              FinancialPositionLineClassification.ACCUMULATED_RESULT,
+              FinancialPositionLineClassification.RESULT_HOLDING,
               new AccountCode("3200"),
               null,
               null,
               List.of()),
-          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
+          ((BookInspection.Initialized) service.inspectBook()).resultTransferReadiness());
     }
   }
 
   @Test
   void
-      inspectBook_reportsAmbiguousCloseReadinessCandidatesWhenMultipleRetainedEarningsAccountsExist() {
+      inspectBook_reportsAmbiguousResultTransferReadinessCandidatesWhenMultipleRetainedEarningsAccountsExist() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       bookSession.declareAccount(
           new AccountCode("3200"),
           new AccountName("Retained Earnings A"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
       bookSession.declareAccount(
           new AccountCode("3210"),
           new AccountName("Retained Earnings B"),
           AccountType.EQUITY,
           accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
-          financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
-          new BookInspection.CloseReadiness(
+          new BookInspection.ResultTransferReadiness(
               false,
-              FinancialPositionLineClassification.ACCUMULATED_RESULT,
+              FinancialPositionLineClassification.RESULT_HOLDING,
               null,
-              "closing-equity-account-candidate-ambiguous",
-              "More than one active declared closing-equity account satisfies required classification 'ACCUMULATED_RESULT': 3200, 3210.",
+              "result-holding-account-candidate-ambiguous",
+              "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
               List.of(new AccountCode("3200"), new AccountCode("3210"))),
-          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
+          ((BookInspection.Initialized) service.inspectBook()).resultTransferReadiness());
     }
   }
 

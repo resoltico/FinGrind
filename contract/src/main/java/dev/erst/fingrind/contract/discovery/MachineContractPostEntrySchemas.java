@@ -24,8 +24,8 @@ final class MachineContractPostEntrySchemas {
         List.of(
             cashRevenueSchema(),
             cashExpenseSchema(),
-            ownerContributionSchema(),
-            ownerDrawSchema(),
+            equityContributionSchema(),
+            equityWithdrawalSchema(),
             openingBalanceAdjustmentSchema(),
             correctionAdjustmentSchema(),
             reversalAdjustmentSchema()));
@@ -113,9 +113,9 @@ final class MachineContractPostEntrySchemas {
                 "Declared expense account debited by one cash-expense business event.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account used by owner contribution or draw business events.",
+            "Declared equity account used by equity contribution or withdrawal business events.",
             accountCodeSchema(
-                "Declared equity account used by owner contribution or draw business events.")),
+                "Declared equity account used by equity contribution or withdrawal business events.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.AMOUNT,
             "Exact positive money object carried by one typed business event.",
@@ -193,16 +193,16 @@ final class MachineContractPostEntrySchemas {
             requiredProvenanceField()));
   }
 
-  private static Map<String, Object> ownerContributionSchema() {
+  private static Map<String, Object> equityContributionSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Typed bookkeeping event for owner capital contributed into cash.",
+        "Typed bookkeeping event for one equity contribution paid into cash.",
         List.of(
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                "This request records one owner-contribution business event.",
+                "This request records one equity-contribution business event.",
                 MachineContractSchemaSupport.constSchema(
-                    BookkeepingEntryKind.OWNER_CONTRIBUTION.wireValue(),
-                    "This request records one owner-contribution business event.")),
+                    BookkeepingEntryKind.EQUITY_CONTRIBUTION.wireValue(),
+                    "This request records one equity-contribution business event.")),
             requiredEffectiveDateField(),
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
@@ -217,25 +217,25 @@ final class MachineContractPostEntrySchemas {
             requiredProvenanceField()));
   }
 
-  private static Map<String, Object> ownerDrawSchema() {
+  private static Map<String, Object> equityWithdrawalSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Typed bookkeeping event for one owner draw paid out of cash.",
+        "Typed bookkeeping event for one equity withdrawal paid out of cash.",
         List.of(
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                "This request records one owner-draw business event.",
+                "This request records one equity-withdrawal business event.",
                 MachineContractSchemaSupport.constSchema(
-                    BookkeepingEntryKind.OWNER_DRAW.wireValue(),
-                    "This request records one owner-draw business event.")),
+                    BookkeepingEntryKind.EQUITY_WITHDRAWAL.wireValue(),
+                    "This request records one equity-withdrawal business event.")),
             requiredEffectiveDateField(),
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-                "Declared equity account debited by this draw.",
-                accountCodeSchema("Declared equity account debited by this draw.")),
+                "Declared equity account debited by this withdrawal.",
+                accountCodeSchema("Declared equity account debited by this withdrawal.")),
             MachineContractFieldSpec.required(
                 ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-                "Declared cash account credited by this draw.",
-                accountCodeSchema("Declared cash account credited by this draw.")),
+                "Declared cash account credited by this withdrawal.",
+                accountCodeSchema("Declared cash account credited by this withdrawal.")),
             requiredAmountField(),
             requiredEvidenceField(),
             requiredProvenanceField()));
@@ -515,9 +515,9 @@ final class MachineContractPostEntrySchemas {
                 "Existing committed posting identifier that this request reverses.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Reversal.REASON,
-            "Human-readable operator explanation attached to this reversal.",
+            "Plain-language operator explanation attached to this reversal.",
             MachineContractSchemaSupport.nonBlankStringSchema(
-                "Human-readable operator explanation attached to this reversal.")),
+                "Plain-language operator explanation attached to this reversal.")),
         MachineContractFieldSpec.forbidden(
             ProtocolPostEntryFields.Reversal.KIND,
             "Legacy reversal-kind routing is removed; FinGrind is reversal-only."));

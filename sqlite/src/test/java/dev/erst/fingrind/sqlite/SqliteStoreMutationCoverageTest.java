@@ -15,8 +15,8 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,29 +121,31 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
-  void closePeriod_rejectsMissingAndRawUninitializedBooks() {
-    Path missingBookPath = tempDirectory.resolve("close-period-missing.sqlite");
+  void transferPeriodResult_rejectsMissingAndRawUninitializedBooks() {
+    Path missingBookPath = tempDirectory.resolve("transfer-period-result-missing.sqlite");
     try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath))) {
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
+          new PeriodResultTransferOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          missingStore.closePeriod(emptyPeriodCloseDraft(), () -> new PostingId("unused")));
+          missingStore.transferPeriodResult(
+              emptyPeriodResultTransferDraft(), () -> new PostingId("unused")));
       assertTrue(Files.notExists(missingBookPath));
     }
 
-    Path blankBookPath = tempDirectory.resolve("close-period-blank.sqlite");
+    Path blankBookPath = tempDirectory.resolve("transfer-period-result-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore blankStore = openStore(bookAccess(blankBookPath))) {
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
+          new PeriodResultTransferOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          blankStore.closePeriod(emptyPeriodCloseDraft(), () -> new PostingId("unused")));
+          blankStore.transferPeriodResult(
+              emptyPeriodResultTransferDraft(), () -> new PostingId("unused")));
     }
   }
 
   @Test
-  void closePeriod_rollsBackRejectedGeneratedPostingsBeforeAnyCloseFactIsStored() {
-    Path databasePath = tempDirectory.resolve("close-period-generated-rejection.sqlite");
+  void transferPeriodResult_rollsBackRejectedGeneratedPostingsBeforeAnyCloseFactIsStored() {
+    Path databasePath = tempDirectory.resolve("transfer-period-result-generated-rejection.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
 
@@ -151,8 +153,8 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.closePeriod(
-                      new PeriodCloseDraft(
+                  postingFactStore.transferPeriodResult(
+                      new PeriodResultTransferDraft(
                           new ReportingPeriod(PERIOD_DATE, PERIOD_DATE),
                           new AccountCode("3200"),
                           List.of(),
@@ -167,7 +169,9 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                                   dev.erst.fingrind.executor.bookkeeping.PostingLineageModel
                                       .direct(),
                                   PostingKind.STANDARD,
-                                  generatedEvidence("generated-close-idem", "period-close-plan"),
+                                  dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                                  generatedEvidence(
+                                      "generated-close-idem", "period-result-transfer-plan"),
                                   postingFact(
                                           "generated-close-posting",
                                           "generated-close-idem",
@@ -180,22 +184,25 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                       () -> new PostingId("generated-close-posting")));
       assertTrue(
           NullTestSupport.messageOf(failure)
-              .contains("Generated period-close posting failed bookkeeping acceptance"));
+              .contains("Generated period-result-transfer posting failed bookkeeping acceptance"));
       assertEquals(
           0, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
-      assertEquals(
-          0, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from period_close"));
       assertEquals(
           0,
           queryInt(
               requireStoreDatabase(postingFactStore),
-              "select count(*) from audit_event where event_kind = 'PERIOD_CLOSED'"));
+              "select count(*) from period_result_transfer"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from audit_event where event_kind = 'PERIOD_RESULT_TRANSFERRED'"));
     }
   }
 
   @Test
-  void closePeriod_wrapsNativeFailuresFromStaleDatabaseHandles() throws Exception {
-    Path databasePath = tempDirectory.resolve("close-period-stale.sqlite");
+  void transferPeriodResult_wrapsNativeFailuresFromStaleDatabaseHandles() throws Exception {
+    Path databasePath = tempDirectory.resolve("transfer-period-result-stale.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       try (StoreDatabaseSwap ignored =
@@ -204,8 +211,8 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
             assertThrows(
                 IllegalStateException.class,
                 () ->
-                    postingFactStore.closePeriod(
-                        emptyPeriodCloseDraft(), () -> new PostingId("unused")));
+                    postingFactStore.transferPeriodResult(
+                        emptyPeriodResultTransferDraft(), () -> new PostingId("unused")));
         assertTrue(
             NullTestSupport.messageOf(failure)
                 .contains("Failed to close one SQLite reporting period."));
@@ -213,8 +220,8 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
     }
   }
 
-  private static PeriodCloseDraft emptyPeriodCloseDraft() {
-    return new PeriodCloseDraft(
+  private static PeriodResultTransferDraft emptyPeriodResultTransferDraft() {
+    return new PeriodResultTransferDraft(
         new ReportingPeriod(PERIOD_DATE, PERIOD_DATE),
         new AccountCode("3200"),
         List.of(),

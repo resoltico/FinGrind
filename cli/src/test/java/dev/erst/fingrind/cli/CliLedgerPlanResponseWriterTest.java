@@ -96,7 +96,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejectedEntry))),
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").stringValue());
+    assertEquals("rejected", json.path("status").stringValue());
     assertEquals("rejected", json.path("payload").path("status").stringValue());
     assertEquals(
         "administration-book-not-initialized",
@@ -123,7 +123,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailedEntry))),
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").stringValue());
+    assertEquals("assertion-failed", json.path("status").stringValue());
     assertEquals("assertion-failed", json.path("payload").path("status").stringValue());
     assertEquals(
         "assertion-failed", json.path("payload").path("summary").path("failureCode").stringValue());

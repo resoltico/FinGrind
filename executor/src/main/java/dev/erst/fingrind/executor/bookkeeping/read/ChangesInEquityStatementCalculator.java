@@ -34,7 +34,7 @@ final class ChangesInEquityStatementCalculator {
   ChangesInEquityStatementCalculator(BookkeepingStatementContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.profitAndLossContributionCalculator =
-        new ProfitAndLossContributionCalculator(context::policyPack);
+        new ProfitAndLossContributionCalculator(context::accountingRules);
   }
 
   ChangesInEquityView view(ChangesInEquityCriteria criteria) {
@@ -42,7 +42,7 @@ final class ChangesInEquityStatementCalculator {
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
     EffectiveDateRange comparativeRange =
         context
-            .policyPack()
+            .accountingRules()
             .statementComparativePolicy()
             .comparativePeriod(
                 bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
@@ -98,7 +98,10 @@ final class ChangesInEquityStatementCalculator {
     Map<AccountCurrencyKey, AccountCurrencyTotals> closingTotalsByKey =
         indexAccountTotals(closingTotals);
     DerivedEquityLine currentPeriodResultLine =
-        context.policyPack().statementPresentationPolicy().currentPeriodResultLine(bookIdentity);
+        context
+            .accountingRules()
+            .statementPresentationPolicy()
+            .currentPeriodResultLine(bookIdentity);
 
     List<ChangesInEquityRowView> rows = new ArrayList<>();
     for (AccountCurrencyKey key :

@@ -5,14 +5,14 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import java.util.Objects;
 
-/** Canonical human-readable rejection prose for public rejection contracts. */
+/** Canonical plain-language rejection prose for public rejection contracts. */
 public final class RejectionNarrative {
   private static final String OPEN_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.OPEN_BOOK);
 
   private RejectionNarrative() {}
 
-  /** Returns the canonical human-readable message for an administration rejection. */
+  /** Returns the canonical plain-language message for an administration rejection. */
   public static String message(BookAdministrationRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case BookAdministrationRejection.BookAlreadyInitialized _ ->
@@ -77,32 +77,33 @@ public final class RejectionNarrative {
           "Account '%s' cannot name parent account '%s' because that relationship would create a chart hierarchy cycle."
               .formatted(
                   rejectionCycle.accountCode().value(), rejectionCycle.parentAccountCode().value());
-      case BookAdministrationRejection.ClosingEquityAccountCandidateMissing rejectionMissing ->
+      case BookAdministrationRejection.ResultHoldingAccountCandidateMissing rejectionMissing ->
           rejectionMissing.inactiveCandidateAccountCodes().isEmpty()
-              ? "No active declared closing-equity account satisfies required classification '%s'."
+              ? "No active declared result-holding account satisfies required classification '%s'."
                   .formatted(
                       rejectionMissing.requiredFinancialPositionLineClassification().wireValue())
-              : "No active declared closing-equity account satisfies required classification '%s'; inactive candidates: %s."
+              : "No active declared result-holding account satisfies required classification '%s'; inactive candidates: %s."
                   .formatted(
                       rejectionMissing.requiredFinancialPositionLineClassification().wireValue(),
                       rejectionMissing.inactiveCandidateAccountCodes().stream()
                           .map(AccountCode::value)
                           .collect(java.util.stream.Collectors.joining(", ")));
-      case BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous rejectionAmbiguous ->
-          "More than one active declared closing-equity account satisfies required classification '%s': %s."
+      case BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejectionAmbiguous ->
+          "More than one active declared result-holding account satisfies required classification '%s': %s."
               .formatted(
                   rejectionAmbiguous.requiredFinancialPositionLineClassification().wireValue(),
                   rejectionAmbiguous.candidateAccountCodes().stream()
                       .map(AccountCode::value)
                       .collect(java.util.stream.Collectors.joining(", ")));
-      case BookAdministrationRejection.PeriodCloseMustStartAt rejectionStartAt ->
-          "Close period must start at '%s' to preserve one contiguous close horizon."
+      case BookAdministrationRejection.PeriodResultTransferMustStartAt rejectionStartAt ->
+          "Period result transfer must start at '%s' to preserve one contiguous transfer horizon."
               .formatted(rejectionStartAt.requiredEffectiveDateFrom());
-      case BookAdministrationRejection.PeriodCloseFutureDate rejectionFutureDate ->
-          "Close period cannot end after the current UTC date; requested '%s'."
+      case BookAdministrationRejection.PeriodResultTransferFutureDate rejectionFutureDate ->
+          "Period result transfer cannot end after the current UTC date; requested '%s'."
               .formatted(rejectionFutureDate.attemptedEffectiveDateTo());
-      case BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary rejectionBoundary ->
-          "Close period '%s' through '%s' crosses this book's fiscal-year boundary '%s'."
+      case BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary
+              rejectionBoundary ->
+          "Period result transfer '%s' through '%s' crosses this book's fiscal-year boundary '%s'."
               .formatted(
                   rejectionBoundary.attemptedEffectiveDateFrom(),
                   rejectionBoundary.attemptedEffectiveDateTo(),
@@ -110,7 +111,7 @@ public final class RejectionNarrative {
     };
   }
 
-  /** Returns the canonical human-readable message for a maintenance rejection. */
+  /** Returns the canonical plain-language message for a maintenance rejection. */
   public static String message(BookMaintenanceRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
@@ -157,7 +158,7 @@ public final class RejectionNarrative {
     };
   }
 
-  /** Returns the canonical human-readable message for a query rejection. */
+  /** Returns the canonical plain-language message for a query rejection. */
   public static String message(BookQueryRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case BookQueryRejection.BookNotInitialized _ ->
@@ -173,7 +174,7 @@ public final class RejectionNarrative {
     };
   }
 
-  /** Returns the canonical human-readable message for a posting rejection. */
+  /** Returns the canonical plain-language message for a posting rejection. */
   public static String message(PostingRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case PostingRejection.BookNotInitialized _ ->
@@ -185,6 +186,11 @@ public final class RejectionNarrative {
               + " Fix every issue in details.violations before retrying."
               + " Reported issues: "
               + violations.violations().size();
+      case PostingRejection.EntrySemanticsViolations violations ->
+          "Posting contradicts the published semantics of the selected entry kind."
+              + " Fix every issue in details.violations before retrying."
+              + " Reported issues: "
+              + violations.violations().size();
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
       case PostingRejection.BookFunctionalCurrencyMismatch functionalCurrencyMismatch ->
@@ -192,11 +198,11 @@ public final class RejectionNarrative {
               .formatted(
                   functionalCurrencyMismatch.attemptedCurrency().code(),
                   functionalCurrencyMismatch.functionalCurrency().code());
-      case PostingRejection.ClosedPeriodViolation rejectionClosedPeriod ->
-          "Posting effective date '%s' falls inside the closed-through horizon ending '%s'."
+      case PostingRejection.TransferredPeriodResultViolation rejectionTransferredPeriodResult ->
+          "Posting effective date '%s' falls inside the transferred-through horizon ending '%s'."
               .formatted(
-                  rejectionClosedPeriod.attemptedEffectiveDate(),
-                  rejectionClosedPeriod.closedThroughEffectiveDate());
+                  rejectionTransferredPeriodResult.attemptedEffectiveDate(),
+                  rejectionTransferredPeriodResult.transferredThroughEffectiveDate());
       case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
           "Opening-balance postings are allowed only before the first committed posting in this book; the first blocking posting is '%s' on '%s'."
               .formatted(
@@ -207,8 +213,8 @@ public final class RejectionNarrative {
               .formatted(
                   openingBalanceNominal.accountCode().value(),
                   openingBalanceNominal.accountType().wireValue());
-      case PostingRejection.ClosingEquityAccountReserved rejectionReserved ->
-          "Closing-equity account '%s' is reserved for generated period-close postings."
+      case PostingRejection.ResultHoldingAccountReserved rejectionReserved ->
+          "Result-holding account '%s' is reserved for generated period-result-transfer postings."
               .formatted(rejectionReserved.accountCode().value());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           "No committed posting exists for reversal target '%s'."

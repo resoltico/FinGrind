@@ -2,7 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.policy.BuiltInBookkeepingPolicyPacks;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.util.Objects;
 import java.util.Optional;
@@ -12,8 +12,8 @@ public final class PostingAcceptancePolicy {
   private static final PostingAcceptancePolicy CURRENT_KERNEL = new PostingAcceptancePolicy();
   private final PostingCurrencyAcceptancePolicy postingCurrencyAcceptancePolicy =
       new PostingCurrencyAcceptancePolicy();
-  private final PostingClosedPeriodPolicy postingClosedPeriodPolicy =
-      new PostingClosedPeriodPolicy();
+  private final PostingTransferredPeriodResultPolicy postingTransferredPeriodResultPolicy =
+      new PostingTransferredPeriodResultPolicy();
   private final OpeningBalanceAcceptancePolicy openingBalanceAcceptancePolicy =
       new OpeningBalanceAcceptancePolicy();
   private final PostingAccountStatePolicy postingAccountStatePolicy =
@@ -41,10 +41,10 @@ public final class PostingAcceptancePolicy {
     if (currencyRejection.isPresent()) {
       return currencyRejection;
     }
-    Optional<BookkeepingPostingRejection> closedPeriodRejection =
-        postingClosedPeriodPolicy.rejectionFor(postingRequest, book);
-    if (closedPeriodRejection.isPresent()) {
-      return closedPeriodRejection;
+    Optional<BookkeepingPostingRejection> transferredPeriodResultRejection =
+        postingTransferredPeriodResultPolicy.rejectionFor(postingRequest, book);
+    if (transferredPeriodResultRejection.isPresent()) {
+      return transferredPeriodResultRejection;
     }
     Optional<BookkeepingPostingRejection> openingBalanceWindowRejection =
         openingBalanceAcceptancePolicy.windowRejection(postingRequest, book);
@@ -61,12 +61,12 @@ public final class PostingAcceptancePolicy {
     if (openingBalanceNominalRejection.isPresent()) {
       return openingBalanceNominalRejection;
     }
-    Optional<BookkeepingPostingRejection> closingEquityReservationRejection =
-        new ClosingEquityReservationPolicy(
-                BuiltInBookkeepingPolicyPacks.forBookIdentity(bookIdentity).closePolicy())
+    Optional<BookkeepingPostingRejection> resultHoldingReservationRejection =
+        new ResultHoldingReservationPolicy(
+                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy())
             .rejectionFor(postingRequest, bookIdentity, book);
-    if (closingEquityReservationRejection.isPresent()) {
-      return closingEquityReservationRejection;
+    if (resultHoldingReservationRejection.isPresent()) {
+      return resultHoldingReservationRejection;
     }
     return ReversalAcceptancePolicy.rejectionFor(postingRequest, book);
   }

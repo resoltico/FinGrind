@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Executes query-only CLI commands that read book state without producing PDF artifacts. */
 final class CliQueryCommandExecutor {
@@ -18,6 +19,15 @@ final class CliQueryCommandExecutor {
   }
 
   int runInspectBookCommand(BookAccess bookAccess, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.inspectBook(bookAccess),
         outputMode,
@@ -29,6 +39,15 @@ final class CliQueryCommandExecutor {
 
   int runListAccountsCommand(
       BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.listAccounts(bookAccess, query),
         outputMode,
@@ -38,6 +57,15 @@ final class CliQueryCommandExecutor {
   }
 
   int runGetPostingCommand(BookAccess bookAccess, PostingId postingId, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.getPosting(bookAccess, postingId),
         outputMode,
@@ -48,6 +76,15 @@ final class CliQueryCommandExecutor {
 
   int runListPostingsCommand(
       BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.listPostings(bookAccess, query),
         outputMode,

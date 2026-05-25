@@ -6,7 +6,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.policy.BookkeepingPolicyPack;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRules;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,22 +15,23 @@ import java.util.stream.Collectors;
 
 /** Computes signed profit-and-loss contributions from declared account currency totals. */
 final class ProfitAndLossContributionCalculator {
-  private final Supplier<BookkeepingPolicyPack> policyPackSupplier;
+  private final Supplier<KernelAccountingRules> accountingRulesSupplier;
 
-  ProfitAndLossContributionCalculator(Supplier<BookkeepingPolicyPack> policyPackSupplier) {
-    this.policyPackSupplier = Objects.requireNonNull(policyPackSupplier, "policyPackSupplier");
+  ProfitAndLossContributionCalculator(Supplier<KernelAccountingRules> accountingRulesSupplier) {
+    this.accountingRulesSupplier =
+        Objects.requireNonNull(accountingRulesSupplier, "accountingRulesSupplier");
   }
 
   Map<CurrencyUnit, Long> contributionMap(List<AccountCurrencyTotals> accountTotals) {
     Objects.requireNonNull(accountTotals, "accountTotals");
-    BookkeepingPolicyPack policyPack =
-        BookkeepingPolicyPack.requirePolicyPack(policyPackSupplier.get());
+    KernelAccountingRules accountingRules =
+        KernelAccountingRules.requireAccountingRules(accountingRulesSupplier.get());
     return Map.copyOf(
         accountTotals.stream()
             .filter(
                 accountTotal ->
-                    policyPack
-                        .closePolicy()
+                    accountingRules
+                        .resultTransferPolicy()
                         .closesAccountType(accountTotal.account().accountType()))
             .filter(accountTotal -> accountTotal.balance().balanceSide() != BalanceSide.ZERO)
             .collect(

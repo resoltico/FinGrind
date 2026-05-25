@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: ADR_ACCOUNTING_KERNEL_SCOPE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, bookkeeping kernel, country agnostic, functional currency, scope, internal management]
   questions: ["what bookkeeping kernel does fingrind publish today", "what does country agnostic mean in fingrind today", "what accounting scope is intentionally out of scope", "does fingrind publish a standards baseline"]
@@ -28,7 +28,7 @@ baseline.
 The machine contract, CLI help, examples, and docs must describe only this live kernel:
 - one protected single-entity book
 - one functional currency per book
-- one persisted accounting policy profile
+- one built-in bookkeeping kernel
 - one cash-oriented internal-management write surface
 - three built-in internal-management statements:
   - financial position
@@ -47,11 +47,11 @@ The current hard-break line is:
 - every caller-authored posting line and every persisted journal line must use the selected book
   functional currency
 - mixed-currency entries are rejected
-- built-in typed entry support is limited to cash revenue, cash expense, owner contribution, and
-  owner draw
+- built-in typed entry support is limited to cash revenue, cash expense, equity contribution, and
+  equity withdrawal
 - one explicit administrative journal-adjustment path remains available for openings and
   corrections that the current typed cash-entry family does not own
-- generated period-close postings remain separate from caller-authored postings
+- generated period-result-transfer postings remain separate from caller-authored postings
 - comparative windows derive from the declared fiscal-year anchor
 - built-in reporting stops at financial position, income statement, and changes in equity
 
@@ -65,7 +65,6 @@ The public contract may publish:
 - executable book-model facts
 - executable currency facts
 - executable bookkeeping-kernel facts
-- the one persisted policy-profile identity selected at book creation
 - the built-in report inventory and per-report capability facts
 
 The public contract must not publish:
@@ -93,7 +92,7 @@ tests.
 
 When FinGrind says "country agnostic" on the current kernel line, it means:
 - the live kernel avoids country-specific chart, tax, filing, and statement-layout rules
-- the live kernel keeps one neutral accounting policy profile rather than one jurisdictional
+- the live kernel keeps one neutral built-in bookkeeping kernel rather than one jurisdictional
   doctrine
 - future jurisdiction or standards overlays must arrive as real executable owners, not prose-only
   aspirations
@@ -105,7 +104,6 @@ complete external-reporting product.
 
 Because the live system is one bookkeeping kernel, not one standards baseline:
 - discovery facts must name `bookkeepingKernel`, not `accountingBaseline`
-- the persisted profile is one `policyProfile`, not one published extension-style `policyPack`
 - user and agent surfaces must describe unsupported accounting domains as unsupported, not as
   latent capability
 - future accounting-foundation work must land as new executable contexts or hard breaks, not as

@@ -256,7 +256,8 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
       assertTrue(
           NullTestSupport.messageOf(earliestFailure).contains("Failed to query SQLite book."));
       IllegalStateException closedThroughFailure =
-          assertThrows(IllegalStateException.class, validationBook::closedThroughEffectiveDate);
+          assertThrows(
+              IllegalStateException.class, validationBook::transferredThroughEffectiveDate);
       assertTrue(
           NullTestSupport.messageOf(closedThroughFailure).contains("Failed to query SQLite book."));
     }

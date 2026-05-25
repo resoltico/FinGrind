@@ -50,12 +50,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readPostEntryCommand_readsOwnerContributionEntries() {
+  void readPostEntryCommand_readsEquityContributionEntries() {
     PostEntryCommand command =
         readFromStandardInput(
             """
             {
-              "entryKind": "OWNER_CONTRIBUTION",
+              "entryKind": "EQUITY_CONTRIBUTION",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "equityAccountCode": "3000",
@@ -64,15 +64,15 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "actorId": "actor-1",
                 "actorType": "AGENT",
                 "commandId": "command-1",
-                "idempotencyKey": "idem-owner-contribution",
+                "idempotencyKey": "idem-equity-contribution",
                 "causationId": "cause-1"
               }
             }
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.OwnerContribution entry =
-        assertInstanceOf(BookkeepingEntry.OwnerContribution.class, command.entry());
+    BookkeepingEntry.EquityContribution entry =
+        assertInstanceOf(BookkeepingEntry.EquityContribution.class, command.entry());
 
     assertEquals(new AccountCode("1000"), entry.cashAccountCode());
     assertEquals(new AccountCode("3000"), entry.equityAccountCode());
@@ -80,12 +80,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readPostEntryCommand_readsOwnerDrawEntries() {
+  void readPostEntryCommand_readsEquityWithdrawalEntries() {
     PostEntryCommand command =
         readFromStandardInput(
             """
             {
-              "entryKind": "OWNER_DRAW",
+              "entryKind": "EQUITY_WITHDRAWAL",
               "effectiveDate": "2026-04-07",
               "equityAccountCode": "3000",
               "cashAccountCode": "1000",
@@ -94,15 +94,15 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "actorId": "actor-1",
                 "actorType": "AGENT",
                 "commandId": "command-1",
-                "idempotencyKey": "idem-owner-draw",
+                "idempotencyKey": "idem-equity-withdrawal",
                 "causationId": "cause-1"
               }
             }
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.OwnerDraw entry =
-        assertInstanceOf(BookkeepingEntry.OwnerDraw.class, command.entry());
+    BookkeepingEntry.EquityWithdrawal entry =
+        assertInstanceOf(BookkeepingEntry.EquityWithdrawal.class, command.entry());
 
     assertEquals(new AccountCode("3000"), entry.equityAccountCode());
     assertEquals(new AccountCode("1000"), entry.cashAccountCode());
@@ -278,11 +278,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "evidence": {
                     "sourceDocuments": [
                       {
-                        "sourceDocumentId": "invoice-1",
-                        "sourceDocumentType": "invoice",
+                        "sourceDocumentId": "cash-receipt-1",
+                        "sourceDocumentType": "cash-receipt",
                         "documentDate": "2026-04-07",
                         "capturedAt": "2026-04-07T10:15:30Z",
-                        "storageLocator": "vault://fixtures/invoice-1",
+                        "storageLocator": "vault://fixtures/cash-receipt-1",
                         "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
                       }
                     ],
@@ -291,7 +291,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                         "approvalId": "approval-1",
                         "approvalType": "manager-signoff",
                         "approverId": "approver-1",
-                        "approverType": "HUMAN",
+                        "approverType": "PERSON",
                         "decision": "APPROVED",
                         "approvedAt": "2026-04-07T10:20:30Z"
                       }

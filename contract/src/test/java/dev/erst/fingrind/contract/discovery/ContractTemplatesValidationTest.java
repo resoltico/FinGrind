@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.BalanceSide;
@@ -84,11 +83,7 @@ class ContractTemplatesValidationTest {
               "open",
               LedgerStepKind.OPEN_BOOK,
               new ContractTemplates.OpenBookTemplateDescriptor(
-                  "Acme Studio",
-                  java.util.List.of("translation-services"),
-                  "EUR",
-                  "01-01",
-                  AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1),
+                  "Acme Studio", java.util.List.of("translation-services"), "EUR", "01-01"),
               null,
               null,
               null,
@@ -261,7 +256,7 @@ class ContractTemplatesValidationTest {
                 "approval 1",
                 "manager-signoff",
                 "manager-1",
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 "2026-04-25T10:15:30Z"));
     assertThrows(
@@ -271,7 +266,7 @@ class ContractTemplatesValidationTest {
                 "approval-1",
                 "manager signoff",
                 "manager-1",
-                ActorType.HUMAN,
+                ActorType.PERSON,
                 ApprovalDecision.APPROVED,
                 "2026-04-25T10:15:30Z"));
     assertThrows(
@@ -297,9 +292,9 @@ class ContractTemplatesValidationTest {
             evidenceTemplate(java.util.List.of()),
             provenanceTemplate(),
             null);
-    ContractTemplates.PostingRequestTemplateDescriptor ownerContribution =
+    ContractTemplates.PostingRequestTemplateDescriptor equityContribution =
         new ContractTemplates.PostingRequestTemplateDescriptor(
-            BookkeepingEntryKind.OWNER_CONTRIBUTION,
+            BookkeepingEntryKind.EQUITY_CONTRIBUTION,
             "2026-04-25",
             "1000",
             null,
@@ -310,9 +305,9 @@ class ContractTemplatesValidationTest {
             evidenceTemplate(java.util.List.of()),
             provenanceTemplate(),
             null);
-    ContractTemplates.PostingRequestTemplateDescriptor ownerDraw =
+    ContractTemplates.PostingRequestTemplateDescriptor equityWithdrawal =
         new ContractTemplates.PostingRequestTemplateDescriptor(
-            BookkeepingEntryKind.OWNER_DRAW,
+            BookkeepingEntryKind.EQUITY_WITHDRAWAL,
             "2026-04-25",
             "1000",
             null,
@@ -372,10 +367,10 @@ class ContractTemplatesValidationTest {
     assertEquals(BookkeepingEntryKind.CASH_REVENUE, cashRevenue.entryKind());
     assertEquals(BookkeepingEntryKind.CASH_EXPENSE, cashExpense.entryKind());
     assertEquals("5000", cashExpense.expenseAccountCode());
-    assertEquals(BookkeepingEntryKind.OWNER_CONTRIBUTION, ownerContribution.entryKind());
-    assertEquals("3000", ownerContribution.equityAccountCode());
-    assertEquals(BookkeepingEntryKind.OWNER_DRAW, ownerDraw.entryKind());
-    assertEquals("3010", ownerDraw.equityAccountCode());
+    assertEquals(BookkeepingEntryKind.EQUITY_CONTRIBUTION, equityContribution.entryKind());
+    assertEquals("3000", equityContribution.equityAccountCode());
+    assertEquals(BookkeepingEntryKind.EQUITY_WITHDRAWAL, equityWithdrawal.entryKind());
+    assertEquals("3010", equityWithdrawal.equityAccountCode());
     assertEquals(
         BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT, openingBalanceAdjustment.entryKind());
     assertEquals(2, java.util.Objects.requireNonNull(openingBalanceAdjustment.lines()).size());
@@ -432,7 +427,7 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.OWNER_CONTRIBUTION,
+                    BookkeepingEntryKind.EQUITY_CONTRIBUTION,
                     "2026-04-25",
                     "1000",
                     null,
@@ -450,7 +445,7 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.OWNER_DRAW,
+                    BookkeepingEntryKind.EQUITY_WITHDRAWAL,
                     "2026-04-25",
                     "1000",
                     null,
@@ -666,7 +661,7 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null);
+        "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null);
   }
 
   private static ContractTemplates.JournalLineTemplateDescriptor journalLineTemplate(
@@ -684,7 +679,7 @@ class ContractTemplatesValidationTest {
   private static ContractTemplates.SourceDocumentTemplateDescriptor sourceDocumentTemplate() {
     return new ContractTemplates.SourceDocumentTemplateDescriptor(
         "document-idem-1",
-        "invoice",
+        "cash-receipt",
         "2026-04-25",
         "2026-04-25T10:15:30Z",
         "evidence://documents/document-idem-1.pdf",
@@ -696,7 +691,7 @@ class ContractTemplatesValidationTest {
         "approval-1",
         "manager-signoff",
         "manager-1",
-        ActorType.HUMAN,
+        ActorType.PERSON,
         ApprovalDecision.APPROVED,
         "2026-04-25T10:15:30Z");
   }

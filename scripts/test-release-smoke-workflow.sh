@@ -64,7 +64,10 @@ grep -Fq 'error_descriptor_exit_codes' "${workflow_package_dir}/assertions.py" |
 grep -Fq 'error_exit_codes["protected-book-verification-failed"]' \
     "${workflow_package_dir}/failure_checks.py" || die \
     "release smoke wrong-key verification no longer uses the published protected-book verification exit code"
-grep -Fq 'error_exit_codes["interactive-prompt-unavailable"]' \
+grep -Fq 'machine_prompt_failure_status == error_exit_codes["invalid-request"]' \
+    "${workflow_package_dir}/failure_checks.py" || die \
+    "release smoke machine-output prompt verification no longer uses the published invalid-request exit code"
+grep -Fq 'terminal_prompt_failure_status == error_exit_codes["interactive-prompt-unavailable"]' \
     "${workflow_package_dir}/failure_checks.py" || die \
     "release smoke prompt verification no longer uses the published interactive prompt exit code"
 grep -Fq 'error_exit_codes["invalid-request"]' \
@@ -210,120 +213,121 @@ from release_smoke_workflow.support import (  # noqa: E402
 
 def structured_account_ledger_csv(actor_prefix: str) -> str:
     header = [
-        "recordKind",
+        "rowKind",
+        "accountCode",
+        "accountName",
+        "accountType",
+        "accountRole",
+        "normalBalance",
+        "active",
+        "effectiveDateFrom",
+        "effectiveDateTo",
         "currencyCode",
-        "bucketDebitTotal",
-        "bucketCreditTotal",
-        "bucketNetAmount",
-        "bucketBalanceSide",
-        "postingId",
-        "postingKind",
-        "reversalState",
-        "reversalTarget",
+        "openingDebitTotal",
+        "openingCreditTotal",
+        "openingNetAmount",
+        "openingBalanceSide",
+        "closingDebitTotal",
+        "closingCreditTotal",
+        "closingNetAmount",
+        "closingBalanceSide",
         "effectiveDate",
         "recordedAt",
+        "postingId",
+        "postingKind",
+        "postingOriginKind",
+        "reversalState",
+        "reversalTarget",
         "debitAmount",
         "creditAmount",
         "runningNetAmount",
         "runningBalanceSide",
         "counterpartAccounts",
-        "sourceDocuments",
-        "approvals",
+        "sourceDocumentIds",
+        "sourceDocumentTypes",
+        "approvalIds",
+        "approvalDecisions",
     ]
     rows = [
         {
-            "recordKind": "opening-balance",
+            "rowKind": "entry",
+            "accountCode": "1000",
+            "accountName": "Cash",
+            "accountType": "ASSET",
+            "accountRole": "ORDINARY",
+            "normalBalance": "DEBIT",
+            "active": "true",
+            "effectiveDateFrom": "2026-04-07",
+            "effectiveDateTo": "2026-04-08",
             "currencyCode": "EUR",
-            "bucketDebitTotal": "0.00",
-            "bucketCreditTotal": "0.00",
-            "bucketNetAmount": "0.00",
-            "bucketBalanceSide": "ZERO",
-            "postingId": "",
-            "postingKind": "",
-            "reversalState": "",
-            "reversalTarget": "",
-            "effectiveDate": "",
-            "recordedAt": "",
-            "debitAmount": "",
-            "creditAmount": "",
-            "runningNetAmount": "",
-            "runningBalanceSide": "",
-            "counterpartAccounts": "",
-            "sourceDocuments": "",
-            "approvals": "",
-        },
-        {
-            "recordKind": "ledger-entry",
-            "currencyCode": "EUR",
-            "bucketDebitTotal": "",
-            "bucketCreditTotal": "",
-            "bucketNetAmount": "",
-            "bucketBalanceSide": "",
-            "postingId": "019e2ae5-5f56-7025-8449-984160a327f3",
-            "postingKind": "STANDARD",
-            "reversalState": "direct",
-            "reversalTarget": "",
+            "openingDebitTotal": "0.00",
+            "openingCreditTotal": "0.00",
+            "openingNetAmount": "0.00",
+            "openingBalanceSide": "ZERO",
+            "closingDebitTotal": "10.00",
+            "closingCreditTotal": "4.00",
+            "closingNetAmount": "6.00",
+            "closingBalanceSide": "DEBIT",
             "effectiveDate": "2026-04-07",
             "recordedAt": "2026-04-07T10:00:00Z",
+            "postingId": "019e2ae5-5f56-7025-8449-984160a327f3",
+            "postingKind": "STANDARD",
+            "postingOriginKind": "CASH_REVENUE",
+            "reversalState": "direct",
+            "reversalTarget": "",
             "debitAmount": "10.00",
             "creditAmount": "0.00",
             "runningNetAmount": "10.00",
             "runningBalanceSide": "DEBIT",
             "counterpartAccounts": "2000",
-            "sourceDocuments": json.dumps(
-                [
-                    expected_source_document(actor_prefix, "sale", "2026-04-07")
-                ],
-                separators=(",", ":"),
-            ),
-            "approvals": "[]",
+            "sourceDocumentIds": expected_source_document(
+                actor_prefix, "sale", "2026-04-07"
+            )["sourceDocumentId"],
+            "sourceDocumentTypes": expected_source_document(
+                actor_prefix, "sale", "2026-04-07"
+            )["sourceDocumentType"],
+            "approvalIds": "",
+            "approvalDecisions": "",
         },
         {
-            "recordKind": "ledger-entry",
+            "rowKind": "entry",
+            "accountCode": "1000",
+            "accountName": "Cash",
+            "accountType": "ASSET",
+            "accountRole": "ORDINARY",
+            "normalBalance": "DEBIT",
+            "active": "true",
+            "effectiveDateFrom": "2026-04-07",
+            "effectiveDateTo": "2026-04-08",
             "currencyCode": "EUR",
-            "bucketDebitTotal": "",
-            "bucketCreditTotal": "",
-            "bucketNetAmount": "",
-            "bucketBalanceSide": "",
-            "postingId": "019e2ae5-6557-7410-8611-f55876f12ca5",
-            "postingKind": "STANDARD",
-            "reversalState": "direct",
-            "reversalTarget": "",
+            "openingDebitTotal": "0.00",
+            "openingCreditTotal": "0.00",
+            "openingNetAmount": "0.00",
+            "openingBalanceSide": "ZERO",
+            "closingDebitTotal": "10.00",
+            "closingCreditTotal": "4.00",
+            "closingNetAmount": "6.00",
+            "closingBalanceSide": "DEBIT",
             "effectiveDate": "2026-04-08",
             "recordedAt": "2026-04-08T10:00:00Z",
+            "postingId": "019e2ae5-6557-7410-8611-f55876f12ca5",
+            "postingKind": "STANDARD",
+            "postingOriginKind": "CORRECTION_ADJUSTMENT",
+            "reversalState": "direct",
+            "reversalTarget": "",
             "debitAmount": "0.00",
             "creditAmount": "4.00",
             "runningNetAmount": "6.00",
             "runningBalanceSide": "DEBIT",
             "counterpartAccounts": "2000",
-            "sourceDocuments": json.dumps(
-                [
-                    expected_source_document(actor_prefix, "adjustment", "2026-04-08")
-                ],
-                separators=(",", ":"),
-            ),
-            "approvals": "[]",
-        },
-        {
-            "recordKind": "closing-balance",
-            "currencyCode": "EUR",
-            "bucketDebitTotal": "10.00",
-            "bucketCreditTotal": "4.00",
-            "bucketNetAmount": "6.00",
-            "bucketBalanceSide": "DEBIT",
-            "postingId": "",
-            "postingKind": "",
-            "reversalState": "",
-            "reversalTarget": "",
-            "effectiveDate": "",
-            "recordedAt": "",
-            "debitAmount": "",
-            "creditAmount": "",
-            "runningNetAmount": "",
-            "runningBalanceSide": "",
-            "counterpartAccounts": "",
-            "sourceDocuments": "",
-            "approvals": "",
+            "sourceDocumentIds": expected_source_document(
+                actor_prefix, "adjustment", "2026-04-08"
+            )["sourceDocumentId"],
+            "sourceDocumentTypes": expected_source_document(
+                actor_prefix, "adjustment", "2026-04-08"
+            )["sourceDocumentType"],
+            "approvalIds": "",
+            "approvalDecisions": "",
         },
     ]
     buffer = StringIO()
@@ -338,7 +342,7 @@ def expected_source_document(
 ) -> dict[str, str]:
     return {
         "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": document_date,
         "capturedAt": f"{document_date}T10:15:30Z",
         "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",
@@ -472,7 +476,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
-        policy_profile="INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
     )
     unicode_argument = str(temp_path / "workspace odd" / "Rīga büro" / "key.key")
     output, exit_code = run_cli_allow_failure(
@@ -533,7 +536,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
-        policy_profile="INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
     )
     report_stdout = "Trial Balance\nAccount  : 1000\nNet      : 6.00\n"
     report_stderr = (
@@ -546,7 +548,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     assert_operator_queries_and_reports(
         config,
         list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
-        list_postings_human_output=(
+        list_postings_text_output=(
             "Postings\n"
             "========\n\n"
             "Returned postings : 2\n\n"
@@ -557,12 +559,12 @@ with tempfile.TemporaryDirectory() as temp_dir:
             "Recorded at      : 2026-04-07 10:00:00 UTC\n"
             "Debit total      : 10.00\n"
         ),
-        account_balance_human_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
-        trial_balance_human_output="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
+        account_balance_text_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
+        trial_balance_text_output="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=report_stderr,
         account_ledger_csv_output=structured_account_ledger_csv("bridge"),
-        period_summary_human_output="Period Summary\nPosting count : 2\n",
+        period_summary_text_output="Period Summary\nPosting count : 2\n",
     )
 
     windows_report_stderr = (
@@ -621,12 +623,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         business_activity_tags=["consulting-services"],
         functional_currency="EUR",
         fiscal_year_start="01-01",
-        policy_profile="INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
     )
     assert_operator_queries_and_reports(
         docker_config,
         list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
-        list_postings_human_output=(
+        list_postings_text_output=(
             "Postings\n"
             "========\n\n"
             "Returned postings : 2\n\n"
@@ -637,12 +638,12 @@ with tempfile.TemporaryDirectory() as temp_dir:
             "Recorded at      : 2026-04-07 10:00:00 UTC\n"
             "Debit total      : 10.00\n"
         ),
-        account_balance_human_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
-        trial_balance_human_output="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
+        account_balance_text_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
+        trial_balance_text_output="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=docker_report_stderr,
         account_ledger_csv_output=structured_account_ledger_csv("bridge"),
-        period_summary_human_output="Period Summary\nPosting count : 2\n",
+        period_summary_text_output="Period Summary\nPosting count : 2\n",
     )
 PY
 

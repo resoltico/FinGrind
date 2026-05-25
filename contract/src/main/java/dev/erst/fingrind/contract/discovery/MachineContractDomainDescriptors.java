@@ -43,7 +43,6 @@ final class MachineContractDomainDescriptors {
         kernel.scope(),
         kernel.builtInStatements(),
         kernel.reportCapabilities(),
-        kernel.policyProfile(),
         kernel.description());
   }
 
@@ -179,7 +178,7 @@ final class MachineContractDomainDescriptors {
             "book-must-be-initialized",
             "every-line-account-must-be-declared-and-active",
             "target-must-exist-in-book",
-            "reversal-object-must-carry-human-readable-reason",
+            "reversal-object-must-carry-plain-language-reason",
             "one-reversal-per-target",
             "reversal-must-negate-target"));
   }
@@ -226,7 +225,7 @@ final class MachineContractDomainDescriptors {
     if (operation.outputModes().isEmpty()) {
       return null;
     }
-    return new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.JSON);
   }
 
   private static List<CommandDescriptor> commandDescriptors(OperationCategory category) {

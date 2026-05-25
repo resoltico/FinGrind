@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
@@ -14,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
@@ -36,7 +37,7 @@ final class CliExecutionPolicy {
 
   static OutputMode inferredFailureOutputMode(String[] args) {
     if (args.length == 0) {
-      return OutputMode.HUMAN;
+      return OutputMode.TEXT;
     }
     OutputMode inferred = defaultFailureOutputMode(args[0]);
     int index = 1;
@@ -51,7 +52,7 @@ final class CliExecutionPolicy {
       }
       index += 2;
     }
-    return inferred == OutputMode.HUMAN ? OutputMode.HUMAN : OutputMode.JSON;
+    return inferred == OutputMode.TEXT ? OutputMode.TEXT : OutputMode.JSON;
   }
 
   private static OutputMode defaultFailureOutputMode(String commandToken) {
@@ -103,10 +104,10 @@ final class CliExecutionPolicy {
     };
   }
 
-  static int exitCodeFor(ClosePeriodResult result) {
+  static int exitCodeFor(PeriodResultTransferResult result) {
     return switch (result) {
-      case ClosePeriodResult.Closed _ -> 0;
-      case ClosePeriodResult.Rejected _ -> 2;
+      case PeriodResultTransferResult.Transferred _ -> 0;
+      case PeriodResultTransferResult.Rejected _ -> 2;
     };
   }
 
@@ -238,6 +239,23 @@ final class CliExecutionPolicy {
 
   static int runtimeFailureExitCode() {
     return 4;
+  }
+
+  static Optional<ContractFailure> interactivePromptOutputFailure(
+      OutputMode outputMode, BookAccess.PassphraseSource... passphraseSources) {
+    if (outputMode == OutputMode.TEXT) {
+      return Optional.empty();
+    }
+    for (BookAccess.PassphraseSource passphraseSource : passphraseSources) {
+      if (passphraseSource instanceof BookAccess.PassphraseSource.InteractivePrompt) {
+        return Optional.of(
+            ContractErrors.Descriptor.INVALID_REQUEST.failure(
+                "Interactive passphrase prompting is only supported with --output text.",
+                "Rerun with --output text, or switch the passphrase source to --book-key-file or --book-passphrase-stdin before selecting one machine output mode.",
+                ProtocolOptions.OUTPUT));
+      }
+    }
+    return Optional.empty();
   }
 
   private static int exitCodeFor(BookMaintenanceRejection rejection) {

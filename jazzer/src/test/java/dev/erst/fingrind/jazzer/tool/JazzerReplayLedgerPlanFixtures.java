@@ -60,7 +60,7 @@ final class JazzerReplayLedgerPlanFixtures {
                         "1000",
                         new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-plan-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-04-07",
                             "agent-1",
                             "AGENT",
@@ -124,7 +124,7 @@ final class JazzerReplayLedgerPlanFixtures {
                         "1000",
                         new dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-query-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-04-07",
                             "agent-1",
                             "AGENT",

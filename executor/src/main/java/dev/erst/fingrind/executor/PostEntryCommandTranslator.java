@@ -2,10 +2,10 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.time.LocalDate;
@@ -16,14 +16,10 @@ import java.util.Objects;
 public final class PostEntryCommandTranslator {
   private PostEntryCommandTranslator() {}
 
-  /** Translates one published post-entry command using the selected book policy profile. */
-  public static PostingCommand toPostingCommand(
-      BookIdentity bookIdentity, PostEntryCommand command) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
+  /** Translates one published post-entry command into one internal posting command. */
+  public static PostingCommand toPostingCommand(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    return switch (bookIdentity.policyProfile()) {
-      case INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 -> toInternalManagementSingleEntity(command);
-    };
+    return toInternalManagementSingleEntity(command);
   }
 
   private static PostingCommand toInternalManagementSingleEntity(PostEntryCommand command) {
@@ -54,7 +50,7 @@ public final class PostEntryCommandTranslator {
                       JournalLine.EntrySide.CREDIT,
                       event.amount().toMoney())),
               command);
-      case BookkeepingEntry.OwnerContribution event ->
+      case BookkeepingEntry.EquityContribution event ->
           standardPosting(
               event.effectiveDate(),
               List.of(
@@ -67,7 +63,7 @@ public final class PostEntryCommandTranslator {
                       JournalLine.EntrySide.CREDIT,
                       event.amount().toMoney())),
               command);
-      case BookkeepingEntry.OwnerDraw event ->
+      case BookkeepingEntry.EquityWithdrawal event ->
           standardPosting(
               event.effectiveDate(),
               List.of(
@@ -83,6 +79,7 @@ public final class PostEntryCommandTranslator {
       case BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment ->
           new PostingCommand(
               PostingKind.OPENING_BALANCE,
+              postingOriginKind(openingBalanceAdjustment),
               openingBalanceAdjustment.journalEntry(),
               PostingLineageModel.direct(),
               command.evidence(),
@@ -91,6 +88,7 @@ public final class PostEntryCommandTranslator {
       case BookkeepingEntry.CorrectionAdjustment correctionAdjustment ->
           new PostingCommand(
               PostingKind.STANDARD,
+              postingOriginKind(correctionAdjustment),
               correctionAdjustment.journalEntry(),
               PostingLineageModel.direct(),
               command.evidence(),
@@ -99,6 +97,7 @@ public final class PostEntryCommandTranslator {
       case BookkeepingEntry.ReversalAdjustment reversalAdjustment ->
           new PostingCommand(
               PostingKind.STANDARD,
+              postingOriginKind(reversalAdjustment),
               reversalAdjustment.journalEntry(),
               toReversalPostingLineageModel(reversalAdjustment.reversal()),
               command.evidence(),
@@ -111,11 +110,25 @@ public final class PostEntryCommandTranslator {
       LocalDate effectiveDate, List<JournalLine> lines, PostEntryCommand command) {
     return new PostingCommand(
         PostingKind.STANDARD,
+        postingOriginKind(command.entry()),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         command.evidence(),
         command.requestProvenance(),
         command.sourceChannel());
+  }
+
+  private static PostingOriginKind postingOriginKind(BookkeepingEntry entry) {
+    return switch (Objects.requireNonNull(entry, "entry")) {
+      case BookkeepingEntry.CashRevenue _ -> PostingOriginKind.CASH_REVENUE;
+      case BookkeepingEntry.CashExpense _ -> PostingOriginKind.CASH_EXPENSE;
+      case BookkeepingEntry.EquityContribution _ -> PostingOriginKind.EQUITY_CONTRIBUTION;
+      case BookkeepingEntry.EquityWithdrawal _ -> PostingOriginKind.EQUITY_WITHDRAWAL;
+      case BookkeepingEntry.OpeningBalanceAdjustment _ ->
+          PostingOriginKind.OPENING_BALANCE_ADJUSTMENT;
+      case BookkeepingEntry.CorrectionAdjustment _ -> PostingOriginKind.CORRECTION_ADJUSTMENT;
+      case BookkeepingEntry.ReversalAdjustment _ -> PostingOriginKind.REVERSAL_ADJUSTMENT;
+    };
   }
 
   private static PostingLineageModel toReversalPostingLineageModel(

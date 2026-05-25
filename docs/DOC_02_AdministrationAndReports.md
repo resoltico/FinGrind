@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
-  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
-  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
+  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
+  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
 ---
 
 # Administration, Query, And Report Reference
@@ -110,25 +110,25 @@ public record DeclaredAccount(
 - Derived fact: `normalBalance()` remains part of the public response surface, but it is derived
   from `accountType` plus `accountRole` through `AccountSemantics`
 
-## `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod`
+## `PeriodResultTransferCommand`, `PeriodResultTransferResult`, And `TransferredPeriodResult`
 
-These types own the public period-close administration surface.
+These types own the public period-result-transfer administration surface.
 
 ```java
-public record ClosePeriodCommand(
+public record PeriodResultTransferCommand(
     ReportingPeriod reportingPeriod,
-    AccountCode closingEquityAccountCode)
-public sealed interface ClosePeriodResult
-public record ClosedPeriod(...)
+    AccountCode resultHoldingAccountCode)
+public sealed interface PeriodResultTransferResult
+public record TransferredPeriodResult(...)
 ```
 
-- Purpose: request and describe one contiguous reporting-period close that writes generated
-  close postings into one selected active equity account whose declared financial-position
-  classification matches the built-in close destination
-- Result variants: `Closed`, `Rejected`
-- Durable fact: `ClosedPeriod` carries `closeOrder`, the inclusive `ReportingPeriod`, the
-  selected closing-equity account code used for the close, the per-currency closed totals moved into
-  equity, the close timestamp, and every generated closing posting id
+- Purpose: request and describe one contiguous period-result transfer that writes generated
+  transfer postings into one selected active equity account whose declared financial-position
+  classification matches the built-in result-holding destination
+- Result variants: `Transferred`, `Rejected`
+- Durable fact: `TransferredPeriodResult` carries `transferOrder`, the inclusive `ReportingPeriod`, the
+  selected result-holding account code used for the transfer, the per-currency transferred totals moved into
+  equity, the transfer timestamp, and every generated transfer posting id
 
 ## `OpenBookCommand`
 
@@ -554,25 +554,25 @@ public record ChangesInEquityView(...)
 - Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
   published-language translator renders it into public report DTOs
 
-## `PeriodCloseDraft`, `PeriodCloseOutcome`, `PeriodClosePlanner`, And `PeriodCloseService`
+## `PeriodResultTransferDraft`, `PeriodResultTransferOutcome`, `PeriodResultTransferPlanner`, And `PeriodResultTransferService`
 
-These executor-owned local bookkeeping types own period-close generation and durable close
+These executor-owned local bookkeeping types own period-result-transfer generation and durable close
 semantics before the public administration surface is projected.
 
 ```java
-public record PeriodCloseDraft(...)
-public sealed interface PeriodCloseOutcome
-public final class PeriodClosePlanner
-public final class PeriodCloseService
+public record PeriodResultTransferDraft(...)
+public sealed interface PeriodResultTransferOutcome
+public final class PeriodResultTransferPlanner
+public final class PeriodResultTransferService
 ```
 
-- `PeriodCloseDraft`: store-ready close payload containing the reporting period, the close time,
+- `PeriodResultTransferDraft`: store-ready close payload containing the reporting period, the close time,
   and every generated posting draft
-- `PeriodCloseOutcome`: closed family of accepted-versus-rejected local close outcomes
-- `PeriodClosePlanner`: bookkeeping-domain planner that selects the policy-owned closing-equity
-  account, validates close-horizon rules, and generates the `PostingKind.PERIOD_CLOSE` drafts plus
-  published closed totals for one contiguous reporting period
-- `PeriodCloseService`: application service that coordinates lifecycle inspection, account
+- `PeriodResultTransferOutcome`: closed family of accepted-versus-rejected local close outcomes
+- `PeriodResultTransferPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
+  account, validates close-horizon rules, and generates the `PostingKind.PERIOD_RESULT_TRANSFER` drafts plus
+  published transferred totals for one contiguous reporting period
+- `PeriodResultTransferService`: application service that coordinates lifecycle inspection, account
   catalog/store access, planner output, and durable close persistence instead of owning the close
   recipe itself
 
@@ -586,8 +586,8 @@ public sealed interface BookAdministrationRejection
 ```
 
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`,
-  `AccountRoleConflict`, `ClosingEquityAccountCandidateMissing`,
-  `ClosingEquityAccountCandidateAmbiguous`, `PeriodCloseMustStartAt`
+  `AccountRoleConflict`, `ResultHoldingAccountCandidateMissing`,
+  `ResultHoldingAccountCandidateAmbiguous`, `PeriodResultTransferMustStartAt`
 
 ## `BookQueryRejection`
 

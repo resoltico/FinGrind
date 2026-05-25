@@ -16,7 +16,7 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.ledgerPlanRequest(),
-            JazzerReplayLedgerPlanFixtures.basicValidLedgerPlan().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.ledgerPlanRequest("basic_valid.json").getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -34,7 +34,7 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.ledgerPlanRequest(),
-            JazzerReplayLedgerPlanFixtures.validLedgerPlanWithQueries().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.ledgerPlanRequest("query_valid.json").getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -50,7 +50,8 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.ledgerPlanRequest(),
-            JazzerReplayLedgerPlanFixtures.rejectedMissingBookListPostingsLedgerPlan()
+            CommittedRegressionSeedFixtures.ledgerPlanRequest(
+                    "rejected_missing_book_list_postings.json")
                 .getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
@@ -67,7 +68,8 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.ledgerPlanRequest(),
-            JazzerReplayLedgerPlanFixtures.invalidExecutionPolicyLedgerPlan().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.ledgerPlanRequest("invalid_execution_policy.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -80,7 +82,9 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.ledgerPlanRequest(),
-            JazzerReplayLedgerPlanFixtures.invalidUnknownKindLedgerPlan().getBytes(UTF_8));
+            CommittedRegressionSeedFixtures.ledgerPlanRequest(
+                    "invalid_unknown_kind_without_assertion.json")
+                .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);

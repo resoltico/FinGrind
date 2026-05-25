@@ -7,21 +7,21 @@ import dev.erst.fingrind.core.BookIdentity;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Renders posting detail and posting-page payloads for human and CSV output modes. */
+/** Renders posting detail and posting-page payloads for text and CSV output modes. */
 final class CliPostingOutputRenderer {
   private CliPostingOutputRenderer() {}
 
-  static String renderPostingHuman(BookIdentity bookIdentity, PostingFact postingFact) {
+  static String renderPostingText(BookIdentity bookIdentity, PostingFact postingFact) {
     List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
     header.add(List.of("Posting id", postingFact.postingId().value()));
     header.add(
         List.of(
             "Posting kind", CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())));
     header.add(
-        List.of("Posting role", CliQueryOutputFormatter.displayPostingRoleHuman(postingFact)));
+        List.of("Posting role", CliQueryOutputFormatter.displayPostingRoleText(postingFact)));
     header.add(List.of("Effective date", postingFact.journalEntry().effectiveDate().toString()));
     header.add(
-        List.of("Recorded at", CliHumanDisplay.instant(postingFact.provenance().recordedAt())));
+        List.of("Recorded at", CliTextDisplay.instant(postingFact.provenance().recordedAt())));
     header.add(List.of("Actor id", postingFact.provenance().requestProvenance().actorId().value()));
     header.add(
         List.of(
@@ -52,10 +52,10 @@ final class CliPostingOutputRenderer {
             displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
     header.add(
         List.of(
-            "Source documents", CliQueryOutputFormatter.postingSourceDocumentsHuman(postingFact)));
-    header.add(List.of("Approvals", CliQueryOutputFormatter.postingApprovalsHuman(postingFact)));
+            "Source documents", CliQueryOutputFormatter.postingSourceDocumentsText(postingFact)));
+    header.add(List.of("Approvals", CliQueryOutputFormatter.postingApprovalsText(postingFact)));
     header.add(
-        List.of("Reverses posting", CliQueryOutputFormatter.reversalTargetHuman(postingFact)));
+        List.of("Reverses posting", CliQueryOutputFormatter.reversalTargetText(postingFact)));
     header.add(
         List.of(
             "Reversal reason",
@@ -81,7 +81,7 @@ final class CliPostingOutputRenderer {
             + journalLines);
   }
 
-  static String renderPostingRegisterHuman(PostingPage page) {
+  static String renderPostingRegisterText(PostingPage page) {
     List<List<String>> headerRows =
         new ArrayList<>(CliBookIdentityDisplay.summaryRows(page.bookIdentity()));
     headerRows.add(
@@ -106,48 +106,14 @@ final class CliPostingOutputRenderer {
     String postings =
         page.postings().isEmpty()
             ? "(none)"
-            : page.postings().stream()
-                .map(
-                    posting ->
-                        CliTextFormat.renderSummaryBlock(
-                            postingHeadline(posting),
-                            CliTextFormat.renderKeyValueBlock(
-                                List.of(
-                                    List.of(
-                                        "Recorded at",
-                                        CliHumanDisplay.instant(posting.provenance().recordedAt())),
-                                    List.of(
-                                        "Posting kind",
-                                        CliQueryOutputFormatter.displayPostingKind(
-                                            posting.postingKind())),
-                                    List.of(
-                                        "Posting role",
-                                        CliQueryOutputFormatter.displayPostingRoleHuman(posting)),
-                                    List.of(
-                                        "Currency",
-                                        CliQueryOutputFormatter.postingCurrencyHuman(posting)),
-                                    List.of(
-                                        "Debit total",
-                                        CliQueryOutputFormatter.postingDebitTotalHuman(posting)),
-                                    List.of(
-                                        "Credit total",
-                                        CliQueryOutputFormatter.postingCreditTotalHuman(posting)),
-                                    List.of(
-                                        "Accounts",
-                                        CliQueryOutputFormatter.postingAccountsHuman(posting)),
-                                    List.of(
-                                        "Source documents",
-                                        CliQueryOutputFormatter.postingSourceDocumentsHuman(
-                                            posting)),
-                                    List.of(
-                                        "Approvals",
-                                        CliQueryOutputFormatter.postingApprovalsHuman(posting)),
-                                    List.of(
-                                        "Reverses posting",
-                                        CliQueryOutputFormatter.reversalTargetHuman(posting))))))
-                .collect(
-                    java.util.stream.Collectors.joining(
-                        System.lineSeparator() + System.lineSeparator()));
+            : CliTextFormat.renderTable(
+                List.of(
+                    "Effective date", "Origin", "Role", "Debit", "Credit", "Accounts", "Posting"),
+                page.postings().stream()
+                    .map(CliQueryOutputFormatter::postingRegisterTextRow)
+                    .toList(),
+                3,
+                4);
     return CliTextFormat.renderTitledBlock(
         "Postings",
         header
@@ -159,16 +125,6 @@ final class CliPostingOutputRenderer {
             + postings);
   }
 
-  static String postingHeadline(PostingFact postingFact) {
-    return postingFact.journalEntry().effectiveDate()
-        + " | kind="
-        + CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())
-        + " | role="
-        + CliQueryOutputFormatter.displayPostingRoleHuman(postingFact)
-        + " | posting="
-        + postingFact.postingId().value();
-  }
-
   static String renderPostingRegisterCsv(PostingPage page) {
     return CliTextFormat.renderCsv(
         List.of(
@@ -176,14 +132,17 @@ final class CliPostingOutputRenderer {
             "recordedAt",
             "postingId",
             "postingKind",
+            "postingOriginKind",
             "reversalState",
             "currencyCode",
             "debitTotal",
             "creditTotal",
             "accountCodes",
             "reversalTarget",
-            "sourceDocuments",
-            "approvals"),
+            "sourceDocumentIds",
+            "sourceDocumentTypes",
+            "approvalIds",
+            "approvalDecisions"),
         page.postings().stream()
             .map(
                 posting -> {
@@ -198,7 +157,7 @@ final class CliPostingOutputRenderer {
     return switch (wireValue) {
       case "DEBIT" -> "Debit";
       case "CREDIT" -> "Credit";
-      case "HUMAN" -> "Human";
+      case "PERSON" -> "Person";
       case "AGENT" -> "Agent";
       case "SYSTEM" -> "System";
       case "CLI" -> "CLI";

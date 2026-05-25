@@ -9,20 +9,20 @@
   },
   "evidence" : {
     "sourceDocuments" : [ {
-      "sourceDocumentId" : "invoice-1001",
-      "sourceDocumentType" : "invoice",
+      "sourceDocumentId" : "replace-with-cash-receipt-id",
+      "sourceDocumentType" : "cash-receipt",
       "documentDate" : "2026-01-15",
       "capturedAt" : "2026-01-15T09:00:00Z",
-      "storageLocator" : "vault://documents/invoice-1001",
-      "contentSha256" : "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      "storageLocator" : "replace-with-secure-storage-locator://cash-receipt",
+      "contentSha256" : "0000000000000000000000000000000000000000000000000000000000000000"
     } ],
     "approvals" : [ ]
   },
   "provenance" : {
-    "actorId" : "operator-demo-1",
-    "actorType" : "AGENT",
-    "commandId" : "command-demo-1",
-    "idempotencyKey" : "idem-demo-1",
-    "causationId" : "cause-demo-1"
+    "actorId" : "replace-with-actor-id",
+    "actorType" : "PERSON",
+    "commandId" : "replace-with-command-id",
+    "idempotencyKey" : "replace-with-idempotency-key",
+    "causationId" : "replace-with-causation-id"
   }
 }

@@ -50,7 +50,7 @@ final class CliBookQueryArguments {
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new InspectBook(
         parsedArguments.bookAccess(), CliArgumentValueParser.resolvedOutputMode(outputMode));
@@ -77,7 +77,7 @@ final class CliBookQueryArguments {
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     if (postingIdValue == null) {
       throw CliArgumentValueParser.invalid(
@@ -124,7 +124,7 @@ final class CliBookQueryArguments {
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(
-                  OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+                  OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
     }
     int resolvedLimit =
         CliArgumentValueParser.requirePageLimit(
@@ -208,7 +208,7 @@ final class CliBookQueryArguments {
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(
-                  OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+                  OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
     }
     String resolvedAccountCodeValue = accountCodeValue;
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;

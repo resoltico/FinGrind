@@ -53,9 +53,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.inspectBook(bookAccess),
-        OutputMode.HUMAN,
+        OutputMode.TEXT,
         (CliResponseWriter writer, BookInspection inspection) ->
-            writer.writeBookInspection(bookPath, inspection, OutputMode.HUMAN),
+            writer.writeBookInspection(bookPath, inspection, OutputMode.TEXT),
         "State");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.inspectBook(bookAccess),
@@ -84,9 +84,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
         postingId.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(primaryAccount)),
-        OutputMode.HUMAN,
+        OutputMode.TEXT,
         (CliResponseWriter writer, AccountBalanceResult result) ->
-            writer.writeAccountBalanceResult(result, OutputMode.HUMAN),
+            writer.writeAccountBalanceResult(result, OutputMode.TEXT),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.trialBalance(
@@ -98,9 +98,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(primaryAccount)),
-        OutputMode.HUMAN,
+        OutputMode.TEXT,
         (CliResponseWriter writer, AccountLedgerResult result) ->
-            writer.writeAccountLedgerResult(result, OutputMode.HUMAN),
+            writer.writeAccountLedgerResult(result, OutputMode.TEXT),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         workflow.periodSummary(bookAccess, new PeriodSummaryQuery(effectiveDate, effectiveDate)),
@@ -134,8 +134,8 @@ final class SqliteRoundTripWorkflowCliCoverage {
         duplicatePreflight);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicatePreflight),
-        OutputMode.HUMAN,
-        (writer, result) -> writer.writePostEntryResult((PostEntryResult) result, OutputMode.HUMAN),
+        OutputMode.TEXT,
+        (writer, result) -> writer.writePostEntryResult((PostEntryResult) result, OutputMode.TEXT),
         null);
 
     CommitEntryResult duplicateCommit =
@@ -168,7 +168,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         CliFuzzFixtures.declarePostingAccountCommands(command)) {
       SqliteRoundTripWorkflowRenderingAssertions.assertDeclared(
           workflow.declareAccount(bookAccess, declareAccountCommand),
-          OutputMode.HUMAN,
+          OutputMode.TEXT,
           declareAccountCommand.accountCode().value());
     }
     PreflightAccepted preflightAccepted =
@@ -176,9 +176,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
             workflow.preflight(bookAccess, command));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(preflightAccepted),
-        OutputMode.HUMAN,
+        OutputMode.TEXT,
         (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.HUMAN),
+            writer.writePostEntryResult(result, OutputMode.TEXT),
         command.requestProvenance().idempotencyKey().value());
     Committed committed =
         SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
@@ -220,9 +220,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
             workflow.commit(bookAccess, validReversal));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(reversalCommitted),
-        OutputMode.HUMAN,
+        OutputMode.TEXT,
         (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.HUMAN),
+            writer.writePostEntryResult(result, OutputMode.TEXT),
         null);
 
     PostEntryCommand duplicateReversal =

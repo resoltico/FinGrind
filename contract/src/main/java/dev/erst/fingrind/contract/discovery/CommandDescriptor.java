@@ -58,7 +58,7 @@ public record CommandDescriptor(
     summary = ContractDescriptorValidation.requireText(summary, "summary");
   }
 
-  /** Returns the human-facing stdout contract summary used by CLI help text. */
+  /** Returns the operator-facing stdout contract summary used by CLI help text. */
   public String stdoutContractSummary() {
     if (!outputModes.isEmpty()) {
       SelectableOutputDefaultsDescriptor defaults =
@@ -94,6 +94,6 @@ public record CommandDescriptor(
     if (outputModes.isEmpty()) {
       return null;
     }
-    return new SelectableOutputDefaultsDescriptor(OutputMode.HUMAN, OutputMode.JSON);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.JSON);
   }
 }

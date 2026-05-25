@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 17;
+pragma user_version = 20;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -41,27 +41,26 @@ create table if not exists book_identity (
         fiscal_year_start_day between 1 and 31
     ),
     check (
-        date(
-            printf(
-                '2000-%02d-%02d',
-                fiscal_year_start_month,
-                fiscal_year_start_day
-            )
-        ) is not null
+        (
+            fiscal_year_start_month in (1, 3, 5, 7, 8, 10, 12)
+            and fiscal_year_start_day between 1 and 31
+        )
+        or
+        (
+            fiscal_year_start_month in (4, 6, 9, 11)
+            and fiscal_year_start_day between 1 and 30
+        )
+        or
+        (
+            fiscal_year_start_month = 2
+            and fiscal_year_start_day between 1 and 29
+        )
     )
 ) strict;
 
 create table if not exists entity_profile (
     singleton_id integer primary key check (singleton_id = 1),
     business_activity_tags text not null,
-    foreign key (singleton_id) references book_identity (singleton_id)
-) strict;
-
-create table if not exists book_policy (
-    singleton_id integer primary key check (singleton_id = 1),
-    policy_profile text not null check (
-        policy_profile in ('INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1')
-    ),
     foreign key (singleton_id) references book_identity (singleton_id)
 ) strict;
 
@@ -85,9 +84,9 @@ create table if not exists account (
             'NONCURRENT_ASSET',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
-            'CONTRIBUTED_CAPITAL',
-            'DISTRIBUTIONS',
-            'ACCUMULATED_RESULT',
+            'EQUITY_CONTRIBUTION',
+            'EQUITY_WITHDRAWAL',
+            'RESULT_HOLDING',
             'RESERVE',
             'OTHER_EQUITY'
         )
@@ -101,7 +100,7 @@ create table if not exists account (
             'OPERATING_EXPENSE',
             'DEPRECIATION_AND_AMORTIZATION',
             'FINANCE_EXPENSE',
-            'TAX_EXPENSE'
+            'OTHER_EXPENSE'
         )
     ),
     active integer not null check (active in (0, 1)),
@@ -127,9 +126,9 @@ create table if not exists account (
         (
             account_type = 'EQUITY'
             and financial_position_line_classification in (
-                'CONTRIBUTED_CAPITAL',
-                'DISTRIBUTIONS',
-                'ACCUMULATED_RESULT',
+                'EQUITY_CONTRIBUTION',
+                'EQUITY_WITHDRAWAL',
+                'RESULT_HOLDING',
                 'RESERVE',
                 'OTHER_EQUITY'
             )
@@ -154,7 +153,7 @@ create table if not exists account (
                 'OPERATING_EXPENSE',
                 'DEPRECIATION_AND_AMORTIZATION',
                 'FINANCE_EXPENSE',
-                'TAX_EXPENSE'
+                'OTHER_EXPENSE'
             )
         )
     )
@@ -256,12 +255,24 @@ create table if not exists posting_fact (
     posting_order integer primary key,
     posting_id text not null unique,
     posting_kind text not null check (
-        posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE')
+        posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_RESULT_TRANSFER')
+    ),
+    posting_origin_kind text not null check (
+        posting_origin_kind in (
+            'CASH_REVENUE',
+            'CASH_EXPENSE',
+            'EQUITY_CONTRIBUTION',
+            'EQUITY_WITHDRAWAL',
+            'OPENING_BALANCE_ADJUSTMENT',
+            'CORRECTION_ADJUSTMENT',
+            'REVERSAL_ADJUSTMENT',
+            'PERIOD_RESULT_TRANSFER'
+        )
     ),
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null check (length(trim(actor_id)) > 0),
-    actor_type text not null check (actor_type in ('HUMAN', 'SYSTEM', 'AGENT')),
+    actor_type text not null check (actor_type in ('PERSON', 'SYSTEM', 'AGENT')),
     command_id text not null check (length(trim(command_id)) > 0),
     idempotency_key text not null check (
         length(idempotency_key) between 1 and 128
@@ -295,25 +306,25 @@ end;
 
 create trigger if not exists posting_fact_validate_closed_period_on_insert
 before insert on posting_fact
-when new.posting_kind <> 'PERIOD_CLOSE'
+when new.posting_kind <> 'PERIOD_RESULT_TRANSFER'
 begin
     select raise(fail, 'posting effective date is already closed.')
     where exists (
         select 1
-        from period_close
-        where period_close.effective_date_to >= new.effective_date
+        from period_result_transfer
+        where period_result_transfer.effective_date_to >= new.effective_date
     );
 end;
 
-create trigger if not exists posting_fact_validate_period_close_provenance_on_insert
+create trigger if not exists posting_fact_validate_period_result_transfer_provenance_on_insert
 before insert on posting_fact
-when new.posting_kind = 'PERIOD_CLOSE'
+when new.posting_kind = 'PERIOD_RESULT_TRANSFER'
 begin
-    select raise(fail, 'period-close postings must be system-authored.')
+    select raise(fail, 'period-result-transfer postings must be system-authored.')
     where new.actor_type <> 'SYSTEM';
-    select raise(fail, 'period-close postings must use the system source channel.')
+    select raise(fail, 'period-result-transfer postings must use the system source channel.')
     where new.source_channel <> 'SYSTEM';
-    select raise(fail, 'period-close postings cannot reverse earlier postings.')
+    select raise(fail, 'period-result-transfer postings cannot reverse earlier postings.')
     where new.prior_posting_id is not null or new.reason is not null;
 end;
 
@@ -359,7 +370,7 @@ create table if not exists posting_approval (
         and approval_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
     approver_id text not null check (length(trim(approver_id)) > 0),
-    approver_type text not null check (approver_type in ('HUMAN', 'SYSTEM', 'AGENT')),
+    approver_type text not null check (approver_type in ('PERSON', 'SYSTEM', 'AGENT')),
     decision text not null check (decision in ('APPROVED', 'REJECTED')),
     approved_at text not null,
     primary key (posting_id, approval_order),
@@ -435,8 +446,8 @@ begin
     );
 end;
 
-create table if not exists period_close (
-    period_close_order integer primary key,
+create table if not exists period_result_transfer (
+    period_result_transfer_order integer primary key,
     effective_date_from text not null,
     effective_date_to text not null,
     closing_equity_account_code text not null references account (account_code),
@@ -444,10 +455,10 @@ create table if not exists period_close (
     check (effective_date_from <= effective_date_to)
 ) strict;
 
-create trigger if not exists period_close_validate_closing_equity_account_on_insert
-before insert on period_close
+create trigger if not exists period_result_transfer_validate_closing_equity_account_on_insert
+before insert on period_result_transfer
 begin
-    select raise(fail, 'period-close target must be one active equity account.')
+    select raise(fail, 'period-result-transfer target must be one active equity account.')
     where exists (
         select 1
         from account
@@ -460,38 +471,38 @@ begin
     );
 end;
 
-create table if not exists period_close_total (
-    period_close_order integer not null,
+create table if not exists period_result_transfer_total (
+    period_result_transfer_order integer not null,
     currency_code text not null check (
         length(currency_code) = 3
         and currency_code glob '[A-Z][A-Z][A-Z]'
     ),
     debit_total_minor integer not null check (debit_total_minor >= 0),
     credit_total_minor integer not null check (credit_total_minor >= 0),
-    primary key (period_close_order, currency_code),
-    foreign key (period_close_order) references period_close (period_close_order)
+    primary key (period_result_transfer_order, currency_code),
+    foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order)
 ) strict;
 
-create table if not exists period_close_posting (
-    period_close_order integer not null,
+create table if not exists period_result_transfer_posting (
+    period_result_transfer_order integer not null,
     posting_id text not null,
-    primary key (period_close_order, posting_id),
-    foreign key (period_close_order) references period_close (period_close_order),
+    primary key (period_result_transfer_order, posting_id),
+    foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order),
     foreign key (posting_id) references posting_fact (posting_id)
 ) strict;
 
-create trigger if not exists period_close_posting_validate_period_close_posting_on_insert
-before insert on period_close_posting
+create trigger if not exists period_result_transfer_posting_validate_period_result_transfer_posting_on_insert
+before insert on period_result_transfer_posting
 begin
-    select raise(fail, 'period-close links must reference period-close postings.')
+    select raise(fail, 'period-result-transfer links must reference period-result-transfer postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.posting_kind <> 'PERIOD_CLOSE'
+            and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'
     );
-    select raise(fail, 'period-close links must reference system-authored postings.')
+    select raise(fail, 'period-result-transfer links must reference system-authored postings.')
     where exists (
         select 1
         from posting_fact
@@ -499,7 +510,7 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.actor_type <> 'SYSTEM'
     );
-    select raise(fail, 'period-close links must reference system-source postings.')
+    select raise(fail, 'period-result-transfer links must reference system-source postings.')
     where exists (
         select 1
         from posting_fact
@@ -507,14 +518,14 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.source_channel <> 'SYSTEM'
     );
-    select raise(fail, 'period-close posting effective date must match the closed-through date.')
+    select raise(fail, 'period-result-transfer posting effective date must match the transferred-through date.')
     where exists (
         select 1
-        from period_close
+        from period_result_transfer
         inner join posting_fact on posting_fact.posting_id = new.posting_id
         where
-            period_close.period_close_order = new.period_close_order
-            and posting_fact.effective_date <> period_close.effective_date_to
+            period_result_transfer.period_result_transfer_order = new.period_result_transfer_order
+            and posting_fact.effective_date <> period_result_transfer.effective_date_to
     );
 end;
 
@@ -535,15 +546,15 @@ create table if not exists audit_event (
             'REKEY_ROLLBACK_DELETED',
             'BACKUP_CREATED_COMPENSATED',
             'REKEY_ROLLBACK_DELETED_COMPENSATED',
-            'PERIOD_CLOSED'
+            'PERIOD_RESULT_TRANSFERRED'
         )
     ),
     account_code text,
     posting_id text,
-    period_close_order integer,
+    period_result_transfer_order integer,
     foreign key (account_code) references account (account_code),
     foreign key (posting_id) references posting_fact (posting_id),
-    foreign key (period_close_order) references period_close (period_close_order),
+    foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order),
     check (
         (
             event_kind in (
@@ -558,28 +569,28 @@ create table if not exists audit_event (
             )
             and account_code is null
             and posting_id is null
-            and period_close_order is null
+            and period_result_transfer_order is null
         )
         or
         (
             event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED')
             and account_code is not null
             and posting_id is null
-            and period_close_order is null
+            and period_result_transfer_order is null
         )
         or
         (
             event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED')
             and account_code is null
             and posting_id is not null
-            and period_close_order is null
+            and period_result_transfer_order is null
         )
         or
         (
-            event_kind = 'PERIOD_CLOSED'
+            event_kind = 'PERIOD_RESULT_TRANSFERRED'
             and account_code is null
             and posting_id is null
-            and period_close_order is not null
+            and period_result_transfer_order is not null
         )
     )
 ) strict;
@@ -596,14 +607,14 @@ on journal_line (account_code, posting_id, line_order);
 create index if not exists audit_event_by_recorded_at
 on audit_event (recorded_at, audit_event_order);
 
-create index if not exists period_close_by_effective_date_to
-on period_close (effective_date_to desc, period_close_order desc);
+create index if not exists period_result_transfer_by_effective_date_to
+on period_result_transfer (effective_date_to desc, period_result_transfer_order desc);
 
-create index if not exists period_close_total_by_currency
-on period_close_total (currency_code, period_close_order);
+create index if not exists period_result_transfer_total_by_currency
+on period_result_transfer_total (currency_code, period_result_transfer_order);
 
-create index if not exists period_close_posting_by_posting_id
-on period_close_posting (posting_id, period_close_order);
+create index if not exists period_result_transfer_posting_by_posting_id
+on period_result_transfer_posting (posting_id, period_result_transfer_order);
 
 create unique index if not exists posting_fact_one_reversal_per_target
 on posting_fact (prior_posting_id)
@@ -657,18 +668,6 @@ begin
     select raise(fail, 'entity_profile rows are append-only.');
 end;
 
-create trigger if not exists book_policy_reject_update
-before update on book_policy
-begin
-    select raise(fail, 'book_policy rows are append-only.');
-end;
-
-create trigger if not exists book_policy_reject_delete
-before delete on book_policy
-begin
-    select raise(fail, 'book_policy rows are append-only.');
-end;
-
 create trigger if not exists audit_event_reject_update
 before update on audit_event
 begin
@@ -681,40 +680,40 @@ begin
     select raise(fail, 'audit_event rows are append-only.');
 end;
 
-create trigger if not exists period_close_reject_update
-before update on period_close
+create trigger if not exists period_result_transfer_reject_update
+before update on period_result_transfer
 begin
-    select raise(fail, 'period_close rows are append-only.');
+    select raise(fail, 'period_result_transfer rows are append-only.');
 end;
 
-create trigger if not exists period_close_reject_delete
-before delete on period_close
+create trigger if not exists period_result_transfer_reject_delete
+before delete on period_result_transfer
 begin
-    select raise(fail, 'period_close rows are append-only.');
+    select raise(fail, 'period_result_transfer rows are append-only.');
 end;
 
-create trigger if not exists period_close_total_reject_update
-before update on period_close_total
+create trigger if not exists period_result_transfer_total_reject_update
+before update on period_result_transfer_total
 begin
-    select raise(fail, 'period_close_total rows are append-only.');
+    select raise(fail, 'period_result_transfer_total rows are append-only.');
 end;
 
-create trigger if not exists period_close_total_reject_delete
-before delete on period_close_total
+create trigger if not exists period_result_transfer_total_reject_delete
+before delete on period_result_transfer_total
 begin
-    select raise(fail, 'period_close_total rows are append-only.');
+    select raise(fail, 'period_result_transfer_total rows are append-only.');
 end;
 
-create trigger if not exists period_close_posting_reject_update
-before update on period_close_posting
+create trigger if not exists period_result_transfer_posting_reject_update
+before update on period_result_transfer_posting
 begin
-    select raise(fail, 'period_close_posting rows are append-only.');
+    select raise(fail, 'period_result_transfer_posting rows are append-only.');
 end;
 
-create trigger if not exists period_close_posting_reject_delete
-before delete on period_close_posting
+create trigger if not exists period_result_transfer_posting_reject_delete
+before delete on period_result_transfer_posting
 begin
-    select raise(fail, 'period_close_posting rows are append-only.');
+    select raise(fail, 'period_result_transfer_posting rows are append-only.');
 end;
 ```
 
@@ -739,22 +738,13 @@ Columns:
 - `fiscal_year_start_day`: `integer not null check ( fiscal_year_start_day between 1 and 31 )`
 
 Table-level constraints:
-- `check ( date( printf( '2000-%02d-%02d', fiscal_year_start_month, fiscal_year_start_day ) ) is not null )`
+- `check ( ( fiscal_year_start_month in (1, 3, 5, 7, 8, 10, 12) and fiscal_year_start_day between 1 and 31 ) or ( fiscal_year_start_month in (4, 6, 9, 11) and fiscal_year_start_day between 1 and 30 ) or ( fiscal_year_start_month = 2 and fiscal_year_start_day between 1 and 29 ) )`
 
 ### `entity_profile`
 
 Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
 - `business_activity_tags`: `text not null`
-
-Table-level constraints:
-- `foreign key (singleton_id) references book_identity (singleton_id)`
-
-### `book_policy`
-
-Columns:
-- `singleton_id`: `integer primary key check (singleton_id = 1)`
-- `policy_profile`: `text not null check ( policy_profile in ('INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1') )`
 
 Table-level constraints:
 - `foreign key (singleton_id) references book_identity (singleton_id)`
@@ -768,25 +758,26 @@ Columns:
 - `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA'))`
 - `account_node_kind`: `text not null check (account_node_kind in ('HEADER', 'POSTABLE'))`
 - `parent_account_code`: `text references account (account_code)`
-- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'CONTRIBUTED_CAPITAL', 'DISTRIBUTIONS', 'ACCUMULATED_RESULT', 'RESERVE', 'OTHER_EQUITY' ) )`
-- `profit_and_loss_line_classification`: `text check ( profit_and_loss_line_classification is null or profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME', 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) )`
+- `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'RESULT_HOLDING', 'RESERVE', 'OTHER_EQUITY' ) )`
+- `profit_and_loss_line_classification`: `text check ( profit_and_loss_line_classification is null or profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME', 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'OTHER_EXPENSE' ) )`
 - `active`: `integer not null check (active in (0, 1))`
 - `declared_at`: `text not null`
 
 Table-level constraints:
 - `check ( parent_account_code is null or parent_account_code <> account_code )`
-- `check ( ( account_type = 'ASSET' and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET') and profit_and_loss_line_classification is null ) or ( account_type = 'LIABILITY' and financial_position_line_classification in ( 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'EQUITY' and financial_position_line_classification in ( 'CONTRIBUTED_CAPITAL', 'DISTRIBUTIONS', 'ACCUMULATED_RESULT', 'RESERVE', 'OTHER_EQUITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'REVENUE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME' ) ) or ( account_type = 'EXPENSE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'TAX_EXPENSE' ) ) )`
+- `check ( ( account_type = 'ASSET' and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET') and profit_and_loss_line_classification is null ) or ( account_type = 'LIABILITY' and financial_position_line_classification in ( 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'EQUITY' and financial_position_line_classification in ( 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'RESULT_HOLDING', 'RESERVE', 'OTHER_EQUITY' ) and profit_and_loss_line_classification is null ) or ( account_type = 'REVENUE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'OPERATING_REVENUE', 'OTHER_REVENUE', 'FINANCE_INCOME' ) ) or ( account_type = 'EXPENSE' and financial_position_line_classification is null and profit_and_loss_line_classification in ( 'COST_OF_SALES', 'OPERATING_EXPENSE', 'DEPRECIATION_AND_AMORTIZATION', 'FINANCE_EXPENSE', 'OTHER_EXPENSE' ) ) )`
 
 ### `posting_fact`
 
 Columns:
 - `posting_order`: `integer primary key`
 - `posting_id`: `text not null unique`
-- `posting_kind`: `text not null check ( posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_CLOSE') )`
+- `posting_kind`: `text not null check ( posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_RESULT_TRANSFER') )`
+- `posting_origin_kind`: `text not null check ( posting_origin_kind in ( 'CASH_REVENUE', 'CASH_EXPENSE', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'OPENING_BALANCE_ADJUSTMENT', 'CORRECTION_ADJUSTMENT', 'REVERSAL_ADJUSTMENT', 'PERIOD_RESULT_TRANSFER' ) )`
 - `effective_date`: `text not null`
 - `recorded_at`: `text not null`
 - `actor_id`: `text not null check (length(trim(actor_id)) > 0)`
-- `actor_type`: `text not null check (actor_type in ('HUMAN', 'SYSTEM', 'AGENT'))`
+- `actor_type`: `text not null check (actor_type in ('PERSON', 'SYSTEM', 'AGENT'))`
 - `command_id`: `text not null check (length(trim(command_id)) > 0)`
 - `idempotency_key`: `text not null check ( length(idempotency_key) between 1 and 128 and idempotency_key glob '[A-Za-z0-9]*' and idempotency_key not glob '*[^A-Za-z0-9._:/-]*' )`
 - `causation_id`: `text not null check (length(trim(causation_id)) > 0)`
@@ -825,7 +816,7 @@ Columns:
 - `approval_id`: `text not null check ( length(approval_id) between 1 and 255 and approval_id glob '[A-Za-z0-9]*' and approval_id not glob '*[^A-Za-z0-9._:/-]*' )`
 - `approval_type`: `text not null check ( length(approval_type) between 1 and 64 and approval_type glob '[A-Za-z0-9]*' and approval_type not glob '*[^A-Za-z0-9._:/-]*' )`
 - `approver_id`: `text not null check (length(trim(approver_id)) > 0)`
-- `approver_type`: `text not null check (approver_type in ('HUMAN', 'SYSTEM', 'AGENT'))`
+- `approver_type`: `text not null check (approver_type in ('PERSON', 'SYSTEM', 'AGENT'))`
 - `decision`: `text not null check (decision in ('APPROVED', 'REJECTED'))`
 - `approved_at`: `text not null`
 
@@ -849,10 +840,10 @@ Table-level constraints:
 - `foreign key (posting_id) references posting_fact (posting_id)`
 - `foreign key (account_code) references account (account_code)`
 
-### `period_close`
+### `period_result_transfer`
 
 Columns:
-- `period_close_order`: `integer primary key`
+- `period_result_transfer_order`: `integer primary key`
 - `effective_date_from`: `text not null`
 - `effective_date_to`: `text not null`
 - `closing_equity_account_code`: `text not null references account (account_code)`
@@ -861,27 +852,27 @@ Columns:
 Table-level constraints:
 - `check (effective_date_from <= effective_date_to)`
 
-### `period_close_total`
+### `period_result_transfer_total`
 
 Columns:
-- `period_close_order`: `integer not null`
+- `period_result_transfer_order`: `integer not null`
 - `currency_code`: `text not null check ( length(currency_code) = 3 and currency_code glob '[A-Z][A-Z][A-Z]' )`
 - `debit_total_minor`: `integer not null check (debit_total_minor >= 0)`
 - `credit_total_minor`: `integer not null check (credit_total_minor >= 0)`
 
 Table-level constraints:
-- `primary key (period_close_order, currency_code)`
-- `foreign key (period_close_order) references period_close (period_close_order)`
+- `primary key (period_result_transfer_order, currency_code)`
+- `foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order)`
 
-### `period_close_posting`
+### `period_result_transfer_posting`
 
 Columns:
-- `period_close_order`: `integer not null`
+- `period_result_transfer_order`: `integer not null`
 - `posting_id`: `text not null`
 
 Table-level constraints:
-- `primary key (period_close_order, posting_id)`
-- `foreign key (period_close_order) references period_close (period_close_order)`
+- `primary key (period_result_transfer_order, posting_id)`
+- `foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order)`
 - `foreign key (posting_id) references posting_fact (posting_id)`
 
 ### `audit_event`
@@ -889,16 +880,16 @@ Table-level constraints:
 Columns:
 - `audit_event_order`: `integer primary key`
 - `recorded_at`: `text not null check (length(trim(recorded_at)) > 0)`
-- `event_kind`: `text not null check ( event_kind in ( 'BOOK_OPENED', 'ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'POSTING_COMMITTED', 'POSTING_REVERSED', 'BOOK_REKEYED', 'BACKUP_CREATED', 'BACKUP_RESTORED', 'REKEY_ROLLBACK_RESTORED', 'REKEY_ROLLBACK_DELETED', 'BACKUP_CREATED_COMPENSATED', 'REKEY_ROLLBACK_DELETED_COMPENSATED', 'PERIOD_CLOSED' ) )`
+- `event_kind`: `text not null check ( event_kind in ( 'BOOK_OPENED', 'ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'POSTING_COMMITTED', 'POSTING_REVERSED', 'BOOK_REKEYED', 'BACKUP_CREATED', 'BACKUP_RESTORED', 'REKEY_ROLLBACK_RESTORED', 'REKEY_ROLLBACK_DELETED', 'BACKUP_CREATED_COMPENSATED', 'REKEY_ROLLBACK_DELETED_COMPENSATED', 'PERIOD_RESULT_TRANSFERRED' ) )`
 - `account_code`: `text`
 - `posting_id`: `text`
-- `period_close_order`: `integer`
+- `period_result_transfer_order`: `integer`
 
 Table-level constraints:
 - `foreign key (account_code) references account (account_code)`
 - `foreign key (posting_id) references posting_fact (posting_id)`
-- `foreign key (period_close_order) references period_close (period_close_order)`
-- `check ( ( event_kind in ( 'BOOK_OPENED', 'BOOK_REKEYED', 'BACKUP_CREATED', 'BACKUP_RESTORED', 'REKEY_ROLLBACK_RESTORED', 'REKEY_ROLLBACK_DELETED', 'BACKUP_CREATED_COMPENSATED', 'REKEY_ROLLBACK_DELETED_COMPENSATED' ) and account_code is null and posting_id is null and period_close_order is null ) or ( event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null and period_close_order is null ) or ( event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null and period_close_order is null ) or ( event_kind = 'PERIOD_CLOSED' and account_code is null and posting_id is null and period_close_order is not null ) )`
+- `foreign key (period_result_transfer_order) references period_result_transfer (period_result_transfer_order)`
+- `check ( ( event_kind in ( 'BOOK_OPENED', 'BOOK_REKEYED', 'BACKUP_CREATED', 'BACKUP_RESTORED', 'REKEY_ROLLBACK_RESTORED', 'REKEY_ROLLBACK_DELETED', 'BACKUP_CREATED_COMPENSATED', 'REKEY_ROLLBACK_DELETED_COMPENSATED' ) and account_code is null and posting_id is null and period_result_transfer_order is null ) or ( event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null and period_result_transfer_order is null ) or ( event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null and period_result_transfer_order is null ) or ( event_kind = 'PERIOD_RESULT_TRANSFERRED' and account_code is null and posting_id is null and period_result_transfer_order is not null ) )`
 
 ## Durable Indexes
 
@@ -906,9 +897,9 @@ Table-level constraints:
 - `posting_fact_by_effective_recorded_posting` on `posting_fact`: `create index if not exists posting_fact_by_effective_recorded_posting on posting_fact (effective_date desc, recorded_at desc, posting_id desc);`
 - `journal_line_by_account_code` on `journal_line`: `create index if not exists journal_line_by_account_code on journal_line (account_code, posting_id, line_order);`
 - `audit_event_by_recorded_at` on `audit_event`: `create index if not exists audit_event_by_recorded_at on audit_event (recorded_at, audit_event_order);`
-- `period_close_by_effective_date_to` on `period_close`: `create index if not exists period_close_by_effective_date_to on period_close (effective_date_to desc, period_close_order desc);`
-- `period_close_total_by_currency` on `period_close_total`: `create index if not exists period_close_total_by_currency on period_close_total (currency_code, period_close_order);`
-- `period_close_posting_by_posting_id` on `period_close_posting`: `create index if not exists period_close_posting_by_posting_id on period_close_posting (posting_id, period_close_order);`
+- `period_result_transfer_by_effective_date_to` on `period_result_transfer`: `create index if not exists period_result_transfer_by_effective_date_to on period_result_transfer (effective_date_to desc, period_result_transfer_order desc);`
+- `period_result_transfer_total_by_currency` on `period_result_transfer_total`: `create index if not exists period_result_transfer_total_by_currency on period_result_transfer_total (currency_code, period_result_transfer_order);`
+- `period_result_transfer_posting_by_posting_id` on `period_result_transfer_posting`: `create index if not exists period_result_transfer_posting_by_posting_id on period_result_transfer_posting (posting_id, period_result_transfer_order);`
 - `posting_fact_one_reversal_per_target` on `posting_fact`: `create unique index if not exists posting_fact_one_reversal_per_target on posting_fact (prior_posting_id) where prior_posting_id is not null;`
 
 ## Runtime Integrity Semantics
@@ -920,9 +911,9 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `14`
-- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `book_policy`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_close`, `period_close_total`, `period_close_posting`, `audit_event`
-- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_close_by_effective_date_to`, `period_close_total_by_currency`, `period_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
+- `user_version`: `20`
+- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_result_transfer`, `period_result_transfer_total`, `period_result_transfer_posting`, `audit_event`
+- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_result_transfer_by_effective_date_to`, `period_result_transfer_total_by_currency`, `period_result_transfer_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.
 - The current public line rejects non-matching book formats instead of upgrading them in place.

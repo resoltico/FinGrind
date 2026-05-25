@@ -30,11 +30,11 @@ class BookAdministrationRejectionTest {
             "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "closing-equity-account-candidate-missing",
-            "closing-equity-account-candidate-ambiguous",
-            "period-close-must-start-at",
-            "period-close-future-date",
-            "period-close-crosses-fiscal-year-boundary"),
+            "result-holding-account-candidate-missing",
+            "result-holding-account-candidate-ambiguous",
+            "period-result-transfer-must-start-at",
+            "period-result-transfer-future-date",
+            "period-result-transfer-crosses-fiscal-year-boundary"),
         List.of(
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.BookAlreadyInitialized()),
@@ -63,7 +63,7 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
-                        Optional.of(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                        Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                         Optional.empty()))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountMissing(
@@ -111,23 +111,23 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new dev.erst.fingrind.core.AccountCode("1100"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ClosingEquityAccountCandidateMissing(
-                    FinancialPositionLineClassification.ACCUMULATED_RESULT,
+                new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                    FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of(new dev.erst.fingrind.core.AccountCode("3000")))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ClosingEquityAccountCandidateAmbiguous(
+                new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
                     FinancialPositionLineClassification.OTHER_EQUITY,
                     List.of(
                         new dev.erst.fingrind.core.AccountCode("3000"),
                         new dev.erst.fingrind.core.AccountCode("3010")))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodCloseMustStartAt(
+                new BookAdministrationRejection.PeriodResultTransferMustStartAt(
                     java.time.LocalDate.parse("2026-04-01"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodCloseFutureDate(
+                new BookAdministrationRejection.PeriodResultTransferFutureDate(
                     java.time.LocalDate.parse("2026-04-02"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodCloseCrossesFiscalYearBoundary(
+                new BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
                     java.time.LocalDate.parse("2026-12-15"),
                     java.time.LocalDate.parse("2027-01-15"),
                     FiscalYearStart.parse("01-01")))));
@@ -150,11 +150,11 @@ class BookAdministrationRejectionTest {
             "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "closing-equity-account-candidate-missing",
-            "closing-equity-account-candidate-ambiguous",
-            "period-close-must-start-at",
-            "period-close-future-date",
-            "period-close-crosses-fiscal-year-boundary"),
+            "result-holding-account-candidate-missing",
+            "result-holding-account-candidate-ambiguous",
+            "period-result-transfer-must-start-at",
+            "period-result-transfer-future-date",
+            "period-result-transfer-crosses-fiscal-year-boundary"),
         BookAdministrationRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());

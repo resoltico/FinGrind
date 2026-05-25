@@ -447,9 +447,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                                                "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "functionalCurrency": "EUR",
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -468,10 +467,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                                                "businessActivityTags": null,
+                        "businessActivityTags": null,
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -506,10 +504,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                                                "businessActivityTags": "translation-services",
+                        "businessActivityTags": "translation-services",
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -528,10 +525,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                                                "businessActivityTags": ["translation-services", 2],
+                        "businessActivityTags": ["translation-services", 2],
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -565,10 +561,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                                                "businessActivityTags": [],
+                        "businessActivityTags": [],
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]
@@ -584,8 +579,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_rejectsMissingOpenBookPolicyFields() {
-    CliRequestReader missingPolicyProfileReader =
+  void readLedgerPlan_acceptsOpenBookWithoutRetiredPolicyProfile() {
+    CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
@@ -607,13 +602,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    CliRequestException missingPolicyProfileException =
-        assertThrows(
-            CliRequestException.class,
-            () -> missingPolicyProfileReader.readLedgerPlan(Path.of("-")));
-
-    assertEquals(
-        "Missing required field: policyProfile", missingPolicyProfileException.getMessage());
+    assertEquals("plan-1", requestReader.readLedgerPlan(Path.of("-")).planId().value());
   }
 
   @Test
@@ -634,8 +623,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                           "registrations": []
                         },
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01",
-                        "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                        "fiscalYearStart": "01-01"
                       }
                     }
                   ]

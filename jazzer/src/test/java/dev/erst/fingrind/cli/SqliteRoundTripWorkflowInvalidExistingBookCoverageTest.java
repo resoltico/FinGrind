@@ -38,7 +38,7 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                                 1,
                                 CliFuzzFixtures.fixedClock().instant(),
                                 CliFuzzFixtures.bookIdentity(),
-                                closeReadyInspection())),
+                                resultTransferReadyInspection())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         initializedInspection, "unexpectedly inspected as initialized");
@@ -123,10 +123,10 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                 null));
   }
 
-  private static BookInspection.CloseReadiness closeReadyInspection() {
-    return new BookInspection.CloseReadiness(
+  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
+    return new BookInspection.ResultTransferReadiness(
         true,
-        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
         new AccountCode("3200"),
         null,
         null,

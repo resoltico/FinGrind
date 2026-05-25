@@ -402,14 +402,19 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new BookInspection.Initialized(
-                1, 1, 1, nullOf(), ContractFixtures.bookIdentity(), closeReadyInspection()));
+                1,
+                1,
+                1,
+                nullOf(),
+                ContractFixtures.bookIdentity(),
+                resultTransferReadyInspection()));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
   }
 
-  private static BookInspection.CloseReadiness closeReadyInspection() {
-    return new BookInspection.CloseReadiness(
+  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
+    return new BookInspection.ResultTransferReadiness(
         true,
-        FinancialPositionLineClassification.CONTRIBUTED_CAPITAL,
+        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
         new AccountCode("3200"),
         null,
         null,
@@ -466,6 +471,7 @@ class BookQueryModelTest {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
         ContractFixtures.accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }

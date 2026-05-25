@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -43,15 +43,15 @@ Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/trial-balance-response.json](./examples/trial-balance-response.json): example JSON trial-balance response
 - [examples/account-ledger-response.json](./examples/account-ledger-response.json): example JSON account-ledger response
 - [examples/period-summary-response.json](./examples/period-summary-response.json): example JSON period-summary response
-- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt): example human-readable trial-balance output
+- [examples/trial-balance-text.txt](./examples/trial-balance-text.txt): example plain-language trial-balance output
 - [examples/account-ledger.csv](./examples/account-ledger.csv): example spreadsheet-ready account-ledger export
-- [examples/period-summary-human.txt](./examples/period-summary-human.txt): example human-readable period-summary output
+- [examples/period-summary-text.txt](./examples/period-summary-text.txt): example plain-language period-summary output
 
 Report PDF artifacts are intentionally not checked in under `docs/examples`; the release and smoke
 workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
-- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
+- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): exact `print-plan-template` scaffold capture
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal

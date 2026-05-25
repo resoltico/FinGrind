@@ -87,7 +87,7 @@ class LedgerPlanFuzzAssertionsTest {
                                 "1000",
                                 new CliFuzzHarnessTestSupport.RequestContext(
                                     "document-idem-assertion",
-                                    "invoice",
+                                    "cash-receipt",
                                     "2026-04-07",
                                     "agent-1",
                                     "AGENT",
@@ -641,7 +641,7 @@ class LedgerPlanFuzzAssertionsTest {
                         "1000",
                         new CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-query-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-04-07",
                             "agent-1",
                             "AGENT",
@@ -743,7 +743,7 @@ class LedgerPlanFuzzAssertionsTest {
                         "1000",
                         new CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-spectrum-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-04-07",
                             "agent-1",
                             "AGENT",
@@ -762,7 +762,7 @@ class LedgerPlanFuzzAssertionsTest {
                         "1000",
                         new CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-spectrum-2",
-                            "invoice",
+                            "cash-receipt",
                             "2026-04-07",
                             "agent-1",
                             "AGENT",
@@ -794,8 +794,7 @@ class LedgerPlanFuzzAssertionsTest {
           "entityName": "Acme Studio",
           "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01",
-          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+          "fiscalYearStart": "01-01"
         }
         """
         .formatted(functionalCurrency)

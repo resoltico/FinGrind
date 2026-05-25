@@ -107,7 +107,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
   }
 
   @Override
-  public Optional<LocalDate> closedThroughEffectiveDate() {
+  public Optional<LocalDate> transferredThroughEffectiveDate() {
     try {
       return SqliteStatementQueries.loadOptionalText(
               activeDatabase, SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE, statement -> {})

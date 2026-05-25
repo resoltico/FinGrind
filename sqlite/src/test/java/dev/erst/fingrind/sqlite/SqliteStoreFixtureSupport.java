@@ -328,6 +328,8 @@ class SqliteStoreFixtureSupport {
               """
               create table posting_fact (
                   posting_id text primary key,
+                  posting_kind text not null,
+                  posting_origin_kind text not null,
                   effective_date text not null,
                   recorded_at text not null,
                   actor_id text not null,
@@ -345,6 +347,8 @@ class SqliteStoreFixtureSupport {
               """
               insert into posting_fact (
                   posting_id,
+                  posting_kind,
+                  posting_origin_kind,
                   effective_date,
                   recorded_at,
                   actor_id,
@@ -358,6 +362,8 @@ class SqliteStoreFixtureSupport {
                   prior_posting_id
               ) values (
                   'posting-partial',
+                  'STANDARD',
+                  '%s',
                   '2026-04-07',
                   '2026-04-07T10:15:30Z',
                   'actor-1',
@@ -371,7 +377,9 @@ class SqliteStoreFixtureSupport {
                   null
               )
               """
-                  .formatted(SourceChannel.CLI.wireValue()));
+                  .formatted(
+                      dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue(),
+                      SourceChannel.CLI.wireValue()));
         });
   }
 
@@ -414,8 +422,7 @@ class SqliteStoreFixtureSupport {
       return;
     }
     if (tableExists(database, SqliteBookContract.BOOK_IDENTITY_TABLE)
-        && tableExists(database, SqliteBookContract.ENTITY_PROFILE_TABLE)
-        && tableExists(database, SqliteBookContract.BOOK_POLICY_TABLE)) {
+        && tableExists(database, SqliteBookContract.ENTITY_PROFILE_TABLE)) {
       SqliteMutationWriter.insertBookIdentity(
           database, SqlitePostingFactFixtureSupport.bookIdentity());
     }

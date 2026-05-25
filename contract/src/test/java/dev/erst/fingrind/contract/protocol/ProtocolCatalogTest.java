@@ -98,7 +98,7 @@ class ProtocolCatalogTest {
             "delete-rekey-rollback",
             "restore-rekey-rollback",
             "declare-account",
-            "close-period"),
+            "transfer-period-result"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
         List.of(
@@ -227,7 +227,6 @@ class ProtocolCatalogTest {
                 kernel.scope(),
                 List.of("statement-of-cash-flows"),
                 kernel.reportCapabilities(),
-                kernel.policyProfile(),
                 kernel.description()));
   }
 
@@ -244,8 +243,7 @@ class ProtocolCatalogTest {
     assertTrue(
         kernel.reportCapabilities().stream()
             .allMatch(reportCapability -> reportCapability.comparativeSupported()));
-    assertEquals("internal-management-single-entity-v1", kernel.policyProfile().profileId());
-    assertTrue(kernel.policyProfile().description().contains("cash-oriented"));
+    assertTrue(kernel.description().contains("cash-oriented"));
   }
 
   @Test
@@ -322,13 +320,14 @@ class ProtocolCatalogTest {
     assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
     assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
     assertEquals(
-        "[--output <json|human|csv>]",
+        "[--output <json|text|csv>]",
         ProtocolOptions.optionalOutputSyntax(
-            List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV)));
+            List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV)));
     assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
-    assertEquals("[--detail <compact|full>]", ProtocolOptions.optionalDiscoveryDetailSyntax());
     assertEquals(
-        "[--detail <compact|full> (json only)]",
+        "[--detail <minimal|compact|full>]", ProtocolOptions.optionalDiscoveryDetailSyntax());
+    assertEquals(
+        "[--detail <minimal|compact|full> (json only)]",
         ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
@@ -348,8 +347,8 @@ class ProtocolCatalogTest {
     assertTrue(
         executePlan.exampleSteps().stream().anyMatch(ProtocolExampleStep.Note.class::isInstance));
     assertEquals(
-        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV), trialBalance.outputModes());
-    assertTrue(trialBalance.options().contains("[--output <json|human|csv>]"));
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV), trialBalance.outputModes());
+    assertTrue(trialBalance.options().contains("[--output <json|text|csv>]"));
     assertTrue(trialBalance.options().contains("[--pdf-out <path>]"));
     assertEquals(1, trialBalance.artifactOutputs().size());
     assertEquals("pdf", trialBalance.artifactOutputs().getFirst().format());

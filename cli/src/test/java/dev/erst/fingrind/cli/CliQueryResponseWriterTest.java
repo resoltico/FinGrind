@@ -45,7 +45,7 @@ import tools.jackson.databind.JsonNode;
 /** Unit tests for {@link CliResponseWriter}. */
 class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
-  void writeQueryRejection_keepsJsonEnvelopeOutsideHumanMode() throws IOException {
+  void writeQueryRejection_keepsJsonEnvelopeOutsideTextMode() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeListAccountsResult(
@@ -57,19 +57,19 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeQueryRejection_supportsHumanOutput() {
+  void writeQueryRejection_supportsTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeListAccountsResult(
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-        OutputMode.HUMAN);
+        OutputMode.TEXT);
     String text = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(text.contains("Rejected"));
     assertTrue(text.contains("query-book-not-initialized"));
   }
 
   @Test
-  void queryRejectionWriter_coversJsonAndHumanBranches() throws IOException {
+  void queryRejectionWriter_coversJsonAndTextBranches() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
     CliEnvelopeJsonModels.RejectedEnvelope envelope =
@@ -80,7 +80,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             null,
             null,
             null);
-    outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);
+    outputChannel.writeQueryRejection(OutputMode.TEXT, envelope);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
     outputStream.reset();
     outputChannel.writeQueryRejection(OutputMode.JSON, envelope);
@@ -170,7 +170,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeQueryResults_supportHumanAndCsvOutputModes() {
+  void writeQueryResults_supportTextAndCsvOutputModes() {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
@@ -180,23 +180,18 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             Optional.of(LocalDate.parse("2026-04-30")),
             allPostingKinds(),
             List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
-    ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
+    ByteArrayOutputStream postingRegisterTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterTextOutput))
         .writeListPostingsResult(
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
-            OutputMode.HUMAN);
-    String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        postingRegisterHuman.contains(
-            "2026-04-07 | kind=Standard | role=Reversal | posting=posting-1"));
-    assertTrue(postingRegisterHuman.contains("Posting role     : Reversal"));
-    assertTrue(postingRegisterHuman.contains("Reverses posting : posting-0"));
-    assertTrue(
-        postingRegisterHuman.contains(
-            "Source documents : invoice document-idem-1 on 2026-04-07 at vault://fixtures/document-idem-1"));
-    assertTrue(postingRegisterHuman.contains("Approvals        : (none)"));
-    assertTrue(postingRegisterHuman.contains("10.00"));
-    assertTrue(postingRegisterHuman.contains("posting-1"));
+            OutputMode.TEXT);
+    String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(postingRegisterText.contains("Accounts"));
+    assertTrue(postingRegisterText.contains("Correction"));
+    assertTrue(postingRegisterText.contains("Reversal"));
+    assertTrue(postingRegisterText.contains("1000, 2000"));
+    assertTrue(postingRegisterText.contains("10.00"));
+    assertTrue(postingRegisterText.contains("posting-1"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
@@ -205,26 +200,25 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "effectiveDate,recordedAt,postingId,postingKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocuments,approvals"));
+            "effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
     assertTrue(
         postingRegisterCsv.contains(
-            "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,reversal,EUR,10.00,10.00"));
+            "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,EUR,10.00,10.00"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
-    assertTrue(postingRegisterCsv.contains("vault://fixtures/document-idem-1"));
-    assertTrue(postingRegisterCsv.contains("contentSha256"));
-    assertTrue(postingRegisterCsv.contains("[]"));
-    ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
+    assertTrue(postingRegisterCsv.contains("cash-receipt"));
+    assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));
+    ByteArrayOutputStream balanceTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(balanceTextOutput))
         .writeAccountBalanceResult(
-            new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.HUMAN);
-    String balanceHuman = balanceHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(balanceHuman.contains("Account"));
-    assertTrue(balanceHuman.contains("1000"));
-    assertTrue(balanceHuman.contains("Entity"));
-    assertTrue(balanceHuman.contains("Acme Studio"));
-    assertTrue(balanceHuman.contains("Debit total"));
-    assertTrue(balanceHuman.contains("10.00"));
-    assertTrue(balanceHuman.contains("6.00"));
+            new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.TEXT);
+    String balanceText = balanceTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(balanceText.contains("Account"));
+    assertTrue(balanceText.contains("1000"));
+    assertTrue(balanceText.contains("Book"));
+    assertTrue(balanceText.contains("Acme Studio"));
+    assertTrue(balanceText.contains("Debit total"));
+    assertTrue(balanceText.contains("10.00"));
+    assertTrue(balanceText.contains("6.00"));
     ByteArrayOutputStream balanceCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceCsvOutput))
         .writeAccountBalanceResult(
@@ -239,18 +233,17 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeQueryResults_renderApprovalEvidenceWhenPresent() {
+  void writeQueryResults_preserveApprovalEvidenceInCsvOutputWhenPresent() {
     PostingFact postingFact = postingFactWithApproval();
 
-    ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
+    ByteArrayOutputStream postingRegisterTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterTextOutput))
         .writeListPostingsResult(
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
-            OutputMode.HUMAN);
-    String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        postingRegisterHuman.contains(
-            "Approvals        : manager-signoff approval-idem-1 by HUMAN approver-approval-idem-1 APPROVED"));
+            OutputMode.TEXT);
+    String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
+    assertFalse(postingRegisterText.contains("Approvals"));
+    assertTrue(postingRegisterText.contains("1000, 2000"));
 
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
@@ -263,7 +256,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeTrialBalanceResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+  void writeTrialBalanceResult_supportJsonTextAndCsvOutputModes() throws IOException {
     TrialBalanceReport trialBalanceReport = sampleTrialBalanceReport();
     ByteArrayOutputStream trialBalanceJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceJsonOutput))
@@ -294,34 +287,35 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("minorUnits")
             .stringValue());
     assertFalse(trialBalanceJson.toString().contains("\"value\""));
-    ByteArrayOutputStream trialBalanceHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(trialBalanceHumanOutput))
+    ByteArrayOutputStream trialBalanceTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(trialBalanceTextOutput))
         .writeTrialBalanceResult(
-            new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.HUMAN);
-    String trialBalanceHuman = trialBalanceHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(trialBalanceHuman.contains("As of"));
-    assertTrue(trialBalanceHuman.contains("2026-04-30"));
-    assertTrue(trialBalanceHuman.contains("Account"));
-    assertTrue(trialBalanceHuman.contains("Balanced"));
-    assertTrue(trialBalanceHuman.contains("6.00"));
+            new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.TEXT);
+    String trialBalanceText = trialBalanceTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(trialBalanceText.contains("As of"));
+    assertTrue(trialBalanceText.contains("2026-04-30"));
+    assertTrue(trialBalanceText.contains("Account"));
+    assertTrue(trialBalanceText.contains("Balance state"));
+    assertTrue(trialBalanceText.contains("Imbalanced"));
+    assertTrue(trialBalanceText.contains("6.00"));
   }
 
   @Test
-  void writeAccountLedgerResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+  void writeAccountLedgerResult_supportJsonTextAndCsvOutputModes() throws IOException {
     AccountLedgerReport accountLedgerReport = sampleAccountLedgerReport();
 
-    ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(accountLedgerHumanOutput))
+    ByteArrayOutputStream accountLedgerTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(accountLedgerTextOutput))
         .writeAccountLedgerResult(
             new dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult.Reported(
                 accountLedgerReport),
-            OutputMode.HUMAN);
-    String accountLedgerHuman = accountLedgerHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(accountLedgerHuman.contains("Opening balances"));
-    assertTrue(accountLedgerHuman.contains("EUR 10.00 Debit"));
-    assertTrue(accountLedgerHuman.contains("Running balance"));
-    assertTrue(accountLedgerHuman.contains("Source documents"));
-    assertTrue(accountLedgerHuman.contains("posting-1"));
+            OutputMode.TEXT);
+    String accountLedgerText = accountLedgerTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(accountLedgerText.contains("Opening balances"));
+    assertTrue(accountLedgerText.contains("EUR 10.00 Debit"));
+    assertTrue(accountLedgerText.contains("Running"));
+    assertTrue(accountLedgerText.contains("Counterparts"));
+    assertTrue(accountLedgerText.contains("posting-1"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
         .writeAccountLedgerResult(
@@ -373,30 +367,28 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "recordKind,currencyCode,bucketDebitTotal,bucketCreditTotal,bucketNetAmount,bucketBalanceSide,postingId,postingKind,reversalState,reversalTarget,effectiveDate,recordedAt,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocuments,approvals"));
+            "rowKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
     assertTrue(
         accountLedgerCsv.contains(
-            "ledger-entry,EUR,,,,,posting-1,STANDARD,reversal,posting-0,2026-04-07,2026-04-07T10:15:30Z,10.00,0.00,10.00,DEBIT,2000"));
+            "entry,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,10.00,0.00,10.00,DEBIT,10.00,0.00,10.00,DEBIT,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,10.00,0.00,10.00,DEBIT,2000"));
     assertTrue(accountLedgerCsv.contains("document-idem-1"));
-    assertTrue(accountLedgerCsv.contains("vault://fixtures/document-idem-1"));
-    assertTrue(accountLedgerCsv.contains("contentSha256"));
-    assertTrue(accountLedgerCsv.contains("[]"));
+    assertTrue(accountLedgerCsv.contains(",document-idem-1,cash-receipt,,"));
   }
 
   @Test
-  void writePeriodSummaryResult_supportJsonHumanAndCsvOutputModes() throws IOException {
+  void writePeriodSummaryResult_supportJsonTextAndCsvOutputModes() throws IOException {
     PeriodSummaryReport periodSummaryReport = samplePeriodSummaryReport();
 
-    ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
+    ByteArrayOutputStream periodSummaryTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(periodSummaryTextOutput))
         .writePeriodSummaryResult(
             new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult.Reported(
                 periodSummaryReport),
-            OutputMode.HUMAN);
-    String periodSummaryHuman = periodSummaryHumanOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(periodSummaryHuman.contains("Posting count"));
-    assertTrue(periodSummaryHuman.contains("Posting line count"));
-    assertTrue(periodSummaryHuman.contains("10.00"));
+            OutputMode.TEXT);
+    String periodSummaryText = periodSummaryTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(periodSummaryText.contains("Posting count"));
+    assertTrue(periodSummaryText.contains("Posting line count"));
+    assertTrue(periodSummaryText.contains("10.00"));
     ByteArrayOutputStream periodSummaryJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryJsonOutput))
         .writePeriodSummaryResult(
@@ -425,10 +417,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         periodSummaryCsv.startsWith(
-            "recordKind,postingCount,postingLineCount,accountsTouched,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt"));
+            "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit"));
     assertTrue(
-        periodSummaryCsv.contains(
-            "account-activity,,,,EUR,10.00,4.00,6.00,DEBIT,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-07T10:15:30Z"));
+        periodSummaryCsv.contains("account-activity,account,1000,Cash,debitTotal,10.00,EUR,money"));
   }
 
   @Test
@@ -468,7 +459,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writePrimaryStatementResults_supportJsonHumanAndCsvOutputModes() throws IOException {
+  void writePrimaryStatementResults_supportJsonTextAndCsvOutputModes() throws IOException {
     ByteArrayOutputStream financialPositionJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(financialPositionJsonOutput))
         .writeFinancialPositionResult(
@@ -490,13 +481,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("lineCode")
             .stringValue());
 
-    ByteArrayOutputStream financialPositionHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(financialPositionHumanOutput))
+    ByteArrayOutputStream financialPositionTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(financialPositionTextOutput))
         .writeFinancialPositionResult(
             new FinancialPositionResult.Reported(CliFixtureSupport.sampleFinancialPositionReport()),
-            OutputMode.HUMAN);
+            OutputMode.TEXT);
     assertTrue(
-        financialPositionHumanOutput
+        financialPositionTextOutput
             .toString(StandardCharsets.UTF_8)
             .contains("Financial Position"));
 
@@ -531,13 +522,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("lineCode")
             .stringValue());
 
-    ByteArrayOutputStream incomeStatementHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(incomeStatementHumanOutput))
+    ByteArrayOutputStream incomeStatementTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(incomeStatementTextOutput))
         .writeIncomeStatementResult(
             new IncomeStatementResult.Reported(CliFixtureSupport.sampleIncomeStatementReport()),
-            OutputMode.HUMAN);
+            OutputMode.TEXT);
     assertTrue(
-        incomeStatementHumanOutput.toString(StandardCharsets.UTF_8).contains("Income Statement"));
+        incomeStatementTextOutput.toString(StandardCharsets.UTF_8).contains("Income Statement"));
 
     ByteArrayOutputStream incomeStatementCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementCsvOutput))
@@ -563,13 +554,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         "3200",
         changesInEquityJson.path("payload").path("rows").get(0).path("lineCode").stringValue());
 
-    ByteArrayOutputStream changesInEquityHumanOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(changesInEquityHumanOutput))
+    ByteArrayOutputStream changesInEquityTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(changesInEquityTextOutput))
         .writeChangesInEquityResult(
             new ChangesInEquityResult.Reported(CliFixtureSupport.sampleChangesInEquityReport()),
-            OutputMode.HUMAN);
+            OutputMode.TEXT);
     assertTrue(
-        changesInEquityHumanOutput.toString(StandardCharsets.UTF_8).contains("Changes In Equity"));
+        changesInEquityTextOutput.toString(StandardCharsets.UTF_8).contains("Changes In Equity"));
 
     ByteArrayOutputStream changesInEquityCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityCsvOutput))
@@ -580,7 +571,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,totalBasis,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -630,7 +621,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeIncomeStatementHuman_rendersNoneWhenNetIncomeTotalsAreAbsent() {
+  void writeIncomeStatementText_rendersNoneWhenNetIncomeTotalsAreAbsent() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(outputStream))
         .writeIncomeStatementResult(
@@ -646,14 +637,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                     List.of(),
                     CliFixtureSupport.sampleIncomeStatementReport().comparativeSections(),
                     List.of())),
-            OutputMode.HUMAN);
+            OutputMode.TEXT);
     String output = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(output.contains("Net income totals"));
     assertTrue(output.contains("(none)"));
   }
 
   @Test
-  void writePrimaryStatementRejections_supportJsonAndHumanOutput() throws IOException {
+  void writePrimaryStatementRejections_supportJsonAndTextOutput() throws IOException {
     ByteArrayOutputStream financialPositionOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(financialPositionOutput))
         .writeFinancialPositionResult(
@@ -665,7 +656,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     new CliResponseWriter(utf8PrintStream(incomeStatementOutput))
         .writeIncomeStatementResult(
             new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-            OutputMode.HUMAN);
+            OutputMode.TEXT);
     assertTrue(incomeStatementOutput.toString(StandardCharsets.UTF_8).contains("Rejected"));
 
     ByteArrayOutputStream changesInEquityOutput = new ByteArrayOutputStream();

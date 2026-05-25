@@ -9,21 +9,21 @@ public enum OutputMode implements WireValue {
   /** Canonical machine-readable JSON output. */
   JSON("json") {
     @Override
-    public void run(Runnable jsonAction, Runnable humanAction, Runnable csvAction) {
+    public void run(Runnable jsonAction, Runnable textAction, Runnable csvAction) {
       Objects.requireNonNull(jsonAction, "jsonAction").run();
     }
   },
-  /** Human-oriented fixed-width text output. */
-  HUMAN("human") {
+  /** Canonical operator-readable text output. */
+  TEXT("text") {
     @Override
-    public void run(Runnable jsonAction, Runnable humanAction, Runnable csvAction) {
-      Objects.requireNonNull(humanAction, "humanAction").run();
+    public void run(Runnable jsonAction, Runnable textAction, Runnable csvAction) {
+      Objects.requireNonNull(textAction, "textAction").run();
     }
   },
   /** Stable CSV table output for spreadsheet import. */
   CSV("csv") {
     @Override
-    public void run(Runnable jsonAction, Runnable humanAction, Runnable csvAction) {
+    public void run(Runnable jsonAction, Runnable textAction, Runnable csvAction) {
       Objects.requireNonNull(csvAction, "csvAction").run();
     }
   };
@@ -41,7 +41,7 @@ public enum OutputMode implements WireValue {
   }
 
   /** Runs one rendering branch without requiring downstream switch dispatch. */
-  public abstract void run(Runnable jsonAction, Runnable humanAction, Runnable csvAction);
+  public abstract void run(Runnable jsonAction, Runnable textAction, Runnable csvAction);
 
   /** Returns every stable output-mode wire value in declaration order. */
   public static List<String> wireValues() {

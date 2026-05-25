@@ -3,7 +3,6 @@ package dev.erst.fingrind.report.pdf;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -19,19 +18,18 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
 final class PdfValueFormatter {
-  private static final DateTimeFormatter HUMAN_INSTANT_FORMATTER =
+  private static final DateTimeFormatter TEXT_INSTANT_FORMATTER =
       DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
   private PdfValueFormatter() {}
 
   static String instant(Instant instant) {
-    return HUMAN_INSTANT_FORMATTER.format(instant);
+    return TEXT_INSTANT_FORMATTER.format(instant);
   }
 
   static String displayMoney(Money money) {
@@ -98,9 +96,9 @@ final class PdfValueFormatter {
       case NONCURRENT_ASSET -> "Non-current asset";
       case CURRENT_LIABILITY -> "Current liability";
       case NONCURRENT_LIABILITY -> "Non-current liability";
-      case CONTRIBUTED_CAPITAL -> "Contributed capital";
-      case DISTRIBUTIONS -> "Distributions";
-      case ACCUMULATED_RESULT -> "Accumulated result";
+      case EQUITY_CONTRIBUTION -> "Contributed capital";
+      case EQUITY_WITHDRAWAL -> "Distributions";
+      case RESULT_HOLDING -> "Accumulated result";
       case RESERVE -> "Reserve";
       case OTHER_EQUITY -> "Other equity";
     };
@@ -123,7 +121,7 @@ final class PdfValueFormatter {
       case OPERATING_EXPENSE -> "Operating expense";
       case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
       case FINANCE_EXPENSE -> "Finance expense";
-      case TAX_EXPENSE -> "Tax expense";
+      case OTHER_EXPENSE -> "Tax expense";
     };
   }
 
@@ -141,7 +139,7 @@ final class PdfValueFormatter {
   static String displayPostingCoverage(PostingCoverage postingCoverage) {
     return switch (postingCoverage) {
       case ALL_POSTING_KINDS -> "All posting kinds";
-      case NON_CLOSING_POSTINGS -> "Non-closing postings";
+      case NON_CLOSING_POSTINGS -> "Non-transfer postings";
     };
   }
 
@@ -151,10 +149,6 @@ final class PdfValueFormatter {
         : businessActivityTags.stream()
             .map(BusinessActivityTag::value)
             .collect(java.util.stream.Collectors.joining(", "));
-  }
-
-  static String displayPolicyProfile(AccountingPolicyProfile policyProfile) {
-    return wireLabel(policyProfile.wireValue());
   }
 
   static String optionalDate(@Nullable LocalDate date) {
@@ -192,14 +186,8 @@ final class PdfValueFormatter {
   static String displayPostingKind(PostingKind postingKind) {
     return switch (postingKind) {
       case STANDARD -> "Standard";
-      case PERIOD_CLOSE -> "Period close";
+      case PERIOD_RESULT_TRANSFER -> "Period result transfer";
       case OPENING_BALANCE -> "Opening balance";
     };
-  }
-
-  private static String wireLabel(String wireValue) {
-    return java.util.Arrays.stream(wireValue.split("_+"))
-        .map(token -> token.substring(0, 1) + token.substring(1).toLowerCase(Locale.ROOT))
-        .collect(java.util.stream.Collectors.joining(" "));
   }
 }

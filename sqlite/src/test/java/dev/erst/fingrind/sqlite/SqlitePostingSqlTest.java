@@ -143,8 +143,8 @@ class SqlitePostingSqlTest {
             new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
                 Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS));
 
-    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
-    assertTrue(nonClosingOnly.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
+    assertTrue(nonClosingOnly.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
     assertTrue(nonClosingOnly.contains(" and posting_fact.effective_date <= ?"));
   }
 
@@ -170,12 +170,13 @@ class SqlitePostingSqlTest {
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS);
 
-    assertFalse(unboundedAllPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertFalse(
+        unboundedAllPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
     assertFalse(queryWithoutEffectiveDateTo.contains("posting_fact.effective_date <= ?"));
 
-    assertTrue(toOnlyNonClosing.contains("posting_fact.posting_kind <> 'PERIOD_CLOSE'"));
+    assertTrue(toOnlyNonClosing.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
     assertFalse(toOnlyNonClosing.contains("posting_fact.effective_date >= ?"));
     assertTrue(toOnlyNonClosing.contains("posting_fact.effective_date <= ?"));
 

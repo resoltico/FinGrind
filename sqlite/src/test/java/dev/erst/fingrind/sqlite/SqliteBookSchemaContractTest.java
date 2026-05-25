@@ -798,8 +798,10 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void canonicalStrictSchema_rejectsClosedPeriodBackfillAndBrokenPeriodCloseLinks() {
-    Path invalidCloseTargetPath = tempDirectory.resolve("invalid-period-close-target.sqlite");
+  void
+      canonicalStrictSchema_rejectsTransferredPeriodResultBackfillAndBrokenPeriodResultTransferLinks() {
+    Path invalidCloseTargetPath =
+        tempDirectory.resolve("invalid-period-result-transfer-target.sqlite");
     assertDoesNotThrow(
         () ->
             withStandaloneDatabase(
@@ -816,8 +818,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                           () ->
                               database.executeStatement(
                                   """
-                                  insert into period_close (
-                                      period_close_order,
+                                  insert into period_result_transfer (
+                                      period_result_transfer_order,
                                       effective_date_from,
                                       effective_date_to,
                                       closing_equity_account_code,
@@ -835,11 +837,11 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", invalidCloseTarget.resultName());
                 }));
 
-    Path closedPeriodPath = tempDirectory.resolve("closed-period-backfill.sqlite");
+    Path transferredPeriodResultPath = tempDirectory.resolve("closed-period-backfill.sqlite");
     assertDoesNotThrow(
         () ->
             withStandaloneDatabase(
-                bookAccess(closedPeriodPath),
+                bookAccess(transferredPeriodResultPath),
                 database -> {
                   SqliteBookSchemaBootstrap.initializeBook(database);
                   insertCanonicalInitializedBookMetadata(database);
@@ -857,28 +859,28 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
                   insertPostingFactRow(
                       database,
-                      "posting-period-close",
-                      "PERIOD_CLOSE",
+                      "posting-period-result-transfer",
+                      "PERIOD_RESULT_TRANSFER",
                       "2026-04-30",
                       "2026-04-30T23:59:59Z",
                       new PostingFactSqlLiterals(
-                          "system:periodClose",
+                          "system:periodResultTransfer",
                           "SYSTEM",
-                          "periodClose:2026-04",
-                          "periodClose:2026-04",
-                          "periodClose:2026-04",
-                          "'periodClose:2026-04'",
+                          "periodResultTransfer:2026-04",
+                          "periodResultTransfer:2026-04",
+                          "periodResultTransfer:2026-04",
+                          "'periodResultTransfer:2026-04'",
                           "null",
                           SourceChannel.SYSTEM.wireValue(),
                           "null"));
                   insertJournalLineRow(
-                      database, "posting-period-close", 0, "4000", "DEBIT", "EUR", 1000);
+                      database, "posting-period-result-transfer", 0, "4000", "DEBIT", "EUR", 1000);
                   insertJournalLineRow(
-                      database, "posting-period-close", 1, "3000", "CREDIT", "EUR", 1000);
+                      database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
                   database.executeStatement(
                       """
-                      insert into period_close (
-                          period_close_order,
+                      insert into period_result_transfer (
+                          period_result_transfer_order,
                           effective_date_from,
                           effective_date_to,
                           closing_equity_account_code,
@@ -893,12 +895,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       """);
                   database.executeStatement(
                       """
-                      insert into period_close_posting (
-                          period_close_order,
+                      insert into period_result_transfer_posting (
+                          period_result_transfer_order,
                           posting_id
                       ) values (
                           1,
-                          'posting-period-close'
+                          'posting-period-result-transfer'
                       )
                       """);
                   insertPostingFactRow(
@@ -952,8 +954,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                           () ->
                               database.executeStatement(
                                   """
-                                  insert into period_close_posting (
-                                      period_close_order,
+                                  insert into period_result_transfer_posting (
+                                      period_result_transfer_order,
                                       posting_id
                                   ) values (
                                       1,
@@ -1079,13 +1081,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 SqliteBookContract.BOOK_META_TABLE,
                 SqliteBookContract.BOOK_IDENTITY_TABLE,
                 SqliteBookContract.ENTITY_PROFILE_TABLE,
-                SqliteBookContract.BOOK_POLICY_TABLE,
                 SqliteBookContract.ACCOUNT_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_TOTAL_TABLE,
-                SqliteBookContract.PERIOD_CLOSE_POSTING_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_TOTAL_TABLE,
+                SqliteBookContract.PERIOD_RESULT_TRANSFER_POSTING_TABLE,
                 SqliteBookContract.AUDIT_EVENT_TABLE));
     Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
     createPartialFinGrindBook(noMetaPath, false, SqliteBookContract.BOOK_META_TABLE);
@@ -1189,11 +1190,13 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       String effectiveDate,
       String recordedAt,
       PostingFactSqlLiterals sqlLiterals) {
+    String postingOriginKind = defaultPostingOriginKind(postingKind, sqlLiterals);
     database.executeStatement(
         """
         insert into posting_fact (
             posting_id,
             posting_kind,
+            posting_origin_kind,
             effective_date,
             recorded_at,
             actor_id,
@@ -1215,6 +1218,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             '%s',
             '%s',
             '%s',
+            '%s',
             %s,
             %s,
             '%s',
@@ -1224,6 +1228,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             .formatted(
                 postingId,
                 postingKind,
+                postingOriginKind,
                 effectiveDate,
                 recordedAt,
                 sqlLiterals.actorId(),
@@ -1235,6 +1240,25 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 sqlLiterals.reasonSqlLiteral(),
                 sqlLiterals.sourceChannel(),
                 sqlLiterals.priorPostingIdSqlLiteral()));
+  }
+
+  private static String defaultPostingOriginKind(
+      String postingKind, PostingFactSqlLiterals sqlLiterals) {
+    return switch (postingKind) {
+      case "OPENING_BALANCE" ->
+          dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT.wireValue();
+      case "PERIOD_RESULT_TRANSFER" ->
+          dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue();
+      default ->
+          isReversal(sqlLiterals)
+              ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue()
+              : dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue();
+    };
+  }
+
+  private static boolean isReversal(PostingFactSqlLiterals sqlLiterals) {
+    return !"null".equals(sqlLiterals.reasonSqlLiteral())
+        || !"null".equals(sqlLiterals.priorPostingIdSqlLiteral());
   }
 
   private record PostingFactSqlLiterals(

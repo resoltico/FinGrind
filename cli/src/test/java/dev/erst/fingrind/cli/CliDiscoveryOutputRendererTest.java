@@ -54,9 +54,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rendersFixedAndSelectableStdoutContractsAndEmptyQuickStart() {
+  void renderHelpText_rendersFixedAndSelectableStdoutContractsAndEmptyQuickStart() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -76,7 +76,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help"),
                     new CommandDescriptor(
@@ -118,9 +118,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rootHelpOmitsRuntimeSpecificQuickStartTitles() {
+  void renderHelpText_rootHelpOmitsRuntimeSpecificQuickStartTitles() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -140,7 +140,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help")),
                 List.of(
@@ -173,9 +173,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rendersNoneForAbsentQuickStartWorkflows() {
+  void renderHelpText_rendersNoneForAbsentQuickStartWorkflows() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -195,7 +195,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help"),
                     new CommandDescriptor(
@@ -205,7 +205,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show version")),
                 List.of(),
@@ -219,9 +219,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_groupsAllRootCommandCategories() {
+  void renderHelpText_groupsAllRootCommandCategories() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -239,7 +239,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         List.of(),
                         "Show help"),
                     new CommandDescriptor(
@@ -247,7 +247,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         List.of(),
                         "Open one book"),
                     new CommandDescriptor(
@@ -255,7 +255,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         List.of(),
                         "Read one trial balance"),
                     new CommandDescriptor(
@@ -263,7 +263,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         List.of(),
                         "Post one entry")),
                 List.of(),
@@ -283,9 +283,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_omitsGuidanceBlockWhenQuickStartHasOnlyExecutableSteps() {
+  void renderHelpText_omitsGuidanceBlockWhenQuickStartHasOnlyExecutableSteps() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -305,7 +305,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help")),
                 List.of(
@@ -326,7 +326,7 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_requestGuidance_omitsEmptyFieldGroups() {
+  void renderHelpText_requestGuidance_omitsEmptyFieldGroups() {
     HelpDescriptor canonical =
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
     ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlan =
@@ -366,68 +366,66 @@ class CliDiscoveryOutputRendererTest {
             canonical.preflight(),
             canonical.currencyModel());
 
-    String rendered = CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor);
+    String rendered = CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor);
 
     assertTrue(rendered.contains("Scaffold command"));
-    assertTrue(rendered.contains("Contract lookup"));
-    assertTrue(rendered.contains("Accepted value vocabularies:"));
-    assertTrue(rendered.contains("steps[].kind (administration)"));
-    assertTrue(rendered.contains("steps[].assertion.kind"));
+    assertTrue(rendered.contains("Machine schema"));
+    assertFalse(rendered.contains("Accepted value vocabularies:"));
+    assertFalse(rendered.contains("steps[].kind (administration)"));
+    assertFalse(rendered.contains("steps[].assertion.kind"));
     assertFalse(rendered.contains("Required fields:"));
     assertFalse(rendered.contains("Assertion fields:"));
   }
 
   @Test
-  void renderHelpHuman_rendersAcceptedValuesForRequestFileCommands() {
+  void renderHelpText_rendersAcceptedValuesForRequestFileCommands() {
     String postEntryRendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             MachineContract.help(identity(), environment(), OperationId.POST_ENTRY));
     String declareAccountRendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT));
 
-    assertTrue(postEntryRendered.contains("Accepted value vocabularies:"));
-    assertTrue(postEntryRendered.contains("entryKind"));
-    assertTrue(postEntryRendered.contains("lineSide"));
-    assertTrue(postEntryRendered.contains("DEBIT, CREDIT"));
-    assertTrue(postEntryRendered.contains("actorType"));
-    assertTrue(postEntryRendered.contains("HUMAN, SYSTEM, AGENT"));
+    assertTrue(postEntryRendered.contains("Machine schema"));
+    assertTrue(postEntryRendered.contains("post-entry --output json"));
+    assertFalse(postEntryRendered.contains("Accepted value vocabularies:"));
+    assertFalse(postEntryRendered.contains("DEBIT, CREDIT"));
+    assertFalse(postEntryRendered.contains("PERSON, SYSTEM, AGENT"));
 
-    assertTrue(declareAccountRendered.contains("Accepted value vocabularies:"));
-    assertTrue(declareAccountRendered.contains("accountType"));
-    assertTrue(declareAccountRendered.contains("accountRole"));
-    assertTrue(declareAccountRendered.contains("financialPositionLineClassification"));
-    assertTrue(declareAccountRendered.contains("profitAndLossLineClassification"));
-    assertTrue(
+    assertTrue(declareAccountRendered.contains("Machine schema"));
+    assertTrue(declareAccountRendered.contains("declare-account --output json"));
+    assertFalse(declareAccountRendered.contains("Accepted value vocabularies:"));
+    assertFalse(
         declareAccountRendered.contains("CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY"));
-    assertTrue(declareAccountRendered.contains("OPERATING_REVENUE, OTHER_REVENUE, FINANCE_INCOME"));
+    assertFalse(
+        declareAccountRendered.contains("OPERATING_REVENUE, OTHER_REVENUE, FINANCE_INCOME"));
   }
 
   @Test
-  void renderHelpHuman_rendersMaintenanceOperatorNotesAndCorrectedCloseExample() {
+  void renderHelpText_rendersMaintenanceOperatorNotesAndCorrectedCloseExample() {
     String keyHelp =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             MachineContract.help(identity(), environment(), OperationId.GENERATE_BOOK_KEY_FILE));
     String restoreHelp =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             MachineContract.help(identity(), environment(), OperationId.RESTORE_BOOK));
     String closeHelp =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
-            MachineContract.help(identity(), environment(), OperationId.CLOSE_PERIOD));
+        CliDiscoveryOutputRenderer.renderHelpText(
+            MachineContract.help(identity(), environment(), OperationId.TRANSFER_PERIOD_RESULT));
 
     assertTrue(keyHelp.contains("Choose one missing private parent directory"));
     assertTrue(
         restoreHelp.contains("reopen the restored live book with that same backup key file"));
-    assertTrue(closeHelp.contains("ACCUMULATED_RESULT"));
+    assertTrue(closeHelp.contains("RESULT_HOLDING"));
     assertTrue(closeHelp.contains("exactly one active and postable EQUITY account"));
     assertTrue(closeHelp.contains("2026-04-30"));
-    assertFalse(closeHelp.contains("--closing-equity-account"));
+    assertFalse(closeHelp.contains("--result-holding-account"));
   }
 
   @Test
-  void renderHelpHuman_rendersCommandScopedHelpWithUsageAndExamples() {
+  void renderHelpText_rendersCommandScopedHelpWithUsageAndExamples() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind post-entry --book-file <path>"),
@@ -447,7 +445,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Commit one posting request")),
                 List.of(),
@@ -458,13 +456,18 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Invocation"));
-    assertTrue(rendered.contains("Examples"));
-    assertTrue(rendered.contains("Output Contract"));
+    assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
-    assertTrue(rendered.contains("fingrind post-entry --book-file <path>"));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.POST_ENTRY) + " --book-file"));
+    assertTrue(rendered.contains("$ " + CliInvocationText.commandExample(OperationId.POST_ENTRY)));
+    assertTrue(rendered.contains("--request-file request.json"));
+    assertTrue(rendered.contains("\\\n"));
     assertTrue(rendered.contains("--book-file <path>"));
     assertTrue(rendered.contains("--request-file <path|->"));
+    assertFalse(rendered.contains("Output Contract"));
     assertTrue(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -473,11 +476,23 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rendersPreflightRequestGuidanceWithCommandScopedContractLookup() {
+  void renderHelpText_wrapsLongExamplesWithoutBreakingQuotedArguments() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            MachineContract.help(identity(), environment(), OperationId.OPEN_BOOK));
+
+    assertTrue(rendered.contains("$ " + CliInvocationText.commandExample(OperationId.OPEN_BOOK)));
+    assertTrue(rendered.contains("--entity-name \"Acme Studio\""));
+    assertTrue(rendered.contains("\\\n"));
+    assertFalse(rendered.contains("\"Acme \\\n"));
+  }
+
+  @Test
+  void renderHelpText_rendersPreflightRequestGuidanceWithCommandScopedContractLookup() {
     HelpDescriptor canonical =
         MachineContract.help(identity(), environment(), OperationId.PREFLIGHT_ENTRY);
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind preflight-entry --book-file <path> --request-file <path|->"),
@@ -490,7 +505,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Validate one posting request")),
                 List.of(),
@@ -512,9 +527,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rendersScopedHelpFallbackSectionsWhenMetadataIsAbsent() {
+  void renderHelpText_rendersScopedHelpFallbackSectionsWhenMetadataIsAbsent() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of(),
@@ -534,7 +549,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show version")),
                 List.of(),
@@ -543,22 +558,22 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Aliases"));
-    assertTrue(rendered.contains("--version"));
     assertTrue(rendered.contains("Invocation"));
     assertTrue(rendered.contains("Options"));
-    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("(none)"));
+    assertFalse(rendered.contains("--version"));
+    assertFalse(rendered.contains("Aliases"));
   }
 
   @Test
-  void renderHelpHuman_rendersDeclareAccountRequestGuidanceWithoutShortcutOrEnumVocabulary() {
+  void renderHelpText_rendersDeclareAccountRequestGuidanceWithoutShortcutOrEnumVocabulary() {
     HelpDescriptor canonical =
         MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT);
     ContractRequestShapes.RequestShapesDescriptor requestShapes =
         withoutDeclareAccountEnumVocabulary(Objects.requireNonNull(canonical.requestShapes()));
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind declare-account --request-file <path|->"),
@@ -571,7 +586,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Declare one account")),
                 List.of(),
@@ -581,10 +596,10 @@ class CliDiscoveryOutputRendererTest {
                 requestShapes));
 
     assertTrue(rendered.contains("Request Document"));
-    assertTrue(rendered.contains("Provide one JSON object through --request-file <path|->."));
+    assertTrue(rendered.contains("Provide one JSON object through --request-file <path|->"));
     assertTrue(rendered.contains("Scaffold command"));
     assertTrue(rendered.contains("declare-account"));
-    assertTrue(rendered.contains("Contract lookup"));
+    assertTrue(rendered.contains("Machine schema"));
     assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
     assertTrue(rendered.contains("declare-account --output json"));
     assertFalse(rendered.contains("Top-Level Fields"));
@@ -595,11 +610,11 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_rendersExecutePlanRequestGuidanceAndVocabulary() {
+  void renderHelpText_rendersExecutePlanRequestGuidanceAndVocabulary() {
     HelpDescriptor canonical =
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind execute-plan --request-file <path|->"),
@@ -612,7 +627,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Execute one ledger plan")),
                 List.of(),
@@ -622,11 +637,11 @@ class CliDiscoveryOutputRendererTest {
                 Objects.requireNonNull(canonical.requestShapes())));
 
     assertTrue(
-        rendered.contains("Provide one ledger plan JSON object through --request-file <path|->."));
+        rendered.contains("Provide one ledger plan JSON object through --request-file <path|->"));
     assertTrue(rendered.contains("Scaffold command"));
     assertTrue(
         rendered.contains(CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
-    assertTrue(rendered.contains("Contract lookup"));
+    assertTrue(rendered.contains("Machine schema"));
     assertTrue(rendered.contains(CliInvocationText.commandExample(OperationId.HELP)));
     assertTrue(rendered.contains("execute-plan"));
     assertTrue(rendered.contains("--output json"));
@@ -638,7 +653,7 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_omitsRequestGuidanceWhenScopedMetadataIsMissing() {
+  void renderHelpText_omitsRequestGuidanceWhenScopedMetadataIsMissing() {
     HelpDescriptor postEntryCanonical =
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
     HelpDescriptor declareCanonical =
@@ -647,7 +662,7 @@ class CliDiscoveryOutputRendererTest {
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
 
     String postEntryRendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
@@ -665,7 +680,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel()));
     String declareRendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -683,7 +698,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String executePlanRendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -707,7 +722,7 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_omitsRequestGuidanceWhenRequestShapesOrScopedShapeIsMissing() {
+  void renderHelpText_omitsRequestGuidanceWhenRequestShapesOrScopedShapeIsMissing() {
     HelpDescriptor postEntryCanonical =
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
     HelpDescriptor declareCanonical =
@@ -716,7 +731,7 @@ class CliDiscoveryOutputRendererTest {
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
 
     String postEntryWithoutPostShape =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
@@ -738,7 +753,7 @@ class CliDiscoveryOutputRendererTest {
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel()));
     String declareWithoutRequestShapes =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -756,7 +771,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String declareWithoutDeclareShape =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -778,7 +793,7 @@ class CliDiscoveryOutputRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String executePlanWithoutRequestShapes =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -796,7 +811,7 @@ class CliDiscoveryOutputRendererTest {
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel()));
     String executePlanWithoutLedgerShape =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -826,9 +841,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_treatsSingleCommandWithQuickStartAsGeneralHelp() {
+  void renderHelpText_treatsSingleCommandWithQuickStartAsGeneralHelp() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -848,7 +863,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help")),
                 List.of(
@@ -896,9 +911,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_frontDoorHelpOmitsQuickStartWorkflowNoteBodies() {
+  void renderHelpText_frontDoorHelpOmitsQuickStartWorkflowNoteBodies() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind help"),
@@ -918,7 +933,7 @@ class CliDiscoveryOutputRendererTest {
                         ExecutionMode.JSON_ENVELOPE,
                         List.of(
                             dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
                         List.of(),
                         "Show help")),
                 List.of(
@@ -935,10 +950,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderCapabilitiesHuman_rendersCommandGroupsContractsAndRequestInput() {
+  void renderCapabilitiesText_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
-            MachineContract.capabilities(identity()));
+        CliDiscoveryOutputRenderer.renderCapabilitiesText(MachineContract.capabilities(identity()));
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Machine Surfaces"));
@@ -954,7 +968,7 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderCapabilitiesHuman_rendersSharedSelectableDefaultsAsOneValue() {
+  void renderCapabilitiesText_rendersSharedSelectableDefaultsAsOneValue() {
     CapabilitiesDescriptor canonical = MachineContract.capabilities(identity());
     CapabilitiesDescriptor customized =
         new CapabilitiesDescriptor(
@@ -968,7 +982,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON),
                         List.of(),
                         "Show help")),
@@ -986,7 +1000,7 @@ class CliDiscoveryOutputRendererTest {
             canonical.currencyModel(),
             canonical.bookkeepingKernel());
 
-    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(customized);
+    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
 
     assertTrue(rendered.contains("help"));
     assertTrue(rendered.contains("Shared CLI Contract"));
@@ -995,9 +1009,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderHelpHuman_commandHelpRendersArtifactOutputsAndCollapsedSelectableDefaults() {
+  void renderHelpText_commandHelpRendersArtifactOutputsAndCollapsedSelectableDefaults() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpHuman(
+        CliDiscoveryOutputRenderer.renderHelpText(
             helpDescriptor(
                 identity(),
                 List.of("fingrind trial-balance --output json --pdf-out report.pdf"),
@@ -1013,9 +1027,9 @@ class CliDiscoveryOutputRendererTest {
                     new CommandDescriptor(
                         OperationId.TRIAL_BALANCE,
                         List.of(),
-                        List.of("--output <json|human>", "--pdf-out <path>"),
+                        List.of("--output <json|text>", "--pdf-out <path>"),
                         ExecutionMode.JSON_ENVELOPE,
-                        List.of(OutputMode.JSON, OutputMode.HUMAN),
+                        List.of(OutputMode.JSON, OutputMode.TEXT),
                         new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON),
                         List.of(
                             new ArtifactOutputDescriptor(
@@ -1027,16 +1041,17 @@ class CliDiscoveryOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Artifact outputs"));
-    assertTrue(rendered.contains("pdf via --pdf-out <path>"));
-    assertTrue(rendered.contains("Selectable defaults"));
+    assertTrue(rendered.contains("Quick Start"));
+    assertTrue(rendered.contains("--pdf-out <path>"));
+    assertFalse(rendered.contains("Artifact outputs"));
+    assertFalse(rendered.contains("Selectable defaults"));
     assertFalse(rendered.contains("json interactive / json redirected"));
   }
 
   @Test
-  void renderCapabilitiesHuman_omitsBookkeepingKernelDoctrineFromHumanSurface() {
+  void renderCapabilitiesText_omitsBookkeepingKernelDoctrineFromTextSurface() {
     var canonical = MachineContract.capabilities(identity());
-    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesHuman(canonical);
+    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(canonical);
 
     assertFalse(rendered.contains(canonical.bookkeepingKernel().scope()));
     assertFalse(rendered.contains(canonical.bookkeepingKernel().description()));
@@ -1045,9 +1060,9 @@ class CliDiscoveryOutputRendererTest {
   }
 
   @Test
-  void renderEnvironmentHuman_coversExplicitRuntimeStateFamilies() {
+  void renderEnvironmentText_coversExplicitRuntimeStateFamilies() {
     String readyRendered =
-        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
             environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.ReadyRuntime(
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
@@ -1057,7 +1072,7 @@ class CliDiscoveryOutputRendererTest {
                     ProtocolCatalog.requiredSqlite3mcVersion(),
                     ProtocolCatalog.requiredSqliteSourceId())));
     String failedRendered =
-        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
             environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.FailedRuntime(
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
@@ -1065,7 +1080,7 @@ class CliDiscoveryOutputRendererTest {
                     "<redacted>/libsqlite3.dylib",
                     "load failed")));
     String incompatibleRendered =
-        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
             environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.FAILED,
@@ -1077,50 +1092,44 @@ class CliDiscoveryOutputRendererTest {
                     "source-id",
                     "compile options mismatch")));
     String unavailableRendered =
-        CliDiscoveryOutputRenderer.renderEnvironmentHuman(
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
             environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.UnavailableRuntime("no SQLite runtime available")));
 
-    assertTrue(readyRendered.contains("Runtime provenance"));
-    assertTrue(readyRendered.contains("bundle-managed"));
-    assertTrue(readyRendered.contains("publisher-authenticated"));
-    assertTrue(readyRendered.contains("<redacted>/libsqlite3.dylib"));
+    assertTrue(readyRendered.contains("Runtime"));
+    assertTrue(readyRendered.contains("self-contained-bundle"));
+    assertTrue(readyRendered.contains("Full inventory"));
     assertTrue(readyRendered.contains("Issue"));
     assertTrue(readyRendered.contains("(none)"));
 
     assertTrue(failedRendered.contains("Runtime status"));
     assertTrue(failedRendered.contains("failed"));
-    assertTrue(failedRendered.contains("source-checkout-managed"));
-    assertTrue(failedRendered.contains("source-verified-local-build"));
     assertTrue(failedRendered.contains("load failed"));
-    assertTrue(failedRendered.contains("Loaded SQLite version"));
+    assertTrue(failedRendered.contains("SQLite"));
     assertTrue(failedRendered.contains("(none)"));
 
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
-    assertTrue(incompatibleRendered.contains("source-checkout-managed"));
-    assertTrue(incompatibleRendered.contains("source-verified-local-build"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
     assertTrue(incompatibleRendered.contains("3.53.1"));
     assertTrue(incompatibleRendered.contains("2.3.4"));
-    assertTrue(incompatibleRendered.contains("source-id"));
+    assertFalse(incompatibleRendered.contains("source-id"));
 
     assertTrue(unavailableRendered.contains("Runtime status"));
     assertTrue(unavailableRendered.contains("unavailable"));
-    assertTrue(unavailableRendered.contains("Runtime provenance"));
-    assertTrue(unavailableRendered.contains("Runtime trust basis"));
+    assertTrue(unavailableRendered.contains("Full inventory"));
     assertTrue(unavailableRendered.contains("no SQLite runtime available"));
     assertTrue(unavailableRendered.contains("(none)"));
   }
 
   @Test
-  void renderVersionHuman_rendersTitleAndKeyValues() {
+  void renderVersionText_rendersTitleAndKeyValues() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderVersionHuman(MachineContract.version(identity()));
+        CliDiscoveryOutputRenderer.renderVersionText(MachineContract.version(identity()));
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.45.0"));
+    assertTrue(rendered.contains("0.46.0"));
   }
 
   private static HelpDescriptor helpDescriptor(
@@ -1191,7 +1200,7 @@ class CliDiscoveryOutputRendererTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.45.0",
+        "0.46.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

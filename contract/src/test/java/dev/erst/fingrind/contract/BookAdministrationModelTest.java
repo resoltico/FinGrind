@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -114,7 +113,6 @@ class BookAdministrationModelTest {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), businessActivityTags),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 }

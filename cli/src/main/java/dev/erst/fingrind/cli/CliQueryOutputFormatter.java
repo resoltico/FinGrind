@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -17,6 +18,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.StatementLineKind;
@@ -27,22 +29,19 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
-/** Shared row and text helpers for query/report human and CSV renderers. */
+/** Shared row and text helpers for query/report text and CSV renderers. */
 final class CliQueryOutputFormatter {
   private CliQueryOutputFormatter() {}
 
-  static List<String> postingRegisterHumanRow(PostingFact postingFact) {
+  static List<String> postingRegisterTextRow(PostingFact postingFact) {
     return List.of(
         postingFact.journalEntry().effectiveDate().toString(),
-        CliHumanDisplay.instant(postingFact.provenance().recordedAt()),
-        postingFact.postingId().value(),
-        displayPostingKind(postingFact.postingKind()),
-        displayPostingRoleHuman(postingFact),
-        postingCurrency(postingFact),
+        displayPostingOriginKind(postingFact.postingOriginKind()),
+        displayPostingRoleText(postingFact),
         postingDebitTotal(postingFact),
         postingCreditTotal(postingFact),
         postingAccounts(postingFact),
-        reversalTargetHuman(postingFact));
+        postingFact.postingId().value());
   }
 
   static List<String> postingRegisterCsvRow(PostingFact postingFact) {
@@ -51,17 +50,20 @@ final class CliQueryOutputFormatter {
         postingFact.provenance().recordedAt().toString(),
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
         reversalStateWireValue(postingFact),
         postingCurrency(postingFact),
         postingDebitTotal(postingFact),
         postingCreditTotal(postingFact),
         postingAccounts(postingFact),
         reversalTargetCsv(postingFact),
-        postingSourceDocumentsCsv(postingFact),
-        postingApprovalsCsv(postingFact));
+        postingSourceDocumentIdsCsv(postingFact),
+        postingSourceDocumentTypesCsv(postingFact),
+        postingApprovalIdsCsv(postingFact),
+        postingApprovalDecisionsCsv(postingFact));
   }
 
-  static List<String> balanceHumanRow(CurrencyBalance balance) {
+  static List<String> balanceTextRow(CurrencyBalance balance) {
     return List.of(
         balance.netAmount().currencyUnit().code(),
         displayMoney(balance.debitTotal()),
@@ -79,21 +81,6 @@ final class CliQueryOutputFormatter {
         balance.balanceSide().wireValue());
   }
 
-  static List<String> trialBalanceHumanRow(TrialBalanceRow row) {
-    return List.of(
-        row.account().accountCode().value(),
-        row.account().accountName().value(),
-        displayLineTypeLabel(row.account().accountType()),
-        displayAccountRoleLabel(row.account().accountRole()),
-        displayNormalBalanceLabel(row.account().normalBalance()),
-        displayBooleanLabel(row.account().active()),
-        row.balance().netAmount().currencyUnit().code(),
-        displayMoney(row.balance().debitTotal()),
-        displayMoney(row.balance().creditTotal()),
-        displayMoney(row.balance().netAmount()),
-        displayBalanceSideLabel(row.balance().balanceSide()));
-  }
-
   static List<String> trialBalanceCsvRow(TrialBalanceRow row) {
     return List.of(
         row.account().accountCode().value(),
@@ -109,20 +96,17 @@ final class CliQueryOutputFormatter {
         row.balance().balanceSide().wireValue());
   }
 
-  static List<String> accountLedgerHumanRow(DeclaredAccount account, AccountLedgerEntry entry) {
+  static List<String> accountLedgerTextRow(DeclaredAccount account, AccountLedgerEntry entry) {
     return List.of(
         entry.postingFact().journalEntry().effectiveDate().toString(),
-        CliHumanDisplay.instant(entry.postingFact().provenance().recordedAt()),
-        entry.postingFact().postingId().value(),
-        displayPostingKind(entry.postingFact().postingKind()),
-        displayPostingRoleHuman(entry.postingFact()),
-        reversalTargetHuman(entry.postingFact()),
-        entry.movement().netAmount().currencyUnit().code(),
+        displayPostingOriginKind(entry.postingFact().postingOriginKind()),
         displayMoney(entry.movement().debitTotal()),
         displayMoney(entry.movement().creditTotal()),
-        displayMoney(entry.runningNetAmount()),
-        displayBalanceSideLabel(entry.runningBalanceSide()),
-        counterpartAccounts(account, entry.postingFact()));
+        displayMoney(entry.runningNetAmount())
+            + " "
+            + displayBalanceSideLabel(entry.runningBalanceSide()),
+        counterpartAccounts(account, entry.postingFact()),
+        entry.postingFact().postingId().value());
   }
 
   static List<String> accountLedgerCsvRow(DeclaredAccount account, AccountLedgerEntry entry) {
@@ -139,20 +123,6 @@ final class CliQueryOutputFormatter {
         displayMoney(entry.runningNetAmount()),
         entry.runningBalanceSide().wireValue(),
         counterpartAccounts(account, entry.postingFact()));
-  }
-
-  static List<String> periodActivityHumanRow(PeriodAccountActivityRow row) {
-    return List.of(
-        row.account().accountCode().value(),
-        row.account().accountName().value(),
-        displayLineTypeLabel(row.account().accountType()),
-        displayAccountRoleLabel(row.account().accountRole()),
-        displayNormalBalanceLabel(row.account().normalBalance()),
-        row.movement().netAmount().currencyUnit().code(),
-        displayMoney(row.movement().debitTotal()),
-        displayMoney(row.movement().creditTotal()),
-        displayMoney(row.movement().netAmount()),
-        displayBalanceSideLabel(row.movement().balanceSide()));
   }
 
   static List<String> periodActivityCsvRow(PeriodAccountActivityRow row) {
@@ -180,41 +150,46 @@ final class CliQueryOutputFormatter {
     return counterparts.isEmpty() ? "(self)" : CliTextFormat.joined(counterparts);
   }
 
-  static String postingSourceDocumentsHuman(PostingFact postingFact) {
+  static String postingSourceDocumentsText(PostingFact postingFact) {
     return sourceDocumentLabels(postingFact.evidence());
   }
 
-  static String postingApprovalsHuman(PostingFact postingFact) {
-    return approvalLabels(postingFact.evidence());
-  }
-
-  static String postingSourceDocumentsCsv(PostingFact postingFact) {
-    return evidenceJson(
+  static String postingSourceDocumentIdsText(PostingFact postingFact) {
+    return CliTextFormat.joined(
         postingFact.evidence().sourceDocuments().stream()
-            .map(
-                sourceDocument ->
-                    new SourceDocumentCsvValue(
-                        sourceDocument.sourceDocumentId().value(),
-                        sourceDocument.sourceDocumentType().value(),
-                        sourceDocument.documentDate().toString(),
-                        sourceDocument.capturedAt().toString(),
-                        sourceDocument.storageLocator().value(),
-                        sourceDocument.contentSha256().value()))
+            .map(sourceDocument -> sourceDocument.sourceDocumentId().value())
             .toList());
   }
 
-  static String postingApprovalsCsv(PostingFact postingFact) {
-    return evidenceJson(
+  static String postingApprovalsText(PostingFact postingFact) {
+    return approvalLabels(postingFact.evidence());
+  }
+
+  static String postingSourceDocumentIdsCsv(PostingFact postingFact) {
+    return csvCellList(
+        postingFact.evidence().sourceDocuments().stream()
+            .map(sourceDocument -> sourceDocument.sourceDocumentId().value())
+            .toList());
+  }
+
+  static String postingSourceDocumentTypesCsv(PostingFact postingFact) {
+    return csvCellList(
+        postingFact.evidence().sourceDocuments().stream()
+            .map(sourceDocument -> sourceDocument.sourceDocumentType().value())
+            .toList());
+  }
+
+  static String postingApprovalIdsCsv(PostingFact postingFact) {
+    return csvCellList(
         postingFact.evidence().approvals().stream()
-            .map(
-                approval ->
-                    new ApprovalCsvValue(
-                        approval.approvalId().value(),
-                        approval.approvalType().value(),
-                        approval.approverId().value(),
-                        approval.approverType().wireValue(),
-                        approval.decision().wireValue(),
-                        approval.approvedAt().toString()))
+            .map(approval -> approval.approvalId().value())
+            .toList());
+  }
+
+  static String postingApprovalDecisionsCsv(PostingFact postingFact) {
+    return csvCellList(
+        postingFact.evidence().approvals().stream()
+            .map(approval -> approval.decision().wireValue())
             .toList());
   }
 
@@ -223,7 +198,7 @@ final class CliQueryOutputFormatter {
       return "(none)";
     }
     return balances.stream()
-        .map(CliQueryOutputFormatter::displayBalanceHuman)
+        .map(CliQueryOutputFormatter::displayBalanceText)
         .collect(Collectors.joining(", "));
   }
 
@@ -264,25 +239,9 @@ final class CliQueryOutputFormatter {
         + approval.decision().wireValue();
   }
 
-  private static String evidenceJson(List<?> values) {
-    return CliWireJson.jsonText(values);
+  private static String csvCellList(List<String> values) {
+    return values.isEmpty() ? "" : String.join("; ", values);
   }
-
-  private record SourceDocumentCsvValue(
-      String sourceDocumentId,
-      String sourceDocumentType,
-      String documentDate,
-      String capturedAt,
-      String storageLocator,
-      String contentSha256) {}
-
-  private record ApprovalCsvValue(
-      String approvalId,
-      String approvalType,
-      String approverId,
-      String approverType,
-      String decision,
-      String approvedAt) {}
 
   static String displayBalance(CurrencyBalance balance) {
     return balance.netAmount().currencyUnit().code()
@@ -292,7 +251,7 @@ final class CliQueryOutputFormatter {
         + balance.balanceSide().wireValue();
   }
 
-  static String displayBalanceHuman(CurrencyBalance balance) {
+  static String displayBalanceText(CurrencyBalance balance) {
     return balance.netAmount().currencyUnit().code()
         + " "
         + displayMoney(balance.netAmount())
@@ -304,8 +263,12 @@ final class CliQueryOutputFormatter {
     return switch (balanceSide) {
       case DEBIT -> "Debit";
       case CREDIT -> "Credit";
-      case ZERO -> "Balanced";
+      case ZERO -> "Zero";
     };
+  }
+
+  static String displayBalanceStateLabel(boolean balanced) {
+    return balanced ? "Balanced" : "Imbalanced";
   }
 
   static String displayAccountTypeSectionLabel(AccountType accountType) {
@@ -353,6 +316,13 @@ final class CliQueryOutputFormatter {
     };
   }
 
+  static String displayAccountNodeKindLabel(AccountNodeKind nodeKind) {
+    return switch (nodeKind) {
+      case HEADER -> "Header";
+      case POSTABLE -> "Postable";
+    };
+  }
+
   static String displayFinancialPositionLineClassification(
       FinancialPositionLineClassification lineClassification) {
     return switch (lineClassification) {
@@ -360,9 +330,9 @@ final class CliQueryOutputFormatter {
       case NONCURRENT_ASSET -> "Non-current asset";
       case CURRENT_LIABILITY -> "Current liability";
       case NONCURRENT_LIABILITY -> "Non-current liability";
-      case CONTRIBUTED_CAPITAL -> "Contributed capital";
-      case DISTRIBUTIONS -> "Distributions";
-      case ACCUMULATED_RESULT -> "Accumulated result";
+      case EQUITY_CONTRIBUTION -> "Contributed capital";
+      case EQUITY_WITHDRAWAL -> "Distributions";
+      case RESULT_HOLDING -> "Accumulated result";
       case RESERVE -> "Reserve";
       case OTHER_EQUITY -> "Other equity";
     };
@@ -385,7 +355,7 @@ final class CliQueryOutputFormatter {
       case OPERATING_EXPENSE -> "Operating expense";
       case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
       case FINANCE_EXPENSE -> "Finance expense";
-      case TAX_EXPENSE -> "Tax expense";
+      case OTHER_EXPENSE -> "Other expense";
     };
   }
 
@@ -399,19 +369,32 @@ final class CliQueryOutputFormatter {
   static String displayPostingCoverage(PostingCoverage postingCoverage) {
     return switch (postingCoverage) {
       case ALL_POSTING_KINDS -> "All posting kinds";
-      case NON_CLOSING_POSTINGS -> "Non-closing postings";
+      case NON_CLOSING_POSTINGS -> "Non-transfer postings";
     };
   }
 
   static String displayPostingKind(PostingKind postingKind) {
     return switch (postingKind) {
       case STANDARD -> "Standard";
-      case PERIOD_CLOSE -> "Period close";
+      case PERIOD_RESULT_TRANSFER -> "Period result transfer";
       case OPENING_BALANCE -> "Opening balance";
     };
   }
 
-  static String displayPostingRoleHuman(PostingFact postingFact) {
+  static String displayPostingOriginKind(PostingOriginKind postingOriginKind) {
+    return switch (postingOriginKind) {
+      case CASH_REVENUE -> "Cash revenue";
+      case CASH_EXPENSE -> "Cash expense";
+      case EQUITY_CONTRIBUTION -> "Equity contribution";
+      case EQUITY_WITHDRAWAL -> "Equity withdrawal";
+      case OPENING_BALANCE_ADJUSTMENT -> "Opening balance";
+      case CORRECTION_ADJUSTMENT -> "Correction";
+      case REVERSAL_ADJUSTMENT -> "Reversal adjustment";
+      case PERIOD_RESULT_TRANSFER -> "Result transfer";
+    };
+  }
+
+  static String displayPostingRoleText(PostingFact postingFact) {
     return postingFact.reversalReference().isPresent() ? "Reversal" : "Direct";
   }
 
@@ -419,7 +402,7 @@ final class CliQueryOutputFormatter {
     return postingFact.reversalReference().isPresent() ? "reversal" : "direct";
   }
 
-  static String reversalTargetHuman(PostingFact postingFact) {
+  static String reversalTargetText(PostingFact postingFact) {
     return postingFact
         .reversalReference()
         .map(reference -> reference.priorPostingId().value())
@@ -433,22 +416,6 @@ final class CliQueryOutputFormatter {
         .orElse("");
   }
 
-  static String postingCurrencyHuman(PostingFact postingFact) {
-    return postingCurrency(postingFact);
-  }
-
-  static String postingDebitTotalHuman(PostingFact postingFact) {
-    return postingDebitTotal(postingFact);
-  }
-
-  static String postingCreditTotalHuman(PostingFact postingFact) {
-    return postingCreditTotal(postingFact);
-  }
-
-  static String postingAccountsHuman(PostingFact postingFact) {
-    return postingAccounts(postingFact);
-  }
-
   static String lowerDateBoundaryMeaning(@Nullable LocalDate effectiveDateFrom) {
     return effectiveDateFrom == null ? "book-start" : "selected-date";
   }
@@ -458,11 +425,11 @@ final class CliQueryOutputFormatter {
   }
 
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {
-    return CliHumanDisplay.lowerDateBoundary(effectiveDateFrom);
+    return CliTextDisplay.lowerDateBoundary(effectiveDateFrom);
   }
 
   static String upperDateBoundaryLabel(@Nullable LocalDate effectiveDateTo) {
-    return CliHumanDisplay.upperDateBoundary(effectiveDateTo);
+    return CliTextDisplay.upperDateBoundary(effectiveDateTo);
   }
 
   static String displayBooleanLabel(boolean value) {
@@ -475,11 +442,11 @@ final class CliQueryOutputFormatter {
 
   static String dateRange(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
-    return CliHumanDisplay.dateRange(effectiveDateFrom, effectiveDateTo);
+    return CliTextDisplay.dateRange(effectiveDateFrom, effectiveDateTo);
   }
 
   static String absolutePath(Path bookFilePath) {
-    return CliHumanDisplay.path(bookFilePath);
+    return CliTextDisplay.path(bookFilePath);
   }
 
   private static String postingAccounts(PostingFact postingFact) {

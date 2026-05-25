@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: USER_QUICK_START
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -69,7 +69,7 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01
 ```
 
 ## 4. Declare The Accounts You Need
@@ -115,9 +115,9 @@ Start from the canonical posting template:
 fingrind print-request-template > ./request.json
 ```
 
-That scaffold is a runnable sample document. It intentionally uses `actorType: "AGENT"` together
-with demo evidence and provenance values. Replace the sample business context before real-world
-use. Reusing one committed `idempotencyKey` against the same book is rejected.
+That scaffold is a placeholder-first sample document. It intentionally uses placeholder evidence and
+provenance values. Replace every `replace-with-...` token before real-world use. Reusing one
+committed `idempotencyKey` against the same book is rejected.
 
 Replace the contents of `./request.json` with one balanced entry, for example:
 
@@ -134,19 +134,19 @@ Replace the contents of `./request.json` with one balanced entry, for example:
   "evidence": {
     "sourceDocuments": [
       {
-        "sourceDocumentId": "quick-start-invoice-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentId": "quick-start-cash-receipt-1",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-04-08",
         "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://quick-start/invoice-1",
+        "storageLocator": "vault://quick-start/cash-receipt-1",
         "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       }
     ],
     "approvals": []
   },
   "provenance": {
-    "actorId": "quick-start",
-    "actorType": "AGENT",
+    "actorId": "quick-start-operator",
+    "actorType": "PERSON",
     "commandId": "quick-start-posting",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-cause-1"
@@ -171,13 +171,13 @@ fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/ac
 Ask for a quick reporting view:
 
 ```bash
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output human
+fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text
 ```
 
 Or check one account directly:
 
 ```bash
-fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code 1000 --output human
+fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code 1000 --output text
 ```
 
 ## 7. Where To Go Next

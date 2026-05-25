@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract.runtime;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.protocol.AccountingPolicyProfileFacts;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
@@ -115,7 +114,6 @@ public final class ContractResponse {
       String scope,
       List<String> builtInStatements,
       List<ReportCapabilityFacts> reportCapabilities,
-      AccountingPolicyProfileFacts policyProfile,
       String description)
       implements ResponseDescriptorType {
     /** Validates one bookkeeping-kernel descriptor payload. */
@@ -125,7 +123,6 @@ public final class ContractResponse {
           ContractDescriptorValidation.copyList(builtInStatements, "builtInStatements");
       reportCapabilities =
           ContractDescriptorValidation.copyList(reportCapabilities, "reportCapabilities");
-      policyProfile = ContractDescriptorValidation.requireValue(policyProfile, "policyProfile");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }

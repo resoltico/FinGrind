@@ -54,6 +54,6 @@ final class CliReportArguments {
         currentOutputMode,
         CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
         CliArgumentValueParser.supportedOutputModes(
-            OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+            OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
   }
 }

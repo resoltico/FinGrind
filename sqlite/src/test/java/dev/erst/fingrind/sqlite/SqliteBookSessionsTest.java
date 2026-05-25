@@ -211,8 +211,8 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
                 postingExistingPath,
                 passphrase("existing posting session"),
                 SqliteBookSessionMode.READ_WRITE_EXISTING);
-        SqlitePeriodCloseSession periodCloseSession =
-            SqliteBookSessions.openPeriodClose(
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteBookSessions.openPeriodResultTransfer(
                 access, KEY_FILE_RESOLVER, SqlitePassphraseIntent.EXISTING_SECRET);
         SqlitePlanExecutionSession planExecutionSession =
             SqliteBookSessions.openPlanExecution(
@@ -241,7 +241,8 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
           SqliteStoreAccessMode.READ_WRITE_EXISTING,
           storeAccessMode(store(existingPostingSession)));
       assertEquals(
-          SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(store(periodCloseSession)));
+          SqliteStoreAccessMode.READ_WRITE_EXISTING,
+          storeAccessMode(store(periodResultTransferSession)));
       assertEquals(
           SqliteStoreAccessMode.PLAN_EXECUTION, storeAccessMode(store(planExecutionSession)));
       assertEquals(SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(store(rekeySession)));

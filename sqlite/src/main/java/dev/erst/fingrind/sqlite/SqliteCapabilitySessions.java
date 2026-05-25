@@ -23,8 +23,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -60,8 +60,8 @@ final class SqliteCapabilitySessions {
     return new PostingSession(store);
   }
 
-  static SqlitePeriodCloseSession periodClose(SqlitePostingFactStore store) {
-    return new PeriodCloseSession(store);
+  static SqlitePeriodResultTransferSession periodResultTransfer(SqlitePostingFactStore store) {
+    return new PeriodResultTransferSession(store);
   }
 
   static SqlitePlanExecutionSession planExecution(SqlitePostingFactStore store) {
@@ -288,8 +288,8 @@ final class SqliteCapabilitySessions {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
-      return store.closedThroughEffectiveDate();
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
+      return store.transferredThroughEffectiveDate();
     }
 
     @Override
@@ -348,9 +348,9 @@ final class SqliteCapabilitySessions {
   }
 
   /** Period-close wrapper over the shared SQLite store core. */
-  private static final class PeriodCloseSession extends DelegatingSession
-      implements SqlitePeriodCloseSession {
-    PeriodCloseSession(SqlitePostingFactStore store) {
+  private static final class PeriodResultTransferSession extends DelegatingSession
+      implements SqlitePeriodResultTransferSession {
+    PeriodResultTransferSession(SqlitePostingFactStore store) {
       super(store);
     }
 
@@ -380,14 +380,15 @@ final class SqliteCapabilitySessions {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
-      return store.closedThroughEffectiveDate();
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
+      return store.transferredThroughEffectiveDate();
     }
 
     @Override
-    public PeriodCloseOutcome closePeriod(
-        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
-      return store.closePeriod(periodCloseDraft, postingIdGenerator);
+    public PeriodResultTransferOutcome transferPeriodResult(
+        PeriodResultTransferDraft periodResultTransferDraft,
+        PostingIdGenerator postingIdGenerator) {
+      return store.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
     }
 
     @Override

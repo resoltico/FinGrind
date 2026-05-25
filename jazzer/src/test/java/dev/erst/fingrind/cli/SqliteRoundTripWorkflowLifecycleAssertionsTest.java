@@ -86,6 +86,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                                 Money.parse("EUR", "11.00")))),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
@@ -101,6 +102,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                         new ReversalReference(new PostingId("posting-0")),
                         new ReversalReason("unexpected reversal")),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
@@ -114,11 +116,12 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     new dev.erst.fingrind.core.AccountingEvidence(
                         java.util.List.of(
                             new dev.erst.fingrind.core.SourceDocumentReference(
                                 new dev.erst.fingrind.core.SourceDocumentId("document-idem-2"),
-                                new dev.erst.fingrind.core.SourceDocumentType("invoice"),
+                                new dev.erst.fingrind.core.SourceDocumentType("cash-receipt"),
                                 java.time.LocalDate.parse("2026-04-07"),
                                 java.time.Instant.parse("2026-04-07T12:00:00Z"),
                                 new dev.erst.fingrind.core.StorageLocator(
@@ -138,6 +141,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     baseFact.evidence(),
                     new CommittedProvenance(
                         new RequestProvenance(
@@ -160,6 +164,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
                     baseFact.evidence(),
                     new CommittedProvenance(
                         baseFact.provenance().requestProvenance(),
@@ -193,6 +198,15 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     new PostingRejection.UnknownAccount(new AccountCode("1000")),
                     new PostingRejection.InactiveAccount(new AccountCode("2000"))))));
     assertEquals(
+        PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
+        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+            new PostingRejection.EntrySemanticsViolations(
+                List.of(
+                    new PostingRejection.EntrySemanticsViolation(
+                        "account-type-mismatch",
+                        "entry.cashAccountCode",
+                        "Cash revenue requires an asset account.")))));
+    assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.DuplicateIdempotencyKey()));
@@ -205,7 +219,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.ClosedPeriodViolation(
+            new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
@@ -219,9 +233,9 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 new AccountCode("4100"), dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
-        PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.ClosingEquityAccountReserved(new AccountCode("3200"))));
+            new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3200"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(

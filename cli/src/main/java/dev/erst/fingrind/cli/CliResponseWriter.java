@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
@@ -12,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
@@ -53,11 +53,11 @@ final class CliResponseWriter {
   }
 
   void writeHelp(HelpDescriptor helpDescriptor) {
-    writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
+    writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.MINIMAL);
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
-    writeHelp(helpDescriptor, outputMode, DiscoveryDetail.COMPACT);
+    writeHelp(helpDescriptor, outputMode, DiscoveryDetail.MINIMAL);
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
@@ -65,11 +65,11 @@ final class CliResponseWriter {
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor) {
-    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
+    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON, DiscoveryDetail.MINIMAL);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
-    writeCapabilities(capabilitiesDescriptor, outputMode, DiscoveryDetail.COMPACT);
+    writeCapabilities(capabilitiesDescriptor, outputMode, DiscoveryDetail.MINIMAL);
   }
 
   void writeCapabilities(
@@ -108,16 +108,16 @@ final class CliResponseWriter {
   }
 
   void writeFailure(CliFailure failure, OutputMode outputMode) {
-    if (outputMode == OutputMode.HUMAN) {
-      outputChannel.writeText(CliFailureOutputRenderer.renderFailureHuman(failure));
+    if (outputMode == OutputMode.TEXT) {
+      outputChannel.writeText(CliFailureOutputRenderer.renderFailureText(failure));
       return;
     }
     outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure));
   }
 
   void writeDeterministicFailure(CliFailure failure, OutputMode outputMode) {
-    if (outputMode == OutputMode.HUMAN) {
-      outputChannel.writeText(CliFailureOutputRenderer.renderDeterministicFailureHuman(failure));
+    if (outputMode == OutputMode.TEXT) {
+      outputChannel.writeText(CliFailureOutputRenderer.renderDeterministicFailureText(failure));
       return;
     }
     outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure));
@@ -193,8 +193,8 @@ final class CliResponseWriter {
     mutationWriter.writeDeclareAccountResult(result, outputMode);
   }
 
-  void writeClosePeriodResult(ClosePeriodResult result, OutputMode outputMode) {
-    mutationWriter.writeClosePeriodResult(result, outputMode);
+  void writePeriodResultTransferResult(PeriodResultTransferResult result, OutputMode outputMode) {
+    mutationWriter.writePeriodResultTransferResult(result, outputMode);
   }
 
   void writeBookInspection(Path bookFilePath, BookInspection inspection) {

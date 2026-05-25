@@ -84,8 +84,8 @@ final class SqliteStoreReadOperations {
     return queryOperations.earliestPostingEffectiveDate();
   }
 
-  Optional<LocalDate> closedThroughEffectiveDate() {
-    return queryOperations.closedThroughEffectiveDate();
+  Optional<LocalDate> transferredThroughEffectiveDate() {
+    return queryOperations.transferredThroughEffectiveDate();
   }
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {

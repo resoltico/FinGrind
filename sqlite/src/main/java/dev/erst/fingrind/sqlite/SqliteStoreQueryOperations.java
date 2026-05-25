@@ -169,7 +169,7 @@ final class SqliteStoreQueryOperations {
                 .map(LocalDate::parse));
   }
 
-  Optional<LocalDate> closedThroughEffectiveDate() {
+  Optional<LocalDate> transferredThroughEffectiveDate() {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",

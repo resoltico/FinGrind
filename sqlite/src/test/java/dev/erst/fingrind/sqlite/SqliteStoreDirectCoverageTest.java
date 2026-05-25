@@ -32,8 +32,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -46,7 +46,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-/** Focused integration coverage for direct SQLite read and close-period session seams. */
+/** Focused integration coverage for direct SQLite read and transfer-period-result session seams. */
 class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");
   private static final Instant FIXED_INSTANT = Instant.parse("2026-04-19T10:15:30Z");
@@ -77,7 +77,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               .keySet());
       assertEquals(2, postingFactStore.postings(EffectiveDateRange.unbounded()).size());
       assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.earliestPostingEffectiveDate());
-      assertEquals(Optional.empty(), postingFactStore.closedThroughEffectiveDate());
+      assertEquals(Optional.empty(), postingFactStore.transferredThroughEffectiveDate());
       assertTrue(postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")).isPresent());
       assertTrue(postingFactStore.findPosting(new PostingId("posting-1")).isPresent());
       assertTrue(postingFactStore.findReversalFor(new PostingId("posting-1")).isPresent());
@@ -107,13 +107,13 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(Optional.empty(), validationBook.findReversalFor(new PostingId("posting-1")));
       assertEquals(1, validationBook.postings(EffectiveDateRange.unbounded()).size());
       assertEquals(Optional.of(EFFECTIVE_DATE), validationBook.earliestPostingEffectiveDate());
-      assertEquals(Optional.empty(), validationBook.closedThroughEffectiveDate());
+      assertEquals(Optional.empty(), validationBook.transferredThroughEffectiveDate());
     }
   }
 
   @Test
-  void closePeriod_persistsClosedPeriodAuditAndCloseHorizon() {
-    Path bookPath = tempDirectory.resolve("close-period-direct.sqlite");
+  void transferPeriodResult_persistsTransferredPeriodResultAuditAndCloseHorizon() {
+    Path bookPath = tempDirectory.resolve("transfer-period-result-direct.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
@@ -123,7 +123,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -131,16 +131,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
               FIXED_INSTANT));
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
 
-      PeriodCloseOutcome.Closed closed =
+      PeriodResultTransferOutcome.Transferred closed =
           assertInstanceOf(
-              PeriodCloseOutcome.Closed.class,
-              postingFactStore.closePeriod(
-                  new PeriodCloseDraft(
+              PeriodResultTransferOutcome.Transferred.class,
+              postingFactStore.transferPeriodResult(
+                  new PeriodResultTransferDraft(
                       new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
                       new AccountCode("3200"),
                       List.of(),
@@ -153,24 +153,27 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                                       line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                                       line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-                              PostingKind.PERIOD_CLOSE,
-                              generatedEvidence("period-close-1", "period-close-plan"),
-                              periodCloseProvenance("EUR")))),
-                  () -> new PostingId("period-close-1")));
+                              PostingKind.PERIOD_RESULT_TRANSFER,
+                              dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+                              generatedEvidence(
+                                  "period-result-transfer-1", "period-result-transfer-plan"),
+                              periodResultTransferProvenance("EUR")))),
+                  () -> new PostingId("period-result-transfer-1")));
 
-      assertEquals(1, closed.closedPeriod().closeOrder());
+      assertEquals(1, closed.transferredPeriodResult().transferOrder());
       assertEquals(
-          List.of(new PostingId("period-close-1")), closed.closedPeriod().closingPostingIds());
-      assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.closedThroughEffectiveDate());
+          List.of(new PostingId("period-result-transfer-1")),
+          closed.transferredPeriodResult().transferPostingIds());
+      assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.transferredThroughEffectiveDate());
       assertEquals(2, postingFactStore.postings(EffectiveDateRange.unbounded()).size());
       assertEquals(
-          "PERIOD_CLOSED:1",
+          "PERIOD_RESULT_TRANSFERRED:1",
           queryText(
               requireStoreDatabase(postingFactStore),
               """
-              select event_kind || ':' || cast(period_close_order as text)
+              select event_kind || ':' || cast(period_result_transfer_order as text)
               from audit_event
-              where event_kind = 'PERIOD_CLOSED'
+              where event_kind = 'PERIOD_RESULT_TRANSFERRED'
               order by audit_event_order desc
               limit 1
               """));
@@ -178,7 +181,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           1,
           queryInt(
               requireStoreDatabase(postingFactStore),
-              "select count(*) from period_close_posting where period_close_order = 1"));
+              "select count(*) from period_result_transfer_posting where period_result_transfer_order = 1"));
     }
   }
 
@@ -194,7 +197,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -202,7 +205,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
               FIXED_INSTANT));
 
       commitPosting(
@@ -216,9 +219,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
       assertInstanceOf(
-          PeriodCloseOutcome.Closed.class,
-          postingFactStore.closePeriod(
-              new PeriodCloseDraft(
+          PeriodResultTransferOutcome.Transferred.class,
+          postingFactStore.transferPeriodResult(
+              new PeriodResultTransferDraft(
                   new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
                   new AccountCode("3200"),
                   List.of(),
@@ -231,10 +234,12 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                                   line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                                   line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
                           dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-                          PostingKind.PERIOD_CLOSE,
-                          generatedEvidence("period-close-1", "period-close-plan"),
-                          periodCloseProvenance("EUR")))),
-              () -> new PostingId("period-close-1")));
+                          PostingKind.PERIOD_RESULT_TRANSFER,
+                          dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+                          generatedEvidence(
+                              "period-result-transfer-1", "period-result-transfer-plan"),
+                          periodResultTransferProvenance("EUR")))),
+              () -> new PostingId("period-result-transfer-1")));
       commitPosting(
           postingFactStore,
           postingFact(
@@ -250,15 +255,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
-      RegisteredAccount retainedEarningsAccount =
+      RegisteredAccount resultHoldingAccount =
           postingFactStore.findAccount(new AccountCode("3200")).orElseThrow();
 
       assertEquals(
           List.of(
               new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 1400L, 0L),
               new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 1000L, 1400L),
-              new AccountCurrencyTotals(
-                  retainedEarningsAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
+              new AccountCurrencyTotals(resultHoldingAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
           postingFactStore.accountTotals(
               EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS));
       assertEquals(
@@ -279,8 +283,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           List.of(
               new AccountCurrencyTotals(cashAccount, CurrencyUnit.of("EUR"), 1000L, 0L),
               new AccountCurrencyTotals(revenueAccount, CurrencyUnit.of("EUR"), 1000L, 1000L),
-              new AccountCurrencyTotals(
-                  retainedEarningsAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
+              new AccountCurrencyTotals(resultHoldingAccount, CurrencyUnit.of("EUR"), 0L, 1000L)),
           postingFactStore.accountTotals(
               EffectiveDateRange.of(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
               PostingCoverage.ALL_POSTING_KINDS));
@@ -288,7 +291,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void readModels_excludePeriodClosePostingsWhenNonClosingCoverageIsRequested() {
+  void readModels_excludePeriodResultTransferPostingsWhenNonClosingCoverageIsRequested() {
     Path bookPath = tempDirectory.resolve("non-closing-read-coverage.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -299,7 +302,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   AccountRole.ORDINARY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
                   true,
                   FIXED_INSTANT)),
           postingFactStore.declareAccount(
@@ -307,7 +310,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new AccountName("Retained Earnings"),
               AccountType.EQUITY,
               AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.ACCUMULATED_RESULT),
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
               FIXED_INSTANT));
 
       CommittedPosting operatingPosting =
@@ -319,20 +322,21 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               List.of(
                   line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting periodClosePosting =
+      CommittedPosting periodResultTransferPosting =
           new CommittedPosting(
-              new PostingId("period-close-1"),
+              new PostingId("period-result-transfer-1"),
               new JournalEntry(
                   LocalDate.parse("2026-04-07"),
                   List.of(
                       line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                       line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-              PostingKind.PERIOD_CLOSE,
-              generatedEvidence("period-close-1", "period-close-plan"),
-              periodCloseProvenance("EUR"));
+              PostingKind.PERIOD_RESULT_TRANSFER,
+              dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+              generatedEvidence("period-result-transfer-1", "period-result-transfer-plan"),
+              periodResultTransferProvenance("EUR"));
       commitPosting(postingFactStore, operatingPosting);
-      commitPosting(postingFactStore, periodClosePosting);
+      commitPosting(postingFactStore, periodResultTransferPosting);
 
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
@@ -405,16 +409,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
         });
   }
 
-  private static CommittedProvenance periodCloseProvenance(String currencyCode) {
+  private static CommittedProvenance periodResultTransferProvenance(String currencyCode) {
     String closeToken = EFFECTIVE_DATE + ":" + EFFECTIVE_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:periodClose"),
+            new ActorId("system:periodResultTransfer"),
             ActorType.SYSTEM,
-            new CommandId("periodClose:" + closeToken + ":" + currencyCode),
-            new IdempotencyKey("periodClose:" + closeToken + ":" + currencyCode),
-            new CausationId("periodClose:" + closeToken),
-            Optional.of(new CorrelationId("periodClose:" + closeToken)));
+            new CommandId("periodResultTransfer:" + closeToken + ":" + currencyCode),
+            new IdempotencyKey("periodResultTransfer:" + closeToken + ":" + currencyCode),
+            new CausationId("periodResultTransfer:" + closeToken),
+            Optional.of(new CorrelationId("periodResultTransfer:" + closeToken)));
     return new CommittedProvenance(requestProvenance, FIXED_INSTANT, SourceChannel.SYSTEM);
   }
 }

@@ -36,7 +36,7 @@ final class CliOutputChannel {
   }
 
   void writeEnvelope(Record envelope) {
-    writePrettyJson(envelope);
+    writeJson(envelope);
   }
 
   void writePrettySuccess(ProtocolSuccessPayload payload) {
@@ -47,9 +47,9 @@ final class CliOutputChannel {
       OutputMode outputMode,
       CliEnvelopeJsonModels.RejectedEnvelope envelope,
       @Nullable String idempotencyKey) {
-    if (outputMode == OutputMode.HUMAN) {
+    if (outputMode == OutputMode.TEXT) {
       writeText(
-          CliFailureOutputRenderer.renderRejectedHuman(
+          CliFailureOutputRenderer.renderRejectedText(
               envelope.code(),
               envelope.message(),
               envelope.hint(),
@@ -65,7 +65,7 @@ final class CliOutputChannel {
         () -> writeEnvelope(envelope),
         () ->
             writeText(
-                CliFailureOutputRenderer.renderRejectedHuman(
+                CliFailureOutputRenderer.renderRejectedText(
                     envelope.code(),
                     envelope.message(),
                     envelope.hint(),

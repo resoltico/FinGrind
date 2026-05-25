@@ -200,7 +200,7 @@ def retained_source_document(
 ) -> dict[str, str]:
     return {
         "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": document_date,
         "capturedAt": f"{document_date}T10:15:30Z",
         "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",

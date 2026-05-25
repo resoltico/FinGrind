@@ -13,12 +13,12 @@ import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for human-readable deterministic CLI failure rendering. */
+/** Unit tests for plain-language deterministic CLI failure rendering. */
 class CliFailureOutputRendererTest {
   @Test
-  void renderFailureHuman_rendersArgumentHintAndStructuredErrorDetails() {
+  void renderFailureText_rendersArgumentHintAndStructuredErrorDetails() {
     String invalidJson =
-        CliFailureOutputRenderer.renderFailureHuman(
+        CliFailureOutputRenderer.renderFailureText(
             new CliFailure(
                 "invalid-json",
                 "Malformed request.",
@@ -26,7 +26,7 @@ class CliFailureOutputRendererTest {
                 "--request-file",
                 new CliErrorJsonModels.InvalidJsonDetails("Unexpected token", 3, 9)));
     String invalidRequest =
-        CliFailureOutputRenderer.renderDeterministicFailureHuman(
+        CliFailureOutputRenderer.renderDeterministicFailureText(
             new CliFailure(
                 "invalid-request",
                 "Request violates the schema.",
@@ -35,10 +35,10 @@ class CliFailureOutputRendererTest {
                 new CliErrorJsonModels.InvalidRequestDetails(
                     List.of("accountCode is required", "amount must be positive"))));
     String warning =
-        CliFailureOutputRenderer.renderWarningHuman(
+        CliFailureOutputRenderer.renderWarningText(
             new CliFailure("warning-code", "Heads up.", "Review the output.", "--output"));
     String info =
-        CliFailureOutputRenderer.renderInfoHuman(
+        CliFailureOutputRenderer.renderInfoText(
             new CliFailure("info-code", "FYI.", "Continue with the next step.", "--book-file"));
 
     assertTrue(invalidJson.contains("Error"));
@@ -58,7 +58,7 @@ class CliFailureOutputRendererTest {
   }
 
   @Test
-  void renderRejectedHuman_rendersEveryStructuredRejectionShape() {
+  void renderRejectedText_rendersEveryStructuredRejectionShape() {
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountStateViolationsDetails(
             List.of(
@@ -92,7 +92,7 @@ class CliFailureOutputRendererTest {
             new CliRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "3000", "OTHER_EQUITY", null),
             new CliRejectionJsonModels.AccountTaxonomyDetails(
-                "POSTABLE", "3010", "ACCUMULATED_RESULT", null)),
+                "POSTABLE", "3010", "RESULT_HOLDING", null)),
         "Existing parent account",
         "3000",
         "Existing financial position classification",
@@ -100,7 +100,7 @@ class CliFailureOutputRendererTest {
         "Requested parent account",
         "3010",
         "Requested financial position classification",
-        "ACCUMULATED_RESULT");
+        "RESULT_HOLDING");
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
             "4100",
@@ -182,38 +182,39 @@ class CliFailureOutputRendererTest {
         "Account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ClosingEquityAccountDetails("3200"), "Account code", "3200");
+        new CliRejectionJsonModels.ResultHoldingAccountDetails("3200"), "Account code", "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ClosingEquityAccountCandidateMissingDetails(
+        new CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails(
             "retained-earnings", List.of("3200")),
         "Required financial position classification",
         "retained-earnings",
         "Inactive candidate account codes",
         "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ClosingEquityAccountCandidateAmbiguousDetails(
+        new CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails(
             "other-equity", List.of("3200", "3210")),
         "Required financial position classification",
         "other-equity",
         "Candidate account codes",
         "3200, 3210");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodCloseStartDetails("2026-04-01"),
+        new CliRejectionJsonModels.PeriodResultTransferStartDetails("2026-04-01"),
         "Required start date",
         "2026-04-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodCloseFutureDateDetails("2026-05-01"),
+        new CliRejectionJsonModels.PeriodResultTransferFutureDateDetails("2026-05-01"),
         "Attempted end date",
         "2026-05-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodCloseFiscalYearDetails(
+        new CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails(
             "2026-12-15", "2027-01-15", "01-01"),
         "Attempted start date",
         "Attempted end date",
         "Fiscal year start");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ClosedPeriodViolationDetails("2026-04-30", "2026-05-01"),
-        "Closed through",
+        new CliRejectionJsonModels.TransferredPeriodResultViolationDetails(
+            "2026-04-30", "2026-05-01"),
+        "Transferred through",
         "Attempted effective date",
         "2026-05-01");
     assertRenderedRejection(
@@ -226,10 +227,38 @@ class CliFailureOutputRendererTest {
         new CliRejectionJsonModels.PlanRejectionDetails(samplePlan()), "Plan id", "plan-1");
   }
 
+  @Test
+  void renderRejectedText_rendersEntrySemanticsViolationsWithAndWithoutField() {
+    String rendered =
+        CliFailureOutputRenderer.renderRejectedText(
+            "entry-semantics-violations",
+            "Typed entry contradicts declared account or evidence doctrine.",
+            "Choose matching accounts and evidence.",
+            "idem-semantics",
+            new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+                List.of(
+                    new CliRejectionJsonModels.EntrySemanticsViolationPayload(
+                        "account-type-mismatch",
+                        "cashAccountCode",
+                        "cash account must be declared as ASSET"),
+                    new CliRejectionJsonModels.EntrySemanticsViolationPayload(
+                        "source-document-type-not-accepted",
+                        null,
+                        "invoice does not prove cash receipt"))));
+
+    assertTrue(rendered.contains("entry-semantics-violations"));
+    assertTrue(
+        rendered.contains(
+            "account-type-mismatch (cashAccountCode: cash account must be declared as ASSET)"));
+    assertTrue(
+        rendered.contains(
+            "source-document-type-not-accepted (invoice does not prove cash receipt)"));
+  }
+
   private static void assertRenderedRejection(
       CliRejectionJsonModels.RejectionDetails details, String... expectedFragments) {
     String rendered =
-        CliFailureOutputRenderer.renderRejectedHuman(
+        CliFailureOutputRenderer.renderRejectedText(
             "rejected-code", "Rejected message.", "Repair hint.", "idem-1", details);
     assertTrue(rendered.contains("Rejected"));
     assertTrue(rendered.contains("Idempotency key"));

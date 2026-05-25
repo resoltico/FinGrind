@@ -67,7 +67,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersDeterministicWorkflowContractFailuresAsRejectedHumanOutput() {
+  void run_rendersDeterministicWorkflowContractFailuresAsRejectedTextOutput() {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("book.key");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -92,7 +92,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString(),
               "--output",
-              "human"
+              "text"
             });
 
     assertEquals(6, exitCode);

@@ -68,7 +68,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(17, BookFormatContract.FORMAT_VERSION);
+    assertEquals(20, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -235,7 +235,7 @@ class ContractProtocolVocabularyTest {
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000"))),
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
+                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
                 null));
     assertThrows(
         IllegalArgumentException.class,
@@ -255,7 +255,7 @@ class ContractProtocolVocabularyTest {
                         "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
+                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
                 null));
     assertThrows(
         IllegalArgumentException.class,
@@ -292,7 +292,7 @@ class ContractProtocolVocabularyTest {
         List.of(
             new ContractTemplates.SourceDocumentTemplateDescriptor(
                 "document-idem-1",
-                "invoice",
+                "cash-receipt",
                 "2026-04-25",
                 "2026-04-25T10:15:30Z",
                 "evidence://documents/document-idem-1.pdf",

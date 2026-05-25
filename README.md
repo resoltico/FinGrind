@@ -16,7 +16,7 @@ are rejected before they change the book.
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
   and period summaries
-- Export any report as human-readable tables, JSON, CSV, or PDF
+- Export any report as operator-readable text tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
 
@@ -37,7 +37,7 @@ fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --entity-name "Acme Studio" --business-activity-tag consulting-services \
   --functional-currency EUR \
-  --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1
+  --fiscal-year-start 01-01
 
 # Declare the accounts used by the first posting
 fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
@@ -51,11 +51,13 @@ fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/ac
 
 # Read the trial balance back
 fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --effective-date-as-of 2026-04-08 --output human
+  --effective-date-as-of 2026-04-08 --output text
 ```
 
 The interface is layered: `help` is the operator guide, `print-request-template` scaffolds one
-runnable sample document, and `capabilities --output json` exposes the machine contract.
+runnable sample document, and `capabilities --output json` exposes the minimal machine contract
+index. Rerun discovery with `--detail compact` for stable command/output descriptors or
+`--detail full` for the exhaustive embedded schemas and doctrine surface.
 
 ```bash
 fingrind help post-entry
@@ -67,7 +69,7 @@ fingrind capabilities --output json
 Trial Balance
 =============
 
-Book             : Acme Studio | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Acme Studio | Currency EUR | FY 01-01
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 
@@ -79,6 +81,11 @@ Balanced : Yes
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
 EUR      |       10.00 |        10.00 |       0.00 | ZERO
+
+Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
+2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 ```
 
 Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced

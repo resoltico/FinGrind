@@ -2,9 +2,9 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
-import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
@@ -34,7 +34,7 @@ final class CliMutationResponseWriter {
                   outputChannel.writeEnvelope(CliResponsePayloadMapper.preflightEnvelope(accepted)),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderPreflightAcceptedHuman(accepted)),
+                      CliMutationOutputRenderer.renderPreflightAcceptedText(accepted)),
               () -> {
                 throw new IllegalArgumentException("entry success does not support CSV output.");
               });
@@ -44,8 +44,7 @@ final class CliMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.committedEnvelope(committed)),
               () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderCommittedHuman(committed)),
+                  outputChannel.writeText(CliMutationOutputRenderer.renderCommittedText(committed)),
               () -> {
                 throw new IllegalArgumentException("entry success does not support CSV output.");
               });
@@ -77,7 +76,7 @@ final class CliMutationResponseWriter {
                               CliBookPayloadMapper.bookIdentityPayload(opened.bookIdentity())))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderOpenBookHuman(bookFilePath, opened)),
+                      CliMutationOutputRenderer.renderOpenBookText(bookFilePath, opened)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.OPEN_BOOK));
@@ -103,7 +102,7 @@ final class CliMutationResponseWriter {
                         generatedKeyFile.permissions()))),
         () ->
             outputChannel.writeText(
-                CliMutationOutputRenderer.renderGeneratedBookKeyFileHuman(generatedKeyFile)),
+                CliMutationOutputRenderer.renderGeneratedBookKeyFileText(generatedKeyFile)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.GENERATE_BOOK_KEY_FILE));
@@ -126,7 +125,7 @@ final class CliMutationResponseWriter {
                               replacementBookKeyFile(replacementPassphraseSource)))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRekeyBookHuman(
+                      CliMutationOutputRenderer.renderRekeyBookText(
                           rekeyed, replacementPassphraseSource)),
               () -> {
                 throw new IllegalArgumentException(
@@ -152,8 +151,7 @@ final class CliMutationResponseWriter {
                               absolutePath(backedUp.backupFilePath()),
                               absolutePath(backedUp.backupBookKeyFilePath())))),
               () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderBackupBookHuman(backedUp)),
+                  outputChannel.writeText(CliMutationOutputRenderer.renderBackupBookText(backedUp)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK));
@@ -179,7 +177,7 @@ final class CliMutationResponseWriter {
                               absolutePath(restored.backupBookKeyFilePath())))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRestoreBookHuman(restored)),
+                      CliMutationOutputRenderer.renderRestoreBookText(restored)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_BOOK));
@@ -206,7 +204,7 @@ final class CliMutationResponseWriter {
                                   .toList()))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderInspectRekeyRollbackHuman(inspected)),
+                      CliMutationOutputRenderer.renderInspectRekeyRollbackText(inspected)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.INSPECT_REKEY_ROLLBACK));
@@ -235,7 +233,7 @@ final class CliMutationResponseWriter {
                               absolutePath(restored.rollbackArtifactPath())))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderRestoreRekeyRollbackHuman(restored)),
+                      CliMutationOutputRenderer.renderRestoreRekeyRollbackText(restored)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.RESTORE_REKEY_ROLLBACK));
@@ -264,7 +262,7 @@ final class CliMutationResponseWriter {
                               absolutePath(deleted.rollbackArtifactPath())))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderDeleteRekeyRollbackHuman(deleted)),
+                      CliMutationOutputRenderer.renderDeleteRekeyRollbackText(deleted)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.DELETE_REKEY_ROLLBACK));
@@ -291,7 +289,7 @@ final class CliMutationResponseWriter {
                           CliResponsePayloadMapper.accountPayload(declared.account()))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderDeclaredAccountHuman(declared.account())),
+                      CliMutationOutputRenderer.renderDeclaredAccountText(declared.account())),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
@@ -304,37 +302,42 @@ final class CliMutationResponseWriter {
     }
   }
 
-  void writeClosePeriodResult(ClosePeriodResult result, OutputMode outputMode) {
+  void writePeriodResultTransferResult(PeriodResultTransferResult result, OutputMode outputMode) {
     switch (result) {
-      case ClosePeriodResult.Closed closed ->
+      case PeriodResultTransferResult.Transferred closed ->
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          new CliAdministrationJsonModels.ClosedPeriodPayload(
-                              closed.closedPeriod().closeOrder(),
+                          new CliAdministrationJsonModels.TransferredPeriodResultPayload(
+                              closed.transferredPeriodResult().transferOrder(),
                               closed
-                                  .closedPeriod()
+                                  .transferredPeriodResult()
                                   .reportingPeriod()
                                   .effectiveDateFrom()
                                   .toString(),
-                              closed.closedPeriod().reportingPeriod().effectiveDateTo().toString(),
-                              closed.closedPeriod().closingEquityAccountCode().value(),
-                              closed.closedPeriod().closedTotals().stream()
+                              closed
+                                  .transferredPeriodResult()
+                                  .reportingPeriod()
+                                  .effectiveDateTo()
+                                  .toString(),
+                              closed.transferredPeriodResult().resultHoldingAccountCode().value(),
+                              closed.transferredPeriodResult().transferredTotals().stream()
                                   .map(CliPayloadAssembler::balancePayload)
                                   .toList(),
-                              closed.closedPeriod().closedAt().toString(),
-                              closed.closedPeriod().closingPostingIds().stream()
+                              closed.transferredPeriodResult().transferredAt().toString(),
+                              closed.transferredPeriodResult().transferPostingIds().stream()
                                   .map(dev.erst.fingrind.core.PostingId::value)
                                   .toList()))),
               () ->
                   outputChannel.writeText(
-                      CliMutationOutputRenderer.renderClosedPeriodHuman(closed.closedPeriod())),
+                      CliMutationOutputRenderer.renderTransferredPeriodResultText(
+                          closed.transferredPeriodResult())),
               () -> {
                 throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.CLOSE_PERIOD));
+                    CliOperationText.unsupportedCsvOutput(OperationId.TRANSFER_PERIOD_RESULT));
               });
-      case ClosePeriodResult.Rejected rejected ->
+      case PeriodResultTransferResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
               CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),

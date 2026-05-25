@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: ADR_ACCOUNTING_FOUNDATION
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
   questions: ["what exactly must fingrind implement to reach a best in class accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]
@@ -41,7 +41,7 @@ The current hard-break line is:
 - one functional currency per book
 - exact-money append-only postings
 - explicit chart and statement taxonomy
-- one neutral accumulated-result close target inside the current bookkeeping kernel
+- one neutral accumulated-result result-holding target inside the current bookkeeping kernel
 - built-in financial position, income statement, and changes-in-equity reports
 - deterministic maintenance, runtime, bundle, and release discipline
 

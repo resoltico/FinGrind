@@ -28,7 +28,8 @@ final class SqlitePeriodSummaryReader {
       statement.bindText(1, query.effectiveDateFrom().toString());
       statement.bindText(2, query.effectiveDateTo().toString());
       if (query.postingCoverage().isNonClosingOnly()) {
-        statement.bindText(3, dev.erst.fingrind.core.PostingKind.PERIOD_CLOSE.wireValue());
+        statement.bindText(
+            3, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
       }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         postingIds.add(

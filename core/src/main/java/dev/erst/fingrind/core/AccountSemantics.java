@@ -3,7 +3,10 @@ package dev.erst.fingrind.core;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Canonical doctrinal owner for account polarity, temporary-account behavior, and close policy. */
+/**
+ * Canonical doctrinal owner for account polarity, temporary-account behavior, and result-transfer
+ * policy.
+ */
 public final class AccountSemantics {
   private AccountSemantics() {}
 
@@ -99,7 +102,7 @@ public final class AccountSemantics {
     };
   }
 
-  /** Returns whether the account type participates in temporary profit-or-loss close clearing. */
+  /** Returns whether the account type participates in temporary profit-or-loss result transfer. */
   public static boolean closesTemporaryProfitAndLossAccountType(AccountType accountType) {
     return switch (Objects.requireNonNull(accountType, "accountType")) {
       case REVENUE, EXPENSE -> true;

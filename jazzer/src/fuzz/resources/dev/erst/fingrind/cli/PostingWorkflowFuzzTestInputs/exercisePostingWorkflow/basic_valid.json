@@ -39,7 +39,7 @@
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-idem-posting-4",
-        "sourceDocumentType": "invoice",
+        "sourceDocumentType": "cash-receipt",
         "documentDate": "2026-04-10",
         "capturedAt": "2026-04-10T10:15:30Z",
         "storageLocator": "vault://fixtures/document-idem-posting-4",
@@ -50,7 +50,7 @@
   },
   "provenance": {
     "actorId": "actor-posting-4",
-    "actorType": "HUMAN",
+    "actorType": "PERSON",
     "commandId": "command-posting-4",
     "idempotencyKey": "idem-posting-4",
     "causationId": "cause-posting-4",

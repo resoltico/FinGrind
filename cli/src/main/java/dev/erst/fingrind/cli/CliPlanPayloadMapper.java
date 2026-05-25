@@ -166,7 +166,9 @@ final class CliPlanPayloadMapper {
         requiredCountFact(facts, "pageLimit"),
         optionalTextFact(facts, "nextCursor"),
         requiredFlagFact(facts, "hasMore"),
-        groupedFacts(facts, "posting").stream().map(CliPlanPayloadMapper::postingPayload).toList());
+        groupedFacts(facts, "posting").stream()
+            .map(CliPlanPayloadMapper::postingSummaryPayload)
+            .toList());
   }
 
   private static CliPlanJsonModels.AccountBalanceStepDataPayload accountBalanceStepDataPayload(
@@ -228,6 +230,7 @@ final class CliPlanPayloadMapper {
     return new CliBookQueryJsonModels.PostingPayload(
         requiredTextFact(facts, "postingId"),
         requiredTextFact(facts, "postingKind"),
+        requiredTextFact(facts, "postingOriginKind"),
         requiredTextFact(facts, "reversalState"),
         requiredTextFact(facts, "effectiveDate"),
         requiredTextFact(facts, "recordedAt"),
@@ -241,6 +244,29 @@ final class CliPlanPayloadMapper {
         evidencePayload(evidenceFacts),
         reversalFacts == null ? null : reversalPayload(reversalFacts),
         groupedFacts(facts, "line").stream().map(CliPlanPayloadMapper::linePayload).toList());
+  }
+
+  private static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      List<LedgerFact> facts) {
+    @Nullable List<LedgerFact> reversalFacts = optionalGroupFacts(facts, "reversal");
+    List<LedgerFact> evidenceFacts = requiredGroupFacts(facts, "evidence");
+    return new CliBookQueryJsonModels.PostingSummaryPayload(
+        requiredTextFact(facts, "postingId"),
+        requiredTextFact(facts, "postingKind"),
+        requiredTextFact(facts, "postingOriginKind"),
+        requiredTextFact(facts, "reversalState"),
+        reversalFacts == null ? null : optionalTextFact(reversalFacts, "priorPostingId"),
+        requiredTextFact(facts, "effectiveDate"),
+        requiredTextFact(facts, "recordedAt"),
+        requiredMoneyFact(facts, "debitTotal"),
+        requiredMoneyFact(facts, "creditTotal"),
+        textFacts(facts, "accountCode"),
+        groupedFacts(evidenceFacts, "sourceDocument").stream()
+            .map(groupFacts -> requiredTextFact(groupFacts, "sourceDocumentId"))
+            .toList(),
+        groupedFacts(evidenceFacts, "approval").stream()
+            .map(groupFacts -> requiredTextFact(groupFacts, "approvalId"))
+            .toList());
   }
 
   private static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(
@@ -378,6 +404,13 @@ final class CliPlanPayloadMapper {
   private static @Nullable List<LedgerFact> optionalGroupFacts(
       List<LedgerFact> facts, String name) {
     return groupedFacts(facts, name).stream().findFirst().orElse(null);
+  }
+
+  private static List<String> textFacts(List<LedgerFact> facts, String name) {
+    return facts.stream()
+        .filter(fact -> fact instanceof LedgerFact.Text text && text.name().equals(name))
+        .map(fact -> ((LedgerFact.Text) fact).value())
+        .toList();
   }
 
   private static IllegalArgumentException missingFact(String name) {

@@ -31,7 +31,7 @@ final class CliRequestMutationArguments {
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new DeclareAccount(
         parsedArguments.bookAccess(),
@@ -74,7 +74,7 @@ final class CliRequestMutationArguments {
           CliArgumentValueParser.requireOutputMode(
               outputMode,
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return commandFactory.create(
         parsedArguments.bookAccess(),

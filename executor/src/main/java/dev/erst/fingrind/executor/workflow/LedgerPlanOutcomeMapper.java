@@ -253,19 +253,20 @@ public final class LedgerPlanOutcomeMapper {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case PostingRejection.BookNotInitialized _ -> List.of();
       case PostingRejection.AccountStateViolations violations -> accountStateFacts(violations);
+      case PostingRejection.EntrySemanticsViolations violations -> entrySemanticsFacts(violations);
       case PostingRejection.DuplicateIdempotencyKey _ -> List.of();
       case PostingRejection.BookFunctionalCurrencyMismatch mismatch ->
           List.of(
               BookWorkflowFact.text("functionalCurrency", mismatch.functionalCurrency().code()),
               BookWorkflowFact.text("attemptedCurrency", mismatch.attemptedCurrency().code()));
-      case PostingRejection.ClosedPeriodViolation closedPeriodViolation ->
+      case PostingRejection.TransferredPeriodResultViolation transferredPeriodResultViolation ->
           List.of(
               BookWorkflowFact.text(
-                  "closedThroughEffectiveDate",
-                  closedPeriodViolation.closedThroughEffectiveDate().toString()),
+                  "transferredThroughEffectiveDate",
+                  transferredPeriodResultViolation.transferredThroughEffectiveDate().toString()),
               BookWorkflowFact.text(
                   "attemptedEffectiveDate",
-                  closedPeriodViolation.attemptedEffectiveDate().toString()));
+                  transferredPeriodResultViolation.attemptedEffectiveDate().toString()));
       case PostingRejection.OpeningBalanceWindowClosed openingBalanceWindowClosed ->
           List.of(
               BookWorkflowFact.text(
@@ -279,9 +280,9 @@ public final class LedgerPlanOutcomeMapper {
               BookWorkflowFact.text("accountCode", openingBalanceNominal.accountCode().value()),
               BookWorkflowFact.text(
                   "accountType", openingBalanceNominal.accountType().wireValue()));
-      case PostingRejection.ClosingEquityAccountReserved closingEquityReserved ->
+      case PostingRejection.ResultHoldingAccountReserved resultHoldingReserved ->
           List.of(
-              BookWorkflowFact.text("accountCode", closingEquityReserved.accountCode().value()));
+              BookWorkflowFact.text("accountCode", resultHoldingReserved.accountCode().value()));
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           priorPostingFacts(reversalTargetNotFound.priorPostingId());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
@@ -296,25 +297,57 @@ public final class LedgerPlanOutcomeMapper {
     List<BookWorkflowFact> facts = new ArrayList<>();
     facts.add(BookWorkflowFact.count("violationCount", violations.violations().size()));
     for (PostingRejection.AccountStateViolation violation : violations.violations()) {
-      if (violation instanceof PostingRejection.UnknownAccount unknownAccount) {
-        facts.add(
-            BookWorkflowFact.group(
-                "violation",
-                List.of(
-                    BookWorkflowFact.text("code", "unknown-account"),
-                    BookWorkflowFact.text("accountCode", unknownAccount.accountCode().value()))));
-        continue;
+      switch (violation) {
+        case PostingRejection.UnknownAccount unknownAccount ->
+            facts.add(
+                BookWorkflowFact.group(
+                    "violation",
+                    List.of(
+                        BookWorkflowFact.text("code", "unknown-account"),
+                        BookWorkflowFact.text(
+                            "accountCode", unknownAccount.accountCode().value()))));
+        case PostingRejection.InactiveAccount inactiveAccount ->
+            facts.add(
+                BookWorkflowFact.group(
+                    "violation",
+                    List.of(
+                        BookWorkflowFact.text("code", "inactive-account"),
+                        BookWorkflowFact.text(
+                            "accountCode", inactiveAccount.accountCode().value()))));
+        case PostingRejection.NonPostableAccount nonPostableAccount ->
+            facts.add(
+                BookWorkflowFact.group(
+                    "violation",
+                    List.of(
+                        BookWorkflowFact.text("code", "non-postable-account"),
+                        BookWorkflowFact.text(
+                            "accountCode", nonPostableAccount.accountCode().value()),
+                        BookWorkflowFact.text(
+                            "accountNodeKind", nonPostableAccount.accountNodeKind().wireValue()))));
       }
-      PostingRejection.InactiveAccount inactiveAccount =
-          (PostingRejection.InactiveAccount) violation;
-      facts.add(
-          BookWorkflowFact.group(
-              "violation",
-              List.of(
-                  BookWorkflowFact.text("code", "inactive-account"),
-                  BookWorkflowFact.text("accountCode", inactiveAccount.accountCode().value()))));
     }
     return List.copyOf(facts);
+  }
+
+  private static List<BookWorkflowFact> entrySemanticsFacts(
+      PostingRejection.EntrySemanticsViolations violations) {
+    List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.count("violationCount", violations.violations().size()));
+    for (PostingRejection.EntrySemanticsViolation violation : violations.violations()) {
+      facts.add(entrySemanticsViolationFact(violation));
+    }
+    return List.copyOf(facts);
+  }
+
+  private static BookWorkflowFact entrySemanticsViolationFact(
+      PostingRejection.EntrySemanticsViolation violation) {
+    List<BookWorkflowFact> detailFacts = new ArrayList<>();
+    detailFacts.add(BookWorkflowFact.text("code", violation.code()));
+    if (violation.field() != null) {
+      detailFacts.add(BookWorkflowFact.text("field", violation.field()));
+    }
+    detailFacts.add(BookWorkflowFact.text("message", violation.message()));
+    return BookWorkflowFact.group("violation", detailFacts);
   }
 
   private static String unexpectedExecutionFailureMessage(

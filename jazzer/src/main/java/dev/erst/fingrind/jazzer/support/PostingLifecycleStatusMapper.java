@@ -14,18 +14,20 @@ public final class PostingLifecycleStatusMapper {
       case PostingRejection.BookNotInitialized _ -> PostingLifecycleStatus.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations violations ->
           accountStateViolationStatus(violations);
+      case PostingRejection.EntrySemanticsViolations _ ->
+          PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS;
       case PostingRejection.DuplicateIdempotencyKey _ ->
           PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
-      case PostingRejection.ClosedPeriodViolation _ ->
+      case PostingRejection.TransferredPeriodResultViolation _ ->
           PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
       case PostingRejection.OpeningBalanceWindowClosed _ ->
           PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED;
       case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
           PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.ClosingEquityAccountReserved _ ->
-          PostingLifecycleStatus.CLOSING_EQUITY_ACCOUNT_RESERVED;
+      case PostingRejection.ResultHoldingAccountReserved _ ->
+          PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ ->
           PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ ->

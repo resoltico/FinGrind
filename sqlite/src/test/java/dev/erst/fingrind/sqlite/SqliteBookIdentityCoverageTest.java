@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -30,7 +29,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_requiresEntityProfileAndBookPolicyRows() {
+  void loadBookIdentity_requiresEntityProfileRow() {
     Path missingEntityProfilePath =
         tempDirectory.resolve("book-identity-missing-entity-profile.sqlite");
     createSchemaOnlyBook(missingEntityProfilePath);
@@ -54,39 +53,6 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   () -> SqliteStatementQueries.loadBookIdentity(database));
           assertEquals(
               "Initialized SQLite book is missing entity profile.", exception.getMessage());
-        });
-
-    Path missingBookPolicyPath = tempDirectory.resolve("book-identity-missing-book-policy.sqlite");
-    createSchemaOnlyBook(missingBookPolicyPath);
-    withStandaloneDatabase(
-        bookAccess(missingBookPolicyPath),
-        database -> {
-          insertInitializedAtRow(database);
-          database.executeStatement(
-              """
-              insert into book_identity (
-                  singleton_id,
-                  entity_name,
-                  functional_currency_code,
-                  fiscal_year_start_month,
-                  fiscal_year_start_day
-              ) values (1, 'Acme Studio', 'EUR', 1, 1)
-              """);
-          database.executeStatement(
-              """
-              insert into entity_profile (
-                  singleton_id,
-                  business_activity_tags
-              ) values (
-                  1,
-                  ''
-              )
-              """);
-          IllegalStateException exception =
-              assertThrows(
-                  IllegalStateException.class,
-                  () -> SqliteStatementQueries.loadBookIdentity(database));
-          assertEquals("Initialized SQLite book is missing book policy.", exception.getMessage());
         });
   }
 
@@ -151,8 +117,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"),
-            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+            FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -174,8 +139,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 new BookEntityName("Registered Studio"),
                 List.of(new BusinessActivityTag("translation-services"))),
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"),
-            AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+            FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {

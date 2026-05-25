@@ -23,7 +23,7 @@ final class CliDiscoveryResponseWriter {
             outputChannel.writeEnvelope(
                 CliResponsePayloadMapper.successEnvelope(
                     CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail))),
-        () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
+        () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.HELP));
@@ -38,10 +38,11 @@ final class CliDiscoveryResponseWriter {
         () ->
             outputChannel.writeEnvelope(
                 CliResponsePayloadMapper.successEnvelope(
-                    CliDiscoveryPayloadMapper.capabilitiesPayload(capabilitiesDescriptor, detail))),
+                    CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
+                        capabilitiesDescriptor, detail))),
         () ->
             outputChannel.writeText(
-                CliDiscoveryOutputRenderer.renderCapabilitiesHuman(capabilitiesDescriptor)),
+                CliDiscoveryOutputRenderer.renderCapabilitiesText(capabilitiesDescriptor)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.CAPABILITIES));
@@ -55,7 +56,7 @@ final class CliDiscoveryResponseWriter {
                 CliResponsePayloadMapper.successEnvelope(environmentDescriptor)),
         () ->
             outputChannel.writeText(
-                CliDiscoveryOutputRenderer.renderEnvironmentHuman(environmentDescriptor)),
+                CliDiscoveryOutputRenderer.renderEnvironmentText(environmentDescriptor)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.ENVIRONMENT));
@@ -69,7 +70,7 @@ final class CliDiscoveryResponseWriter {
                 CliResponsePayloadMapper.successEnvelope(versionDescriptor)),
         () ->
             outputChannel.writeText(
-                CliDiscoveryOutputRenderer.renderVersionHuman(versionDescriptor)),
+                CliDiscoveryOutputRenderer.renderVersionText(versionDescriptor)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.VERSION));

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.45.0"
+version: "0.46.0"
 domain: USER_EXAMPLES
-updated: "2026-05-22"
+updated: "2026-05-25"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -37,7 +37,7 @@ function fingrind { & .\<bundle-root>\bin\fingrind.ps1 @args }
 
 ## Choose A Book Passphrase Source
 
-For humans, the best non-persistent route is the interactive prompt:
+For operators, the best non-persistent route is the interactive prompt:
 
 ```bash
 fingrind \
@@ -47,9 +47,14 @@ fingrind \
   --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
+  \
   --book-passphrase-prompt
 ```
+
+This prompt route is for `--output text`. If you request `json` or `csv` together with
+`--book-passphrase-prompt`, FinGrind rejects the invocation deterministically as
+`invalid-request` and tells you to switch back to `--output text` or to a non-interactive
+passphrase source.
 
 For automation, generate a dedicated key file:
 
@@ -87,14 +92,14 @@ cat ./secrets/acme.book-key | \
     --business-activity-tag consulting-services \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
-    --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
+    \
     --book-passphrase-stdin
 ```
 
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -107,14 +112,14 @@ fingrind \
   --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
+  \
   --book-key-file ./secrets/acme.book-key
 ```
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01","policyProfile":"INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"}}}
+{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -285,10 +290,11 @@ fingrind \
 
 That generated scaffold is byte-identical to the checked-in
 [examples/request-template.json](./examples/request-template.json) fixture. Both intentionally
-publish one runnable sample document and default to `"entryKind": "CASH_REVENUE"`.
-The scaffold is agent-first: `actorType` is `AGENT`, `evidence.approvals` starts as an empty
-array that callers may populate when one posting requires explicit approval references, and the
-demo evidence plus provenance values should be replaced before real-world use.
+publish one placeholder-first sample document and default to `"entryKind": "CASH_REVENUE"`.
+The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
+`evidence.approvals` starts as an empty array that callers may populate when one posting requires
+explicit approval references, and every `replace-with-...` evidence or provenance token must be
+replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.
 
 For the concrete walkthrough below, reuse the checked-in example request:
@@ -343,8 +349,8 @@ fingrind \
 Like `print-request-template`, this scaffold is byte-identical to the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture.
 Its nested posting scaffold defaults to `"entryKind": "CASH_REVENUE"`, and the emitted workflow
-is runnable as a demo flow on a fresh book. Replace the sample evidence and provenance values
-before real-world use.
+uses the same placeholder evidence and provenance tokens as the request template. Replace those
+placeholder values before real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -443,7 +449,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --effective-date-as-of 2026-04-08 \
-  --output human
+  --output text
 
 fingrind \
   account-ledger \
@@ -460,14 +466,14 @@ fingrind \
   --book-key-file ./secrets/acme.book-key \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
-  --output human
+  --output text
 
 fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --effective-date-as-of 2026-04-08 \
-  --output human \
+  --output text \
   --pdf-out ./acme-trial-balance.pdf
 ```
 
@@ -475,15 +481,15 @@ Checked-in report examples:
 - [examples/trial-balance-response.json](./examples/trial-balance-response.json)
 - [examples/account-ledger-response.json](./examples/account-ledger-response.json)
 - [examples/period-summary-response.json](./examples/period-summary-response.json)
-- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt)
+- [examples/trial-balance-text.txt](./examples/trial-balance-text.txt)
 - [examples/account-ledger.csv](./examples/account-ledger.csv)
-- [examples/period-summary-human.txt](./examples/period-summary-human.txt)
+- [examples/period-summary-text.txt](./examples/period-summary-text.txt)
 
-These report commands keep JSON as the default machine surface, while `--output human` and
+These report commands keep JSON as the default machine surface, while `--output text` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
 is selected on stdout, the success envelope also publishes the normalized PDF under
-`artifacts[]`. Human and CSV stdout flows emit an info diagnostic with the same normalized written path. If the
+`artifacts[]`. Text and CSV stdout flows emit an info diagnostic with the same normalized written path. If the
 artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
 diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.
@@ -598,7 +604,7 @@ fingrind \
 One invalid-request response:
 
 ```json
-{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its sample evidence and provenance values before real-world use, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
+{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its placeholder evidence and provenance values before real-world use, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
 ```
 
 ## Invalid Cursor Is Rejected Deterministically
@@ -642,11 +648,11 @@ fingrind \
   --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --policy-profile INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1 \
+  \
   --book-passphrase-prompt
 ```
 
 When no supported controlling terminal is available, FinGrind returns the deterministic
 `interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
 `--book-passphrase-stdin` and exits with code `5`. One example is checked in at
-[examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json).
+[examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt).

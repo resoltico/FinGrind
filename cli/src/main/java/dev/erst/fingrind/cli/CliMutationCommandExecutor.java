@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Executes posting and ledger-plan commands that consume request payloads. */
 final class CliMutationCommandExecutor {
@@ -25,6 +26,16 @@ final class CliMutationCommandExecutor {
 
   int runExecutePlanCommand(
       BookAccess bookAccess, Path requestFile, PlanResultDetail resultDetail) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(
+                OutputMode.JSON, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, OutputMode.JSON, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.executePlan(bookAccess, plan),
@@ -35,6 +46,15 @@ final class CliMutationCommandExecutor {
   }
 
   int runPreflightEntryCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.preflight(bookAccess, command),
@@ -45,6 +65,15 @@ final class CliMutationCommandExecutor {
   }
 
   int runPostEntryCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, outputMode, responseWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         bookWorkflow.commit(bookAccess, command),

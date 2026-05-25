@@ -37,7 +37,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"ok\"");
+    assertJsonContains(outputStream, "\"status\":\"succeeded\"");
     assertTrue(Files.exists(bookFilePath));
   }
 
@@ -70,7 +70,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(0, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"ok\"");
+    assertJsonContains(outputStream, "\"status\":\"succeeded\"");
   }
 
   @Test
@@ -96,7 +96,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               planFile.toString()
             });
     assertEquals(2, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"ok\"");
+    assertJsonContains(outputStream, "\"status\":\"rejected\"");
     assertJsonContains(outputStream, "\"failureCode\":\"administration-book-not-initialized\"");
   }
 
@@ -125,7 +125,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             });
     assertEquals(3, exitCode);
     JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
-    assertEquals("ok", planResult.path("status").stringValue());
+    assertEquals("assertion-failed", planResult.path("status").stringValue());
     assertEquals("assertion-failed", planResult.path("payload").path("status").stringValue());
     assertFalse(Files.exists(bookFilePath));
     ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();
@@ -262,10 +262,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                   "kind": "open-book",
                   "openBook": {
                     "entityName": "Acme Studio",
-                                        "businessActivityTags": ["translation-services"],
+                    "businessActivityTags": ["translation-services"],
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01",
-                    "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+                    "fiscalYearStart": "01-01"
                   }
                 },
                 {

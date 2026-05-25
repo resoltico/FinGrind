@@ -20,10 +20,9 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         normalizeLineEndings(
             Files.readString(
                 repositoryRoot().resolve("docs/USER_QUICK_START.md"), StandardCharsets.UTF_8));
-    assertTrue(guide.contains("runnable sample document"));
+    assertTrue(guide.contains("placeholder-first sample document"));
     assertTrue(guide.contains("same book is rejected"));
     assertTrue(guide.contains("--entity-name"));
-    assertTrue(guide.contains("--policy-profile"));
     assertTrue(guide.contains("--business-activity-tag"));
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
@@ -47,7 +46,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
                 guide,
                 "Replace the contents of `./request.json` with one balanced entry, for example:",
                 "json"));
-    Path rawTemplateRequestFile = workspace.resolve("quick-start-request-template.json");
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());
@@ -61,7 +59,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals("2026-01-15", requestTemplate.path("effectiveDate").stringValue());
     assertEquals(
-        "invoice-1001",
+        "replace-with-cash-receipt-id",
         requestTemplate
             .path("evidence")
             .path("sourceDocuments")
@@ -69,19 +67,26 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .path("sourceDocumentId")
             .stringValue());
     assertEquals(
-        "invoice",
+        "cash-receipt",
         requestTemplate
             .path("evidence")
             .path("sourceDocuments")
             .get(0)
             .path("sourceDocumentType")
             .stringValue());
-    assertEquals(0, requestTemplate.path("evidence").path("approvals").size());
-    assertEquals("AGENT", requestTemplate.path("provenance").path("actorType").stringValue());
     assertEquals(
-        "idem-demo-1", requestTemplate.path("provenance").path("idempotencyKey").stringValue());
-    Files.writeString(
-        rawTemplateRequestFile, requestTemplate.toPrettyString(), StandardCharsets.UTF_8);
+        "replace-with-secure-storage-locator://cash-receipt",
+        requestTemplate
+            .path("evidence")
+            .path("sourceDocuments")
+            .get(0)
+            .path("storageLocator")
+            .stringValue());
+    assertEquals(0, requestTemplate.path("evidence").path("approvals").size());
+    assertEquals("PERSON", requestTemplate.path("provenance").path("actorType").stringValue());
+    assertEquals(
+        "replace-with-idempotency-key",
+        requestTemplate.path("provenance").path("idempotencyKey").stringValue());
     runJsonCommand(
         "declare-account",
         "--book-file",
@@ -98,18 +103,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         bookKeyFile.toString(),
         "--request-file",
         declareRevenueFile.toString());
-    JsonNode rawTemplateCommitted =
-        runJsonCommand(
-            "post-entry",
-            "--book-file",
-            bookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--request-file",
-            rawTemplateRequestFile.toString());
-    assertEquals("ok", rawTemplateCommitted.path("status").stringValue());
-    assertEquals(
-        "idem-demo-1", rawTemplateCommitted.path("payload").path("idempotencyKey").stringValue());
     JsonNode preflight =
         runJsonCommand(
             "preflight-entry",
@@ -138,7 +131,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--book-key-file",
             bookKeyFile.toString(),
             "--output",
-            "human");
+            "text");
     assertTrue(trialBalance.contains("Trial Balance"));
     assertTrue(trialBalance.contains("1000"));
     assertTrue(trialBalance.contains("2000"));
@@ -154,14 +147,13 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         normalizeLineEndings(
             Files.readString(
                 repositoryRoot().resolve("docs/USER_REQUESTS.md"), StandardCharsets.UTF_8));
-    assertTrue(examplesGuide.contains("runnable sample"));
+    assertTrue(examplesGuide.contains("placeholder-first sample"));
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
-    assertTrue(examplesGuide.contains("--policy-profile"));
     assertTrue(examplesGuide.contains("--business-activity-tag"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
-    assertTrue(requestsGuide.contains("runnable sample"));
+    assertTrue(requestsGuide.contains("placeholder-first sample"));
     assertTrue(requestsGuide.contains("single-use per book"));
     assertFalse(
         requestsGuide.contains(
@@ -175,8 +167,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     Path unknownAccountRequestFile = copyExampleFixture("unknown-account-request.json");
     Path reversalRequestFile = copyExampleFixture("reversal-request.json");
     Path planBookFile = workspace.resolve("acme-plan.sqlite");
-    Path rawPlanBookFile = workspace.resolve("acme-plan-template.sqlite");
-    Path rawPlanTemplateFile = workspace.resolve("raw-ledger-plan-template.json");
     Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
     Path queryPlanBookFile = workspace.resolve("acme-plan-query.sqlite");
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
@@ -246,19 +236,16 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "10");
     assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
-    Files.writeString(
-        rawPlanTemplateFile, rawPlanTemplate.toPrettyString(), StandardCharsets.UTF_8);
-    JsonNode rawPlanResult =
-        runJsonCommand(
-            "execute-plan",
-            "--book-file",
-            rawPlanBookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--request-file",
-            rawPlanTemplateFile.toString());
-    assertEquals("ok", rawPlanResult.path("status").stringValue());
-    assertEquals("succeeded", rawPlanResult.path("payload").path("status").stringValue());
+    JsonNode rawPlanPosting = rawPlanTemplate.path("steps").get(3).path("posting");
+    assertEquals(
+        "replace-with-cash-receipt-id",
+        rawPlanPosting
+            .path("evidence")
+            .path("sourceDocuments")
+            .get(0)
+            .path("sourceDocumentId")
+            .stringValue());
+    assertEquals("PERSON", rawPlanPosting.path("provenance").path("actorType").stringValue());
     JsonNode planResult =
         runJsonCommand(
             "execute-plan",
@@ -270,7 +257,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "full",
             "--request-file",
             planRequestFile.toString());
-    assertEquals("ok", planResult.path("status").stringValue());
+    assertEquals("succeeded", planResult.path("status").stringValue());
     JsonNode queryPlanResult =
         runJsonCommand(
             "execute-plan",
@@ -282,7 +269,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "full",
             "--request-file",
             queryPlanRequestFile.toString());
-    assertEquals("ok", queryPlanResult.path("status").stringValue());
+    assertEquals("succeeded", queryPlanResult.path("status").stringValue());
     JsonNode queryData =
         queryPlanResult.path("payload").path("journal").path("steps").get(4).path("data");
     assertEquals(1, queryData.path("count").asInt());

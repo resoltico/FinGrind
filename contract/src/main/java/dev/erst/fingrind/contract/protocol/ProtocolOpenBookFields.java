@@ -6,7 +6,6 @@ public final class ProtocolOpenBookFields {
   public static final String BUSINESS_ACTIVITY_TAGS = "businessActivityTags";
   public static final String FUNCTIONAL_CURRENCY = "functionalCurrency";
   public static final String FISCAL_YEAR_START = "fiscalYearStart";
-  public static final String POLICY_PROFILE = "policyProfile";
 
   private ProtocolOpenBookFields() {}
 }

@@ -11,7 +11,7 @@ public enum ProfitAndLossLineClassification implements WireValue {
   OPERATING_EXPENSE,
   DEPRECIATION_AND_AMORTIZATION,
   FINANCE_EXPENSE,
-  TAX_EXPENSE;
+  OTHER_EXPENSE;
 
   /** Returns the canonical account type this classification belongs to. */
   public AccountType accountType() {
@@ -21,7 +21,7 @@ public enum ProfitAndLossLineClassification implements WireValue {
           OPERATING_EXPENSE,
           DEPRECIATION_AND_AMORTIZATION,
           FINANCE_EXPENSE,
-          TAX_EXPENSE ->
+          OTHER_EXPENSE ->
           AccountType.EXPENSE;
     };
   }
@@ -37,7 +37,7 @@ public enum ProfitAndLossLineClassification implements WireValue {
       case OPERATING_EXPENSE -> "OPERATING_EXPENSE";
       case DEPRECIATION_AND_AMORTIZATION -> "DEPRECIATION_AND_AMORTIZATION";
       case FINANCE_EXPENSE -> "FINANCE_EXPENSE";
-      case TAX_EXPENSE -> "TAX_EXPENSE";
+      case OTHER_EXPENSE -> "OTHER_EXPENSE";
     };
   }
 

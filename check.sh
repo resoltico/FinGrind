@@ -2,7 +2,7 @@
 # Run all local verification gates and release packaging checks.
 #
 # This file intentionally lives at the repository root beside gradlew because it is the canonical
-# human-facing project gate entrypoint. The scripts/ directory is reserved for subordinate helper
+# operator-facing project gate entrypoint. The scripts/ directory is reserved for subordinate helper
 # scripts that workflows and this root gate invoke.
 #
 # The fixed six-stage contract is canonically owned by scripts/check-stage-contract.sh so usage
@@ -24,7 +24,7 @@
 # shape alone.
 #
 # Exit status: 0 on success. Any failing Gradle stage or script precondition returns a non-zero
-# exit status. The script emits per-stage finish lines with durations plus one final human-readable
+# exit status. The script emits per-stage finish lines with durations plus one final plain-language
 # result line and one machine-readable summary line:
 # [CHECK-SUMMARY] status=<success|failure> stage=<stage-id> exit_code=<n> total_elapsed_seconds=<n>
 #

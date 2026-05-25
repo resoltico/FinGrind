@@ -33,7 +33,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.REQUEST_FILE,
                             ProtocolOptions.RESULT_DETAIL)),
                 ProtocolExampleStep.note(
-                    "plan.json is runnable as emitted for a fresh demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
+                    "plan.json is runnable as emitted for a fresh demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PREFLIGHT_ENTRY,
             OperationCategory.WRITE,
@@ -43,9 +43,9 @@ final class ProtocolWriteOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Validate one posting request without committing it.",
             List.of(
                 ProtocolExampleStep.command(
@@ -61,7 +61,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "request.json is runnable as emitted for a demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))),
+                    "request.json is runnable as emitted for a demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
         ProtocolOperationDefinitions.operation(
             OperationId.POST_ENTRY,
             OperationCategory.WRITE,
@@ -71,9 +71,9 @@ final class ProtocolWriteOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Commit one posting request into the selected SQLite book.",
             List.of(
                 ProtocolExampleStep.command(
@@ -89,6 +89,6 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "request.json is runnable as emitted for a demo book. Replace the sample evidence and provenance values before using it for real-world bookkeeping."))));
+                    "request.json is runnable as emitted for a demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))));
   }
 }

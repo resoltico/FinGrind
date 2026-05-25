@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -31,7 +30,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_supportsHumanOutputForAdministrativeAndWriteCommands() {
+  void parse_supportsTextOutputForAdministrativeAndWriteCommands() {
     GenerateBookKeyFile generateBookKeyFile =
         assertInstanceOf(
             GenerateBookKeyFile.class,
@@ -41,7 +40,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-key-file",
                   "books/entity.book-key",
                   "--output",
-                  "human"
+                  "text"
                 }));
     OpenBook openBook =
         assertInstanceOf(
@@ -55,8 +54,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
@@ -64,7 +61,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--fiscal-year-start",
                   "01-01",
                   "--output",
-                  "human"
+                  "text"
                 }));
     DeclareAccount declareAccount =
         assertInstanceOf(
@@ -79,7 +76,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--request-file",
                   "account.json",
                   "--output",
-                  "human"
+                  "text"
                 }));
     RekeyBook rekeyBook =
         assertInstanceOf(
@@ -94,7 +91,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--replacement-book-key-file",
                   "book-new.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
     PostEntry postEntry =
         assertInstanceOf(
@@ -109,20 +106,20 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--request-file",
                   "entry.json",
                   "--output",
-                  "human"
+                  "text"
                 }));
 
-    assertEquals(OutputMode.HUMAN, generateBookKeyFile.outputMode());
-    assertEquals(OutputMode.HUMAN, openBook.outputMode());
-    assertEquals(OutputMode.HUMAN, declareAccount.outputMode());
-    assertEquals(OutputMode.HUMAN, rekeyBook.outputMode());
-    assertEquals(OutputMode.HUMAN, postEntry.outputMode());
-    ClosePeriod closePeriod =
+    assertEquals(OutputMode.TEXT, generateBookKeyFile.outputMode());
+    assertEquals(OutputMode.TEXT, openBook.outputMode());
+    assertEquals(OutputMode.TEXT, declareAccount.outputMode());
+    assertEquals(OutputMode.TEXT, rekeyBook.outputMode());
+    assertEquals(OutputMode.TEXT, postEntry.outputMode());
+    TransferPeriodResult transferPeriod =
         assertInstanceOf(
-            ClosePeriod.class,
+            TransferPeriodResult.class,
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -132,9 +129,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--effective-date-to",
                   "2026-04-30",
                   "--output",
-                  "human"
+                  "text"
                 }));
-    assertEquals(OutputMode.HUMAN, closePeriod.outputMode());
+    assertEquals(OutputMode.TEXT, transferPeriod.outputMode());
   }
 
   @Test
@@ -164,8 +161,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
@@ -181,7 +176,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_acceptsExplicitPolicyProfileWithoutTaxProfileScaffolding() {
+  void parse_openBook_usesTheBuiltInKernelWithoutExtraProfileArguments() {
     OpenBook openBook =
         assertInstanceOf(
             OpenBook.class,
@@ -194,8 +189,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
@@ -204,9 +197,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                 }));
 
-    assertEquals(
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
-        openBook.command().bookIdentity().policyProfile());
+    assertEquals(bookIdentity(), openBook.command().bookIdentity());
   }
 
   @Test
@@ -226,8 +217,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--tax-profile-file",
@@ -257,8 +246,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
@@ -281,7 +268,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "--request-file",
                       "plan.json",
                       "--output",
-                      "human"
+                      "text"
                     }));
     CliArgumentsException declareAccountExtra =
         assertThrows(
@@ -337,8 +324,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
@@ -353,7 +338,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_requiresPolicyProfileAndCollectsBusinessActivityTags() {
+  void parse_openBook_collectsBusinessActivityTags() {
     OpenBook command =
         assertInstanceOf(
             OpenBook.class,
@@ -366,8 +351,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation,localization",
                   "--business-activity-tag",
@@ -378,9 +361,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                 }));
 
-    assertEquals(
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1,
-        command.command().bookIdentity().policyProfile());
     assertEquals(
         List.of("translation,localization", "cafe services"),
         command.command().bookIdentity().entityProfile().businessActivityTags().stream()
@@ -452,13 +432,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_returnsClosePeriodForValidAdministrativeCommand() {
-    ClosePeriod command =
+  void parse_returnsTransferPeriodResultForValidAdministrativeCommand() {
+    TransferPeriodResult command =
         assertInstanceOf(
-            ClosePeriod.class,
+            TransferPeriodResult.class,
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -477,13 +457,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_rejectsInvalidClosePeriodArguments() {
+  void parse_rejectsInvalidTransferPeriodResultArguments() {
     assertThrows(
         CliArgumentsException.class,
         () ->
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -496,7 +476,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -509,12 +489,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--closing-equity-account",
+                  "--result-holding-account",
                   "3200",
                   "--effective-date-from",
                   "2026-04-01",
@@ -526,7 +506,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -536,25 +516,25 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--effective-date-to",
                   "2026-04-01"
                 }));
-    CliArgumentsException removedClosingEquityAccount =
+    CliArgumentsException removedResultHoldingAccount =
         assertThrows(
             CliArgumentsException.class,
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "close-period",
+                      "transfer-period-result",
                       "--book-file",
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--closing-equity-account",
+                      "--result-holding-account",
                       "3200",
                       "--effective-date-from",
                       "2026-04-01",
                       "--effective-date-to",
                       "2026-04-30"
                     }));
-    assertEquals("--closing-equity-account", removedClosingEquityAccount.argument());
+    assertEquals("--result-holding-account", removedResultHoldingAccount.argument());
   }
 
   @Test
@@ -570,8 +550,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-stdin",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
@@ -587,13 +565,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parseClosePeriod_acceptsHumanOutputAndRejectsUnsupportedArguments() {
-    ClosePeriod closePeriod =
+  void parseTransferPeriodResult_acceptsTextOutputAndRejectsUnsupportedArguments() {
+    TransferPeriodResult transferPeriod =
         assertInstanceOf(
-            ClosePeriod.class,
+            TransferPeriodResult.class,
             CliArguments.parse(
                 new String[] {
-                  "close-period",
+                  "transfer-period-result",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -603,19 +581,19 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--effective-date-to",
                   "2026-04-30",
                   "--output",
-                  "human"
+                  "text"
                 }));
-    CliLifecycleMutationArguments.ParsedClosePeriodArguments parsedArguments =
-        CliLifecycleMutationArguments.parseClosePeriodArguments(
+    CliLifecycleMutationArguments.ParsedTransferPeriodResultArguments parsedArguments =
+        CliLifecycleMutationArguments.parseTransferPeriodResultArguments(
             List.of("--effective-date-from", "2026-04-01", "--effective-date-to", "2026-04-30"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliLifecycleMutationArguments.parseClosePeriodArguments(
+                CliLifecycleMutationArguments.parseTransferPeriodResultArguments(
                     List.of("--unexpected", "value")));
 
-    assertEquals(OutputMode.HUMAN, closePeriod.outputMode());
+    assertEquals(OutputMode.TEXT, transferPeriod.outputMode());
     assertEquals(
         new dev.erst.fingrind.core.ReportingPeriod(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -637,8 +615,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-prompt",
                   "--entity-name",
                   "Acme Studio",
-                  "--policy-profile",
-                  "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                   "--business-activity-tag",
                   "translation-services",
                   "--functional-currency",
@@ -668,8 +644,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
@@ -703,26 +677,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "--fiscal-year-start",
                       "01-01",
                     }));
-    CliArgumentsException missingPolicyProfile =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01",
-                    }));
     CliArgumentsException missingBusinessActivityTag =
         assertThrows(
             CliArgumentsException.class,
@@ -736,8 +690,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -756,8 +708,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--fiscal-year-start",
@@ -776,8 +726,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--policy-profile",
-                      "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1",
                       "--business-activity-tag",
                       "translation-services",
                       "--functional-currency",
@@ -785,8 +733,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                     }));
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
-    assertEquals("--policy-profile", missingPolicyProfile.argument());
-    assertEquals("A --policy-profile argument is required.", missingPolicyProfile.getMessage());
     assertEquals("--business-activity-tag", missingBusinessActivityTag.argument());
     assertEquals(
         "At least one --business-activity-tag argument is required.",
@@ -816,7 +762,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--backup-book-key-file-out",
                   "backup/entity.key",
                   "--output",
-                  "human"
+                  "text"
                 }));
     RestoreBook restoreBook =
         assertInstanceOf(
@@ -861,7 +807,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(Path.of("book.sqlite"), backupBook.bookAccess().bookFilePath());
     assertEquals(Path.of("backup/entity.sqlite"), backupBook.backupFilePath());
     assertEquals(Path.of("backup/entity.key"), backupBook.backupBookKeyFilePath());
-    assertEquals(OutputMode.HUMAN, backupBook.outputMode());
+    assertEquals(OutputMode.TEXT, backupBook.outputMode());
 
     assertEquals(Path.of("book.sqlite"), restoreBook.bookFilePath());
     assertEquals(Path.of("backup/entity.sqlite"), restoreBook.backupFilePath());

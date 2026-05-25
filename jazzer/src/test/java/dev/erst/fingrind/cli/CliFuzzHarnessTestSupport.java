@@ -127,7 +127,7 @@ public final class CliFuzzHarnessTestSupport {
                 "100",
                 new RequestContext(
                     "document-idem-jpy-1",
-                    "invoice",
+                    "cash-receipt",
                     "2026-06-01",
                     "actor-jpy-1",
                     "AGENT",
@@ -148,7 +148,7 @@ public final class CliFuzzHarnessTestSupport {
                 "1250",
                 new RequestContext(
                     "document-idem-bhd-1",
-                    "invoice",
+                    "cash-receipt",
                     "2026-06-02",
                     "actor-bhd-1",
                     "AGENT",
@@ -169,7 +169,7 @@ public final class CliFuzzHarnessTestSupport {
                 "1e1000000100",
                 new RequestContext(
                     "document-idem-1",
-                    "invoice",
+                    "cash-receipt",
                     "2026-04-07",
                     "actor-1",
                     "AGENT",
@@ -190,7 +190,7 @@ public final class CliFuzzHarnessTestSupport {
                 "1000",
                 new RequestContext(
                     "document-idem-3",
-                    "invoice",
+                    "cash-receipt",
                     "2026-04-07",
                     "   ",
                     "AGENT",
@@ -230,7 +230,7 @@ public final class CliFuzzHarnessTestSupport {
                     "credit-note",
                     "2026-04-08",
                     "actor-2",
-                    "HUMAN",
+                    "PERSON",
                     "command-2",
                     "idem-2",
                     "cause-2",
@@ -269,7 +269,7 @@ public final class CliFuzzHarnessTestSupport {
                 "credit-note",
                 "2026-04-08",
                 "actor-5",
-                "HUMAN",
+                "PERSON",
                 "command-5",
                 "idem-5",
                 "cause-5",
@@ -367,7 +367,7 @@ public final class CliFuzzHarnessTestSupport {
                         "100",
                         new RequestContext(
                             "document-idem-jpy-plan-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-06-03",
                             "agent-jpy-plan-1",
                             "AGENT",
@@ -432,7 +432,7 @@ public final class CliFuzzHarnessTestSupport {
                         "1250",
                         new RequestContext(
                             "document-idem-bhd-plan-1",
-                            "invoice",
+                            "cash-receipt",
                             "2026-06-04",
                             "agent-bhd-plan-1",
                             "AGENT",
@@ -451,8 +451,7 @@ public final class CliFuzzHarnessTestSupport {
           "entityName": "Acme Studio",
           "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01",
-          "policyProfile": "INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1"
+          "fiscalYearStart": "01-01"
         }
         """
         .formatted(functionalCurrency)

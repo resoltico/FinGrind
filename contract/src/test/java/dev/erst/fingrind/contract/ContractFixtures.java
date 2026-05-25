@@ -27,7 +27,6 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.AccountingPolicyProfile;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
@@ -79,8 +78,7 @@ final class ContractFixtures {
             new BookEntityName("Acme Studio"),
             List.of(new BusinessActivityTag("translation-services"))),
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        AccountingPolicyProfile.INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1);
+        FiscalYearStart.parse("01-01"));
   }
 
   static OpenBookCommand openBookCommand() {
@@ -258,7 +256,7 @@ final class ContractFixtures {
   static SourceDocumentReference sourceDocumentReference(String token) {
     return new SourceDocumentReference(
         new SourceDocumentId("document-" + token),
-        new SourceDocumentType("invoice"),
+        new SourceDocumentType("cash-receipt"),
         FIXTURE_DATE,
         FIXTURE_INSTANT,
         new StorageLocator("evidence://documents/document-" + token + ".pdf"),
@@ -270,7 +268,7 @@ final class ContractFixtures {
         new ApprovalId("approval-" + token),
         new ApprovalType("manager-signoff"),
         new ActorId("manager-1"),
-        ActorType.HUMAN,
+        ActorType.PERSON,
         ApprovalDecision.APPROVED,
         FIXTURE_INSTANT);
   }

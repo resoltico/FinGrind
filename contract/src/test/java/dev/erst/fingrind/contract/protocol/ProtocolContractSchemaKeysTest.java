@@ -30,7 +30,7 @@ class ProtocolContractSchemaKeysTest {
     assertEquals("INSPECT_REKEY_ROLLBACK", current.operationIds().inspectRekeyRollback());
     assertEquals("DELETE_REKEY_ROLLBACK", current.operationIds().deleteRekeyRollback());
     assertEquals("RESTORE_REKEY_ROLLBACK", current.operationIds().restoreRekeyRollback());
-    assertEquals("CLOSE_PERIOD", current.operationIds().closePeriod());
+    assertEquals("TRANSFER_PERIOD_RESULT", current.operationIds().transferPeriodResult());
     assertEquals("LIST_POSTINGS", current.operationIds().listPostings());
     assertEquals("FINANCIAL_POSITION", current.operationIds().financialPosition());
     assertEquals("INCOME_STATEMENT", current.operationIds().incomeStatement());

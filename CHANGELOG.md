@@ -5,6 +5,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-05-25
+
+### Changed
+
+- Discovery JSON now has an explicit three-tier contract. `help --output json` and
+  `capabilities --output json` default to a minified `minimal` index for agents, while
+  `--detail compact` exposes the stable command/output descriptors and `--detail full` keeps the
+  exhaustive embedded schemas and doctrine surface.
+- Hard-broke the operator-output vocabulary from the old audience-labeled mode to `text` across CLI parsing, machine
+  discovery, help text, request docs, examples, release-smoke owners, and repo-owned renderer/test
+  naming, so the public contract now names one representation instead of guessing its audience.
+- `print-request-template` and `print-plan-template` now emit unmistakable placeholder-first
+  scaffolds instead of live-looking demo provenance. The checked-in template corpus, quick starts,
+  and request docs now publish replace-before-submit evidence and provenance fields together with
+  the current `PERSON` default actor classification.
+- Committed posting facts now preserve one durable `postingOriginKind` across `get-posting`,
+  `list-postings`, `account-ledger`, ledger-plan journals, and the checked-in example corpus, so
+  typed entry families survive durable storage and readback instead of collapsing into generic
+  `postingKind` alone.
+- Typed published entries now enforce their own bookkeeping semantics before journal derivation.
+  Cash, equity, and administrative entry flows validate account type or classification
+  compatibility plus accepted source-document types, and deterministic failures publish structured
+  `entry-semantics-violations` instead of accepting any balanced journal shape that happens to post.
+- Text account, posting, ledger, and statement views are now summary-first. The operator-facing
+  read/report commands render compact tables instead of repeating the same facts as one
+  multi-line block per row.
+- `list-postings` JSON pages now return posting summaries rather than full posting bodies, so list
+  reads expose stable identifiers, movement totals, source-document ids, and origin kinds without
+  forcing agents to pay full posting-detail cost for every page entry.
+
+### Fixed
+
+- Fixed posting and report CSV exports so they are now scalar-only and rectangular. Nested evidence
+  metadata no longer appears as escaped JSON inside cells, `account-ledger` uses one repeated
+  entry-row model instead of mixed opening/entry/closing record kinds, and the statement CSV
+  outputs no longer depend on blank-heavy multiplexed row shapes.
+- Fixed the last verbose period-summary fallback. Period-summary account activity now renders the
+  same compact summary table shape as the other text read/report surfaces instead of collapsing
+  back to one block per account.
+- Fixed the interactive prompt contract across product, docs, and release verifiers. Prompt input
+  now remains a `text`-only route, machine-output prompt requests are rejected deterministically as
+  `invalid-request`, non-interactive text prompt failures are verified against the published
+  `interactive-prompt-unavailable` contract, and the field-audit PTY harness now proves the real
+  non-echo prompt behavior instead of recording terminal echo as product output.
+- Fixed the release-smoke, source-checkout launcher, and public-container verification owners so
+  they derive prompt, discovery, and output-shape expectations from the current published contract
+  instead of pre-break verifier assumptions.
+- Refreshed the operator and machine-facing docs to match the shipped discovery defaults, compact
+  text report shapes, current scaffold semantics, and current example outputs.
+
 ## [0.45.0] - 2026-05-22
 
 ### Changed
@@ -12,19 +62,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Narrowed the initialized-book identity and bookkeeping kernel to the live
   cash-oriented single-entity contract. `open-book`, `inspect-book`, request schemas, examples,
   and machine discovery now publish only entity name, business activity tags, functional
-  currency, fiscal-year anchor, and one persisted `policyProfile`, and the protected-book format
-  advances to `17`.
+  currency, and fiscal-year anchor, and the protected-book format advances to `19`.
 - Replaced the machine-discovery `accountingBaseline` and extension-shaped `policyPack` surfaces
-  with a narrower `bookkeepingKernel` contract plus one `policyProfile`, so help, capabilities,
-  request docs, and protocol references publish only the executable bookkeeping kernel instead of
-  a broader standards-baseline posture.
+  with a narrower `bookkeepingKernel` contract, so help, capabilities, request docs, and
+  protocol references publish only the executable bookkeeping kernel instead of a broader
+  standards-baseline posture.
 - Replaced generic `MANUAL_ADJUSTMENT` bookkeeping-entry language with named administrative
   adjustment entry kinds (`OPENING_BALANCE_ADJUSTMENT`, `CORRECTION_ADJUSTMENT`, and
   `REVERSAL_ADJUSTMENT`) across the public request contract, checked-in examples, release-smoke
   fixtures, and fuzz/replay inputs.
 - Neutralized equity and period-close vocabulary across the bookkeeping kernel. Legal-form
   identity and equity-classification assumptions are gone from the active public model,
-  `close-period` now targets `ACCUMULATED_RESULT`, and statements/readback use the same neutral
+  `transfer-period-result` now targets `RESULT_HOLDING`, and statements/readback use the same neutral
   equity taxonomy across Java, SQLite, CLI output, and examples.
 - Renamed and rewrote the accounting ADR line around current executable truth:
   [ADR_ACCOUNTING_FOUNDATION.md](./docs/ADR_ACCOUNTING_FOUNDATION.md) replaced the old
@@ -43,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Realigned the public-container release verifier with the shipped compact human trial-balance
+- Realigned the public-container release verifier with the shipped compact text trial-balance
   surface. The operator-side anonymous pull-and-run check and its shell regression harness now
   assert the current `Book ... | Currency ... | FY ... | Policy ...` header plus the published
   current-totals block instead of an older multi-line entity banner.
@@ -52,8 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entity-form, owner-model, and generic manual-adjustment assumptions from the public verification
   surface.
 - Refreshed the README, quick-start guides, protocol references, request docs, and checked-in
-  example corpus so the published snippets show the live bookkeeping-kernel, policy-profile, and
-  administrative-adjustment surfaces instead of superseded intermediate contract shapes.
+  example corpus so the published snippets show the live bookkeeping-kernel and administrative-adjustment surfaces instead of
+  superseded intermediate contract shapes.
 
 ## [0.44.0] - 2026-05-22
 
@@ -62,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a typed public bookkeeping-entry write contract. `preflight-entry`, `post-entry`,
   `print-request-template`, `execute-plan`, the machine-discovery schemas, and the checked-in
   example corpus now center on stable `entryKind` event shapes (`CASH_REVENUE`, `CASH_EXPENSE`,
-  `OWNER_CONTRIBUTION`, `OWNER_DRAW`, and `MANUAL_ADJUSTMENT`) instead of one generic raw
+  `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, and `MANUAL_ADJUSTMENT`) instead of one generic raw
   posting-request object.
 - Added durable retained-evidence facts to the public bookkeeping surface. Source documents now
   carry document date, capture timestamp, storage locator, and lowercase SHA-256 digest metadata,
@@ -86,9 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   include book-wide totals plus an explicit balanced verdict, report criteria use as-of
   language for point-in-time reads, and comparative date ranges remain first-class in the
   canonical report contracts.
-- Human and machine discovery are now layered more deliberately. `help` is the operator task
+- Text and machine discovery are now layered more deliberately. `help` is the operator task
   guide with copy-safe literal command grammar, explicit request-document scaffold/contract lookup
-  cues, and compact human report headers, while `capabilities` remains the shared machine
+  cues, and compact text report headers, while `capabilities` remains the shared machine
   inventory for automation and release-surface verifiers.
 - Refreshed the checked-in examples, quick-start guides, and storefront docs so the published
   snippets show the live typed-entry, retained-evidence, policy-profile, and compact-report
@@ -108,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   canonical `exitCode` per deterministic error, and aligned the release-smoke plus
   source-checkout launcher verifiers to consume those published values instead of stale private
   numbers.
-- Fixed the human CLI operator surfaces so command help no longer hard-wraps invocation or option
+- Fixed the text CLI operator surfaces so command help no longer hard-wraps invocation or option
   grammar mid-command, request-document sections label scaffold and contract lookup commands
   explicitly, and repeated report/register identity headers collapse into one stable compact
   book-context row instead of reprinting the same multi-line banner on every screen.
@@ -163,8 +212,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to format `12` with dedicated `posting_source_document` and `posting_approval` child tables.
 - `open-book` now requires explicit owner-model, reporting-obligation, and business-activity
   doctrine instead of leaving new books semantically under-specified, and `inspect-book` plus the
-  human report headers now publish those identity facts together with one direct close-readiness
-  summary instead of waiting for `close-period` rejection to surface that doctrine.
+  text report headers now publish those identity facts together with one direct close-readiness
+  summary instead of waiting for `transfer-period-result` rejection to surface that doctrine.
 - The tagged container publication workflow now runs the same mounted-book and native-provenance
   verifier the Step 9 operator release protocol uses, so automated post-publish checks and manual
   public-surface verification enforce one shared container contract instead of two different
@@ -176,9 +225,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of duplicating per-step digests under both `payload.summary` and `payload.journal`, and
   command help now folds advisory notes into example guidance instead of rendering them as peer
   grammar sections.
-- Human discovery and machine output are more sharply separated: `help` is the front-door task
+- Text discovery and machine output are more sharply separated: `help` is the front-door task
   guide, `capabilities` is the reference/machine-contract inventory, JSON responses are emitted as
-  pretty-printed documents, and long human-facing book paths are compacted so inspection and
+  pretty-printed documents, and long text-facing book paths are compacted so inspection and
   report surfaces stay readable on narrower terminals.
 
 ### Fixed
@@ -196,10 +245,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path now seeds the same explicit open-book identity doctrine and mandatory posting evidence that
   the released CLI contract requires.
 - Fixed report and query CSV evidence serialization so nested source-document and approval JSON is
-  emitted in a deterministic field order, and refreshed the checked-in human/report example
+  emitted in a deterministic field order, and refreshed the checked-in text/report example
   fixtures to match the current expanded book-identity header contract.
-- Fixed the human path-display contract on Windows so root paths normalize to the same forward-slash
-  presentation rule the rest of the compact human CLI surfaces use, and aligned the focused CLI
+- Fixed the text path-display contract on Windows so root paths normalize to the same forward-slash
+  presentation rule the rest of the compact text CLI surfaces use, and aligned the focused CLI
   regression test with that cross-platform display contract.
 
 ## [0.42.0] - 2026-05-20
@@ -216,15 +265,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exit-taxonomy, and report/discovery contracts the shipped binary actually emits.
 - Posting admission and period close are now carried by smaller local bookkeeping owners: posting
   acceptance composes focused validation policies behind one explicit policy-pack seam, and period
-  close planning now lives in `PeriodClosePlanner` while `PeriodCloseService` coordinates
+  close planning now lives in `PeriodResultTransferPlanner` while `PeriodResultTransferService` coordinates
   lifecycle/store access and durable close persistence.
 - Statement reporting is now split across dedicated financial-position, income-statement, and
   changes-in-equity calculators, with `BookkeepingStatementService` reduced to a coordinator over
   the local read/report slice instead of one multi-statement doctrine sink.
-- Human discovery, inspection, and report output now follow one wrapped front-door contract across
+- Text discovery, inspection, and report output now follow one wrapped front-door contract across
   packaged, source-checkout, developer direct-Java, and raw modular launchers: grouped command
   catalogs, stable section headings, trimmed whitespace, and narrower line widths are now the
-  published human-output baseline.
+  published text-output baseline.
 - Read-only SQLite native opens now keep in-process active-connection accounting without
   publishing sibling activity markers, so diagnostic and query paths no longer create marker
   artifacts merely to inspect one protected book.
@@ -238,14 +287,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the PR Gate and merge-handoff verifiers now wait longer by default before declaring timeout, and
   the release protocol documents the same explicit timeout override path for both pre-merge and
   post-merge verification.
-- Cross-platform CLI surface checks are tighter at the owner seams: shared human-format helpers now
+- Cross-platform CLI surface checks are tighter at the owner seams: shared text-format helpers now
   emit one deterministic wrapped-line contract independent of host line endings, and published
   example-fixture canonicalization now normalizes path-bearing JSON and text fixtures through the
   same owned temporary-path rules on Windows, macOS, and Linux.
 - Fixed release-surface and source-checkout launcher regressions that were asserting retired help
   headings or one exact unwrapped launcher line; verification now proves the live grouped-help
   contract the launchers actually publish.
-- Fixed bundle and release-smoke verification drift around human posting registers so acceptance
+- Fixed bundle and release-smoke verification drift around text posting registers so acceptance
   checks and checked-in workflow fixtures now follow the current card-style posting surface the
   shipped binary emits.
 - The release protocol now states explicitly that the Step 1 baseline gate runs before the version
@@ -268,7 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI help, machine discovery, and canonical examples now describe the same command grammar more
   precisely: action-specific maintenance requirements are surfaced explicitly, operator guidance is
   separated from first-class grammar sections, and report/query outputs use the normalized versus
-  redacted path vocabulary consistently across human, JSON, bundle-smoke, and Docker acceptance
+  redacted path vocabulary consistently across text, JSON, bundle-smoke, and Docker acceptance
   surfaces.
 - The current bookkeeping kernel was narrowed to executable present-day meaning: inert
   reporting/basis identity labels, dormant tax/FX/evidence policy seams, and unused
@@ -329,7 +378,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added first-class closed-book maintenance workflows: `backup-book`, `restore-book`, and the
   explicit rekey-rollback inspection, restore, and deletion commands now ship as public CLI
-  commands with structured JSON and human result shapes, deterministic rejection contracts, and
+  commands with structured JSON and text result shapes, deterministic rejection contracts, and
   matching maintenance/regression coverage.
 - `inspect-book` now publishes the active migration-policy facts alongside lifecycle and format
   metadata so operators and automation can distinguish the current hard-break format line from a
@@ -345,8 +394,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Discovery surfaces now default to JSON when stdout is redirected, inline accepted enum
   vocabularies for request-file commands, and separate operator notes from command grammar more
   clearly.
-- Human inspection and maintenance output now render explicit entity and reporting rows, clearer
-  restore/rekey secret continuity, and more precise close-period outcome language instead of
+- Text inspection and maintenance output now render explicit entity and reporting rows, clearer
+  restore/rekey secret continuity, and more precise transfer-period-result outcome language instead of
   compressed profile summaries or ambiguous empty sections.
 - Managed SQLite runtime publication and verification now align around artifact-side trusted
   checksum sidecars across the bundle, source-checkout, Docker, and release-surface verifier
@@ -371,8 +420,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   validate path collisions, backup-pair verification, rollback-artifact handling, and secret
   reuse deterministically across CLI, SQLite, schema, and docs.
 - Raw `java -jar` discovery/help no longer leaves misleading native-access noise, successful PDF
-  exports no longer emit a harmless direct-buffer warning, single-record human views keep exact
-  durable identifiers, and the checked-in examples and rendered human fixtures now match the live
+  exports no longer emit a harmless direct-buffer warning, single-record text views keep exact
+  durable identifiers, and the checked-in examples and rendered text fixtures now match the live
   request and output contracts.
 - Tightened release-surface verification again so the direct-Java SQLite runtime verifier exercises
   the prepared-checkout runtime path it claims to prove, and the contract schema-key floor now
@@ -414,20 +463,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   use, and ad hoc fixture key directories no longer inherit broader Windows temp-root ACLs that
   would make release-gate book initialization fail only on hosted Windows runners.
 - Refined the field-tested operator and AI-agent CLI surface again: posting-ledger and statement
-  views now keep full posting identities in human and PDF outputs, derived statement rows no
+  views now keep full posting identities in text and PDF outputs, derived statement rows no
   longer expose internal synthetic line codes, reversal wording now names posting lineage
   directly, `rekey-book` success results now publish the replacement secret source, no-op period
   closes render explicit empty generated-posting output, and the canonical checked-in examples now
   use concrete identity/reporting/tax statuses, stable illustrative paths, and a runnable
   reversal example that exactly negates the published basic posting request.
 - Suppressed the harmless Java 26 PDFBox direct-buffer unmapping warning during successful PDF
-  report exports, so human, bundle, and packaged CLI runs no longer emit alarming stderr noise
+  report exports, so text, bundle, and packaged CLI runs no longer emit alarming stderr noise
   when they write valid PDF artifacts.
 - Repaired raw application-JAR usability for discovery and failure handling: help output now
   publishes a truthful `java -jar` launcher example, `capabilities` reports the missing
   native-access prerequisite without triggering JVM warnings, and raw JAR command failures now
   stop cleanly before any SQLite FFM lookup begins.
-- Restored full opaque identifiers in single-record human result views and mutation confirmations
+- Restored full opaque identifiers in single-record text result views and mutation confirmations
   so operators and AI agents can copy posting, command, causation, and idempotency values
   without truncated detail blocks.
 - Restored deterministic administration rejection ordering for missing books so
@@ -512,7 +561,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PowerShell workflow owners, and the release-workflow regression and bundle-pruning proofs now
   guard that contract so post-tag reruns can republish the existing immutable tag safely.
 - Repaired the post-tag release rerun seam again: `release.yml` now accepts both the current
-  machine-readable bundle-path lines and the older human-labeled bundle-path lines that an
+  machine-readable bundle-path lines and the older text-labeled bundle-path lines that an
   immutable tagged source can emit during `workflow_dispatch`, and the release-publication docs
   plus the release-workflow regression now guard that mixed `main`-workflow versus tagged-source
   handoff explicitly.
@@ -569,12 +618,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   posting inspection and ledger-style views now declare `postingKind` and posting-coverage
   semantics explicitly, `execute-plan` now defaults to bounded summary output while public docs
   and examples show `--result-detail full` wherever they rely on the full execution journal, and
-  the human/PDF report layout now suppresses empty statement sections while vertically centering
+  the text/PDF report layout now suppresses empty statement sections while vertically centering
   gray header titles and drawing matching top and bottom header rules.
 - Repaired the operator-side public container verifier to use the current mounted-book contract:
   it now opens books with explicit identity fields and seeds postings with the required
   `postingKind`, while the paired shell regression and release-publication docs now track mounted
-  lifecycle and posting-grammar changes as well as human `trial-balance` layout changes.
+  lifecycle and posting-grammar changes as well as text `trial-balance` layout changes.
 - Tightened the bookkeeping standards boundary and reporting-policy surface so `help` and
   `capabilities` now publish one machine-readable accounting baseline plus the sanctioned
   bookkeeping policy-pack extension seams, comparative statement data is now derived and carried
@@ -593,7 +642,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   execute-plan` and `print-plan-template` now publish the same canonical ledger-plan template,
   `print-request-template` can emit the declare-account scaffold directly, JSON report success
   envelopes now publish PDF artifacts explicitly, account-ledger and period-summary now carry
-  book identity, human/CSV/PDF reports now expose the comparative data and presentation labels
+  book identity, text/CSV/PDF reports now expose the comparative data and presentation labels
   already present in the model, and the checked-in public docs/examples now match that live
   transport exactly.
 - Realigned the bundle and release-smoke acceptance workflow to the current account-ledger CSV
@@ -616,7 +665,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   identity is now returned by `open-book` and `inspect-book`, the canonical AI-agent
   `print-plan-template` scaffold now carries the nested `openBook` shape explicitly, and the
   command docs, quick-start guides, examples, and bundle README now match that live contract.
-- Tightened the current reporting and provenance model for close-period and statement surfaces:
+- Tightened the current reporting and provenance model for transfer-period-result and statement surfaces:
   period-close now records system-generated provenance with a non-CLI source channel, future-dated
   closes reject explicitly, close ranges may not cross the configured fiscal-year boundary,
   trial-balance/report contracts now expose whether closing entries are included, every statement
@@ -627,7 +676,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   doctrinal choice: direct posting requests and AI plan templates now declare `postingKind`,
   FinGrind accepts `STANDARD` and `OPENING_BALANCE` for caller-authored requests, opening-balance
   postings may seed only asset, liability, or equity accounts, every posting must match the
-  selected book functional currency, and close-period now targets one explicit retained-earnings
+  selected book functional currency, and transfer-period-result now targets one explicit retained-earnings
   account instead of relying on a singleton retained-earnings bucket in the schema.
 - Declared FinGrind's current accounting-standards baseline explicitly: the repo now names a
   country-agnostic bookkeeping-core target informed by the IFRS conceptual layer and functional
@@ -644,7 +693,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   payload. The same cleanup also corrected the published request/response examples, account-ledger
   CSV example, release-smoke verifiers, and operator docs to the live hard-break contract.
 - Repaired the operator-side public container verifier so release publication now checks the
-  current human `trial-balance` surface, including the first-class `Account type` and
+  current text `trial-balance` surface, including the first-class `Account type` and
   `Account role` columns, and aligned the mock-backed shell regression harness to the same
   mounted-book statement contract.
 - Corrected contra nominal-account arithmetic so contra revenue and contra expense balances now
@@ -676,7 +725,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   launcher and direct-Java smoke path now open books with explicit entity name, functional
   currency, and fiscal-year start, and the regression proves that both launcher surfaces echo the
   same `bookIdentity` back instead of only checking for a generic ok status. The same verifier now
-  requests human `help` output explicitly when it is asserting human guidance, so the regression
+  requests text `help` output explicitly when it is asserting text guidance, so the regression
   matches the shipped interactive-vs-redirected stdout contract instead of relying on a stale
   pre-hard-break default.
 
@@ -711,13 +760,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   added direct fault-injection and bypass-corruption coverage for SQLite commit atomicity and
   book-open integrity, and tightened the public/user/developer references so request scaffolds,
   report shapes, format-version guidance, and schema references all match the implemented model.
-- Tightened the accounting proof floor around the new statement and close-period surfaces:
+- Tightened the accounting proof floor around the new statement and transfer-period-result surfaces:
   multi-currency statement ordering, loss-side current-period-result projection, undeclared
   profit-and-loss bypass resilience, period-close currency bucketing, and audit-event payload
   validation are now covered directly, while the shared JaCoCo XML verifier now reads only
   report-root coverage counters and the remaining dead close-policy/audit-validation branch
   artifacts were removed from the implementation.
-- Fixed the operation-id discovery contract drift for `close-period`, `financial-position`,
+- Fixed the operation-id discovery contract drift for `transfer-period-result`, `financial-position`,
   `income-statement`, and `changes-in-equity` so bundle verification, release-surface scripts,
   and other machine readers now load the same canonical semantic mapping that the published
   protocol enum and CLI discovery catalog expose.
@@ -725,14 +774,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first-class `accountRole` column now emitted by `account-ledger --output csv`, so the public
   acceptance floor matches the current exported report surface instead of the retired
   pre-doctrine header shape.
-- Tightened the packaged CLI operator surface around request repair, close-period guidance, and
+- Tightened the packaged CLI operator surface around request repair, transfer-period-result guidance, and
   statement presentation: invalid account doctrine now rejects as `invalid-request` instead of
   `runtime-failure`, command-scoped help for request-file commands now inlines canonical templates
-  plus accepted fields and enums, human rejections now surface repair hints and typed details,
-  successful `close-period` output now reports the retained-earnings account and closed totals,
-  the first `close-period` now accepts leading empty days before the earliest posting while later
+  plus accepted fields and enums, text rejections now surface repair hints and typed details,
+  successful `transfer-period-result` output now reports the retained-earnings account and closed totals,
+  the first `transfer-period-result` now accepts leading empty days before the earliest posting while later
   closes remain strictly contiguous,
-  human financial statements now render named sections and totals instead of raw transport tokens,
+  text financial statements now render named sections and totals instead of raw transport tokens,
   `print-request-template` now rejects stray flags precisely, and successful `rekey-book`
   verification no longer warns about its own transient rollback copy.
 - Cleaned up the PDF statement surfaces so the packaged financial-position, income-statement, and
@@ -844,8 +893,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Split command-scoped help so executable examples and operator notes no longer share one raw
-  `Examples` section, changed invalid invocation failures to default to human repair text
-  unless a recognized machine output mode is selected explicitly, and aligned human
+  `Examples` section, changed invalid invocation failures to default to text repair text
+  unless a recognized machine output mode is selected explicitly, and aligned text
   deterministic contract-failure rendering on the `Rejected` heading.
 - Hardened container-image assembly so `docker build` now verifies the staged
   `cli/build/docker-context/` payload against a SHA3-256 fingerprint of the current CLI,
@@ -1202,7 +1251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provenance sentinels are now rejected before any posting or plan can reach durable state, and
   added direct parser plus live workflow regression coverage for the raw template path.
 - Fixed the canonical request and plan scaffolds so they now publish agent-owned provenance
-  placeholders instead of hardcoded human/operator metadata, and documented the single-use
+  placeholders instead of hardcoded operator/agent metadata, and documented the single-use
   `idempotencyKey` contract around those templates.
 - Fixed the canonical request and plan scaffolds so `effectiveDate` is now an explicit
   replace-before-submit placeholder instead of a stale concrete date, and aligned the
@@ -1460,7 +1509,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corpus cannot poison `./check.sh`.
 - Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
   and updated the release protocol to use that deterministic operator-side verifier so public
-  container checks now assert machine-readable `version --output json`, exact human
+  container checks now assert machine-readable `version --output json`, exact text
   trial-balance rows, and PDF output instead of relying on ambiguous ad hoc terminal parsing.
 
 ### Documentation
@@ -1680,7 +1729,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dispatch is exhaustive and the public `--output` option token is consumed through one canonical
   protocol owner.
 - Broke up more CLI and SQLite god-files into narrower seams, including dedicated read-query and
-  report argument parsers, dedicated query/report human and CSV renderers, and a top-level
+  report argument parsers, dedicated query/report text and CSV renderers, and a top-level
   `SqliteStoreAccessMode` contract instead of a nested store-owned access-policy enum.
 - Split more SQLite adapter responsibilities into focused helpers, including top-level native
   runtime support, native invocation/error handling, store transaction/failure support, session
@@ -1740,12 +1789,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Added first-class office-worker reporting commands through `trial-balance`, `account-ledger`,
-  and `period-summary`, taught the CLI read/report surface to render canonical `json`, `human`,
+  and `period-summary`, taught the CLI read/report surface to render canonical `json`, `text`,
   and `csv` output modes from the same report models, and added explicit `--pdf-out` export for
   report artifacts through the new report PDF adapter module backed by Apache PDFBox.
 - Extended the public CLI output contract so administration and write commands that already carried
-  machine envelopes can now also render operator-facing `--output human`, and deterministic
-  failures on those commands now stay in the selected human format instead of falling back to JSON.
+  machine envelopes can now also render operator-facing `--output text`, and deterministic
+  failures on those commands now stay in the selected text format instead of falling back to JSON.
 - Hardened the public verification surface so the bundle, Windows bundle, Docker image, and root
   `./check.sh` flow now run office-worker acceptance workflows instead of only narrow posting smoke
   checks.
@@ -2292,7 +2341,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.45.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.46.0...HEAD
+[0.46.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.46.0
 [0.45.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.45.0
 [0.44.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.44.0
 [0.43.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.43.0

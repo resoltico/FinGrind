@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.util.Objects;
@@ -16,6 +17,7 @@ public record PostingFact(
     JournalEntry journalEntry,
     PostingLineage postingLineage,
     PostingKind postingKind,
+    PostingOriginKind postingOriginKind,
     AccountingEvidence evidence,
     CommittedProvenance provenance) {
   /** Validates the canonical fact shape stored by book-session adapters. */
@@ -24,6 +26,7 @@ public record PostingFact(
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
     Objects.requireNonNull(postingKind, "postingKind");
+    Objects.requireNonNull(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
   }

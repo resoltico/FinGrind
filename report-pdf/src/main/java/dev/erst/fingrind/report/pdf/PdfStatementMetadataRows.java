@@ -26,10 +26,6 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     statementRows.add(
-        List.of(
-            "Policy profile",
-            PdfValueFormatter.displayPolicyProfile(bookIdentity.policyProfile())));
-    statementRows.add(
         List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
     statementRows.addAll(rows);
     return List.copyOf(statementRows);

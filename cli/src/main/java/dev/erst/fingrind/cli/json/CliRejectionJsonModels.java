@@ -15,18 +15,19 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   sealed interface RejectionDetails
       permits PostingRejectionDetails,
           AccountRejectionDetails,
-          PeriodCloseRejectionDetails,
+          PeriodResultTransferRejectionDetails,
           QueryOrPlanRejectionDetails,
           MaintenanceRejectionDetails {}
 
   /** Sealed category for posting lifecycle rejection payloads. */
   sealed interface PostingRejectionDetails extends RejectionDetails
       permits AccountStateViolationsDetails,
+          EntrySemanticsViolationsDetails,
           PriorPostingDetails,
           FunctionalCurrencyMismatchDetails,
           OpeningBalanceWindowClosedDetails,
           OpeningBalanceNominalAccountDetails,
-          ClosedPeriodViolationDetails {}
+          TransferredPeriodResultViolationDetails {}
 
   /** Sealed category for account-registry rejection payloads. */
   sealed interface AccountRejectionDetails extends RejectionDetails
@@ -38,13 +39,15 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           ParentAccountRoleConflictDetails,
           ParentAccountNodeKindDetails,
           ParentAccountTaxonomyConflictDetails,
-          ClosingEquityAccountDetails,
-          ClosingEquityAccountCandidateMissingDetails,
-          ClosingEquityAccountCandidateAmbiguousDetails {}
+          ResultHoldingAccountDetails,
+          ResultHoldingAccountCandidateMissingDetails,
+          ResultHoldingAccountCandidateAmbiguousDetails {}
 
   /** Sealed category for close-window rejection payloads. */
-  sealed interface PeriodCloseRejectionDetails extends RejectionDetails
-      permits PeriodCloseStartDetails, PeriodCloseFutureDateDetails, PeriodCloseFiscalYearDetails {}
+  sealed interface PeriodResultTransferRejectionDetails extends RejectionDetails
+      permits PeriodResultTransferStartDetails,
+          PeriodResultTransferFutureDateDetails,
+          PeriodResultTransferFiscalYearDetails {}
 
   /** Sealed category for query and workflow rejection payloads. */
   sealed interface QueryOrPlanRejectionDetails extends RejectionDetails
@@ -79,6 +82,24 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       code = requireText(code, "code");
       accountCode = requireText(accountCode, "accountCode");
       accountNodeKind = requireOptionalText(accountNodeKind, "accountNodeKind");
+    }
+  }
+
+  record EntrySemanticsViolationsDetails(List<EntrySemanticsViolationPayload> violations)
+      implements PostingRejectionDetails {
+    public EntrySemanticsViolationsDetails {
+      violations = copyList(violations, "violations");
+      if (violations.isEmpty()) {
+        throw new IllegalArgumentException("violations must not be empty.");
+      }
+    }
+  }
+
+  record EntrySemanticsViolationPayload(String code, @Nullable String field, String message) {
+    public EntrySemanticsViolationPayload {
+      code = requireText(code, "code");
+      field = requireOptionalText(field, "field");
+      message = requireText(message, "message");
     }
   }
 
@@ -222,17 +243,17 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ClosingEquityAccountDetails(String accountCode) implements AccountRejectionDetails {
-    public ClosingEquityAccountDetails {
+  record ResultHoldingAccountDetails(String accountCode) implements AccountRejectionDetails {
+    public ResultHoldingAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
     }
   }
 
-  record ClosingEquityAccountCandidateMissingDetails(
+  record ResultHoldingAccountCandidateMissingDetails(
       String requiredFinancialPositionLineClassification,
       List<String> inactiveCandidateAccountCodes)
       implements AccountRejectionDetails {
-    public ClosingEquityAccountCandidateMissingDetails {
+    public ResultHoldingAccountCandidateMissingDetails {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
@@ -242,10 +263,10 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ClosingEquityAccountCandidateAmbiguousDetails(
+  record ResultHoldingAccountCandidateAmbiguousDetails(
       String requiredFinancialPositionLineClassification, List<String> candidateAccountCodes)
       implements AccountRejectionDetails {
-    public ClosingEquityAccountCandidateAmbiguousDetails {
+    public ResultHoldingAccountCandidateAmbiguousDetails {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
@@ -254,25 +275,25 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record PeriodCloseStartDetails(String requiredEffectiveDateFrom)
-      implements PeriodCloseRejectionDetails {
-    public PeriodCloseStartDetails {
+  record PeriodResultTransferStartDetails(String requiredEffectiveDateFrom)
+      implements PeriodResultTransferRejectionDetails {
+    public PeriodResultTransferStartDetails {
       requiredEffectiveDateFrom =
           requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
     }
   }
 
-  record PeriodCloseFutureDateDetails(String attemptedEffectiveDateTo)
-      implements PeriodCloseRejectionDetails {
-    public PeriodCloseFutureDateDetails {
+  record PeriodResultTransferFutureDateDetails(String attemptedEffectiveDateTo)
+      implements PeriodResultTransferRejectionDetails {
+    public PeriodResultTransferFutureDateDetails {
       attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
 
-  record PeriodCloseFiscalYearDetails(
+  record PeriodResultTransferFiscalYearDetails(
       String attemptedEffectiveDateFrom, String attemptedEffectiveDateTo, String fiscalYearStart)
-      implements PeriodCloseRejectionDetails {
-    public PeriodCloseFiscalYearDetails {
+      implements PeriodResultTransferRejectionDetails {
+    public PeriodResultTransferFiscalYearDetails {
       attemptedEffectiveDateFrom =
           requireText(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
       attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
@@ -280,12 +301,12 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ClosedPeriodViolationDetails(
-      String closedThroughEffectiveDate, String attemptedEffectiveDate)
+  record TransferredPeriodResultViolationDetails(
+      String transferredThroughEffectiveDate, String attemptedEffectiveDate)
       implements PostingRejectionDetails {
-    public ClosedPeriodViolationDetails {
-      closedThroughEffectiveDate =
-          requireText(closedThroughEffectiveDate, "closedThroughEffectiveDate");
+    public TransferredPeriodResultViolationDetails {
+      transferredThroughEffectiveDate =
+          requireText(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
     }
   }

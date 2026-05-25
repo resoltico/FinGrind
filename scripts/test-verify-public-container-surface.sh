@@ -133,7 +133,7 @@ case "${command_name}" in
 
         case "${subcommand}" in
             version)
-                output_mode='human'
+                output_mode='text'
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --output)
@@ -180,7 +180,6 @@ TEXT
                 business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
-                policy_profile=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
@@ -203,10 +202,6 @@ TEXT
                             fiscal_year_start="${2}"
                             shift 2
                             ;;
-                        --policy-profile)
-                            policy_profile="${2}"
-                            shift 2
-                            ;;
                         *)
                             shift
                             ;;
@@ -216,7 +211,6 @@ TEXT
                 [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
-                [[ "${policy_profile}" == 'INTERNAL_MANAGEMENT_SINGLE_ENTITY_V1' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
@@ -239,11 +233,11 @@ TEXT
                 grep -Fq '"entryKind": "CASH_REVENUE"' "${request_file}" || exit 1
                 grep -Fq '"cashAccountCode": "1000"' "${request_file}" || exit 1
                 grep -Fq '"revenueAccountCode": "2000"' "${request_file}" || exit 1
-                grep -Fq '"sourceDocumentId": "release-protocol-invoice-1"' "${request_file}" || exit 1
-                grep -Fq '"sourceDocumentType": "invoice"' "${request_file}" || exit 1
+                grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
+                grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
                 grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
                 grep -Fq '"capturedAt": "2026-04-08T10:15:30Z"' "${request_file}" || exit 1
-                grep -Fq '"storageLocator": "vault://release-protocol/invoice-1"' "${request_file}" || exit 1
+                grep -Fq '"storageLocator": "vault://release-protocol/cash-receipt-1"' "${request_file}" || exit 1
                 grep -Fq '"contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"' "${request_file}" || exit 1
                 grep -Fq '"approvals": []' "${request_file}" || exit 1
                 printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
@@ -274,7 +268,7 @@ TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 
@@ -304,7 +298,7 @@ TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01 | Policy Internal Management Single Entity V1
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01
 Posting coverage : All posting kinds
 As of            : 2026-04-08
 
@@ -410,8 +404,8 @@ if [[ ${failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a broken trial-balance report"
 fi
 printf '%s\n' "${failure_output}" | grep -Fq \
-    'published human trial balance did not report the expected Cash trial-balance row' || die \
-    "public container surface verifier did not report the broken human trial-balance row"
+    'published text trial balance did not report the expected Cash trial-balance row' || die \
+    "public container surface verifier did not report the broken text trial-balance row"
 
 set +e
 permission_failure_output="$(

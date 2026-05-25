@@ -17,6 +17,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -56,6 +57,7 @@ class PostingValidationStoreTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         postingKind,
+        postingOriginKindFor(postingKind),
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -67,6 +69,14 @@ class PostingValidationStoreTest {
                 Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
+  }
+
+  private static PostingOriginKind postingOriginKindFor(PostingKind postingKind) {
+    return switch (postingKind) {
+      case STANDARD -> PostingOriginKind.CORRECTION_ADJUSTMENT;
+      case OPENING_BALANCE -> PostingOriginKind.OPENING_BALANCE_ADJUSTMENT;
+      case PERIOD_RESULT_TRANSFER -> PostingOriginKind.PERIOD_RESULT_TRANSFER;
+    };
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
@@ -111,7 +121,7 @@ class PostingValidationStoreTest {
     }
 
     @Override
-    public Optional<LocalDate> closedThroughEffectiveDate() {
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
       return Optional.empty();
     }
   }

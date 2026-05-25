@@ -30,8 +30,8 @@ import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
@@ -40,7 +40,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PeriodCloseStore;
+import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import java.nio.file.Files;
@@ -132,27 +132,27 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             SqliteCapabilitySessions.administration(postingFactStore);
         SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore);
         SqlitePostingSession postingSession = SqliteCapabilitySessions.posting(postingFactStore);
-        SqlitePeriodCloseSession periodCloseSession =
-            SqliteCapabilitySessions.periodClose(postingFactStore);
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(postingFactStore);
         SqlitePlanExecutionSession planExecutionSession =
             SqliteCapabilitySessions.planExecution(postingFactStore);
         SqliteRekeySession rekeySession = SqliteCapabilitySessions.rekey(postingFactStore)) {
       assertNotNull(administrationSession);
       assertNotNull(readSession);
       assertNotNull(postingSession);
-      assertNotNull(periodCloseSession);
+      assertNotNull(periodResultTransferSession);
       assertNotNull(planExecutionSession);
       assertNotNull(rekeySession);
       assertNotNull((BookAdministrationStore) administrationSession);
       assertNotNull((BookkeepingReadStore) readSession);
       assertNotNull((PostingValidationStore) postingSession);
       assertNotNull((PostingCommitStore) postingSession);
-      assertNotNull((PeriodCloseStore) periodCloseSession);
+      assertNotNull((PeriodResultTransferStore) periodResultTransferSession);
       assertNotNull((LedgerPlanTransaction) planExecutionSession);
       assertNotSame(postingFactStore, administrationSession);
       assertNotSame(postingFactStore, readSession);
       assertNotSame(postingFactStore, postingSession);
-      assertNotSame(postingFactStore, periodCloseSession);
+      assertNotSame(postingFactStore, periodResultTransferSession);
       assertNotSame(postingFactStore, planExecutionSession);
       assertNotSame(postingFactStore, rekeySession);
       assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
@@ -486,8 +486,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             SqliteCapabilitySessions.administration(postingFactStore);
         SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore);
         SqlitePostingSession postingSession = SqliteCapabilitySessions.posting(postingFactStore);
-        SqlitePeriodCloseSession periodCloseSession =
-            SqliteCapabilitySessions.periodClose(postingFactStore);
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(postingFactStore);
         SqlitePlanExecutionSession planExecutionSession =
             SqliteCapabilitySessions.planExecution(postingFactStore)) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -518,7 +518,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.listAccounts(accountPage),
           administrationSession.listAccounts(accountPage));
       assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
-      assertEquals(postingFactStore.inspectBook(), periodCloseSession.inspectBook());
+      assertEquals(postingFactStore.inspectBook(), periodResultTransferSession.inspectBook());
 
       Set<AccountCode> accountCodes = Set.of(new AccountCode("1000"), new AccountCode("2000"));
       assertEquals(
@@ -559,8 +559,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.earliestPostingEffectiveDate(),
           postingSession.earliestPostingEffectiveDate());
       assertEquals(
-          postingFactStore.closedThroughEffectiveDate(),
-          postingSession.closedThroughEffectiveDate());
+          postingFactStore.transferredThroughEffectiveDate(),
+          postingSession.transferredThroughEffectiveDate());
       assertEquals(
           postingFactStore.accountTotals(allDates, allPostingKinds()),
           postingSession.accountTotals(allDates, allPostingKinds()));
@@ -594,16 +594,18 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY),
               Instant.parse("2026-04-07T10:20:30Z")));
 
-      assertEquals(postingFactStore.allAccounts(), periodCloseSession.allAccounts());
+      assertEquals(postingFactStore.allAccounts(), periodResultTransferSession.allAccounts());
       assertEquals(
-          postingFactStore.listAccounts(accountPage), periodCloseSession.listAccounts(accountPage));
-      assertEquals(postingFactStore.postings(allDates), periodCloseSession.postings(allDates));
+          postingFactStore.listAccounts(accountPage),
+          periodResultTransferSession.listAccounts(accountPage));
+      assertEquals(
+          postingFactStore.postings(allDates), periodResultTransferSession.postings(allDates));
       assertEquals(
           postingFactStore.earliestPostingEffectiveDate(),
-          periodCloseSession.earliestPostingEffectiveDate());
+          periodResultTransferSession.earliestPostingEffectiveDate());
       assertEquals(
-          postingFactStore.closedThroughEffectiveDate(),
-          periodCloseSession.closedThroughEffectiveDate());
+          postingFactStore.transferredThroughEffectiveDate(),
+          periodResultTransferSession.transferredThroughEffectiveDate());
 
       planExecutionSession.beginLedgerPlanTransaction();
       planExecutionSession.rollbackLedgerPlanTransaction();
@@ -611,9 +613,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       planExecutionSession.commitLedgerPlanTransaction();
 
       assertEquals(
-          new PeriodCloseOutcome.Rejected(
+          new PeriodResultTransferOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          periodCloseOnMissingBook());
+          periodResultTransferOnMissingBook());
       assertEquals(
           new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
               new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
@@ -634,12 +636,14 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         exception::getMessage);
   }
 
-  private PeriodCloseOutcome periodCloseOnMissingBook() {
-    Path missingBookPath = tempDirectory.resolve("capability-period-close-missing.sqlite");
+  private PeriodResultTransferOutcome periodResultTransferOnMissingBook() {
+    Path missingBookPath =
+        tempDirectory.resolve("capability-period-result-transfer-missing.sqlite");
     try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
-        SqlitePeriodCloseSession periodCloseSession =
-            SqliteCapabilitySessions.periodClose(missingStore)) {
-      return periodCloseSession.closePeriod(emptyPeriodCloseDraft(), () -> new PostingId("unused"));
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(missingStore)) {
+      return periodResultTransferSession.transferPeriodResult(
+          emptyPeriodResultTransferDraft(), () -> new PostingId("unused"));
     }
   }
 
@@ -660,8 +664,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
-  private static PeriodCloseDraft emptyPeriodCloseDraft() {
-    return new PeriodCloseDraft(
+  private static PeriodResultTransferDraft emptyPeriodResultTransferDraft() {
+    return new PeriodResultTransferDraft(
         new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
         new AccountCode("3200"),
         List.of(),
