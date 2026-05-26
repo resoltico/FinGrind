@@ -4,10 +4,10 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
@@ -346,8 +346,8 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
     String primaryPrompt(String displayPath) {
       return switch (this) {
-        case SINGLE -> "FinGrind book passphrase for %s: ".formatted(displayPath);
-        case CONFIRMED_NEW_SECRET -> "New FinGrind book passphrase for %s: ".formatted(displayPath);
+        case SINGLE -> "Passphrase for %s: ".formatted(displayPath);
+        case CONFIRMED_NEW_SECRET -> "New passphrase for %s: ".formatted(displayPath);
       };
     }
 
@@ -355,7 +355,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
       if (this != CONFIRMED_NEW_SECRET) {
         throw new IllegalStateException("This prompt style does not support confirmation.");
       }
-      return "Confirm new FinGrind book passphrase for %s: ".formatted(displayPath);
+      return "Confirm new passphrase: ";
     }
   }
 }

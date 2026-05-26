@@ -20,7 +20,7 @@ final class CliAccountPageOutputRenderer {
                 List.of("Next cursor", nextCursor)));
     String accounts =
         page.accounts().isEmpty()
-            ? "(none)"
+            ? CliQueryOutputFormatter.noMatchesLabel("accounts")
             : CliTextFormat.renderTable(
                 List.of("Account", "Name", "Type", "Statement line", "Parent", "Normal", "Active"),
                 page.accounts().stream()

@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -108,12 +109,16 @@ final class SqliteAccountLedgerReader {
           }
           if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
             statement.bindText(
-                bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
+                bindIndex,
+                CanonicalTemporalText.formatLocalDate(
+                    query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
             bindIndex++;
           }
           if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
             statement.bindText(
-                bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
+                bindIndex,
+                CanonicalTemporalText.formatLocalDate(
+                    query.effectiveDateRange().effectiveDateTo().orElseThrow()));
           }
         });
   }

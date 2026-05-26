@@ -225,7 +225,7 @@ final class CliReportOutputRenderer {
                         CliQueryOutputFormatter.joinedBalances(report.closingBalances())))));
     String entries =
         report.entries().isEmpty()
-            ? "(none)"
+            ? CliQueryOutputFormatter.noMatchesLabel("ledger entries")
             : CliTextFormat.renderTable(
                 List.of(
                     "Effective date",
@@ -573,8 +573,6 @@ final class CliReportOutputRenderer {
   private static List<String> accountLedgerEntryCsvRow(
       AccountLedgerReport report, dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry entry) {
     String currencyCode = entry.movement().netAmount().currencyUnit().code();
-    CurrencyBalance opening = balanceForCurrency(report.openingBalances(), currencyCode);
-    CurrencyBalance closing = balanceForCurrency(report.closingBalances(), currencyCode);
     return csvRow(
         "entry",
         report.account().accountCode().value(),
@@ -586,14 +584,14 @@ final class CliReportOutputRenderer {
         report.effectiveDateRange().effectiveDateFrom().map(LocalDate::toString).orElse(""),
         report.effectiveDateRange().effectiveDateTo().map(LocalDate::toString).orElse(""),
         currencyCode,
-        CliQueryOutputFormatter.displayMoney(opening.debitTotal()),
-        CliQueryOutputFormatter.displayMoney(opening.creditTotal()),
-        CliQueryOutputFormatter.displayMoney(opening.netAmount()),
-        opening.balanceSide().wireValue(),
-        CliQueryOutputFormatter.displayMoney(closing.debitTotal()),
-        CliQueryOutputFormatter.displayMoney(closing.creditTotal()),
-        CliQueryOutputFormatter.displayMoney(closing.netAmount()),
-        closing.balanceSide().wireValue(),
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
         entry.postingFact().postingId().value(),
@@ -700,7 +698,7 @@ final class CliReportOutputRenderer {
                     List.of(
                         "Net income totals",
                         report.netIncomeTotals().isEmpty()
-                            ? "(none)"
+                            ? CliQueryOutputFormatter.zeroAcrossCurrenciesLabel()
                             : report.netIncomeTotals().stream()
                                 .map(CliQueryOutputFormatter::displayBalanceText)
                                 .collect(java.util.stream.Collectors.joining(", "))))));
@@ -775,12 +773,7 @@ final class CliReportOutputRenderer {
                     renderChangesInEquityTable(report.comparativeRows()),
                     comparativeChangesInEquityTotals(report)));
     return CliTextFormat.renderTitledBlock(
-        "Changes In Equity",
-        joinSections(
-            table.isBlank()
-                ? header
-                : header + System.lineSeparator() + System.lineSeparator() + table,
-            comparative));
+        "Changes In Equity", joinSections(header, table, comparative));
   }
 
   static String renderChangesInEquityCsv(ChangesInEquityReport report) {
@@ -828,7 +821,7 @@ final class CliReportOutputRenderer {
 
   private static String joinedBalancesText(List<dev.erst.fingrind.core.CurrencyBalance> balances) {
     if (balances.isEmpty()) {
-      return "(none)";
+      return CliQueryOutputFormatter.zeroAcrossCurrenciesLabel();
     }
     return balances.stream()
         .map(CliQueryOutputFormatter::displayBalanceText)
@@ -843,6 +836,9 @@ final class CliReportOutputRenderer {
     java.util.List<String> bodySections = new java.util.ArrayList<>();
     if (!table.isBlank()) {
       bodySections.add(table);
+    }
+    if (table.isBlank() && totals.isEmpty()) {
+      bodySections.add(CliQueryOutputFormatter.noMatchesLabel("lines"));
     }
     if (!totals.isEmpty()) {
       bodySections.add(
@@ -909,13 +905,9 @@ final class CliReportOutputRenderer {
 
   private static String renderFinancialPositionSections(
       List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> sections) {
-    List<dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection> nonEmptySections =
-        sections.stream()
-            .filter(CliReportOutputRenderer::hasRenderableFinancialPositionSection)
-            .toList();
-    return nonEmptySections.isEmpty()
-        ? "(none)"
-        : nonEmptySections.stream()
+    return sections.isEmpty()
+        ? CliQueryOutputFormatter.noMatchesLabel("financial position lines")
+        : sections.stream()
             .map(
                 section ->
                     renderStatementSection(
@@ -1027,13 +1019,9 @@ final class CliReportOutputRenderer {
 
   private static String renderIncomeStatementSections(
       List<dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection> sections) {
-    List<dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection> nonEmptySections =
-        sections.stream()
-            .filter(CliReportOutputRenderer::hasRenderableIncomeStatementSection)
-            .toList();
-    return nonEmptySections.isEmpty()
-        ? "(none)"
-        : nonEmptySections.stream()
+    return sections.isEmpty()
+        ? CliQueryOutputFormatter.noMatchesLabel("income statement lines")
+        : sections.stream()
             .map(
                 section ->
                     renderStatementSection(
@@ -1223,7 +1211,35 @@ final class CliReportOutputRenderer {
                         row.closingBalance().balanceSide().wireValue()));
     java.util.stream.Stream<List<String>> totalStream =
         equityReportTotalCsvRows(report, reportBasis, openingTotals, movementTotals, closingTotals);
-    return java.util.stream.Stream.concat(rowStream, totalStream);
+    List<List<String>> renderedRows =
+        java.util.stream.Stream.concat(rowStream, totalStream).toList();
+    if (!renderedRows.isEmpty()) {
+      return renderedRows.stream();
+    }
+    return java.util.stream.Stream.of(
+        List.of(
+            reportBasis,
+            "empty",
+            effectiveDateFrom,
+            effectiveDateTo,
+            "",
+            CliQueryOutputFormatter.noMatchesLabel("equity lines"),
+            "",
+            "",
+            "",
+            report.bookIdentity().functionalCurrency().code(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""));
   }
 
   private static java.util.stream.Stream<List<String>> equityReportTotalCsvRows(
@@ -1361,16 +1377,6 @@ final class CliReportOutputRenderer {
     return CliQueryOutputFormatter.displayPostingCoverage(postingCoverage);
   }
 
-  private static boolean hasRenderableFinancialPositionSection(
-      dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection section) {
-    return CliReportSurfacePolicy.hasRenderableFinancialPositionSection(section);
-  }
-
-  private static boolean hasRenderableIncomeStatementSection(
-      dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection section) {
-    return CliReportSurfacePolicy.hasRenderableIncomeStatementSection(section);
-  }
-
   private static List<List<String>> changesInEquitySummaryRows(
       ChangesInEquityReport report, boolean hasCurrent) {
     List<List<String>> rows = new java.util.ArrayList<>();
@@ -1386,7 +1392,7 @@ final class CliReportOutputRenderer {
       rows.add(List.of("Closing totals", joinedBalancesText(report.closingTotals())));
     }
     if (!hasCurrent) {
-      rows.add(List.of("Outcome", "No equity balances or movements matched the selected period."));
+      rows.add(List.of("Outcome", CliQueryOutputFormatter.noMatchesLabel("equity lines")));
     }
     return List.copyOf(rows);
   }
@@ -1394,7 +1400,7 @@ final class CliReportOutputRenderer {
   private static String renderChangesInEquityTable(
       List<dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow> rows) {
     if (rows.isEmpty()) {
-      return "";
+      return CliQueryOutputFormatter.noMatchesLabel("equity lines");
     }
     return CliTextFormat.renderAdaptiveTable(
         TEXT_TABLE_WIDTH,

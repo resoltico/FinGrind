@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -141,11 +141,13 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return nativeBuffer;
   }
 
-  byte[] utf8BytesCopy() {
+  /** Returns one defensive copy of the normalized UTF-8 passphrase bytes. */
+  public byte[] utf8BytesCopy() {
     return utf8Bytes.clone();
   }
 
-  SqliteBookPassphrase copy() {
+  /** Returns one independent owned passphrase instance with copied UTF-8 bytes. */
+  public SqliteBookPassphrase copy() {
     return fromUtf8Bytes(sourceDescription, utf8BytesCopy());
   }
 

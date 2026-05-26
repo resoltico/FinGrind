@@ -18,7 +18,7 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
@@ -36,13 +36,13 @@ class CliJsonModelValidationTest {
   void responseModels_trimTextAndRejectBlankValues() {
     CliEnvelopeJsonModels.RejectedEnvelope envelope =
         new CliEnvelopeJsonModels.RejectedEnvelope(
-            ProtocolRejectionStatus.REJECTED,
+            ProtocolEnvelopeStatus.REJECTED,
             " query-book-not-initialized ",
             " The book is not initialized. ",
             " Repair hint. ",
             " idem-1 ",
             null);
-    assertEquals(ProtocolRejectionStatus.REJECTED, envelope.status());
+    assertEquals(ProtocolEnvelopeStatus.REJECTED, envelope.status());
     assertEquals("query-book-not-initialized", envelope.code());
     assertEquals("The book is not initialized.", envelope.message());
     assertEquals("Repair hint.", envelope.hint());
@@ -80,7 +80,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 List.of(),
@@ -93,7 +93,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -106,7 +106,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -118,7 +118,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 DiscoveryDetail.COMPACT,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -130,7 +130,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -141,19 +141,30 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 DiscoveryDetail.FULL,
+                capabilitiesDescriptor.bookkeepingKernel().scope(),
+                capabilitiesDescriptor.bookkeepingKernel().builtInStatements(),
                 capabilitiesDescriptor.storage().bookBoundary(),
-                List.of(),
+                capabilitiesDescriptor.currencyModel().scope(),
+                capabilitiesDescriptor.currencyModel().multiCurrencyStatus(),
+                new CliDiscoveryJsonModels.RequestInputCompactPayload(
+                    "--book-file",
+                    List.of(
+                        "--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
+                    "--request-file",
+                    List.of("post-entry"),
+                    "-",
+                    "--output"),
                 "Run fingrind capabilities --output json --detail compact.",
                 "Run fingrind capabilities --output json --detail full."));
 
     CliEnvelopeJsonModels.PlanEnvelope<CliDiscoveryJsonModels.CapabilitiesPayload> envelope =
         new CliEnvelopeJsonModels.PlanEnvelope<>(
-            LedgerPlanStatus.SUCCEEDED,
+            ProtocolEnvelopeStatus.OK,
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -376,7 +387,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.46.0",
+        "0.47.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

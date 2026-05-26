@@ -12,6 +12,46 @@ note() {
     printf 'jazzer replay wrapper check: %s\n' "$1"
 }
 
+run_with_lock_retry() {
+    local output_var_name=$1
+    shift
+
+    local attempt_output=''
+    local attempt_status=0
+    local attempt=1
+    local max_attempts=20
+    local errexit_enabled=0
+
+    case $- in
+        *e*) errexit_enabled=1 ;;
+    esac
+
+    while true; do
+        set +e
+        attempt_output="$("$@" 2>&1)"
+        attempt_status=$?
+        if [[ ${errexit_enabled} -eq 1 ]]; then
+            set -e
+        else
+            set +e
+        fi
+        if [[ ${attempt_status} -eq 0 ]]; then
+            printf -v "${output_var_name}" '%s' "${attempt_output}"
+            return 0
+        fi
+        if [[ "${attempt_output}" != *'another FinGrind verification command is already running with PID '* ]]; then
+            printf -v "${output_var_name}" '%s' "${attempt_output}"
+            return "${attempt_status}"
+        fi
+        if (( attempt >= max_attempts )); then
+            printf -v "${output_var_name}" '%s' "${attempt_output}"
+            return "${attempt_status}"
+        fi
+        sleep 0.1
+        attempt=$(( attempt + 1 ))
+    done
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -133,12 +173,15 @@ json.loads(sys.argv[1])
 PY
 
 note 'list-findings json path'
+list_findings_output=''
 set +e
-list_findings_output="$("${list_findings_wrapper}" cli-request --json --console=plain 2>&1)"
+run_with_lock_retry list_findings_output \
+    "${list_findings_wrapper}" cli-request --json --console=plain
 list_findings_status=$?
 set -e
 
-[[ ${list_findings_status} -eq 0 ]] || die "list-findings wrapper should accept the supported positional target grammar"
+[[ ${list_findings_status} -eq 0 ]] || die \
+    "list-findings wrapper should accept the supported positional target grammar; output was: ${list_findings_output}"
 [[ "${list_findings_output}" != *'Task :'* ]] || die "list-findings wrapper leaked Gradle task output for JSON mode"
 [[ "${list_findings_output}" != *'BUILD SUCCESSFUL'* ]] || die "list-findings wrapper leaked Gradle success output for JSON mode"
 [[ "${list_findings_output}" != *'BUILD FAILED'* ]] || die "list-findings wrapper leaked Gradle failure output"
@@ -152,18 +195,23 @@ if not isinstance(payload, list):
 PY
 
 note 'list-findings plain path'
+plain_list_findings_output=''
 set +e
-plain_list_findings_output="$("${list_findings_wrapper}" cli-request --console=plain 2>&1)"
+run_with_lock_retry plain_list_findings_output \
+    "${list_findings_wrapper}" cli-request --console=plain
 plain_list_findings_status=$?
 set -e
 
-[[ ${plain_list_findings_status} -eq 0 ]] || die "list-findings wrapper should accept plain output mode"
+[[ ${plain_list_findings_status} -eq 0 ]] || die \
+    "list-findings wrapper should accept plain output mode; output was: ${plain_list_findings_output}"
 [[ "${plain_list_findings_output}" != *'Task :clean'* ]] || die \
     "list-findings wrapper unexpectedly cleaned the nested build before read-only classification"
 
 note 'inactive-target rejection path'
+inactive_target_output=''
 set +e
-inactive_target_output="$("${list_findings_wrapper}" regression --json --console=plain 2>&1)"
+run_with_lock_retry inactive_target_output \
+    "${list_findings_wrapper}" regression --json --console=plain
 inactive_target_status=$?
 set -e
 

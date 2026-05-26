@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InteractionLimits;
@@ -37,9 +38,12 @@ final class CliArgumentValueParser {
 
   static LocalDate parseLocalDateOption(String rawValue, String optionName) {
     try {
-      return LocalDate.parse(rawValue);
-    } catch (java.time.DateTimeException exception) {
-      throw invalid(optionName, "Option must be an ISO-8601 local date: " + optionName, exception);
+      return CanonicalTemporalText.parseLocalDate(rawValue, optionName);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          optionName,
+          "Option must be one canonical YYYY-MM-DD local date: " + optionName,
+          exception);
     }
   }
 

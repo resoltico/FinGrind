@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -223,7 +225,7 @@ class SqliteMaintenanceSupportCoverageTest {
       IllegalArgumentException exception =
           assertThrows(
               IllegalArgumentException.class,
-              () -> SqliteBookKeyFileMaterializer.materialize(keyFilePath, bookPassphrase));
+              () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
       assertTrue(NullTestSupport.messageOf(exception).contains("already exists"));
     }
   }
@@ -248,7 +250,7 @@ class SqliteMaintenanceSupportCoverageTest {
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> SqliteBookKeyFileMaterializer.materialize(keyFilePath, bookPassphrase));
+                () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
 
         assertTrue(NullTestSupport.messageOf(exception).contains("backup key file"));
         assertEquals("write-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
@@ -278,7 +280,7 @@ class SqliteMaintenanceSupportCoverageTest {
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> SqliteBookKeyFileMaterializer.materialize(keyFilePath, bookPassphrase));
+                () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
 
         assertTrue(NullTestSupport.messageOf(exception).contains("backup key file"));
         assertEquals("create-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));

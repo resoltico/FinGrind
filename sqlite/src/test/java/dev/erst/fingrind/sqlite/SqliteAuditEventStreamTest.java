@@ -9,6 +9,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;

@@ -29,7 +29,7 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Objects;

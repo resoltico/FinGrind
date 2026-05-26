@@ -62,7 +62,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     assertTrue(
         diagnosticsStream
             .toString(StandardCharsets.UTF_8)
-            .contains(CliPublicPaths.normalizedValue(pdfOutputPath)));
+            .contains(CliPublicPaths.redactedValue(pdfOutputPath)));
   }
 
   @Test
@@ -99,7 +99,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     var envelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("pdf", envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.normalizedValue(pdfOutputPath),
+        CliPublicPaths.redactedValue(pdfOutputPath),
         envelope.path("artifacts").get(0).path("path").stringValue());
     assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }

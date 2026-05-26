@@ -71,6 +71,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void recordedSchemaFingerprint_requiresPresenceAndMatchingValue() {
     Path bookPath = tempDirectory.resolve("recorded-schema-fingerprint.sqlite");
+    String mismatchedSchemaFingerprint = "0".repeat(64);
     initializeBookOnDisk(bookPath);
     withStandaloneDatabase(
         bookAccess(bookPath),
@@ -85,7 +86,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           assertFalse(SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(database));
 
           SqliteMutationWriter.insertBookMetaValue(
-              database, SqlitePostingSql.SCHEMA_FINGERPRINT_META_KEY, "bogus");
+              database, SqlitePostingSql.SCHEMA_FINGERPRINT_META_KEY, mismatchedSchemaFingerprint);
           assertFalse(SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(database));
         });
   }

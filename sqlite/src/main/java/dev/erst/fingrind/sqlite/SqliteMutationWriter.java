@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -21,7 +22,9 @@ final class SqliteMutationWriter {
 
   static void insertInitializedAt(SqliteNativeDatabase activeDatabase, Instant initializedAt) {
     insertBookMetaValue(
-        activeDatabase, SqlitePostingSql.INITIALIZED_AT_META_KEY, initializedAt.toString());
+        activeDatabase,
+        SqlitePostingSql.INITIALIZED_AT_META_KEY,
+        CanonicalTemporalText.formatUtcInstant(initializedAt));
   }
 
   static void insertBookIdentity(SqliteNativeDatabase activeDatabase, BookIdentity bookIdentity) {
@@ -85,7 +88,7 @@ final class SqliteMutationWriter {
               .map(value -> value.wireValue())
               .orElse(null));
       statement.bindInt(9, Boolean.compare(account.active(), false));
-      statement.bindText(10, account.declaredAt().toString());
+      statement.bindText(10, CanonicalTemporalText.formatUtcInstant(account.declaredAt()));
       statement.step();
     }
   }
@@ -97,8 +100,10 @@ final class SqliteMutationWriter {
       statement.bindText(1, postingFact.postingId().value());
       statement.bindText(2, postingFact.postingKind().wireValue());
       statement.bindText(3, postingFact.postingOriginKind().wireValue());
-      statement.bindText(4, postingFact.journalEntry().effectiveDate().toString());
-      statement.bindText(5, postingFact.provenance().recordedAt().toString());
+      statement.bindText(
+          4, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
+      statement.bindText(
+          5, CanonicalTemporalText.formatUtcInstant(postingFact.provenance().recordedAt()));
       statement.bindText(6, requestProvenance.actorId().value());
       statement.bindText(7, requestProvenance.actorType().wireValue());
       statement.bindText(8, requestProvenance.commandId().value());
@@ -131,8 +136,8 @@ final class SqliteMutationWriter {
         statement.bindInt(2, index);
         statement.bindText(3, sourceDocument.sourceDocumentId().value());
         statement.bindText(4, sourceDocument.sourceDocumentType().value());
-        statement.bindText(5, sourceDocument.documentDate().toString());
-        statement.bindText(6, sourceDocument.capturedAt().toString());
+        statement.bindText(5, CanonicalTemporalText.formatLocalDate(sourceDocument.documentDate()));
+        statement.bindText(6, CanonicalTemporalText.formatUtcInstant(sourceDocument.capturedAt()));
         statement.bindText(7, sourceDocument.storageLocator().value());
         statement.bindText(8, sourceDocument.contentSha256().value());
         statement.step();
@@ -149,7 +154,7 @@ final class SqliteMutationWriter {
         statement.bindText(5, approval.approverId().value());
         statement.bindText(6, approval.approverType().wireValue());
         statement.bindText(7, approval.decision().wireValue());
-        statement.bindText(8, approval.approvedAt().toString());
+        statement.bindText(8, CanonicalTemporalText.formatUtcInstant(approval.approvedAt()));
         statement.step();
       }
     }
@@ -189,10 +194,12 @@ final class SqliteMutationWriter {
     int transferOrder;
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER)) {
-      statement.bindText(1, reportingPeriod.effectiveDateFrom().toString());
-      statement.bindText(2, reportingPeriod.effectiveDateTo().toString());
+      statement.bindText(
+          1, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateFrom()));
+      statement.bindText(
+          2, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateTo()));
       statement.bindText(3, resultHoldingAccountCode.value());
-      statement.bindText(4, transferredAt.toString());
+      statement.bindText(4, CanonicalTemporalText.formatUtcInstant(transferredAt));
       if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException(
             "SQLite period result transfer insert returned no transfer order.");

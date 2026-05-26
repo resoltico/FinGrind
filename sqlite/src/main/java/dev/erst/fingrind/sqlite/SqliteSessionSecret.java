@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 

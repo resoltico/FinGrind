@@ -25,11 +25,14 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
   public static BackupBookResult toPublished(ProtectedBookBackupOutcome outcome) {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
-      case ProtectedBookBackupOutcome.BackedUp backedUp ->
-          new BackupBookResult.BackedUp(
-              publicHint(backedUp.bookFilePath()),
-              publicHint(backedUp.backupFilePath()),
-              publicHint(backedUp.backupBookKeyFilePath()));
+      case ProtectedBookBackupOutcome.BackedUp backedUp -> {
+        List<PublicPathHint> hints =
+            publicHints(
+                backedUp.bookFilePath(),
+                backedUp.backupFilePath(),
+                backedUp.backupBookKeyFilePath());
+        yield new BackupBookResult.BackedUp(hints.get(0), hints.get(1), hints.get(2));
+      }
       case ProtectedBookBackupOutcome.Rejected rejected ->
           new BackupBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -39,11 +42,14 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
   public static RestoreBookResult toPublished(ProtectedBookRestoreOutcome outcome) {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
-      case ProtectedBookRestoreOutcome.Restored restored ->
-          new RestoreBookResult.Restored(
-              publicHint(restored.bookFilePath()),
-              publicHint(restored.backupFilePath()),
-              publicHint(restored.backupBookKeyFilePath()));
+      case ProtectedBookRestoreOutcome.Restored restored -> {
+        List<PublicPathHint> hints =
+            publicHints(
+                restored.bookFilePath(),
+                restored.backupFilePath(),
+                restored.backupBookKeyFilePath());
+        yield new RestoreBookResult.Restored(hints.get(0), hints.get(1), hints.get(2));
+      }
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -80,9 +86,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               publicHint(blockingArtifacts.backupFilePath()),
               publicHints(blockingArtifacts.blockingArtifactPaths()));
       case ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
-          new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
-              publicHint(sourceMatchesLiveBook.bookFilePath()),
-              publicHint(sourceMatchesLiveBook.backupFilePath()));
+          backupSourceMatchesLiveBook(sourceMatchesLiveBook);
       case ProtectedBookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new BookMaintenanceRejection.ArtifactBusy(
               toPublished(artifactBusy.artifactRole()), publicHint(artifactBusy.artifactPath()));
@@ -109,18 +113,34 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
           new BookMaintenanceRejection.RollbackArtifactNotFound(
               publicHint(artifactNotFound.rollbackArtifactPath()));
       case ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook artifactNotForBook ->
-          new BookMaintenanceRejection.RollbackArtifactNotForBook(
-              publicHint(artifactNotForBook.bookFilePath()),
-              publicHint(artifactNotForBook.rollbackArtifactPath()));
+          rollbackArtifactNotForBook(artifactNotForBook);
     };
   }
 
   private static List<PublicPathHint> publicHints(List<Path> paths) {
-    return Objects.requireNonNull(paths, "paths").stream().map(PublicPathHint::fromPath).toList();
+    return PublicPathHint.disambiguate(paths);
+  }
+
+  private static List<PublicPathHint> publicHints(Path... paths) {
+    return PublicPathHint.disambiguate(List.of(paths));
   }
 
   private static PublicPathHint publicHint(Path path) {
     return PublicPathHint.fromPath(path);
+  }
+
+  private static BookMaintenanceRejection.BackupSourceMatchesLiveBook backupSourceMatchesLiveBook(
+      ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook) {
+    List<PublicPathHint> hints =
+        publicHints(sourceMatchesLiveBook.bookFilePath(), sourceMatchesLiveBook.backupFilePath());
+    return new BookMaintenanceRejection.BackupSourceMatchesLiveBook(hints.get(0), hints.get(1));
+  }
+
+  private static BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook(
+      ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook artifactNotForBook) {
+    List<PublicPathHint> hints =
+        publicHints(artifactNotForBook.bookFilePath(), artifactNotForBook.rollbackArtifactPath());
+    return new BookMaintenanceRejection.RollbackArtifactNotForBook(hints.get(0), hints.get(1));
   }
 
   private static BookMaintenanceArtifactRole toPublished(

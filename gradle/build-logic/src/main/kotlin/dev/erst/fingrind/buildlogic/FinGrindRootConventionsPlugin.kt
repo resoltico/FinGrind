@@ -234,7 +234,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 )
 
             subprojects.forEach { subproject ->
-                subproject.pluginManager.withPlugin("java-base") {
+                subproject.pluginManager.withPlugin("java") {
                     if (subproject.requiresManagedSqliteRuntime()) {
                         ManagedSqliteProvisioningLogic.configureConsumers(subproject, managedSqlite)
                     }

@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -81,7 +82,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void schemaResource_allowsMultipleCommittedSourceChannels() throws Exception {
+  void schemaResource_enforcesCanonicalTemporalTextAndClosedSourceChannelVocabulary()
+      throws Exception {
     String schema =
         new String(
             java.util.Objects.requireNonNull(
@@ -89,8 +91,19 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                     "Missing schema resource.")
                 .readAllBytes(),
             StandardCharsets.UTF_8);
-    assertTrue(schema.contains("source_channel text not null,"));
-    assertFalse(schema.contains("source_channel text not null check"));
+    assertTrue(
+        schema.contains(
+            "source_channel text not null check (source_channel in ('CLI', 'SYSTEM'))"));
+    assertTrue(schema.contains("declared_at text not null check"));
+    assertTrue(schema.contains("effective_date text not null check"));
+    assertTrue(schema.contains("recorded_at text not null check"));
+    assertTrue(schema.contains("document_date text not null check"));
+    assertTrue(schema.contains("captured_at text not null check"));
+    assertTrue(schema.contains("approved_at text not null check"));
+    assertTrue(schema.contains("closed_at text not null check"));
+    assertTrue(schema.contains("meta_key = 'initialized_at'"));
+    assertTrue(schema.contains("meta_key = 'schema_fingerprint_sha256'"));
+    assertTrue(schema.contains("length(value) = 64"));
   }
 
   @Test

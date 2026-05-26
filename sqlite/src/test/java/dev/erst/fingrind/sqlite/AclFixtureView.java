@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /** Minimal ACL view for exercising owner-only ACL writes and reads. */
-final class AclFixtureView implements AclFileAttributeView {
+public final class AclFixtureView implements AclFileAttributeView {
   private UserPrincipal owner;
   private List<AclEntry> acl = List.of();
 

@@ -316,6 +316,6 @@ final class CliBookPayloadMapper {
   }
 
   private static String absolutePath(Path bookFilePath) {
-    return CliPublicPaths.normalizedValue(bookFilePath);
+    return CliPublicPaths.redactedValue(bookFilePath);
   }
 }

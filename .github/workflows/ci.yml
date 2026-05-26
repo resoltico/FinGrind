@@ -162,6 +162,106 @@ jobs:
         shell: pwsh
         run: .\scripts\bundle-smoke.ps1
 
+  published-unix-bundle-smoke:
+    name: Published bundle smoke (${{ matrix.classifier }})
+    runs-on: ${{ matrix.runner }}
+    needs: check
+    timeout-minutes: 25
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            classifier: linux-x86_64
+            expected_os: Linux
+            expected_arch: x86_64
+          - runner: ubuntu-24.04-arm
+            classifier: linux-aarch64
+            expected_os: Linux
+            expected_arch: aarch64
+          - runner: macos-15
+            classifier: macos-aarch64
+            expected_os: Darwin
+            expected_arch: arm64
+          - runner: macos-15-intel
+            classifier: macos-x86_64
+            expected_os: Darwin
+            expected_arch: x86_64
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve Java toolchain version
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${java_version}" ]
+          echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: ${{ steps.build-metadata.outputs.java-version }}
+          distribution: 'zulu'
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Verify Unix runner identity matches bundle target
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_os="$(uname -s)"
+          actual_arch="$(uname -m)"
+          [ "${actual_os}" = "${{ matrix.expected_os }}" ] || {
+            echo "Expected OS ${{ matrix.expected_os }} but runner reported ${actual_os}"
+            exit 1
+          }
+          [ "${actual_arch}" = "${{ matrix.expected_arch }}" ] || {
+            echo "Expected arch ${{ matrix.expected_arch }} but runner reported ${actual_arch}"
+            exit 1
+          }
+
+      - name: Build published Unix CLI bundle
+        id: bundle-build
+        shell: bash
+        run: |
+          set -euo pipefail
+          task_output="$(
+            ./gradlew :cli:bundleCliArchive \
+            -PfingrindBundleClassifier=${{ matrix.classifier }} \
+            --no-daemon \
+            --console=plain
+          )"
+          resolve_bundle_path() {
+            local label="$1"
+            local machine_prefix="$2"
+            local legacy_prefix="$3"
+            local resolved_path
+            resolved_path="$(
+              printf '%s\n' "${task_output}" | sed -n \
+                -e "s/^${machine_prefix}=//p" \
+                -e "s/^${legacy_prefix}//p" | tail -n 1
+            )"
+            [ -n "${resolved_path}" ] || {
+              echo "::error::bundleCliArchive did not report ${label}"
+              exit 1
+            }
+            printf '%s' "${resolved_path}"
+          }
+          printf '%s\n' "${task_output}"
+          archive_path="$(resolve_bundle_path 'bundle archive path' 'FINGRIND_BUNDLE_ARCHIVE' 'FinGrind bundle archive: ')"
+          checksum_path="$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')"
+          printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
+          printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test the published Unix CLI bundle
+        shell: bash
+        run: ./scripts/bundle-smoke.sh "${{ steps.bundle-build.outputs.archive-path }}"
+
   devcontainer-changes:
     name: Detect devcontainer changes
     runs-on: ubuntu-24.04
@@ -230,6 +330,7 @@ jobs:
     needs:
       - check
       - windows-bundle-smoke
+      - published-unix-bundle-smoke
       - devcontainer-changes
       - devcontainer
     runs-on: ubuntu-24.04

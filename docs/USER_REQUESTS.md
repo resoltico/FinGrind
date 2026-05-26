@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -208,8 +208,9 @@ Current ledger-plan rules:
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
   `hasMore`, and repeated typed `accounts[]`
 - successful `list-postings` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
-  `hasMore`, and repeated typed `postings[]` with nested `provenance`, `evidence`, `lines`, and
-  optional `reversal`
+  `hasMore`, and repeated typed summary `postings[]` with `postingId`, `postingKind`,
+  `postingOriginKind`, `reversalState`, optional `reversalTarget`, `effectiveDate`, `recordedAt`,
+  `debitTotal`, `creditTotal`, `accountCodes[]`, `sourceDocumentIds[]`, and `approvalIds[]`
 
 Text rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
 top-level `message`, optional `hint`, and any typed rejection details that identify the failing
@@ -236,7 +237,9 @@ deterministic repair data.
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
 | `ok` | successful `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
-| `ok` | any `execute-plan` outcome | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
+| `ok` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
+| `rejected` | deterministically rejected `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
+| `error` | assertion-failed `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
 | `rejected` | deterministic single-command business rejection | `status`, `code`, `message`, optional `idempotencyKey`, optional `details` |
 | `error` | malformed input or runtime failure | `status`, `code`, `message`, optional `hint`, optional `argument` |
 
@@ -246,22 +249,23 @@ Dynamic fields:
   captures of `print-request-template` and `print-plan-template`; both intentionally publish
   placeholder-first sample documents whose evidence and provenance values should be replaced before
   real-world use
-- `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
+- `generate-book-key-file.payload.bookKeyFile` is a redacted public path hint for the created key
+  file
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.businessActivityTags`,
   `.functionalCurrency` and `.fiscalYearStart` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
-- `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
+- `inspect-book.payload.bookFile` is a redacted public path hint for the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
 - `committed.payload.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
-- `ok.payload.resultDetail` echoes whether the caller requested `summary` or `full`
-- `ok.payload.summary.startedAt`, `finishedAt`, aggregate step counts, and optional failure
+- `payload.resultDetail` echoes whether the caller requested `summary` or `full`
+- `payload.summary.startedAt`, `finishedAt`, aggregate step counts, and optional failure
   details are stamped from the FinGrind execution clock
-- `ok.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
+- `payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
@@ -282,8 +286,8 @@ validation against the current book state, but it is not a durable commit guaran
 
 Discovery output also has two intentionally different JSON scopes:
 - `--detail minimal|compact|full` is accepted only when the resolved discovery output mode is JSON
-- `help --output json` defaults to the minimal overview payload with command summaries and
-  discovery-upgrade hints
+- `help --output json` defaults to the minimal overview payload with command ids, command
+  categories, and discovery-upgrade hints
 - `help --output json --detail compact` returns the concise stable discovery payload with usage,
   getting-started hints, and exit codes
 - `help <command> --output json` returns one narrow command-local payload with usage, options,
@@ -292,7 +296,8 @@ Discovery output also has two intentionally different JSON scopes:
   usage, options, examples, operator notes, and request-file guidance
 - `help --output json --detail full` and `help <command> --output json --detail full` include the
   extended discovery body such as embedded templates, enum vocabularies, and request-shape details
-- `capabilities --output json` defaults to the minimal machine contract index, while
+- `capabilities --output json` defaults to the minimal kernel-and-storage contract with
+  `kernelScope`, built-in statement ids, currency-scope facts, and `requestInput`, while
 - `capabilities --output json --detail compact` expands to the stable command, storage, and
   request-entry discovery contract
 - `capabilities --output json --detail full` expands to the full doctrine, command grammar,
@@ -349,6 +354,10 @@ rendered:
 
 ## Shared Response Payloads
 
+Every response-side filesystem path field is a redacted public path hint that preserves only the
+smallest trailing directory context needed for that response, for example
+`<redacted>/books/acme.sqlite` or `<redacted>/backup/books/acme.sqlite`.
+
 Shared initialized-book identity payload:
 - `entityName`
 - `businessActivityTags[]`
@@ -374,6 +383,20 @@ Shared posting payload:
   `approverType`, `decision`, and `approvedAt`
 - optional `reversal.priorPostingId` and `reversal.reason`
 - `lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
+
+Shared posting summary payload:
+- `postingId`
+- `postingKind`
+- `postingOriginKind`
+- `reversalState`
+- optional `reversalTarget`
+- `effectiveDate`
+- `recordedAt`
+- `debitTotal`
+- `creditTotal`
+- `accountCodes[]`
+- `sourceDocumentIds[]`
+- `approvalIds[]`
 
 Every response-side money object reuses the same exact money shape with `currencyCode` and
 `minorUnits`.
@@ -457,7 +480,7 @@ That `payload.backupBookKeyFile` is also the key file required to reopen the res
 - optional `payload.context.effectiveDateToMeaning`
 - `payload.limit`
 - optional `payload.nextCursor`
-- `payload.postings[]`, where each entry uses the shared posting payload
+- `payload.postings[]`, where each entry uses the shared posting summary payload
 
 `account-balance` success returns:
 - `payload.context.bookIdentity`, using the shared initialized-book identity payload
@@ -583,8 +606,8 @@ explicitly, such as `--output json`.
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
 JSON report payload itself, but successful JSON success envelopes now also publish one
-`artifacts[]` entry with `format: "pdf"` and the normalized written `path`. Successful text and
-CSV exports also emit a diagnostics info message with the same normalized artifact path. If the report result
+`artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. Successful text
+and CSV exports also emit a diagnostics info message with the same redacted artifact path hint. If the report result
 succeeds but the PDF artifact later fails, stdout still carries the same report payload while
 diagnostics emit a repair warning for the `--pdf-out` path.
 Deterministic failures for commands that accept `--output text` are rendered in the same

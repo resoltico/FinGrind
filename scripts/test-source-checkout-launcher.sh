@@ -151,7 +151,7 @@ progress 'source-checkout help surface'
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
-grep -Fq 'Start Here' "${help_stdout}" ||
+grep -Fq 'Do Next' "${help_stdout}" ||
     die "source-checkout launcher help did not render the front-door guidance section"
 grep -Fq 'Command Groups' "${help_stdout}" ||
     die "source-checkout launcher help did not render the grouped command catalog"
@@ -177,6 +177,7 @@ expected_runtime_distribution = sys.argv[2]
 sqlite = document["payload"]["sqlite"]
 runtime = sqlite["runtime"]
 actual_runtime_distribution = document["payload"]["distribution"]["runtimeDistribution"]
+status = runtime.get("status")
 if actual_runtime_distribution != expected_runtime_distribution:
     raise SystemExit(
         "unexpected runtime distribution: "
@@ -184,10 +185,16 @@ if actual_runtime_distribution != expected_runtime_distribution:
         + " != "
         + expected_runtime_distribution
     )
-if runtime["runtimeProvenance"] != "source-checkout-managed":
+if status != "ready":
+    raise SystemExit(
+        "unexpected runtime status: "
+        + repr(status)
+        + " != 'ready'"
+    )
+if runtime.get("runtimeProvenance") != "source-checkout-managed":
     raise SystemExit(
         "unexpected runtime provenance: "
-        + runtime["runtimeProvenance"]
+        + repr(runtime.get("runtimeProvenance"))
         + " != source-checkout-managed"
     )
 PY
@@ -297,7 +304,22 @@ if "postingKind" in document:
     raise SystemExit("developer direct-Java request template leaked retired postingKind")
 PY
 
-touch -t 200001010000 "${source_checkout_artifact_manifest}"
+python3 - "${source_checkout_artifact_manifest}" <<'PY'
+import pathlib
+import sys
+
+manifest_path = pathlib.Path(sys.argv[1])
+lines = manifest_path.read_text(encoding="utf-8").splitlines()
+for index, line in enumerate(lines):
+    if not line.startswith("sourceFile\t"):
+        continue
+    record_type, relative_path, _ = line.split("\t")
+    lines[index] = f"{record_type}\t{relative_path}\t{'0' * 64}"
+    break
+else:
+    raise SystemExit("source-checkout launcher fixture manifest omitted sourceFile rows")
+manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
 
 progress 'source-checkout self-refresh'
 "${launcher_wrapper}" print-request-template >"${healed_template_request_stdout}" \
@@ -399,7 +421,7 @@ progress 'direct-java help surface'
     die "developer direct-Java help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
-grep -Fq 'Start Here' "${raw_help_stdout}" ||
+grep -Fq 'Do Next' "${raw_help_stdout}" ||
     die "developer direct-Java help did not render the front-door guidance section"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
     die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
@@ -432,7 +454,8 @@ import sys
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_distribution = sys.argv[2]
 distribution = document["payload"]["distribution"]["runtimeDistribution"]
-provenance = document["payload"]["sqlite"]["runtime"]["runtimeProvenance"]
+runtime = document["payload"]["sqlite"]["runtime"]
+status = runtime.get("status")
 if distribution != expected_distribution:
     raise SystemExit(
         "unexpected direct-Java runtime distribution: "
@@ -440,10 +463,17 @@ if distribution != expected_distribution:
         + " != "
         + expected_distribution
     )
+if status != "ready":
+    raise SystemExit(
+        "unexpected direct-Java runtime status: "
+        + repr(status)
+        + " != 'ready'"
+    )
+provenance = runtime.get("runtimeProvenance")
 if provenance != "source-checkout-managed":
     raise SystemExit(
         "unexpected direct-Java runtime provenance: "
-        + provenance
+        + repr(provenance)
         + " != source-checkout-managed"
     )
 PY
@@ -519,8 +549,8 @@ if distribution != sys.argv[2]:
 if runtime["status"] != "unavailable":
     raise SystemExit("raw java -jar environment did not report an unavailable SQLite runtime")
 issue = runtime["runtimeIssue"]
-if "--enable-native-access=ALL-UNNAMED" not in issue:
-    raise SystemExit("raw java -jar environment did not surface the native-access repair flag")
+if "supported FinGrind bundle launcher" not in issue and "prepareManagedSqlite" not in issue:
+    raise SystemExit("raw java -jar environment did not surface the supported-launcher repair guidance")
 PY
 
 progress 'raw java -jar runtime failure envelope'
@@ -554,8 +584,8 @@ if document["code"] != "managed-runtime-failure":
     raise SystemExit("raw java -jar open-book did not classify the failure as managed-runtime-failure")
 message = document["message"]
 hint = document.get("hint", "")
-if "--enable-native-access=ALL-UNNAMED" not in message:
-    raise SystemExit("raw java -jar open-book did not report the native-access repair flag")
+if "prepareManagedSqlite" not in message and "prepareManagedSqlite" not in hint:
+    raise SystemExit("raw java -jar open-book did not report the source-checkout runtime recovery path")
 if "supported launchers" not in message and "supported launchers" not in hint:
     raise SystemExit("raw java -jar open-book did not direct the operator toward supported launchers")
 PY

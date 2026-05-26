@@ -58,6 +58,7 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void initializedBookState_requiresIntegrityForeignKeyFingerprintBalanceAndMoneyIntegrity() {
     Path fingerprintPath = tempDirectory.resolve("book-state-fingerprint.sqlite");
+    String mismatchedSchemaFingerprint = "0".repeat(64);
     initializeBookOnDisk(fingerprintPath);
     withStandaloneDatabase(
         bookAccess(fingerprintPath),
@@ -65,9 +66,10 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
           database.executeStatement(
               """
               update book_meta
-              set value = 'bogus'
+              set value = '%s'
               where meta_key = 'schema_fingerprint_sha256'
-              """);
+              """
+                  .formatted(mismatchedSchemaFingerprint));
           assertEquals(
               SqliteBookState.INCOMPLETE_FINGRIND,
               SqliteBookContract.BOOK_STATE_READER.bookState(database));

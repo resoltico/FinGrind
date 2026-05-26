@@ -257,7 +257,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "full",
             "--request-file",
             planRequestFile.toString());
-    assertEquals("succeeded", planResult.path("status").stringValue());
+    assertEquals("ok", planResult.path("status").stringValue());
+    assertEquals("succeeded", planResult.path("payload").path("status").stringValue());
     JsonNode queryPlanResult =
         runJsonCommand(
             "execute-plan",
@@ -269,7 +270,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "full",
             "--request-file",
             queryPlanRequestFile.toString());
-    assertEquals("succeeded", queryPlanResult.path("status").stringValue());
+    assertEquals("ok", queryPlanResult.path("status").stringValue());
+    assertEquals("succeeded", queryPlanResult.path("payload").path("status").stringValue());
     JsonNode queryData =
         queryPlanResult.path("payload").path("journal").path("steps").get(4).path("data");
     assertEquals(1, queryData.path("count").asInt());

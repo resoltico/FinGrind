@@ -482,9 +482,7 @@ class ProtocolContractLintSupport {
     ids.addAll(SqliteRuntimeTrustBasis.wireValues());
     ids.addAll(SqliteCompileOptionsVerificationStatus.wireValues());
     ids.addAll(WorkflowSurface.wireValues());
-    ids.addAll(ProtocolSuccessStatus.wireValues());
-    ids.addAll(ProtocolRejectionStatus.wireValues());
-    ids.addAll(ProtocolFailureStatus.wireValues());
+    ids.addAll(ProtocolEnvelopeStatus.wireValues());
     ids.addAll(ProtocolDiagnosticCode.wireValues());
     ids.addAll(PublicCliBundleTarget.wireValues());
     ids.addAll(PlanTransactionMode.wireValues());

@@ -5,9 +5,7 @@ import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
-import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ReportCapabilityFacts;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
@@ -158,10 +156,10 @@ public final class ContractResponse {
 
   /** Descriptor for the stable response contract. */
   public record ResponseModelDescriptor(
-      List<ProtocolSuccessStatus> successStatuses,
+      ProtocolEnvelopeStatus successStatus,
       List<FieldDescriptor> successFields,
-      List<ProtocolRejectionStatus> rejectionStatuses,
-      ProtocolFailureStatus errorStatus,
+      ProtocolEnvelopeStatus rejectionStatus,
+      ProtocolEnvelopeStatus errorStatus,
       List<RejectionDescriptor> rejections,
       List<ErrorDescriptor> errorDescriptors,
       List<FieldDescriptor> rejectionFields,
@@ -170,10 +168,10 @@ public final class ContractResponse {
       implements ResponseDescriptorType {
     /** Validates one response-model descriptor payload. */
     public ResponseModelDescriptor {
-      successStatuses = ContractDescriptorValidation.copyList(successStatuses, "successStatuses");
+      successStatus = ContractDescriptorValidation.requireValue(successStatus, "successStatus");
       successFields = ContractDescriptorValidation.copyList(successFields, "successFields");
-      rejectionStatuses =
-          ContractDescriptorValidation.copyList(rejectionStatuses, "rejectionStatuses");
+      rejectionStatus =
+          ContractDescriptorValidation.requireValue(rejectionStatus, "rejectionStatus");
       errorStatus = ContractDescriptorValidation.requireValue(errorStatus, "errorStatus");
       rejections = ContractDescriptorValidation.copyList(rejections, "rejections");
       errorDescriptors =

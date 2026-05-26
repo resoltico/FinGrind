@@ -140,7 +140,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Request contains an invalid date/time value.", exception.getMessage());
+    assertEquals(
+        "Expected one canonical YYYY-MM-DD local date for effectiveDate.", exception.getMessage());
   }
 
   @Test

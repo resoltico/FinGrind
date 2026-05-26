@@ -12,10 +12,6 @@ final class CliPublicPaths {
     return PublicPathHint.fromPath(Objects.requireNonNull(path, "path"));
   }
 
-  static String normalizedValue(Path path) {
-    return Objects.requireNonNull(path, "path").toAbsolutePath().normalize().toString();
-  }
-
   static String redactedValue(Path path) {
     return hint(path).value();
   }

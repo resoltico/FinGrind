@@ -772,7 +772,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .path("backupFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("<redacted>/entity.sqlite"));
+            .endsWith("<redacted>/backup/entity.sqlite"));
     output.reset();
 
     writer.writeRestoreBookResult(
@@ -787,7 +787,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .path("backupBookKeyFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("<redacted>/entity.key"));
+            .endsWith("<redacted>/backup/entity.key"));
     output.reset();
 
     writer.writeInspectRekeyRollbackResult(
@@ -817,7 +817,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .path("rollbackArtifact")
             .asText()
             .replace('\\', '/')
-            .endsWith("<redacted>/entity.rekey-rollback.sqlite"));
+            .endsWith("<redacted>/books/entity.rekey-rollback.sqlite"));
     output.reset();
 
     writer.writeRestoreRekeyRollbackResult(

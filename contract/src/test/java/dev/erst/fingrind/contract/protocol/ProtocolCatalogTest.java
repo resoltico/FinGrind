@@ -421,8 +421,15 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         ProtocolCatalog.requiredSqliteCompileOptions());
-    assertEquals(List.of(ProtocolSuccessStatus.OK), ProtocolCatalog.successStatuses());
-    assertEquals(List.of(ProtocolRejectionStatus.REJECTED), ProtocolCatalog.rejectionStatuses());
+    assertEquals(
+        List.of(
+            ProtocolEnvelopeStatus.OK,
+            ProtocolEnvelopeStatus.REJECTED,
+            ProtocolEnvelopeStatus.ERROR),
+        ProtocolCatalog.envelopeStatuses());
+    assertEquals(ProtocolEnvelopeStatus.OK, ProtocolCatalog.successStatus());
+    assertEquals(ProtocolEnvelopeStatus.REJECTED, ProtocolCatalog.rejectionStatus());
+    assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolCatalog.errorStatus());
     assertEquals(
         "single-functional-currency-per-book", ProtocolCatalog.bookModel().currencyScope());
     assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());

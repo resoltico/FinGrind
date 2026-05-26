@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: USER_CLI
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -96,9 +96,10 @@ Protected books use SQLite3 Multiple Ciphers 2.3.4 with the upstream default `ch
 The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
 so CLI help, parser aliases, output modes, summaries, query limits, and the separation between
 executable examples and operator notes share one source.
-`capabilities.commands` publishes those command contracts as grouped `CommandDescriptor` objects,
-so automation can read the per-command `executionMode`, `outputModes`, `artifactOutputs`, aliases,
-options, and summary directly instead of inferring stdout behavior from one global mode list.
+`capabilities --output json --detail compact` and `--detail full` publish those command
+contracts as grouped `CommandDescriptor` objects, so automation can read the per-command
+`executionMode`, `outputModes`, `artifactOutputs`, aliases, options, and summary directly
+instead of inferring stdout behavior from one global mode list.
 Commands that advertise `--output` default successful stdout to text on an interactive
 terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
 query/report commands can render operator-facing `--output text`, and the tabular read/report
@@ -108,7 +109,7 @@ unless one recognized machine output mode is selected explicitly, such as `--out
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. Successful exports keep the main stdout result unchanged. When the primary
 stdout result is JSON, the success envelope also carries one `artifacts[]` entry with
-`format: "pdf"` plus the normalized written `path`; text and CSV modes report the same path on
+`format: "pdf"` plus one redacted public-path hint in `path`; text and CSV modes report the same hint on
 the diagnostics stream. If the report itself succeeds but the PDF write later fails, FinGrind
 still returns the primary report on stdout and emits a repair warning on the diagnostics stream
 instead of changing the command exit to `runtime-failure`. Commands that do not advertise
@@ -330,7 +331,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | invalid key-file contents, file permissions, parent-directory permissions, or unreadable key-file path | `6` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, parent directory, or contents do not satisfy the protected-book contract.` |
 | unreadable, oversized, malformed, empty, or control-character passphrase payload on stdin or another selected passphrase route | `6` | `invalid-book-passphrase-source` | `Failed to read the FinGrind book passphrase from standard input.`, `The FinGrind book passphrase source exceeded the 4096-byte UTF-8 limit: ...`, or UTF-8/single-line passphrase validation text |
 | unsupported prompt environment | `5` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
-| requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout; JSON success envelopes also publish `artifacts[].format` plus normalized `artifacts[].path`, and diagnostics report the same PDF path for text/CSV flows |
+| requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout; JSON success envelopes also publish `artifacts[].format` plus one redacted public-path-hint `artifacts[].path`, and diagnostics report the same path hint for text/CSV flows |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
@@ -419,9 +420,9 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
   `income-statement`, and `changes-in-equity` can also write one PDF artifact through
   `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the
-  primary report succeeds, JSON success envelopes publish the normalized artifact under
+  primary report succeeds, JSON success envelopes publish one redacted artifact-path hint under
   `artifacts[]`, while text/CSV flows emit a text info block with code `pdf-exported` and the
-  same path on diagnostics. If the PDF artifact fails, stdout still carries the report result and
+  same hint on diagnostics. If the PDF artifact fails, stdout still carries the report result and
   diagnostics emit a text warning with code `pdf-export-warning`.
 - JSON money fields are typed exact-money objects with `currencyCode` and `minorUnits`,
   while `--output text` and `--output csv` render accounting-grade currency scale for operators
@@ -478,8 +479,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   shape are unsupported.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
-  `capabilities.commands.<group>[]` publishes the authoritative per-command stdout and artifact
-  contract through grouped `CommandDescriptor` objects.
+  `capabilities --output json --detail compact|full` publishes the authoritative per-command
+  stdout and artifact contract through grouped `CommandDescriptor` objects.
 - `capabilities.commands`, command groups, usage lines, aliases, output modes, artifact outputs,
   and summaries are rendered from the contract protocol catalog rather than copied into the CLI
   renderer.

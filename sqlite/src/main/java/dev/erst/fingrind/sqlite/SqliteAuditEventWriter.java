@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 
 /** Shared SQLite write helpers for one append-only bookkeeping audit stream. */
@@ -9,7 +10,7 @@ final class SqliteAuditEventWriter {
   static void insertAuditEvent(SqliteNativeDatabase activeDatabase, BookAuditEvent auditEvent) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_AUDIT_EVENT)) {
-      statement.bindText(1, auditEvent.recordedAt().toString());
+      statement.bindText(1, CanonicalTemporalText.formatUtcInstant(auditEvent.recordedAt()));
       statement.bindText(2, auditEvent.kind().wireValue());
       statement.bindText(
           3, auditEvent.accountCode() == null ? null : auditEvent.accountCode().value());

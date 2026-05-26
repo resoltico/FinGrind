@@ -11,9 +11,7 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
-import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -73,7 +71,7 @@ class CliWireValueContractTest {
   @Test
   void jsonText_serializesWireValuePayloads() {
     assertEquals(
-        "{\"status\":\"ok\"}", CliWireJson.jsonText(new ValidPayload(ProtocolSuccessStatus.OK)));
+        "{\"status\":\"ok\"}", CliWireJson.jsonText(new ValidPayload(ProtocolEnvelopeStatus.OK)));
   }
 
   private static Stream<Enum<?>[]> wireEnumFamilies() {
@@ -92,9 +90,7 @@ class CliWireValueContractTest {
         LedgerAssertionKind.values(),
         LedgerStepKind.values(),
         OutputMode.values(),
-        ProtocolSuccessStatus.values(),
-        ProtocolRejectionStatus.values(),
-        ProtocolFailureStatus.values(),
+        ProtocolEnvelopeStatus.values(),
         PublicCliBundleTarget.values(),
         PlanTransactionMode.values(),
         PlanFailurePolicy.values(),
@@ -103,7 +99,7 @@ class CliWireValueContractTest {
 
   private record BrokenPayload(BrokenEnum status) {}
 
-  private record ValidPayload(ProtocolSuccessStatus status) {}
+  private record ValidPayload(ProtocolEnvelopeStatus status) {}
 
   /** Deliberately not a WireValue to prove contract enforcement. */
   private enum BrokenEnum {

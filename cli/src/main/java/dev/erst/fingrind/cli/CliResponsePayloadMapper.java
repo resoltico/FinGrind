@@ -23,11 +23,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.nio.file.Path;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -48,21 +48,22 @@ final class CliResponsePayloadMapper {
             ? null
             : List.of(
                 new CliEnvelopeJsonModels.SuccessArtifact(
-                    "pdf", CliPublicPaths.normalizedValue(exportedArtifactPath)));
+                    "pdf", CliPublicPaths.redactedValue(exportedArtifactPath)));
     return new CliEnvelopeJsonModels.SuccessEnvelope<>(
-        ProtocolSuccessStatus.OK, payload, artifacts);
+        ProtocolEnvelopeStatus.OK, payload, artifacts);
   }
 
   static CliEnvelopeJsonModels.PlanEnvelope<CliPlanJsonModels.LedgerPlanPayload> ledgerPlanEnvelope(
       LedgerPlanResult result, PlanResultDetail resultDetail) {
     CliPlanJsonModels.LedgerPlanPayload payload = ledgerPlanPayload(result, resultDetail);
-    return new CliEnvelopeJsonModels.PlanEnvelope<>(result.status(), payload, null);
+    return new CliEnvelopeJsonModels.PlanEnvelope<>(
+        planEnvelopeStatus(result.status()), payload, null);
   }
 
   static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
     CliErrorJsonModels.@org.jspecify.annotations.Nullable ErrorDetails details = failure.details();
     return new CliEnvelopeJsonModels.FailureEnvelope(
-        ProtocolFailureStatus.ERROR,
+        ProtocolEnvelopeStatus.ERROR,
         failure.code(),
         failure.message(),
         failure.hint(),
@@ -164,5 +165,13 @@ final class CliResponsePayloadMapper {
   static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(
       LedgerPlanResult result, PlanResultDetail resultDetail) {
     return CliPlanPayloadMapper.ledgerPlanPayload(result, resultDetail);
+  }
+
+  private static ProtocolEnvelopeStatus planEnvelopeStatus(LedgerPlanStatus status) {
+    return switch (status) {
+      case SUCCEEDED -> ProtocolEnvelopeStatus.OK;
+      case REJECTED -> ProtocolEnvelopeStatus.REJECTED;
+      case ASSERTION_FAILED -> ProtocolEnvelopeStatus.ERROR;
+    };
   }
 }

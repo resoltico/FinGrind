@@ -192,6 +192,10 @@ class CliReadCommonArgumentValidationTest extends CliArgumentParsingTestSupport 
     assertEquals("--limit", invalidLimit.argument());
     assertInstanceOf(NumberFormatException.class, invalidLimit.getCause());
     assertEquals("--effective-date-from", invalidDate.argument());
-    assertInstanceOf(java.time.DateTimeException.class, invalidDate.getCause());
+    assertInstanceOf(IllegalArgumentException.class, invalidDate.getCause());
+    assertTrue(
+        java.util.Objects.requireNonNull(invalidDate.getMessage())
+            .contains("canonical YYYY-MM-DD local date"),
+        "Expected canonical local-date guidance for invalid effective-date-from.");
   }
 }

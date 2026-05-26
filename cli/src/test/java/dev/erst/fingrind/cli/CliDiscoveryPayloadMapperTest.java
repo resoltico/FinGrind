@@ -550,7 +550,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.46.0",
+        "0.47.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

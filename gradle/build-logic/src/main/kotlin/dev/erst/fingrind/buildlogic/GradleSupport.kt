@@ -2,8 +2,14 @@ package dev.erst.fingrind.buildlogic
 
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.file.FileCollection
 import org.gradle.api.Project
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Input
+import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.process.JavaForkOptions
+import java.io.File
+import java.io.Serializable
 
 internal const val SQLITE_NATIVE_ACCESS_MODULE = "dev.erst.fingrind.sqlite"
 internal const val UNNAMED_NATIVE_ACCESS_ARGUMENT = "--enable-native-access=ALL-UNNAMED"
@@ -12,6 +18,47 @@ internal const val DISABLE_CLASS_DATA_SHARING_ARGUMENT = "-Xshare:off"
 
 internal fun JavaForkOptions.enableSqliteNamedNativeAccess() {
     jvmArgs("--enable-native-access=$SQLITE_NATIVE_ACCESS_MODULE")
+}
+
+internal fun JavaForkOptions.addSqliteNamedModule() {
+    jvmArgs("--add-modules=$SQLITE_NATIVE_ACCESS_MODULE")
+}
+
+private class ModulePathArgumentProvider(
+    @get:Classpath val modulePath: FileCollection,
+) : CommandLineArgumentProvider, Serializable {
+    override fun asArguments(): Iterable<String> =
+        listOf(
+            "--module-path",
+            modulePath.files.joinToString(File.pathSeparator) { file -> file.absolutePath },
+        )
+}
+
+private class PatchModuleArgumentProvider(
+    @get:Input val moduleName: String,
+    @get:Classpath val patchPath: FileCollection,
+) : CommandLineArgumentProvider, Serializable {
+    override fun asArguments(): Iterable<String> =
+        listOf(
+            "--patch-module",
+            "$moduleName=${patchPath.files.joinToString(File.pathSeparator) { file -> file.absolutePath }}",
+        )
+}
+
+fun JavaForkOptions.useModulePath(modulePath: FileCollection) {
+    jvmArgumentProviders.add(ModulePathArgumentProvider(modulePath))
+}
+
+fun JavaForkOptions.patchModule(moduleName: String, patchPath: FileCollection) {
+    jvmArgumentProviders.add(PatchModuleArgumentProvider(moduleName, patchPath))
+}
+
+fun JavaForkOptions.addReads(moduleName: String, targetModule: String) {
+    jvmArgs("--add-reads=$moduleName=$targetModule")
+}
+
+fun JavaForkOptions.addOpens(moduleName: String, packageName: String, targetModule: String) {
+    jvmArgs("--add-opens=$moduleName/$packageName=$targetModule")
 }
 
 internal fun JavaForkOptions.enableUnnamedNativeAccess() {

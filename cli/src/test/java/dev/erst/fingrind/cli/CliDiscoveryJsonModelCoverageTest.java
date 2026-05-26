@@ -41,7 +41,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryJsonModels.HelpOverviewCompactPayload helpOverview =
         new CliDiscoveryJsonModels.HelpOverviewCompactPayload(
             "FinGrind",
-            "0.46.0",
+            "0.47.0",
             "Compact help overview",
             DiscoveryDetail.COMPACT,
             java.util.List.of(
@@ -55,7 +55,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryJsonModels.CapabilitiesCompactPayload capabilities =
         new CliDiscoveryJsonModels.CapabilitiesCompactPayload(
             "FinGrind",
-            "0.46.0",
+            "0.47.0",
             DiscoveryDetail.COMPACT,
             capabilitiesDescriptor.storage().bookBoundary(),
             capabilitiesDescriptor.storage().engines().stream().map(Enum::name).toList(),
@@ -65,7 +65,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryJsonModels.CapabilitiesPayload compactPayload =
         new CliDiscoveryJsonModels.CapabilitiesPayload(
             "FinGrind",
-            "0.46.0",
+            "0.47.0",
             DiscoveryDetail.COMPACT,
             capabilitiesDescriptor.storage(),
             capabilitiesDescriptor.commands(),
@@ -81,7 +81,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewCompactPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 "Compact help overview",
                 DiscoveryDetail.MINIMAL,
                 java.util.List.of(),
@@ -93,7 +93,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
-                "0.46.0",
+                "0.47.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage().bookBoundary(),
                 capabilitiesDescriptor.storage().engines().stream().map(Enum::name).toList(),
@@ -113,7 +113,7 @@ class CliDiscoveryJsonModelCoverageTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.46.0",
+        "0.47.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 }

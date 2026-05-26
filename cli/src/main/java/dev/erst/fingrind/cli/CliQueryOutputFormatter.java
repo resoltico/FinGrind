@@ -271,6 +271,14 @@ final class CliQueryOutputFormatter {
     return balanced ? "Balanced" : "Imbalanced";
   }
 
+  static String noMatchesLabel(String subjectPlural) {
+    return "No " + subjectPlural + " matched the selected scope.";
+  }
+
+  static String zeroAcrossCurrenciesLabel() {
+    return "Zero across all currencies.";
+  }
+
   static String displayAccountTypeSectionLabel(AccountType accountType) {
     return switch (accountType) {
       case ASSET -> "Assets";

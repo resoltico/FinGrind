@@ -26,6 +26,13 @@ import org.jspecify.annotations.Nullable;
 /** Discovery-oriented JSON records emitted by the CLI transport layer. */
 public interface CliDiscoveryJsonModels {
 
+  record CommandNamePayload(OperationId name, String category) implements ProtocolSuccessPayload {
+    public CommandNamePayload {
+      name = requireValue(name, "name");
+      category = requireText(category, "category");
+    }
+  }
+
   record CommandIndexPayload(OperationId name, String category, String summary)
       implements ProtocolSuccessPayload {
     public CommandIndexPayload {
@@ -40,7 +47,7 @@ public interface CliDiscoveryJsonModels {
       String version,
       String description,
       DiscoveryDetail detail,
-      List<CommandIndexPayload> commands,
+      List<CommandNamePayload> commands,
       String compactDetailHint,
       String fullDetailHint)
       implements ProtocolSuccessPayload {
@@ -143,8 +150,12 @@ public interface CliDiscoveryJsonModels {
       String application,
       String version,
       DiscoveryDetail detail,
+      String kernelScope,
+      List<String> builtInStatements,
       String bookBoundary,
-      List<CommandIndexPayload> commands,
+      String currencyScope,
+      String multiCurrencyStatus,
+      RequestInputCompactPayload requestInput,
       String compactDetailHint,
       String fullDetailHint)
       implements ProtocolSuccessPayload {
@@ -152,8 +163,12 @@ public interface CliDiscoveryJsonModels {
       application = requireText(application, "application");
       version = requireText(version, "version");
       detail = requireValue(detail, "detail");
+      kernelScope = requireText(kernelScope, "kernelScope");
+      builtInStatements = copyList(builtInStatements, "builtInStatements");
       bookBoundary = requireText(bookBoundary, "bookBoundary");
-      commands = copyList(commands, "commands");
+      currencyScope = requireText(currencyScope, "currencyScope");
+      multiCurrencyStatus = requireText(multiCurrencyStatus, "multiCurrencyStatus");
+      requestInput = requireValue(requestInput, "requestInput");
       compactDetailHint = requireText(compactDetailHint, "compactDetailHint");
       fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
       if (detail != DiscoveryDetail.MINIMAL) {

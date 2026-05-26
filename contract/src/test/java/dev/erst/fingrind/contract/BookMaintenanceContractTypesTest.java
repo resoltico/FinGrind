@@ -272,12 +272,58 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         "protected-book-verification-failed",
         BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED.wireValue());
 
-    assertEquals("<redacted>/acme.sqlite", new PublicPathHint("<redacted>/acme.sqlite").value());
+    assertEquals(
+        "<redacted>/books/acme.sqlite", new PublicPathHint("<redacted>/books/acme.sqlite").value());
     assertEquals("<redacted>", new PublicPathHint("<redacted>").value());
     assertEquals(
-        "<redacted>/acme.sqlite", PublicPathHint.fromPath(Path.of("books/acme.sqlite")).value());
+        "<redacted>/books/acme.sqlite",
+        PublicPathHint.fromPath(Path.of("books/acme.sqlite")).value());
     assertEquals("<redacted>", PublicPathHint.fromPath(Path.of("/")).value());
+    assertIterableEquals(
+        List.of(
+            "<redacted>/work-volume/books/main.sqlite",
+            "<redacted>/backup/books/main.sqlite",
+            "<redacted>/backup/secrets/main.book-key"),
+        PublicPathHint.disambiguate(
+                List.of(
+                    Path.of("/tmp/field-audit/work-volume/books/main.sqlite"),
+                    Path.of("/tmp/field-audit/work-volume/backup/books/main.sqlite"),
+                    Path.of("/tmp/field-audit/work-volume/backup/secrets/main.book-key")))
+            .stream()
+            .map(PublicPathHint::value)
+            .toList());
+    assertIterableEquals(List.of(), PublicPathHint.disambiguate(List.of()));
+    assertIterableEquals(
+        List.of("<redacted>/books/acme.sqlite", "<redacted>/books/acme.sqlite"),
+        PublicPathHint.disambiguate(
+                List.of(
+                    Path.of("/tmp/field-audit/books/acme.sqlite"),
+                    Path.of("/tmp/field-audit/books/acme.sqlite")))
+            .stream()
+            .map(PublicPathHint::value)
+            .toList());
+    assertIterableEquals(
+        List.of("<redacted>", "<redacted>/acme.sqlite"),
+        PublicPathHint.disambiguate(
+                List.of(Path.of("/"), Path.of("/tmp/field-audit/books/acme.sqlite")))
+            .stream()
+            .map(PublicPathHint::value)
+            .toList());
+    assertIterableEquals(
+        List.of("<redacted>/field-audit/books/acme.sqlite", "<redacted>/books/acme.sqlite"),
+        PublicPathHint.disambiguate(
+                List.of(
+                    Path.of("/tmp/field-audit/books/acme.sqlite"), Path.of("/books/acme.sqlite")))
+            .stream()
+            .map(PublicPathHint::value)
+            .toList());
 
+    assertThrows(NullPointerException.class, () -> PublicPathHint.disambiguate(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            PublicPathHint.disambiguate(
+                List.of(Path.of("/tmp/field-audit/books/acme.sqlite"), nullOf())));
     assertThrows(NullPointerException.class, () -> new PublicPathHint(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> new PublicPathHint("books/acme.sqlite"));
   }

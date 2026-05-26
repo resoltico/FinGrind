@@ -12,6 +12,11 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -447,8 +452,7 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
             createStagedSibling(finalBackupBookKeyFilePath, ".backup-key-", ".tmp");
         deleteQuietlyIfPresent(stagedBackupBookKeyFilePath);
         try (SqliteBookPassphrase materializedPassphrase = committedBackupPassphrase.copy()) {
-          SqliteBookKeyFileMaterializer.materialize(
-              stagedBackupBookKeyFilePath, materializedPassphrase);
+          SqliteBookKeyFile.materialize(stagedBackupBookKeyFilePath, materializedPassphrase);
         }
         moveReplacing(stagedBackupFilePath, finalBackupFilePath);
         backupFilePublished = true;

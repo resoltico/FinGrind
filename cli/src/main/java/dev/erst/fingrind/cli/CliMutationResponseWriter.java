@@ -13,7 +13,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -346,7 +346,7 @@ final class CliMutationResponseWriter {
   }
 
   private static String absolutePath(Path path) {
-    return CliPublicPaths.normalizedValue(path);
+    return CliPublicPaths.redactedValue(path);
   }
 
   private static String absolutePath(PublicPathHint pathHint) {

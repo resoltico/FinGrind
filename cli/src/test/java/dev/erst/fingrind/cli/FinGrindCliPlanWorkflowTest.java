@@ -125,7 +125,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             });
     assertEquals(3, exitCode);
     JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
-    assertEquals("assertion-failed", planResult.path("status").stringValue());
+    assertEquals("error", planResult.path("status").stringValue());
     assertEquals("assertion-failed", planResult.path("payload").path("status").stringValue());
     assertFalse(Files.exists(bookFilePath));
     ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();

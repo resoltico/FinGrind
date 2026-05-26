@@ -36,6 +36,7 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;

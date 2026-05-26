@@ -49,13 +49,13 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
-import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePeriodResultTransferSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import dev.erst.fingrind.sqlite.SqliteRekeySession;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;

@@ -105,7 +105,7 @@ final class CliPostingOutputRenderer {
                     page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
     String postings =
         page.postings().isEmpty()
-            ? "(none)"
+            ? CliQueryOutputFormatter.noMatchesLabel("postings")
             : CliTextFormat.renderTable(
                 List.of(
                     "Effective date", "Origin", "Role", "Debit", "Credit", "Accounts", "Posting"),

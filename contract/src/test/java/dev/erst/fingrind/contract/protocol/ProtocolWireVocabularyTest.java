@@ -10,12 +10,10 @@ import org.junit.jupiter.api.Test;
 class ProtocolWireVocabularyTest {
   @Test
   void responseAndPlanEnums_publishStableWireValues() {
-    assertEquals(List.of("ok"), ProtocolSuccessStatus.wireValues());
-    assertEquals("ok", ProtocolSuccessStatus.OK.toString());
-    assertEquals(List.of("rejected"), ProtocolRejectionStatus.wireValues());
-    assertEquals("rejected", ProtocolRejectionStatus.REJECTED.toString());
-    assertEquals(List.of("error"), ProtocolFailureStatus.wireValues());
-    assertEquals("error", ProtocolFailureStatus.ERROR.toString());
+    assertEquals(List.of("ok", "rejected", "error"), ProtocolEnvelopeStatus.wireValues());
+    assertEquals("ok", ProtocolEnvelopeStatus.OK.toString());
+    assertEquals("rejected", ProtocolEnvelopeStatus.REJECTED.toString());
+    assertEquals("error", ProtocolEnvelopeStatus.ERROR.toString());
     assertEquals(
         List.of("pdf-exported", "pdf-export-warning"), ProtocolDiagnosticCode.wireValues());
     assertEquals("pdf-export-warning", ProtocolDiagnosticCode.PDF_EXPORT_WARNING.toString());
@@ -56,10 +54,9 @@ class ProtocolWireVocabularyTest {
 
   @Test
   void responseAndPlanEnums_parseKnownValuesAndRejectUnknownOnes() {
-    assertEquals(ProtocolSuccessStatus.OK, ProtocolSuccessStatus.fromWireValue("ok"));
-    assertEquals(
-        ProtocolRejectionStatus.REJECTED, ProtocolRejectionStatus.fromWireValue("rejected"));
-    assertEquals(ProtocolFailureStatus.ERROR, ProtocolFailureStatus.fromWireValue("error"));
+    assertEquals(ProtocolEnvelopeStatus.OK, ProtocolEnvelopeStatus.fromWireValue("ok"));
+    assertEquals(ProtocolEnvelopeStatus.REJECTED, ProtocolEnvelopeStatus.fromWireValue("rejected"));
+    assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolEnvelopeStatus.fromWireValue("error"));
     assertEquals(
         ProtocolDiagnosticCode.PDF_EXPORTED, ProtocolDiagnosticCode.fromWireValue("pdf-exported"));
     assertEquals(PlanTransactionMode.ATOMIC, PlanTransactionMode.fromWireValue("atomic"));
@@ -94,11 +91,7 @@ class ProtocolWireVocabularyTest {
         PublicCliBundleTarget.fromWireValue("windows-aarch64"));
 
     assertThrows(
-        IllegalArgumentException.class, () -> ProtocolSuccessStatus.fromWireValue("done-maybe"));
-    assertThrows(
-        IllegalArgumentException.class, () -> ProtocolRejectionStatus.fromWireValue("soft-nope"));
-    assertThrows(
-        IllegalArgumentException.class, () -> ProtocolFailureStatus.fromWireValue("bad-news"));
+        IllegalArgumentException.class, () -> ProtocolEnvelopeStatus.fromWireValue("partial-ok"));
     assertThrows(
         IllegalArgumentException.class,
         () -> ProtocolDiagnosticCode.fromWireValue("pdf-export-pending"));

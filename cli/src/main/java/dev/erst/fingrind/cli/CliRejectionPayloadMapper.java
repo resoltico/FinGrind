@@ -9,7 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.core.AccountTaxonomy;
 
 /** Maps deterministic rejection families into the CLI JSON envelope model. */
@@ -42,7 +42,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(
       String requestIdempotencyKey, PostingRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolRejectionStatus.REJECTED,
+        ProtocolEnvelopeStatus.REJECTED,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         postingRejectionHint(rejection),
@@ -53,7 +53,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolRejectionStatus.REJECTED,
+        ProtocolEnvelopeStatus.REJECTED,
         BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         administrationRejectionHint(rejection),
@@ -64,7 +64,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope maintenanceRejectedEnvelope(
       BookMaintenanceRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolRejectionStatus.REJECTED,
+        ProtocolEnvelopeStatus.REJECTED,
         BookMaintenanceRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         maintenanceRejectionHint(rejection),
@@ -75,7 +75,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(
       BookQueryRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolRejectionStatus.REJECTED,
+        ProtocolEnvelopeStatus.REJECTED,
         BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         queryRejectionHint(rejection),

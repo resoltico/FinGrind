@@ -1,5 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -89,7 +92,7 @@ public final class SqliteFuzzAssertions {
     if (Files.notExists(keyFilePath)) {
       SqliteBookKeyFileGenerator.generate(keyFilePath);
     } else {
-      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyFilePath).requireAccepted();
+      SqliteBookKeyFile.loadDecision(keyFilePath).requireAccepted().close();
     }
     Files.writeString(keyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
   }
@@ -106,7 +109,6 @@ public final class SqliteFuzzAssertions {
       Files.createDirectories(normalizedDirectory);
     }
     SqliteBookFileSecurity.hardenDirectory(normalizedDirectory);
-    SqliteBookKeyFileSecurity.hardenDirectory(normalizedDirectory);
   }
 
   /** Opens one deterministic protected-book store for fuzz and replay flows. */

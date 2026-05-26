@@ -13,6 +13,9 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -505,7 +508,9 @@ class SqliteStoreFixtureSupport {
     if (Files.notExists(keyPath)) {
       SqliteBookKeyFileGenerator.generate(keyPath);
     } else {
-      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+      try (SqliteBookPassphrase ignored = SqliteBookKeyFile.load(keyPath)) {
+        // The load path enforces the same key-file security contract before rewriting test data.
+      }
     }
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
   }

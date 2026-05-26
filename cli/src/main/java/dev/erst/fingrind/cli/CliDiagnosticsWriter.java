@@ -23,7 +23,7 @@ final class CliDiagnosticsWriter {
         CliFailureOutputRenderer.renderInfoText(
             new CliFailure(
                 ProtocolDiagnosticCode.PDF_EXPORTED.wireValue(),
-                PDF_EXPORT_INFO_MESSAGE_PREFIX + CliPublicPaths.normalizedValue(outputPath),
+                PDF_EXPORT_INFO_MESSAGE_PREFIX + CliPublicPaths.redactedValue(outputPath),
                 null,
                 "--pdf-out")));
     diagnosticsStream.println();

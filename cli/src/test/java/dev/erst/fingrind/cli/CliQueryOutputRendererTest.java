@@ -51,7 +51,7 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -263,6 +263,24 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void renderAccountBalanceText_rendersNoMatchesLabelWhenNoBalanceBucketsExist() {
+    DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
+    AccountBalanceSnapshot emptySnapshot =
+        new AccountBalanceSnapshot(
+            bookIdentity(),
+            cashAccount,
+            Optional.of(LocalDate.parse("2026-04-01")),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
+            List.of());
+
+    String rendered = CliAccountBalanceOutputRenderer.renderText(emptySnapshot);
+
+    assertTrue(rendered.contains("Account Balance"));
+    assertTrue(rendered.contains("No balances matched the selected scope."));
+  }
+
+  @Test
   void renderTextRowsAndEmptyLedgerSurfaces_coverCompactNoneBranches() {
     PostingFact postingFact = reversalPostingFact();
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
@@ -297,10 +315,10 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String comparativeTrialBalanceText =
         CliReportOutputRenderer.renderTrialBalanceText(comparativeWithoutReference);
 
-    assertTrue(emptyAccountsText.contains("(none)"));
-    assertTrue(emptyPostingsText.contains("(none)"));
+    assertTrue(emptyAccountsText.contains("No accounts matched the selected scope."));
+    assertTrue(emptyPostingsText.contains("No postings matched the selected scope."));
     assertTrue(emptyLedgerText.contains("Entries"));
-    assertTrue(emptyLedgerText.contains("(none)"));
+    assertTrue(emptyLedgerText.contains("No ledger entries matched the selected scope."));
     assertTrue(comparativeTrialBalanceText.contains("Comparative Trial Balance"));
     assertTrue(comparativeTrialBalanceText.contains("(none)"));
   }
@@ -460,9 +478,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
 
     assertTrue(financialPositionText.contains("Financial Position"));
-    assertTrue(financialPositionText.contains("(none)"));
+    assertTrue(
+        financialPositionText.contains("No financial position lines matched the selected scope."));
     assertTrue(incomeStatementText.contains("Income Statement"));
-    assertTrue(incomeStatementText.contains("(none)"));
+    assertTrue(
+        incomeStatementText.contains("No income statement lines matched the selected scope."));
     assertTrue(changesInEquityText.contains("Changes In Equity"));
     assertTrue(changesInEquityText.contains("Closing totals"));
   }
@@ -923,11 +943,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(financialPositionText.contains("Cash without Totals"));
     assertTrue(financialPositionText.contains("Equity"));
     assertTrue(financialPositionText.contains("Section totals"));
-    assertFalse(financialPositionText.contains("Liabilities"));
+    assertTrue(financialPositionText.contains("Liabilities"));
+    assertTrue(financialPositionText.contains("No lines matched the selected scope."));
     assertFalse(financialPositionText.contains("Comparative Financial Position"));
     assertTrue(incomeStatementText.contains("Revenue without Totals"));
     assertTrue(incomeStatementText.contains("Expenses"));
     assertTrue(incomeStatementText.contains("Section totals"));
+    assertTrue(incomeStatementText.contains("No lines matched the selected scope."));
     assertFalse(incomeStatementText.contains("Comparative Income Statement"));
   }
 
@@ -1044,7 +1066,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertTrue(rendered.contains("Changes In Equity"));
     assertTrue(rendered.contains("Outcome"));
-    assertTrue(rendered.contains("No equity balances or movements matched the selected period."));
+    assertTrue(rendered.contains("No equity lines matched the selected scope."));
     assertFalse(rendered.contains("Comparative Changes In Equity"));
   }
 
@@ -1170,6 +1192,34 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void renderChangesInEquityText_rendersHeaderSummaryWhenOnlyCurrentTotalsExist() {
+    CurrencyBalance openingBalance =
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT);
+    ChangesInEquityReport report =
+        new ChangesInEquityReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            List.of(),
+            List.of(openingBalance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
+
+    assertTrue(rendered.contains("Changes In Equity"));
+    assertTrue(rendered.contains("Opening totals"));
+    assertFalse(rendered.contains("Comparative Changes In Equity"));
+  }
+
+  @Test
   void reportSurfacePolicy_detectsTrialBalanceAndCurrentEquityComparatives() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
     TrialBalanceReport nonComparativeTrialBalance =
@@ -1260,6 +1310,53 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(CliReportSurfacePolicy.hasCurrent(openingOnlyEquityReport));
     assertTrue(CliReportSurfacePolicy.hasCurrent(movementOnlyEquityReport));
     assertTrue(CliReportSurfacePolicy.hasCurrent(closingOnlyEquityReport));
+  }
+
+  @Test
+  void reportSurfacePolicy_treatsRowsOrTotalsAsRenderableStatementSections() {
+    CurrencyBalance balance = eurDebitBalance();
+
+    assertFalse(
+        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+            new FinancialPositionSection(AccountType.ASSET, List.of(), List.of())));
+    assertTrue(
+        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+            new FinancialPositionSection(
+                AccountType.ASSET,
+                List.of(
+                    new FinancialPositionRow(
+                        "1000",
+                        "Cash",
+                        AccountType.ASSET,
+                        Optional.of(AccountRole.ORDINARY),
+                        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        StatementLineKind.DECLARED_ACCOUNT,
+                        balance)),
+                List.of())));
+    assertTrue(
+        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+            new FinancialPositionSection(AccountType.ASSET, List.of(), List.of(balance))));
+
+    assertFalse(
+        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+            new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of())));
+    assertTrue(
+        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+            new IncomeStatementSection(
+                AccountType.EXPENSE,
+                List.of(
+                    new IncomeStatementRow(
+                        "5100",
+                        "Software",
+                        AccountType.EXPENSE,
+                        Optional.of(AccountRole.ORDINARY),
+                        ProfitAndLossLineClassification.OPERATING_EXPENSE,
+                        StatementLineKind.DECLARED_ACCOUNT,
+                        balance)),
+                List.of())));
+    assertTrue(
+        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+            new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of(balance))));
   }
 
   private static PostingFact directPostingFact() {
