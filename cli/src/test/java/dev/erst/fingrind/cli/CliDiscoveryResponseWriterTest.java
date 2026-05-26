@@ -179,12 +179,15 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
     assertEquals("minimal", payload.path("detail").stringValue());
+    assertTrue(payload.has("kernelScope"));
+    assertTrue(payload.has("builtInStatements"));
     assertTrue(payload.has("bookBoundary"));
-    assertTrue(payload.has("commands"));
+    assertTrue(payload.has("currencyScope"));
+    assertTrue(payload.has("multiCurrencyStatus"));
+    assertTrue(payload.has("requestInput"));
     assertTrue(payload.has("compactDetailHint"));
     assertTrue(payload.has("fullDetailHint"));
     assertFalse(payload.has("storage"));
-    assertFalse(payload.has("requestInput"));
     assertFalse(payload.has("machineGuidance"));
     assertFalse(payload.has("fullContract"));
   }
@@ -253,12 +256,12 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
-        new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+        new dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator.GeneratedKeyFile(
             Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
     assertEquals(
-        CliPublicPaths.normalizedValue(Path.of("secrets").resolve("entity.book-key")),
+        CliPublicPaths.redactedValue(Path.of("secrets").resolve("entity.book-key")),
         json.path("payload").path("bookKeyFile").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());

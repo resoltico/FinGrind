@@ -147,15 +147,6 @@ function Get-FinGrindSourceCheckoutArtifactManifestPath {
     return (Join-Path $buildDir "generated/source-checkout/source-checkout-artifact-manifest.tsv")
 }
 
-function Get-FinGrindFileMtimeUtcTicks {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path
-    )
-
-    return (Get-Item -LiteralPath $Path).LastWriteTimeUtc.Ticks
-}
-
 function Test-FinGrindSourceCheckoutArtifactNeedsRefresh {
     param(
         [Parameter(Mandatory = $true)]
@@ -174,26 +165,45 @@ function Test-FinGrindSourceCheckoutArtifactNeedsRefresh {
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
         return $true
     }
-    $manifestMtimeUtcTicks = Get-FinGrindFileMtimeUtcTicks -Path $ManifestPath
+    $foundSourceRecord = $false
 
     foreach ($line in [System.IO.File]::ReadAllLines($ManifestPath, [System.Text.Encoding]::UTF8)) {
         if ($line.StartsWith("sourceFile`t")) {
+            $foundSourceRecord = $true
             $parts = $line.Split("`t")
             if ($parts.Length -ne 3) {
                 return $true
             }
             $relativePath = $parts[1]
+            $expectedSha256 = $parts[2]
+            if ([string]::IsNullOrWhiteSpace($relativePath) -or [string]::IsNullOrWhiteSpace($expectedSha256)) {
+                return $true
+            }
             $sourcePath = Join-Path $RepositoryRoot $relativePath
             if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
                 return $true
             }
-            $sourceMtimeUtcTicks = Get-FinGrindFileMtimeUtcTicks -Path $sourcePath
-            if ($sourceMtimeUtcTicks -gt $manifestMtimeUtcTicks) {
+            $actualSha256 = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualSha256 -ne $expectedSha256.ToLowerInvariant()) {
                 return $true
             }
+            continue
         }
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+        if ($line -eq "formatVersion=1") {
+            continue
+        }
+        if ($line.StartsWith("ownerTask=")) {
+            continue
+        }
+        return $true
     }
 
+    if (-not $foundSourceRecord) {
+        return $true
+    }
     return $false
 }
 

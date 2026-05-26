@@ -14,8 +14,6 @@ import java.security.CodeSource;
 import java.security.cert.Certificate;
 import java.util.List;
 import java.util.Objects;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
@@ -266,97 +264,37 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
     Files.createDirectories(incompleteCandidate);
     Files.writeString(incompleteCandidate.resolve("gradlew"), "#!/usr/bin/env bash\n");
-    assertEquals(List.of(), SqliteNativeRuntimePolicy.sourceCheckoutRoots(null, null, null));
+    assertEquals(List.of(), SqliteNativeRuntimePolicy.sourceCheckoutRoots(null, null));
     assertEquals(
         List.of(sourceCheckoutRoot.toAbsolutePath().normalize()),
         SqliteNativeRuntimePolicy.sourceCheckoutRoots(
             incompleteCandidate.toString(),
-            sourceCheckoutRoot.resolve("gradlew").toString(),
             sourceCheckoutRoot.resolve("cli").resolve("nested").toString()));
   }
 
   @Test
-  void sourceCheckoutRootFromManifest_handlesNullDirectoriesManifestsAndIoFailures()
-      throws IOException {
-    Path codeSourceJar = tempDirectory.resolve("fingrind.jar");
+  void sourceCheckoutRootFromCodeSource_preservesTheNormalizedCodeSourcePath() throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
-    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Path nestedCodeSource = sourceCheckoutRoot.resolve("cli").resolve("build").resolve("libs");
+    Files.createDirectories(nestedCodeSource);
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
-    Files.writeString(codeSourceJar, "jar", StandardCharsets.UTF_8);
-    Manifest manifest = new Manifest();
-    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
-    manifest
-        .getMainAttributes()
-        .putValue("FinGrind-Source-Checkout-Root", sourceCheckoutRoot.toString());
-    Path buildRoot = tempDirectory.resolve("project-build").resolve("root");
-    manifest
-        .getMainAttributes()
-        .putValue("FinGrind-Source-Checkout-Build-Root", buildRoot.toString());
+
     assertEquals(
-        sourceCheckoutRoot.toAbsolutePath().normalize().toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
-            codeSourceJar, ignored -> manifest));
-    assertEquals(
-        buildRoot.toAbsolutePath().normalize().toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
-            codeSourceJar, ignored -> manifest));
-    assertEquals(
-        null, SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(null, ignored -> manifest));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(null, ignored -> manifest));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
-            tempDirectory, ignored -> manifest));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
-            tempDirectory, ignored -> manifest));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(codeSourceJar, ignored -> null));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
-            codeSourceJar, ignored -> null));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
-            codeSourceJar,
-            ignored -> {
-              throw new IOException("boom");
-            }));
-    assertEquals(
-        null,
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
-            codeSourceJar,
-            ignored -> {
-              throw new IOException("boom");
-            }));
+        nestedCodeSource.toAbsolutePath().normalize().toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(nestedCodeSource));
   }
 
   @Test
-  void sourceCheckoutBuildRoot_prefersConfiguredBuildRootOverManifestBuildRoot() {
+  void sourceCheckoutBuildRoot_prefersConfiguredBuildRootWhenPresent() {
     Path configuredBuildRoot = tempDirectory.resolve("configured-build-root");
-    Path manifestBuildRoot = tempDirectory.resolve("manifest-build-root");
     assertEquals(
         configuredBuildRoot.toAbsolutePath().normalize(),
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(
-            configuredBuildRoot.toString(), manifestBuildRoot.toString()));
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(configuredBuildRoot.toString()));
   }
 
   @Test
-  void sourceCheckoutBuildRoot_fallsBackToManifestBuildRoot() {
-    Path manifestBuildRoot = tempDirectory.resolve("manifest-build-root");
-    assertEquals(
-        manifestBuildRoot.toAbsolutePath().normalize(),
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null, manifestBuildRoot.toString()));
-  }
-
-  @Test
-  void sourceCheckoutBuildRoot_returnsNullWhenNeitherCueExists() {
-    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null, null));
+  void sourceCheckoutBuildRoot_returnsNullWhenNoConfiguredCueExists() {
+    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null));
   }
 
   @Test

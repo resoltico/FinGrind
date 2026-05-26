@@ -63,14 +63,24 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.storageEngines();
   }
 
-  /** Returns the canonical success-status identifiers. */
-  public static List<ProtocolSuccessStatus> successStatuses() {
-    return ProtocolCatalogFacts.successStatuses();
+  /** Returns the canonical top-level JSON-envelope statuses. */
+  public static List<ProtocolEnvelopeStatus> envelopeStatuses() {
+    return ProtocolCatalogFacts.envelopeStatuses();
   }
 
-  /** Returns the canonical deterministic rejection-status identifiers. */
-  public static List<ProtocolRejectionStatus> rejectionStatuses() {
-    return ProtocolCatalogFacts.rejectionStatuses();
+  /** Returns the canonical success envelope status. */
+  public static ProtocolEnvelopeStatus successStatus() {
+    return ProtocolCatalogFacts.successStatus();
+  }
+
+  /** Returns the canonical deterministic rejection envelope status. */
+  public static ProtocolEnvelopeStatus rejectionStatus() {
+    return ProtocolCatalogFacts.rejectionStatus();
+  }
+
+  /** Returns the canonical runtime or invalid-request error envelope status. */
+  public static ProtocolEnvelopeStatus errorStatus() {
+    return ProtocolCatalogFacts.errorStatus();
   }
 
   /** Returns the structured hard book-model facts. */

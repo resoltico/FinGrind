@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: ADAPTERS
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]

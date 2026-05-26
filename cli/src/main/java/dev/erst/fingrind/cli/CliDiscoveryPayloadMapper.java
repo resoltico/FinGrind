@@ -56,7 +56,7 @@ final class CliDiscoveryPayloadMapper {
         helpDescriptor.version(),
         helpDescriptor.description(),
         DiscoveryDetail.MINIMAL,
-        commandIndexPayloads(helpDescriptor.commands()),
+        commandNamePayloads(helpDescriptor.commands()),
         "Rerun with '"
             + CliInvocationText.commandExample(OperationId.HELP)
             + " --output json "
@@ -75,8 +75,12 @@ final class CliDiscoveryPayloadMapper {
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
         DiscoveryDetail.MINIMAL,
+        capabilitiesDescriptor.bookkeepingKernel().scope(),
+        capabilitiesDescriptor.bookkeepingKernel().builtInStatements(),
         capabilitiesDescriptor.storage().bookBoundary(),
-        commandIndexPayloads(capabilitiesDescriptor.commands().allCommands()),
+        capabilitiesDescriptor.currencyModel().scope(),
+        capabilitiesDescriptor.currencyModel().multiCurrencyStatus(),
+        requestInputCompactPayload(capabilitiesDescriptor),
         "Rerun with '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
@@ -366,6 +370,20 @@ final class CliDiscoveryPayloadMapper {
                         .name()
                         .toLowerCase(Locale.ROOT),
                     command.summary()))
+        .toList();
+  }
+
+  private static List<CliDiscoveryJsonModels.CommandNamePayload> commandNamePayloads(
+      List<CommandDescriptor> commands) {
+    return commands.stream()
+        .map(
+            command ->
+                new CliDiscoveryJsonModels.CommandNamePayload(
+                    command.name(),
+                    ProtocolCatalog.operation(command.name())
+                        .category()
+                        .name()
+                        .toLowerCase(Locale.ROOT)))
         .toList();
   }
 }

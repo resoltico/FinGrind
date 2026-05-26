@@ -1,11 +1,64 @@
 pragma application_id = 1179079236;
-pragma user_version = 20;
+pragma user_version = 21;
 
 create table if not exists book_meta (
     meta_key text primary key check (
         meta_key in ('initialized_at', 'schema_fingerprint_sha256')
     ),
-    value text not null check (length(trim(value)) > 0)
+    value text not null check (
+        (
+            meta_key = 'initialized_at'
+            and (
+                value glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+                or (
+                    substr(value, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                    and substr(value, 20, 1) = '.'
+                    and substr(value, length(value), 1) = 'Z'
+                    and (
+                        (length(value) = 24 and substr(value, 21, 3) not glob '*[^0-9]*')
+                        or (length(value) = 27 and substr(value, 21, 6) not glob '*[^0-9]*')
+                        or (length(value) = 30 and substr(value, 21, 9) not glob '*[^0-9]*')
+                    )
+                )
+            )
+            and substr(value, 6, 2) between '01' and '12'
+            and (
+                (
+                    substr(value, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                    and substr(value, 9, 2) between '01' and '31'
+                )
+                or (
+                    substr(value, 6, 2) in ('04', '06', '09', '11')
+                    and substr(value, 9, 2) between '01' and '30'
+                )
+                or (
+                    substr(value, 6, 2) = '02'
+                    and (
+                        substr(value, 9, 2) between '01' and '28'
+                        or (
+                            substr(value, 9, 2) = '29'
+                            and (
+                                cast(substr(value, 1, 4) as integer) % 400 = 0
+                                or (
+                                    cast(substr(value, 1, 4) as integer) % 4 = 0
+                                    and cast(substr(value, 1, 4) as integer) % 100 <> 0
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+            and substr(value, 12, 2) between '00' and '23'
+            and substr(value, 15, 2) between '00' and '59'
+            and substr(value, 18, 2) between '00' and '59'
+        )
+        or (
+            meta_key = 'schema_fingerprint_sha256'
+            and length(value) = 64
+            and value glob '[0-9a-f]*'
+            and value not glob '*[^0-9a-f]*'
+        )
+    )
 ) strict;
 
 create table if not exists book_identity (
@@ -85,7 +138,51 @@ create table if not exists account (
         )
     ),
     active integer not null check (active in (0, 1)),
-    declared_at text not null,
+    declared_at text not null check (
+        (
+            declared_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(declared_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(declared_at, 20, 1) = '.'
+                and substr(declared_at, length(declared_at), 1) = 'Z'
+                and (
+                    (length(declared_at) = 24 and substr(declared_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(declared_at) = 27 and substr(declared_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(declared_at) = 30 and substr(declared_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(declared_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(declared_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(declared_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(declared_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(declared_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(declared_at, 6, 2) = '02'
+                and (
+                    substr(declared_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(declared_at, 9, 2) = '29'
+                        and (
+                            cast(substr(declared_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(declared_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(declared_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(declared_at, 12, 2) between '00' and '23'
+        and substr(declared_at, 15, 2) between '00' and '59'
+        and substr(declared_at, 18, 2) between '00' and '59'
+    ),
     check (
         parent_account_code is null or parent_account_code <> account_code
     ),
@@ -250,8 +347,81 @@ create table if not exists posting_fact (
             'PERIOD_RESULT_TRANSFER'
         )
     ),
-    effective_date text not null,
-    recorded_at text not null,
+    effective_date text not null check (
+        effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(effective_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(effective_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(effective_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(effective_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(effective_date, 6, 2) = '02'
+                and (
+                    substr(effective_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(effective_date, 9, 2) = '29'
+                        and (
+                            cast(substr(effective_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(effective_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(effective_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
+    recorded_at text not null check (
+        (
+            recorded_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(recorded_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(recorded_at, 20, 1) = '.'
+                and substr(recorded_at, length(recorded_at), 1) = 'Z'
+                and (
+                    (length(recorded_at) = 24 and substr(recorded_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(recorded_at) = 27 and substr(recorded_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(recorded_at) = 30 and substr(recorded_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(recorded_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(recorded_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(recorded_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(recorded_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(recorded_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(recorded_at, 6, 2) = '02'
+                and (
+                    substr(recorded_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(recorded_at, 9, 2) = '29'
+                        and (
+                            cast(substr(recorded_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(recorded_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(recorded_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(recorded_at, 12, 2) between '00' and '23'
+        and substr(recorded_at, 15, 2) between '00' and '59'
+        and substr(recorded_at, 18, 2) between '00' and '59'
+    ),
     actor_id text not null check (length(trim(actor_id)) > 0),
     actor_type text not null check (actor_type in ('PERSON', 'SYSTEM', 'AGENT')),
     command_id text not null check (length(trim(command_id)) > 0),
@@ -263,7 +433,7 @@ create table if not exists posting_fact (
     causation_id text not null check (length(trim(causation_id)) > 0),
     correlation_id text check (correlation_id is null or length(trim(correlation_id)) > 0),
     reason text,
-    source_channel text not null,
+    source_channel text not null check (source_channel in ('CLI', 'SYSTEM')),
     prior_posting_id text,
     unique (idempotency_key),
     foreign key (prior_posting_id) references posting_fact (posting_id),
@@ -322,8 +492,81 @@ create table if not exists posting_source_document (
         and source_document_type glob '[A-Za-z0-9]*'
         and source_document_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
-    document_date text not null,
-    captured_at text not null,
+    document_date text not null check (
+        document_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(document_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(document_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(document_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(document_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(document_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(document_date, 6, 2) = '02'
+                and (
+                    substr(document_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(document_date, 9, 2) = '29'
+                        and (
+                            cast(substr(document_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(document_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(document_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
+    captured_at text not null check (
+        (
+            captured_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(captured_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(captured_at, 20, 1) = '.'
+                and substr(captured_at, length(captured_at), 1) = 'Z'
+                and (
+                    (length(captured_at) = 24 and substr(captured_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(captured_at) = 27 and substr(captured_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(captured_at) = 30 and substr(captured_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(captured_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(captured_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(captured_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(captured_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(captured_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(captured_at, 6, 2) = '02'
+                and (
+                    substr(captured_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(captured_at, 9, 2) = '29'
+                        and (
+                            cast(substr(captured_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(captured_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(captured_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(captured_at, 12, 2) between '00' and '23'
+        and substr(captured_at, 15, 2) between '00' and '59'
+        and substr(captured_at, 18, 2) between '00' and '59'
+    ),
     storage_locator text not null check (
         length(trim(storage_locator)) between 1 and 512
     ),
@@ -353,7 +596,51 @@ create table if not exists posting_approval (
     approver_id text not null check (length(trim(approver_id)) > 0),
     approver_type text not null check (approver_type in ('PERSON', 'SYSTEM', 'AGENT')),
     decision text not null check (decision in ('APPROVED', 'REJECTED')),
-    approved_at text not null,
+    approved_at text not null check (
+        (
+            approved_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(approved_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(approved_at, 20, 1) = '.'
+                and substr(approved_at, length(approved_at), 1) = 'Z'
+                and (
+                    (length(approved_at) = 24 and substr(approved_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(approved_at) = 27 and substr(approved_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(approved_at) = 30 and substr(approved_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(approved_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(approved_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(approved_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(approved_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(approved_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(approved_at, 6, 2) = '02'
+                and (
+                    substr(approved_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(approved_at, 9, 2) = '29'
+                        and (
+                            cast(substr(approved_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(approved_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(approved_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(approved_at, 12, 2) between '00' and '23'
+        and substr(approved_at, 15, 2) between '00' and '59'
+        and substr(approved_at, 18, 2) between '00' and '59'
+    ),
     primary key (posting_id, approval_order),
     unique (posting_id, approval_id),
     foreign key (posting_id) references posting_fact (posting_id)
@@ -429,10 +716,112 @@ end;
 
 create table if not exists period_result_transfer (
     period_result_transfer_order integer primary key,
-    effective_date_from text not null,
-    effective_date_to text not null,
+    effective_date_from text not null check (
+        effective_date_from glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(effective_date_from, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(effective_date_from, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(effective_date_from, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(effective_date_from, 6, 2) in ('04', '06', '09', '11')
+                and substr(effective_date_from, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(effective_date_from, 6, 2) = '02'
+                and (
+                    substr(effective_date_from, 9, 2) between '01' and '28'
+                    or (
+                        substr(effective_date_from, 9, 2) = '29'
+                        and (
+                            cast(substr(effective_date_from, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(effective_date_from, 1, 4) as integer) % 4 = 0
+                                and cast(substr(effective_date_from, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
+    effective_date_to text not null check (
+        effective_date_to glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(effective_date_to, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(effective_date_to, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(effective_date_to, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(effective_date_to, 6, 2) in ('04', '06', '09', '11')
+                and substr(effective_date_to, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(effective_date_to, 6, 2) = '02'
+                and (
+                    substr(effective_date_to, 9, 2) between '01' and '28'
+                    or (
+                        substr(effective_date_to, 9, 2) = '29'
+                        and (
+                            cast(substr(effective_date_to, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(effective_date_to, 1, 4) as integer) % 4 = 0
+                                and cast(substr(effective_date_to, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
     closing_equity_account_code text not null references account (account_code),
-    closed_at text not null,
+    closed_at text not null check (
+        (
+            closed_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(closed_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(closed_at, 20, 1) = '.'
+                and substr(closed_at, length(closed_at), 1) = 'Z'
+                and (
+                    (length(closed_at) = 24 and substr(closed_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(closed_at) = 27 and substr(closed_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(closed_at) = 30 and substr(closed_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(closed_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(closed_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(closed_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(closed_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(closed_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(closed_at, 6, 2) = '02'
+                and (
+                    substr(closed_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(closed_at, 9, 2) = '29'
+                        and (
+                            cast(substr(closed_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(closed_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(closed_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(closed_at, 12, 2) between '00' and '23'
+        and substr(closed_at, 15, 2) between '00' and '59'
+        and substr(closed_at, 18, 2) between '00' and '59'
+    ),
     check (effective_date_from <= effective_date_to)
 ) strict;
 
@@ -512,7 +901,51 @@ end;
 
 create table if not exists audit_event (
     audit_event_order integer primary key,
-    recorded_at text not null check (length(trim(recorded_at)) > 0),
+    recorded_at text not null check (
+        (
+            recorded_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z'
+            or (
+                substr(recorded_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]'
+                and substr(recorded_at, 20, 1) = '.'
+                and substr(recorded_at, length(recorded_at), 1) = 'Z'
+                and (
+                    (length(recorded_at) = 24 and substr(recorded_at, 21, 3) not glob '*[^0-9]*')
+                    or (length(recorded_at) = 27 and substr(recorded_at, 21, 6) not glob '*[^0-9]*')
+                    or (length(recorded_at) = 30 and substr(recorded_at, 21, 9) not glob '*[^0-9]*')
+                )
+            )
+        )
+        and substr(recorded_at, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(recorded_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(recorded_at, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(recorded_at, 6, 2) in ('04', '06', '09', '11')
+                and substr(recorded_at, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(recorded_at, 6, 2) = '02'
+                and (
+                    substr(recorded_at, 9, 2) between '01' and '28'
+                    or (
+                        substr(recorded_at, 9, 2) = '29'
+                        and (
+                            cast(substr(recorded_at, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(recorded_at, 1, 4) as integer) % 4 = 0
+                                and cast(substr(recorded_at, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        and substr(recorded_at, 12, 2) between '00' and '23'
+        and substr(recorded_at, 15, 2) between '00' and '59'
+        and substr(recorded_at, 18, 2) between '00' and '59'
+    ),
     event_kind text not null check (
         event_kind in (
             'BOOK_OPENED',

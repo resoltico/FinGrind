@@ -33,6 +33,7 @@ import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.ContentSha256;
@@ -51,7 +52,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StorageLocator;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -282,12 +282,13 @@ final class CliPostingRequestParser {
   }
 
   private static LocalDate requiredEffectiveDate(ObjectNode rootNode) {
-    return LocalDate.parse(
+    return CanonicalTemporalText.parseLocalDate(
         requiredRealText(
             rootNode,
             ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
             ScaffoldPlaceholders.EFFECTIVE_DATE,
-            null));
+            null),
+        ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE);
   }
 
   private static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode) {
@@ -345,18 +346,20 @@ final class CliPostingRequestParser {
                       ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
                       ScaffoldPlaceholders.SOURCE_DOCUMENT_TYPE,
                       context + ".")),
-              LocalDate.parse(
+              CanonicalTemporalText.parseLocalDate(
                   requiredRealText(
                       sourceDocumentObject,
                       ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE,
                       ScaffoldPlaceholders.EFFECTIVE_DATE,
-                      context + ".")),
-              Instant.parse(
+                      context + "."),
+                  context + "." + ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE),
+              CanonicalTemporalText.parseUtcInstant(
                   requiredRealText(
                       sourceDocumentObject,
                       ProtocolPostEntryFields.SourceDocument.CAPTURED_AT,
                       ScaffoldPlaceholders.RECORDED_AT,
-                      context + ".")),
+                      context + "."),
+                  context + "." + ProtocolPostEntryFields.SourceDocument.CAPTURED_AT),
               new StorageLocator(
                   requiredRealText(
                       sourceDocumentObject,
@@ -411,12 +414,13 @@ final class CliPostingRequestParser {
                   context + "." + ProtocolPostEntryFields.Approval.DECISION,
                   ApprovalDecision.wireValues(),
                   ApprovalDecision::fromWireValue),
-              Instant.parse(
+              CanonicalTemporalText.parseUtcInstant(
                   requiredRealText(
                       approvalObject,
                       ProtocolPostEntryFields.Approval.APPROVED_AT,
                       ScaffoldPlaceholders.RECORDED_AT,
-                      context + "."))));
+                      context + "."),
+                  context + "." + ProtocolPostEntryFields.Approval.APPROVED_AT)));
       index++;
     }
     return List.copyOf(approvals);

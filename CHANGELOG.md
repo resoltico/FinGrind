@@ -5,6 +5,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-05-26
+
+### Changed
+
+- Hard-broke the protected-book format to version `21`. Canonical `YYYY-MM-DD` local dates and
+  canonical UTC instants are now owned by one shared `CanonicalTemporalText` contract that drives
+  CLI parsing, machine request schemas, SQLite persistence formatting, query bindings, and
+  file-format checks.
+- CLI distribution, source-checkout artifact, Docker-context, runtime-image, and bundle-manifest
+  ownership now live in shared Gradle build logic instead of the CLI module build script. The
+  generated checkout and Docker manifests now include the Gradle wrapper and build-logic inputs
+  that govern the shipped artifacts.
+- Normal CI now path-proves every published Unix bundle classifier before merge through the same
+  repo-owned bundle-smoke contract used by release publication.
+- Hard-broke the public response contract to one `ProtocolEnvelopeStatus` vocabulary
+  (`ok`, `rejected`, `error`) across machine discovery, response descriptors, and JSON envelopes.
+  `execute-plan` now keeps plan-family result state inside `payload.status` instead of inventing a
+  command-family outer status.
+- Discovery and help now hard-break into clearer public tiers. Minimal JSON discovery exposes the
+  smallest machine index, compact discovery carries the stable command and request descriptors, and
+  the text help front door now leads with one shortest successful path before the deeper grammar.
+- Successful JSON surfaces that mention filesystem artifacts now publish redacted public-path hints
+  instead of absolute operator filesystem paths.
+- Text read and report surfaces now use one explicit empty-state vocabulary, preserve report
+  section skeletons when filtered sections are empty, and keep account-ledger CSV summary facts in
+  the summary rows instead of repeating them on every ledger-entry row.
+- SQLite key-file, passphrase, and resolver ownership now lives under dedicated
+  `dev.erst.fingrind.sqlite.secret` packages and tests instead of being mixed through the broader
+  store/runtime package.
+
+### Fixed
+
+- Fixed distributed CLI artifacts so release bundles no longer embed absolute source-checkout or
+  build-root paths in their JAR manifest/runtime metadata. Checkout-local path facts now remain a
+  source-checkout launcher concern instead of leaking into the shipped binary surface.
+- Fixed the source-checkout and direct-Java launchers so cached raw-JAR execution now refreshes by
+  manifest SHA-256 proof of tracked source inputs instead of looser freshness heuristics.
+- Fixed SQLite file-format drift by adding durable schema checks for canonical posting dates,
+  recorded timestamps, source-document dates/capture timestamps, approval timestamps, period-close
+  dates/timestamps, audit timestamps, and the closed `source_channel` vocabulary.
+- Fixed machine-readable request schemas so date and timestamp fields now publish exact regex
+  assertions together with `format` hints, matching the same canonical grammar the CLI enforces at
+  execution time.
+- Fixed the source-checkout launcher, runtime verifiers, public-container verifier,
+  protected-book format contract docs, checked-in SQLite fixtures, and release-smoke/public-doc
+  owners so the published contract now matches the live format-`21` storage surface, current
+  discovery/help tiers, current `ProtocolEnvelopeStatus` envelope shape, current redacted-path
+  policy, and current list-postings summary payloads.
+- Fixed grouped maintenance path hints so backup, restore, and rollback responses now widen their
+  redacted trailing path context just enough to keep sibling artifacts distinguishable instead of
+  collapsing different files into the same visible hint.
+
 ## [0.46.0] - 2026-05-25
 
 ### Changed
@@ -2350,7 +2402,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.46.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.47.0...HEAD
+[0.47.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.47.0
 [0.46.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.46.0
 [0.45.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.45.0
 [0.44.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.44.0

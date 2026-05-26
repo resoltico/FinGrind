@@ -71,6 +71,27 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
   }
 
   @Test
+  void translator_disambiguatesGroupedMaintenanceArtifactHints() {
+    Path book = path("work-volume/books/main.sqlite");
+    Path backup = path("work-volume/backup/books/main.sqlite");
+    Path backupKey = path("work-volume/backup/secrets/main.book-key");
+
+    BackupBookResult.BackedUp backedUp =
+        assertInstanceOf(
+            BackupBookResult.BackedUp.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey)));
+
+    assertEquals(
+        new PublicPathHint("<redacted>/work-volume/books/main.sqlite"), backedUp.bookFilePath());
+    assertEquals(
+        new PublicPathHint("<redacted>/backup/books/main.sqlite"), backedUp.backupFilePath());
+    assertEquals(
+        new PublicPathHint("<redacted>/backup/secrets/main.book-key"),
+        backedUp.backupBookKeyFilePath());
+  }
+
+  @Test
   void translator_projectsEveryLocalMaintenanceRejectionVariant() {
     Path book = path("books/acme.sqlite");
     Path backup = path("backup/acme.sqlite");

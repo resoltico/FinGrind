@@ -15,8 +15,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 import org.jspecify.annotations.Nullable;
 
 /** Shared runtime lookup and compatibility validation support for the SQLite native bridge. */
@@ -26,10 +24,6 @@ final class SqliteNativeRuntimePolicy {
       "fingrind.source-checkout.root";
   private static final String SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY =
       "fingrind.source-checkout.build-root";
-  private static final String SOURCE_CHECKOUT_ROOT_MANIFEST_ATTRIBUTE =
-      "FinGrind-Source-Checkout-Root";
-  private static final String SOURCE_CHECKOUT_BUILD_ROOT_MANIFEST_ATTRIBUTE =
-      "FinGrind-Source-Checkout-Build-Root";
 
   private SqliteNativeRuntimePolicy() {}
 
@@ -305,25 +299,18 @@ final class SqliteNativeRuntimePolicy {
     Path codeSourcePath = codeSourcePath();
     return sourceCheckoutRoots(
         normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY)),
-        sourceCheckoutRootFromManifest(codeSourcePath, SqliteNativeRuntimePolicy::manifestFromJar),
         sourceCheckoutRootFromCodeSource(codeSourcePath));
   }
 
   private static @Nullable Path sourceCheckoutBuildRoot() {
-    Path codeSourcePath = codeSourcePath();
     return sourceCheckoutBuildRoot(
-        normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY)),
-        sourceCheckoutBuildRootFromManifest(
-            codeSourcePath, SqliteNativeRuntimePolicy::manifestFromJar));
+        normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY)));
   }
 
   static List<Path> sourceCheckoutRoots(
-      @Nullable String configuredRootPath,
-      @Nullable String manifestRootPath,
-      @Nullable String codeSourceRootPath) {
+      @Nullable String configuredRootPath, @Nullable String codeSourceRootPath) {
     Set<Path> candidates = new LinkedHashSet<>();
     addSourceCheckoutRoots(candidates, configuredRootPath);
-    addSourceCheckoutRoots(candidates, manifestRootPath);
     addSourceCheckoutRoots(candidates, codeSourceRootPath);
     return List.copyOf(candidates);
   }
@@ -347,40 +334,6 @@ final class SqliteNativeRuntimePolicy {
   private static boolean looksLikeSourceCheckoutRoot(Path candidate) {
     return Files.isRegularFile(candidate.resolve("gradlew"))
         && Files.isDirectory(candidate.resolve("cli"));
-  }
-
-  static @Nullable String sourceCheckoutRootFromManifest(
-      @Nullable Path codeSourcePath, ManifestReader manifestReader) {
-    if (codeSourcePath == null || !Files.isRegularFile(codeSourcePath)) {
-      return null;
-    }
-    try {
-      Manifest manifest = manifestReader.read(codeSourcePath);
-      if (manifest == null) {
-        return null;
-      }
-      return normalizeNullablePath(
-          manifest.getMainAttributes().getValue(SOURCE_CHECKOUT_ROOT_MANIFEST_ATTRIBUTE));
-    } catch (IOException exception) {
-      return null;
-    }
-  }
-
-  static @Nullable String sourceCheckoutBuildRootFromManifest(
-      @Nullable Path codeSourcePath, ManifestReader manifestReader) {
-    if (codeSourcePath == null || !Files.isRegularFile(codeSourcePath)) {
-      return null;
-    }
-    try {
-      Manifest manifest = manifestReader.read(codeSourcePath);
-      if (manifest == null) {
-        return null;
-      }
-      return normalizeNullablePath(
-          manifest.getMainAttributes().getValue(SOURCE_CHECKOUT_BUILD_ROOT_MANIFEST_ATTRIBUTE));
-    } catch (IOException exception) {
-      return null;
-    }
   }
 
   static @Nullable String sourceCheckoutRootFromCodeSource(@Nullable Path codeSourcePath) {
@@ -471,20 +424,11 @@ final class SqliteNativeRuntimePolicy {
     return Files.isRegularFile(expectedLibraryPath) ? expectedLibraryPath : null;
   }
 
-  private static Manifest manifestFromJar(Path codeSourcePath) throws IOException {
-    try (JarFile jarFile = new JarFile(codeSourcePath.toFile())) {
-      return jarFile.getManifest();
-    }
-  }
-
-  static @Nullable Path sourceCheckoutBuildRoot(
-      @Nullable String configuredBuildRootPath, @Nullable String manifestBuildRootPath) {
-    String normalizedBuildRootPath =
-        configuredBuildRootPath != null ? configuredBuildRootPath : manifestBuildRootPath;
-    if (normalizedBuildRootPath == null) {
+  static @Nullable Path sourceCheckoutBuildRoot(@Nullable String configuredBuildRootPath) {
+    if (configuredBuildRootPath == null) {
       return null;
     }
-    return Path.of(normalizedBuildRootPath).toAbsolutePath().normalize();
+    return Path.of(configuredBuildRootPath).toAbsolutePath().normalize();
   }
 
   static String supportedNativeLibraryFileName() {
@@ -551,13 +495,6 @@ final class SqliteNativeRuntimePolicy {
       }
     }
     return parsedParts;
-  }
-
-  /** Opens one manifest view for one code-source artifact. */
-  @FunctionalInterface
-  interface ManifestReader {
-    /** Reads the manifest for the provided code-source artifact. */
-    @Nullable Manifest read(Path codeSourcePath) throws IOException;
   }
 
   /** Locates one managed SQLite library candidate under one managed-runtime root. */

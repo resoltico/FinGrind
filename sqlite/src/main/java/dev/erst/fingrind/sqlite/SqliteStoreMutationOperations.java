@@ -22,6 +22,7 @@ import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.List;

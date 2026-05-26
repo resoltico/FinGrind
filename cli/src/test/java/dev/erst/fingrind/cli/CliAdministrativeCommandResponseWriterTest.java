@@ -40,7 +40,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
-        new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+        new dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator.GeneratedKeyFile(
             Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
         OutputMode.TEXT);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Key File Generated"));
@@ -165,7 +165,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         IllegalArgumentException.class,
         () ->
             responseWriter.writeGenerateBookKeyFileResult(
-                new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+                new dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator.GeneratedKeyFile(
                     Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
                 OutputMode.CSV));
     assertThrows(
@@ -432,7 +432,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             .path("bookFile")
             .asText()
             .replace('\\', '/')
-            .endsWith("<redacted>/entity.sqlite"));
+            .endsWith("<redacted>/books/entity.sqlite"));
     assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
   }
 

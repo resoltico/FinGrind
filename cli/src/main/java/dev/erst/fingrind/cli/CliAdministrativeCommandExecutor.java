@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;

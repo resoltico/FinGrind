@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -78,7 +78,7 @@ Current implementation choice:
 - express book access explicitly as
   [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java)
 - resolve passphrase sources into
-  [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java)
+  [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookPassphrase.java)
   before the storage adapter opens SQLite
 - keep one open native SQLite handle per opened book session
 - apply the book key immediately after open through `sqlite3_key()`
@@ -167,7 +167,7 @@ License and attribution stance:
 The SQLite adapter is split into focused collaborators:
 - [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java):
   durable book file plus one explicit passphrase-source selection
-- [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
+- [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookPassphrase.java):
   normalized UTF-8 passphrase bytes after CLI-side source resolution, with best-effort overwrite
   of owned heap/direct buffers
 - [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
@@ -217,7 +217,7 @@ The SQLite adapter is split into focused collaborators:
   SQLite-native error decoding; writable native opens publish sibling activity markers, while
   read-only opens retain in-process connection accounting without creating filesystem marker
   artifacts
-- [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
+- [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookKeyFile.java):
   loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
   one open native SQLite database handle with distinct control-statement and script helpers

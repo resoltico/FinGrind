@@ -35,6 +35,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

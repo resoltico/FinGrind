@@ -1,4 +1,6 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
+
+import static java.lang.System.Logger.Level.WARNING;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -24,6 +26,8 @@ public final class SqliteBookKeyFileGenerator {
   static final int GENERATED_ENTROPY_BITS = 256;
   private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final System.Logger LOGGER =
+      System.getLogger(SqliteBookKeyFileGenerator.class.getName());
 
   /** Internal seam for materializing a newly created key file during generator tests. */
   @FunctionalInterface
@@ -44,6 +48,13 @@ public final class SqliteBookKeyFileGenerator {
   interface EmptyKeyFileCreator {
     /** Creates one empty key file or returns the shaped rejection for an occupied destination. */
     ContractDecision<Path> create(Path normalizedPath) throws IOException;
+  }
+
+  /** Internal seam for reporting best-effort cleanup failures during generator tests. */
+  @FunctionalInterface
+  interface DeleteFailureReporter {
+    /** Handles one non-fatal cleanup failure while preserving the primary outcome. */
+    void report(String action, Exception exception);
   }
 
   private SqliteBookKeyFileGenerator() {}
@@ -183,16 +194,32 @@ public final class SqliteBookKeyFileGenerator {
     }
   }
 
-  static void deleteQuietly(Path normalizedPath) {
-    deleteQuietly(normalizedPath, SqliteBestEffort::reportCleanupFailure);
+  /**
+   * Deletes one normalized key-file path as best-effort cleanup after generation failure.
+   *
+   * <p>This helper preserves the primary generation failure by logging cleanup problems instead of
+   * surfacing them as the main outcome.
+   */
+  public static void deleteQuietly(Path normalizedPath) {
+    deleteQuietly(normalizedPath, SqliteBookKeyFileGenerator::reportCleanupFailure);
   }
 
-  static void deleteQuietly(Path normalizedPath, SqliteBestEffort.Reporter reporter) {
+  static void deleteQuietly(Path normalizedPath, DeleteFailureReporter reporter) {
+    Objects.requireNonNull(reporter, "reporter");
     try {
       Files.deleteIfExists(normalizedPath);
     } catch (IOException exception) {
       reporter.report("deleting one partially created book-key path", exception);
     }
+  }
+
+  private static void reportCleanupFailure(String action, Exception exception) {
+    Objects.requireNonNull(action, "action");
+    Objects.requireNonNull(exception, "exception");
+    LOGGER.log(
+        WARNING,
+        "SQLite best-effort cleanup failed during " + action + "; preserving the primary outcome.",
+        exception);
   }
 
   /** Non-secret metadata describing one newly created key file. */

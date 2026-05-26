@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: USER_EXAMPLES
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -119,7 +119,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -177,7 +177,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/absolute/path/books/acme.sqlite","replacementPassphraseSource":"key-file","replacementBookKeyFile":"/absolute/path/secrets/acme.rotated.book-key"}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","replacementPassphraseSource":"key-file","replacementBookKeyFile":"<redacted>/keys/acme.rotated.book-key"}}
 ```
 
 ## Back Up And Restore One Closed Protected Book
@@ -488,8 +488,8 @@ Checked-in report examples:
 These report commands keep JSON as the default machine surface, while `--output text` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
-is selected on stdout, the success envelope also publishes the normalized PDF under
-`artifacts[]`. Text and CSV stdout flows emit an info diagnostic with the same normalized written path. If the
+is selected on stdout, the success envelope also publishes one redacted PDF path hint under
+`artifacts[]`. Text and CSV stdout flows emit an info diagnostic with the same redacted written-path hint. If the
 artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
 diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.

@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
 

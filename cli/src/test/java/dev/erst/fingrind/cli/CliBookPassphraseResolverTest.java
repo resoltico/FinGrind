@@ -11,9 +11,8 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.SqliteBookPassphraseTestSupport;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
 import java.io.IOError;
 import java.io.IOException;
@@ -52,7 +51,7 @@ class CliBookPassphraseResolverTest {
                     Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
             .requireAccepted()) {
       assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
-      assertEquals("swordfish", SqliteBookPassphraseTestSupport.utf8String(passphrase));
+      assertEquals("swordfish", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
   }
 
@@ -70,7 +69,8 @@ class CliBookPassphraseResolverTest {
                     Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
             .requireAccepted()) {
       assertEquals("standard input", passphrase.sourceDescription());
-      assertEquals("stdin-passphrase", SqliteBookPassphraseTestSupport.utf8String(passphrase));
+      assertEquals(
+          "stdin-passphrase", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
   }
 
@@ -115,7 +115,8 @@ class CliBookPassphraseResolverTest {
           passphrase
               .sourceDescription()
               .contains(bookPath.toAbsolutePath().normalize().toString()));
-      assertEquals("prompt-passphrase", SqliteBookPassphraseTestSupport.utf8String(passphrase));
+      assertEquals(
+          "prompt-passphrase", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
   }
 
@@ -207,10 +208,10 @@ class CliBookPassphraseResolverTest {
               public ContractDecision<char[]> readPassword(String prompt) {
                 readCount++;
                 if (readCount == 1) {
-                  assertTrue(prompt.startsWith("New FinGrind book passphrase for "));
+                  assertTrue(prompt.startsWith("New passphrase for "));
                   return ContractDecision.accepted("confirmed-secret".toCharArray());
                 }
-                assertTrue(prompt.startsWith("Confirm new FinGrind book passphrase for "));
+                assertEquals("Confirm new passphrase: ", prompt);
                 return ContractDecision.accepted("confirmed-secret".toCharArray());
               }
             });
@@ -226,7 +227,8 @@ class CliBookPassphraseResolverTest {
           passphrase
               .sourceDescription()
               .contains(bookPath.toAbsolutePath().normalize().toString()));
-      assertEquals("confirmed-secret", SqliteBookPassphraseTestSupport.utf8String(passphrase));
+      assertEquals(
+          "confirmed-secret", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
   }
 

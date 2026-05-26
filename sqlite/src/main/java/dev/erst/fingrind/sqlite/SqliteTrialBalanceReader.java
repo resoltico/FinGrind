@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -20,7 +21,8 @@ final class SqliteTrialBalanceReader {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.loadTrialBalanceLines(query))) {
       if (query.effectiveDateAsOf().isPresent()) {
-        statement.bindText(1, query.effectiveDateAsOf().orElseThrow().toString());
+        statement.bindText(
+            1, CanonicalTemporalText.formatLocalDate(query.effectiveDateAsOf().orElseThrow()));
       }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);

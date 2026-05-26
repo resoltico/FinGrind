@@ -105,7 +105,7 @@ def extract_pdf_exported_path(pdf_stderr: str) -> str:
     )
     if match is None:
         raise ReleaseSmokeFailure(
-            "missing pdf-exported diagnostics message with the written artifact path"
+            "missing pdf-exported diagnostics message with the written artifact path hint"
         )
     return match.group(1).strip()
 

@@ -4,11 +4,8 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
-import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
-import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -23,7 +20,7 @@ public interface CliEnvelopeJsonModels {
   }
 
   record SuccessEnvelope<T extends ProtocolSuccessPayload>(
-      ProtocolSuccessStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
+      ProtocolEnvelopeStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
     public SuccessEnvelope {
       status = requireValue(status, "status");
       payload = requireValue(payload, "payload");
@@ -32,7 +29,7 @@ public interface CliEnvelopeJsonModels {
   }
 
   record PlanEnvelope<T extends ProtocolSuccessPayload>(
-      LedgerPlanStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
+      ProtocolEnvelopeStatus status, T payload, @Nullable List<SuccessArtifact> artifacts) {
     public PlanEnvelope {
       status = requireValue(status, "status");
       payload = requireValue(payload, "payload");
@@ -41,7 +38,7 @@ public interface CliEnvelopeJsonModels {
   }
 
   record FailureEnvelope(
-      ProtocolFailureStatus status,
+      ProtocolEnvelopeStatus status,
       String code,
       String message,
       @Nullable String hint,
@@ -49,7 +46,7 @@ public interface CliEnvelopeJsonModels {
       CliErrorJsonModels.@Nullable ErrorDetails details) {
     /** Creates one deterministic failure envelope for machine and text CLI output. */
     public FailureEnvelope(
-        ProtocolFailureStatus status,
+        ProtocolEnvelopeStatus status,
         String code,
         String message,
         @Nullable String hint,
@@ -65,7 +62,7 @@ public interface CliEnvelopeJsonModels {
   }
 
   record RejectedEnvelope(
-      ProtocolRejectionStatus status,
+      ProtocolEnvelopeStatus status,
       String code,
       String message,
       @Nullable String hint,
@@ -73,7 +70,7 @@ public interface CliEnvelopeJsonModels {
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
     /** Creates one deterministic rejection envelope for machine and text CLI output. */
     public RejectedEnvelope(
-        ProtocolRejectionStatus status,
+        ProtocolEnvelopeStatus status,
         String code,
         String message,
         @Nullable String hint,

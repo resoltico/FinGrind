@@ -2,14 +2,42 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Owns SQLite book rekey orchestration, reopened publication, and rollback recovery. */
+/**
+ * Owns SQLite book rekey orchestration, reopened publication, and rollback recovery.
+ *
+ * <p>This service preserves the pre-rekey book when publication fails after SQLite has already
+ * applied the replacement key.
+ */
 final class SqliteRekeyService {
-  /** One action that may raise a runtime failure while preserving the primary rekey outcome. */
+  private static final String CATASTROPHIC_REKEY_RESTORE_FAILURE_MESSAGE =
+      String.join(
+          " ",
+          "Failed to verify the rekeyed SQLite book, and FinGrind could not restore the",
+          "pre-rekey book automatically.",
+          "Use the preserved rollback copy in the reported storage failure to recover",
+          "manually.");
+
+  private static final String RESTORED_ORIGINAL_BOOK_FAILURE_MESSAGE =
+      String.join(
+          " ",
+          "Failed to verify the rekeyed SQLite book. FinGrind restored the pre-rekey book",
+          "on disk;",
+          "reopen the session with the original passphrase and retry.");
+
+  private static final String SQLITE_REKEY_FAILURE_MESSAGE = "Failed to rekey SQLite book.";
+
+  /**
+   * One runtime action whose failure must never displace the primary rekey outcome.
+   *
+   * <p>These actions run only during rollback, cleanup, or recovery after a more important failure
+   * already exists.
+   */
   @FunctionalInterface
   interface BestEffortRuntimeAction {
     /** Runs one best-effort runtime action. */
@@ -20,16 +48,15 @@ final class SqliteRekeyService {
   private final SqliteStoreLifecycle lifecycle;
 
   SqliteRekeyService(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
-    this.context = Objects.requireNonNull(context, "context");
-    this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+    this.context = Objects.requireNonNull(context);
+    this.lifecycle = Objects.requireNonNull(lifecycle);
   }
 
   RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     try (SqliteOwnedPassphrase activeReplacementPassphrase =
-        new SqliteOwnedPassphrase(
-            Objects.requireNonNull(replacementPassphrase, "replacementPassphrase"))) {
+        new SqliteOwnedPassphrase(Objects.requireNonNull(replacementPassphrase))) {
       if (Files.notExists(context.bookPath())) {
         return new RekeyBookResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
@@ -60,7 +87,7 @@ final class SqliteRekeyService {
             exception, restoreFailure, closeFailure, rollbackFile::deleteQuietly);
       }
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to rekey SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure(SQLITE_REKEY_FAILURE_MESSAGE, exception);
     }
   }
 
@@ -113,9 +140,7 @@ final class SqliteRekeyService {
       RuntimeException restoreFailure,
       @Nullable RuntimeException closeFailure) {
     IllegalStateException catastrophicFailure =
-        new IllegalStateException(
-            "Failed to verify the rekeyed SQLite book, and FinGrind could not restore the pre-rekey book automatically. Use the preserved rollback copy in the reported storage failure to recover manually.",
-            verificationFailure);
+        new IllegalStateException(CATASTROPHIC_REKEY_RESTORE_FAILURE_MESSAGE, verificationFailure);
     catastrophicFailure.addSuppressed(restoreFailure);
     if (closeFailure != null) {
       catastrophicFailure.addSuppressed(closeFailure);
@@ -128,7 +153,7 @@ final class SqliteRekeyService {
       @Nullable RuntimeException restoreFailure,
       @Nullable RuntimeException closeFailure,
       BestEffortRuntimeAction rollbackDeleteAction) {
-    Objects.requireNonNull(rollbackDeleteAction, "rollbackDeleteAction");
+    Objects.requireNonNull(rollbackDeleteAction);
     if (restoreFailure != null) {
       return catastrophicRekeyRestoreFailure(verificationFailure, restoreFailure, closeFailure);
     }
@@ -138,12 +163,10 @@ final class SqliteRekeyService {
 
   static IllegalStateException restoredOriginalBookFailure(
       RuntimeException verificationFailure, @Nullable RuntimeException closeFailure) {
-    Objects.requireNonNull(verificationFailure, "verificationFailure");
+    Objects.requireNonNull(verificationFailure);
     if (closeFailure != null) {
       verificationFailure.addSuppressed(closeFailure);
     }
-    return new IllegalStateException(
-        "Failed to verify the rekeyed SQLite book. FinGrind restored the pre-rekey book on disk; reopen the session with the original passphrase and retry.",
-        verificationFailure);
+    return new IllegalStateException(RESTORED_ORIGINAL_BOOK_FAILURE_MESSAGE, verificationFailure);
   }
 }

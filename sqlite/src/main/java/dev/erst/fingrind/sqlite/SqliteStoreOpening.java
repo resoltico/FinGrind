@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;

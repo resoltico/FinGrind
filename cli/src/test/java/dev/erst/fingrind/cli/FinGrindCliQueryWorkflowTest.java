@@ -96,7 +96,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 }));
     var inspectEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
     assertEquals(
-        CliPublicPaths.normalizedValue(bookFilePath),
+        CliPublicPaths.redactedValue(bookFilePath),
         inspectEnvelope.path("payload").path("bookFile").stringValue());
     assertEquals("initialized", inspectEnvelope.path("payload").path("state").stringValue());
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();

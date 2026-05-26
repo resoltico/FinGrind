@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 /** Intent for resolving one SQLite book secret through a public passphrase resolver seam. */
 public enum SqlitePassphraseIntent {

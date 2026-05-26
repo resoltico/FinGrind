@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolMoneyFields;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
 import java.util.Collections;
@@ -96,11 +97,27 @@ final class MachineContractSchemaSupport {
   }
 
   static Map<String, Object> dateStringSchema(String description) {
-    return orderedMap("type", "string", "description", description, "format", "date");
+    return orderedMap(
+        "type",
+        "string",
+        "description",
+        description,
+        "format",
+        "date",
+        "pattern",
+        CanonicalTemporalText.LOCAL_DATE_PATTERN);
   }
 
   static Map<String, Object> instantStringSchema(String description) {
-    return orderedMap("type", "string", "description", description, "format", "date-time");
+    return orderedMap(
+        "type",
+        "string",
+        "description",
+        description,
+        "format",
+        "date-time",
+        "pattern",
+        CanonicalTemporalText.UTC_INSTANT_PATTERN);
   }
 
   static Map<String, Object> nonBlankStringSchema(String description) {

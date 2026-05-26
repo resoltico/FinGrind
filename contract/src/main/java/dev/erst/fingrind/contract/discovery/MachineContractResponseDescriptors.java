@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import java.util.List;
@@ -16,7 +15,7 @@ final class MachineContractResponseDescriptors {
 
   static ContractResponse.ResponseModelDescriptor responseModel() {
     return new ContractResponse.ResponseModelDescriptor(
-        ProtocolCatalog.successStatuses(),
+        ProtocolCatalog.successStatus(),
         List.of(
             new ContractResponse.FieldDescriptor("status", "Literal success status."),
             new ContractResponse.FieldDescriptor(
@@ -24,8 +23,8 @@ final class MachineContractResponseDescriptors {
             new ContractResponse.FieldDescriptor(
                 "artifacts",
                 "Optional generated artifact metadata array for commands that exported files during the successful run.")),
-        ProtocolCatalog.rejectionStatuses(),
-        ProtocolFailureStatus.ERROR,
+        ProtocolCatalog.rejectionStatus(),
+        ProtocolCatalog.errorStatus(),
         rejectionDescriptors(),
         ContractErrors.descriptors(),
         List.of(

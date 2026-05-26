@@ -6,6 +6,8 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

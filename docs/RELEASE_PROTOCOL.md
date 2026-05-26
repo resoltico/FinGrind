@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]

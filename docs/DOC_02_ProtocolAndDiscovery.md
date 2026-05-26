@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -117,23 +117,21 @@ public enum PlanResultDetail implements WireValue
   execution journal without inventing renderer-local flags or ad hoc booleans
 - Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
 
-## `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode`
+## `ProtocolSuccessPayload`, `ProtocolEnvelopeStatus`, And `ProtocolDiagnosticCode`
 
 This marker interface plus these enums are the canonical owners of public envelope success payload
-typing, status tokens, and diagnostics tokens.
+typing, top-level status tokens, and diagnostics tokens.
 
 ```java
 public sealed interface ProtocolSuccessPayload
-public enum ProtocolSuccessStatus implements WireValue
-public enum ProtocolRejectionStatus implements WireValue
-public enum ProtocolFailureStatus implements WireValue
+public enum ProtocolEnvelopeStatus implements WireValue
 public enum ProtocolDiagnosticCode implements WireValue
 ```
 
-- Purpose: distinguish success, deterministic rejection, and runtime failure statuses with
-  compile-time subset boundaries instead of one open string bucket, keep post-success diagnostics
-  codes typed instead of renderer-local string literals, and prevent arbitrary records from
-  drifting onto the public success-envelope payload surface.
+- Purpose: distinguish success, deterministic rejection, and runtime failure statuses through one
+  canonical top-level envelope vocabulary, keep post-success diagnostics codes typed instead of
+  renderer-local string literals, and prevent arbitrary records from drifting onto the public
+  success-envelope payload surface.
 - Surface: `ProtocolSuccessPayload` as the marker interface plus `wireValue()`, `wireValues()`,
   and `fromWireValue(...)` on the enums.
 
@@ -157,9 +155,11 @@ public final class ProtocolOptions
 public enum DiscoveryDetail implements WireValue
 ```
 
-- Members: `COMPACT`, `FULL`
+- Members: `MINIMAL`, `COMPACT`, `FULL`
 - Purpose: keep discovery detail selection consistent across the parser, discovery contract,
   help payloads, capabilities payloads, and public documentation
+- Semantics: `MINIMAL` is the front-door machine index, `COMPACT` is the stable descriptor layer,
+  and `FULL` adds embedded templates, schemas, vocabularies, and doctrine bodies
 - Boundary: accepted on JSON discovery surfaces only; text discovery surfaces reject it instead
   of silently ignoring it
 
@@ -581,7 +581,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 20`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 21`
 
 ## `ProtectedBookFormatContract`
 

@@ -19,6 +19,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -31,8 +32,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StorageLocator;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -162,8 +161,10 @@ public final class ContractTemplates {
                       new SourceDocumentReference(
                           new SourceDocumentId(sourceDocument.sourceDocumentId()),
                           new SourceDocumentType(sourceDocument.sourceDocumentType()),
-                          LocalDate.parse(sourceDocument.documentDate()),
-                          Instant.parse(sourceDocument.capturedAt()),
+                          CanonicalTemporalText.parseLocalDate(
+                              sourceDocument.documentDate(), "sourceDocuments.documentDate"),
+                          CanonicalTemporalText.parseUtcInstant(
+                              sourceDocument.capturedAt(), "sourceDocuments.capturedAt"),
                           new StorageLocator(sourceDocument.storageLocator()),
                           new ContentSha256(sourceDocument.contentSha256())))
               .toList(),
@@ -176,7 +177,8 @@ public final class ContractTemplates {
                           new ActorId(approval.approverId()),
                           approval.approverType(),
                           approval.decision(),
-                          Instant.parse(approval.approvedAt())))
+                          CanonicalTemporalText.parseUtcInstant(
+                              approval.approvedAt(), "approvals.approvedAt")))
               .toList());
     }
   }
@@ -202,8 +204,8 @@ public final class ContractTemplates {
       contentSha256 = ContractDescriptorValidation.requireText(contentSha256, "contentSha256");
       new SourceDocumentId(sourceDocumentId);
       new SourceDocumentType(sourceDocumentType);
-      LocalDate.parse(documentDate);
-      Instant.parse(capturedAt);
+      CanonicalTemporalText.parseLocalDate(documentDate, "documentDate");
+      CanonicalTemporalText.parseUtcInstant(capturedAt, "capturedAt");
       new StorageLocator(storageLocator);
       new ContentSha256(contentSha256);
     }
@@ -229,7 +231,7 @@ public final class ContractTemplates {
       new ApprovalId(approvalId);
       new ApprovalType(approvalType);
       new ActorId(approverId);
-      Instant.parse(approvedAt);
+      CanonicalTemporalText.parseUtcInstant(approvedAt, "approvedAt");
     }
   }
 

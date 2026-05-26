@@ -13,6 +13,7 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -38,8 +39,6 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -67,7 +66,9 @@ final class SqlitePostingMapper {
                     accountRow, SqlitePostingSql.COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION)
                 .map(ProfitAndLossLineClassification::fromWireValue)),
         requiredInt(accountRow, SqlitePostingSql.COL_ACCOUNT_ACTIVE) == 1,
-        Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
+        CanonicalTemporalText.parseUtcInstant(
+            requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT),
+            "account.declaredAt"));
   }
 
   static CommittedPosting committedPosting(
@@ -75,7 +76,10 @@ final class SqlitePostingMapper {
     PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));
     JournalEntry journalEntry =
         new JournalEntry(
-            LocalDate.parse(requiredText(postingRow, SqlitePostingSql.COL_EFFECTIVE_DATE)), lines);
+            CanonicalTemporalText.parseLocalDate(
+                requiredText(postingRow, SqlitePostingSql.COL_EFFECTIVE_DATE),
+                "posting.effectiveDate"),
+            lines);
     RequestProvenance requestProvenance =
         new RequestProvenance(
             new ActorId(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_ID)),
@@ -87,7 +91,8 @@ final class SqlitePostingMapper {
     CommittedProvenance provenance =
         new CommittedProvenance(
             requestProvenance,
-            Instant.parse(requiredText(postingRow, SqlitePostingSql.COL_RECORDED_AT)),
+            CanonicalTemporalText.parseUtcInstant(
+                requiredText(postingRow, SqlitePostingSql.COL_RECORDED_AT), "posting.recordedAt"),
             SourceChannel.fromWireValue(
                 requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
     return new CommittedPosting(
@@ -158,11 +163,13 @@ final class SqlitePostingMapper {
                   requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_ID)),
               new SourceDocumentType(
                   requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_TYPE)),
-              LocalDate.parse(
-                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_DATE)),
-              Instant.parse(
+              CanonicalTemporalText.parseLocalDate(
+                  requiredText(sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_DATE),
+                  "sourceDocument.documentDate"),
+              CanonicalTemporalText.parseUtcInstant(
                   requiredText(
-                      sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_CAPTURED_AT)),
+                      sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_CAPTURED_AT),
+                  "sourceDocument.capturedAt"),
               new StorageLocator(
                   requiredText(
                       sourceDocumentRows, SqlitePostingSql.COL_SOURCE_DOCUMENT_STORAGE_LOCATOR)),
@@ -185,7 +192,9 @@ final class SqlitePostingMapper {
                   requiredText(approvalRows, SqlitePostingSql.COL_APPROVER_TYPE)),
               ApprovalDecision.fromWireValue(
                   requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_DECISION)),
-              Instant.parse(requiredText(approvalRows, SqlitePostingSql.COL_APPROVED_AT))));
+              CanonicalTemporalText.parseUtcInstant(
+                  requiredText(approvalRows, SqlitePostingSql.COL_APPROVED_AT),
+                  "approval.approvedAt")));
     }
     return List.copyOf(approvals);
   }

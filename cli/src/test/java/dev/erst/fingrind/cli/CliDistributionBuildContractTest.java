@@ -96,59 +96,130 @@ class CliDistributionBuildContractTest {
   @Test
   void cliAndSqliteBuilds_stageManagedRuntimeIdentityFromOneCanonicalOwner() throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+    String distributionPlugin =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
     String sqliteBuildScript =
         Files.readString(repositoryRoot().resolve("sqlite/build.gradle.kts"));
+    String managedSqliteProvisioning =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ManagedSqliteProvisioningLogic.kt"));
 
-    assertTrue(buildScript.contains("stageDockerBuildContext"));
-    assertTrue(buildScript.contains("docker-context"));
-    assertTrue(buildScript.contains("docker-build-context-manifest.json"));
-    assertTrue(buildScript.contains("source-checkout-artifact-manifest.tsv"));
-    assertTrue(buildScript.contains("sourceCheckoutArtifactSourceIncludePatterns"));
-    assertTrue(buildScript.contains("sourceCheckoutArtifactSourceInputs"));
-    assertTrue(buildScript.contains("dockerBuildContextSourceIncludePatterns"));
-    assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
-    assertTrue(buildScript.contains("dockerBuildContextSourceInputs"));
-    assertTrue(buildScript.contains("repositoryDockerBuildContextDirectory"));
+    assertCliBuildScriptDelegatesDistribution(buildScript);
+    assertDistributionPluginOwnsDistributionContracts(distributionPlugin);
+    assertManagedSqliteProvisioningUsesNamedModuleAccess(managedSqliteProvisioning);
+    assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
+  }
+
+  private static void assertCliBuildScriptDelegatesDistribution(String buildScript) {
+    assertTrue(buildScript.contains("id(\"dev.erst.fingrind.cli-distribution\")"));
+    assertFalse(buildScript.contains("stageDockerBuildContext"));
+    assertFalse(buildScript.contains("docker-build-context-manifest.json"));
+    assertFalse(buildScript.contains("source-checkout-artifact-manifest.tsv"));
+  }
+
+  private static void assertDistributionPluginOwnsDistributionContracts(String distributionPlugin) {
+    assertTrue(distributionPlugin.contains("stageDockerBuildContext"));
+    assertTrue(distributionPlugin.contains("docker-context"));
+    assertTrue(distributionPlugin.contains("docker-build-context-manifest.json"));
+    assertTrue(distributionPlugin.contains("source-checkout-artifact-manifest.tsv"));
     assertTrue(
-        buildScript.contains("\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
-    assertTrue(buildScript.contains("managedSqliteLibrarySha256Path"));
-    assertTrue(buildScript.contains("managedSqliteLibraryTrustedSha256Path"));
-    assertTrue(buildScript.contains("managedSqliteToolchainFingerprintPath"));
-    assertTrue(buildScript.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
-    assertTrue(buildScript.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
-    assertTrue(buildScript.contains("sourceFiles.from(sourceCheckoutArtifactSourceInputs)"));
+        distributionPlugin.contains(
+            "CliDistributionSourceInventory.sourceCheckoutArtifactSourceFiles"));
+    assertTrue(distributionPlugin.contains("sourceCheckoutArtifactSourceInputs"));
     assertTrue(
-        buildScript.contains("from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));
-    assertTrue(buildScript.contains("into(\"source-root\")"));
-    assertTrue(buildScript.contains("tasks.register<Sync>(\"syncRepositoryDockerBuildContext\")"));
+        distributionPlugin.contains(
+            "CliDistributionSourceInventory.dockerBuildContextSourceFiles"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains("CliDistributionSourceInventory.dockerBuildContextFiles"));
+    assertTrue(distributionPlugin.contains("dockerManagedSqliteContractSource"));
+    assertTrue(distributionPlugin.contains("dockerBuildContextSourceInputs"));
+    assertTrue(distributionPlugin.contains("repositoryDockerBuildContextDirectory"));
+    assertTrue(
+        distributionPlugin.contains(
+            "\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
+    assertTrue(distributionPlugin.contains("managedSqliteLibrarySha256Path"));
+    assertTrue(distributionPlugin.contains("managedSqliteLibraryTrustedSha256Path"));
+    assertTrue(distributionPlugin.contains("managedSqliteToolchainFingerprintPath"));
+    assertTrue(distributionPlugin.contains("managedSqliteBuildContractPath"));
+    assertTrue(
+        distributionPlugin.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
+    assertTrue(distributionPlugin.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
+    assertTrue(distributionPlugin.contains("sourceFiles.from(sourceCheckoutArtifactSourceInputs)"));
+    assertTrue(
+        distributionPlugin.contains(
+            "from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));
+    assertTrue(distributionPlugin.contains("into(\"source-root\")"));
+    assertTrue(
+        distributionPlugin.contains("tasks.register<Sync>(\"syncRepositoryDockerBuildContext\")"));
+    assertTrue(
+        distributionPlugin.contains(
             "tasks.register<WriteSourceFileHashManifestTask>(\"writeSourceCheckoutArtifactManifest\")"));
-    assertTrue(buildScript.contains("finalizedBy(syncRepositoryDockerBuildContext)"));
-    assertTrue(buildScript.contains("finalizedBy(writeSourceCheckoutArtifactManifest)"));
-    assertTrue(buildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(distributionPlugin.contains("finalizedBy(syncRepositoryDockerBuildContext)"));
+    assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutArtifactManifest)"));
+    assertTrue(distributionPlugin.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(
-        buildScript.contains("dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
-    assertTrue(buildScript.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
+        distributionPlugin.contains(
+            "dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
+    assertTrue(distributionPlugin.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "DistributionContractReader.hostBundleTarget(repositoryRootDirectory)"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "rootProject.layout.projectDirectory.file(\"gradle/build-logic/build.gradle.kts\")"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "rootProject.layout.projectDirectory.dir(\"gradle/build-logic/src/main\")"));
+    assertTrue(distributionPlugin.contains("from(dockerBuildContextSourceInputs)"));
+    assertTrue(distributionPlugin.contains("from(sourceCheckoutArtifactSourceInputs)"));
     assertFalse(
-        buildScript.contains(
+        distributionPlugin.contains(
             "inputs.dir(rootProject.layout.projectDirectory.dir(\"gradle/build-logic\"))"));
-    assertFalse(buildScript.contains("stageDockerRuntimeInputs"));
-    assertFalse(buildScript.contains("docker/jdeps"));
-    assertFalse(buildScript.contains("archiveExtensionForOperatingSystemId"));
-    assertFalse(buildScript.contains("launcherPathForOperatingSystemId"));
-    assertFalse(buildScript.contains("launcherCommandForOperatingSystemId"));
+    assertFalse(distributionPlugin.contains("sourceCheckoutArtifactSourceIncludePatterns"));
+    assertFalse(distributionPlugin.contains("dockerBuildContextSourceIncludePatterns"));
+    assertFalse(distributionPlugin.contains("stageDockerRuntimeInputs"));
+    assertFalse(distributionPlugin.contains("docker/jdeps"));
+    assertFalse(distributionPlugin.contains("archiveExtensionForOperatingSystemId"));
+    assertFalse(distributionPlugin.contains("launcherPathForOperatingSystemId"));
+    assertFalse(distributionPlugin.contains("launcherCommandForOperatingSystemId"));
+  }
 
+  private static void assertManagedSqliteProvisioningUsesNamedModuleAccess(
+      String managedSqliteProvisioning) {
+    assertFalse(managedSqliteProvisioning.contains("enableUnnamedNativeAccess()"));
+    assertTrue(managedSqliteProvisioning.contains("enableSqliteNamedNativeAccess()"));
+    assertTrue(managedSqliteProvisioning.contains("useModulePath(mainRuntimeModulePath)"));
+    assertTrue(managedSqliteProvisioning.contains("addSqliteNamedModule()"));
+    assertTrue(managedSqliteProvisioning.contains("if (mainModule.orNull == null)"));
+    assertTrue(
+        managedSqliteProvisioning.contains(
+            "systemProperty(\"fingrind.runtime.distribution\", sourceCheckoutRuntimeDistribution)"));
+    assertTrue(
+        managedSqliteProvisioning.contains(
+            "systemProperty(\"fingrind.source-checkout.root\", repositoryRoot.toString())"));
+    assertTrue(
+        managedSqliteProvisioning.contains(
+            "systemProperty(\"fingrind.source-checkout.build-root\", sourceCheckoutBuildRoot.toString())"));
+  }
+
+  private static void assertSqliteBuildScriptOwnsWhiteBoxModulePatch(String sqliteBuildScript) {
     assertTrue(sqliteBuildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(
+        sqliteBuildScript.contains(
+            "patchModule(\"dev.erst.fingrind.sqlite\", sqliteWhiteBoxTestPatchPath)"));
+    assertTrue(
+        sqliteBuildScript.contains("addReads(\"dev.erst.fingrind.sqlite\", \"ALL-UNNAMED\")"));
+    assertTrue(
+        sqliteBuildScript.contains(
+            "addOpens(\"dev.erst.fingrind.sqlite\", \"dev.erst.fingrind.sqlite\", \"ALL-UNNAMED\")"));
+    assertTrue(
+        sqliteBuildScript.contains(
+            "addOpens(\"dev.erst.fingrind.sqlite\", \"dev.erst.fingrind.sqlite.secret\", \"ALL-UNNAMED\")"));
     assertTrue(sqliteBuildScript.contains("META-INF/fingrind"));
     assertTrue(sqliteBuildScript.contains("managed-sqlite-toolchain.json"));
     assertTrue(sqliteBuildScript.contains("managed-sqlite-build-contract.json"));
@@ -158,21 +229,21 @@ class CliDistributionBuildContractTest {
   @Test
   void cliBuild_configuresSourceCheckoutLauncherWithManagedRuntimeDefaults() throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+    String managedSqliteProvisioning =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ManagedSqliteProvisioningLogic.kt"));
 
+    assertFalse(buildScript.contains("tasks.named<JavaExec>(\"run\")"));
+    assertFalse(buildScript.contains("applicationDefaultJvmArgs"));
+    assertFalse(buildScript.contains("fingrind.runtime.distribution"));
+    assertFalse(buildScript.contains("fingrind.source-checkout.root"));
+    assertFalse(buildScript.contains("fingrind.source-checkout.build-root"));
+    assertTrue(managedSqliteProvisioning.contains("if (mainModule.orNull == null)"));
     assertTrue(
-        buildScript.indexOf("val sourceCheckoutRuntimeDistribution =")
-            < buildScript.indexOf("application {"));
-    assertTrue(buildScript.contains("applicationDefaultJvmArgs"));
-    assertTrue(
-        buildScript.contains(
-            "\"-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}\""));
-    assertTrue(
-        buildScript.contains("\"-Dfingrind.source-checkout.root=${repositoryRootDirectory}\""));
-    assertTrue(
-        buildScript.contains(
-            "\"-Dfingrind.source-checkout.build-root=${sourceCheckoutBuildRootDirectory}\""));
-    assertTrue(buildScript.contains("tasks.named<JavaExec>(\"run\")"));
-    assertFalse(buildScript.contains("jvmArgs(\"-Dfingrind.runtime.distribution="));
+        managedSqliteProvisioning.contains(
+            "systemProperty(\"fingrind.runtime.distribution\", sourceCheckoutRuntimeDistribution)"));
   }
 
   @Test
@@ -207,35 +278,38 @@ class CliDistributionBuildContractTest {
 
     assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"fingrind\""));
     assertFalse(buildScript.contains("\"Enable-Native-Access\" to \"ALL-UNNAMED\""));
-    assertTrue(
-        buildScript.contains(
-            "\"FinGrind-Source-Checkout-Root\" to repositoryRootDirectory.toString()"));
-    assertTrue(
-        buildScript.contains(
-            "\"FinGrind-Source-Checkout-Build-Root\" to sourceCheckoutBuildRootDirectory.toString()"));
+    assertFalse(buildScript.contains("FinGrind-Source-Checkout-Root"));
+    assertFalse(buildScript.contains("FinGrind-Source-Checkout-Build-Root"));
   }
 
   @Test
   void cliBuild_generatesBundleManifestFromCanonicalContractMetadata() throws IOException {
     Path repositoryRoot = repositoryRoot();
-    String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
+    String distributionPlugin =
+        Files.readString(
+            repositoryRoot.resolve(
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
 
     assertFalse(Files.exists(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json")));
     assertTrue(
-        buildScript.contains("tasks.register<WriteBundleManifestTask>(\"writeBundleManifest\")"));
+        distributionPlugin.contains(
+            "tasks.register<WriteBundleManifestTask>(\"writeBundleManifest\")"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "contractFiles.from(DistributionContractReader.requiredContractFiles(repositoryRootDirectory))"));
-    assertTrue(buildScript.contains("generated/bundle/root/bundle-manifest.json"));
-    assertTrue(buildScript.contains("writeBundleManifest"));
-    assertFalse(buildScript.contains("src/bundle/root/bundle-manifest.json"));
+    assertTrue(distributionPlugin.contains("generated/bundle/root/bundle-manifest.json"));
+    assertTrue(distributionPlugin.contains("writeBundleManifest"));
+    assertFalse(distributionPlugin.contains("src/bundle/root/bundle-manifest.json"));
   }
 
   @Test
   void cliBuild_prunesStaleVersionedBundleRootsArchivesAndChecksumsBeforeStagingTheCurrentBundle()
       throws IOException {
     Path repositoryRoot = repositoryRoot();
-    String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
+    String distributionPlugin =
+        Files.readString(
+            repositoryRoot.resolve(
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
     String pruneTask =
         Files.readString(
             repositoryRoot.resolve(
@@ -246,16 +320,17 @@ class CliDistributionBuildContractTest {
                 "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ReportBundleArchiveOutputsTask.kt"));
 
     assertTrue(
-        buildScript.contains("tasks.register<PruneBundleOutputsTask>(\"cleanBundleOutputs\")"));
+        distributionPlugin.contains(
+            "tasks.register<PruneBundleOutputsTask>(\"cleanBundleOutputs\")"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."));
-    assertTrue(buildScript.contains("artifactPrefix.set(\"fingrind-\")"));
+    assertTrue(distributionPlugin.contains("artifactPrefix.set(\"fingrind-\")"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "legacyBundleWorkspaceDirectory.set(layout.projectDirectory.dir(\"build/bundle\"))"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "legacyDistributionDirectory.set(layout.projectDirectory.dir(\"build/distributions\"))"));
     assertTrue(
         pruneTask.contains(
@@ -270,13 +345,13 @@ class CliDistributionBuildContractTest {
             "deletePrefixedEntries(legacyDistributionDirectory.asFile.orNull, prefix)"));
     assertTrue(
         pruneTask.contains(".filter { entry -> entry.fileName.toString().startsWith(prefix) }"));
-    assertTrue(buildScript.contains("dependsOn(cleanBundleOutputs)"));
+    assertTrue(distributionPlugin.contains("dependsOn(cleanBundleOutputs)"));
     assertTrue(
-        buildScript.contains(
+        distributionPlugin.contains(
             "tasks.register<ReportBundleArchiveOutputsTask>(\"bundleCliArchive\")"));
     assertTrue(reportTask.contains("FINGRIND_BUNDLE_ARCHIVE="));
     assertTrue(reportTask.contains("FINGRIND_BUNDLE_CHECKSUM="));
-    assertFalse(buildScript.contains("cleanBundleRoot"));
+    assertFalse(distributionPlugin.contains("cleanBundleRoot"));
   }
 
   @Test

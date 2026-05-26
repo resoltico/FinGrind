@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -200,7 +201,9 @@ final class SqliteStatementQueries {
           if (statement.step() == SqliteNativeResultCodes.DONE) {
             return Optional.empty();
           }
-          return Optional.of(Instant.parse(SqlitePostingMapper.requiredText(statement, 0)));
+          return Optional.of(
+              CanonicalTemporalText.parseUtcInstant(
+                  SqlitePostingMapper.requiredText(statement, 0), "book initializedAt"));
         });
   }
 

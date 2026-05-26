@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.sqlite.AclFixtureFileSystem;
+import dev.erst.fingrind.sqlite.AclFixturePath;
+import dev.erst.fingrind.sqlite.NullTestSupport;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
@@ -27,32 +30,32 @@ class SqliteBookKeyFileSecurityTest {
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
-      assertTrue(keyPath.exists);
-      assertTrue(keyPath.regularFile);
-      assertTrue(parentPath.exists);
-      assertFalse(parentPath.regularFile);
-      assertEquals(1, Objects.requireNonNull(parentPath.aclView).getAcl().size());
+      assertTrue(keyPath.existsValue());
+      assertTrue(keyPath.regularFileValue());
+      assertTrue(parentPath.existsValue());
+      assertFalse(parentPath.regularFileValue());
+      assertEquals(1, Objects.requireNonNull(parentPath.aclViewValue()).getAcl().size());
       assertEquals(
-          fileSystem.owner,
-          Objects.requireNonNull(parentPath.aclView).getAcl().getFirst().principal());
+          fileSystem.owner(),
+          Objects.requireNonNull(parentPath.aclViewValue()).getAcl().getFirst().principal());
       assertTrue(
-          Objects.requireNonNull(parentPath.aclView)
+          Objects.requireNonNull(parentPath.aclViewValue())
               .getAcl()
               .getFirst()
               .permissions()
               .contains(AclEntryPermission.LIST_DIRECTORY));
-      assertEquals(1, Objects.requireNonNull(keyPath.aclView).getAcl().size());
+      assertEquals(1, Objects.requireNonNull(keyPath.aclViewValue()).getAcl().size());
       assertEquals(
-          fileSystem.owner,
-          Objects.requireNonNull(keyPath.aclView).getAcl().getFirst().principal());
+          fileSystem.owner(),
+          Objects.requireNonNull(keyPath.aclViewValue()).getAcl().getFirst().principal());
       assertTrue(
-          Objects.requireNonNull(keyPath.aclView)
+          Objects.requireNonNull(keyPath.aclViewValue())
               .getAcl()
               .getFirst()
               .permissions()
               .contains(AclEntryPermission.READ_DATA));
       assertTrue(
-          Objects.requireNonNull(keyPath.aclView)
+          Objects.requireNonNull(keyPath.aclViewValue())
               .getAcl()
               .getFirst()
               .permissions()
@@ -70,10 +73,10 @@ class SqliteBookKeyFileSecurityTest {
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
-      assertTrue(keyPath.exists);
-      assertTrue(keyPath.regularFile);
-      assertTrue(parentPath.exists);
-      assertFalse(parentPath.regularFile);
+      assertTrue(keyPath.existsValue());
+      assertTrue(keyPath.regularFileValue());
+      assertTrue(parentPath.existsValue());
+      assertFalse(parentPath.regularFileValue());
       assertEquals(
           Set.of(
               PosixFilePermission.OWNER_READ,

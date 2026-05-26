@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /** Shared SQLite read helpers for postings, posting lines, and account balances. */
@@ -89,12 +91,16 @@ final class SqlitePostingReader {
       int bindIndex = 1;
       if (effectiveDateRange.effectiveDateFrom().isPresent()) {
         statement.bindText(
-            bindIndex, effectiveDateRange.effectiveDateFrom().orElseThrow().toString());
+            bindIndex,
+            CanonicalTemporalText.formatLocalDate(
+                effectiveDateRange.effectiveDateFrom().orElseThrow()));
         bindIndex++;
       }
       if (effectiveDateRange.effectiveDateTo().isPresent()) {
         statement.bindText(
-            bindIndex, effectiveDateRange.effectiveDateTo().orElseThrow().toString());
+            bindIndex,
+            CanonicalTemporalText.formatLocalDate(
+                effectiveDateRange.effectiveDateTo().orElseThrow()));
       }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         totals.add(
@@ -163,14 +169,18 @@ final class SqlitePostingReader {
       }
     }
     List<CurrencyBalance> balances = new ArrayList<>();
-    List<Map.Entry<CurrencyUnit, Totals>> orderedTotals =
-        totalsByCurrency.entrySet().stream()
-            .sorted(Comparator.comparing(entry -> entry.getKey().code()))
-            .toList();
-    for (Map.Entry<CurrencyUnit, Totals> entry : orderedTotals) {
-      balances.add(balance(entry.getKey(), entry.getValue()));
+    for (CurrencyUnit currencyCode : orderedCurrencyCodes(totalsByCurrency.keySet())) {
+      Totals totals = Objects.requireNonNull(totalsByCurrency.get(currencyCode));
+      balances.add(balance(currencyCode, totals));
     }
     return List.copyOf(balances);
+  }
+
+  static List<CurrencyUnit> orderedCurrencyCodes(Iterable<CurrencyUnit> currencyCodes) {
+    List<CurrencyUnit> ordered = new ArrayList<>();
+    currencyCodes.forEach(ordered::add);
+    ordered.sort(Comparator.comparing(CurrencyUnit::code));
+    return List.copyOf(ordered);
   }
 
   private static void bindPostingPageQuery(
@@ -182,25 +192,29 @@ final class SqlitePostingReader {
     }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       statement.bindText(
-          bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
       bindIndex++;
     }
     if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       statement.bindText(
-          bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateTo().orElseThrow()));
       bindIndex++;
     }
     if (query.cursor().isPresent()) {
       PostingHistoryCursor cursor = query.cursor().orElseThrow();
-      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
       bindIndex++;
-      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
       bindIndex++;
-      statement.bindText(bindIndex, cursor.recordedAt().toString());
+      statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
       bindIndex++;
-      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
       bindIndex++;
-      statement.bindText(bindIndex, cursor.recordedAt().toString());
+      statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
       bindIndex++;
       statement.bindText(bindIndex, cursor.postingId().value());
       bindIndex++;
@@ -229,12 +243,16 @@ final class SqlitePostingReader {
     }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       statement.bindText(
-          bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
       bindIndex++;
     }
     if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       statement.bindText(
-          bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateTo().orElseThrow()));
     }
   }
 

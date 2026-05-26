@@ -65,6 +65,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             pluginManager.withPlugin("java") {
                 extensions.configure<JavaPluginExtension> {
                     toolchain.languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
+                    modularity.inferModulePath.set(true)
                     withSourcesJar()
                 }
                 val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
@@ -176,6 +177,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.withType<Test>().configureEach {
+                modularity.inferModulePath.set(true)
                 useJUnitPlatform()
                 val jacocoDestinationFile =
                     FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
@@ -212,6 +214,10 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                         )
                     }
                 }
+            }
+
+            tasks.withType<JavaExec>().configureEach {
+                modularity.inferModulePath.set(true)
             }
 
             val testTasks = tasks.withType<Test>()

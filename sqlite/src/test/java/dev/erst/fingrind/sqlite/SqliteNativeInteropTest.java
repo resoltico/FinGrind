@@ -9,6 +9,9 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -457,7 +460,9 @@ class SqliteNativeInteropTest {
       if (Files.notExists(keyPath)) {
         SqliteBookKeyFileGenerator.generate(keyPath);
       } else {
-        SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+        try (SqliteBookPassphrase ignored = SqliteBookKeyFile.load(keyPath)) {
+          // The load path enforces the same key-file security contract before rewriting test data.
+        }
       }
       Files.writeString(keyPath, TEST_BOOK_KEY);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));

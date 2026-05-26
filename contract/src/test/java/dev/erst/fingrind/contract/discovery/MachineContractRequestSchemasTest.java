@@ -85,4 +85,19 @@ class MachineContractRequestSchemasTest {
         "orderedMap keys must be non-null Strings at argument index 2.", nonStringKey.getMessage());
     assertEquals("orderedMap values must be non-null at argument index 1.", nullValue.getMessage());
   }
+
+  @Test
+  void canonicalTemporalSchemas_includeExactPatternsAlongsideFormatHints() {
+    Map<String, Object> dateSchema = MachineContractSchemaSupport.dateStringSchema("Date.");
+    Map<String, Object> instantSchema =
+        MachineContractSchemaSupport.instantStringSchema("Timestamp.");
+
+    assertEquals("date", dateSchema.get("format"));
+    assertEquals(
+        dev.erst.fingrind.core.CanonicalTemporalText.LOCAL_DATE_PATTERN, dateSchema.get("pattern"));
+    assertEquals("date-time", instantSchema.get("format"));
+    assertEquals(
+        dev.erst.fingrind.core.CanonicalTemporalText.UTC_INSTANT_PATTERN,
+        instantSchema.get("pattern"));
+  }
 }

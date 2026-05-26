@@ -24,7 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
@@ -74,7 +74,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
     CliEnvelopeJsonModels.RejectedEnvelope envelope =
         new CliEnvelopeJsonModels.RejectedEnvelope(
-            ProtocolRejectionStatus.REJECTED,
+            ProtocolEnvelopeStatus.REJECTED,
             "query-book-not-initialized",
             "The book is not initialized.",
             null,
@@ -370,7 +370,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "rowKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
     assertTrue(
         accountLedgerCsv.contains(
-            "entry,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,10.00,0.00,10.00,DEBIT,10.00,0.00,10.00,DEBIT,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,10.00,0.00,10.00,DEBIT,2000"));
+            "entry,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,,,,,,,,,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,10.00,0.00,10.00,DEBIT,2000"));
     assertTrue(accountLedgerCsv.contains("document-idem-1"));
     assertTrue(accountLedgerCsv.contains(",document-idem-1,cash-receipt,,"));
   }
@@ -640,7 +640,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             OutputMode.TEXT);
     String output = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(output.contains("Net income totals"));
-    assertTrue(output.contains("(none)"));
+    assertTrue(output.contains("Zero across all currencies."));
   }
 
   @Test

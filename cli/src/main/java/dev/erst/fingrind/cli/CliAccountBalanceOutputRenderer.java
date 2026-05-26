@@ -40,12 +40,14 @@ final class CliAccountBalanceOutputRenderer {
                 snapshot.effectiveDateTo().orElse(null))));
     String header = CliTextFormat.renderKeyValueBlock(List.copyOf(headerRows));
     String balances =
-        CliTextFormat.renderTable(
-            List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
-            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceTextRow).toList(),
-            1,
-            2,
-            3);
+        snapshot.balances().isEmpty()
+            ? CliQueryOutputFormatter.noMatchesLabel("balances")
+            : CliTextFormat.renderTable(
+                List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
+                snapshot.balances().stream().map(CliQueryOutputFormatter::balanceTextRow).toList(),
+                1,
+                2,
+                3);
     return CliTextFormat.renderTitledBlock(
         "Account Balance", header + System.lineSeparator() + System.lineSeparator() + balances);
   }

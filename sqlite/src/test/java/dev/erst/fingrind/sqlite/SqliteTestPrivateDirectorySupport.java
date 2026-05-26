@@ -6,10 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** Shared helpers for allocating owner-only temporary directories in SQLite tests. */
-final class SqliteTestPrivateDirectorySupport {
+public final class SqliteTestPrivateDirectorySupport {
   private SqliteTestPrivateDirectorySupport() {}
 
-  static void hardenOwnerOnlyDirectory(Path directoryPath) {
+  public static void hardenOwnerOnlyDirectory(Path directoryPath) {
     try {
       if (Files.isDirectory(directoryPath)) {
         SqliteBookFileSecurity.hardenDirectory(directoryPath);
@@ -20,7 +20,7 @@ final class SqliteTestPrivateDirectorySupport {
     }
   }
 
-  static Path createOwnerOnlyTempDirectory(String prefix) {
+  public static Path createOwnerOnlyTempDirectory(String prefix) {
     try {
       Path directoryPath = Files.createTempDirectory(prefix);
       hardenOwnerOnlyDirectory(directoryPath);

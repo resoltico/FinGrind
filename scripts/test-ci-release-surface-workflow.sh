@@ -40,6 +40,18 @@ grep -Fq 'Run root quality gates on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps the Windows root gate as an explicit fail-fast step"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
+grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
+    "CI workflow no longer publishes pre-merge smoke coverage for every non-Windows bundle classifier"
+grep -Fq 'ubuntu-24.04-arm' "${workflow_file}" || die \
+    "CI workflow no longer covers the published Linux aarch64 classifier before release"
+grep -Fq 'macos-15' "${workflow_file}" || die \
+    "CI workflow no longer covers the published macOS aarch64 classifier before release"
+grep -Fq 'macos-15-intel' "${workflow_file}" || die \
+    "CI workflow no longer covers the published macOS x86_64 classifier before release"
+grep -Fq 'Smoke test the published Unix CLI bundle' "${workflow_file}" || die \
+    "CI workflow no longer smoke-tests the non-Windows published bundle classifiers before release"
+grep -Fq './scripts/bundle-smoke.sh "${{ steps.bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
+    "CI workflow no longer delegates non-Windows published bundle smoke to the canonical Bash owner"
 grep -Fq 'uv.exe' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
 grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${workflow_file}" || die \

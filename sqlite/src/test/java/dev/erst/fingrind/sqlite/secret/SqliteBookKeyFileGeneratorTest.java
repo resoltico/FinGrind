@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import dev.erst.fingrind.sqlite.NullTestSupport;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,7 @@ class SqliteBookKeyFileGeneratorTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    SqliteSecretTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
   }
 
   @Test

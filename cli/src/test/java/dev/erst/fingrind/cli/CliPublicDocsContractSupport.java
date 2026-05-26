@@ -230,15 +230,7 @@ abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   }
 
   private String canonicalizeOwnedTemporaryPaths(String text) {
-    String absolutePath = tempDirectory.toAbsolutePath().toString();
-    String canonicalized = text;
-    for (String variant :
-        List.of(absolutePath, absolutePath.replace('\\', '/'), absolutePath.replace('/', '\\'))) {
-      canonicalized = canonicalized.replace(variant, "/absolute/path");
-    }
-    return canonicalized.contains("/absolute/path")
-        ? canonicalized.replace('\\', '/')
-        : canonicalized;
+    return text.contains("<redacted>") ? text.replace('\\', '/') : text;
   }
 
   private static String canonicalizeGeneratedIds(String text) {

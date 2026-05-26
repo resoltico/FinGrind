@@ -7,6 +7,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.Directory
 import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.testing.Test
@@ -156,14 +157,24 @@ internal object ManagedSqliteProvisioningLogic {
         val sourceCheckoutBuildRoot = project.rootProject.layout.buildDirectory.get().asFile.toPath()
         val sourceCheckoutRuntimeDistribution =
             DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRoot)
+        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
+        val mainRuntimeModulePath = sourceSets.getByName("main").runtimeClasspath
         project.tasks.withType<Test>().configureEach {
             dependsOn(provisioning.prepareTask)
+            useModulePath(mainRuntimeModulePath)
+            addSqliteNamedModule()
+            enableSqliteNamedNativeAccess()
             systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
             systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
             systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())
         }
         project.tasks.withType<JavaExec>().configureEach {
             dependsOn(provisioning.prepareTask)
+            if (mainModule.orNull == null) {
+                useModulePath(mainRuntimeModulePath)
+                addSqliteNamedModule()
+            }
+            enableSqliteNamedNativeAccess()
             systemProperty("fingrind.runtime.distribution", sourceCheckoutRuntimeDistribution)
             systemProperty("fingrind.source-checkout.root", repositoryRoot.toString())
             systemProperty("fingrind.source-checkout.build-root", sourceCheckoutBuildRoot.toString())

@@ -57,6 +57,10 @@ gradlePlugin {
             id = "dev.erst.fingrind.jazzer-conventions"
             implementationClass = "dev.erst.fingrind.buildlogic.FinGrindJazzerConventionsPlugin"
         }
+        register("fingrindCliDistribution") {
+            id = "dev.erst.fingrind.cli-distribution"
+            implementationClass = "dev.erst.fingrind.buildlogic.FinGrindCliDistributionPlugin"
+        }
     }
 }
 

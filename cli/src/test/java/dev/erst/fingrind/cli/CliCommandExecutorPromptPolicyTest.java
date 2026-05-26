@@ -148,7 +148,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             new CliDiagnosticsWriter(utf8PrintStream(diagnosticsStream)),
             new CliWorkflowDoubleSupport.ExplodingWorkflow(
                 new IllegalStateException("workflow should not run")),
-            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.46.0", fixedClock())));
+            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.47.0", fixedClock())));
     CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(

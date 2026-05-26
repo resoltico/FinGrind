@@ -1,4 +1,7 @@
 import dev.erst.fingrind.buildlogic.DistributionContractReader
+import dev.erst.fingrind.buildlogic.addOpens
+import dev.erst.fingrind.buildlogic.addReads
+import dev.erst.fingrind.buildlogic.patchModule
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Sync
@@ -25,6 +28,12 @@ val managedSqliteBuildContractPath =
     )
 val protectedBookFixturePath =
     project.layout.projectDirectory.dir("src/test/resources/dev/erst/fingrind/sqlite/fixtures")
+val sqliteWhiteBoxTestPatchPath =
+    files(
+        sourceSets["main"].output.resourcesDir,
+        sourceSets["test"].output,
+        sourceSets["testFixtures"].output,
+    )
 
 dependencies {
     implementation(libs.jackson.databind)
@@ -57,8 +66,11 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
             configurations.testRuntimeClasspath,
         )
     mainClass.set("dev.erst.fingrind.sqlite.SqliteProtectedBookFixtureGenerator")
-    jvmArgs("--enable-native-access=ALL-UNNAMED")
     args(protectedBookFixturePath.asFile.absolutePath)
+    patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
+    addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
+    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
+    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite.secret", "ALL-UNNAMED")
 }
 
 val stageRefreshedProtectedBookFixtureForTestRuntime =
@@ -75,7 +87,10 @@ tasks.named("refreshProtectedBookFixture") {
 
 tasks.named<Test>("test") {
     dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
-    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
+    addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
+    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
+    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite.secret", "ALL-UNNAMED")
 }
 
 tasks.named<Pmd>("pmdTest") {

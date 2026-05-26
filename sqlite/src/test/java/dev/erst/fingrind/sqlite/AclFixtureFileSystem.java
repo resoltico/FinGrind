@@ -44,12 +44,12 @@ import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
 /** Minimal ACL-capable filesystem for exercising platform-specific security code. */
-final class AclFixtureFileSystem extends FileSystem {
+public final class AclFixtureFileSystem extends FileSystem {
   private final FileSystemProvider provider;
   private final Map<String, AclFixturePath> paths = new ConcurrentHashMap<>();
   private final Set<String> views;
-  final UserPrincipal owner = new AclFixturePrincipal("owner");
-  final GroupPrincipal group = new AclFixtureGroup("group");
+  public final UserPrincipal owner = new AclFixturePrincipal("owner");
+  public final GroupPrincipal group = new AclFixtureGroup("group");
   private @Nullable Consumer<AclFixturePath> pathInitializer;
   private boolean open = true;
 
@@ -58,16 +58,16 @@ final class AclFixtureFileSystem extends FileSystem {
     this.provider = new Provider(this);
   }
 
-  static AclFixtureFileSystem withViews(Set<String> views) {
+  public static AclFixtureFileSystem withViews(Set<String> views) {
     return new AclFixtureFileSystem(views);
   }
 
-  AclFixtureFileSystem onPathCreated(Consumer<AclFixturePath> initializer) {
+  public AclFixtureFileSystem onPathCreated(Consumer<AclFixturePath> initializer) {
     pathInitializer = Objects.requireNonNull(initializer, "initializer");
     return this;
   }
 
-  AclFixturePath path(String value) {
+  public AclFixturePath path(String value) {
     return paths.computeIfAbsent(
         value,
         key -> {
@@ -78,6 +78,14 @@ final class AclFixtureFileSystem extends FileSystem {
           }
           return createdPath;
         });
+  }
+
+  public UserPrincipal owner() {
+    return owner;
+  }
+
+  public GroupPrincipal group() {
+    return group;
   }
 
   @Override

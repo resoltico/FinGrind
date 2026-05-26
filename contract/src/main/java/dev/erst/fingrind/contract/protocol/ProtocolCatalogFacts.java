@@ -68,10 +68,11 @@ final class ProtocolCatalogFacts {
               "preflight steps are validation-only steps and do not commit postings"));
   private static final List<StorageEngine> STORAGE_ENGINES =
       List.of(RUNTIME_SURFACE_CONTRACT.storageEngine());
-  private static final List<ProtocolSuccessStatus> SUCCESS_STATUSES =
-      List.of(ProtocolSuccessStatus.values());
-  private static final List<ProtocolRejectionStatus> REJECTION_STATUSES =
-      List.of(ProtocolRejectionStatus.values());
+  private static final List<ProtocolEnvelopeStatus> ENVELOPE_STATUSES =
+      List.of(ProtocolEnvelopeStatus.values());
+  private static final ProtocolEnvelopeStatus SUCCESS_STATUS = ProtocolEnvelopeStatus.OK;
+  private static final ProtocolEnvelopeStatus REJECTION_STATUS = ProtocolEnvelopeStatus.REJECTED;
+  private static final ProtocolEnvelopeStatus ERROR_STATUS = ProtocolEnvelopeStatus.ERROR;
   private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
       RuntimeEnvironmentContract.current();
   private static final ProtectedBookFormatContract PROTECTED_BOOK_FORMAT_CONTRACT =
@@ -109,12 +110,20 @@ final class ProtocolCatalogFacts {
     return STORAGE_ENGINES;
   }
 
-  static List<ProtocolSuccessStatus> successStatuses() {
-    return SUCCESS_STATUSES;
+  static List<ProtocolEnvelopeStatus> envelopeStatuses() {
+    return ENVELOPE_STATUSES;
   }
 
-  static List<ProtocolRejectionStatus> rejectionStatuses() {
-    return REJECTION_STATUSES;
+  static ProtocolEnvelopeStatus successStatus() {
+    return SUCCESS_STATUS;
+  }
+
+  static ProtocolEnvelopeStatus rejectionStatus() {
+    return REJECTION_STATUS;
+  }
+
+  static ProtocolEnvelopeStatus errorStatus() {
+    return ERROR_STATUS;
   }
 
   static RuntimeEnvironmentContract runtimeEnvironmentContract() {

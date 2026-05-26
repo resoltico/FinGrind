@@ -53,17 +53,15 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
     assertTrue(help.contains("Command Groups"));
-    assertTrue(help.contains("Start Here"));
+    assertTrue(help.contains("Do Next"));
     assertTrue(
         containsCollapsedText(
-            help, "Run '" + CliInvocationText.commandExample(OperationId.HELP) + " <command>'"));
-    assertTrue(containsCollapsedText(help, "syntax, request guidance, and runnable examples."));
+            help, CliInvocationText.commandExample(OperationId.HELP) + " <command>"));
     assertTrue(
         containsCollapsedText(
             help,
-            "Run '"
-                + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                + " --output json'"));
+            CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                + " --output json --detail compact"));
     assertFalse(help.contains("Guidance"));
     assertFalse(help.contains("declare-account-cash.json"));
     assertFalse(help.contains("provenance.idempotencyKey"));
@@ -78,12 +76,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("Invocation"));
-    assertTrue(help.contains("Quick Start"));
+    assertTrue(help.contains("Do Next"));
     assertTrue(help.contains("Request Document"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
-    assertTrue(help.contains("Scaffold command"));
-    assertTrue(help.contains("Machine schema"));
+    assertTrue(help.contains("Scaffold"));
+    assertTrue(help.contains("JSON contract"));
     assertFalse(help.contains("Output Contract"));
   }
 
@@ -122,7 +120,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         new ObjectMapper().readTree(capabilitiesOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", capabilitiesEnvelope.path("status").stringValue());
     assertEquals("minimal", capabilitiesEnvelope.path("payload").path("detail").stringValue());
-    assertTrue(capabilitiesEnvelope.path("payload").path("commands").isArray());
+    assertTrue(capabilitiesEnvelope.path("payload").path("requestInput").isObject());
+    assertTrue(capabilitiesEnvelope.path("payload").path("kernelScope").isTextual());
+    assertTrue(capabilitiesEnvelope.path("payload").path("builtInStatements").isArray());
   }
 
   @Test
@@ -185,7 +185,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("Invocation"));
-    assertTrue(help.contains("Quick Start"));
+    assertTrue(help.contains("Do Next"));
   }
 
   @Test
@@ -371,7 +371,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       String launcher =
           CliInvocationText.launcherCommandFor(
               runtimeDistribution, System.getProperty("os.name", ""));
-      assertTrue(help.contains("Start Here"), help);
+      assertTrue(help.contains("Do Next"), help);
       assertTrue(containsCollapsedText(help, launcher + " help <command>"), help);
       assertFalse(help.contains("Source Checkout Launcher"), help);
       assertFalse(help.contains("Developer Raw JAR"), help);
@@ -736,7 +736,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
     assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").stringValue());
     assertEquals(
-        CliPublicPaths.normalizedValue(keyFilePath), payload.path("bookKeyFile").stringValue());
+        CliPublicPaths.redactedValue(keyFilePath), payload.path("bookKeyFile").stringValue());
     assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(

@@ -18,14 +18,14 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Minimal path implementation for the test ACL filesystem. */
-final class AclFixturePath implements Path {
+public final class AclFixturePath implements Path {
   private final AclFixtureFileSystem fileSystem;
   private final String value;
-  boolean exists;
-  boolean regularFile;
-  @Nullable AclFixtureView aclView;
-  @Nullable AclFileAttributeView overrideAclView;
-  Set<PosixFilePermission> posixPermissions = Set.of();
+  public boolean exists;
+  public boolean regularFile;
+  public @Nullable AclFixtureView aclView;
+  public @Nullable AclFileAttributeView overrideAclView;
+  public Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
@@ -38,6 +38,18 @@ final class AclFixturePath implements Path {
     this.fileSystem = fileSystem;
     this.value = value;
     this.aclView = new AclFixtureView(fileSystem.owner);
+  }
+
+  public boolean existsValue() {
+    return exists;
+  }
+
+  public boolean regularFileValue() {
+    return regularFile;
+  }
+
+  public @Nullable AclFixtureView aclViewValue() {
+    return aclView;
   }
 
   AclFixturePath failDeleteIfExistsWith(IOException exception) {

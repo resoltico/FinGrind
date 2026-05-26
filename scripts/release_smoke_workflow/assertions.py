@@ -363,7 +363,7 @@ def assert_operator_queries_and_reports(
     reported_pdf_path = extract_pdf_exported_path(pdf_stderr)
     require(
         reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
-        f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
+        f"{config.label} PDF export diagnostics did not report the redacted public path hint",
     )
     account_ledger_header, account_ledger_rows = parse_csv_rows(
         account_ledger_csv_output, f"{config.label} account-ledger CSV output"
@@ -424,14 +424,14 @@ def assert_operator_queries_and_reports(
         and opening_entry["effectiveDateFrom"] == "2026-04-07"
         and opening_entry["effectiveDateTo"] == "2026-04-08"
         and opening_entry["currencyCode"] == "EUR"
-        and opening_entry["openingDebitTotal"] == "0.00"
-        and opening_entry["openingCreditTotal"] == "0.00"
-        and opening_entry["openingNetAmount"] == "0.00"
-        and opening_entry["openingBalanceSide"] == "ZERO"
-        and opening_entry["closingDebitTotal"] == "10.00"
-        and opening_entry["closingCreditTotal"] == "4.00"
-        and opening_entry["closingNetAmount"] == "6.00"
-        and opening_entry["closingBalanceSide"] == "DEBIT"
+        and opening_entry["openingDebitTotal"] == ""
+        and opening_entry["openingCreditTotal"] == ""
+        and opening_entry["openingNetAmount"] == ""
+        and opening_entry["openingBalanceSide"] == ""
+        and opening_entry["closingDebitTotal"] == ""
+        and opening_entry["closingCreditTotal"] == ""
+        and opening_entry["closingNetAmount"] == ""
+        and opening_entry["closingBalanceSide"] == ""
         and opening_entry["effectiveDate"] == "2026-04-07"
         and opening_entry["recordedAt"] != ""
         and opening_entry["postingId"] != ""
@@ -473,14 +473,14 @@ def assert_operator_queries_and_reports(
         and adjustment_entry["effectiveDateFrom"] == "2026-04-07"
         and adjustment_entry["effectiveDateTo"] == "2026-04-08"
         and adjustment_entry["currencyCode"] == "EUR"
-        and adjustment_entry["openingDebitTotal"] == "0.00"
-        and adjustment_entry["openingCreditTotal"] == "0.00"
-        and adjustment_entry["openingNetAmount"] == "0.00"
-        and adjustment_entry["openingBalanceSide"] == "ZERO"
-        and adjustment_entry["closingDebitTotal"] == "10.00"
-        and adjustment_entry["closingCreditTotal"] == "4.00"
-        and adjustment_entry["closingNetAmount"] == "6.00"
-        and adjustment_entry["closingBalanceSide"] == "DEBIT"
+        and adjustment_entry["openingDebitTotal"] == ""
+        and adjustment_entry["openingCreditTotal"] == ""
+        and adjustment_entry["openingNetAmount"] == ""
+        and adjustment_entry["openingBalanceSide"] == ""
+        and adjustment_entry["closingDebitTotal"] == ""
+        and adjustment_entry["closingCreditTotal"] == ""
+        and adjustment_entry["closingNetAmount"] == ""
+        and adjustment_entry["closingBalanceSide"] == ""
         and adjustment_entry["effectiveDate"] == "2026-04-08"
         and adjustment_entry["recordedAt"] != ""
         and adjustment_entry["postingId"] != ""
@@ -545,6 +545,9 @@ def reported_artifact_path_matches(
 ) -> bool:
     expected_path = expected_reported_artifact_path(config, smoke_path)
     if normalize_reported_path(reported_path) == normalize_reported_path(expected_path):
+        return True
+    expected_public_hint = f"<redacted>/{smoke_path.local_path.name}"
+    if normalize_reported_path(reported_path) == normalize_reported_path(expected_public_hint):
         return True
     reported_components = normalized_path_components(reported_path)
     relative_components = normalized_path_components(smoke_path.relative_path.as_posix())

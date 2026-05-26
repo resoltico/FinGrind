@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;

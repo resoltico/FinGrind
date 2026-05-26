@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
@@ -25,8 +26,8 @@ final class SqlitePeriodSummaryReader {
     int postingLineCount = 0;
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.loadPeriodSummaryLines(query))) {
-      statement.bindText(1, query.effectiveDateFrom().toString());
-      statement.bindText(2, query.effectiveDateTo().toString());
+      statement.bindText(1, CanonicalTemporalText.formatLocalDate(query.effectiveDateFrom()));
+      statement.bindText(2, CanonicalTemporalText.formatLocalDate(query.effectiveDateTo()));
       if (query.postingCoverage().isNonClosingOnly()) {
         statement.bindText(
             3, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.46.0"
+version: "0.47.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-25"
+updated: "2026-05-26"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
@@ -616,8 +616,9 @@ public record PublicPathHint(String value)
 - `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed
   as missing, blank SQLite, foreign SQLite, unsupported format version, incomplete FinGrind book,
   or protected-book verification failure
-- `PublicPathHint`: redacts filesystem paths to `<redacted>` or `<redacted>/<file-name>` so
-  public maintenance output proves which artifact failed without leaking absolute operator paths
+- `PublicPathHint`: redacts filesystem paths to `<redacted>` or
+  `<redacted>/<smallest-distinguishing-trailing-context>` so public maintenance output proves
+  which artifact failed without leaking absolute operator paths
 - Boundary: `BookMaintenanceRejection.ArtifactBusy` and
   `BookMaintenanceRejection.ArtifactVerificationFailed` use these types so backup, restore, and
   rekey-recovery refusals preserve artifact role, failure class, and redacted path hints as

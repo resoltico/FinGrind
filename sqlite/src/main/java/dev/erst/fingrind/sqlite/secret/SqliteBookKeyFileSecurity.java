@@ -1,4 +1,4 @@
-package dev.erst.fingrind.sqlite;
+package dev.erst.fingrind.sqlite.secret;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;

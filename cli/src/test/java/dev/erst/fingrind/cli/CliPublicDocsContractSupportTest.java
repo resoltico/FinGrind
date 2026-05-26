@@ -9,27 +9,22 @@ import tools.jackson.databind.JsonNode;
 class CliPublicDocsContractSupportTest extends CliPublicDocsContractSupport {
 
   @Test
-  void canonicalization_normalizesOwnedTemporaryPathsAcrossTextAndJsonFixtures() throws Exception {
-    String windowsStyleTempPath = tempDirectory.toAbsolutePath().toString().replace('/', '\\');
+  void canonicalization_preservesRedactedPublicPathHintsAcrossTextAndJsonFixtures()
+      throws Exception {
 
     assertEquals(
-        "/absolute/path/books/acme.sqlite",
-        canonicalizeExampleFixture(windowsStyleTempPath + "\\books\\acme.sqlite"));
+        "<redacted>/books/acme.sqlite",
+        canonicalizeExampleFixture("<redacted>\\books\\acme.sqlite"));
 
     JsonNode jsonFixture =
         OBJECT_MAPPER.readTree(
             """
             {
-              "bookFile": "%s\\\\books\\\\acme.sqlite"
+              "bookFile": "<redacted>\\\\books\\\\acme.sqlite"
             }
-            """
-                .formatted(jsonEscaped(windowsStyleTempPath)));
+            """);
     assertEquals(
-        "{\"bookFile\":\"/absolute/path/books/acme.sqlite\"}",
+        "{\"bookFile\":\"<redacted>/books/acme.sqlite\"}",
         canonicalizeJsonFixture(jsonFixture).toString());
-  }
-
-  private static String jsonEscaped(String text) {
-    return text.replace("\\", "\\\\");
   }
 }

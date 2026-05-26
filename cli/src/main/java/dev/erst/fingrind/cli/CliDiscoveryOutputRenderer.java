@@ -39,23 +39,15 @@ final class CliDiscoveryOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "Task guide",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.HELP)
-                        + " <command>' for syntax, request guidance, and runnable examples."),
+                    "Pick a command",
+                    CliInvocationText.commandExample(OperationId.HELP) + " <command>"),
                 List.of(
-                    "Machine contract",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json' for the canonical machine-readable command inventory."),
+                    "JSON contract",
+                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json --detail compact"),
                 List.of(
-                    "Runtime evidence",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
-                        + " --output json' for live runtime, distribution, and SQLite provenance facts."),
-                List.of(
-                    "Output defaults",
-                    "Selectable commands default to text on interactive terminals and json on redirected stdout. Use --output when a command advertises selectable formats.")),
+                    "Runtime check",
+                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json")),
             TEXT_WRAP_WIDTH);
     String commandGroups =
         CliTextFormat.renderKeyValueBlock(
@@ -65,19 +57,10 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Query and reports", joinCommandNames(commandCatalog.query())),
                 List.of("Write", joinCommandNames(commandCatalog.write()))),
             TEXT_WRAP_WIDTH);
-    String exitCodes =
-        CliTextFormat.renderKeyValueBlock(
-            helpDescriptor.exitCodes().stream()
-                .map(exitCode -> List.of(Integer.toString(exitCode.code()), exitCode.meaning()))
-                .toList(),
-            TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Help",
         joinSections(
-            header,
-            section("Start Here", startHere),
-            section("Command Groups", commandGroups),
-            section("Exit Codes", exitCodes)));
+            header, section("Do Next", startHere), section("Command Groups", commandGroups)));
   }
 
   private static String renderCommandHelpText(HelpDescriptor helpDescriptor) {
@@ -97,10 +80,10 @@ final class CliDiscoveryOutputRenderer {
         command.name().wireName(),
         joinSections(
             summary,
-            section("Quick Start", renderCommandExamples(operation)),
+            section("Do Next", renderCommandExamples(operation)),
+            requestGuidance,
             section("Invocation", usage),
-            section("Options", options),
-            requestGuidance));
+            section("Options", options)));
   }
 
   static String renderCapabilitiesText(CapabilitiesDescriptor capabilitiesDescriptor) {
@@ -118,38 +101,21 @@ final class CliDiscoveryOutputRenderer {
                     CliTextFormat.joined(
                         storageDescriptor.engines().stream().map(Object::toString).toList()))),
             TEXT_WRAP_WIDTH);
-    String useThisFor =
+    String kernelSummary =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "Use this page",
-                    "Inspect shared machine-surface entry points and request-document rules without the operator task guide."),
+                    "Kernel scope",
+                    displayKernelScope(capabilitiesDescriptor.bookkeepingKernel().scope())),
                 List.of(
-                    "One command help",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.HELP)
-                        + " <command> --output json' when you only need one command descriptor."),
+                    "Built-in statements",
+                    CliTextFormat.joined(
+                        capabilitiesDescriptor.bookkeepingKernel().builtInStatements())),
                 List.of(
-                    "Machine inventory",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json' for the canonical machine-readable inventory."),
-                List.of(
-                    "Runtime evidence",
-                    "Run '"
-                        + CliInvocationText.commandExample(OperationId.ENVIRONMENT)
-                        + " --output json' for live runtime and SQLite provenance facts.")),
-            TEXT_WRAP_WIDTH);
-    String machineSurfaces =
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Discovery guide", CliInvocationText.commandExample(OperationId.HELP)),
-                List.of(
-                    "Canonical inventory",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES) + " --output json"),
-                List.of(
-                    "Live runtime evidence",
-                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json"),
+                    "Currency model",
+                    capabilitiesDescriptor.currencyModel().scope()
+                        + " / "
+                        + capabilitiesDescriptor.currencyModel().multiCurrencyStatus()),
                 List.of(
                     "Command families",
                     Integer.toString(commandCatalog.discovery().size())
@@ -164,8 +130,7 @@ final class CliDiscoveryOutputRenderer {
     String requestInput =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of(
-                    "Selectable stdout flag", capabilitiesDescriptor.requestInput().outputOption()),
+                List.of("Output option", capabilitiesDescriptor.requestInput().outputOption()),
                 List.of("Book file flag", capabilitiesDescriptor.requestInput().bookFileOption()),
                 List.of(
                     "Passphrase routes",
@@ -184,9 +149,25 @@ final class CliDiscoveryOutputRenderer {
         "FinGrind Capabilities",
         joinSections(
             header,
-            section("Use This For", useThisFor),
-            section("Machine Surfaces", machineSurfaces),
-            section("Shared CLI Contract", requestInput)));
+            section("Executable Kernel", kernelSummary),
+            section("Shared Request Contract", requestInput),
+            section(
+                "JSON Contract",
+                CliTextFormat.renderKeyValueBlock(
+                    List.of(
+                        List.of(
+                            "Overview",
+                            CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                                + " --output json --detail compact"),
+                        List.of(
+                            "Per-command",
+                            CliInvocationText.commandExample(OperationId.HELP)
+                                + " <command> --output json"),
+                        List.of(
+                            "Runtime evidence",
+                            CliInvocationText.commandExample(OperationId.ENVIRONMENT)
+                                + " --output json")),
+                    TEXT_WRAP_WIDTH))));
   }
 
   static String renderEnvironmentText(EnvironmentDescriptor environmentDescriptor) {
@@ -294,6 +275,15 @@ final class CliDiscoveryOutputRenderer {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
   }
 
+  private static String displayKernelScope(String scope) {
+    return java.util.Arrays.stream(scope.strip().replace('-', ' ').replace('_', ' ').split("\\s+"))
+        .map(
+            token ->
+                Character.toUpperCase(token.charAt(0))
+                    + token.substring(1).toLowerCase(java.util.Locale.ROOT))
+        .collect(java.util.stream.Collectors.joining(" "));
+  }
+
   private static String pdfCapableReportSummary() {
     return String.join(
             ", ",
@@ -337,7 +327,13 @@ final class CliDiscoveryOutputRenderer {
     sections.add(
         commandExamples.isEmpty()
             ? "(none)"
-            : CliTextFormat.renderShellCommandBlock(commandExamples, TEXT_WRAP_WIDTH));
+            : CliTextFormat.renderShellCommandBlock(
+                List.of(primaryCommandExample(operation, commandExamples)), TEXT_WRAP_WIDTH));
+    if (commandExamples.size() > 1) {
+      sections.add(
+          CliTextFormat.wrap(
+              "More variants: JSON help descriptor and published examples.", TEXT_WRAP_WIDTH));
+    }
     if (!notes.isEmpty()) {
       sections.add(
           "Notes:"
@@ -345,6 +341,18 @@ final class CliDiscoveryOutputRenderer {
               + CliTextFormat.renderBulletedBlock(notes, TEXT_WRAP_WIDTH));
     }
     return String.join(System.lineSeparator() + System.lineSeparator(), sections);
+  }
+
+  private static String primaryCommandExample(
+      ProtocolOperation operation, List<String> commandExamples) {
+    return commandExamples.stream()
+        .filter(example -> containsOperationToken(example, operation.id().wireName()))
+        .findFirst()
+        .orElseGet(commandExamples::getFirst);
+  }
+
+  private static boolean containsOperationToken(String example, String operationWireName) {
+    return java.util.Arrays.stream(example.split("\\s+")).anyMatch(operationWireName::equals);
   }
 
   private static String indent(String text, String prefix) {
@@ -373,7 +381,7 @@ final class CliDiscoveryOutputRenderer {
     return section(
         "Request Document",
         requestFileGuidance(
-            "Provide one JSON object through --request-file <path|-> and use the scaffold command to generate one valid starting document.",
+            "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + operationId.wireName(),
@@ -389,7 +397,7 @@ final class CliDiscoveryOutputRenderer {
     return section(
         "Request Document",
         requestFileGuidance(
-            "Provide one JSON object through --request-file <path|-> and use the scaffold command to generate one valid starting document.",
+            "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_ACCOUNT.wireName(),
@@ -405,7 +413,7 @@ final class CliDiscoveryOutputRenderer {
     return section(
         "Request Document",
         requestFileGuidance(
-            "Provide one ledger plan JSON object through --request-file <path|-> and use the scaffold command to generate one valid starting document.",
+            "Pass one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
             OperationId.EXECUTE_PLAN));
   }
@@ -433,10 +441,10 @@ final class CliDiscoveryOutputRenderer {
       String introduction, String shortcutCommand, OperationId operationId) {
     List<String> blocks = new ArrayList<>();
     blocks.add(CliTextFormat.wrap(introduction, TEXT_WRAP_WIDTH));
-    blocks.add(labeledLiteralBlock("Scaffold command", List.of(shortcutCommand), "$ "));
+    blocks.add(labeledLiteralBlock("Scaffold", List.of(shortcutCommand), "$ "));
     blocks.add(
         labeledLiteralBlock(
-            "Machine schema",
+            "JSON contract",
             List.of(
                 CliInvocationText.commandExample(OperationId.HELP)
                     + " "
