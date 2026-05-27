@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -34,16 +33,8 @@ final class SqliteBookMaintenanceLease {
 
   private SqliteBookMaintenanceLease() {}
 
-  /** Intent for acquiring one maintenance lease around an existing artifact or a managed target. */
-  enum LeaseIntent {
-    /** Lease one artifact that must already exist as a regular file. */
-    EXISTING_ARTIFACT,
-    /** Lease one target path that FinGrind may prepare and publish into. */
-    MANAGED_TARGET
-  }
-
-  static ProtectedBookLeaseAcquisition acquire(
-      Path normalizedArtifactPath, LeaseIntent leaseIntent) {
+  static SqliteProtectedBookLeaseAcquisition acquire(
+      Path normalizedArtifactPath, SqliteMaintenanceLeaseIntent leaseIntent) {
     Objects.requireNonNull(normalizedArtifactPath, "normalizedArtifactPath");
     Objects.requireNonNull(leaseIntent, "leaseIntent");
     if (currentThreadOwns(normalizedArtifactPath)) {
@@ -54,22 +45,22 @@ final class SqliteBookMaintenanceLease {
     }
     Path leasePath = leasePath(normalizedArtifactPath);
     try {
-      if (leaseIntent == LeaseIntent.MANAGED_TARGET) {
+      if (leaseIntent == SqliteMaintenanceLeaseIntent.MANAGED_TARGET) {
         SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedArtifactPath);
       } else {
         requireExistingArtifact(normalizedArtifactPath);
       }
-      LeaseFileHandle leaseFileHandle = acquireLeaseFile(leasePath);
+      SqliteLeaseFileHandle leaseFileHandle = acquireLeaseFile(leasePath);
       if (leaseFileHandle == null) {
-        return new LeaseBusy(normalizedArtifactPath);
+        return new SqliteLeaseBusy(normalizedArtifactPath);
       }
-      if (SqliteNativeBootstrap.activeConnectionCount(normalizedArtifactPath) > 0
-          || SqliteNativeBootstrap.hasExternalActiveConnections(normalizedArtifactPath)) {
+      if (SqliteNativeRuntimeActivity.activeConnectionCount(normalizedArtifactPath) > 0
+          || SqliteNativeRuntimeActivity.hasExternalActiveConnections(normalizedArtifactPath)) {
         leaseFileHandle.closeAndDelete();
-        return new LeaseBusy(normalizedArtifactPath);
+        return new SqliteLeaseBusy(normalizedArtifactPath);
       }
       OWNED_ARTIFACT_PATHS.get().add(normalizedArtifactPath);
-      return new HeldLease(normalizedArtifactPath, leaseFileHandle);
+      return new SqliteHeldLease(normalizedArtifactPath, leaseFileHandle, OWNED_ARTIFACT_PATHS);
     } catch (IOException exception) {
       releaseLeaseFileQuietly(leasePath);
       throw new IllegalStateException(
@@ -140,13 +131,14 @@ final class SqliteBookMaintenanceLease {
     return normalizedArtifactPath.resolveSibling(fileName + LEASE_SUFFIX);
   }
 
-  private static @Nullable LeaseFileHandle acquireLeaseFile(Path leasePath) throws IOException {
+  private static @Nullable SqliteLeaseFileHandle acquireLeaseFile(Path leasePath)
+      throws IOException {
     for (int attempt = 0; attempt < MAX_STALE_RECLAIM_ATTEMPTS; attempt++) {
       switch (tryCreateLeaseFile(leasePath)) {
-        case CreatedLease(LeaseFileHandle leaseFileHandle) -> {
+        case SqliteCreatedLease(SqliteLeaseFileHandle leaseFileHandle) -> {
           return leaseFileHandle;
         }
-        case ExistingLease ignored -> {
+        case SqliteExistingLease ignored -> {
           if (leaseLooksLive(leasePath)) {
             return null;
           }
@@ -157,7 +149,7 @@ final class SqliteBookMaintenanceLease {
     return null;
   }
 
-  private static LeaseCreation tryCreateLeaseFile(Path leasePath) throws IOException {
+  private static SqliteLeaseCreation tryCreateLeaseFile(Path leasePath) throws IOException {
     try {
       Files.writeString(
           leasePath,
@@ -170,9 +162,9 @@ final class SqliteBookMaintenanceLease {
         releaseLeaseFileQuietly(leasePath);
         throw exception;
       }
-      return new CreatedLease(new LeaseFileHandle(leasePath));
+      return new SqliteCreatedLease(new SqliteLeaseFileHandle(leasePath));
     } catch (FileAlreadyExistsException ignored) {
-      return new ExistingLease(leasePath);
+      return new SqliteExistingLease(leasePath);
     }
   }
 
@@ -196,83 +188,12 @@ final class SqliteBookMaintenanceLease {
     Files.deleteIfExists(leasePath);
   }
 
-  private static void releaseLeaseFileQuietly(Path leasePath) {
+  static void releaseLeaseFileQuietly(Path leasePath) {
     try {
       releaseLeaseFile(leasePath);
     } catch (IOException exception) {
       SqliteBestEffort.reportCleanupFailure(
           "deleting one SQLite maintenance lease file", exception);
-    }
-  }
-
-  /** Lease-acquisition result for one protected-book artifact path. */
-  sealed interface ProtectedBookLeaseAcquisition permits HeldLease, LeaseBusy {
-    /** Returns the normalized artifact path that this acquisition outcome belongs to. */
-    Path artifactPath();
-  }
-
-  /** Busy outcome when one exclusive maintenance lease could not be acquired. */
-  record LeaseBusy(Path artifactPath) implements ProtectedBookLeaseAcquisition {
-    LeaseBusy {
-      Objects.requireNonNull(artifactPath, "artifactPath");
-    }
-  }
-
-  /** Held maintenance lease that blocks concurrent destructive workflows on one artifact path. */
-  static final class HeldLease
-      implements ProtectedBookLeaseAcquisition, ProtectedBookMaintenanceStore.HeldLease {
-    private final Path artifactPath;
-    private final LeaseFileHandle leaseFileHandle;
-    private boolean closed;
-
-    private HeldLease(Path artifactPath, LeaseFileHandle leaseFileHandle) {
-      this.artifactPath = Objects.requireNonNull(artifactPath, "artifactPath");
-      this.leaseFileHandle = Objects.requireNonNull(leaseFileHandle, "leaseFileHandle");
-    }
-
-    @Override
-    public Path artifactPath() {
-      return artifactPath;
-    }
-
-    @Override
-    public void close() {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      OWNED_ARTIFACT_PATHS.get().remove(artifactPath);
-      leaseFileHandle.closeAndDelete();
-    }
-  }
-
-  /** Result of attempting to claim a cooperative maintenance lease file for one artifact path. */
-  private sealed interface LeaseCreation permits CreatedLease, ExistingLease {}
-
-  /** Freshly created lease file owned by the current workflow. */
-  private record CreatedLease(LeaseFileHandle leaseFileHandle) implements LeaseCreation {
-    private CreatedLease {
-      Objects.requireNonNull(leaseFileHandle, "leaseFileHandle");
-    }
-  }
-
-  /** Pre-existing lease file discovered while another workflow owns the artifact path. */
-  private record ExistingLease(Path leasePath) implements LeaseCreation {
-    private ExistingLease {
-      Objects.requireNonNull(leasePath, "leasePath");
-    }
-  }
-
-  /** Detached lease-file owner that survives until the workflow closes it. */
-  private static final class LeaseFileHandle {
-    private final Path leasePath;
-
-    private LeaseFileHandle(Path leasePath) {
-      this.leasePath = Objects.requireNonNull(leasePath, "leasePath");
-    }
-
-    private void closeAndDelete() {
-      releaseLeaseFileQuietly(leasePath);
     }
   }
 }

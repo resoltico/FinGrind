@@ -375,6 +375,8 @@ class ReportingContractTypesTest {
         descriptors.stream()
             .anyMatch(descriptor -> "interactive-prompt-unavailable".equals(descriptor.code())));
     assertTrue(
+        descriptors.stream().anyMatch(descriptor -> "internal-error".equals(descriptor.code())));
+    assertTrue(
         descriptors.stream()
             .anyMatch(descriptor -> "managed-runtime-failure".equals(descriptor.code())));
     assertTrue(

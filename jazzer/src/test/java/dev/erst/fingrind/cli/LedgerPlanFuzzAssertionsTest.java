@@ -22,12 +22,30 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Covers deterministic ledger-plan assertion helpers shared by Jazzer harnesses. */
 class LedgerPlanFuzzAssertionsTest {
+  @Test
+  void journalScanSummary_rejects_negative_and_inverted_counts() throws Exception {
+    IllegalArgumentException negativeListCount =
+        assertThrows(IllegalArgumentException.class, () -> newJournalScanSummary(-1, 0));
+    assertTrue(String.valueOf(negativeListCount.getMessage()).contains("must be non-negative"));
+
+    IllegalArgumentException negativeStructuredCount =
+        assertThrows(IllegalArgumentException.class, () -> newJournalScanSummary(0, -1));
+    assertTrue(
+        String.valueOf(negativeStructuredCount.getMessage()).contains("must be non-negative"));
+
+    IllegalArgumentException invertedCounts =
+        assertThrows(IllegalArgumentException.class, () -> newJournalScanSummary(0, 1));
+    assertTrue(String.valueOf(invertedCounts.getMessage()).contains("must be non-negative"));
+  }
+
   @Test
   void executeAndAssert_returns_success_rejected_and_assertionFailed_snapshots() {
     LedgerPlan successPlan =
@@ -800,5 +818,22 @@ class LedgerPlanFuzzAssertionsTest {
         .formatted(functionalCurrency)
         .indent(16)
         .stripLeading();
+  }
+
+  private static Object newJournalScanSummary(
+      int listQueryStepCount, int structuredListQueryStepCount)
+      throws ReflectiveOperationException {
+    Class<?> summaryClass =
+        Class.forName("dev.erst.fingrind.cli.LedgerPlanFuzzAssertions$JournalScanSummary");
+    Constructor<?> constructor = summaryClass.getDeclaredConstructor(int.class, int.class);
+    constructor.setAccessible(true);
+    try {
+      return constructor.newInstance(listQueryStepCount, structuredListQueryStepCount);
+    } catch (InvocationTargetException exception) {
+      if (exception.getCause() instanceof IllegalArgumentException illegalArgumentException) {
+        throw illegalArgumentException;
+      }
+      throw exception;
+    }
   }
 }

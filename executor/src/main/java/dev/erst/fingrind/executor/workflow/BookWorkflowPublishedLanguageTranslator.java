@@ -14,8 +14,12 @@ import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import java.util.Objects;
 
 /** Translates between the public execute-plan schema and the local workflow model. */
@@ -178,19 +182,16 @@ public final class BookWorkflowPublishedLanguageTranslator {
           new BookWorkflowStep.InspectBook(fromPublished(inspectBook.stepId()));
       case LedgerStep.ListAccounts listAccounts ->
           new BookWorkflowStep.ListAccounts(
-              fromPublished(listAccounts.stepId()),
-              BookkeepingReadPublishedLanguageTranslator.fromPublished(listAccounts.query()));
+              fromPublished(listAccounts.stepId()), fromPublished(listAccounts.query()));
       case LedgerStep.GetPosting getPosting ->
           new BookWorkflowStep.GetPosting(
               fromPublished(getPosting.stepId()), getPosting.postingId());
       case LedgerStep.ListPostings listPostings ->
           new BookWorkflowStep.ListPostings(
-              fromPublished(listPostings.stepId()),
-              BookkeepingReadPublishedLanguageTranslator.fromPublished(listPostings.query()));
+              fromPublished(listPostings.stepId()), fromPublished(listPostings.query()));
       case LedgerStep.AccountBalance accountBalance ->
           new BookWorkflowStep.AccountBalance(
-              fromPublished(accountBalance.stepId()),
-              BookkeepingReadPublishedLanguageTranslator.fromPublished(accountBalance.query()));
+              fromPublished(accountBalance.stepId()), fromPublished(accountBalance.query()));
       case LedgerStep.Assert assertion ->
           new BookWorkflowStep.Assert(
               fromPublished(assertion.stepId()), fromPublished(assertion.assertion()));
@@ -225,6 +226,36 @@ public final class BookWorkflowPublishedLanguageTranslator {
               balanceEquals.netAmount(),
               balanceEquals.balanceSide());
     };
+  }
+
+  private static AccountRegistryQuery fromPublished(
+      dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new AccountRegistryQuery(
+        query.limit(),
+        query.cursor().map(cursor -> new AccountRegistryCursor(cursor.accountCode())));
+  }
+
+  private static PostingHistoryQuery fromPublished(
+      dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new PostingHistoryQuery(
+        query.accountCode(),
+        query.effectiveDateRange(),
+        query.limit(),
+        query
+            .cursor()
+            .map(
+                cursor ->
+                    new PostingHistoryCursor(
+                        cursor.effectiveDate(), cursor.recordedAt(), cursor.postingId())));
+  }
+
+  private static AccountBalanceCriteria fromPublished(
+      dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new AccountBalanceCriteria(
+        query.accountCode(), query.effectiveDateRange(), query.postingCoverage());
   }
 
   private static LedgerAssertionKind assertionKind(BookWorkflowAssertion assertion) {

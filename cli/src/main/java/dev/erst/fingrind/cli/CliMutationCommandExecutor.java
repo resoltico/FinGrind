@@ -12,16 +12,23 @@ import java.util.Optional;
 /** Executes posting and ledger-plan commands that consume request payloads. */
 final class CliMutationCommandExecutor {
   private final CliRequestReader requestReader;
-  private final CliResponseWriter responseWriter;
-  private final CliBookWorkflow bookWorkflow;
+  private final CliMutationResponseWriter mutationResponseWriter;
+  private final CliPlanResponseWriter planResponseWriter;
+  private final CliFailureResponseWriter failureWriter;
+  private final CliBookMutationWorkflow mutationWorkflow;
 
   CliMutationCommandExecutor(
       CliRequestReader requestReader,
-      CliResponseWriter responseWriter,
-      CliBookWorkflow bookWorkflow) {
+      CliMutationResponseWriter mutationResponseWriter,
+      CliPlanResponseWriter planResponseWriter,
+      CliFailureResponseWriter failureWriter,
+      CliBookMutationWorkflow mutationWorkflow) {
     this.requestReader = Objects.requireNonNull(requestReader, "requestReader");
-    this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
-    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    this.mutationResponseWriter =
+        Objects.requireNonNull(mutationResponseWriter, "mutationResponseWriter");
+    this.planResponseWriter = Objects.requireNonNull(planResponseWriter, "planResponseWriter");
+    this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
+    this.mutationWorkflow = Objects.requireNonNull(mutationWorkflow, "mutationWorkflow");
   }
 
   int runExecutePlanCommand(
@@ -32,17 +39,17 @@ final class CliMutationCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, OutputMode.JSON, responseWriter));
+                        failure, OutputMode.JSON, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.executePlan(bookAccess, plan),
+        mutationWorkflow.executePlan(bookAccess, plan),
         OutputMode.JSON,
-        result -> responseWriter.writeLedgerPlanResult(result, resultDetail),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        result -> planResponseWriter.writeLedgerPlanResult(result, resultDetail),
+        CliPostingExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runPreflightEntryCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
@@ -51,17 +58,17 @@ final class CliMutationCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.preflight(bookAccess, command),
+        mutationWorkflow.preflight(bookAccess, command),
         outputMode,
-        result -> responseWriter.writePostEntryResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
+        CliPostingExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runPostEntryCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
@@ -70,16 +77,16 @@ final class CliMutationCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.commit(bookAccess, command),
+        mutationWorkflow.commit(bookAccess, command),
         outputMode,
-        result -> responseWriter.writePostEntryResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
+        CliPostingExitCodes::exitCodeFor,
+        failureWriter);
   }
 }

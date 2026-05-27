@@ -51,7 +51,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -289,7 +288,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT);
 
     List<String> ledgerTextRow =
-        CliQueryOutputFormatter.accountLedgerTextRow(cashAccount, ledgerEntry);
+        CliQueryRowFormatAccess.accountLedgerTextRow(cashAccount, ledgerEntry);
     assertEquals("2026-04-07", ledgerTextRow.get(0));
     assertEquals("Correction", ledgerTextRow.get(1));
     assertEquals("10.00", ledgerTextRow.get(2));
@@ -341,7 +340,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             Instant.parse("2026-04-07T10:15:30Z"));
     String generatedKeyText =
         CliMutationOutputRenderer.renderGeneratedBookKeyFileText(
-            new SqliteBookKeyFileGenerator.GeneratedKeyFile(
+            new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
                 Path.of("office/keys/book.key"), "base64url-no-padding", 256, "0600"));
     String openBookText =
         CliMutationOutputRenderer.renderOpenBookText(
@@ -393,14 +392,14 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountBalanceText.contains("Range"));
     assertTrue(
         accountBalanceCsv.contains(
-            "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
     assertTrue(trialBalanceText.contains("Trial Balance"));
     assertTrue(trialBalanceText.contains("As of"));
     assertTrue(trialBalanceText.contains("Balance state"));
     assertTrue(trialBalanceText.contains("Imbalanced"));
     assertTrue(
         trialBalanceCsv.contains(
-            "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
   }
 
   private static void assertLedgerOutputSamples(
@@ -414,8 +413,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("2000"));
     assertTrue(
         accountLedgerCsv.contains(
-            "rowKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
+            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(accountLedgerCsv.contains("entry,1000,\"Cash, reserve\",ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "counterpart-account,1000,\"Cash, reserve\",ASSET,ORDINARY,DEBIT,true"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {
@@ -427,27 +429,28 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(periodSummaryText.contains("Posting line count"));
     assertTrue(
         periodSummaryCsv.contains(
-            "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit"));
+            "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message"));
   }
 
   @Test
   void renderStatementAndFormatterHelpers_coverAllAccountTypeAndEmptySectionBranches() {
     assertEquals(
-        "Assets", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.ASSET));
+        "Assets", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.ASSET));
     assertEquals(
         "Liabilities",
-        CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.LIABILITY));
+        CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.LIABILITY));
     assertEquals(
-        "Equity", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.EQUITY));
+        "Equity", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.EQUITY));
     assertEquals(
-        "Revenue", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.REVENUE));
+        "Revenue", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.REVENUE));
     assertEquals(
-        "Expenses", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.EXPENSE));
-    assertEquals("Asset", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.ASSET));
-    assertEquals("Liability", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.LIABILITY));
-    assertEquals("Equity", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.EQUITY));
-    assertEquals("Revenue", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.REVENUE));
-    assertEquals("Expense", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.EXPENSE));
+        "Expenses", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.EXPENSE));
+    assertEquals("Asset", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.ASSET));
+    assertEquals(
+        "Liability", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.LIABILITY));
+    assertEquals("Equity", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.EQUITY));
+    assertEquals("Revenue", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.REVENUE));
+    assertEquals("Expense", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.EXPENSE));
 
     FinancialPositionReport emptyFinancialPosition =
         new FinancialPositionReport(
@@ -488,32 +491,16 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   private static int csvFieldCount(String row) {
-    int fieldCount = 1;
-    boolean insideQuotes = false;
-    int index = 0;
-    while (index < row.length()) {
-      char character = row.charAt(index);
-      if (character == '"') {
-        if (insideQuotes && index + 1 < row.length() && row.charAt(index + 1) == '"') {
-          index++;
-        } else {
-          insideQuotes = !insideQuotes;
-        }
-      } else if (character == ',' && !insideQuotes) {
-        fieldCount++;
-      }
-      index++;
-    }
-    return fieldCount;
+    return CliCsvFormat.csvFieldCount(row);
   }
 
   @Test
   void displayRowKind_labelsDeclaredAndDerivedRows() {
     assertEquals(
         "Current period result",
-        CliQueryOutputFormatter.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
+        CliQueryLabelFormatAccess.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
     assertEquals(
-        "Account", CliQueryOutputFormatter.displayRowKind(StatementLineKind.DECLARED_ACCOUNT));
+        "Account", CliQueryLabelFormatAccess.displayRowKind(StatementLineKind.DECLARED_ACCOUNT));
   }
 
   @Test
@@ -595,40 +582,42 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertEquals(
         "(derived)",
-        CliQueryOutputFormatter.displayStatementLineCode(
+        CliQueryLabelFormatAccess.displayStatementLineCode(
             "current-period-result", StatementLineKind.CURRENT_PERIOD_RESULT));
     assertEquals(
         "3000",
-        CliQueryOutputFormatter.displayStatementLineCode(
+        CliQueryLabelFormatAccess.displayStatementLineCode(
             "3000", StatementLineKind.DECLARED_ACCOUNT));
-    assertEquals("Direct", CliQueryOutputFormatter.displayPostingRoleText(directPostingFact));
-    assertEquals("Reversal", CliQueryOutputFormatter.displayPostingRoleText(postingFact));
-    assertEquals("(not a reversal)", CliQueryOutputFormatter.reversalTargetText(directPostingFact));
-    assertEquals("posting-0", CliQueryOutputFormatter.reversalTargetText(postingFact));
-    assertEquals("(derived)", CliQueryOutputFormatter.displayLineRole(Optional.empty()));
+    assertEquals("Direct", CliQueryLabelFormatAccess.displayPostingRoleText(directPostingFact));
+    assertEquals("Reversal", CliQueryLabelFormatAccess.displayPostingRoleText(postingFact));
     assertEquals(
-        "Contra", CliQueryOutputFormatter.displayLineRole(Optional.of(AccountRole.CONTRA)));
+        "(not a reversal)", CliQueryLabelFormatAccess.reversalTargetText(directPostingFact));
+    assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
+    assertEquals("(derived)", CliQueryLabelFormatAccess.displayLineRole(Optional.empty()));
     assertEquals(
-        "Header", CliQueryOutputFormatter.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
+        "Contra", CliQueryLabelFormatAccess.displayLineRole(Optional.of(AccountRole.CONTRA)));
     assertEquals(
-        "Postable", CliQueryOutputFormatter.displayAccountNodeKindLabel(AccountNodeKind.POSTABLE));
+        "Header", CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
+    assertEquals(
+        "Postable",
+        CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.POSTABLE));
     assertEquals(
         "cash-receipt document-idem-1 on 2026-04-07 at vault://fixtures/document-idem-1",
-        CliQueryOutputFormatter.postingSourceDocumentsText(postingFact));
+        CliQueryRowFormatAccess.postingSourceDocumentsText(postingFact));
     assertEquals(
-        "document-idem-1", CliQueryOutputFormatter.postingSourceDocumentIdsText(postingFact));
-    assertEquals("(none)", CliQueryOutputFormatter.postingApprovalsText(postingFact));
+        "document-idem-1", CliQueryRowFormatAccess.postingSourceDocumentIdsText(postingFact));
+    assertEquals("(none)", CliQueryRowFormatAccess.postingApprovalsText(postingFact));
     assertEquals(
         "manager-signoff approval-idem-1 by PERSON approver-approval-idem-1 APPROVED",
-        CliQueryOutputFormatter.postingApprovalsText(
+        CliQueryRowFormatAccess.postingApprovalsText(
             CliResponseWriterTestSupport.postingFactWithApproval()));
     assertEquals(
         List.of("EUR", "10.00", "4.00", "6.00", "DEBIT"),
-        CliQueryOutputFormatter.balanceCsvRow(balance));
+        CliQueryRowFormatAccess.balanceCsvRow(balance));
     assertEquals(
         List.of(
             "2026-04-07", "Correction", "Reversal", "10.00", "10.00", "1000, 2000", "posting-1"),
-        CliQueryOutputFormatter.postingRegisterTextRow(postingFact));
+        CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(
             "2900",
@@ -642,25 +631,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "4.00",
             "6.00",
             "DEBIT"),
-        CliQueryOutputFormatter.trialBalanceCsvRow(
+        CliQueryRowFormatAccess.trialBalanceCsvRow(
             new TrialBalanceRow(contraRevenueAccount, balance)));
     assertEquals(
-        List.of(
-            "2026-04-07",
-            "2026-04-07T10:15:30Z",
-            "posting-1",
-            "STANDARD",
-            "reversal",
-            "posting-0",
-            "EUR",
-            "10.00",
-            "4.00",
-            "6.00",
-            "DEBIT",
-            "1000, 2000"),
-        CliQueryOutputFormatter.accountLedgerCsvRow(
-            contraRevenueAccount,
-            accountLedgerReport(contraRevenueAccount, postingFact, balance).entries().getFirst()));
+        "1000, 2000",
+        CliQueryRowFormatAccess.counterpartAccounts(contraRevenueAccount, postingFact));
     assertEquals(
         List.of(
             "2900",
@@ -673,40 +648,43 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "4.00",
             "6.00",
             "DEBIT"),
-        CliQueryOutputFormatter.periodActivityCsvRow(
+        CliQueryRowFormatAccess.periodActivityCsvRow(
             new PeriodAccountActivityRow(contraRevenueAccount, balance)));
-    assertEquals("Contra", CliQueryOutputFormatter.displayAccountRoleLabel(AccountRole.CONTRA));
-    assertEquals("Standard", CliQueryOutputFormatter.displayPostingKind(PostingKind.STANDARD));
+    assertEquals("Contra", CliQueryLabelFormatAccess.displayAccountRoleLabel(AccountRole.CONTRA));
+    assertEquals("Standard", CliQueryLabelFormatAccess.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
         "Period result transfer",
-        CliQueryOutputFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
-    assertEquals(
-        "Opening balance", CliQueryOutputFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
-    assertEquals(
-        "Cash revenue",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.CASH_REVENUE));
-    assertEquals(
-        "Cash expense",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.CASH_EXPENSE));
-    assertEquals(
-        "Equity contribution",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.EQUITY_CONTRIBUTION));
-    assertEquals(
-        "Equity withdrawal",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.EQUITY_WITHDRAWAL));
+        CliQueryLabelFormatAccess.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
     assertEquals(
         "Opening balance",
-        CliQueryOutputFormatter.displayPostingOriginKind(
+        CliQueryLabelFormatAccess.displayPostingKind(PostingKind.OPENING_BALANCE));
+    assertEquals(
+        "Cash revenue",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.CASH_REVENUE));
+    assertEquals(
+        "Cash expense",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.CASH_EXPENSE));
+    assertEquals(
+        "Equity contribution",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EQUITY_CONTRIBUTION));
+    assertEquals(
+        "Equity withdrawal",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EQUITY_WITHDRAWAL));
+    assertEquals(
+        "Opening balance",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(
             PostingOriginKind.OPENING_BALANCE_ADJUSTMENT));
     assertEquals(
         "Correction",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.CORRECTION_ADJUSTMENT));
+        CliQueryLabelFormatAccess.displayPostingOriginKind(
+            PostingOriginKind.CORRECTION_ADJUSTMENT));
     assertEquals(
         "Reversal adjustment",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.REVERSAL_ADJUSTMENT));
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.REVERSAL_ADJUSTMENT));
     assertEquals(
         "Result transfer",
-        CliQueryOutputFormatter.displayPostingOriginKind(PostingOriginKind.PERIOD_RESULT_TRANSFER));
+        CliQueryLabelFormatAccess.displayPostingOriginKind(
+            PostingOriginKind.PERIOD_RESULT_TRANSFER));
   }
 
   @Test
@@ -790,90 +768,90 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
 
     assertEquals(
         "Current asset",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.CURRENT_ASSET));
     assertEquals(
         "Non-current asset",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_ASSET));
     assertEquals(
         "Current liability",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.CURRENT_LIABILITY));
     assertEquals(
         "Non-current liability",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_LIABILITY));
     assertEquals(
         "Contributed capital",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION));
     assertEquals(
         "Distributions",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL));
     assertEquals(
         "Contributed capital",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION));
     assertEquals(
         "Distributions",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL));
     assertEquals(
         "Contributed capital",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION));
     assertEquals(
         "Accumulated result",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESULT_HOLDING));
     assertEquals(
         "Accumulated result",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESULT_HOLDING));
     assertEquals(
         "Reserve",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESERVE));
     assertEquals(
         "(derived)",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(Optional.empty()));
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(Optional.empty()));
     assertEquals(
         "Other equity",
-        CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+        CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.OTHER_EQUITY));
     assertEquals(
         "Operating revenue",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OPERATING_REVENUE));
     assertEquals(
         "Other revenue",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OTHER_REVENUE));
     assertEquals(
         "Finance income",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.FINANCE_INCOME));
     assertEquals(
         "Cost of sales",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.COST_OF_SALES));
     assertEquals(
         "Operating expense",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OPERATING_EXPENSE));
     assertEquals(
         "Depreciation and amortization",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION));
     assertEquals(
         "Finance expense",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.FINANCE_EXPENSE));
     assertEquals(
         "Other expense",
-        CliQueryOutputFormatter.displayProfitAndLossLineClassification(
+        CliQueryLabelFormatAccess.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OTHER_EXPENSE));
 
     assertTrue(text.contains("Contributed capital"));
@@ -943,13 +921,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(financialPositionText.contains("Cash without Totals"));
     assertTrue(financialPositionText.contains("Equity"));
     assertTrue(financialPositionText.contains("Section totals"));
+    assertTrue(financialPositionText.contains("Empty sections"));
     assertTrue(financialPositionText.contains("Liabilities"));
-    assertTrue(financialPositionText.contains("No lines matched the selected scope."));
     assertFalse(financialPositionText.contains("Comparative Financial Position"));
     assertTrue(incomeStatementText.contains("Revenue without Totals"));
     assertTrue(incomeStatementText.contains("Expenses"));
     assertTrue(incomeStatementText.contains("Section totals"));
-    assertTrue(incomeStatementText.contains("No lines matched the selected scope."));
+    assertTrue(incomeStatementText.contains("Empty sections"));
     assertFalse(incomeStatementText.contains("Comparative Income Statement"));
   }
 
@@ -980,383 +958,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("System", CliPostingOutputRenderer.displayWireLabel("SYSTEM"));
     assertEquals("Internal", CliPostingOutputRenderer.displayWireLabel("INTERNAL"));
     assertEquals("agent batch", CliPostingOutputRenderer.displayWireLabel("AGENT_BATCH"));
-  }
-
-  @Test
-  void reportRenderers_andBalanceFormatter_renderComparativeBranches() {
-    DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
-    CurrencyBalance eurDebitBalance = eurDebitBalance();
-    TrialBalanceRow currentRow = new TrialBalanceRow(cashAccount, eurDebitBalance);
-    TrialBalanceRow comparativeRow =
-        new TrialBalanceRow(
-            cashAccount,
-            CliResponseWriterTestSupport.currencyBalance(
-                "EUR", "7.00", "1.00", "6.00", BalanceSide.DEBIT));
-    TrialBalanceReport comparativeTrialBalance =
-        trialBalanceReport(
-            Optional.of(LocalDate.parse("2026-04-30")),
-            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(currentRow),
-            List.of(comparativeRow));
-    IncomeStatementReport comparativeTotalsOnlyIncomeStatement =
-        new IncomeStatementReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            standardOnly(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(eurDebitBalance));
-    ChangesInEquityReport partialComparativeEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(eurDebitBalance),
-            List.of());
-
-    String trialBalanceText =
-        CliReportOutputRenderer.renderTrialBalanceText(comparativeTrialBalance);
-    String trialBalanceCsv = CliReportOutputRenderer.renderTrialBalanceCsv(comparativeTrialBalance);
-    String incomeStatementText =
-        CliReportOutputRenderer.renderIncomeStatementText(comparativeTotalsOnlyIncomeStatement);
-    String changesInEquityText =
-        CliReportOutputRenderer.renderChangesInEquityText(partialComparativeEquityReport);
-
-    assertEquals(
-        "EUR 6.00 DEBIT", CliQueryOutputFormatter.displayBalance(comparativeRow.balance()));
-    assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
-    assertTrue(trialBalanceCsv.contains("comparative"));
-    assertTrue(incomeStatementText.contains("Comparative Income Statement"));
-    assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
-    assertTrue(changesInEquityText.contains("Comparative Changes In Equity"));
-    assertTrue(changesInEquityText.contains("Comparative movement totals"));
-  }
-
-  @Test
-  void renderChangesInEquityText_omitsComparativeSectionWhenComparativeDataIsAbsent() {
-    ChangesInEquityReport nonComparativeReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(nonComparativeReport);
-
-    assertTrue(rendered.contains("Changes In Equity"));
-    assertTrue(rendered.contains("Outcome"));
-    assertTrue(rendered.contains("No equity lines matched the selected scope."));
-    assertFalse(rendered.contains("Comparative Changes In Equity"));
-  }
-
-  @Test
-  void renderChangesInEquityText_rendersComparativeSectionWhenOnlyClosingTotalsExist() {
-    CurrencyBalance comparativeClosing =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "0.00", "8.00", "8.00", BalanceSide.CREDIT);
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(comparativeClosing));
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
-
-    assertTrue(rendered.contains("Comparative Changes In Equity"));
-    assertTrue(rendered.contains("Comparative closing totals"));
-  }
-
-  @Test
-  void renderChangesInEquityText_rendersComparativeSectionWhenOnlyOpeningTotalsExist() {
-    CurrencyBalance comparativeOpening =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT);
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(comparativeOpening),
-            List.of(),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
-
-    assertTrue(rendered.contains("Comparative Changes In Equity"));
-    assertTrue(rendered.contains("Comparative opening totals"));
-  }
-
-  @Test
-  void renderChangesInEquityText_rendersComparativeSectionWhenOnlyMovementTotalsExist() {
-    CurrencyBalance comparativeMovement =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "0.00", "5.00", "5.00", BalanceSide.CREDIT);
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(comparativeMovement),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
-
-    assertTrue(rendered.contains("Comparative Changes In Equity"));
-    assertTrue(rendered.contains("Comparative movement totals"));
-  }
-
-  @Test
-  void renderChangesInEquityText_rendersComparativeRowsWithoutSyntheticTotalsBlock() {
-    CurrencyBalance zeroBalance =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO);
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(
-                new dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow(
-                    "equity-rollforward",
-                    "Equity rollforward",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.empty(),
-                    Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
-                    StatementLineKind.DECLARED_ACCOUNT,
-                    zeroBalance,
-                    zeroBalance,
-                    zeroBalance)),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
-
-    assertTrue(rendered.contains("Comparative Changes In Equity"));
-    assertTrue(rendered.contains("Equity rollforward"));
-    assertFalse(rendered.contains("Comparative opening totals"));
-    assertFalse(rendered.contains("Comparative movement totals"));
-    assertFalse(rendered.contains("Comparative closing totals"));
-  }
-
-  @Test
-  void renderChangesInEquityText_rendersHeaderSummaryWhenOnlyCurrentTotalsExist() {
-    CurrencyBalance openingBalance =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT);
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of(openingBalance),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityText(report);
-
-    assertTrue(rendered.contains("Changes In Equity"));
-    assertTrue(rendered.contains("Opening totals"));
-    assertFalse(rendered.contains("Comparative Changes In Equity"));
-  }
-
-  @Test
-  void reportSurfacePolicy_detectsTrialBalanceAndCurrentEquityComparatives() {
-    DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
-    TrialBalanceReport nonComparativeTrialBalance =
-        trialBalanceReport(
-            Optional.of(LocalDate.parse("2026-04-30")),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(new TrialBalanceRow(cashAccount, eurDebitBalance())),
-            List.of());
-    ChangesInEquityReport nonCurrentEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-    ChangesInEquityReport openingOnlyEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of(
-                CliResponseWriterTestSupport.currencyBalance(
-                    "EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT)),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-    ChangesInEquityReport movementOnlyEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(
-                CliResponseWriterTestSupport.currencyBalance(
-                    "EUR", "0.00", "3.00", "3.00", BalanceSide.CREDIT)),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-    ChangesInEquityReport closingOnlyEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(
-                CliResponseWriterTestSupport.currencyBalance(
-                    "EUR", "0.00", "8.00", "8.00", BalanceSide.CREDIT)),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-
-    assertFalse(CliReportSurfacePolicy.hasComparative(nonComparativeTrialBalance));
-    assertTrue(
-        CliReportSurfacePolicy.hasComparative(
-            trialBalanceReport(
-                nonComparativeTrialBalance.bookIdentity(),
-                Optional.of(LocalDate.parse("2026-04-30")),
-                EffectiveDateRange.unbounded(),
-                allPostingKinds(),
-                nonComparativeTrialBalance.rows(),
-                List.of(new TrialBalanceRow(cashAccount, eurDebitBalance())))));
-    assertFalse(CliReportSurfacePolicy.hasCurrent(nonCurrentEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(openingOnlyEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(movementOnlyEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(closingOnlyEquityReport));
-  }
-
-  @Test
-  void reportSurfacePolicy_treatsRowsOrTotalsAsRenderableStatementSections() {
-    CurrencyBalance balance = eurDebitBalance();
-
-    assertFalse(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
-            new FinancialPositionSection(AccountType.ASSET, List.of(), List.of())));
-    assertTrue(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
-            new FinancialPositionSection(
-                AccountType.ASSET,
-                List.of(
-                    new FinancialPositionRow(
-                        "1000",
-                        "Cash",
-                        AccountType.ASSET,
-                        Optional.of(AccountRole.ORDINARY),
-                        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                        StatementLineKind.DECLARED_ACCOUNT,
-                        balance)),
-                List.of())));
-    assertTrue(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
-            new FinancialPositionSection(AccountType.ASSET, List.of(), List.of(balance))));
-
-    assertFalse(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
-            new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of())));
-    assertTrue(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
-            new IncomeStatementSection(
-                AccountType.EXPENSE,
-                List.of(
-                    new IncomeStatementRow(
-                        "5100",
-                        "Software",
-                        AccountType.EXPENSE,
-                        Optional.of(AccountRole.ORDINARY),
-                        ProfitAndLossLineClassification.OPERATING_EXPENSE,
-                        StatementLineKind.DECLARED_ACCOUNT,
-                        balance)),
-                List.of())));
-    assertTrue(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
-            new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of(balance))));
   }
 
   private static PostingFact directPostingFact() {

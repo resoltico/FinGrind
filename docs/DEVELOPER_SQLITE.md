@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,7 +44,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `14`, owned by `BookFormatContract`
+- the current supported book format is `21`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
@@ -331,8 +331,9 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   errors such as `protected-book-verification-failed`, `invalid-book-key-file`, or
   `interactive-prompt-unavailable`
 - other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
-  `storage-runtime-failure`, while managed runtime bootstrap failures become
-  `managed-runtime-failure`
+  `storage-runtime-failure`, managed runtime bootstrap failures become
+  `managed-runtime-failure`, and uncategorized software defects above those families publish the
+  opaque `internal-error` envelope instead of one raw runtime message
 
 ## Book Protection Contract
 

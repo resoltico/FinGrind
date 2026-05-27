@@ -33,7 +33,7 @@ class RegressionSeedCatalogAuditTest {
         JazzerReplayRequestFixtures.basicValidRequest(),
         "posting duplicate");
 
-    RegressionSeedAuditReport fullAudit = RegressionSeedCatalog.audit(projectDirectory);
+    RegressionSeedAuditReport fullAudit = RegressionSeedAuditor.audit(projectDirectory);
     assertEquals(2, fullAudit.totalSeedCount());
     assertEquals(1, fullAudit.uniqueInputContentCount());
     assertEquals(0, fullAudit.orphanedInputCount());
@@ -46,7 +46,7 @@ class RegressionSeedCatalogAuditTest {
             .anyMatch(path -> "duplicate_cli.json".equals(path.getFileName().toString())));
 
     RegressionSeedAuditReport cliAudit =
-        RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
     assertEquals(1, cliAudit.totalSeedCount());
     assertEquals(1, cliAudit.targets().size());
     assertEquals("cli-request", cliAudit.targets().getFirst().targetKey());
@@ -72,7 +72,7 @@ class RegressionSeedCatalogAuditTest {
         "unique cli seed");
 
     RegressionSeedAuditReport cliAudit =
-        RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
     assertEquals(1, cliAudit.totalSeedCount());
     assertEquals(0, cliAudit.duplicateContentGroups().size());
   }
@@ -97,7 +97,7 @@ class RegressionSeedCatalogAuditTest {
         "unique sqlite");
 
     List<RegressionSeedDuplicateContent> duplicateGroups =
-        RegressionSeedCatalog.duplicateContentGroups(projectDirectory);
+        RegressionSeedDigests.duplicateContentGroups(projectDirectory);
 
     assertEquals(1, duplicateGroups.size());
     assertEquals(2, duplicateGroups.getFirst().inputPaths().size());
@@ -125,7 +125,7 @@ class RegressionSeedCatalogAuditTest {
     Files.writeString(
         orphanInput, JazzerReplayRequestFixtures.invalidDuplicateIdempotencyKeyRequest(), UTF_8);
 
-    RegressionSeedAuditReport fullAudit = RegressionSeedCatalog.audit(projectDirectory);
+    RegressionSeedAuditReport fullAudit = RegressionSeedAuditor.audit(projectDirectory);
     assertEquals(1, fullAudit.totalSeedCount());
     assertEquals(1, fullAudit.uniqueInputContentCount());
     assertEquals(1, fullAudit.orphanedInputCount());
@@ -148,7 +148,7 @@ class RegressionSeedCatalogAuditTest {
 
     assertEquals(
         List.of(orphanInput.toAbsolutePath().normalize()),
-        RegressionSeedCatalog.allInputPaths(projectDirectory));
+        RegressionSeedPaths.allInputPaths(projectDirectory));
 
     Path normalizedPath = orphanInput.toAbsolutePath().normalize();
     assertThrows(
@@ -184,7 +184,7 @@ class RegressionSeedCatalogAuditTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                RegressionSeedCatalog.sha256Hex(
+                RegressionSeedDigests.sha256Hex(
                     "raw".getBytes(UTF_8),
                     () -> {
                       throw new NoSuchAlgorithmException("missing");
@@ -195,7 +195,7 @@ class RegressionSeedCatalogAuditTest {
   @Test
   void audit_returns_empty_report_for_harnesses_without_committed_inputs() throws Exception {
     RegressionSeedAuditReport emptyAudit =
-        RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
 
     assertEquals(0, emptyAudit.totalSeedCount());
     assertEquals(0, emptyAudit.uniqueInputContentCount());
@@ -208,7 +208,7 @@ class RegressionSeedCatalogAuditTest {
   void audit_reports_malformed_metadata_references_and_json_seed_bodies() throws Exception {
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(projectDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 
@@ -240,7 +240,7 @@ class RegressionSeedCatalogAuditTest {
                     JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8)))));
 
     RegressionSeedAuditReport audit =
-        RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
 
     assertEquals(0, audit.totalSeedCount());
     assertEquals(0, audit.uniqueInputContentCount());
@@ -259,7 +259,7 @@ class RegressionSeedCatalogAuditTest {
   void audit_reports_unreadable_metadata_and_non_file_input_references() throws Exception {
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(projectDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 
@@ -279,7 +279,7 @@ class RegressionSeedCatalogAuditTest {
                     JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8)))));
 
     RegressionSeedAuditReport audit =
-        RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
 
     assertEquals(0, audit.totalSeedCount());
     assertEquals(2, audit.integrityProblemCount());
@@ -301,7 +301,7 @@ class RegressionSeedCatalogAuditTest {
   void audit_reports_target_mismatch_missing_inputs_and_unreadable_inputs() throws Exception {
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(projectDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 
@@ -347,7 +347,7 @@ class RegressionSeedCatalogAuditTest {
       Files.setPosixFilePermissions(unreadableInput, Set.of());
 
       RegressionSeedAuditReport audit =
-          RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+          RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
 
       assertEquals(0, audit.totalSeedCount());
       assertEquals(0, audit.orphanedInputCount());
@@ -370,7 +370,7 @@ class RegressionSeedCatalogAuditTest {
   void entries_accept_non_json_seed_inputs_without_trying_to_parse_them() throws Exception {
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(projectDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 
@@ -388,7 +388,7 @@ class RegressionSeedCatalogAuditTest {
                     JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8)))));
 
     List<RegressionSeedCatalogEntry> entries =
-        RegressionSeedCatalog.entries(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedEntries.entries(projectDirectory, JazzerHarness.cliRequest());
 
     assertEquals(1, entries.size());
     assertEquals(binaryInput.toAbsolutePath().normalize(), entries.getFirst().inputPath());
@@ -398,7 +398,7 @@ class RegressionSeedCatalogAuditTest {
   void audit_reports_unreadable_non_json_inputs_as_read_failures() throws Exception {
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(projectDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 
@@ -422,7 +422,7 @@ class RegressionSeedCatalogAuditTest {
       Files.setPosixFilePermissions(unreadableInput, Set.of());
 
       RegressionSeedAuditReport audit =
-          RegressionSeedCatalog.audit(projectDirectory, JazzerHarness.cliRequest());
+          RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
 
       assertEquals(0, audit.totalSeedCount());
       assertEquals(0, audit.orphanedInputCount());
@@ -455,7 +455,7 @@ class RegressionSeedCatalogAuditTest {
       ReplayExpectation expectation)
       throws Exception {
     Path inputDirectory = harness.inputDirectory(projectDirectory);
-    Path metadataDirectory = RegressionSeedCatalog.metadataDirectory(projectDirectory, harness);
+    Path metadataDirectory = RegressionSeedPaths.metadataDirectory(projectDirectory, harness);
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 

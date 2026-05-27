@@ -5,6 +5,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-05-27
+
+### Changed
+
+- Hard-broke the machine request contract onto one shared owner for request-field inventories.
+  Posting, declare-account, and ledger-plan parsers now read their accepted field sets from the
+  same contract-owned vocabulary that discovery publishes, and ledger-plan date bounds now enforce
+  the same canonical `YYYY-MM-DD` grammar as the rest of the machine request surface.
+- Hard-broke the CLI failure boundary so uncategorized software defects no longer publish one
+  generic runtime message. Public machine envelopes now expose the opaque `internal-error` code
+  with one error id, while full stack traces move to the diagnostics stream.
+- Hard-broke the CLI and executor publication seams away from omnibus routers. Discovery,
+  mutation, book-read, report, plan, and failure rendering now flow through narrower bounded
+  writers, while bookkeeping read pages, reports, and statements project through separate
+  published-language translators and matching focused tests instead of one coupled read-side
+  surface.
+- Hard-broke the posting-register and account-ledger CSV surfaces into normalized row-kind
+  contracts. One-to-many relations such as posting accounts, ledger counterpart accounts, source
+  documents, and approvals now publish as dedicated child rows instead of packed multi-value CSV
+  cells, and account-ledger opening and closing totals now live only in explicit summary rows.
+- Hard-broke discovery and operator help toward one clearer front door. `help --output json` and
+  `capabilities --output json` now default directly to the compact discovery tier, text help now
+  leads with `Start Here` / `Next Step` task guidance instead of mixing workflow and grammar
+  equally, and text capabilities now separate operator overview from machine-contract retrieval.
+- Hard-broke Java structural governance from convention-only discipline to mechanical repository
+  gates. PMD now fails god-class, method-count, complexity, and coupling violations; repo-owned
+  source-shape budgets fail oversized Java files; duplication checks reject large repeated
+  translation-heavy blocks; and architecture tests prove primary module boundaries and cycle
+  freedom.
+- Hard-broke the protected-book adapter and local verification tooling into narrower public seams.
+  Protected-book access now opens through dedicated administration, read, posting,
+  period-result-transfer, plan-execution, and rekey session families, while local Jazzer operator
+  commands now flow through focused replay, finding, seed-promotion, and seed-audit owners
+  instead of one broad utility surface.
+- Hard-broke CLI and PDF report rendering into report-family owners plus shared support for text
+  tables, statement sections, balance layouts, and page theming instead of multipurpose renderer
+  accumulation.
+
+### Fixed
+
+- Fixed the managed SQLite distribution contract to fail closed when required or forbidden compile
+  option lists are missing, null, malformed, blank, duplicated, or unexpectedly empty.
+- Fixed Python tool resolution so repository checks now require the exact pinned Python baseline
+  instead of probing unrelated local interpreter versions from `PATH`.
+- Fixed protected-book passphrase and rollback failure surfaces so key-file, prompt, and rollback
+  copy failures publish only redacted public path hints or opaque source labels such as `key file`,
+  `standard input`, and `interactive prompt`.
+- Fixed the user and developer docs to match the current `internal-error` contract, classified
+  runtime exit codes, diagnostics-stream repair flow, and the current protected-book format line.
+- Fixed the source-checkout launcher, release-smoke workflow, bundle field-audit harness, and
+  checked-in report examples so the verifier surface now proves wrapped help output, normalized
+  CSV/report empty and comparative contracts, and the canonical non-`--output` `execute-plan`
+  failure path.
+- Fixed text report and export churn across the read/report family. Account-ledger, trial-balance,
+  financial-position, income-statement, changes-in-equity, and period-summary surfaces now use
+  result-first text ordering, compact context sections, explicit empty-state language, and
+  message-bearing CSV empties with one `recordKind` envelope vocabulary.
+
 ## [0.47.0] - 2026-05-26
 
 ### Changed
@@ -2402,7 +2460,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.47.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.48.0...HEAD
+[0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0
 [0.47.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.47.0
 [0.46.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.46.0
 [0.45.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.45.0

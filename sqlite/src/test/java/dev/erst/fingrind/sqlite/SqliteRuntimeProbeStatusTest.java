@@ -72,11 +72,11 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertFalse(SqliteRuntime.loadedLibraryPath().isBlank());
     assertEquals(
         new SqliteProtectedBookFormatIntrospection.CipherSettings(
-            ProtocolCatalog.protectedBookFormat().cipher(),
-            ProtocolCatalog.protectedBookFormat().legacyMode(),
-            ProtocolCatalog.protectedBookFormat().legacyPageSize(),
-            ProtocolCatalog.protectedBookFormat().kdfIter(),
-            ProtocolCatalog.protectedBookFormat().plaintextHeaderSize()),
+            ProtocolCatalog.runtime().protectedBookFormat().cipher(),
+            ProtocolCatalog.runtime().protectedBookFormat().legacyMode(),
+            ProtocolCatalog.runtime().protectedBookFormat().legacyPageSize(),
+            ProtocolCatalog.runtime().protectedBookFormat().kdfIter(),
+            ProtocolCatalog.runtime().protectedBookFormat().plaintextHeaderSize()),
         SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(
             SqliteNativeBootstrap.api()));
   }

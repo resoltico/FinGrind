@@ -147,6 +147,34 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
     return new PrintStream(outputStream, false, StandardCharsets.UTF_8);
   }
 
+  protected static CliOutputChannel outputChannel(ByteArrayOutputStream outputStream) {
+    return new CliOutputChannel(utf8PrintStream(outputStream));
+  }
+
+  protected static CliFailureResponseWriter failureWriter(ByteArrayOutputStream outputStream) {
+    return new CliFailureResponseWriter(outputChannel(outputStream));
+  }
+
+  protected static CliDiscoveryResponseWriter discoveryWriter(ByteArrayOutputStream outputStream) {
+    return new CliDiscoveryResponseWriter(outputChannel(outputStream));
+  }
+
+  protected static CliMutationResponseWriter mutationWriter(ByteArrayOutputStream outputStream) {
+    return new CliMutationResponseWriter(outputChannel(outputStream));
+  }
+
+  protected static CliBookReadResponseWriter bookReadWriter(ByteArrayOutputStream outputStream) {
+    return new CliBookReadResponseWriter(outputChannel(outputStream));
+  }
+
+  protected static CliReportResponseWriter reportWriter(ByteArrayOutputStream outputStream) {
+    return new CliReportResponseWriter(outputChannel(outputStream));
+  }
+
+  protected static CliPlanResponseWriter planWriter(ByteArrayOutputStream outputStream) {
+    return new CliPlanResponseWriter(outputChannel(outputStream));
+  }
+
   static EnvironmentDescriptor environmentDescriptor(
       String runtimeDistribution,
       SqliteCompileOptionsVerificationStatus compileOptionsVerification,
@@ -172,18 +200,18 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
             RuntimeDistribution.fromWireValue(runtimeDistribution),
-            ProtocolCatalog.publicCliDistribution(),
-            ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
-            ProtocolCatalog.sourceCheckoutJava()),
+            ProtocolCatalog.distribution().publicCliDistribution(),
+            ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
-            ProtocolCatalog.storageDriver(),
-            ProtocolCatalog.storageEngine(),
-            ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.protectedBookFormat()),
+            ProtocolCatalog.runtime().storageDriver(),
+            ProtocolCatalog.runtime().storageEngine(),
+            ProtocolCatalog.runtime().bookProtectionMode(),
+            ProtocolCatalog.runtime().protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
-            ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+            ProtocolCatalog.runtime().sqliteLibraryMode(),
+            ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.REQUIRES_SECURE_MEMORY_SUPPORT,

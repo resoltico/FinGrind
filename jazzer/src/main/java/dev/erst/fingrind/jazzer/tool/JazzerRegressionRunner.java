@@ -90,7 +90,7 @@ public final class JazzerRegressionRunner {
     Objects.requireNonNull(errorWriter, "errorWriter must not be null");
     Objects.requireNonNull(replayExecutor, "replayExecutor must not be null");
 
-    List<Path> metadataPaths = RegressionSeedCatalog.metadataPaths(projectDirectory, harness);
+    List<Path> metadataPaths = RegressionSeedPaths.metadataPaths(projectDirectory, harness);
     if (metadataPaths.isEmpty()) {
       errorWriter.println(
           "No regression metadata entries were found for harness: " + harness.key());

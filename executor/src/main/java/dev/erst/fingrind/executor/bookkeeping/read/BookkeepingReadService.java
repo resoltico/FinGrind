@@ -24,12 +24,12 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -89,7 +89,7 @@ public final class BookkeepingReadService {
     return ifInitializedOutcome(
         () -> {
           Optional<BookkeepingQueryRejection> accountRejection =
-              accountRejection(query.accountCode());
+              BookkeepingReadQuerySupport.accountRejection(bookStore, query.accountCode());
           if (accountRejection.isPresent()) {
             return new BookkeepingReadOutcome.Rejected<PostingHistoryPage>(
                 accountRejection.orElseThrow());
@@ -117,7 +117,9 @@ public final class BookkeepingReadService {
   public BookkeepingReadOutcome<TrialBalanceView> trialBalance(TrialBalanceCriteria query) {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(trialBalanceView(query)));
+        () ->
+            new BookkeepingReadOutcome.Reported<>(
+                BookkeepingReadQuerySupport.trialBalanceView(bookStore, query)));
   }
 
   /** Computes one running ledger for the selected declared account. */
@@ -170,8 +172,7 @@ public final class BookkeepingReadService {
    * Returns the current result-transfer-rule selection for the initialized book's result-holding
    * account.
    */
-  public PeriodResultTransferPlanner.ResultHoldingSelection resultHoldingSelection(
-      BookIdentity bookIdentity) {
+  public ResultHoldingSelection resultHoldingSelection(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     return new PeriodResultTransferPlanner(
             KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy())
@@ -188,35 +189,6 @@ public final class BookkeepingReadService {
     return KernelAccountingRulesResolver.forBookIdentity(bookIdentity)
         .resultTransferPolicy()
         .resultHoldingLineClassification(bookIdentity);
-  }
-
-  private Optional<BookkeepingQueryRejection> accountRejection(Optional<AccountCode> accountCode) {
-    if (accountCode.isPresent() && bookStore.findAccount(accountCode.orElseThrow()).isEmpty()) {
-      return Optional.of(new BookkeepingQueryRejection.UnknownAccount(accountCode.orElseThrow()));
-    }
-    return Optional.empty();
-  }
-
-  private TrialBalanceView trialBalanceView(TrialBalanceCriteria query) {
-    TrialBalanceView currentView = bookStore.trialBalance(query);
-    var accountingRules = KernelAccountingRulesResolver.forBookIdentity(currentView.bookIdentity());
-    var comparativeRange =
-        accountingRules
-            .statementComparativePolicy()
-            .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateAsOf());
-    return new TrialBalanceView(
-        currentView.bookIdentity(),
-        currentView.effectiveDateAsOf(),
-        comparativeRange,
-        currentView.postingCoverage(),
-        currentView.rows(),
-        comparativeRange.effectiveDateTo().isPresent()
-            ? bookStore
-                .trialBalance(
-                    new TrialBalanceCriteria(
-                        comparativeRange.effectiveDateTo(), query.postingCoverage()))
-                .rows()
-            : List.of());
   }
 
   private <T> BookkeepingReadOutcome<T> ifInitializedOutcome(

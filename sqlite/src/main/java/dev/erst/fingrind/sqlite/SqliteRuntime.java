@@ -23,41 +23,44 @@ public final class SqliteRuntime {
   private static final Pattern PATH_TOKEN = Pattern.compile("([A-Za-z]:\\\\[^\\s]+|/[^\\s]+)");
   private static final String TOOLCHAIN_FINGERPRINT_FILE_NAME = "toolchain-fingerprint.json";
   private static final String BUILD_CONTRACT_FILE_NAME = "build-contract.json";
-  public static final String STORAGE_DRIVER = ProtocolCatalog.storageDriver().wireValue();
-  public static final String STORAGE_ENGINE = ProtocolCatalog.storageEngine().wireValue();
+  public static final String STORAGE_DRIVER = ProtocolCatalog.runtime().storageDriver().wireValue();
+  public static final String STORAGE_ENGINE = ProtocolCatalog.runtime().storageEngine().wireValue();
   public static final String BOOK_PROTECTION_MODE =
-      ProtocolCatalog.bookProtectionMode().wireValue();
-  public static final String DEFAULT_BOOK_CIPHER = ProtocolCatalog.defaultBookCipher().wireValue();
+      ProtocolCatalog.runtime().bookProtectionMode().wireValue();
+  public static final String DEFAULT_BOOK_CIPHER =
+      ProtocolCatalog.runtime().defaultBookCipher().wireValue();
   public static final String BUNDLE_HOME_SYSTEM_PROPERTY =
-      ProtocolCatalog.sqliteBundleHomeSystemProperty();
-  public static final String LIBRARY_MODE = ProtocolCatalog.sqliteLibraryMode().wireValue();
+      ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty();
+  public static final String LIBRARY_MODE =
+      ProtocolCatalog.runtime().sqliteLibraryMode().wireValue();
   public static final String REQUIRED_MINIMUM_SQLITE_VERSION =
-      ProtocolCatalog.requiredMinimumSqliteVersion();
+      ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion();
   public static final String REQUIRED_SQLITE3MC_VERSION =
-      ProtocolCatalog.requiredSqlite3mcVersion();
-  public static final String REQUIRED_SQLITE_SOURCE_ID = ProtocolCatalog.requiredSqliteSourceId();
+      ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion();
+  public static final String REQUIRED_SQLITE_SOURCE_ID =
+      ProtocolCatalog.managedSqlite().requiredSqliteSourceId();
   public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =
-      ProtocolCatalog.requiredSqliteCompileOptions();
+      ProtocolCatalog.managedSqlite().requiredCompileOptions();
   public static final List<String> FORBIDDEN_SQLITE_COMPILE_OPTIONS =
-      ProtocolCatalog.forbiddenSqliteCompileOptions();
+      ProtocolCatalog.managedSqlite().forbiddenCompileOptions();
   public static final boolean REQUIRES_SECURE_MEMORY_SUPPORT =
-      ProtocolCatalog.requiresSecureMemorySupport();
+      ProtocolCatalog.managedSqlite().requiresSecureMemorySupport();
 
   private SqliteRuntime() {}
 
   /** Reads the loaded SQLite library version through the Java 26 FFM bridge. */
   public static String sqliteVersion() {
-    return SqliteNativeBootstrap.sqliteVersion();
+    return SqliteNativeRuntimeMetadata.sqliteVersion();
   }
 
   /** Reads the loaded SQLite3 Multiple Ciphers version through the Java 26 FFM bridge. */
   public static String sqlite3MultipleCiphersVersion() {
-    return SqliteNativeBootstrap.sqlite3MultipleCiphersVersion();
+    return SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion();
   }
 
   /** Reads the loaded SQLite source identifier through the Java 26 FFM bridge. */
   public static String sqliteSourceId() {
-    return SqliteNativeBootstrap.sqliteSourceId();
+    return SqliteNativeRuntimeMetadata.sqliteSourceId();
   }
 
   /** Returns the provenance class for the loaded SQLite runtime artifact. */
@@ -79,7 +82,7 @@ public final class SqliteRuntime {
   public static Probe probe() {
     return probeConfiguredTarget(
         () ->
-            SqliteNativeRuntimePolicy.configuredLibraryTarget(
+            SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                 System.getenv("FINGRIND_SQLITE_LIBRARY"),
                 System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
@@ -144,9 +147,9 @@ public final class SqliteRuntime {
         () -> configuredLibraryTarget.mode(),
         () -> configuredLibraryTarget.provenance(),
         () -> configuredLibraryTarget.lookupTarget(),
-        SqliteNativeBootstrap::sqliteVersion,
-        SqliteNativeBootstrap::sqlite3MultipleCiphersVersion,
-        SqliteNativeBootstrap::sqliteSourceId,
+        SqliteNativeRuntimeMetadata::sqliteVersion,
+        SqliteNativeRuntimeMetadata::sqlite3MultipleCiphersVersion,
+        SqliteNativeRuntimeMetadata::sqliteSourceId,
         SqliteRuntime::failureDetail);
   }
 

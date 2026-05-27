@@ -1,337 +1,194 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
-import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 import org.jspecify.annotations.Nullable;
 
 /** Executes reporting CLI commands and exports optional PDF artifacts. */
 final class CliReportCommandExecutor {
-  private final CliResponseWriter responseWriter;
+  private final CliReportResponseWriter responseWriter;
+  private final CliFailureResponseWriter failureWriter;
   private final CliDiagnosticsWriter diagnosticsWriter;
-  private final CliBookWorkflow bookWorkflow;
+  private final CliBookReadWorkflow readWorkflow;
   private final CliPdfReportExporter pdfReportExporter;
 
   CliReportCommandExecutor(
-      CliResponseWriter responseWriter,
+      CliReportResponseWriter responseWriter,
+      CliFailureResponseWriter failureWriter,
       CliDiagnosticsWriter diagnosticsWriter,
-      CliBookWorkflow bookWorkflow,
+      CliBookReadWorkflow readWorkflow,
       CliPdfReportExporter pdfReportExporter) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
+    this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
     this.diagnosticsWriter = Objects.requireNonNull(diagnosticsWriter, "diagnosticsWriter");
-    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    this.readWorkflow = Objects.requireNonNull(readWorkflow, "readWorkflow");
     this.pdfReportExporter = Objects.requireNonNull(pdfReportExporter, "pdfReportExporter");
   }
 
   int runAccountBalanceCommand(
       BookAccess bookAccess, AccountBalanceQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.accountBalance(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath = exportAccountBalance(result, output.pdfOutPath());
-          responseWriter.writeAccountBalanceResult(
-              result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.accountBalance(bookAccess, query),
+        CliReportResultAccess::accountBalanceSnapshot,
+        pdfReportExporter::exportAccountBalance,
+        responseWriter::writeAccountBalanceResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runTrialBalanceCommand(
       BookAccess bookAccess, TrialBalanceQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.trialBalance(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath = exportTrialBalance(result, output.pdfOutPath());
-          responseWriter.writeTrialBalanceResult(result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.trialBalance(bookAccess, query),
+        CliReportResultAccess::trialBalanceReport,
+        pdfReportExporter::exportTrialBalance,
+        responseWriter::writeTrialBalanceResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runAccountLedgerCommand(
       BookAccess bookAccess, AccountLedgerQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.accountLedger(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath = exportAccountLedger(result, output.pdfOutPath());
-          responseWriter.writeAccountLedgerResult(
-              result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.accountLedger(bookAccess, query),
+        CliReportResultAccess::accountLedgerReport,
+        pdfReportExporter::exportAccountLedger,
+        responseWriter::writeAccountLedgerResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runPeriodSummaryCommand(
       BookAccess bookAccess, PeriodSummaryQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.periodSummary(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath = exportPeriodSummary(result, output.pdfOutPath());
-          responseWriter.writePeriodSummaryResult(
-              result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.periodSummary(bookAccess, query),
+        CliReportResultAccess::periodSummaryReport,
+        pdfReportExporter::exportPeriodSummary,
+        responseWriter::writePeriodSummaryResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runFinancialPositionCommand(
       BookAccess bookAccess, FinancialPositionQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.financialPosition(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath =
-              exportFinancialPosition(result, output.pdfOutPath());
-          responseWriter.writeFinancialPositionResult(
-              result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.financialPosition(bookAccess, query),
+        CliReportResultAccess::financialPositionReport,
+        pdfReportExporter::exportFinancialPosition,
+        responseWriter::writeFinancialPositionResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runIncomeStatementCommand(
       BookAccess bookAccess, IncomeStatementQuery query, CliCommand.ReportOutput output) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                output.outputMode(), bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.incomeStatement(bookAccess, query),
-        output.outputMode(),
-        result -> {
-          @Nullable Path exportedArtifactPath = exportIncomeStatement(result, output.pdfOutPath());
-          responseWriter.writeIncomeStatementResult(
-              result, output.outputMode(), exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
-        },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.incomeStatement(bookAccess, query),
+        CliReportResultAccess::incomeStatementReport,
+        pdfReportExporter::exportIncomeStatement,
+        responseWriter::writeIncomeStatementResult,
+        CliReportExitCodes::exitCodeFor);
   }
 
   int runChangesInEquityCommand(
       BookAccess bookAccess, ChangesInEquityQuery query, CliCommand.ReportOutput output) {
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.changesInEquity(bookAccess, query),
+        CliReportResultAccess::changesInEquityReport,
+        pdfReportExporter::exportChangesInEquity,
+        responseWriter::writeChangesInEquityResult,
+        CliReportExitCodes::exitCodeFor);
+  }
+
+  private <RESULT, REPORTED> int runReportCommand(
+      BookAccess bookAccess,
+      CliCommand.ReportOutput output,
+      Supplier<ContractDecision<RESULT>> resultSupplier,
+      Function<RESULT, @Nullable REPORTED> reportedValue,
+      ReportPdfExporter<REPORTED> pdfExporter,
+      ReportResultWriter<RESULT> writeResult,
+      ToIntFunction<RESULT> successExitCode) {
+    return runPromptedReportCommand(
+        bookAccess,
+        output,
+        resultSupplier,
+        result -> exportReportedResult(result, output.pdfOutPath(), reportedValue, pdfExporter),
+        (result, exportedArtifactPath) ->
+            writeResult.write(result, output.outputMode(), exportedArtifactPath),
+        successExitCode);
+  }
+
+  private <RESULT> int runPromptedReportCommand(
+      BookAccess bookAccess,
+      CliCommand.ReportOutput output,
+      Supplier<ContractDecision<RESULT>> resultSupplier,
+      Function<RESULT, @Nullable Path> exportAction,
+      BiConsumer<RESULT, @Nullable Path> writeResult,
+      ToIntFunction<RESULT> successExitCode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(
                 output.outputMode(), bookAccess.passphraseSource())
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), responseWriter));
+                        failure, output.outputMode(), failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.changesInEquity(bookAccess, query),
+        resultSupplier.get(),
         output.outputMode(),
         result -> {
-          @Nullable Path exportedArtifactPath = exportChangesInEquity(result, output.pdfOutPath());
-          responseWriter.writeChangesInEquityResult(
-              result, output.outputMode(), exportedArtifactPath);
+          @Nullable Path exportedArtifactPath = exportAction.apply(result);
+          writeResult.accept(result, exportedArtifactPath);
           writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        successExitCode,
+        failureWriter);
   }
 
-  private @Nullable Path exportAccountBalance(
-      AccountBalanceResult result, @Nullable Path outputPath) {
+  private <RESULT, REPORTED> @Nullable Path exportReportedResult(
+      RESULT result,
+      @Nullable Path outputPath,
+      Function<RESULT, @Nullable REPORTED> reportedValue,
+      ReportPdfExporter<REPORTED> pdfExporter) {
     if (outputPath == null) {
       return null;
     }
-    switch (result) {
-      case AccountBalanceResult.Reported reported -> {
-        return exportPdf(
-            outputPath,
-            () -> pdfReportExporter.exportAccountBalance(outputPath, reported.snapshot()));
-      }
-      case AccountBalanceResult.Rejected _ -> {
-        return null;
-      }
-    }
+    REPORTED reported = reportedValue.apply(result);
+    return reported == null
+        ? null
+        : exportPdf(outputPath, path -> pdfExporter.export(path, reported));
   }
 
-  private @Nullable Path exportTrialBalance(TrialBalanceResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case TrialBalanceResult.Reported reported -> {
-        return exportPdf(
-            outputPath, () -> pdfReportExporter.exportTrialBalance(outputPath, reported.report()));
-      }
-      case TrialBalanceResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportAccountLedger(
-      AccountLedgerResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case AccountLedgerResult.Reported reported -> {
-        return exportPdf(
-            outputPath, () -> pdfReportExporter.exportAccountLedger(outputPath, reported.report()));
-      }
-      case AccountLedgerResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportPeriodSummary(
-      PeriodSummaryResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case PeriodSummaryResult.Reported reported -> {
-        return exportPdf(
-            outputPath, () -> pdfReportExporter.exportPeriodSummary(outputPath, reported.report()));
-      }
-      case PeriodSummaryResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportFinancialPosition(
-      FinancialPositionResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case FinancialPositionResult.Reported reported -> {
-        return exportPdf(
-            outputPath,
-            () -> pdfReportExporter.exportFinancialPosition(outputPath, reported.report()));
-      }
-      case FinancialPositionResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportIncomeStatement(
-      IncomeStatementResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case IncomeStatementResult.Reported reported -> {
-        return exportPdf(
-            outputPath,
-            () -> pdfReportExporter.exportIncomeStatement(outputPath, reported.report()));
-      }
-      case IncomeStatementResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportChangesInEquity(
-      ChangesInEquityResult result, @Nullable Path outputPath) {
-    if (outputPath == null) {
-      return null;
-    }
-    switch (result) {
-      case ChangesInEquityResult.Reported reported -> {
-        return exportPdf(
-            outputPath,
-            () -> pdfReportExporter.exportChangesInEquity(outputPath, reported.report()));
-      }
-      case ChangesInEquityResult.Rejected _ -> {
-        return null;
-      }
-    }
-  }
-
-  private @Nullable Path exportPdf(Path outputPath, Runnable pdfExport) {
+  private @Nullable Path exportPdf(Path outputPath, Consumer<Path> pdfExport) {
     try {
-      pdfExport.run();
+      pdfExport.accept(outputPath);
       return outputPath.toAbsolutePath().normalize();
     } catch (RuntimeException exception) {
       diagnosticsWriter.writePdfExportWarning(exception);
@@ -343,5 +200,19 @@ final class CliReportCommandExecutor {
     if (outputPath != null && outputMode != OutputMode.JSON) {
       diagnosticsWriter.writePdfExportInfo(outputPath);
     }
+  }
+
+  /** Exports one reported read-side value into one PDF artifact path. */
+  @FunctionalInterface
+  private interface ReportPdfExporter<REPORTED> {
+    /** Writes one reported value into the requested PDF artifact path. */
+    void export(Path outputPath, REPORTED reported);
+  }
+
+  /** Writes one report-family result through the chosen output mode and artifact context. */
+  @FunctionalInterface
+  private interface ReportResultWriter<RESULT> {
+    /** Publishes one resolved report result and any exported artifact path. */
+    void write(RESULT result, OutputMode outputMode, @Nullable Path exportedArtifactPath);
   }
 }

@@ -2,6 +2,9 @@ package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedBookReplacement;
+import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -79,8 +82,7 @@ public final class ProtectedBookMaintenanceWorkflow {
                         normalizedAccess, normalizedBackupFilePath, normalizedBackupBookKeyFilePath)
                     .fold(
                         stagedBackupPair -> {
-                          try (ProtectedBookMaintenanceStore.StagedBackupPair ignoredStaged =
-                              stagedBackupPair) {
+                          try (StagedBackupPair ignoredStaged = stagedBackupPair) {
                             return stagedBackupPair
                                 .verifyInitializedBackup()
                                 .fold(
@@ -280,7 +282,7 @@ public final class ProtectedBookMaintenanceWorkflow {
             (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
         ProtectedBookMaintenanceStore.HeldLease ignoredBackupSource =
             (ProtectedBookMaintenanceStore.HeldLease) backupSourceLeaseAcquisition;
-        ProtectedBookMaintenanceStore.StagedBookReplacement stagedReplacement =
+        StagedBookReplacement stagedReplacement =
             store.stageReplacement(normalizedBackupFilePath, normalizedBookPath)) {
       ProtectedBookAccess stagedAccess =
           new ProtectedBookAccess(
@@ -344,7 +346,7 @@ public final class ProtectedBookMaintenanceWorkflow {
             (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
         ProtectedBookMaintenanceStore.HeldLease ignoredRollbackArtifact =
             (ProtectedBookMaintenanceStore.HeldLease) rollbackLeaseAcquisition;
-        ProtectedBookMaintenanceStore.StagedBookReplacement stagedReplacement =
+        StagedBookReplacement stagedReplacement =
             store.stageReplacement(selectedRollbackArtifact, normalizedBookPath)) {
       ProtectedBookAccess stagedAccess =
           new ProtectedBookAccess(
@@ -405,7 +407,7 @@ public final class ProtectedBookMaintenanceWorkflow {
             (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
         ProtectedBookMaintenanceStore.HeldLease ignoredRollbackArtifact =
             (ProtectedBookMaintenanceStore.HeldLease) rollbackLeaseAcquisition;
-        ProtectedBookMaintenanceStore.StagedRollbackArtifactDeletion stagedDeletion =
+        StagedRollbackArtifactDeletion stagedDeletion =
             store.stageRollbackArtifactDeletion(selectedRollbackArtifact)) {
       Instant recordedAt = clock.instant();
       return store
@@ -426,7 +428,7 @@ public final class ProtectedBookMaintenanceWorkflow {
   private MaintenanceDecision<ProtectedBookBackupOutcome> commitBackedUpPair(
       ProtectedBookAccess liveBookAccess,
       Instant recordedAt,
-      ProtectedBookMaintenanceStore.StagedBackupPair stagedBackupPair,
+      StagedBackupPair stagedBackupPair,
       Path normalizedBookPath,
       Path normalizedBackupFilePath,
       Path normalizedBackupBookKeyFilePath) {
@@ -451,7 +453,7 @@ public final class ProtectedBookMaintenanceWorkflow {
       ProtectedBookAccess liveBookAccess,
       Instant recordedAt,
       Path selectedRollbackArtifact,
-      ProtectedBookMaintenanceStore.StagedRollbackArtifactDeletion stagedDeletion) {
+      StagedRollbackArtifactDeletion stagedDeletion) {
     try {
       stagedDeletion.commit();
       return MaintenanceDecision.accepted(

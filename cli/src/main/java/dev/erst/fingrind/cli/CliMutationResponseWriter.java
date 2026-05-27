@@ -12,8 +12,8 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -30,8 +30,7 @@ final class CliMutationResponseWriter {
     switch (result) {
       case PostEntryResult.PreflightAccepted accepted ->
           outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(CliResponsePayloadMapper.preflightEnvelope(accepted)),
+              () -> outputChannel.writeEnvelope(CliEnvelopeMapper.preflightEnvelope(accepted)),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderPreflightAcceptedText(accepted)),
@@ -40,9 +39,7 @@ final class CliMutationResponseWriter {
               });
       case PostEntryResult.Committed committed ->
           outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.committedEnvelope(committed)),
+              () -> outputChannel.writeEnvelope(CliEnvelopeMapper.committedEnvelope(committed)),
               () ->
                   outputChannel.writeText(CliMutationOutputRenderer.renderCommittedText(committed)),
               () -> {
@@ -51,13 +48,13 @@ final class CliMutationResponseWriter {
       case PostEntryResult.PreflightRejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.postingRejectedEnvelope(
+              CliRejectionPayloadMapper.postingRejectedEnvelope(
                   rejected.requestIdempotencyKey().value(), rejected.rejection()),
               rejected.requestIdempotencyKey().value());
       case PostEntryResult.CommitRejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.postingRejectedEnvelope(
+              CliRejectionPayloadMapper.postingRejectedEnvelope(
                   rejected.requestIdempotencyKey().value(), rejected.rejection()),
               rejected.requestIdempotencyKey().value());
     }
@@ -69,11 +66,12 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.OpenBookPayload(
                               absolutePath(bookFilePath),
                               opened.initializedAt().toString(),
-                              CliBookPayloadMapper.bookIdentityPayload(opened.bookIdentity())))),
+                              CliBookInspectionPayloadMapper.bookIdentityPayload(
+                                  opened.bookIdentity())))),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderOpenBookText(bookFilePath, opened)),
@@ -84,17 +82,17 @@ final class CliMutationResponseWriter {
       case OpenBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
               null);
     }
   }
 
   void writeGenerateBookKeyFileResult(
-      SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile, OutputMode outputMode) {
+      GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(
+                CliEnvelopeMapper.successEnvelope(
                     new CliAdministrationJsonModels.GeneratedBookKeyFilePayload(
                         absolutePath(generatedKeyFile.bookKeyFilePath()),
                         generatedKeyFile.encoding(),
@@ -118,7 +116,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RekeyBookPayload(
                               absolutePath(rekeyed.bookFilePath()),
                               replacementPassphraseSourceKind(replacementPassphraseSource),
@@ -134,7 +132,7 @@ final class CliMutationResponseWriter {
       case RekeyBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
               null);
     }
   }
@@ -145,7 +143,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.BackupBookPayload(
                               absolutePath(backedUp.bookFilePath()),
                               absolutePath(backedUp.backupFilePath()),
@@ -159,7 +157,7 @@ final class CliMutationResponseWriter {
       case BackupBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
     }
   }
@@ -170,7 +168,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RestoreBookPayload(
                               absolutePath(restored.bookFilePath()),
                               absolutePath(restored.backupFilePath()),
@@ -185,7 +183,7 @@ final class CliMutationResponseWriter {
       case RestoreBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
     }
   }
@@ -196,7 +194,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.InspectRekeyRollbackPayload(
                               absolutePath(inspected.bookFilePath()),
                               inspected.rollbackArtifactPaths().stream()
@@ -212,7 +210,7 @@ final class CliMutationResponseWriter {
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
       default ->
           throw new IllegalArgumentException(
@@ -227,7 +225,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RestoreRekeyRollbackPayload(
                               absolutePath(restored.bookFilePath()),
                               absolutePath(restored.rollbackArtifactPath())))),
@@ -241,7 +239,7 @@ final class CliMutationResponseWriter {
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
       default ->
           throw new IllegalArgumentException(
@@ -256,7 +254,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.DeleteRekeyRollbackPayload(
                               absolutePath(deleted.bookFilePath()),
                               absolutePath(deleted.rollbackArtifactPath())))),
@@ -270,7 +268,7 @@ final class CliMutationResponseWriter {
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
               null);
       default ->
           throw new IllegalArgumentException(
@@ -285,8 +283,8 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountPayload(declared.account()))),
+                      CliEnvelopeMapper.successEnvelope(
+                          CliBookQueryPayloadMapper.accountPayload(declared.account()))),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderDeclaredAccountText(declared.account())),
@@ -297,7 +295,7 @@ final class CliMutationResponseWriter {
       case DeclareAccountResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
               null);
     }
   }
@@ -308,7 +306,7 @@ final class CliMutationResponseWriter {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.successEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.TransferredPeriodResultPayload(
                               closed.transferredPeriodResult().transferOrder(),
                               closed
@@ -340,7 +338,7 @@ final class CliMutationResponseWriter {
       case PeriodResultTransferResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
-              CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
               null);
     }
   }

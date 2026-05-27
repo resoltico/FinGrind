@@ -167,7 +167,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeCapabilities_usesMinimalDefaultPayload() throws IOException {
+  void writeCapabilities_usesCompactDefaultPayload() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeCapabilities(
@@ -178,17 +178,13 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "Command-line double-entry bookkeeping with one protected book per accounting entity")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
-    assertEquals("minimal", payload.path("detail").stringValue());
-    assertTrue(payload.has("kernelScope"));
-    assertTrue(payload.has("builtInStatements"));
+    assertEquals("compact", payload.path("detail").stringValue());
     assertTrue(payload.has("bookBoundary"));
-    assertTrue(payload.has("currencyScope"));
-    assertTrue(payload.has("multiCurrencyStatus"));
+    assertTrue(payload.has("storageEngines"));
     assertTrue(payload.has("requestInput"));
-    assertTrue(payload.has("compactDetailHint"));
-    assertTrue(payload.has("fullDetailHint"));
+    assertTrue(payload.has("commands"));
+    assertFalse(payload.has("compactDetailHint"));
     assertFalse(payload.has("storage"));
-    assertFalse(payload.has("machineGuidance"));
     assertFalse(payload.has("fullContract"));
   }
 
@@ -256,7 +252,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
-        new dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+        new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
             Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());

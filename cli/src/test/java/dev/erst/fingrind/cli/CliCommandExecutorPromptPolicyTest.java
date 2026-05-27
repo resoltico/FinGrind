@@ -40,12 +40,16 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void administrativeExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
+        new CliWorkflowDoubleSupport.ExplodingWorkflow(
+            new IllegalStateException("workflow should not run"));
     CliAdministrativeCommandExecutor executor =
         new CliAdministrativeCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
-            new CliResponseWriter(utf8PrintStream(outputStream)),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            mutationWriter(outputStream),
+            failureWriter(outputStream),
+            workflow,
+            workflow);
 
     assertPromptFailure(
         outputStream,
@@ -88,11 +92,12 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void queryExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
+        new CliWorkflowDoubleSupport.ExplodingWorkflow(
+            new IllegalStateException("workflow should not run"));
     CliQueryCommandExecutor executor =
         new CliQueryCommandExecutor(
-            new CliResponseWriter(utf8PrintStream(outputStream)),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            bookReadWriter(outputStream), failureWriter(outputStream), workflow);
 
     assertPromptFailure(
         outputStream, () -> executor.runInspectBookCommand(PROMPT_BOOK_ACCESS, OutputMode.JSON));
@@ -118,12 +123,16 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void mutationExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
+        new CliWorkflowDoubleSupport.ExplodingWorkflow(
+            new IllegalStateException("workflow should not run"));
     CliMutationCommandExecutor executor =
         new CliMutationCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
-            new CliResponseWriter(utf8PrintStream(outputStream)),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            mutationWriter(outputStream),
+            planWriter(outputStream),
+            failureWriter(outputStream),
+            workflow);
 
     assertPromptFailure(
         outputStream,
@@ -142,13 +151,16 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   void reportExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
+        new CliWorkflowDoubleSupport.ExplodingWorkflow(
+            new IllegalStateException("workflow should not run"));
     CliReportCommandExecutor executor =
         new CliReportCommandExecutor(
-            new CliResponseWriter(utf8PrintStream(outputStream)),
+            reportWriter(outputStream),
+            failureWriter(outputStream),
             new CliDiagnosticsWriter(utf8PrintStream(diagnosticsStream)),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")),
-            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.47.0", fixedClock())));
+            workflow,
+            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.48.0", fixedClock())));
     CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(

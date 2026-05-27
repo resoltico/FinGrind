@@ -34,9 +34,9 @@ class UvToolTaskTest {
     }
 
     @Test
-    fun pythonVersionSatisfiesRequirement_comparesMajorMinorOnly() {
-        assertTrue(pythonVersionSatisfiesRequirement(3 to 12, 3 to 12))
-        assertTrue(pythonVersionSatisfiesRequirement(3 to 13, 3 to 12))
-        assertFalse(pythonVersionSatisfiesRequirement(3 to 11, 3 to 12))
+    fun pythonVersionMatchesRequirement_requiresExactPinnedMajorMinor() {
+        assertTrue(pythonVersionMatchesRequirement(3 to 12, 3 to 12))
+        assertFalse(pythonVersionMatchesRequirement(3 to 13, 3 to 12))
+        assertFalse(pythonVersionMatchesRequirement(3 to 11, 3 to 12))
     }
 }

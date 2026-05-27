@@ -111,76 +111,26 @@ final class CliFailureOutputRenderer {
     if (rejectionDetails == null) {
       return;
     }
-    switch (rejectionDetails) {
-      case CliRejectionJsonModels.AccountStateViolationsDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.EntrySemanticsViolationsDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PriorPostingDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.TransferredPeriodResultViolationDetails details ->
-          appendPostingRejectionDetails(rows, details);
-      case CliRejectionJsonModels.AccountRoleConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.AccountTypeConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.AccountTaxonomyConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ParentAccountDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ParentAccountTypeConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ParentAccountRoleConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ParentAccountNodeKindDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ResultHoldingAccountDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails details ->
-          appendAccountRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodResultTransferStartDetails details ->
-          appendPeriodResultTransferRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodResultTransferFutureDateDetails details ->
-          appendPeriodResultTransferRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails details ->
-          appendPeriodResultTransferRejectionDetails(rows, details);
-      case CliRejectionJsonModels.UnknownAccountDetails details ->
-          appendQueryOrPlanRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PostingNotFoundDetails details ->
-          appendQueryOrPlanRejectionDetails(rows, details);
-      case CliRejectionJsonModels.BookFileDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.BookAndBackupFileDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.BlockingArtifactsDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ArtifactBusyDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.BackupFileDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.ArtifactVerificationFailureDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.RollbackArtifactDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.RollbackArtifactMismatchDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.RollbackArtifactSelectionDetails details ->
-          appendMaintenanceRejectionDetails(rows, details);
-      case CliRejectionJsonModels.PlanRejectionDetails details ->
-          appendQueryOrPlanRejectionDetails(rows, details);
+    if (rejectionDetails instanceof CliRejectionJsonModels.PostingRejectionDetails postingDetails) {
+      appendPostingRejectionDetails(rows, postingDetails);
+      return;
     }
+    if (rejectionDetails instanceof CliRejectionJsonModels.AccountRejectionDetails accountDetails) {
+      appendAccountRejectionDetails(rows, accountDetails);
+      return;
+    }
+    if (rejectionDetails
+        instanceof CliRejectionJsonModels.PeriodResultTransferRejectionDetails periodDetails) {
+      appendPeriodResultTransferRejectionDetails(rows, periodDetails);
+      return;
+    }
+    if (rejectionDetails
+        instanceof CliRejectionJsonModels.QueryOrPlanRejectionDetails queryOrPlanDetails) {
+      appendQueryOrPlanRejectionDetails(rows, queryOrPlanDetails);
+      return;
+    }
+    appendMaintenanceRejectionDetails(
+        rows, (CliRejectionJsonModels.MaintenanceRejectionDetails) rejectionDetails);
   }
 
   private static void appendPostingRejectionDetails(

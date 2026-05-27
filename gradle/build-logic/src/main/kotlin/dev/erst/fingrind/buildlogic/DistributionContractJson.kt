@@ -36,9 +36,19 @@ internal object DistributionContractJson {
         return value
     }
 
-    fun listProperty(projectRootDirectory: Path, relativePath: String, key: String): List<String> {
-        val valuesNode = loadJson(projectRootDirectory, relativePath).path(key)
+    fun listProperty(
+        projectRootDirectory: Path,
+        relativePath: String,
+        key: String,
+        requireExplicitKey: Boolean = false,
+        requireNonEmpty: Boolean = false,
+    ): List<String> {
+        val document = loadJson(projectRootDirectory, relativePath)
+        val valuesNode = document.path(key)
         if (valuesNode.isMissingNode || valuesNode.isNull) {
+            if (requireExplicitKey) {
+                throw IllegalStateException("Missing required contract property $key in $relativePath.")
+            }
             return emptyList()
         }
         if (!valuesNode.isArray) {
@@ -56,6 +66,9 @@ internal object DistributionContractJson {
             } else {
                 throw IllegalStateException("Expected JSON string elements in contract property $key in $relativePath.")
             }
+        }
+        if (requireNonEmpty && values.isEmpty()) {
+            throw IllegalStateException("Contract property $key must not be empty in $relativePath.")
         }
         return values.toList()
     }

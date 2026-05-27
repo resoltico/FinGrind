@@ -28,15 +28,10 @@
         <exclude name="LoosePackageCoupling"/>
         <!-- Produces false positives on well-structured value/command objects -->
         <exclude name="DataClass"/>
-        <!-- FinGrind intentionally uses layered transport and persistence facades.
-             Some adapters legitimately centralize translation logic at layer boundaries,
-             so strict structural-metric rules here would create noise rather than signal. -->
         <exclude name="GodClass"/>
         <exclude name="TooManyMethods"/>
         <exclude name="CyclomaticComplexity"/>
         <exclude name="CognitiveComplexity"/>
-        <!-- Boundary services legitimately reference multiple request/response and domain types
-             when translating between the CLI contract and the application layer. -->
         <exclude name="CouplingBetweenObjects"/>
         <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining
              ExcessiveImports here would push developers back toward forbidden wildcard imports
@@ -45,6 +40,27 @@
         <!-- @FuzzTest harnesses are intentionally single-method entrypoints rather than
              JUnit-style suites with named @Test cases. -->
         <exclude name="UseObjectForClearerAPI"/>
+    </rule>
+
+    <rule ref="category/java/design.xml/GodClass"/>
+
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="18"/>
+            <property name="classReportLevel" value="140"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/CognitiveComplexity">
+        <properties>
+            <property name="reportLevel" value="22"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="threshold" value="60"/>
+        </properties>
     </rule>
 
     <rule ref="category/java/multithreading.xml"/>

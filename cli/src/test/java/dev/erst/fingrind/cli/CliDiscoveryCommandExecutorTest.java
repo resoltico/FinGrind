@@ -18,8 +18,7 @@ class CliDiscoveryCommandExecutorTest {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliDiscoveryCommandExecutor executor =
         new CliDiscoveryCommandExecutor(
-            new CliResponseWriter(CliResponseWriterTestSupport.utf8PrintStream(outputStream)),
-            metadata());
+            CliResponseWriterTestSupport.discoveryWriter(outputStream), metadata());
 
     int exitCode = executor.writeRequestTemplate();
 
@@ -69,7 +68,7 @@ class CliDiscoveryCommandExecutorTest {
         new ByteArrayInputStream(
             """
             name=FinGrind
-            version=0.47.0
+            version=0.48.0
             description=Command-line double-entry bookkeeping
             """
                 .getBytes(StandardCharsets.UTF_8)));

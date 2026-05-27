@@ -39,7 +39,7 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandFor(
             FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        ProtocolCatalog.containerLauncherCommand(),
+        ProtocolCatalog.distribution().containerLauncherCommand(),
         CliInvocationText.launcherCommandFor(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION, "Linux"));
   }
 

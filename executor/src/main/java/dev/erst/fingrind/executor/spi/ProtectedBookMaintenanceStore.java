@@ -102,46 +102,4 @@ public interface ProtectedBookMaintenanceStore {
       Objects.requireNonNull(failure, "failure");
     }
   }
-
-  /** Staged encrypted backup pair that is either published atomically or discarded. */
-  interface StagedBackupPair extends AutoCloseable {
-    /** Verifies that the staged backup file already opens as one initialized protected book. */
-    MaintenanceDecision<BookVerification> verifyInitializedBackup();
-
-    /** Publishes the staged backup pair to its final destinations. */
-    void commit();
-
-    /** Discards the staged backup pair without publishing it. */
-    void rollback();
-
-    @Override
-    void close();
-  }
-
-  /** Reversible staged replacement prepared for one restore-style workflow. */
-  interface StagedBookReplacement extends AutoCloseable {
-    /** Staged replacement path that can be verified before the live target is replaced. */
-    Path stagedBookPath();
-
-    /** Commits the staged replacement and discards the previous-target rollback copy. */
-    void commit();
-
-    /** Discards the staged replacement and restores any prior target snapshot if one exists. */
-    void rollback();
-
-    @Override
-    void close();
-  }
-
-  /** Reversible staged deletion for one rollback artifact. */
-  interface StagedRollbackArtifactDeletion extends AutoCloseable {
-    /** Commits the staged rollback-artifact deletion. */
-    void commit();
-
-    /** Restores the rollback artifact under its original path. */
-    void rollback();
-
-    @Override
-    void close();
-  }
 }

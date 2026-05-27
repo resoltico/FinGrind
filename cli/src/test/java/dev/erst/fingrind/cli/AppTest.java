@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 class AppTest {
   private record SystemStreams(InputStream in, PrintStream out, PrintStream err) {}
 
-  private static final App.CliRuntimeEnvironment RUNTIME_ENVIRONMENT =
-      new App.CliRuntimeEnvironment(
+  private static final CliRuntimeEnvironment RUNTIME_ENVIRONMENT =
+      new CliRuntimeEnvironment(
           new ByteArrayInputStream(new byte[0]),
           new PrintStream(new ByteArrayOutputStream(), false, StandardCharsets.UTF_8),
           new PrintStream(new ByteArrayOutputStream(), false, StandardCharsets.UTF_8),
@@ -71,7 +71,7 @@ class AppTest {
     ByteArrayInputStream redirectedInput = new ByteArrayInputStream(new byte[0]);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-    AtomicReference<App.CliRuntimeEnvironment> observedRuntime = new AtomicReference<>();
+    AtomicReference<CliRuntimeEnvironment> observedRuntime = new AtomicReference<>();
     try (PrintStream redirectedOut = new PrintStream(outputStream, false, StandardCharsets.UTF_8);
         PrintStream redirectedError = new PrintStream(errorStream, false, StandardCharsets.UTF_8)) {
       App app =
@@ -97,7 +97,7 @@ class AppTest {
       System.setErr(previousStreams.err());
     }
 
-    App.CliRuntimeEnvironment runtimeEnvironment = observedRuntime.get();
+    CliRuntimeEnvironment runtimeEnvironment = observedRuntime.get();
     assertNotNull(runtimeEnvironment);
     assertEquals(redirectedInput, runtimeEnvironment.inputStream());
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("runtime-out"));
@@ -125,7 +125,7 @@ class AppTest {
               });
       app.run(
           new String[] {"help"},
-          new App.CliRuntimeEnvironment(
+          new CliRuntimeEnvironment(
               new ByteArrayInputStream(new byte[0]),
               new PrintStream(new ByteArrayOutputStream(), false, StandardCharsets.UTF_8),
               redirectedError,

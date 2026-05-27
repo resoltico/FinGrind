@@ -525,7 +525,7 @@ class SqliteStoreFixtureSupport {
   }
 
   static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
-    return SqliteNativeConnections.openKeyFileAccess(
+    return SqliteNativeKeyFileAccess.open(
         bookAccess.bookFilePath(), requireKeyFilePath(bookAccess));
   }
 

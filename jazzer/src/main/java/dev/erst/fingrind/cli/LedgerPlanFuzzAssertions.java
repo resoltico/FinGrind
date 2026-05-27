@@ -15,6 +15,24 @@ import java.util.Objects;
 public final class LedgerPlanFuzzAssertions {
   private LedgerPlanFuzzAssertions() {}
 
+  private record JournalScanSummary(int listQueryStepCount, int structuredListQueryStepCount) {
+    private JournalScanSummary {
+      if (listQueryStepCount < 0
+          || structuredListQueryStepCount < 0
+          || structuredListQueryStepCount > listQueryStepCount) {
+        throw new IllegalArgumentException("Ledger journal scan counts must be non-negative.");
+      }
+    }
+
+    private JournalScanSummary recordStructuredListQuery() {
+      return new JournalScanSummary(listQueryStepCount + 1, structuredListQueryStepCount + 1);
+    }
+
+    private JournalScanSummary recordRejectedListQuery() {
+      return new JournalScanSummary(listQueryStepCount + 1, structuredListQueryStepCount);
+    }
+  }
+
   /** Stable execution summary returned after one parsed ledger plan is executed and asserted. */
   public record ExecutionSnapshot(
       LedgerPlanStatus executionStatus,
@@ -39,7 +57,7 @@ public final class LedgerPlanFuzzAssertions {
     Objects.requireNonNull(input, "input");
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       LedgerPlanResult result =
-          CliFuzzFixtures.ledgerPlanService(
+          CliFuzzWorkflowFixtures.ledgerPlanService(
                   bookSession,
                   bookSession,
                   bookSession,
@@ -52,47 +70,15 @@ public final class LedgerPlanFuzzAssertions {
   }
 
   static ExecutionSnapshot assertPlanResult(LedgerPlan plan, LedgerPlanResult result) {
-    if (!result.planId().equals(plan.planId())) {
-      throw new IllegalStateException("Ledger plan execution changed the plan id.");
-    }
     List<LedgerJournalEntry> journalSteps = result.journal().steps();
-    boolean terminalBoundary = journalSteps.getLast().kind() == LedgerJournalKind.PLAN_BOUNDARY;
-    int allowedJournalSteps = plan.steps().size() + (terminalBoundary ? 1 : 0);
-    if (journalSteps.size() > allowedJournalSteps) {
-      throw new IllegalStateException("Ledger plan journal exceeded the declared step count.");
-    }
-    if (result.status() == LedgerPlanStatus.SUCCEEDED
-        && journalSteps.size() != plan.steps().size()) {
-      throw new IllegalStateException("Successful ledger plan execution omitted journal steps.");
-    }
-
-    int listQueryStepCount = 0;
-    int structuredListQueryStepCount = 0;
-    int declaredIndex = 0;
-    for (int index = 0; index < journalSteps.size(); index++) {
-      LedgerJournalEntry journalEntry = journalSteps.get(index);
-      LedgerJournalKind journalKind = journalEntry.kind();
-      if (journalKind == LedgerJournalKind.PLAN_BOUNDARY) {
-        if (index != journalSteps.size() - 1) {
-          throw new IllegalStateException("Ledger plan boundary journal entries must be terminal.");
-        }
-        continue;
-      }
-      assertDeclaredStep(plan, journalEntry, declaredIndex);
-      declaredIndex++;
-      if (journalKind == LedgerJournalKind.LIST_ACCOUNTS
-          || journalKind == LedgerJournalKind.LIST_POSTINGS) {
-        listQueryStepCount++;
-        if (journalEntry.status() == LedgerStepStatus.SUCCEEDED) {
-          assertStructuredListQueryFacts(journalEntry);
-          structuredListQueryStepCount++;
-        } else {
-          assertRejectedListQueryFacts(journalEntry);
-        }
-      }
-    }
+    assertPlanIdentity(plan, result);
+    assertJournalBounds(plan, result.status(), journalSteps);
+    JournalScanSummary journalSummary = scanJournal(plan, journalSteps);
     return new ExecutionSnapshot(
-        result.status(), journalSteps.size(), listQueryStepCount, structuredListQueryStepCount);
+        result.status(),
+        journalSteps.size(),
+        journalSummary.listQueryStepCount(),
+        journalSummary.structuredListQueryStepCount());
   }
 
   static void assertStructuredListQueryFacts(LedgerJournalEntry journalEntry) {
@@ -204,6 +190,64 @@ public final class LedgerPlanFuzzAssertions {
 
   private static boolean hasFactNamed(List<LedgerFact> facts, String factName) {
     return facts.stream().anyMatch(fact -> fact.name().equals(factName));
+  }
+
+  private static void assertPlanIdentity(LedgerPlan plan, LedgerPlanResult result) {
+    if (!result.planId().equals(plan.planId())) {
+      throw new IllegalStateException("Ledger plan execution changed the plan id.");
+    }
+  }
+
+  private static void assertJournalBounds(
+      LedgerPlan plan, LedgerPlanStatus status, List<LedgerJournalEntry> journalSteps) {
+    boolean terminalBoundary = journalSteps.getLast().kind() == LedgerJournalKind.PLAN_BOUNDARY;
+    int allowedJournalSteps = plan.steps().size() + (terminalBoundary ? 1 : 0);
+    if (journalSteps.size() > allowedJournalSteps) {
+      throw new IllegalStateException("Ledger plan journal exceeded the declared step count.");
+    }
+    if (status == LedgerPlanStatus.SUCCEEDED && journalSteps.size() != plan.steps().size()) {
+      throw new IllegalStateException("Successful ledger plan execution omitted journal steps.");
+    }
+  }
+
+  private static JournalScanSummary scanJournal(
+      LedgerPlan plan, List<LedgerJournalEntry> journalSteps) {
+    JournalScanSummary summary = new JournalScanSummary(0, 0);
+    int declaredIndex = 0;
+    for (int index = 0; index < journalSteps.size(); index++) {
+      LedgerJournalEntry journalEntry = journalSteps.get(index);
+      if (journalEntry.kind() == LedgerJournalKind.PLAN_BOUNDARY) {
+        assertTerminalBoundary(index, journalSteps.size());
+        continue;
+      }
+      assertDeclaredStep(plan, journalEntry, declaredIndex);
+      declaredIndex++;
+      summary = tallyListQuerySummary(summary, journalEntry);
+    }
+    return summary;
+  }
+
+  private static void assertTerminalBoundary(int index, int journalSize) {
+    if (index != journalSize - 1) {
+      throw new IllegalStateException("Ledger plan boundary journal entries must be terminal.");
+    }
+  }
+
+  private static JournalScanSummary tallyListQuerySummary(
+      JournalScanSummary summary, LedgerJournalEntry journalEntry) {
+    if (!isListQueryKind(journalEntry.kind())) {
+      return summary;
+    }
+    if (journalEntry.status() == LedgerStepStatus.SUCCEEDED) {
+      assertStructuredListQueryFacts(journalEntry);
+      return summary.recordStructuredListQuery();
+    }
+    assertRejectedListQueryFacts(journalEntry);
+    return summary.recordRejectedListQuery();
+  }
+
+  private static boolean isListQueryKind(LedgerJournalKind kind) {
+    return kind == LedgerJournalKind.LIST_ACCOUNTS || kind == LedgerJournalKind.LIST_POSTINGS;
   }
 
   private static void assertDeclaredStep(

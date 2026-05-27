@@ -15,7 +15,7 @@ final class MachineContractResponseDescriptors {
 
   static ContractResponse.ResponseModelDescriptor responseModel() {
     return new ContractResponse.ResponseModelDescriptor(
-        ProtocolCatalog.successStatus(),
+        ProtocolCatalog.envelopes().successStatus(),
         List.of(
             new ContractResponse.FieldDescriptor("status", "Literal success status."),
             new ContractResponse.FieldDescriptor(
@@ -23,8 +23,8 @@ final class MachineContractResponseDescriptors {
             new ContractResponse.FieldDescriptor(
                 "artifacts",
                 "Optional generated artifact metadata array for commands that exported files during the successful run.")),
-        ProtocolCatalog.rejectionStatus(),
-        ProtocolCatalog.errorStatus(),
+        ProtocolCatalog.envelopes().rejectionStatus(),
+        ProtocolCatalog.envelopes().errorStatus(),
         rejectionDescriptors(),
         ContractErrors.descriptors(),
         List.of(

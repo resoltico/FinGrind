@@ -12,9 +12,9 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
-import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
+import dev.erst.fingrind.sqlite.SqlitePostingSessions;
 import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -60,7 +60,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
         setupTurn.acquire();
         setupTurnHeld = true;
         try (SqlitePostingSession bookSession =
-            SqliteBookSessions.openPosting(
+            SqlitePostingSessions.open(
                 bookAccess,
                 SqliteBookSessionMode.READ_WRITE_EXISTING,
                 SqliteRoundTripWorkflowResources.passphraseResolver(),
@@ -68,7 +68,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
           setupTurn.release();
           setupTurnHeld = false;
           PostingApplicationService applicationService =
-              CliFuzzFixtures.postingApplicationService(
+              CliFuzzWorkflowFixtures.postingApplicationService(
                   bookSession, bookSession, new UuidV7PostingIdGenerator());
           ready.countDown();
           awaitConcurrentGate(
@@ -78,7 +78,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
               "Concurrent writer start gate timed out.");
           return new ConcurrentCommitDecision(
               ContractDecision.accepted(
-                  CliFuzzFixtures.commit(applicationService, concurrentCommand)));
+                  CliFuzzWorkflowFixtures.commit(applicationService, concurrentCommand)));
         }
       } catch (InterruptedException exception) {
         throw concurrentWriterInterrupted(exception);
@@ -98,22 +98,25 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
     Path keyPath = concurrentRoot.resolve("keys").resolve("entity.book-key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
     BookAccess bookAccess = SqliteRoundTripWorkflowResources.keyFileBookAccess(bookPath, keyPath);
-    SqliteCliBookWorkflow workflow = SqliteRoundTripWorkflowResources.sqliteWorkflow();
+    CliBookLifecycleWorkflow lifecycleWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
+    CliBookMutationWorkflow mutationWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteMutationWorkflow();
     PostEntryCommand concurrentCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(command, "concurrent");
 
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
-        workflow.openBook(
+        lifecycleWorkflow.openBook(
             bookAccess,
-            CliFuzzFixtures.openBookCommand(
+            CliFuzzWorkflowFixtures.openBookCommand(
                 CliFuzzFixtures.journalEntry(concurrentCommand).currencyUnit())),
         bookPath,
         OutputMode.JSON,
         "\"initializedAt\"");
     for (var declareAccountCommand :
-        CliFuzzFixtures.declarePostingAccountCommands(concurrentCommand)) {
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(concurrentCommand)) {
       SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(
-          workflow.declareAccount(bookAccess, declareAccountCommand));
+          mutationWorkflow.declareAccount(bookAccess, declareAccountCommand));
     }
 
     CountDownLatch ready = new CountDownLatch(2);
@@ -186,55 +189,97 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
     }
   }
 
-  static void assertConcurrentOutcomeSet(
-      List<ConcurrentCommitOutcome> outcomes, boolean storedFactPresent) throws IOException {
-    long committedCount = 0;
-    long nonWinningCount = 0;
-    for (ConcurrentCommitOutcome outcome : outcomes) {
-      switch (outcome) {
-        case ConcurrentCommitRuntimeFailure(RuntimeException runtimeFailure) -> {
-          nonWinningCount++;
-          SqliteRoundTripWorkflowRenderingAssertions.assertRenderedRuntimeFailure(
-              runtimeFailure, OutputMode.JSON, null);
-        }
-        case ConcurrentCommitDecision(ContractDecision<CommitEntryResult> decision) -> {
-          if (decision instanceof ContractDecision.Rejected<CommitEntryResult>(var failure)) {
-            nonWinningCount++;
-            SqliteRoundTripWorkflowRenderingAssertions.assertRenderedFailure(
-                failure, OutputMode.JSON, null);
-          } else {
-            CommitEntryResult result = decision.requireAccepted();
-            SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-                ContractDecision.accepted(result),
-                OutputMode.JSON,
-                (writer, accepted) ->
-                    writer.writePostEntryResult((PostEntryResult) accepted, OutputMode.JSON),
-                null);
-            switch (result) {
-              case Committed ignored -> committedCount++;
-              case CommitRejected rejected -> {
-                if (rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey) {
-                  nonWinningCount++;
-                } else {
-                  throw new IllegalStateException(CONCURRENT_WRITER_NON_WINNER_MESSAGE + rejected);
-                }
-              }
-            }
-          }
-        }
+  private record ConcurrentOutcomeTally(long committedCount, long nonWinningCount) {
+    private ConcurrentOutcomeTally {
+      if (committedCount < 0 || nonWinningCount < 0) {
+        throw new IllegalArgumentException("Concurrent outcome counts must be non-negative.");
       }
     }
-    if (committedCount != 1 || nonWinningCount != 1) {
+
+    private ConcurrentOutcomeTally recordCommitted() {
+      return new ConcurrentOutcomeTally(committedCount + 1, nonWinningCount);
+    }
+
+    private ConcurrentOutcomeTally recordNonWinner() {
+      return new ConcurrentOutcomeTally(committedCount, nonWinningCount + 1);
+    }
+  }
+
+  static void assertConcurrentOutcomeSet(
+      List<ConcurrentCommitOutcome> outcomes, boolean storedFactPresent) throws IOException {
+    ConcurrentOutcomeTally tally = new ConcurrentOutcomeTally(0, 0);
+    for (ConcurrentCommitOutcome outcome : outcomes) {
+      tally = tallyConcurrentOutcome(tally, outcome);
+    }
+    if (tally.committedCount() != 1 || tally.nonWinningCount() != 1) {
       throw new IllegalStateException(
           "Concurrent writer coverage expected one committed winner and one non-winning contender, but saw committedCount="
-              + committedCount
+              + tally.committedCount()
               + " nonWinningCount="
-              + nonWinningCount);
+              + tally.nonWinningCount());
     }
     if (!storedFactPresent) {
       throw new IllegalStateException(
           "Concurrent writer coverage failed to persist the winning posting fact.");
     }
+  }
+
+  private static ConcurrentOutcomeTally tallyConcurrentOutcome(
+      ConcurrentOutcomeTally tally, ConcurrentCommitOutcome outcome) throws IOException {
+    return switch (outcome) {
+      case ConcurrentCommitRuntimeFailure(RuntimeException runtimeFailure) ->
+          recordRuntimeFailure(tally, runtimeFailure);
+      case ConcurrentCommitDecision(ContractDecision<CommitEntryResult> decision) ->
+          tallyCommitDecision(tally, decision);
+    };
+  }
+
+  private static ConcurrentOutcomeTally recordRuntimeFailure(
+      ConcurrentOutcomeTally tally, RuntimeException runtimeFailure) throws IOException {
+    SqliteRoundTripWorkflowRenderingAssertions.assertRenderedRuntimeFailure(
+        runtimeFailure, OutputMode.JSON, null);
+    return tally.recordNonWinner();
+  }
+
+  private static ConcurrentOutcomeTally tallyCommitDecision(
+      ConcurrentOutcomeTally tally, ContractDecision<CommitEntryResult> decision)
+      throws IOException {
+    return switch (decision) {
+      case ContractDecision.Rejected<CommitEntryResult>(var failure) ->
+          recordRejectedDecision(tally, failure);
+      case ContractDecision.Accepted<CommitEntryResult>(CommitEntryResult result) ->
+          tallyAcceptedCommitResult(tally, result);
+    };
+  }
+
+  private static ConcurrentOutcomeTally recordRejectedDecision(
+      ConcurrentOutcomeTally tally, dev.erst.fingrind.contract.runtime.ContractFailure failure)
+      throws IOException {
+    SqliteRoundTripWorkflowRenderingAssertions.assertRenderedFailure(
+        failure, OutputMode.JSON, null);
+    return tally.recordNonWinner();
+  }
+
+  private static ConcurrentOutcomeTally tallyAcceptedCommitResult(
+      ConcurrentOutcomeTally tally, CommitEntryResult result) throws IOException {
+    SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
+        ContractDecision.accepted(result),
+        OutputMode.JSON,
+        (writers, accepted, mode) ->
+            writers.mutation().writePostEntryResult((PostEntryResult) accepted, mode),
+        null);
+    return switch (result) {
+      case Committed ignored -> tally.recordCommitted();
+      case CommitRejected rejected -> tallyRejectedAcceptedResult(tally, rejected);
+    };
+  }
+
+  private static ConcurrentOutcomeTally tallyRejectedAcceptedResult(
+      ConcurrentOutcomeTally tally, CommitRejected rejected) {
+    if (rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey) {
+      return tally.recordNonWinner();
+    }
+    throw new IllegalStateException(CONCURRENT_WRITER_NON_WINNER_MESSAGE + rejected);
   }
 
   static void awaitConcurrentGate(

@@ -30,26 +30,10 @@ final class AccountBalancePdfRenderer {
                 List.of("Active", PdfValueFormatter.displayBoolean(snapshot.account().active())),
                 List.of(
                     "Effective date range",
-                    PdfValueFormatter.optionalDateRange(
+                    PdfTemporalValueFormatter.optionalDateRange(
                         snapshot.effectiveDateFrom().orElse(null),
                         snapshot.effectiveDateTo().orElse(null))))));
-    pageWriter.writeTable(
-        "Per-Currency Balances",
-        List.of(
-            new PdfTableColumn("Currency", 1.1f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Debit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Credit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Net amount", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Balance side", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
-        snapshot.balances().stream()
-            .map(
-                balance ->
-                    List.of(
-                        balance.netAmount().currencyUnit().code(),
-                        PdfValueFormatter.displayMoney(balance.debitTotal()),
-                        PdfValueFormatter.displayMoney(balance.creditTotal()),
-                        PdfValueFormatter.displayMoney(balance.netAmount()),
-                        balance.balanceSide().wireValue()))
-            .toList());
+    PdfBalanceTableSupport.writeDetailedTable(
+        pageWriter, "Per-Currency Balances", snapshot.balances());
   }
 }

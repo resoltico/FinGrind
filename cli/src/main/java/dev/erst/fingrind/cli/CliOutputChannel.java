@@ -40,7 +40,7 @@ final class CliOutputChannel {
   }
 
   void writePrettySuccess(ProtocolSuccessPayload payload) {
-    writePrettyJson(CliResponsePayloadMapper.successEnvelope(payload));
+    writePrettyJson(CliEnvelopeMapper.successEnvelope(payload));
   }
 
   void writeMutationRejection(

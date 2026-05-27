@@ -113,7 +113,7 @@ public final class SqliteFuzzAssertions {
 
   /** Opens one deterministic protected-book store for fuzz and replay flows. */
   public static SqlitePostingSession openStore(Path bookPath) {
-    return SqliteBookSessions.openPosting(bookPath, bookPassphrase());
+    return SqlitePostingSessions.open(bookPath, bookPassphrase());
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */

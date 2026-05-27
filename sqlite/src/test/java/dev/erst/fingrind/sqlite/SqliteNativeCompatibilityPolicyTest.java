@@ -11,16 +11,17 @@ import org.junit.jupiter.api.Test;
 class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport {
   @Test
   void requireSupportedVersion_rejectsOlderRuntimeAndCompareVersionsOrdersDottedNumbers() {
-    assertTrue(SqliteNativeRuntimePolicy.compareVersions("3.53.1", "3.52.9") > 0);
-    assertEquals(-1, SqliteNativeRuntimePolicy.compareVersions("3.53", "3.53.1"));
-    assertEquals(1, SqliteNativeRuntimePolicy.compareVersions("3.53.1", "3.53"));
+    assertTrue(SqliteNativeCompatibilityPolicy.compareVersions("3.53.1", "3.52.9") > 0);
+    assertEquals(-1, SqliteNativeCompatibilityPolicy.compareVersions("3.53", "3.53.1"));
+    assertEquals(1, SqliteNativeCompatibilityPolicy.compareVersions("3.53.1", "3.53"));
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteNativeRuntimePolicy.compareVersions("3.bad.0", "3.53.1"));
+        () -> SqliteNativeCompatibilityPolicy.compareVersions("3.bad.0", "3.53.1"));
     UnsupportedSqliteVersionException exception =
         assertThrows(
             UnsupportedSqliteVersionException.class,
-            () -> SqliteNativeRuntimePolicy.requireSupportedVersion("3.51.0", "managed-only"));
+            () ->
+                SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.51.0", "managed-only"));
     assertEquals("3.51.0", exception.loadedVersion());
     assertEquals("3.53.1", exception.requiredMinimumVersion());
     assertEquals("managed-only", exception.libraryMode());
@@ -32,7 +33,7 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
         assertThrows(
             UnsupportedSqliteMultipleCiphersVersionException.class,
             () ->
-                SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
+                SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
                     "2.3.2", "managed-only"));
     assertEquals("2.3.2", exception.loadedVersion());
     assertEquals("2.3.4", exception.requiredVersion());
@@ -45,7 +46,7 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
         assertThrows(
             UnsupportedSqliteCompileOptionsException.class,
             () ->
-                SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
+                SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
                     constantMethodHandle(0, MemorySegment.class),
                     "3.53.1",
                     "2.3.4",
@@ -63,7 +64,7 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
         assertThrows(
             UnsupportedSqliteCompileOptionsException.class,
             () ->
-                SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
+                SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
                     constantMethodHandle(1, MemorySegment.class),
                     "3.53.1",
                     "2.3.4",
@@ -77,13 +78,13 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
   void requireSupportedSourceId_rejectsUnexpectedRuntimeAndAcceptsCanonicalPin() {
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        SqliteNativeRuntimePolicy.requireSupportedSourceId(
+        SqliteNativeCompatibilityPolicy.requireSupportedSourceId(
             SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, "managed-only"));
     UnsupportedSqliteSourceIdException exception =
         assertThrows(
             UnsupportedSqliteSourceIdException.class,
             () ->
-                SqliteNativeRuntimePolicy.requireSupportedSourceId(
+                SqliteNativeCompatibilityPolicy.requireSupportedSourceId(
                     "2026-04-09 unexpected-source-id", "managed-only", "3.53.1", "2.3.4"));
     assertEquals("2026-04-09 unexpected-source-id", exception.loadedSourceId());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, exception.requiredSourceId());

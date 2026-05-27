@@ -25,7 +25,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPagePublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadReportPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
@@ -228,23 +229,23 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static PostingPage published(PostingHistoryQuery query, PostingHistoryPage page) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), query, page);
+    return BookkeepingReadPagePublishedLanguageTranslator.toPublished(bookIdentity(), query, page);
   }
 
   static AccountBalanceSnapshot published(AccountBalanceView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
+    return BookkeepingReadPagePublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static TrialBalanceReport published(TrialBalanceView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(view);
   }
 
   static AccountLedgerReport published(AccountLedgerView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
+    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static PeriodSummaryReport published(PeriodSummaryView view) {
-    return BookkeepingReadPublishedLanguageTranslator.toPublished(bookIdentity(), view);
+    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(bookIdentity(), view);
   }
 
   static List<DeclaredAccount> publishedAccounts(AccountRegistryPage page) {

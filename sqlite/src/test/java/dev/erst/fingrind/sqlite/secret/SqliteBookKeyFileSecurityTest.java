@@ -274,7 +274,7 @@ class SqliteBookKeyFileSecurityTest {
       assertTrue(
           NullTestSupport.messageOf(exception)
               .contains("parent directory ACL must grant secret-directory access only"));
-      assertTrue(NullTestSupport.messageOf(exception).contains(fileSystem.group.getName()));
+      assertFalse(NullTestSupport.messageOf(exception).contains(fileSystem.group.getName()));
     }
   }
 

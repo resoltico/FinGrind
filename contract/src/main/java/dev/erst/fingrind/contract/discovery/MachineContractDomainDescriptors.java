@@ -25,7 +25,7 @@ final class MachineContractDomainDescriptors {
   private MachineContractDomainDescriptors() {}
 
   static ContractResponse.BookModelDescriptor bookModel() {
-    BookModelFacts bookModel = ProtocolCatalog.bookModel();
+    BookModelFacts bookModel = ProtocolCatalog.domain().bookModel();
     return new ContractResponse.BookModelDescriptor(
         bookModel.boundary(),
         bookModel.entityScope(),
@@ -38,7 +38,7 @@ final class MachineContractDomainDescriptors {
 
   static ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel() {
     dev.erst.fingrind.contract.protocol.BookkeepingKernelFacts kernel =
-        ProtocolCatalog.bookkeepingKernel();
+        ProtocolCatalog.domain().bookkeepingKernel();
     return new ContractResponse.BookkeepingKernelDescriptor(
         kernel.scope(),
         kernel.builtInStatements(),
@@ -184,7 +184,8 @@ final class MachineContractDomainDescriptors {
   }
 
   static ContractResponse.PreflightDescriptor preflight() {
-    dev.erst.fingrind.contract.protocol.PreflightFacts preflight = ProtocolCatalog.preflight();
+    dev.erst.fingrind.contract.protocol.PreflightFacts preflight =
+        ProtocolCatalog.domain().preflight();
     return new ContractResponse.PreflightDescriptor(
         preflight.semantics(),
         ContractResponse.CommitGuarantee.fromGuaranteed(preflight.commitGuarantee()),
@@ -192,13 +193,13 @@ final class MachineContractDomainDescriptors {
   }
 
   static ContractResponse.CurrencyDescriptor currencyModel() {
-    CurrencyFacts currency = ProtocolCatalog.currency();
+    CurrencyFacts currency = ProtocolCatalog.domain().currency();
     return new ContractResponse.CurrencyDescriptor(
         currency.scope(), currency.multiCurrencyStatus(), currency.description());
   }
 
   static ContractResponse.PlanExecutionDescriptor planExecution() {
-    PlanExecutionFacts facts = ProtocolCatalog.planExecution();
+    PlanExecutionFacts facts = ProtocolCatalog.domain().planExecution();
     return new ContractResponse.PlanExecutionDescriptor(
         facts.transactionMode(), facts.failurePolicy(), facts.journal(), facts.hardLimitations());
   }

@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,11 +39,7 @@ import org.junit.jupiter.api.Test;
 class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSupport {
   private static final PostingAcceptancePolicy POSTING_ACCEPTANCE_POLICY =
       PostingAcceptancePolicy.currentKernel();
-  private static final Class<?> SESSION_STATE_CLASS = lifecycleNestedType("SessionState");
-  private static final Class<?> IDLE_SESSION_CLASS = lifecycleNestedType("IdleSession");
-  private static final Class<?> OPENED_SESSION_CLASS = lifecycleNestedType("OpenedSession");
-  private static final Class<?> FAILED_SESSION_CLASS = lifecycleNestedType("FailedSession");
-  private static final Class<?> CLOSED_SESSION_CLASS = lifecycleNestedType("ClosedSession");
+  private static final Class<?> SESSION_STATE_CLASS = SqliteStoreSessionState.class;
   private static final MethodHandles.Lookup LIFECYCLE_LOOKUP = lifecycleLookup();
   private static final VarHandle SESSION_STATE_HANDLE = lifecycleSessionStateHandle();
   private static final MethodHandle CACHED_BOOK_STATE_HANDLE =
@@ -273,6 +270,90 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
               .contains("Failed to open SQLite book connection. SQLITE_ERROR: open-boom"),
           () -> NullTestSupport.messageOf(firstFailure));
       assertSame(firstFailure, repeatedFailure);
+    }
+  }
+
+  @Test
+  void storeCloseSequence_close_acceptsNullSessionSecretAcrossBothClosePaths() {
+    assertDoesNotThrow(
+        () -> {
+          try (SqliteStoreCloseSequence ignored = new SqliteStoreCloseSequence(null, null)) {
+            // Close sequence runs on scope exit.
+          }
+        });
+
+    AtomicReference<Boolean> databaseClosed = new AtomicReference<>(false);
+    assertDoesNotThrow(
+        () -> {
+          try (SqliteStoreCloseSequence ignored =
+              new SqliteStoreCloseSequence(
+                  null,
+                  new SqliteNativeDatabase(java.lang.foreign.MemorySegment.NULL) {
+                    @Override
+                    public void close() {
+                      databaseClosed.set(true);
+                    }
+                  })) {
+            // Close sequence runs on scope exit.
+          }
+        });
+    assertTrue(databaseClosed.get());
+  }
+
+  @Test
+  void storeCloseSequence_close_propagatesDatabaseCloseFailure() {
+    AtomicReference<Boolean> closeAttempted = new AtomicReference<>(false);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> {
+              try (SqliteStoreCloseSequence ignored =
+                  new SqliteStoreCloseSequence(
+                      null,
+                      new SqliteNativeDatabase(java.lang.foreign.MemorySegment.NULL) {
+                        @Override
+                        public void close() {
+                          closeAttempted.set(true);
+                          throw new IllegalStateException("close boom");
+                        }
+                      })) {
+                // Close sequence runs on scope exit.
+              }
+            });
+
+    assertEquals("close boom", exception.getMessage());
+    assertTrue(closeAttempted.get());
+  }
+
+  @Test
+  void storeCloseSequence_close_closesSessionSecretWhenDatabaseCloseFails() {
+    AtomicReference<Boolean> closeAttempted = new AtomicReference<>(false);
+    try (SqliteSessionSecret sessionSecret =
+        new SqliteSessionSecret(
+            SqliteBookPassphrase.fromCharacters(
+                "close sequence failing database", TEST_BOOK_KEY.toCharArray()))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> {
+                try (SqliteStoreCloseSequence ignored =
+                    new SqliteStoreCloseSequence(
+                        sessionSecret::close,
+                        new SqliteNativeDatabase(java.lang.foreign.MemorySegment.NULL) {
+                          @Override
+                          public void close() {
+                            closeAttempted.set(true);
+                            throw new IllegalStateException("close boom");
+                          }
+                        })) {
+                  // Close sequence runs on scope exit.
+                }
+              });
+
+      assertEquals("close boom", exception.getMessage());
+      assertTrue(closeAttempted.get());
+      assertThrows(IllegalStateException.class, sessionSecret::borrowWorkingCopy);
     }
   }
 
@@ -644,33 +725,21 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   }
 
   private static Object lifecycleSessionState(String simpleName, @Nullable Object... arguments) {
-    MethodHandle constructor =
-        switch (simpleName) {
-          case "IdleSession" ->
-              lifecycleConstructorHandle(
-                  IDLE_SESSION_CLASS,
-                  MethodType.methodType(void.class, SqliteBookStateSnapshot.class));
-          case "OpenedSession" ->
-              lifecycleConstructorHandle(
-                  OPENED_SESSION_CLASS,
-                  MethodType.methodType(
-                      void.class, SqliteNativeDatabase.class, SqliteBookStateSnapshot.class));
-          case "FailedSession" ->
-              lifecycleConstructorHandle(
-                  FAILED_SESSION_CLASS,
-                  MethodType.methodType(
-                      void.class,
-                      SqliteNativeDatabase.class,
-                      SqliteBookStateSnapshot.class,
-                      IllegalStateException.class));
-          case "ClosedSession" ->
-              lifecycleConstructorHandle(
-                  CLOSED_SESSION_CLASS,
-                  MethodType.methodType(void.class, IllegalStateException.class));
-          default ->
-              throw new IllegalArgumentException("Unknown lifecycle state type: " + simpleName);
-        };
-    return invokeHandle(constructor, arguments);
+    return switch (simpleName) {
+      case "IdleSession" -> new SqliteIdleStoreSession((SqliteBookStateSnapshot) arguments[0]);
+      case "OpenedSession" ->
+          new SqliteOpenedStoreSession(
+              Objects.requireNonNull((SqliteNativeDatabase) arguments[0], "opened database"),
+              (SqliteBookStateSnapshot) arguments[1]);
+      case "FailedSession" ->
+          new SqliteFailedStoreSession(
+              (SqliteNativeDatabase) arguments[0],
+              (SqliteBookStateSnapshot) arguments[1],
+              Objects.requireNonNull(
+                  (IllegalStateException) arguments[2], "failed session failure"));
+      case "ClosedSession" -> new SqliteClosedStoreSession((IllegalStateException) arguments[0]);
+      default -> throw new IllegalArgumentException("Unknown lifecycle state type: " + simpleName);
+    };
   }
 
   private static void setLifecycleSessionState(
@@ -713,14 +782,6 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     }
   }
 
-  private static MethodHandle lifecycleConstructorHandle(Class<?> declaringClass, MethodType type) {
-    try {
-      return LIFECYCLE_LOOKUP.findConstructor(declaringClass, type);
-    } catch (NoSuchMethodException | IllegalAccessException exception) {
-      throw new ExceptionInInitializerError(exception);
-    }
-  }
-
   private static MethodHandle lifecycleMethodHandle(String methodName, MethodType type) {
     try {
       return LIFECYCLE_LOOKUP.findVirtual(SqliteStoreLifecycle.class, methodName, type);
@@ -731,8 +792,11 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
 
   private static VarHandle lifecycleSessionStateHandle() {
     try {
-      return LIFECYCLE_LOOKUP.findVarHandle(
-          SqliteStoreLifecycle.class, "sessionState", SESSION_STATE_CLASS);
+      MethodHandles.Lookup stateSupportLookup =
+          MethodHandles.privateLookupIn(
+              SqliteStoreSessionStateTracker.class, MethodHandles.lookup());
+      return stateSupportLookup.findVarHandle(
+          SqliteStoreSessionStateTracker.class, "sessionState", SESSION_STATE_CLASS);
     } catch (NoSuchFieldException | IllegalAccessException exception) {
       throw new ExceptionInInitializerError(exception);
     }
@@ -744,14 +808,5 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     } catch (IllegalAccessException exception) {
       throw new ExceptionInInitializerError(exception);
     }
-  }
-
-  private static Class<?> lifecycleNestedType(String simpleName) {
-    for (Class<?> nestedType : SqliteStoreLifecycle.class.getDeclaredClasses()) {
-      if (nestedType.getSimpleName().equals(simpleName)) {
-        return nestedType;
-      }
-    }
-    throw new ExceptionInInitializerError("Missing lifecycle nested type: " + simpleName);
   }
 }

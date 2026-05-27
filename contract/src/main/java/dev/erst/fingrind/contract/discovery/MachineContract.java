@@ -62,7 +62,8 @@ public final class MachineContract {
     return new CapabilitiesDescriptor(
         identity.application(),
         identity.version(),
-        new StorageSurfaceDescriptor(ProtocolCatalog.storageEngines(), "single-sqlite-file"),
+        new StorageSurfaceDescriptor(
+            ProtocolCatalog.runtime().storageEngines(), "single-sqlite-file"),
         MachineContractDomainDescriptors.commandCatalog(),
         MachineContractRequestInputDescriptors.requestInput(),
         MachineContractRequestShapeDescriptors.requestShapes(),

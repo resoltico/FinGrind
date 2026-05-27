@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: ADAPTERS
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -235,7 +235,10 @@ public sealed interface BookkeepingQueryRejection
 
 - Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
 - Purpose: keep local read/report refusals inside the bookkeeping context until
-  `BookkeepingReadPublishedLanguageTranslator` projects them into public `BookQueryRejection`
+  `BookkeepingReadPagePublishedLanguageTranslator`,
+  `BookkeepingReadReportPublishedLanguageTranslator`, or
+  `BookkeepingReadStatementPublishedLanguageTranslator` projects them into public
+  `BookQueryRejection`
 
 ## `ProtectedBookAccess`
 
@@ -376,7 +379,8 @@ public record PeriodSummaryView(...)
 - Shared kernel: these local types reuse `core.EffectiveDateRange`, `core.CurrencyBalance`, and
   `core.InteractionLimits` where the concept is genuinely common to public and local bookkeeping
   language
-- Boundary: `BookkeepingReadPublishedLanguageTranslator` is the only owner that maps these types to
+- Boundary: `BookkeepingReadPagePublishedLanguageTranslator` and
+  `BookkeepingReadReportPublishedLanguageTranslator` are the only owners that map these types to
   `AccountPage`, `PostingPage`, `AccountBalanceSnapshot`, `TrialBalanceReport`,
   `AccountLedgerReport`, and `PeriodSummaryReport`
 
@@ -427,18 +431,20 @@ final class SqliteSessionSecret implements AutoCloseable
   call, best-effort overwrites that working copy after handoff, and keeps the durable session
   copy until the session closes or rotates to a replacement secret
 
-## `SqliteBookKeyFile`, `SqliteBookKeyFileGenerator`, And `SqliteBookKeyFileGenerator.GeneratedKeyFile`
+## `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator`
 
 These public helpers own secure UTF-8 key-file loading and generation.
 
 ```java
+public record GeneratedBookKeyFile(...)
 public final class SqliteBookKeyFile
 public final class SqliteBookKeyFileGenerator
 ```
 
+- `GeneratedBookKeyFile`: non-secret generated key-file metadata returned to the public contract
 - `SqliteBookKeyFile`: loads one secure UTF-8 key file into `SqliteBookPassphrase`
 - `SqliteBookKeyFileGenerator`: creates one new owner-only key file and returns non-secret
-  `SqliteBookKeyFileGenerator.GeneratedKeyFile` metadata
+  `GeneratedBookKeyFile` metadata
 - Contract: generated key files are base64url-no-padding, 256 bits of entropy, and never
   overwritten in place
 
@@ -492,12 +498,13 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
+## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqlitePeriodResultTransferSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
 
 FinGrind now publishes one family of workflow-shaped SQLite session views instead of one composite
 god-session. `SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
 `SqlitePassphraseResolver` describe secret resolution without leaking CLI-specific prompt policy,
-and `SqliteBookSessions` owns public session creation.
+workflow-specific opener classes resolve access into the right session view, and
+`SqliteBookSessions` remains the shared store-opening seam.
 
 ```java
 public interface SqliteAdministrationSession extends AutoCloseable
@@ -506,6 +513,12 @@ public interface SqlitePostingSession extends AutoCloseable
 public interface SqlitePeriodResultTransferSession extends AutoCloseable
 public interface SqlitePlanExecutionSession extends AutoCloseable
 public interface SqliteRekeySession extends AutoCloseable
+public final class SqliteAdministrationSessions
+public final class SqliteReadSessions
+public final class SqlitePostingSessions
+public final class SqlitePeriodResultTransferSessions
+public final class SqlitePlanExecutionSessions
+public final class SqliteRekeySessions
 public enum SqliteBookSessionMode
 public enum SqlitePassphraseIntent
 public interface SqlitePassphraseResolver
@@ -520,6 +533,12 @@ public final class SqliteBookSessions
 - `SqlitePeriodResultTransferSession`: period-result-transfer workflows
 - `SqlitePlanExecutionSession`: plan execution plus transaction ownership
 - `SqliteRekeySession`: rekey workflows
+- `SqliteAdministrationSessions`: resolves one protected-book access tuple into an administration session
+- `SqliteReadSessions`: resolves one protected-book access tuple into a read session
+- `SqlitePostingSessions`: resolves one protected-book access tuple into a posting session
+- `SqlitePeriodResultTransferSessions`: resolves one protected-book access tuple into a transfer session
+- `SqlitePlanExecutionSessions`: resolves one protected-book access tuple into a plan-execution session
+- `SqliteRekeySessions`: resolves one protected-book access tuple into a rekey session
 - `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
   `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
 - `SqlitePassphraseIntent`: distinguishes whether the caller is resolving an existing book secret
@@ -527,8 +546,8 @@ public final class SqliteBookSessions
 - `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
   `SqlitePassphraseIntent` into a `SqliteBookPassphrase` whose owned buffers are best-effort
   overwritten after use
-- `SqliteBookSessions`: opens the narrow public session view that matches the caller workflow and
-  transfers ownership only after priming succeeds
+- `SqliteBookSessions`: opens or projects the shared `SqlitePostingFactStore` seam for cases that
+  need direct store access or one workflow-neutral open-store entry point
 - Internal split: one package-private `SqlitePostingFactStore` implements the narrow public views
   over one immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`; the factory
   projects that internal store into the public workflow-shaped interfaces instead of publishing the
@@ -567,7 +586,7 @@ public enum ProtectedBookMaintenanceAuditCompensationKind
 - Boundary: compensation facts exist only when a previously published maintenance fact must be
   durably retracted after later failure cleanup
 
-## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, And `SqliteProtectedBookMaintenanceStore`
+## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore`
 
 Protected-book maintenance now belongs to one executor-owned maintenance boundary with one narrow
 SQLite store SPI and one encrypted in-book maintenance audit stream.
@@ -575,6 +594,9 @@ SQLite store SPI and one encrypted in-book maintenance audit stream.
 ```java
 public final class ProtectedBookMaintenanceService
 public interface ProtectedBookMaintenanceStore
+public interface StagedBackupPair
+public interface StagedBookReplacement
+public interface StagedRollbackArtifactDeletion
 public final class SqliteProtectedBookMaintenanceStore
 ```
 
@@ -582,6 +604,11 @@ public final class SqliteProtectedBookMaintenanceStore
   rollback deletion, and restore doctrine plus typed rejections and published maintenance results
 - `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, reversible book
   replacement, rollback-artifact selection, and encrypted maintenance-audit append/retract
+- `StagedBackupPair`: reversible staged backup publication that can verify the staged backup
+  before final publish
+- `StagedBookReplacement`: reversible staged replacement prepared for restore-style workflows
+- `StagedRollbackArtifactDeletion`: reversible staged deletion prepared for rollback-artifact
+  cleanup
 - `SqliteProtectedBookMaintenanceStore`: verifies protected-book artifacts through SQLite, rejects
   non-initialized and noncanonical sources, performs reversible replacement work, and records
   successful maintenance facts in the selected book's `audit_event` stream

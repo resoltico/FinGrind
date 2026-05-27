@@ -125,6 +125,19 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
   }
 
   @Test
+  void concurrentOutcomeTally_rejects_negative_counts() throws Exception {
+    IllegalArgumentException negativeCommittedCount =
+        assertThrows(IllegalArgumentException.class, () -> newConcurrentOutcomeTally(-1, 0));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        negativeCommittedCount, "must be non-negative");
+
+    IllegalArgumentException negativeNonWinningCount =
+        assertThrows(IllegalArgumentException.class, () -> newConcurrentOutcomeTally(0, -1));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        negativeNonWinningCount, "must be non-negative");
+  }
+
+  @Test
   void exercise_concurrent_writer_coverage_runs_end_to_end() {
     assertDoesNotThrow(
         () ->
@@ -464,5 +477,22 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     constructor.setAccessible(true);
     return (Callable<ConcurrentCommitOutcome>)
         constructor.newInstance(ready, start, setupTurn, bookAccess, concurrentCommand);
+  }
+
+  private static Object newConcurrentOutcomeTally(long committedCount, long nonWinningCount)
+      throws ReflectiveOperationException {
+    Class<?> tallyClass =
+        Class.forName(
+            "dev.erst.fingrind.cli.SqliteRoundTripWorkflowConcurrencyCoverage$ConcurrentOutcomeTally");
+    Constructor<?> constructor = tallyClass.getDeclaredConstructor(long.class, long.class);
+    constructor.setAccessible(true);
+    try {
+      return constructor.newInstance(committedCount, nonWinningCount);
+    } catch (java.lang.reflect.InvocationTargetException exception) {
+      if (exception.getCause() instanceof IllegalArgumentException illegalArgumentException) {
+        throw illegalArgumentException;
+      }
+      throw exception;
+    }
   }
 }

@@ -296,15 +296,15 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void openBookArgumentGuard_rejectsUnexpectedCommandArgumentsDefensively() throws Exception {
-    CliLifecycleMutationArguments.OpenBookArgumentValues argumentValues =
-        new CliLifecycleMutationArguments.OpenBookArgumentValues();
+    CliOpenBookArguments.OpenBookArgumentValues argumentValues =
+        new CliOpenBookArguments.OpenBookArgumentValues();
     ListIterator<String> emptyIterator = List.<String>of().listIterator();
 
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliLifecycleMutationArguments.applyOpenBookArgument(
+                CliOpenBookArguments.applyOpenBookArgument(
                     argumentValues, "--unexpected", emptyIterator));
     assertEquals("--unexpected", exception.argument());
     assertEquals("Unsupported argument: --unexpected", exception.getMessage());
@@ -583,14 +583,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "text"
                 }));
-    CliLifecycleMutationArguments.ParsedTransferPeriodResultArguments parsedArguments =
-        CliLifecycleMutationArguments.parseTransferPeriodResultArguments(
+    CliPeriodResultTransferArguments.ParsedTransferPeriodResultArguments parsedArguments =
+        CliPeriodResultTransferArguments.parseTransferPeriodResultArguments(
             List.of("--effective-date-from", "2026-04-01", "--effective-date-to", "2026-04-30"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliLifecycleMutationArguments.parseTransferPeriodResultArguments(
+                CliPeriodResultTransferArguments.parseTransferPeriodResultArguments(
                     List.of("--unexpected", "value")));
 
     assertEquals(OutputMode.TEXT, transferPeriod.outputMode());

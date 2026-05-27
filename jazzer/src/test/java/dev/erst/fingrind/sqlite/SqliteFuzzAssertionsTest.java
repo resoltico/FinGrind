@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.CliFuzzAccountFixtures;
 import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.cli.CliFuzzHarnessTestSupport;
+import dev.erst.fingrind.cli.CliFuzzWorkflowFixtures;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import java.lang.reflect.Proxy;
@@ -28,10 +30,10 @@ class SqliteFuzzAssertionsTest {
 
     try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(store);
-      CliFuzzFixtures.openBook(administrationService);
+          CliFuzzWorkflowFixtures.administrationService(store);
+      CliFuzzWorkflowFixtures.openBook(administrationService);
       java.util.List<DeclaredAccount> accounts =
-          CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+          CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
 
       SqliteFuzzAssertions.assertStoreConnectionHardening(store);
       SqliteFuzzAssertions.deactivateAccount(bookPath, accounts.getFirst().accountCode().value());

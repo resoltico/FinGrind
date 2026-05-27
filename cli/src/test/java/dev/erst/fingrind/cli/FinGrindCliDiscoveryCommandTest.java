@@ -53,15 +53,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
     assertTrue(help.contains("Command Groups"));
-    assertTrue(help.contains("Do Next"));
+    assertTrue(help.contains("Start Here"));
     assertTrue(
         containsCollapsedText(
             help, CliInvocationText.commandExample(OperationId.HELP) + " <command>"));
     assertTrue(
         containsCollapsedText(
-            help,
-            CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                + " --output json --detail compact"));
+            help, CliInvocationText.commandExample(OperationId.CAPABILITIES) + " --output json"));
     assertFalse(help.contains("Guidance"));
     assertFalse(help.contains("declare-account-cash.json"));
     assertFalse(help.contains("provenance.idempotencyKey"));
@@ -75,13 +73,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     int exitCode = cli.run(new String[] {"help", "post-entry", "--output", "text"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(help.contains("Invocation"));
-    assertTrue(help.contains("Do Next"));
+    assertTrue(help.contains("Reference"));
+    assertTrue(help.contains("Next Step"));
     assertTrue(help.contains("Request Document"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
     assertTrue(help.contains("Scaffold"));
-    assertTrue(help.contains("JSON contract"));
+    assertTrue(help.contains("Machine contract"));
     assertFalse(help.contains("Output Contract"));
   }
 
@@ -95,7 +93,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode helpEnvelope =
         new ObjectMapper().readTree(helpOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", helpEnvelope.path("status").stringValue());
-    assertEquals("minimal", helpEnvelope.path("payload").path("detail").stringValue());
+    assertEquals("compact", helpEnvelope.path("payload").path("detail").stringValue());
     assertTrue(helpEnvelope.path("payload").path("commands").isArray());
 
     ByteArrayOutputStream versionOutput = new ByteArrayOutputStream();
@@ -119,10 +117,11 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode capabilitiesEnvelope =
         new ObjectMapper().readTree(capabilitiesOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", capabilitiesEnvelope.path("status").stringValue());
-    assertEquals("minimal", capabilitiesEnvelope.path("payload").path("detail").stringValue());
+    assertEquals("compact", capabilitiesEnvelope.path("payload").path("detail").stringValue());
     assertTrue(capabilitiesEnvelope.path("payload").path("requestInput").isObject());
-    assertTrue(capabilitiesEnvelope.path("payload").path("kernelScope").isTextual());
-    assertTrue(capabilitiesEnvelope.path("payload").path("builtInStatements").isArray());
+    assertTrue(capabilitiesEnvelope.path("payload").path("bookBoundary").isTextual());
+    assertTrue(capabilitiesEnvelope.path("payload").path("storageEngines").isArray());
+    assertTrue(capabilitiesEnvelope.path("payload").path("commands").isArray());
   }
 
   @Test
@@ -184,8 +183,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
-    assertTrue(help.contains("Invocation"));
-    assertTrue(help.contains("Do Next"));
+    assertTrue(help.contains("Reference"));
+    assertTrue(help.contains("Next Step"));
   }
 
   @Test
@@ -371,7 +370,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       String launcher =
           CliInvocationText.launcherCommandFor(
               runtimeDistribution, System.getProperty("os.name", ""));
-      assertTrue(help.contains("Do Next"), help);
+      assertTrue(help.contains("Start Here"), help);
       assertTrue(containsCollapsedText(help, launcher + " help <command>"), help);
       assertFalse(help.contains("Source Checkout Launcher"), help);
       assertFalse(help.contains("Developer Raw JAR"), help);
@@ -517,58 +516,58 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
 
   private static void assertEnvironmentRuntimeContract(JsonNode payload) {
     assertEquals(
-        ProtocolCatalog.storageDriver().wireValue(),
+        ProtocolCatalog.runtime().storageDriver().wireValue(),
         payload.path("storage").path("storageDriver").stringValue());
     assertEquals(
-        ProtocolCatalog.bookProtectionMode().wireValue(),
+        ProtocolCatalog.runtime().bookProtectionMode().wireValue(),
         payload.path("storage").path("bookProtectionMode").stringValue());
     assertEquals(
-        ProtocolCatalog.protectedBookFormat().cipher().wireValue(),
+        ProtocolCatalog.runtime().protectedBookFormat().cipher().wireValue(),
         payload.path("storage").path("defaultProtectedBookFormat").path("cipher").stringValue());
     assertEquals(
-        ProtocolCatalog.protectedBookFormat().legacyMode(),
+        ProtocolCatalog.runtime().protectedBookFormat().legacyMode(),
         payload
             .path("storage")
             .path("defaultProtectedBookFormat")
             .path("legacyMode")
             .booleanValue());
     assertEquals(
-        ProtocolCatalog.protectedBookFormat().pageSize(),
+        ProtocolCatalog.runtime().protectedBookFormat().pageSize(),
         payload.path("storage").path("defaultProtectedBookFormat").path("pageSize").intValue());
     assertEquals(
-        ProtocolCatalog.protectedBookFormat().reservedBytes(),
+        ProtocolCatalog.runtime().protectedBookFormat().reservedBytes(),
         payload
             .path("storage")
             .path("defaultProtectedBookFormat")
             .path("reservedBytes")
             .intValue());
     assertEquals(
-        ProtocolCatalog.sqliteLibraryMode().wireValue(),
+        ProtocolCatalog.runtime().sqliteLibraryMode().wireValue(),
         payload.path("sqlite").path("libraryMode").stringValue());
     assertEquals(
-        ProtocolCatalog.publicCliDistribution().wireValue(),
+        ProtocolCatalog.distribution().publicCliDistribution().wireValue(),
         payload.path("distribution").path("publicCliDistribution").stringValue());
     assertEquals(
         FinGrindCli.runtimeDistribution(),
         payload.path("distribution").path("runtimeDistribution").stringValue());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
+        ProtocolCatalog.distribution().supportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
         readTextArray(payload.path("distribution").path("supportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
+        ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
         readTextArray(payload.path("distribution").path("unsupportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+        ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
         payload.path("sqlite").path("bundleHomeSystemProperty").stringValue());
     assertEquals(
-        ProtocolCatalog.requiredSqliteCompileOptions(),
+        ProtocolCatalog.managedSqlite().requiredCompileOptions(),
         readTextArray(payload.path("sqlite").path("requiredCompileOptions")));
     assertEquals(
-        ProtocolCatalog.forbiddenSqliteCompileOptions(),
+        ProtocolCatalog.managedSqlite().forbiddenCompileOptions(),
         readTextArray(payload.path("sqlite").path("forbiddenCompileOptions")));
     assertTrue(payload.path("sqlite").path("requiresSecureMemorySupport").booleanValue());
     assertEquals(
@@ -634,6 +633,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .findFirst()
             .orElseThrow();
     assertEquals(6, protectedBookVerificationDescriptor.path("exitCode").intValue());
+    assertTrue(responseModel.path("errorDescriptors").toString().contains("internal-error"));
     assertTrue(
         responseModel.path("errorDescriptors").toString().contains("managed-runtime-failure"));
     assertTrue(
@@ -657,7 +657,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     EnvironmentDescriptor environmentDescriptor =
         FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
-                ProtocolCatalog.sqliteLibraryMode().wireValue(),
+                ProtocolCatalog.runtime().sqliteLibraryMode().wireValue(),
                 SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
                 SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
@@ -673,36 +673,41 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                 null),
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
     assertEquals(
-        ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
+        ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(),
         environmentDescriptor.distribution().runtimeDistribution());
-    assertEquals(ProtocolCatalog.storageDriver(), environmentDescriptor.storage().storageDriver());
-    assertEquals(ProtocolCatalog.storageEngine(), environmentDescriptor.storage().storageEngine());
     assertEquals(
-        ProtocolCatalog.bookProtectionMode(), environmentDescriptor.storage().bookProtectionMode());
+        ProtocolCatalog.runtime().storageDriver(), environmentDescriptor.storage().storageDriver());
     assertEquals(
-        ProtocolCatalog.protectedBookFormat(),
+        ProtocolCatalog.runtime().storageEngine(), environmentDescriptor.storage().storageEngine());
+    assertEquals(
+        ProtocolCatalog.runtime().bookProtectionMode(),
+        environmentDescriptor.storage().bookProtectionMode());
+    assertEquals(
+        ProtocolCatalog.runtime().protectedBookFormat(),
         environmentDescriptor.storage().defaultProtectedBookFormat());
-    assertEquals(ProtocolCatalog.sqliteLibraryMode(), environmentDescriptor.sqlite().libraryMode());
     assertEquals(
-        ProtocolCatalog.publicCliDistribution(),
+        ProtocolCatalog.runtime().sqliteLibraryMode(),
+        environmentDescriptor.sqlite().libraryMode());
+    assertEquals(
+        ProtocolCatalog.distribution().publicCliDistribution(),
         environmentDescriptor.distribution().publicCliDistribution());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
         environmentDescriptor.distribution().supportedPublicCliBundleTargets());
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliBundleTargets(),
+        ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
         environmentDescriptor.distribution().unsupportedPublicCliBundleTargets());
     assertEquals(
-        ProtocolCatalog.sourceCheckoutJava(),
+        ProtocolCatalog.distribution().sourceCheckoutJava(),
         environmentDescriptor.distribution().sourceCheckoutJava());
     assertEquals(
-        ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+        ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
         environmentDescriptor.sqlite().bundleHomeSystemProperty());
     assertEquals(
-        ProtocolCatalog.requiredSqliteCompileOptions(),
+        ProtocolCatalog.managedSqlite().requiredCompileOptions(),
         environmentDescriptor.sqlite().requiredCompileOptions());
     assertEquals(
-        ProtocolCatalog.forbiddenSqliteCompileOptions(),
+        ProtocolCatalog.managedSqlite().forbiddenCompileOptions(),
         environmentDescriptor.sqlite().forbiddenCompileOptions());
     assertTrue(environmentDescriptor.sqlite().requiresSecureMemorySupport());
     EnvironmentSqliteDescriptor.UnavailableRuntime unavailableRuntime =

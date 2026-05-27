@@ -16,6 +16,8 @@ import java.util.Objects;
 
 /** Reads one UTF-8 book passphrase file. */
 public final class SqliteBookKeyFile {
+  private static final String KEY_FILE_SOURCE_LABEL = "key file";
+
   private SqliteBookKeyFile() {}
 
   /** Reads and normalizes one UTF-8 passphrase file. */
@@ -33,7 +35,7 @@ public final class SqliteBookKeyFile {
                     .fold(
                         loadedBytes ->
                             SqliteBookPassphrase.fromUtf8BytesDecision(
-                                validatedPath.toString(), loadedBytes),
+                                KEY_FILE_SOURCE_LABEL, loadedBytes),
                         ContractDecision::rejected),
             ContractDecision::rejected);
   }
@@ -90,14 +92,15 @@ public final class SqliteBookKeyFile {
               "FinGrind book passphrase input from the selected key file exceeded the %d-byte limit: %s"
                   .formatted(
                       SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES,
-                      bookKeyFilePath.toAbsolutePath().normalize()),
+                      PublicPathHint.fromPath(bookKeyFilePath).value()),
               "Provide one key file whose single-line UTF-8 passphrase fits within the %d-byte limit, then rerun the command."
                   .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES),
               null));
     } catch (IOException exception) {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
-              "Failed to read the FinGrind book key file: " + bookKeyFilePath,
+              "Failed to read the FinGrind book key file: "
+                  + PublicPathHint.fromPath(bookKeyFilePath).value(),
               "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
               null));
     }

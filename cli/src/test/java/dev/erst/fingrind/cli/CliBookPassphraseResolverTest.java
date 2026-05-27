@@ -50,7 +50,7 @@ class CliBookPassphraseResolverTest {
                 new BookAccess(
                     Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
             .requireAccepted()) {
-      assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
+      assertEquals("key file", passphrase.sourceDescription());
       assertEquals("swordfish", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
   }
@@ -111,10 +111,7 @@ class CliBookPassphraseResolverTest {
             .resolve(
                 new BookAccess(bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
             .requireAccepted()) {
-      assertTrue(
-          passphrase
-              .sourceDescription()
-              .contains(bookPath.toAbsolutePath().normalize().toString()));
+      assertEquals("interactive prompt", passphrase.sourceDescription());
       assertEquals(
           "prompt-passphrase", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
@@ -223,10 +220,7 @@ class CliBookPassphraseResolverTest {
                 BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
                 CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
             .requireAccepted()) {
-      assertTrue(
-          passphrase
-              .sourceDescription()
-              .contains(bookPath.toAbsolutePath().normalize().toString()));
+      assertEquals("interactive prompt", passphrase.sourceDescription());
       assertEquals(
           "confirmed-secret", new String(passphrase.utf8BytesCopy(), StandardCharsets.UTF_8));
     }
@@ -367,7 +361,7 @@ class CliBookPassphraseResolverTest {
   void promptingConsoleTerminal_readsPasswordFromTypedPromptingConsole() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            new CliBookPassphraseResolver.PromptingConsole() {
+            new CliPromptingConsole() {
               @Override
               public char @Nullable [] readPassword(String prompt) {
                 assertEquals("book.sqlite", prompt);
@@ -384,7 +378,7 @@ class CliBookPassphraseResolverTest {
     StringBuilder promptCapture = new StringBuilder();
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            new CliBookPassphraseResolver.PromptingConsole() {
+            new CliPromptingConsole() {
               @Override
               public char @Nullable [] readPassword(String prompt) {
                 promptCapture.append(prompt);
@@ -401,7 +395,7 @@ class CliBookPassphraseResolverTest {
   void promptingConsoleTerminal_rejectsNullPasswordReads() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            new CliBookPassphraseResolver.PromptingConsole() {
+            new CliPromptingConsole() {
               @Override
               @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
               public char @Nullable [] readPassword(String prompt) {
@@ -424,7 +418,7 @@ class CliBookPassphraseResolverTest {
   void promptingConsoleTerminal_wrapsReadPasswordFailures() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            new CliBookPassphraseResolver.PromptingConsole() {
+            new CliPromptingConsole() {
               @Override
               public char @Nullable [] readPassword(String prompt) {
                 assertEquals("book.sqlite", prompt);
@@ -446,7 +440,7 @@ class CliBookPassphraseResolverTest {
   void promptingConsoleTerminal_wrapsConsoleIoErrors() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            new CliBookPassphraseResolver.PromptingConsole() {
+            new CliPromptingConsole() {
               @Override
               public char @Nullable [] readPassword(String prompt) {
                 assertEquals("book.sqlite", prompt);
@@ -530,7 +524,7 @@ class CliBookPassphraseResolverTest {
   @Test
   void systemPromptingConsole_reportsUnavailableWhenMissing() {
     assertNull(
-        CliBookPassphraseResolver.systemPromptingConsole(
+        CliPromptingConsoles.systemPromptingConsole(
             null,
             source -> {
               throw new AssertionError("Missing sources must not inspect terminal state.");
@@ -543,7 +537,7 @@ class CliBookPassphraseResolverTest {
   @Test
   void systemPromptingConsole_reportsUnavailableWhenNotInteractive() {
     assertNull(
-        CliBookPassphraseResolver.systemPromptingConsole(
+        CliPromptingConsoles.systemPromptingConsole(
             "console-source",
             source -> false,
             (source, promptFormat, prompt) -> {
@@ -554,8 +548,8 @@ class CliBookPassphraseResolverTest {
   @Test
   void systemPromptingConsole_preservesInteractivePromptReads() {
     StringBuilder promptCapture = new StringBuilder();
-    CliBookPassphraseResolver.PromptingConsole promptingConsole =
-        CliBookPassphraseResolver.systemPromptingConsole(
+    CliPromptingConsole promptingConsole =
+        CliPromptingConsoles.systemPromptingConsole(
             "console-source",
             source -> true,
             (source, promptFormat, prompt) -> {
@@ -574,13 +568,13 @@ class CliBookPassphraseResolverTest {
 
   @Test
   void availableSystemPromptingConsole_reportsUnavailableWhenMissing() {
-    assertNull(CliBookPassphraseResolver.availableSystemPromptingConsole(null));
+    assertNull(CliPromptingConsoles.availableSystemPromptingConsole(null));
   }
 
   @Test
   void interactiveSystemPromptingConsole_reportsUnavailableWhenNotInteractive() {
     assertNull(
-        CliBookPassphraseResolver.interactiveSystemPromptingConsole(
+        CliPromptingConsoles.interactiveSystemPromptingConsole(
             () -> false,
             prompt -> {
               throw new AssertionError("Non-interactive consoles must not prompt.");
@@ -590,8 +584,8 @@ class CliBookPassphraseResolverTest {
   @Test
   void interactiveSystemPromptingConsole_preservesInteractivePromptReads() {
     StringBuilder promptCapture = new StringBuilder();
-    CliBookPassphraseResolver.PromptingConsole promptingConsole =
-        CliBookPassphraseResolver.interactiveSystemPromptingConsole(
+    CliPromptingConsole promptingConsole =
+        CliPromptingConsoles.interactiveSystemPromptingConsole(
             () -> true,
             prompt -> {
               promptCapture.append(prompt);
@@ -609,8 +603,8 @@ class CliBookPassphraseResolverTest {
   @Test
   void wrappedSystemConsole_delegatesTerminalStateAndPromptReads() {
     StringBuilder promptCapture = new StringBuilder();
-    CliBookPassphraseResolver.SystemPromptingConsole systemConsole =
-        CliBookPassphraseResolver.wrap(
+    CliSystemPromptingConsole systemConsole =
+        CliPromptingConsoles.wrap(
             () -> true,
             prompt -> {
               promptCapture.append(prompt);
@@ -636,11 +630,10 @@ class CliBookPassphraseResolverTest {
     Files.writeString(keyFile, content, StandardCharsets.UTF_8);
   }
 
-  private static Supplier<CliBookPassphraseResolver.@Nullable PromptingConsole>
-      promptingConsoleSupplier(String password) {
+  private static Supplier<@Nullable CliPromptingConsole> promptingConsoleSupplier(String password) {
     StringBuilder promptCapture = new StringBuilder();
     return () ->
-        new CliBookPassphraseResolver.PromptingConsole() {
+        new CliPromptingConsole() {
           @Override
           public char @Nullable [] readPassword(String prompt) {
             promptCapture.append(prompt);

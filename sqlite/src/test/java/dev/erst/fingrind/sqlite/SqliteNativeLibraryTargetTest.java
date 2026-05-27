@@ -24,13 +24,15 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     null, null, List::of, () -> null));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle launcher"));
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of, () -> null));
+        () ->
+            SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
+                null, null, List::of, () -> null));
   }
 
   @Test
@@ -39,7 +41,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     "./build/../sqlite/libsqlite3.so.0"));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("FINGRIND_SQLITE_LIBRARY"));
@@ -54,7 +56,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString()));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
   }
@@ -65,7 +67,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     "   ", null, List::of, () -> null));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("bundle launcher"));
   }
@@ -78,7 +80,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(bundledLibraryPath.getParent());
     Files.writeString(bundledLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeRuntimePolicy.configuredLibraryTarget(null, bundleHomePath.toString());
+        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, bundleHomePath.toString());
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(
         bundledLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -98,7 +100,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(managedLibraryPath.getParent());
     Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeRuntimePolicy.configuredLibraryTarget(
+        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
             null, null, () -> List.of(sourceCheckoutRoot), () -> null);
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
@@ -128,7 +130,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
           "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
       System.clearProperty("fingrind.source-checkout.build-root");
       SqliteLibraryTarget libraryTarget =
-          SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null);
+          SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, null);
       assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
       assertEquals(
           managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -159,7 +161,8 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
       System.setProperty(
           "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
       System.clearProperty("fingrind.source-checkout.build-root");
-      SqliteLibraryTarget libraryTarget = SqliteNativeRuntimePolicy.configuredLibraryTarget(null);
+      SqliteLibraryTarget libraryTarget =
+          SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null);
       assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
       assertEquals(
           managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -185,7 +188,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(managedLibraryPath.getParent());
     Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeRuntimePolicy.configuredLibraryTarget(
+        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
             null, null, () -> List.of(sourceCheckoutRoot), () -> externalizedBuildRoot);
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
     assertEquals(
@@ -212,7 +215,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     null, null, () -> List.of(sourceCheckoutRoot), () -> null));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("prepareManagedSqlite"));
   }
@@ -225,7 +228,8 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(null, bundleHomePath.toString()));
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
+                    null, bundleHomePath.toString()));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle home"));
   }
@@ -236,19 +240,19 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     null, null, List::of, () -> null));
     IllegalStateException blankConfiguredPath =
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     "   ", null, List::of, () -> null));
     IllegalStateException blankBundleHome =
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
                     null, "   ", List::of, () -> null));
     assertTrue(Objects.requireNonNull(missingEverywhere.getMessage()).contains("bundle launcher"));
     assertTrue(
@@ -264,10 +268,10 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
     Files.createDirectories(incompleteCandidate);
     Files.writeString(incompleteCandidate.resolve("gradlew"), "#!/usr/bin/env bash\n");
-    assertEquals(List.of(), SqliteNativeRuntimePolicy.sourceCheckoutRoots(null, null));
+    assertEquals(List.of(), SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRoots(null, null));
     assertEquals(
         List.of(sourceCheckoutRoot.toAbsolutePath().normalize()),
-        SqliteNativeRuntimePolicy.sourceCheckoutRoots(
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRoots(
             incompleteCandidate.toString(),
             sourceCheckoutRoot.resolve("cli").resolve("nested").toString()));
   }
@@ -281,7 +285,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
 
     assertEquals(
         nestedCodeSource.toAbsolutePath().normalize().toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(nestedCodeSource));
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRootFromCodeSource(nestedCodeSource));
   }
 
   @Test
@@ -289,12 +293,17 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Path configuredBuildRoot = tempDirectory.resolve("configured-build-root");
     assertEquals(
         configuredBuildRoot.toAbsolutePath().normalize(),
-        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(configuredBuildRoot.toString()));
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutBuildRoot(configuredBuildRoot.toString()));
   }
 
   @Test
   void sourceCheckoutBuildRoot_returnsNullWhenNoConfiguredCueExists() {
-    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null));
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.sourceCheckoutBuildRoot(null));
+  }
+
+  @Test
+  void sourceCheckoutBuildRoot_treatsBlankConfiguredPathsAsMissing() {
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.sourceCheckoutBuildRoot("   "));
   }
 
   @Test
@@ -304,32 +313,33 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Path codeSourcePathWithoutExistingFile = tempDirectory.resolve("missing-classes");
     Files.createDirectories(codeSourceDirectory);
     Files.writeString(codeSourceJar, "jar", StandardCharsets.UTF_8);
-    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(null));
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRootFromCodeSource(null));
     assertEquals(
         codeSourcePathWithoutExistingFile.toAbsolutePath().normalize().toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRootFromCodeSource(
             codeSourcePathWithoutExistingFile));
     assertEquals(
         Objects.requireNonNull(codeSourceJar.getParent()).toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(codeSourceJar));
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRootFromCodeSource(codeSourceJar));
     assertEquals(
         codeSourceDirectory.toString(),
-        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(codeSourceDirectory));
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutRootFromCodeSource(codeSourceDirectory));
   }
 
   @Test
   void codeSourcePath_handlesNullValidAndInvalidLocations() throws IOException {
     Path classesDirectory = tempDirectory.resolve("classes");
     Files.createDirectories(classesDirectory);
-    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath((String) null));
-    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath((CodeSource) null));
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.codeSourcePath((String) null));
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.codeSourcePath((CodeSource) null));
     assertEquals(
         null,
-        SqliteNativeRuntimePolicy.codeSourcePath(new CodeSource((URL) null, (Certificate[]) null)));
+        SqliteSourceCheckoutRuntimeLocator.codeSourcePath(
+            new CodeSource((URL) null, (Certificate[]) null)));
     assertEquals(
         classesDirectory.toAbsolutePath().normalize(),
-        SqliteNativeRuntimePolicy.codeSourcePath(classesDirectory.toUri().toString()));
-    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath("://bad"));
+        SqliteSourceCheckoutRuntimeLocator.codeSourcePath(classesDirectory.toUri().toString()));
+    assertEquals(null, SqliteSourceCheckoutRuntimeLocator.codeSourcePath("://bad"));
   }
 
   @Test
@@ -343,7 +353,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             .resolve(expectedManagedSqliteClassifier());
     assertEquals(
         null,
-        SqliteNativeRuntimePolicy.sourceCheckoutManagedLibraryPath(
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutManagedLibraryPath(
             sourceCheckoutRoot,
             (root, expectedFileName) -> {
               throw new IOException("boom");
@@ -351,7 +361,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(managedSqliteRoot);
     assertEquals(
         null,
-        SqliteNativeRuntimePolicy.sourceCheckoutManagedLibraryPath(
+        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutManagedLibraryPath(
             sourceCheckoutRoot,
             (root, expectedFileName) -> {
               throw new IOException("boom");
@@ -363,16 +373,18 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     String originalOsName = System.getProperty("os.name");
     try {
       System.setProperty("os.name", "Mac OS X");
-      assertEquals("libsqlite3.dylib", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
+      assertEquals(
+          "libsqlite3.dylib", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
       System.setProperty("os.name", "Linux");
-      assertEquals("libsqlite3.so.0", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
+      assertEquals(
+          "libsqlite3.so.0", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
       System.setProperty("os.name", "Windows 11");
-      assertEquals("sqlite3.dll", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
+      assertEquals("sqlite3.dll", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
       System.setProperty("os.name", "FreeBSD");
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              SqliteNativeRuntimePolicy::supportedNativeLibraryFileName);
+              SqliteHostPlatformDescriptor::supportedNativeLibraryFileName);
       String message = Objects.requireNonNull(exception.getMessage());
       assertTrue(message.contains("macOS, Linux, and Windows only"));
       assertTrue(message.contains("FreeBSD"));
@@ -385,11 +397,13 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   void supportedNativeLibraryFileName_provesWindowsAndUnsupportedBranchesIndependently() {
     assertEquals(
         "sqlite3.dll",
-        SqliteNativeRuntimePolicy.supportedNativeLibraryFileName("windows", "Windows Server 2025"));
+        SqliteHostPlatformDescriptor.supportedNativeLibraryFileName(
+            "windows", "Windows Server 2025"));
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.supportedNativeLibraryFileName("solaris", "Solaris"));
+            () ->
+                SqliteHostPlatformDescriptor.supportedNativeLibraryFileName("solaris", "Solaris"));
     assertTrue(NullTestSupport.messageOf(exception).contains("Solaris"));
   }
 
@@ -400,11 +414,11 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     try {
       System.setProperty("os.name", "Windows 11");
       System.setProperty("os.arch", "arm64");
-      assertEquals("windows-aarch64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+      assertEquals("windows-aarch64", SqliteHostPlatformDescriptor.supportedHostClassifier());
       System.setProperty("os.arch", "x64");
-      assertEquals("windows-x86_64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+      assertEquals("windows-x86_64", SqliteHostPlatformDescriptor.supportedHostClassifier());
       System.setProperty("os.arch", "POWER PC 64");
-      assertEquals("windows-power-pc-64", SqliteNativeRuntimePolicy.supportedHostClassifier());
+      assertEquals("windows-power-pc-64", SqliteHostPlatformDescriptor.supportedHostClassifier());
     } finally {
       restoreSystemProperty("os.name", originalOsName);
       restoreSystemProperty("os.arch", originalOsArch);
@@ -412,6 +426,6 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   private static String expectedManagedSqliteClassifier() {
-    return SqliteNativeRuntimePolicy.supportedHostClassifier();
+    return SqliteHostPlatformDescriptor.supportedHostClassifier();
   }
 }

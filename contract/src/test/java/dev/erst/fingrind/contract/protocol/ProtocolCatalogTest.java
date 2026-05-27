@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the core-owned protocol catalog. */
@@ -218,7 +219,7 @@ class ProtocolCatalogTest {
 
   @Test
   void bookkeepingKernelFacts_requireBuiltInStatementsToMatchImplementedCapabilities() {
-    BookkeepingKernelFacts kernel = ProtocolCatalog.bookkeepingKernel();
+    BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
 
     assertThrows(
         IllegalArgumentException.class,
@@ -232,7 +233,7 @@ class ProtocolCatalogTest {
 
   @Test
   void bookkeepingKernelFacts_publishCurrentExecutableKernelInventory() {
-    BookkeepingKernelFacts kernel = ProtocolCatalog.bookkeepingKernel();
+    BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
     assertEquals("cash-single-entity-internal-management-kernel", kernel.scope());
     assertEquals(
         List.of("financial-position", "income-statement", "changes-in-equity"),
@@ -387,82 +388,89 @@ class ProtocolCatalogTest {
 
   @Test
   void globalFacts_publishTheCurrentBookModelAndRuntimeContract() {
-    assertEquals(List.of(StorageEngine.SQLITE), ProtocolCatalog.storageEngines());
+    assertEquals(List.of(StorageEngine.SQLITE), ProtocolCatalog.runtime().storageEngines());
     assertEquals(
         RuntimeDistribution.DIRECT_JAVA_INVOCATION,
-        ProtocolCatalog.directJavaRuntimeDistribution());
+        ProtocolCatalog.distribution().directJavaRuntimeDistribution());
     assertEquals(
         RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
-        ProtocolCatalog.sourceCheckoutRuntimeDistribution());
+        ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution());
     assertEquals(
-        RuntimeDistribution.CONTAINER_IMAGE, ProtocolCatalog.containerRuntimeDistribution());
+        RuntimeDistribution.CONTAINER_IMAGE,
+        ProtocolCatalog.distribution().containerRuntimeDistribution());
     assertEquals(
-        RuntimeDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.bundleRuntimeDistribution());
+        RuntimeDistribution.SELF_CONTAINED_BUNDLE,
+        ProtocolCatalog.distribution().bundleRuntimeDistribution());
     assertEquals(
-        PublicCliDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.publicCliDistribution());
-    assertEquals(StorageDriver.SQLITE_FFM_SQLITE3MC, ProtocolCatalog.storageDriver());
-    assertEquals(StorageEngine.SQLITE, ProtocolCatalog.storageEngine());
-    assertEquals(BookProtectionMode.REQUIRED, ProtocolCatalog.bookProtectionMode());
-    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.protectedBookFormat().cipher());
-    assertFalse(ProtocolCatalog.protectedBookFormat().legacyMode());
-    assertEquals(4096, ProtocolCatalog.protectedBookFormat().pageSize());
-    assertEquals(32, ProtocolCatalog.protectedBookFormat().reservedBytes());
-    assertEquals(4096, ProtocolCatalog.protectedBookFormat().legacyPageSize());
-    assertEquals(64007, ProtocolCatalog.protectedBookFormat().kdfIter());
-    assertEquals(0, ProtocolCatalog.protectedBookFormat().plaintextHeaderSize());
-    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
-    assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
-    assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
-    assertEquals("3.53.1", ProtocolCatalog.requiredMinimumSqliteVersion());
-    assertEquals("2.3.4", ProtocolCatalog.requiredSqlite3mcVersion());
+        PublicCliDistribution.SELF_CONTAINED_BUNDLE,
+        ProtocolCatalog.distribution().publicCliDistribution());
+    assertEquals(StorageDriver.SQLITE_FFM_SQLITE3MC, ProtocolCatalog.runtime().storageDriver());
+    assertEquals(StorageEngine.SQLITE, ProtocolCatalog.runtime().storageEngine());
+    assertEquals(BookProtectionMode.REQUIRED, ProtocolCatalog.runtime().bookProtectionMode());
+    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.runtime().protectedBookFormat().cipher());
+    assertFalse(ProtocolCatalog.runtime().protectedBookFormat().legacyMode());
+    assertEquals(4096, ProtocolCatalog.runtime().protectedBookFormat().pageSize());
+    assertEquals(32, ProtocolCatalog.runtime().protectedBookFormat().reservedBytes());
+    assertEquals(4096, ProtocolCatalog.runtime().protectedBookFormat().legacyPageSize());
+    assertEquals(64007, ProtocolCatalog.runtime().protectedBookFormat().kdfIter());
+    assertEquals(0, ProtocolCatalog.runtime().protectedBookFormat().plaintextHeaderSize());
+    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.runtime().defaultBookCipher());
+    assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.runtime().sqliteLibraryMode());
+    assertEquals(
+        "fingrind.bundle.home", ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty());
+    assertEquals("3.53.1", ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion());
+    assertEquals("2.3.4", ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion());
     assertEquals(
         "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
-        ProtocolCatalog.requiredSqliteSourceId());
+        ProtocolCatalog.managedSqlite().requiredSqliteSourceId());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-        ProtocolCatalog.requiredSqliteCompileOptions());
+        ProtocolCatalog.managedSqlite().requiredCompileOptions());
     assertEquals(
         List.of(
             ProtocolEnvelopeStatus.OK,
             ProtocolEnvelopeStatus.REJECTED,
             ProtocolEnvelopeStatus.ERROR),
-        ProtocolCatalog.envelopeStatuses());
-    assertEquals(ProtocolEnvelopeStatus.OK, ProtocolCatalog.successStatus());
-    assertEquals(ProtocolEnvelopeStatus.REJECTED, ProtocolCatalog.rejectionStatus());
-    assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolCatalog.errorStatus());
+        ProtocolCatalog.envelopes().statuses());
+    assertEquals(ProtocolEnvelopeStatus.OK, ProtocolCatalog.envelopes().successStatus());
+    assertEquals(ProtocolEnvelopeStatus.REJECTED, ProtocolCatalog.envelopes().rejectionStatus());
+    assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolCatalog.envelopes().errorStatus());
     assertEquals(
-        "single-functional-currency-per-book", ProtocolCatalog.bookModel().currencyScope());
-    assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());
-    assertEquals("advisory", ProtocolCatalog.preflight().semantics());
-    assertFalse(ProtocolCatalog.preflight().commitGuarantee());
-    assertEquals(PlanTransactionMode.ATOMIC, ProtocolCatalog.planExecution().transactionMode());
+        "single-functional-currency-per-book",
+        ProtocolCatalog.domain().bookModel().currencyScope());
+    assertEquals("not-supported", ProtocolCatalog.domain().currency().multiCurrencyStatus());
+    assertEquals("advisory", ProtocolCatalog.domain().preflight().semantics());
+    assertFalse(ProtocolCatalog.domain().preflight().commitGuarantee());
     assertEquals(
-        PlanFailurePolicy.HALT_ON_FIRST_FAILURE, ProtocolCatalog.planExecution().failurePolicy());
-    assertTrue(ProtocolCatalog.planExecution().journal().contains("per-step journal"));
+        PlanTransactionMode.ATOMIC, ProtocolCatalog.domain().planExecution().transactionMode());
+    assertEquals(
+        PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+        ProtocolCatalog.domain().planExecution().failurePolicy());
+    assertTrue(ProtocolCatalog.domain().planExecution().journal().contains("per-step journal"));
     assertTrue(
-        ProtocolCatalog.planExecution().hardLimitations().stream()
+        ProtocolCatalog.domain().planExecution().hardLimitations().stream()
             .anyMatch(limitation -> limitation.contains("open-book")));
     assertTrue(
-        ProtocolCatalog.planExecution().hardLimitations().stream()
+        ProtocolCatalog.domain().planExecution().hardLimitations().stream()
             .anyMatch(limitation -> limitation.contains("100 steps")));
     assertEquals(
         PublicDistributionContracts.current().supportedPublicCliBundleTargets(),
-        ProtocolCatalog.supportedPublicCliBundleTargets());
+        ProtocolCatalog.distribution().supportedPublicCliBundleTargets());
     assertEquals(
         PublicDistributionContracts.current().unsupportedPublicCliBundleTargets(),
-        ProtocolCatalog.unsupportedPublicCliBundleTargets());
+        ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets());
     assertEquals(
         BundleLayoutContracts.current().bundleTargets().keySet(),
         java.util.stream.Stream.concat(
-                ProtocolCatalog.supportedPublicCliBundleTargets().stream(),
-                ProtocolCatalog.unsupportedPublicCliBundleTargets().stream())
+                ProtocolCatalog.distribution().supportedPublicCliBundleTargets().stream(),
+                ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets().stream())
             .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
     assertEquals(
         "./bin/fingrind",
-        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64));
+        ProtocolCatalog.distribution().bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64));
     assertEquals(
         "bin/fingrind.ps1",
-        ProtocolCatalog.bundleLauncherPath(PublicCliBundleTarget.WINDOWS_X86_64));
+        ProtocolCatalog.distribution().bundleLauncherPath(PublicCliBundleTarget.WINDOWS_X86_64));
   }
 
   @Test
@@ -605,6 +613,106 @@ class ProtocolCatalogTest {
                 PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
                 " ",
                 List.of()));
+  }
+
+  @Test
+  void protocolRequestFieldSets_followCanonicalRequestFieldOwners() {
+    assertEquals(
+        Set.of(
+            "accountCode",
+            "accountName",
+            "accountType",
+            "accountRole",
+            "accountNodeKind",
+            "parentAccountCode",
+            "financialPositionLineClassification",
+            "profitAndLossLineClassification"),
+        ProtocolBookRequestFieldSets.declareAccountFields());
+    assertEquals(
+        Set.of("entityName", "businessActivityTags", "functionalCurrency", "fiscalYearStart"),
+        ProtocolBookRequestFieldSets.openBookFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
+        ProtocolPostingRequestFieldSets.postEntryTopLevelFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "cashAccountCode",
+            "revenueAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolPostingRequestFieldSets.cashRevenueFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "expenseAccountCode",
+            "cashAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolPostingRequestFieldSets.cashExpenseFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "cashAccountCode",
+            "equityAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolPostingRequestFieldSets.equityContributionFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "equityAccountCode",
+            "cashAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolPostingRequestFieldSets.equityWithdrawalFields());
+    assertEquals(
+        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance"),
+        ProtocolPostingRequestFieldSets.openingBalanceAdjustmentFields());
+    assertEquals(
+        ProtocolPostingRequestFieldSets.openingBalanceAdjustmentFields(),
+        ProtocolPostingRequestFieldSets.correctionAdjustmentFields());
+    assertEquals(
+        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance", "reversal"),
+        ProtocolPostingRequestFieldSets.reversalAdjustmentFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.evidenceFields()),
+        ProtocolPostingRequestFieldSets.evidenceFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.sourceDocumentFields()),
+        ProtocolPostingRequestFieldSets.sourceDocumentFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.approvalFields()),
+        ProtocolPostingRequestFieldSets.approvalFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.provenanceFields()),
+        ProtocolPostingRequestFieldSets.provenanceFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.journalLineFields()),
+        ProtocolPostingRequestFieldSets.journalLineFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.reversalFields()),
+        ProtocolPostingRequestFieldSets.reversalFields());
+    assertEquals(
+        Set.copyOf(ProtocolLedgerPlanFields.planFields()),
+        ProtocolLedgerPlanRequestFieldSets.ledgerPlanFields());
+    assertEquals(
+        Set.copyOf(ProtocolLedgerPlanFields.stepFields()),
+        ProtocolLedgerPlanRequestFieldSets.ledgerStepFields());
+    assertEquals(
+        Set.copyOf(ProtocolLedgerPlanFields.queryFields()),
+        ProtocolLedgerPlanRequestFieldSets.ledgerQueryFields());
+    assertEquals(
+        Set.copyOf(ProtocolLedgerPlanFields.assertionFields()),
+        ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields());
   }
 
   @Test

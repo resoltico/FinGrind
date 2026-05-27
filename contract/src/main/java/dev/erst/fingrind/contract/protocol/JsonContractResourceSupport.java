@@ -1,145 +1,49 @@
 package dev.erst.fingrind.contract.protocol;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.OptionalInt;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.MissingNode;
 import tools.jackson.databind.node.ObjectNode;
 
-/** Shared JSON resource loading helpers for protocol-owned contract snapshots. */
+/** Facade over resource loading and node-reading for protocol-owned JSON contract snapshots. */
 final class JsonContractResourceSupport {
-  private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
-
   private JsonContractResourceSupport() {}
 
   static ObjectNode loadObject(
       @Nullable InputStream resourceStream, String resourcePath, String contractLabel) {
-    Objects.requireNonNull(resourcePath, "resourcePath");
-    Objects.requireNonNull(contractLabel, "contractLabel");
-    if (resourceStream == null) {
-      throw new IllegalStateException("Missing " + contractLabel + " resource: " + resourcePath);
-    }
-    byte[] resourceBytes;
-    try (resourceStream) {
-      resourceBytes = resourceStream.readAllBytes();
-    } catch (IOException exception) {
-      throw new UncheckedIOException(
-          "Failed to load " + contractLabel + " resource: " + resourcePath, exception);
-    }
-    JsonNode document = parseDocument(resourceBytes, resourcePath, contractLabel);
-    if (!document.isObject()) {
-      throw new IllegalArgumentException(
-          contractLabel + " resource must contain one top-level JSON object: " + resourcePath);
-    }
-    return (ObjectNode) document;
-  }
-
-  private static JsonNode parseDocument(
-      byte[] resourceBytes, String resourcePath, String contractLabel) {
-    if (resourceBytes.length == 0) {
-      throw new IllegalArgumentException(
-          contractLabel + " resource must not be empty: " + resourcePath);
-    }
-    final JsonNode document;
-    try {
-      document =
-          Objects.requireNonNullElseGet(
-              JSON_MAPPER.readTree(resourceBytes), MissingNode::getInstance);
-    } catch (RuntimeException exception) {
-      throw new IllegalArgumentException(
-          "Failed to parse " + contractLabel + " resource: " + resourcePath, exception);
-    }
-    if (document.isMissingNode() || document.isNull()) {
-      throw new IllegalArgumentException(
-          contractLabel + " resource must not be empty: " + resourcePath);
-    }
-    return document;
+    return JsonContractResourceLoader.loadObject(resourceStream, resourcePath, contractLabel);
   }
 
   static @Nullable JsonNode nullableField(JsonNode document, String key) {
-    Objects.requireNonNull(document, "document");
-    Objects.requireNonNull(key, "key");
-    return document.get(key);
+    return JsonContractNodeReaders.nullableField(document, key);
   }
 
   static ObjectNode requireObject(JsonNode document, String key, String message) {
-    @Nullable JsonNode value = nullableField(document, key);
-    if (value == null || !value.isObject()) {
-      throw new IllegalArgumentException(message);
-    }
-    return (ObjectNode) value;
+    return JsonContractNodeReaders.requireObject(document, key, message);
   }
 
   static ObjectNode requireObjectNode(JsonNode value, String message) {
-    if (!value.isObject()) {
-      throw new IllegalArgumentException(message);
-    }
-    return (ObjectNode) value;
+    return JsonContractNodeReaders.requireObjectNode(value, message);
   }
 
   static String requireText(JsonNode document, String key) {
-    @Nullable JsonNode value = nullableField(document, key);
-    String normalized =
-        value == null || value.isNull() || !value.isString() ? "" : value.stringValue().strip();
-    if (normalized.isEmpty()) {
-      throw new IllegalArgumentException(key + " must be a non-blank JSON string.");
-    }
-    return normalized;
+    return JsonContractNodeReaders.requireText(document, key);
   }
 
   static boolean requireBoolean(JsonNode document, String key) {
-    @Nullable JsonNode value = nullableField(document, key);
-    if (value == null || value.isNull() || !value.isBoolean()) {
-      throw new IllegalArgumentException(key + " must be one JSON boolean.");
-    }
-    return value.booleanValue();
+    return JsonContractNodeReaders.requireBoolean(document, key);
   }
 
   static int requireInt(JsonNode document, String key) {
-    @Nullable JsonNode value = nullableField(document, key);
-    OptionalInt intValue =
-        value == null || value.isNull() ? OptionalInt.empty() : value.intValueOpt();
-    if (intValue.isEmpty()) {
-      throw new IllegalArgumentException(key + " must be one JSON integer.");
-    }
-    return intValue.orElseThrow();
+    return JsonContractNodeReaders.requireInt(document, key);
   }
 
   static List<String> optionalStringArray(JsonNode document, String key) {
-    @Nullable JsonNode value = nullableField(document, key);
-    if (value == null || value.isNull()) {
-      return List.of();
-    }
-    return requireStringArrayValue(value, key);
+    return JsonContractNodeReaders.optionalStringArray(document, key);
   }
 
   static List<String> requireStringArray(JsonNode document, String key) {
-    @Nullable JsonNode value = nullableField(document, key);
-    if (value == null || value.isNull()) {
-      throw new IllegalArgumentException(key + " must be a JSON array of strings.");
-    }
-    return requireStringArrayValue(value, key);
-  }
-
-  private static List<String> requireStringArrayValue(JsonNode value, String key) {
-    if (!value.isArray()) {
-      throw new IllegalArgumentException(key + " must be a JSON array of strings.");
-    }
-    List<String> values = new ArrayList<>();
-    for (JsonNode element : value) {
-      String normalized = element.isString() ? element.stringValue().strip() : "";
-      if (normalized.isEmpty()) {
-        throw new IllegalArgumentException(key + " must be a JSON array of strings.");
-      }
-      values.add(normalized);
-    }
-    return List.copyOf(values);
+    return JsonContractNodeReaders.requireStringArray(document, key);
   }
 }

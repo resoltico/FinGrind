@@ -6,13 +6,13 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
@@ -60,21 +60,21 @@ public final class SqliteBookKeyFileGenerator {
   private SqliteBookKeyFileGenerator() {}
 
   /** Creates one new key file and returns non-secret metadata about the created artifact. */
-  public static GeneratedKeyFile generate(Path bookKeyFilePath) {
+  public static GeneratedBookKeyFile generate(Path bookKeyFilePath) {
     return generateDecision(bookKeyFilePath).requireAccepted();
   }
 
   /** Creates one new key file and returns the explicit accepted/rejected result. */
-  public static ContractDecision<GeneratedKeyFile> generateDecision(Path bookKeyFilePath) {
+  public static ContractDecision<GeneratedBookKeyFile> generateDecision(Path bookKeyFilePath) {
     return generateDecision(
         bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
-  static GeneratedKeyFile generate(Path bookKeyFilePath, SecureRandom secureRandom) {
+  static GeneratedBookKeyFile generate(Path bookKeyFilePath, SecureRandom secureRandom) {
     return generateDecision(bookKeyFilePath, secureRandom).requireAccepted();
   }
 
-  static GeneratedKeyFile generate(
+  static GeneratedBookKeyFile generate(
       Path bookKeyFilePath,
       SecureRandom secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
@@ -82,13 +82,13 @@ public final class SqliteBookKeyFileGenerator {
         .requireAccepted();
   }
 
-  static ContractDecision<GeneratedKeyFile> generateDecision(
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath, SecureRandom secureRandom) {
     return generateDecision(
         bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
-  static ContractDecision<GeneratedKeyFile> generateDecision(
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
       SecureRandom secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
@@ -100,7 +100,7 @@ public final class SqliteBookKeyFileGenerator {
         SqliteBookKeyFileGenerator::createFile);
   }
 
-  static ContractDecision<GeneratedKeyFile> generateDecision(
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
       SecureRandom secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer,
@@ -126,7 +126,7 @@ public final class SqliteBookKeyFileGenerator {
       created = true;
       generatedKeyFileMaterializer.materialize(normalizedPath, encodedPassphrase);
       return ContractDecision.accepted(
-          new GeneratedKeyFile(
+          new GeneratedBookKeyFile(
               normalizedPath,
               GENERATED_ENCODING,
               GENERATED_ENTROPY_BITS,
@@ -220,28 +220,5 @@ public final class SqliteBookKeyFileGenerator {
         WARNING,
         "SQLite best-effort cleanup failed during " + action + "; preserving the primary outcome.",
         exception);
-  }
-
-  /** Non-secret metadata describing one newly created key file. */
-  public record GeneratedKeyFile(
-      Path bookKeyFilePath, String encoding, int entropyBits, String permissions) {
-    public GeneratedKeyFile {
-      Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
-      if (Files.exists(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)
-          && !Files.isRegularFile(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        throw new IllegalArgumentException("bookKeyFilePath must identify a regular file.");
-      }
-      Objects.requireNonNull(encoding, "encoding");
-      if (encoding.isBlank()) {
-        throw new IllegalArgumentException("encoding must not be blank.");
-      }
-      if (entropyBits <= 0) {
-        throw new IllegalArgumentException("entropyBits must be positive.");
-      }
-      Objects.requireNonNull(permissions, "permissions");
-      if (permissions.isBlank()) {
-        throw new IllegalArgumentException("permissions must not be blank.");
-      }
-    }
   }
 }

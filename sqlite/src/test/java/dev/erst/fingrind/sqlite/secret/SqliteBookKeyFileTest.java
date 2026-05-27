@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite.secret;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -38,8 +39,7 @@ class SqliteBookKeyFileTest {
     writeSecureString(keyFile, "swordfish\n");
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
-      assertEquals(
-          keyFile.toAbsolutePath().normalize().toString(), keyMaterial.sourceDescription());
+      assertEquals("key file", keyMaterial.sourceDescription());
       assertEquals(9, keyMaterial.byteLength());
       assertEquals(
           "swordfish",
@@ -338,7 +338,7 @@ class SqliteBookKeyFileTest {
                                 allow(other, AclEntryPermission.READ_DATA))))
                     .requireAccepted());
     assertTrue(NullTestSupport.messageOf(exception).contains("ACL must grant secret access only"));
-    assertTrue(NullTestSupport.messageOf(exception).contains("other"));
+    assertFalse(NullTestSupport.messageOf(exception).contains("other"));
   }
 
   private static void writeSecureString(Path keyFile, String content) throws IOException {
@@ -371,13 +371,13 @@ class SqliteBookKeyFileTest {
         .build();
   }
 
-  private static SqliteBookKeyFileSecurity.SecurityInspector aclSecurityInspector(
+  private static SqliteKeyFileSecurityInspector aclSecurityInspector(
       Path keyFile, UserPrincipal owner, List<AclEntry> fileAcl) {
     Path normalizedKeyFile = keyFile.toAbsolutePath().normalize();
     return path ->
         normalizedKeyFile.equals(path.toAbsolutePath().normalize())
-            ? new SqliteBookKeyFileSecurity.AclSecurity(owner, fileAcl)
-            : new SqliteBookKeyFileSecurity.AclSecurity(
+            ? new SqliteAclKeyFileSecurity(owner, fileAcl)
+            : new SqliteAclKeyFileSecurity(
                 owner,
                 List.of(
                     allow(

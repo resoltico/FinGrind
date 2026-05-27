@@ -34,26 +34,12 @@ final class AccountLedgerPdfRenderer {
                         + PdfValueFormatter.displayBoolean(report.account().active())),
                 List.of(
                     "Effective date range",
-                    PdfValueFormatter.effectiveDateRange(report.effectiveDateRange())))));
+                    PdfTemporalValueFormatter.effectiveDateRange(report.effectiveDateRange())))));
     if (hasMeaningfulBalances(report.openingBalances())) {
       pageWriter.writeTable(
           "Opening Balances",
-          List.of(
-              new PdfTableColumn("Currency", 1.0f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Debit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Credit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Net amount", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Balance side", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
-          report.openingBalances().stream()
-              .map(
-                  balance ->
-                      List.of(
-                          balance.netAmount().currencyUnit().code(),
-                          PdfValueFormatter.displayMoney(balance.debitTotal()),
-                          PdfValueFormatter.displayMoney(balance.creditTotal()),
-                          PdfValueFormatter.displayMoney(balance.netAmount()),
-                          PdfValueFormatter.displayBalanceSide(balance.balanceSide())))
-              .toList());
+          PdfReportTableLayouts.detailedCurrencyBalanceColumns(),
+          report.openingBalances().stream().map(PdfBalanceTableSupport::detailedRow).toList());
     }
     pageWriter.writeTable(
         "Ledger Entries",
@@ -81,22 +67,8 @@ final class AccountLedgerPdfRenderer {
             .toList());
     pageWriter.writeTable(
         "Closing Balances",
-        List.of(
-            new PdfTableColumn("Currency", 1.0f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Debit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Credit total", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Net amount", 1.1f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Balance side", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
-        report.closingBalances().stream()
-            .map(
-                balance ->
-                    List.of(
-                        balance.netAmount().currencyUnit().code(),
-                        PdfValueFormatter.displayMoney(balance.debitTotal()),
-                        PdfValueFormatter.displayMoney(balance.creditTotal()),
-                        PdfValueFormatter.displayMoney(balance.netAmount()),
-                        PdfValueFormatter.displayBalanceSide(balance.balanceSide())))
-            .toList());
+        PdfReportTableLayouts.detailedCurrencyBalanceColumns(),
+        report.closingBalances().stream().map(PdfBalanceTableSupport::detailedRow).toList());
   }
 
   private static boolean hasMeaningfulBalances(

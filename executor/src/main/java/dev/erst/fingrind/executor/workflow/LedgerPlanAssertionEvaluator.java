@@ -35,11 +35,11 @@ public final class LedgerPlanAssertionEvaluator {
       case BookkeepingLookupOutcome.Found<RegisteredAccount> _ ->
           LedgerPlanOutcomeMapper.stepSucceeded(
               BookWorkflowFact.text("accountCode", assertion.accountCode().value()));
-      case BookkeepingLookupOutcome.Missing<RegisteredAccount> _ ->
+      case BookkeepingLookupOutcome.Missing<?> _ ->
           LedgerPlanOutcomeMapper.assertionFailure(
               "Account is not declared.",
               BookWorkflowFact.text("accountCode", assertion.accountCode().value()));
-      case BookkeepingLookupOutcome.Rejected<RegisteredAccount> rejected ->
+      case BookkeepingLookupOutcome.Rejected<?> rejected ->
           LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
     };
   }
@@ -55,11 +55,11 @@ public final class LedgerPlanAssertionEvaluator {
               : LedgerPlanOutcomeMapper.assertionFailure(
                   "Account is not active.",
                   BookWorkflowFact.text("accountCode", assertion.accountCode().value()));
-      case BookkeepingLookupOutcome.Missing<RegisteredAccount> _ ->
+      case BookkeepingLookupOutcome.Missing<?> _ ->
           LedgerPlanOutcomeMapper.assertionFailure(
               "Account is not declared.",
               BookWorkflowFact.text("accountCode", assertion.accountCode().value()));
-      case BookkeepingLookupOutcome.Rejected<RegisteredAccount> rejected ->
+      case BookkeepingLookupOutcome.Rejected<?> rejected ->
           LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
     };
   }

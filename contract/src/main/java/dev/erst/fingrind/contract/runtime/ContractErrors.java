@@ -14,88 +14,86 @@ public final class ContractErrors {
 
   /** Stable descriptor for one deterministic CLI error code. */
   public enum Descriptor {
-    UNKNOWN_COMMAND,
-    INVALID_REQUEST,
-    RUNTIME_FAILURE,
-    MANAGED_RUNTIME_FAILURE,
-    STORAGE_RUNTIME_FAILURE,
-    PDF_EXPORT_FAILURE,
-    INVALID_PAGE_CURSOR,
-    BOOK_KEY_FILE_ALREADY_EXISTS,
-    INVALID_BOOK_KEY_FILE,
-    INVALID_BOOK_PASSPHRASE_SOURCE,
-    BOOK_MAINTENANCE_IN_PROGRESS,
-    INTERACTIVE_PROMPT_UNAVAILABLE,
-    INTERACTIVE_PROMPT_FAILED,
-    PROTECTED_BOOK_VERIFICATION_FAILED;
+    UNKNOWN_COMMAND(
+        "unknown-command",
+        "Invocation refused because the selected command name is not one of the public FinGrind operations.",
+        1),
+    INVALID_REQUEST(
+        "invalid-request",
+        "Invocation or request document refused because it does not match the accepted FinGrind command or request contract.",
+        1),
+    INTERNAL_ERROR(
+        "internal-error",
+        "Command failed because FinGrind encountered an internal software defect rather than a deterministic caller or environment problem.",
+        70),
+    MANAGED_RUNTIME_FAILURE(
+        "managed-runtime-failure",
+        "Command failed because the managed FinGrind runtime dependency surface is unavailable, incompatible, or misconfigured.",
+        5),
+    STORAGE_RUNTIME_FAILURE(
+        "storage-runtime-failure",
+        "Command failed because SQLite storage or book-handle execution encountered a runtime problem outside the deterministic caller contract.",
+        4),
+    PDF_EXPORT_FAILURE(
+        "pdf-export-failure",
+        "Command completed its core work but failed while exporting the requested PDF artifact.",
+        4),
+    INVALID_PAGE_CURSOR(
+        "invalid-page-cursor",
+        "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.",
+        1),
+    BOOK_KEY_FILE_ALREADY_EXISTS(
+        "book-key-file-already-exists",
+        "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it.",
+        7),
+    INVALID_BOOK_KEY_FILE(
+        "invalid-book-key-file",
+        "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.",
+        6),
+    INVALID_BOOK_PASSPHRASE_SOURCE(
+        "invalid-book-passphrase-source",
+        "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.",
+        6),
+    BOOK_MAINTENANCE_IN_PROGRESS(
+        "book-maintenance-in-progress",
+        "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.",
+        7),
+    INTERACTIVE_PROMPT_UNAVAILABLE(
+        "interactive-prompt-unavailable",
+        "Interactive passphrase entry refused because no supported controlling terminal is available.",
+        5),
+    INTERACTIVE_PROMPT_FAILED(
+        "interactive-prompt-failed",
+        "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.",
+        5),
+    PROTECTED_BOOK_VERIFICATION_FAILED(
+        "protected-book-verification-failed",
+        "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.",
+        6);
+
+    private final String code;
+    private final String description;
+    private final int exitCode;
+
+    Descriptor(String code, String description, int exitCode) {
+      this.code = code;
+      this.description = description;
+      this.exitCode = exitCode;
+    }
 
     /** Returns the stable wire code for this deterministic error descriptor. */
     public String code() {
-      return switch (this) {
-        case UNKNOWN_COMMAND -> "unknown-command";
-        case INVALID_REQUEST -> "invalid-request";
-        case RUNTIME_FAILURE -> "runtime-failure";
-        case MANAGED_RUNTIME_FAILURE -> "managed-runtime-failure";
-        case STORAGE_RUNTIME_FAILURE -> "storage-runtime-failure";
-        case PDF_EXPORT_FAILURE -> "pdf-export-failure";
-        case INVALID_PAGE_CURSOR -> "invalid-page-cursor";
-        case BOOK_KEY_FILE_ALREADY_EXISTS -> "book-key-file-already-exists";
-        case INVALID_BOOK_KEY_FILE -> "invalid-book-key-file";
-        case INVALID_BOOK_PASSPHRASE_SOURCE -> "invalid-book-passphrase-source";
-        case BOOK_MAINTENANCE_IN_PROGRESS -> "book-maintenance-in-progress";
-        case INTERACTIVE_PROMPT_UNAVAILABLE -> "interactive-prompt-unavailable";
-        case INTERACTIVE_PROMPT_FAILED -> "interactive-prompt-failed";
-        case PROTECTED_BOOK_VERIFICATION_FAILED -> "protected-book-verification-failed";
-      };
+      return code;
     }
 
     /** Returns the canonical machine-readable description for this error descriptor. */
     public String description() {
-      return switch (this) {
-        case UNKNOWN_COMMAND ->
-            "Invocation refused because the selected command name is not one of the public FinGrind operations.";
-        case INVALID_REQUEST ->
-            "Invocation or request document refused because it does not match the accepted FinGrind command or request contract.";
-        case RUNTIME_FAILURE ->
-            "Command failed because of a genuine runtime or environment problem rather than deterministic caller input.";
-        case MANAGED_RUNTIME_FAILURE ->
-            "Command failed because the managed FinGrind runtime dependency surface is unavailable, incompatible, or misconfigured.";
-        case STORAGE_RUNTIME_FAILURE ->
-            "Command failed because SQLite storage or book-handle execution encountered a runtime problem outside the deterministic caller contract.";
-        case PDF_EXPORT_FAILURE ->
-            "Command completed its core work but failed while exporting the requested PDF artifact.";
-        case INVALID_PAGE_CURSOR ->
-            "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.";
-        case BOOK_KEY_FILE_ALREADY_EXISTS ->
-            "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it.";
-        case INVALID_BOOK_KEY_FILE ->
-            "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.";
-        case INVALID_BOOK_PASSPHRASE_SOURCE ->
-            "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.";
-        case BOOK_MAINTENANCE_IN_PROGRESS ->
-            "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.";
-        case INTERACTIVE_PROMPT_UNAVAILABLE ->
-            "Interactive passphrase entry refused because no supported controlling terminal is available.";
-        case INTERACTIVE_PROMPT_FAILED ->
-            "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.";
-        case PROTECTED_BOOK_VERIFICATION_FAILED ->
-            "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.";
-      };
+      return description;
     }
 
     /** Returns the canonical process exit code for this deterministic error descriptor. */
     public int exitCode() {
-      return switch (this) {
-        case UNKNOWN_COMMAND, INVALID_REQUEST, INVALID_PAGE_CURSOR -> 1;
-        case RUNTIME_FAILURE, STORAGE_RUNTIME_FAILURE, PDF_EXPORT_FAILURE -> 4;
-        case MANAGED_RUNTIME_FAILURE, INTERACTIVE_PROMPT_UNAVAILABLE, INTERACTIVE_PROMPT_FAILED ->
-            5;
-        case INVALID_BOOK_KEY_FILE,
-            INVALID_BOOK_PASSPHRASE_SOURCE,
-            PROTECTED_BOOK_VERIFICATION_FAILED ->
-            6;
-        case BOOK_KEY_FILE_ALREADY_EXISTS, BOOK_MAINTENANCE_IN_PROGRESS -> 7;
-      };
+      return exitCode;
     }
 
     /** Creates one deterministic failure with this canonical contract descriptor. */
@@ -105,29 +103,35 @@ public final class ContractErrors {
     }
 
     private ContractResponse.ErrorDescriptor descriptor() {
-      if (this == INVALID_REQUEST) {
-        return new ContractResponse.ErrorDescriptor(
-            code(),
-            exitCode(),
-            description(),
-            List.of(
-                new ContractResponse.FieldDescriptor(
-                    "parseMessage",
-                    "Parser-provided explanation for syntactically invalid JSON request input."),
-                new ContractResponse.FieldDescriptor(
-                    "line", "1-based JSON source line for syntactically invalid request input."),
-                new ContractResponse.FieldDescriptor(
-                    "column",
-                    "1-based JSON source column for syntactically invalid request input."),
-                new ContractResponse.FieldDescriptor(
-                    "violations",
-                    "Ordered list of deterministic request-validation violations when one malformed request produces more than one diagnosis.")));
-      }
-      return new ContractResponse.ErrorDescriptor(code(), exitCode(), description());
+      List<ContractResponse.FieldDescriptor> detailFields = detailFields();
+      return detailFields.isEmpty()
+          ? new ContractResponse.ErrorDescriptor(code(), exitCode(), description())
+          : new ContractResponse.ErrorDescriptor(code(), exitCode(), description(), detailFields);
     }
 
     private static List<ContractResponse.ErrorDescriptor> descriptors() {
       return List.of(values()).stream().map(Descriptor::descriptor).toList();
+    }
+
+    private List<ContractResponse.FieldDescriptor> detailFields() {
+      if (this == INVALID_REQUEST) {
+        return invalidRequestDetailFields();
+      }
+      return List.of();
+    }
+
+    private static List<ContractResponse.FieldDescriptor> invalidRequestDetailFields() {
+      return List.of(
+          new ContractResponse.FieldDescriptor(
+              "parseMessage",
+              "Parser-provided explanation for syntactically invalid JSON request input."),
+          new ContractResponse.FieldDescriptor(
+              "line", "1-based JSON source line for syntactically invalid request input."),
+          new ContractResponse.FieldDescriptor(
+              "column", "1-based JSON source column for syntactically invalid request input."),
+          new ContractResponse.FieldDescriptor(
+              "violations",
+              "Ordered list of deterministic request-validation violations when one malformed request produces more than one diagnosis."));
     }
   }
 }

@@ -55,7 +55,7 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     Path bookPath = tempDirectory.resolve("close-active-count.sqlite");
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
     Path activityMarkerPath = activityMarkerPath(normalizedBookPath);
-    int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
+    int initialActiveConnections = SqliteNativeRuntimeActivity.activeConnectionCount();
     AtomicInteger closeCalls = new AtomicInteger();
     SqliteNativeApi sqliteApi = closeBehaviorApi("failThenDelegateCloseCall", closeCalls);
     try (SqliteBookPassphrase passphrase =
@@ -63,18 +63,21 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
         SqliteNativeDatabase database =
             SqliteNativeConnections.open(
                 bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi)) {
-      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+      assertEquals(
+          initialActiveConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
       assertTrue(Files.exists(activityMarkerPath));
       assertThrows(SqliteNativeException.class, database::close);
-      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+      assertEquals(
+          initialActiveConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
       assertTrue(Files.exists(activityMarkerPath));
-      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+      assertEquals(
+          initialActiveConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
     }
-    assertEquals(initialActiveConnections, SqliteNativeBootstrap.activeConnectionCount());
-    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+    assertEquals(initialActiveConnections, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
     assertFalse(Files.exists(activityMarkerPath));
   }
 
@@ -111,7 +114,7 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
                 SqliteNativeOpenMode.READ_WRITE_CREATE,
                 SqliteNativeBootstrap.api())) {}
 
-    int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
+    int initialActiveConnections = SqliteNativeRuntimeActivity.activeConnectionCount();
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "read-only no marker", TEST_BOOK_KEY.toCharArray());
@@ -121,13 +124,14 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
                 passphrase,
                 SqliteNativeOpenMode.READ_ONLY,
                 SqliteNativeBootstrap.api())) {
-      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+      assertEquals(
+          initialActiveConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
       assertFalse(Files.exists(activityMarkerPath));
     }
 
-    assertEquals(initialActiveConnections, SqliteNativeBootstrap.activeConnectionCount());
-    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount(normalizedBookPath));
+    assertEquals(initialActiveConnections, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(normalizedBookPath));
     assertFalse(Files.exists(activityMarkerPath));
   }
 
@@ -148,12 +152,13 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void recordConnectionClosed_rejectsCounterUnderflow() {
-    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
     IllegalStateException exception =
         assertThrows(
-            IllegalStateException.class, () -> SqliteNativeBootstrap.recordConnectionClosed(null));
+            IllegalStateException.class,
+            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(null));
     assertEquals("SQLite active connection count underflow.", exception.getMessage());
-    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
   }
 
   @Test
@@ -161,23 +166,24 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     Path openedBookPath = tempDirectory.resolve("opened.sqlite").toAbsolutePath().normalize();
     Path missingEntryPath =
         tempDirectory.resolve("missing-entry.sqlite").toAbsolutePath().normalize();
-    int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
+    int initialActiveConnections = SqliteNativeRuntimeActivity.activeConnectionCount();
 
-    SqliteNativeBootstrap.recordOpeningConnection(openedBookPath);
+    SqliteNativeRuntimeActivity.recordOpeningConnection(openedBookPath);
     try {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteNativeBootstrap.recordConnectionClosed(missingEntryPath));
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(missingEntryPath));
       assertEquals(
           "SQLite active connection registry missing the normalized book path entry for "
               + missingEntryPath
               + ".",
           exception.getMessage());
-      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-      assertEquals(1, SqliteNativeBootstrap.activeConnectionCount(openedBookPath));
+      assertEquals(
+          initialActiveConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(openedBookPath));
     } finally {
-      SqliteNativeBootstrap.recordConnectionClosed(openedBookPath);
+      SqliteNativeRuntimeActivity.recordConnectionClosed(openedBookPath);
     }
   }
 
@@ -188,14 +194,14 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath = activeConnectionsByBookPath();
     int baselineConnections = activeConnections.get();
 
-    SqliteNativeBootstrap.recordOpeningConnection(bookPath);
+    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath);
     try {
       activeConnectionsByBookPath.put(bookPath, new AtomicInteger());
 
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteNativeBootstrap.recordConnectionClosed(bookPath));
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(bookPath));
 
       assertEquals(
           "SQLite active connection count underflow for normalized book path " + bookPath + ".",
@@ -217,14 +223,14 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
     int baselineConnections = activeConnections.get();
 
-    SqliteNativeBootstrap.recordOpeningConnection(bookPath);
+    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath);
     try {
       markerConnectionsByBookPath.remove(bookPath);
 
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteNativeBootstrap.recordConnectionClosed(bookPath));
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(bookPath));
 
       assertEquals(
           "SQLite activity-marker registry missing the normalized book path entry for "
@@ -251,14 +257,14 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath = markerConnectionsByBookPath();
     int baselineConnections = activeConnections.get();
 
-    SqliteNativeBootstrap.recordOpeningConnection(bookPath);
+    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath);
     try {
       markerConnectionsByBookPath.put(bookPath, new AtomicInteger());
 
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteNativeBootstrap.recordConnectionClosed(bookPath));
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(bookPath));
 
       assertEquals(
           "SQLite activity-marker connection count underflow for normalized book path "
@@ -283,16 +289,16 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(markerPath);
     Files.writeString(markerPath.resolve("child.txt"), "child");
 
-    int baselineConnections = SqliteNativeBootstrap.activeConnectionCount();
+    int baselineConnections = SqliteNativeRuntimeActivity.activeConnectionCount();
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeBootstrap.recordOpeningConnection(bookPath));
+            () -> SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath));
 
     assertEquals(
         "Failed to publish one FinGrind SQLite book activity marker.", exception.getMessage());
-    assertEquals(baselineConnections, SqliteNativeBootstrap.activeConnectionCount());
-    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount(bookPath));
+    assertEquals(baselineConnections, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
     assertTrue(Files.isDirectory(markerPath));
   }
 
@@ -385,16 +391,16 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
     Path activityMarkerPath = activityMarkerPath(normalizedBookPath);
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
-    int baselineConnections = SqliteNativeBootstrap.activeConnectionCount();
+    int baselineConnections = SqliteNativeRuntimeActivity.activeConnectionCount();
 
     try (ManagedOpenedDatabase database =
         ManagedOpenedDatabase.open(bookPath, sqliteApi, "close overload")) {
-      assertEquals(baselineConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
+      assertEquals(baselineConnections + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
       assertTrue(Files.exists(activityMarkerPath));
 
       assertDoesNotThrow(database::closeWithThreeArgumentOverload);
 
-      assertEquals(baselineConnections, SqliteNativeBootstrap.activeConnectionCount());
+      assertEquals(baselineConnections, SqliteNativeRuntimeActivity.activeConnectionCount());
       assertFalse(Files.exists(activityMarkerPath));
     }
   }
@@ -424,8 +430,10 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   private static VarHandle staticVarHandle(String fieldName, Class<?> fieldType) {
     try {
       MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(SqliteNativeBootstrap.class, MethodHandles.lookup());
-      return lookup.findStaticVarHandle(SqliteNativeBootstrap.class, fieldName, fieldType);
+          MethodHandles.privateLookupIn(
+              SqliteNativeConnectionActivityRegistry.class, MethodHandles.lookup());
+      return lookup.findStaticVarHandle(
+          SqliteNativeConnectionActivityRegistry.class, fieldName, fieldType);
     } catch (IllegalAccessException | NoSuchFieldException exception) {
       throw new LinkageError(
           "Failed to bind SQLite native bootstrap field: " + fieldName, exception);
@@ -435,8 +443,10 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   private static MethodHandle bootstrapHelper(String methodName, MethodType methodType) {
     try {
       MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(SqliteNativeBootstrap.class, MethodHandles.lookup());
-      return lookup.findStatic(SqliteNativeBootstrap.class, methodName, methodType);
+          MethodHandles.privateLookupIn(
+              SqliteNativeConnectionActivityRegistry.class, MethodHandles.lookup());
+      return lookup.findStatic(
+          SqliteNativeConnectionActivityRegistry.class, methodName, methodType);
     } catch (IllegalAccessException | NoSuchMethodException exception) {
       throw new LinkageError(
           "Failed to bind SQLite native bootstrap helper: " + methodName, exception);

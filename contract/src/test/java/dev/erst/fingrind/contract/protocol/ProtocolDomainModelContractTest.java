@@ -90,7 +90,9 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
         repositoryRoot().resolve("executor/src/main/java/dev/erst/fingrind/executor/bookkeeping"),
         Set.of(
             "BookkeepingPublishedLanguageTranslator.java",
-            "BookkeepingReadPublishedLanguageTranslator.java"),
+            "BookkeepingReadPagePublishedLanguageTranslator.java",
+            "BookkeepingReadReportPublishedLanguageTranslator.java",
+            "BookkeepingReadStatementPublishedLanguageTranslator.java"),
         Set.of(
             "import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;",
             "import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;",

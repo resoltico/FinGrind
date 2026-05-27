@@ -37,7 +37,7 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                                 1,
                                 1,
                                 CliFuzzFixtures.fixedClock().instant(),
-                                CliFuzzFixtures.bookIdentity(),
+                                CliFuzzWorkflowFixtures.bookIdentity(),
                                 resultTransferReadyInspection())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
@@ -75,7 +75,7 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                         ContractDecision.accepted(
                             new OpenBookResult.Opened(
                                 CliFuzzFixtures.fixedClock().instant(),
-                                CliFuzzFixtures.bookIdentity())),
+                                CliFuzzWorkflowFixtures.bookIdentity())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         openedBook, "unexpectedly opened as a valid book");
@@ -121,6 +121,16 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                   throw new IllegalStateException("commit runtime");
                 },
                 null));
+  }
+
+  @Test
+  void exerciseInvalidExistingBookCoverage_covers_directory_and_plaintext_existing_book_paths()
+      throws Exception {
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.exerciseInvalidExistingBookCoverage(
+                SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
+                tempDirectory.resolve("invalid-existing-book")));
   }
 
   private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {

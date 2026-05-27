@@ -41,34 +41,31 @@ class CliArgumentValueParserTest {
   void parseDomainValueOptions_acceptValidValuesAndRejectInvalidOnes() {
     assertEquals(
         CurrencyUnit.of("EUR"),
-        CliArgumentValueParser.parseCurrencyUnitOption("EUR", "--functional-currency"));
+        CliOptionValues.parseCurrencyUnitOption("EUR", "--functional-currency"));
     assertEquals(
         new BookEntityName("Acme Studio"),
-        CliArgumentValueParser.parseBookEntityNameOption("Acme Studio", "--entity-name"));
+        CliOptionValues.parseBookEntityNameOption("Acme Studio", "--entity-name"));
     assertEquals(
         FiscalYearStart.parse("01-01"),
-        CliArgumentValueParser.parseFiscalYearStartOption("01-01", "--fiscal-year-start"));
+        CliOptionValues.parseFiscalYearStartOption("01-01", "--fiscal-year-start"));
 
     assertEquals(
         "--functional-currency",
         assertThrows(
                 CliArgumentsException.class,
-                () ->
-                    CliArgumentValueParser.parseCurrencyUnitOption("ZZZ", "--functional-currency"))
+                () -> CliOptionValues.parseCurrencyUnitOption("ZZZ", "--functional-currency"))
             .argument());
     assertEquals(
         "--entity-name",
         assertThrows(
                 CliArgumentsException.class,
-                () -> CliArgumentValueParser.parseBookEntityNameOption(" ", "--entity-name"))
+                () -> CliOptionValues.parseBookEntityNameOption(" ", "--entity-name"))
             .argument());
     assertEquals(
         "--fiscal-year-start",
         assertThrows(
                 CliArgumentsException.class,
-                () ->
-                    CliArgumentValueParser.parseFiscalYearStartOption(
-                        "13-40", "--fiscal-year-start"))
+                () -> CliOptionValues.parseFiscalYearStartOption("13-40", "--fiscal-year-start"))
             .argument());
   }
 
@@ -76,7 +73,7 @@ class CliArgumentValueParserTest {
   void parseStructuredOpenBookValueOptions_acceptValidValuesAndRejectInvalidOnes() {
     assertEquals(
         new BusinessActivityTag("translation,localization"),
-        CliArgumentValueParser.parseBusinessActivityTagOption(
+        CliOptionValues.parseBusinessActivityTagOption(
             "translation,localization", "--business-activity-tag"));
 
     assertEquals(
@@ -84,8 +81,7 @@ class CliArgumentValueParserTest {
         assertThrows(
                 CliArgumentsException.class,
                 () ->
-                    CliArgumentValueParser.parseBusinessActivityTagOption(
-                        " ", "--business-activity-tag"))
+                    CliOptionValues.parseBusinessActivityTagOption(" ", "--business-activity-tag"))
             .argument());
   }
 
@@ -94,13 +90,13 @@ class CliArgumentValueParserTest {
     ListIterator<String> validIterator = List.of("non-closing-postings").listIterator();
     assertEquals(
         PostingCoverage.NON_CLOSING_POSTINGS,
-        CliArgumentValueParser.requirePostingCoverage(null, validIterator));
+        CliOptionModes.requirePostingCoverage(null, validIterator));
 
     CliArgumentsException duplicateException =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliArgumentValueParser.requirePostingCoverage(
+                CliOptionModes.requirePostingCoverage(
                     PostingCoverage.ALL_POSTING_KINDS, List.<String>of().listIterator()));
     assertEquals(ProtocolOptions.POSTING_COVERAGE, duplicateException.argument());
 
@@ -108,7 +104,7 @@ class CliArgumentValueParserTest {
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliArgumentValueParser.requirePostingCoverage(
+                CliOptionModes.requirePostingCoverage(
                     null, List.of("unknown-coverage").listIterator()));
     assertEquals(ProtocolOptions.POSTING_COVERAGE, invalidException.argument());
   }
@@ -117,23 +113,21 @@ class CliArgumentValueParserTest {
   void requirePlanResultDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
     assertEquals(
         PlanResultDetail.FULL,
-        CliArgumentValueParser.requirePlanResultDetail(
+        CliOptionModes.requirePlanResultDetail(
             null, List.of(PlanResultDetail.FULL.wireValue()).listIterator()));
 
     CliArgumentsException duplicateException =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliArgumentValueParser.requirePlanResultDetail(
+                CliOptionModes.requirePlanResultDetail(
                     PlanResultDetail.SUMMARY, List.<String>of().listIterator()));
     assertEquals(ProtocolOptions.RESULT_DETAIL, duplicateException.argument());
 
     CliArgumentsException invalidException =
         assertThrows(
             CliArgumentsException.class,
-            () ->
-                CliArgumentValueParser.requirePlanResultDetail(
-                    null, List.of("verbose").listIterator()));
+            () -> CliOptionModes.requirePlanResultDetail(null, List.of("verbose").listIterator()));
     assertEquals(ProtocolOptions.RESULT_DETAIL, invalidException.argument());
     assertTrue(
         Objects.requireNonNull(invalidException.getMessage())
@@ -144,23 +138,21 @@ class CliArgumentValueParserTest {
   void requireDiscoveryDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
     assertEquals(
         DiscoveryDetail.FULL,
-        CliArgumentValueParser.requireDiscoveryDetail(
+        CliOptionModes.requireDiscoveryDetail(
             null, List.of(DiscoveryDetail.FULL.wireValue()).listIterator()));
 
     CliArgumentsException duplicateException =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliArgumentValueParser.requireDiscoveryDetail(
+                CliOptionModes.requireDiscoveryDetail(
                     DiscoveryDetail.COMPACT, List.<String>of().listIterator()));
     assertEquals(ProtocolOptions.DETAIL, duplicateException.argument());
 
     CliArgumentsException invalidException =
         assertThrows(
             CliArgumentsException.class,
-            () ->
-                CliArgumentValueParser.requireDiscoveryDetail(
-                    null, List.of("expanded").listIterator()));
+            () -> CliOptionModes.requireDiscoveryDetail(null, List.of("expanded").listIterator()));
     assertEquals(ProtocolOptions.DETAIL, invalidException.argument());
     assertTrue(
         Objects.requireNonNull(invalidException.getMessage())

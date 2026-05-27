@@ -75,9 +75,11 @@ final class CliInvocationText {
       return NEUTRAL_LAUNCHER_COMMAND;
     }
     return switch (distribution) {
-      case DIRECT_JAVA_INVOCATION -> ProtocolCatalog.directJavaLauncherCommand(windows);
-      case SOURCE_CHECKOUT_GRADLE -> ProtocolCatalog.sourceCheckoutLauncherCommand(windows);
-      case CONTAINER_IMAGE -> ProtocolCatalog.containerLauncherCommand();
+      case DIRECT_JAVA_INVOCATION ->
+          ProtocolCatalog.distribution().directJavaLauncherCommand(windows);
+      case SOURCE_CHECKOUT_GRADLE ->
+          ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(windows);
+      case CONTAINER_IMAGE -> ProtocolCatalog.distribution().containerLauncherCommand();
       case SELF_CONTAINED_BUNDLE -> NEUTRAL_LAUNCHER_COMMAND;
     };
   }

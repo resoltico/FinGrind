@@ -349,7 +349,7 @@ class JazzerCliSeedCommandsTest {
   @Test
   void seedAudit_returnsFailureWhen_committed_seed_integrity_is_broken() throws Exception {
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(metadataDirectory);
     Files.createDirectories(projectDirectory.resolve("tmp"));
 
@@ -399,7 +399,7 @@ class JazzerCliSeedCommandsTest {
   @Test
   void seedAudit_returnsFailureWhen_committed_metadata_is_unreadable() throws Exception {
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(metadataDirectory);
     Files.writeString(metadataDirectory.resolve("broken.json"), "{broken", UTF_8);
 
@@ -485,7 +485,7 @@ class JazzerCliSeedCommandsTest {
       Path rootDirectory)
       throws Exception {
     Path inputDirectory = harness.inputDirectory(rootDirectory);
-    Path metadataDirectory = RegressionSeedCatalog.metadataDirectory(rootDirectory, harness);
+    Path metadataDirectory = RegressionSeedPaths.metadataDirectory(rootDirectory, harness);
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
 

@@ -43,44 +43,13 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     }
   }
 
-  private record WorkflowInspectionSupplier(SqliteCliBookWorkflow workflow, BookAccess bookAccess)
-      implements Supplier<ContractDecision<BookInspection>> {
-    @Override
-    public ContractDecision<BookInspection> get() {
-      return workflow.inspectBook(bookAccess);
-    }
-  }
-
-  private record WorkflowOpenSupplier(
-      SqliteCliBookWorkflow workflow, BookAccess bookAccess, OpenBookCommand command)
-      implements Supplier<ContractDecision<OpenBookResult>> {
-    @Override
-    public ContractDecision<OpenBookResult> get() {
-      return workflow.openBook(bookAccess, command);
-    }
-  }
-
-  private record WorkflowCommitSupplier(
-      SqliteCliBookWorkflow workflow, BookAccess bookAccess, PostEntryCommand command)
-      implements Supplier<ContractDecision<CommitEntryResult>> {
-    @Override
-    public ContractDecision<CommitEntryResult> get() {
-      return workflow.commit(bookAccess, command);
-    }
-  }
-
-  private record WorkflowListAccountsSupplier(
-      SqliteCliBookWorkflow workflow, BookAccess bookAccess, ListAccountsQuery query)
-      implements Supplier<ContractDecision<ListAccountsResult>> {
-    @Override
-    public ContractDecision<ListAccountsResult> get() {
-      return workflow.listAccounts(bookAccess, query);
-    }
-  }
-
   static void exerciseInvalidExistingBookCoverage(PostEntryCommand command, Path invalidRoot)
       throws IOException {
-    SqliteCliBookWorkflow workflow = SqliteRoundTripWorkflowResources.sqliteWorkflow();
+    CliBookLifecycleWorkflow lifecycleWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
+    CliBookMutationWorkflow mutationWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteMutationWorkflow();
+    CliBookReadWorkflow readWorkflow = SqliteRoundTripWorkflowResources.sqliteReadWorkflow();
     SqliteFuzzAssertions.prepareSecureArtifactDirectory(invalidRoot);
 
     Path directoryBookPath = invalidRoot.resolve("directory-backed-book");
@@ -90,13 +59,14 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     BookAccess directoryBookAccess =
         SqliteRoundTripWorkflowResources.keyFileBookAccess(directoryBookPath, directoryKeyPath);
     assertNonInitializedInspection(
-        new WorkflowInspectionSupplier(workflow, directoryBookAccess), directoryBookPath);
+        inspectionSupplier(readWorkflow, directoryBookAccess), directoryBookPath);
     assertNotOpened(
-        new WorkflowOpenSupplier(workflow, directoryBookAccess, CliFuzzFixtures.openBookCommand()),
+        openSupplier(
+            lifecycleWorkflow, directoryBookAccess, CliFuzzWorkflowFixtures.openBookCommand()),
         directoryBookPath);
     assertNotCommitted(
-        new WorkflowCommitSupplier(
-            workflow,
+        commitSupplier(
+            mutationWorkflow,
             directoryBookAccess,
             SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                 command, "directory-backed")),
@@ -111,20 +81,21 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     BookAccess plaintextBookAccess =
         SqliteRoundTripWorkflowResources.keyFileBookAccess(plaintextBookPath, plaintextKeyPath);
     assertNonInitializedInspection(
-        new WorkflowInspectionSupplier(workflow, plaintextBookAccess), plaintextBookPath);
+        inspectionSupplier(readWorkflow, plaintextBookAccess), plaintextBookPath);
     assertNotOpened(
-        new WorkflowOpenSupplier(workflow, plaintextBookAccess, CliFuzzFixtures.openBookCommand()),
+        openSupplier(
+            lifecycleWorkflow, plaintextBookAccess, CliFuzzWorkflowFixtures.openBookCommand()),
         plaintextBookPath);
     assertNotCommitted(
-        new WorkflowCommitSupplier(
-            workflow,
+        commitSupplier(
+            mutationWorkflow,
             plaintextBookAccess,
             SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                 command, "plaintext-book")),
         null);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedDecision(
-        new WorkflowListAccountsSupplier(
-            workflow, plaintextBookAccess, new ListAccountsQuery(50, Optional.empty())),
+        listAccountsSupplier(
+            readWorkflow, plaintextBookAccess, new ListAccountsQuery(50, Optional.empty())),
         OutputMode.JSON,
         SqliteRoundTripWorkflowRenderingAssertions::writeListAccountsJson,
         null);
@@ -147,8 +118,8 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
             SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
                 ContractDecision.accepted(inspection),
                 OutputMode.JSON,
-                (writer, accepted) ->
-                    writer.writeBookInspection(bookPath, accepted, OutputMode.JSON),
+                (writers, accepted, mode) ->
+                    writers.query().writeBookInspection(bookPath, accepted, mode),
                 null);
           }
           case ContractDecision.Rejected<BookInspection>(ContractFailure failure) ->
@@ -175,8 +146,8 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
             SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
                 ContractDecision.accepted(result),
                 OutputMode.JSON,
-                (writer, accepted) ->
-                    writer.writeOpenBookResult(bookPath, accepted, OutputMode.JSON),
+                (writers, accepted, mode) ->
+                    writers.mutation().writeOpenBookResult(bookPath, accepted, mode),
                 null);
           }
           case ContractDecision.Rejected<OpenBookResult>(ContractFailure failure) ->
@@ -205,8 +176,8 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
             SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
                 ContractDecision.accepted(result),
                 OutputMode.JSON,
-                (writer, accepted) ->
-                    writer.writePostEntryResult((PostEntryResult) accepted, OutputMode.JSON),
+                (writers, accepted, mode) ->
+                    writers.mutation().writePostEntryResult((PostEntryResult) accepted, mode),
                 requiredFragment);
           }
           case ContractDecision.Rejected<CommitEntryResult>(ContractFailure failure) ->
@@ -224,5 +195,25 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     } catch (RuntimeException runtimeException) {
       return new DecisionRuntimeFailure<>(runtimeException);
     }
+  }
+
+  private static Supplier<ContractDecision<BookInspection>> inspectionSupplier(
+      CliBookReadWorkflow workflow, BookAccess bookAccess) {
+    return () -> workflow.inspectBook(bookAccess);
+  }
+
+  private static Supplier<ContractDecision<OpenBookResult>> openSupplier(
+      CliBookLifecycleWorkflow workflow, BookAccess bookAccess, OpenBookCommand command) {
+    return () -> workflow.openBook(bookAccess, command);
+  }
+
+  private static Supplier<ContractDecision<CommitEntryResult>> commitSupplier(
+      CliBookMutationWorkflow workflow, BookAccess bookAccess, PostEntryCommand command) {
+    return () -> workflow.commit(bookAccess, command);
+  }
+
+  private static Supplier<ContractDecision<ListAccountsResult>> listAccountsSupplier(
+      CliBookReadWorkflow workflow, BookAccess bookAccess, ListAccountsQuery query) {
+    return () -> workflow.listAccounts(bookAccess, query);
   }
 }

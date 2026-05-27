@@ -16,20 +16,20 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   @Test
   void parse_returnsHelpWhenArgumentsAreEmpty() {
     Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[0]));
-    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryDetail.COMPACT, command.detail());
   }
 
   @Test
   void parse_returnsCapabilitiesWhenCommandIsCapabilities() {
     Capabilities command =
         assertInstanceOf(Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
-    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryDetail.COMPACT, command.detail());
   }
 
   @Test
   void parse_returnsHelpForFlagAlias() {
     Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[] {"--help"}));
-    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryDetail.COMPACT, command.detail());
   }
 
   @Test

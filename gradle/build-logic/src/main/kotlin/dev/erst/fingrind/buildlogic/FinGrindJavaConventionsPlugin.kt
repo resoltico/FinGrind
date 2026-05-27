@@ -107,6 +107,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 dependencies.add("testFixturesCompileOnly", libs.library("jspecify"))
             }
             val sourcePolicyTask = registerJavaSourcePolicyTask()
+            val sourceShapeTask = registerJavaSourceShapeTask()
+            val sourceDuplicationTask = registerJavaSourceDuplicationTask()
             val jacksonDependencyPolicyTask = registerJacksonDependencyPolicyTask()
 
             extensions.configure<SpotlessExtension> {
@@ -264,6 +266,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 dependsOn("spotlessCheck")
                 dependsOn("jacocoTestCoverageVerification")
                 dependsOn(sourcePolicyTask)
+                dependsOn(sourceShapeTask)
+                dependsOn(sourceDuplicationTask)
                 dependsOn(jacksonDependencyPolicyTask)
             }
         }

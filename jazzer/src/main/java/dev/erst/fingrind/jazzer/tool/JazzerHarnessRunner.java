@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 
 /** Launches one Jazzer harness class through the JUnit Platform outside Gradle's Test task. */
 public final class JazzerHarnessRunner {
@@ -22,7 +24,7 @@ public final class JazzerHarnessRunner {
   private static final String PULSE_PREFIX = "[JAZZER-PULSE] ";
   private final OutputStream outputStream;
   private final OutputStream errorStream;
-  private final ExitHandler exitHandler;
+  private final IntConsumer exitHandler;
   private final HarnessExecutor executor;
   private final BooleanSupplier githubActionsDetector;
 
@@ -39,7 +41,7 @@ public final class JazzerHarnessRunner {
   JazzerHarnessRunner(
       OutputStream outputStream,
       OutputStream errorStream,
-      ExitHandler exitHandler,
+      IntConsumer exitHandler,
       HarnessExecutor executor,
       BooleanSupplier githubActionsDetector) {
     this.outputStream = Objects.requireNonNull(outputStream, "outputStream must not be null");
@@ -63,7 +65,7 @@ public final class JazzerHarnessRunner {
       int exitCode =
           run(parseClassName(args), outputWriter, errorWriter, executor, githubActionsDetector);
       if (exitCode != 0) {
-        exitHandler.exit(exitCode);
+        exitHandler.accept(exitCode);
       }
     }
   }
@@ -217,8 +219,9 @@ public final class JazzerHarnessRunner {
             }
 
             @Override
-            public java.util.Optional<JazzerRunner> create(String className) {
-              return JUnitRunner.create(className, List.of()).map(runner -> runner::run);
+            public java.util.Optional<IntSupplier> create(String className) {
+              return JUnitRunner.create(className, List.of())
+                  .map(runner -> (IntSupplier) runner::run);
             }
           });
     }
@@ -245,22 +248,8 @@ public final class JazzerHarnessRunner {
                   new IllegalStateException(
                       "Jazzer JUnit runner did not discover any @FuzzTest for class: "
                           + harness.className()))
-          .run();
+          .getAsInt();
     }
-  }
-
-  /** Terminates the process with one computed fuzz exit code. */
-  @FunctionalInterface
-  interface ExitHandler {
-    /** Exits the current process with the supplied fuzz status code. */
-    void exit(int exitCode);
-  }
-
-  /** Adapts Jazzer's discovered runner handle into one process-style exit code. */
-  @FunctionalInterface
-  interface JazzerRunner {
-    /** Runs one prepared Jazzer JUnit invocation and returns its exit code. */
-    int run();
   }
 
   /** Creates Jazzer's official JUnit runner when the current runtime can support it. */
@@ -269,6 +258,6 @@ public final class JazzerHarnessRunner {
     boolean isSupported();
 
     /** Creates one runner for the supplied harness class name when discovery succeeds. */
-    java.util.Optional<JazzerRunner> create(String className);
+    java.util.Optional<IntSupplier> create(String className);
   }
 }

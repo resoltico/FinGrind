@@ -40,6 +40,8 @@ dependencies {
     implementation(gradlePluginCoordinate(libs.plugins.spotless.get()))
     implementation(gradlePluginCoordinate(libs.plugins.errorprone.get()))
     implementation(libs.jackson.databind)
+    implementation(libs.pmd.core)
+    implementation(libs.pmd.java)
     testImplementation(kotlin("test-junit5"))
 }
 

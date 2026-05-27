@@ -29,7 +29,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "compileOptionsVerification must be VERIFIED when SQLite runtime status is READY.",
@@ -44,7 +44,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "runtimeProvenance is required when SQLite runtime status is READY.",
@@ -59,7 +59,7 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "loadedLibraryPath is required when SQLite runtime status is READY.",
@@ -74,7 +74,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     null,
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.",
@@ -89,7 +89,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     null,
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.",
@@ -119,7 +119,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "unexpected"));
     assertEquals(
         "runtimeIssue must be absent when SQLite runtime status is READY.",
@@ -242,7 +242,7 @@ class EnvironmentSqliteDescriptorTest {
                     true,
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     EnvironmentSqliteDescriptor.runtime(
                         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                         SqliteRuntimeStatus.UNAVAILABLE,
@@ -269,7 +269,7 @@ class EnvironmentSqliteDescriptorTest {
                     true,
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     EnvironmentSqliteDescriptor.runtime(
                         SqliteCompileOptionsVerificationStatus.VERIFIED,
                         SqliteRuntimeStatus.READY,
@@ -278,7 +278,7 @@ class EnvironmentSqliteDescriptorTest {
                         "/tmp/libsqlite3.dylib",
                         "3.53.1",
                         "2.3.4",
-                        ProtocolCatalog.requiredSqliteSourceId(),
+                        ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                         null),
                     null));
     assertEquals(
@@ -293,7 +293,7 @@ class EnvironmentSqliteDescriptorTest {
             true,
             "3.53.1",
             "2.3.4",
-            ProtocolCatalog.requiredSqliteSourceId(),
+            ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
             EnvironmentSqliteDescriptor.runtime(
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntimeStatus.READY,
@@ -302,7 +302,7 @@ class EnvironmentSqliteDescriptorTest {
                 "/tmp/libsqlite3.dylib",
                 "3.53.1",
                 "2.3.4",
-                ProtocolCatalog.requiredSqliteSourceId(),
+                ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 null),
             null);
     assertEquals(
@@ -397,7 +397,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     null,
                     null,
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "native bridge failed"));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id must be absent when SQLite runtime status is FAILED.",
@@ -445,7 +445,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "compileOptionsVerification must not be VERIFIED when SQLite runtime status is INCOMPATIBLE.",
@@ -460,7 +460,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "runtimeProvenance is required when SQLite runtime status is INCOMPATIBLE.",
@@ -475,7 +475,7 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
@@ -490,7 +490,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     null,
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
@@ -505,7 +505,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     null,
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
@@ -535,7 +535,7 @@ class EnvironmentSqliteDescriptorTest {
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",
-                    ProtocolCatalog.requiredSqliteSourceId(),
+                    ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
@@ -566,7 +566,7 @@ class EnvironmentSqliteDescriptorTest {
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
-            ProtocolCatalog.requiredSqliteSourceId());
+            ProtocolCatalog.managedSqlite().requiredSqliteSourceId());
     assertEquals(SqliteRuntimeStatus.READY, ready.status());
     assertEquals(
         SqliteCompileOptionsVerificationStatus.VERIFIED, ready.compileOptionsVerification());
@@ -712,7 +712,7 @@ class EnvironmentSqliteDescriptorTest {
         true,
         "3.53.1",
         "2.3.4",
-        ProtocolCatalog.requiredSqliteSourceId(),
+        ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
         EnvironmentSqliteDescriptor.runtime(
             compileOptionsVerification,
             runtimeStatus,

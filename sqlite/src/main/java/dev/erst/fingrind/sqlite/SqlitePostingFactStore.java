@@ -1,53 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -56,7 +13,10 @@ import java.util.function.Supplier;
  *
  * <p>This core is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-class SqlitePostingFactStore implements AutoCloseable {
+class SqlitePostingFactStore
+    implements SqlitePostingFactStoreReadView,
+        SqlitePostingFactStoreMutationView,
+        SqlitePostingFactStoreLifecycleView {
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
   private final SqliteStoreContext context;
   final SqliteSessionSecret sessionSecret;
@@ -134,191 +94,33 @@ class SqlitePostingFactStore implements AutoCloseable {
     return SqliteStoreOpening.openResolved(bookPath, bookPassphrase, accessMode);
   }
 
-  ContractDecision<SqlitePostingFactStore> prime() {
-    threadOwner.requireOwnerThread();
-    return lifecycle
-        .prime()
-        .fold(ignored -> ContractDecision.accepted(this), ContractDecision::rejected);
-  }
-
-  BookLifecycleInspection inspectBook() {
-    threadOwner.requireOwnerThread();
-    return readOperations.inspectBook();
-  }
-
-  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-    threadOwner.requireOwnerThread();
-    return readOperations.findAccount(accountCode);
-  }
-
-  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
-    threadOwner.requireOwnerThread();
-    return readOperations.findAccounts(accountCodes);
-  }
-
-  List<RegisteredAccount> allAccounts() {
-    threadOwner.requireOwnerThread();
-    return readOperations.allAccounts();
-  }
-
-  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-    threadOwner.requireOwnerThread();
-    return readOperations.listAccounts(query);
-  }
-
-  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
-    threadOwner.requireOwnerThread();
-    return readOperations.findExistingPosting(idempotencyKey);
-  }
-
-  Optional<CommittedPosting> findPosting(PostingId postingId) {
-    threadOwner.requireOwnerThread();
-    return readOperations.findPosting(postingId);
-  }
-
-  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
-    threadOwner.requireOwnerThread();
-    return readOperations.findReversalFor(priorPostingId);
-  }
-
-  PostingHistoryPage listPostings(PostingHistoryQuery query) {
-    threadOwner.requireOwnerThread();
-    return readOperations.listPostings(query);
-  }
-
-  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-    threadOwner.requireOwnerThread();
-    return readOperations.postings(effectiveDateRange);
-  }
-
-  Optional<LocalDate> earliestPostingEffectiveDate() {
-    threadOwner.requireOwnerThread();
-    return readOperations.earliestPostingEffectiveDate();
-  }
-
-  Optional<LocalDate> transferredThroughEffectiveDate() {
-    threadOwner.requireOwnerThread();
-    return readOperations.transferredThroughEffectiveDate();
-  }
-
-  Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
-    threadOwner.requireOwnerThread();
-    return readOperations.accountBalance(query);
-  }
-
-  List<AccountCurrencyTotals> accountTotals(
-      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
-    threadOwner.requireOwnerThread();
-    return readOperations.accountTotals(effectiveDateRange, postingCoverage);
-  }
-
-  TrialBalanceView trialBalance(TrialBalanceCriteria query) {
-    threadOwner.requireOwnerThread();
-    return readOperations.trialBalance(query);
-  }
-
-  AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
-    threadOwner.requireOwnerThread();
-    return readOperations.accountLedger(query, account);
-  }
-
-  PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-    threadOwner.requireOwnerThread();
-    return readOperations.periodSummary(query);
-  }
-
-  BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
-    threadOwner.requireOwnerThread();
-    return mutationOperations.openBook(initializedAt, bookIdentity);
-  }
-
-  AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountRole accountRole,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
-    threadOwner.requireOwnerThread();
-    return mutationOperations.declareAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
-  }
-
-  PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-    threadOwner.requireOwnerThread();
-    return mutationOperations.commit(postingDraft, postingIdGenerator);
-  }
-
-  PeriodResultTransferOutcome transferPeriodResult(
-      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
-    threadOwner.requireOwnerThread();
-    return mutationOperations.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
-  }
-
-  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
-    threadOwner.requireOwnerThread();
-    return mutationOperations.rekeyBook(replacementPassphrase, rekeyedAt);
-  }
-
-  ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      SqlitePassphraseResolver passphraseResolver,
-      Instant rekeyedAt) {
-    threadOwner.requireOwnerThread();
-    Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
-    Objects.requireNonNull(passphraseResolver, "passphraseResolver");
-    Objects.requireNonNull(rekeyedAt, "rekeyedAt");
-    return passphraseResolver
-        .resolve(bookPath(), replacementPassphraseSource, SqlitePassphraseIntent.NEW_SECRET)
-        .fold(
-            replacementPassphrase ->
-                ContractDecision.accepted(rekeyBook(replacementPassphrase, rekeyedAt)),
-            ContractDecision::rejected);
-  }
-
-  void beginLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    lifecycle.beginLedgerPlanTransaction();
-  }
-
-  void commitLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    lifecycle.commitLedgerPlanTransaction();
-  }
-
-  void rollbackLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    lifecycle.rollbackLedgerPlanTransaction();
+  @Override
+  public SqliteThreadOwner storeThreadOwner() {
+    return threadOwner;
   }
 
   @Override
-  public void close() {
-    threadOwner.requireOwnerThread();
-    lifecycle.close();
+  public SqliteStoreReadOperations storeReadOperations() {
+    return readOperations;
   }
 
-  void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
-    threadOwner.requireOwnerThread();
-    lifecycle.requireInitializedBook(activeDatabase);
+  @Override
+  public SqliteStoreMutationOperations storeMutationOperations() {
+    return mutationOperations;
   }
 
-  Path bookPath() {
-    threadOwner.requireOwnerThread();
+  @Override
+  public Path storeBookPath() {
     return context.bookPath();
   }
 
-  SqliteStoreAccessMode accessMode() {
-    threadOwner.requireOwnerThread();
-    return context.accessMode();
+  @Override
+  public SqliteStoreLifecycle storeLifecycle() {
+    return lifecycle;
   }
 
-  SqlitePostingReader postingReader() {
-    threadOwner.requireOwnerThread();
-    return context.postingReader();
-  }
-
-  SqliteNativeDatabase activeNativeDatabase() {
-    threadOwner.requireOwnerThread();
-    return lifecycle.database();
+  @Override
+  public SqliteStoreContext storeContext() {
+    return context;
   }
 }

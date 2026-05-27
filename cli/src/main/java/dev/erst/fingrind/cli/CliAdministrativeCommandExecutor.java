@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
+import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -16,28 +17,34 @@ import org.jspecify.annotations.Nullable;
 /** Executes administrative CLI commands that mutate book setup or key material. */
 final class CliAdministrativeCommandExecutor {
   private final CliRequestReader requestReader;
-  private final CliResponseWriter responseWriter;
-  private final CliBookWorkflow bookWorkflow;
+  private final CliMutationResponseWriter responseWriter;
+  private final CliFailureResponseWriter failureWriter;
+  private final CliBookLifecycleWorkflow lifecycleWorkflow;
+  private final CliBookMutationWorkflow mutationWorkflow;
 
   CliAdministrativeCommandExecutor(
       CliRequestReader requestReader,
-      CliResponseWriter responseWriter,
-      CliBookWorkflow bookWorkflow) {
+      CliMutationResponseWriter responseWriter,
+      CliFailureResponseWriter failureWriter,
+      CliBookLifecycleWorkflow lifecycleWorkflow,
+      CliBookMutationWorkflow mutationWorkflow) {
     this.requestReader = Objects.requireNonNull(requestReader, "requestReader");
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
-    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
+    this.lifecycleWorkflow = Objects.requireNonNull(lifecycleWorkflow, "lifecycleWorkflow");
+    this.mutationWorkflow = Objects.requireNonNull(mutationWorkflow, "mutationWorkflow");
   }
 
   int runGenerateBookKeyFileCommand(Path bookKeyFilePath, OutputMode outputMode) {
     return SqliteBookKeyFileGenerator.generateDecision(bookKeyFilePath)
         .fold(
-            generatedKeyFile -> {
+            (GeneratedBookKeyFile generatedKeyFile) -> {
               responseWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
               return 0;
             },
             failure ->
                 CliCommandOutcomeWriter.writeDeterministicFailure(
-                    failure, outputMode, responseWriter));
+                    failure, outputMode, failureWriter));
   }
 
   int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
@@ -46,16 +53,16 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.openBook(bookAccess, command),
+        lifecycleWorkflow.openBook(bookAccess, command),
         outputMode,
         result -> responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runRekeyBookCommand(
@@ -66,17 +73,17 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
+        lifecycleWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
         outputMode,
         result ->
             responseWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runBackupBookCommand(
@@ -89,35 +96,35 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
+        lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
         outputMode,
         result -> responseWriter.writeBackupBookResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runRestoreBookCommand(
       Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath),
+        lifecycleWorkflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath),
         outputMode,
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runInspectRekeyRollbackCommand(Path bookFilePath, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.inspectRekeyRollback(bookFilePath),
+        lifecycleWorkflow.inspectRekeyRollback(bookFilePath),
         outputMode,
         result -> responseWriter.writeInspectRekeyRollbackResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runRestoreRekeyRollbackCommand(
@@ -130,17 +137,17 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.restoreRekeyRollback(
+        lifecycleWorkflow.restoreRekeyRollback(
             bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
         outputMode,
         result -> responseWriter.writeRestoreRekeyRollbackResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runDeleteRekeyRollbackCommand(
@@ -150,16 +157,16 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
+        lifecycleWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
         outputMode,
         result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
@@ -168,17 +175,17 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.declareAccount(bookAccess, command),
+        mutationWorkflow.declareAccount(bookAccess, command),
         outputMode,
         result -> responseWriter.writeDeclareAccountResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runPeriodResultTransferCommand(
@@ -188,16 +195,16 @@ final class CliAdministrativeCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.transferPeriodResult(
+        mutationWorkflow.transferPeriodResult(
             bookAccess, new PeriodResultTransferCommand(reportingPeriod)),
         outputMode,
         result -> responseWriter.writePeriodResultTransferResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
   }
 }

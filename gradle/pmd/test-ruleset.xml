@@ -39,8 +39,19 @@
         <exclude name="CouplingBetweenObjects"/>
         <!-- Test suites legitimately exercise boundary adapters and translation-heavy fixtures -->
         <exclude name="GodClass"/>
-        <exclude name="CyclomaticComplexity"/>
-        <exclude name="CognitiveComplexity"/>
+    </rule>
+
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="18"/>
+            <property name="classReportLevel" value="140"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/CognitiveComplexity">
+        <properties>
+            <property name="reportLevel" value="22"/>
+        </properties>
     </rule>
 
     <rule ref="category/java/multithreading.xml">

@@ -187,20 +187,20 @@ class JazzerCliTest {
   @Test
   void mainArguments_parse_rejects_invalid_shapes_and_normalizes_supported_entrypoints()
       throws Exception {
-    JazzerCli.MainArguments helpArguments = JazzerCli.MainArguments.parse(new String[] {"--help"});
+    JazzerCliMainArguments helpArguments = JazzerCliMainArguments.parse(new String[] {"--help"});
     assertEquals(
         "fingrind-unused-jazzer-root", helpArguments.projectDirectory().getFileName().toString());
     assertEquals(List.of("--help"), helpArguments.commandArguments());
 
-    JazzerCli.MainArguments emptyArguments = JazzerCli.MainArguments.parse(new String[0]);
+    JazzerCliMainArguments emptyArguments = JazzerCliMainArguments.parse(new String[0]);
     assertTrue(emptyArguments.commandArguments().isEmpty());
 
-    JazzerCli.MainArguments activeTargetArguments =
-        JazzerCli.MainArguments.parse(new String[] {"active-target-keys"});
+    JazzerCliMainArguments activeTargetArguments =
+        JazzerCliMainArguments.parse(new String[] {"active-target-keys"});
     assertEquals(List.of("active-target-keys"), activeTargetArguments.commandArguments());
 
-    JazzerCli.MainArguments replayArguments =
-        JazzerCli.MainArguments.parse(
+    JazzerCliMainArguments replayArguments =
+        JazzerCliMainArguments.parse(
             new String[] {
               "--project-root", projectDirectory.toString(), "replay", "cli-request", "input.bin"
             });
@@ -210,21 +210,21 @@ class JazzerCliTest {
     IllegalArgumentException usageError =
         assertThrows(
             IllegalArgumentException.class,
-            () -> JazzerCli.MainArguments.parse(new String[] {"replay"}));
+            () -> JazzerCliMainArguments.parse(new String[] {"replay"}));
     assertTrue(String.valueOf(usageError.getMessage()).contains("Usage: JazzerCli"));
 
     IllegalArgumentException wrongFlagError =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                JazzerCli.MainArguments.parse(
+                JazzerCliMainArguments.parse(
                     new String[] {"--bogus", projectDirectory.toString(), "replay"}));
     assertTrue(String.valueOf(wrongFlagError.getMessage()).contains("Usage: JazzerCli"));
 
     IllegalArgumentException blankRootError =
         assertThrows(
             IllegalArgumentException.class,
-            () -> JazzerCli.MainArguments.parse(new String[] {"--project-root", " ", "replay"}));
+            () -> JazzerCliMainArguments.parse(new String[] {"--project-root", " ", "replay"}));
     assertTrue(
         String.valueOf(blankRootError.getMessage()).contains("--project-root must not be blank"));
   }
@@ -658,7 +658,7 @@ class JazzerCliTest {
             "boom");
 
     String listing =
-        JazzerCli.renderFindingListing(
+        JazzerFindingListingTextRenderer.render(
             "cli-request", List.of(replayClean, expectedInvalid, unexpectedFailure));
 
     assertTrue(listing.contains("Summary: actionable=1 expected-invalid=1 replay-clean=1"));

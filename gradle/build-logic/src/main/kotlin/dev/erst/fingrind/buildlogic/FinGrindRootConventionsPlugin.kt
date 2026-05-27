@@ -83,17 +83,15 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             val ruffConfig = layout.projectDirectory.file("ruff.toml")
             val sqlfluffConfig = layout.projectDirectory.file("gradle/sqlfluff/sqlfluff.cfg")
             val requirementsFilePath = layout.projectDirectory.file("requirements-python-tools.txt")
-            val pythonExecutableProvider =
-                providers
-                    .gradleProperty("fingrindPythonExecutable")
-                    .orElse(defaultPythonExecutable(buildMetadata.pythonVersion))
+            val uvBootstrapPythonProvider = defaultUvBootstrapPythonExecutable()
+            val pythonToolsBootstrapHint =
+                "Install the pinned uv launcher with `${uvBootstrapPythonProvider} -m pip install --user uv==${buildMetadata.uvVersion}`."
+            val configuredPythonExecutableProvider =
+                providers.gradleProperty("fingrindPythonExecutable")
             val uvExecutableProvider =
                 providers
                     .gradleProperty("fingrindUvExecutable")
                     .orElse(defaultUvExecutable())
-            val uvBootstrapPythonProvider = defaultUvBootstrapPythonExecutable()
-            val pythonToolsBootstrapHint =
-                "Install the pinned uv launcher with `${uvBootstrapPythonProvider} -m pip install --user uv==${buildMetadata.uvVersion}`."
 
             fun registerUvToolTask(
                 name: String,
@@ -108,7 +106,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             ) = tasks.register<UvToolTask>(name) {
                 group = taskGroup
                 description = taskDescription
-                pythonExecutable.set(pythonExecutableProvider)
+                configuredPythonExecutableProvider.orNull?.let(configuredPythonExecutable::set)
                 uvExecutable.set(uvExecutableProvider)
                 requiredPythonVersion.set(buildMetadata.pythonVersion)
                 requiredUvVersion.set(buildMetadata.uvVersion)
@@ -290,17 +288,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             exclude("**/__pycache__/**")
         }
 
-    private fun defaultPythonExecutable(requiredPythonVersion: String): String =
-        if (System.getProperty("os.name").lowercase().contains("windows")) {
-            "python"
-        } else {
-            listOf("python3.13", "python3.12", "python3")
-                .mapNotNull(::executableOnPath)
-                .firstOrNull()
-                ?: findUvManagedPythonExecutable(requiredPythonVersion)
-                ?: "python3"
-        }
-
     private fun defaultUvExecutable(): String =
         if (System.getProperty("os.name").lowercase().contains("windows")) {
             "uv.exe"
@@ -313,33 +300,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             "python"
         } else {
             "python3"
-        }
-
-    private fun executableOnPath(command: String): String? {
-        val path = System.getenv("PATH") ?: return null
-        val separator = System.getProperty("path.separator")
-        return path.split(separator).firstNotNullOfOrNull { entry ->
-            val candidate = java.nio.file.Path.of(entry, command)
-            candidate.takeIf {
-                java.nio.file.Files.isRegularFile(it) && java.nio.file.Files.isExecutable(it)
-            }?.toAbsolutePath()?.toString()
-        }
-    }
-
-    private fun findUvManagedPythonExecutable(requiredPythonVersion: String): String? =
-        try {
-            val process =
-                ProcessBuilder(defaultUvExecutable(), "python", "find", requiredPythonVersion)
-                    .redirectErrorStream(true)
-                    .start()
-            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
-            if (process.waitFor() == 0 && output.isNotBlank()) {
-                output.lineSequence().first().trim().takeIf(String::isNotBlank)
-            } else {
-                null
-            }
-        } catch (_: Exception) {
-            null
         }
 
     private fun Project.requiresManagedSqliteRuntime(): Boolean =

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,7 +27,10 @@ class JsonContractResourceSupportTest {
                     .getBytes(StandardCharsets.UTF_8)),
             "/valid.json",
             "test contract");
+    JsonNode alpha = JsonContractResourceSupport.nullableField(document, "alpha");
     assertEquals("one", JsonContractResourceSupport.requireText(document, "alpha"));
+    assertNotNull(alpha);
+    assertEquals("one", alpha.asText());
     assertEquals(
         List.of("x", "y"), JsonContractResourceSupport.optionalStringArray(document, "values"));
     assertThrows(

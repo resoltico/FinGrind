@@ -184,8 +184,8 @@ final class CliReportPayloadMapper {
         MonetaryAmount.of(entry.movement().creditTotal()),
         MonetaryAmount.of(entry.runningNetAmount()),
         entry.runningBalanceSide().wireValue(),
-        CliBookPayloadMapper.evidencePayload(entry.postingFact().evidence()),
-        CliBookPayloadMapper.counterpartAccounts(account, entry.postingFact()));
+        CliBookPostingPayloadMapper.evidencePayload(entry.postingFact().evidence()),
+        CliBookPostingPayloadMapper.counterpartAccounts(account, entry.postingFact()));
   }
 
   private static CliReportJsonModels.PeriodAccountActivityPayload periodAccountActivityPayload(
@@ -272,7 +272,7 @@ final class CliReportPayloadMapper {
       PostingCoverage postingCoverage,
       @Nullable EffectiveDateRange comparativeEffectiveDateRange) {
     return new CliReportJsonModels.ReportContextPayload(
-        CliBookPayloadMapper.bookIdentityPayload(bookIdentity),
+        CliBookInspectionPayloadMapper.bookIdentityPayload(bookIdentity),
         postingCoverage.wireValue(),
         comparativeEffectiveDateRange == null
             ? null

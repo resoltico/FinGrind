@@ -327,7 +327,28 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Ledger plan contains an invalid date/time value.", exception.getMessage());
+    assertEquals(
+        "Expected one canonical YYYY-MM-DD local date for query.effectiveDateFrom.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsNonCanonicalExpandedYearDates() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLedgerPlanJson()
+                    .replace(
+                        "\"effectiveDateFrom\": \"2026-04-01\"",
+                        "\"effectiveDateFrom\": \"+12026-04-01\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Expected one canonical YYYY-MM-DD local date for query.effectiveDateFrom.",
+        exception.getMessage());
   }
 
   @Test
@@ -418,7 +439,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   @Test
   void optionalInt_treatsMissingAndNullFieldsAsEmpty() throws IOException {
     var rootNode =
-        CliJsonFieldAccess.requireRootObject(
+        CliJsonStructureAccess.requireRootObject(
             CliJsonObjectMappers.configuredObjectMapper()
                 .readTree(
                     """
@@ -640,7 +661,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   @Test
   void requiredInt_rejectsMissingField() throws IOException {
     var rootNode =
-        CliJsonFieldAccess.requireRootObject(
+        CliJsonStructureAccess.requireRootObject(
             CliJsonObjectMappers.configuredObjectMapper().readTree("{\"limit\": 25}"));
 
     assertEquals(25, CliJsonFieldAccess.requiredInt(rootNode, "limit"));

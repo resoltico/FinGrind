@@ -369,7 +369,7 @@ def assert_operator_queries_and_reports(
         account_ledger_csv_output, f"{config.label} account-ledger CSV output"
     )
     expected_account_ledger_header = [
-        "rowKind",
+        "recordKind",
         "accountCode",
         "accountName",
         "accountType",
@@ -398,24 +398,76 @@ def assert_operator_queries_and_reports(
         "creditAmount",
         "runningNetAmount",
         "runningBalanceSide",
-        "counterpartAccounts",
-        "sourceDocumentIds",
-        "sourceDocumentTypes",
-        "approvalIds",
-        "approvalDecisions",
+        "counterpartAccountCode",
+        "sourceDocumentId",
+        "sourceDocumentType",
+        "approvalId",
+        "approvalDecision",
+        "message",
     ]
     require(
         account_ledger_header == expected_account_ledger_header,
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
+    summary_rows = [row for row in account_ledger_rows if row["recordKind"] == "summary"]
+    entry_rows = [row for row in account_ledger_rows if row["recordKind"] == "entry"]
+    counterpart_rows = [
+        row for row in account_ledger_rows if row["recordKind"] == "counterpart-account"
+    ]
+    source_document_rows = [
+        row for row in account_ledger_rows if row["recordKind"] == "source-document"
+    ]
+    approval_rows = [row for row in account_ledger_rows if row["recordKind"] == "approval"]
     require(
-        len(account_ledger_rows) == 2,
-        f"{config.label} account-ledger CSV output did not render the expected row count",
+        len(account_ledger_rows) == 7,
+        f"{config.label} account-ledger CSV output did not render the expected normalized row count",
     )
-    opening_entry, adjustment_entry = account_ledger_rows
     require(
-        opening_entry["rowKind"] == "entry"
-        and opening_entry["accountCode"] == "1000"
+        len(summary_rows) == 1
+        and len(entry_rows) == 2
+        and len(counterpart_rows) == 2
+        and len(source_document_rows) == 2
+        and len(approval_rows) == 0,
+        f"{config.label} account-ledger CSV output did not render the expected row kinds",
+    )
+    summary_row = summary_rows[0]
+    require_match(
+        summary_row["accountCode"],
+        r"^1000$",
+        f"{config.label} account-ledger CSV summary row did not stay anchored to the requested account",
+    )
+    require(
+        summary_row["accountName"] == "Cash"
+        and summary_row["accountType"] == "ASSET"
+        and summary_row["accountRole"] == "ORDINARY"
+        and summary_row["normalBalance"] == "DEBIT"
+        and summary_row["active"] == "true"
+        and summary_row["effectiveDateFrom"] == "2026-04-07"
+        and summary_row["effectiveDateTo"] == "2026-04-08"
+        and summary_row["currencyCode"] == "EUR"
+        and summary_row["openingDebitTotal"] == "0.00"
+        and summary_row["openingCreditTotal"] == "0.00"
+        and summary_row["openingNetAmount"] == "0.00"
+        and summary_row["openingBalanceSide"] == "ZERO"
+        and summary_row["closingDebitTotal"] == "10.00"
+        and summary_row["closingCreditTotal"] == "4.00"
+        and summary_row["closingNetAmount"] == "6.00"
+        and summary_row["closingBalanceSide"] == "DEBIT"
+        and summary_row["effectiveDate"] == ""
+        and summary_row["recordedAt"] == ""
+        and summary_row["postingId"] == ""
+        and summary_row["counterpartAccountCode"] == ""
+        and summary_row["sourceDocumentId"] == ""
+        and summary_row["approvalId"] == "",
+        f"{config.label} account-ledger CSV summary row did not render the expected opening and closing balances",
+    )
+
+    opening_entry = next(row for row in entry_rows if row["postingOriginKind"] == "CASH_REVENUE")
+    adjustment_entry = next(
+        row for row in entry_rows if row["postingOriginKind"] == "CORRECTION_ADJUSTMENT"
+    )
+    require(
+        opening_entry["accountCode"] == "1000"
         and opening_entry["accountName"] == "Cash"
         and opening_entry["accountType"] == "ASSET"
         and opening_entry["accountRole"] == "ORDINARY"
@@ -436,20 +488,15 @@ def assert_operator_queries_and_reports(
         and opening_entry["recordedAt"] != ""
         and opening_entry["postingId"] != ""
         and opening_entry["postingKind"] == "STANDARD"
-        and opening_entry["postingOriginKind"] == "CASH_REVENUE"
         and opening_entry["reversalState"] == "direct"
         and opening_entry["reversalTarget"] == ""
         and opening_entry["debitAmount"] == "10.00"
         and opening_entry["creditAmount"] == "0.00"
         and opening_entry["runningNetAmount"] == "10.00"
         and opening_entry["runningBalanceSide"] == "DEBIT"
-        and opening_entry["counterpartAccounts"] == "2000"
-        and opening_entry["sourceDocumentIds"]
-        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentId"]
-        and opening_entry["sourceDocumentTypes"]
-        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentType"]
-        and opening_entry["approvalIds"] == ""
-        and opening_entry["approvalDecisions"] == "",
+        and opening_entry["counterpartAccountCode"] == ""
+        and opening_entry["sourceDocumentId"] == ""
+        and opening_entry["approvalId"] == "",
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
@@ -463,8 +510,7 @@ def assert_operator_queries_and_reports(
         f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the opening ledger movement row",
     )
     require(
-        adjustment_entry["rowKind"] == "entry"
-        and adjustment_entry["accountCode"] == "1000"
+        adjustment_entry["accountCode"] == "1000"
         and adjustment_entry["accountName"] == "Cash"
         and adjustment_entry["accountType"] == "ASSET"
         and adjustment_entry["accountRole"] == "ORDINARY"
@@ -492,17 +538,9 @@ def assert_operator_queries_and_reports(
         and adjustment_entry["creditAmount"] == "4.00"
         and adjustment_entry["runningNetAmount"] == "6.00"
         and adjustment_entry["runningBalanceSide"] == "DEBIT"
-        and adjustment_entry["counterpartAccounts"] == "2000"
-        and adjustment_entry["sourceDocumentIds"]
-        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
-            "sourceDocumentId"
-        ]
-        and adjustment_entry["sourceDocumentTypes"]
-        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
-            "sourceDocumentType"
-        ]
-        and adjustment_entry["approvalIds"] == ""
-        and adjustment_entry["approvalDecisions"] == "",
+        and adjustment_entry["counterpartAccountCode"] == ""
+        and adjustment_entry["sourceDocumentId"] == ""
+        and adjustment_entry["approvalId"] == "",
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )
     require_match(
@@ -514,6 +552,42 @@ def assert_operator_queries_and_reports(
         adjustment_entry["recordedAt"],
         r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$",
         f"{config.label} account-ledger CSV output did not render a canonical recordedAt timestamp for the running-balance adjustment row",
+    )
+
+    opening_counterpart = next(
+        row for row in counterpart_rows if row["postingId"] == opening_entry["postingId"]
+    )
+    adjustment_counterpart = next(
+        row for row in counterpart_rows if row["postingId"] == adjustment_entry["postingId"]
+    )
+    require(
+        opening_counterpart["counterpartAccountCode"] == "2000"
+        and opening_counterpart["effectiveDate"] == "2026-04-07"
+        and adjustment_counterpart["counterpartAccountCode"] == "2000"
+        and adjustment_counterpart["effectiveDate"] == "2026-04-08",
+        f"{config.label} account-ledger CSV output did not render normalized counterpart-account rows",
+    )
+
+    opening_source_document = next(
+        row for row in source_document_rows if row["postingId"] == opening_entry["postingId"]
+    )
+    adjustment_source_document = next(
+        row for row in source_document_rows if row["postingId"] == adjustment_entry["postingId"]
+    )
+    require(
+        opening_source_document["sourceDocumentId"]
+        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentId"]
+        and opening_source_document["sourceDocumentType"]
+        == expected_source_document(config.actor_prefix, "sale", "2026-04-07")["sourceDocumentType"]
+        and adjustment_source_document["sourceDocumentId"]
+        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
+            "sourceDocumentId"
+        ]
+        and adjustment_source_document["sourceDocumentType"]
+        == expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")[
+            "sourceDocumentType"
+        ],
+        f"{config.label} account-ledger CSV output did not render normalized source-document rows",
     )
     require_match(
         period_summary_text_output,

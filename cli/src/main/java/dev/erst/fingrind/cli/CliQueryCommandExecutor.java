@@ -10,12 +10,17 @@ import java.util.Optional;
 
 /** Executes query-only CLI commands that read book state without producing PDF artifacts. */
 final class CliQueryCommandExecutor {
-  private final CliResponseWriter responseWriter;
-  private final CliBookWorkflow bookWorkflow;
+  private final CliBookReadResponseWriter responseWriter;
+  private final CliFailureResponseWriter failureWriter;
+  private final CliBookReadWorkflow readWorkflow;
 
-  CliQueryCommandExecutor(CliResponseWriter responseWriter, CliBookWorkflow bookWorkflow) {
+  CliQueryCommandExecutor(
+      CliBookReadResponseWriter responseWriter,
+      CliFailureResponseWriter failureWriter,
+      CliBookReadWorkflow readWorkflow) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
-    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
+    this.readWorkflow = Objects.requireNonNull(readWorkflow, "readWorkflow");
   }
 
   int runInspectBookCommand(BookAccess bookAccess, OutputMode outputMode) {
@@ -24,17 +29,17 @@ final class CliQueryCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.inspectBook(bookAccess),
+        readWorkflow.inspectBook(bookAccess),
         outputMode,
         inspection ->
             responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode),
         ignored -> 0,
-        responseWriter);
+        failureWriter);
   }
 
   int runListAccountsCommand(
@@ -44,16 +49,16 @@ final class CliQueryCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.listAccounts(bookAccess, query),
+        readWorkflow.listAccounts(bookAccess, query),
         outputMode,
         result -> responseWriter.writeListAccountsResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliBookQueryExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runGetPostingCommand(BookAccess bookAccess, PostingId postingId, OutputMode outputMode) {
@@ -62,16 +67,16 @@ final class CliQueryCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.getPosting(bookAccess, postingId),
+        readWorkflow.getPosting(bookAccess, postingId),
         outputMode,
         result -> responseWriter.writeGetPostingResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliBookQueryExitCodes::exitCodeFor,
+        failureWriter);
   }
 
   int runListPostingsCommand(
@@ -81,15 +86,15 @@ final class CliQueryCommandExecutor {
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, responseWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        bookWorkflow.listPostings(bookAccess, query),
+        readWorkflow.listPostings(bookAccess, query),
         outputMode,
         result -> responseWriter.writeListPostingsResult(result, outputMode),
-        CliExecutionPolicy::exitCodeFor,
-        responseWriter);
+        CliBookQueryExitCodes::exitCodeFor,
+        failureWriter);
   }
 }

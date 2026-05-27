@@ -41,90 +41,100 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import java.nio.file.Path;
 import org.jspecify.annotations.Nullable;
 
-/** Execution seam for routing CLI commands through the selected book adapter. */
-interface CliBookWorkflow {
-  /** Opens the selected book and installs the canonical FinGrind schema when possible. */
+/** Lifecycle seam for opening, protecting, backing up, and rolling back books. */
+interface CliBookLifecycleWorkflow {
+  /** Opens or initializes one protected book through the selected access route. */
   ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command);
 
-  /** Rotates the passphrase that protects one existing book file. */
+  /** Replaces the passphrase material protecting one existing book. */
   ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess bookAccess, PassphraseSource replacementPassphraseSource);
 
-  /** Exports one closed encrypted-book backup pair. */
+  /** Creates a backup copy plus its companion key artifact. */
   ContractDecision<BackupBookResult> backupBook(
       BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath);
 
-  /** Restores one encrypted-book backup pair onto one selected live book path. */
+  /** Restores one protected book from a backup artifact set. */
   ContractDecision<RestoreBookResult> restoreBook(
       Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath);
 
-  /** Inspects stale sibling rekey rollback artifacts for the selected book path. */
+  /** Reads rollback metadata for the most recent interrupted rekey flow. */
   ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath);
 
-  /** Deletes one selected sibling rekey rollback artifact. */
+  /** Deletes rollback artifacts once the operator accepts their removal. */
   ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
       BookAccess bookAccess, @Nullable Path rollbackArtifactPath);
 
-  /** Restores one selected sibling rekey rollback artifact onto the live book path. */
+  /** Restores the rollback snapshot back into the primary book location. */
   ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
       Path bookFilePath,
       @Nullable Path rollbackArtifactPath,
       PassphraseSource expectedPassphraseSource);
+}
 
-  /** Declares or reactivates one account inside the selected book. */
+/** Mutation seam for durable bookkeeping and operational write flows. */
+interface CliBookMutationWorkflow {
+  /** Declares one new account into the selected protected book. */
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
 
-  /** Transfers one contiguous reporting period into the policy-selected result-holding account. */
+  /** Closes one reporting period into the configured result-holding account. */
   ContractDecision<PeriodResultTransferResult> transferPeriodResult(
       BookAccess bookAccess, PeriodResultTransferCommand command);
 
-  /** Inspects one selected book for lifecycle and compatibility state. */
+  /** Executes one declarative ledger plan against the selected book. */
+  ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan);
+
+  /** Validates one posting command without committing it. */
+  ContractDecision<PreflightEntryResult> preflight(BookAccess bookAccess, PostEntryCommand command);
+
+  /** Commits one posting command into durable book storage. */
+  ContractDecision<CommitEntryResult> commit(BookAccess bookAccess, PostEntryCommand command);
+}
+
+/** Read seam for inspection, listing, and reporting over one selected book. */
+interface CliBookReadWorkflow {
+  /** Inspects one protected book without mutating its durable contents. */
   ContractDecision<BookInspection> inspectBook(BookAccess bookAccess);
 
-  /** Lists the declared accounts currently stored in the selected book. */
+  /** Lists declared accounts with one cursor window. */
   ContractDecision<ListAccountsResult> listAccounts(BookAccess bookAccess, ListAccountsQuery query);
 
-  /** Returns one committed posting by durable posting identity. */
+  /** Reads one posting by durable posting id. */
   ContractDecision<GetPostingResult> getPosting(
       BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId);
 
-  /** Lists one filtered page of committed postings. */
+  /** Lists postings with the selected filters and cursor window. */
   ContractDecision<ListPostingsResult> listPostings(BookAccess bookAccess, ListPostingsQuery query);
 
-  /** Computes per-currency balances for one declared account. */
+  /** Reports one account balance snapshot for the selected query window. */
   ContractDecision<AccountBalanceResult> accountBalance(
       BookAccess bookAccess, AccountBalanceQuery query);
 
-  /** Computes the trial balance for one selected book. */
+  /** Reports one trial balance for the selected period and coverage. */
   ContractDecision<TrialBalanceResult> trialBalance(BookAccess bookAccess, TrialBalanceQuery query);
 
-  /** Computes the running ledger for one selected account. */
+  /** Reports one account ledger export for the selected account and window. */
   ContractDecision<AccountLedgerResult> accountLedger(
       BookAccess bookAccess, AccountLedgerQuery query);
 
-  /** Computes the bounded period summary for one selected book. */
+  /** Reports one period summary for the selected coverage and boundaries. */
   ContractDecision<PeriodSummaryResult> periodSummary(
       BookAccess bookAccess, PeriodSummaryQuery query);
 
-  /** Computes one statement of financial position. */
+  /** Reports one statement of financial position projection. */
   ContractDecision<FinancialPositionResult> financialPosition(
       BookAccess bookAccess, FinancialPositionQuery query);
 
-  /** Computes one bounded income statement. */
+  /** Reports one income statement projection. */
   ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query);
 
-  /** Computes one bounded statement of changes in equity. */
+  /** Reports one changes-in-equity projection. */
   ContractDecision<ChangesInEquityResult> changesInEquity(
       BookAccess bookAccess, ChangesInEquityQuery query);
-
-  /** Executes one ordered AI-agent ledger plan atomically. */
-  ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan);
-
-  /** Validates a posting request without mutating the selected book. */
-  ContractDecision<PreflightEntryResult> preflight(BookAccess bookAccess, PostEntryCommand command);
-
-  /** Commits a posting request into the selected book. */
-  ContractDecision<CommitEntryResult> commit(BookAccess bookAccess, PostEntryCommand command);
 }
+
+/** Composite workflow role used by test doubles that exercise every CLI book seam together. */
+interface CliBookWorkflow
+    extends CliBookLifecycleWorkflow, CliBookMutationWorkflow, CliBookReadWorkflow {}

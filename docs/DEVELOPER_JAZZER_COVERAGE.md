@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -86,8 +86,8 @@ Surface:
 - executed `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`,
   `trial-balance`, `account-ledger`, and `period-summary` workflows through the real CLI writer
   surface
-- corrupt directory-backed and plaintext pre-schema book paths through the real runtime-failure
-  mapping seam
+- corrupt directory-backed and plaintext pre-schema book paths through the real storage-failure
+  and internal-error boundary seam
 - two concurrent contenders racing one direct posting command against the same protected book
 - derived exact and near-miss reversal follow-up commands against a durably committed posting
 

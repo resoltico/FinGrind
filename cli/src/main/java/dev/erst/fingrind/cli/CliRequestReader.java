@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.DateTimeException;
 import java.util.Objects;
 import java.util.function.Function;
 import tools.jackson.core.JacksonException;
@@ -31,10 +30,9 @@ final class CliRequestReader {
 
   /** Reads one posting request from a JSON file or standard input. */
   PostEntryCommand readPostEntryCommand(Path requestFile) {
-    return parseDatedRequest(
+    return parseRequest(
         requestFile,
         CliJsonRequestHints.postEntryRequestHint(),
-        "Request contains an invalid date/time value.",
         CliPostingRequestParser::readPostEntryCommand);
   }
 
@@ -48,10 +46,9 @@ final class CliRequestReader {
 
   /** Reads one AI-agent ledger plan from a JSON file or standard input. */
   LedgerPlan readLedgerPlan(Path requestFile) {
-    return parseDatedRequest(
+    return parseRequest(
         requestFile,
         CliJsonRequestHints.ledgerPlanRequestHint(),
-        "Ledger plan contains an invalid date/time value.",
         CliLedgerPlanParser::readLedgerPlan);
   }
 
@@ -61,7 +58,7 @@ final class CliRequestReader {
       Function<tools.jackson.databind.node.ObjectNode, T> parser) {
     try {
       return parser.apply(
-          CliJsonFieldAccess.requireRootObject(readRootNode(requestFile, requestHint)));
+          CliJsonStructureAccess.requireRootObject(readRootNode(requestFile, requestHint)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (JournalEntryValidationException exception) {
@@ -76,22 +73,6 @@ final class CliRequestReader {
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
           CliJsonRequestFailures.normalizedMessage(exception),
           requestHint,
-          exception);
-    }
-  }
-
-  private <T> T parseDatedRequest(
-      Path requestFile,
-      String requestHint,
-      String invalidDateMessage,
-      Function<tools.jackson.databind.node.ObjectNode, T> parser) {
-    try {
-      return parseRequest(requestFile, requestHint, parser);
-    } catch (DateTimeException exception) {
-      throw new CliRequestException(
-          ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          invalidDateMessage,
-          "Use ISO-8601 values such as YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ.",
           exception);
     }
   }

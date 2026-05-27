@@ -1,0 +1,144 @@
+package dev.erst.fingrind.cli;
+
+import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.ApprovalReference;
+import dev.erst.fingrind.core.SourceDocumentReference;
+import java.util.List;
+
+/** Maps posting-shaped and evidence-shaped payloads into CLI JSON models. */
+final class CliBookPostingPayloadMapper {
+  private CliBookPostingPayloadMapper() {}
+
+  static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
+    return new CliBookQueryJsonModels.PostingPayload(
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        postingFact.reversalReference().isPresent() ? "reversal" : "direct",
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.provenance().requestProvenance().actorId().value(),
+        postingFact.provenance().requestProvenance().actorType().wireValue(),
+        postingFact.provenance().requestProvenance().commandId().value(),
+        postingFact.provenance().requestProvenance().idempotencyKey().value(),
+        postingFact.provenance().requestProvenance().causationId().value(),
+        postingFact
+            .provenance()
+            .requestProvenance()
+            .correlationId()
+            .map(value -> value.value())
+            .orElse(null),
+        postingFact.provenance().sourceChannel().wireValue(),
+        evidencePayload(postingFact.evidence()),
+        postingFact
+            .postingLineage()
+            .reversalReference()
+            .map(
+                reference ->
+                    new CliBookQueryJsonModels.ReversalPayload(
+                        reference.priorPostingId().value(),
+                        postingFact.postingLineage().reversalReason().orElseThrow().value()))
+            .orElse(null),
+        postingFact.journalEntry().lines().stream()
+            .map(CliBookPostingPayloadMapper::linePayload)
+            .toList());
+  }
+
+  static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      PostingFact postingFact) {
+    return new CliBookQueryJsonModels.PostingSummaryPayload(
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        postingFact.reversalReference().isPresent() ? "reversal" : "direct",
+        postingFact
+            .reversalReference()
+            .map(reference -> reference.priorPostingId().value())
+            .orElse(null),
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        MonetaryAmount.of(postingDebitTotal(postingFact)),
+        MonetaryAmount.of(postingCreditTotal(postingFact)),
+        postingFact.journalEntry().lines().stream()
+            .map(line -> line.accountCode().value())
+            .distinct()
+            .toList(),
+        postingFact.evidence().sourceDocuments().stream()
+            .map(sourceDocument -> sourceDocument.sourceDocumentId().value())
+            .toList(),
+        postingFact.evidence().approvals().stream()
+            .map(approval -> approval.approvalId().value())
+            .toList());
+  }
+
+  static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(
+      AccountingEvidence evidence) {
+    return new CliBookQueryJsonModels.AccountingEvidencePayload(
+        evidence.sourceDocuments().stream()
+            .map(CliBookPostingPayloadMapper::sourceDocumentPayload)
+            .toList(),
+        evidence.approvals().stream().map(CliBookPostingPayloadMapper::approvalPayload).toList());
+  }
+
+  static List<String> counterpartAccounts(DeclaredAccount account, PostingFact postingFact) {
+    return postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .filter(accountCode -> !accountCode.equals(account.accountCode().value()))
+        .distinct()
+        .toList();
+  }
+
+  private static CliBookQueryJsonModels.JournalLinePayload linePayload(
+      dev.erst.fingrind.core.JournalLine line) {
+    return new CliBookQueryJsonModels.JournalLinePayload(
+        line.accountCode().value(),
+        line.side().wireValue(),
+        MonetaryAmount.of(line.amount().money()));
+  }
+
+  private static CliBookQueryJsonModels.SourceDocumentPayload sourceDocumentPayload(
+      SourceDocumentReference sourceDocument) {
+    return new CliBookQueryJsonModels.SourceDocumentPayload(
+        sourceDocument.sourceDocumentId().value(),
+        sourceDocument.sourceDocumentType().value(),
+        sourceDocument.documentDate().toString(),
+        sourceDocument.capturedAt().toString(),
+        sourceDocument.storageLocator().value(),
+        sourceDocument.contentSha256().value());
+  }
+
+  private static CliBookQueryJsonModels.ApprovalPayload approvalPayload(
+      ApprovalReference approval) {
+    return new CliBookQueryJsonModels.ApprovalPayload(
+        approval.approvalId().value(),
+        approval.approvalType().value(),
+        approval.approverId().value(),
+        approval.approverType().wireValue(),
+        approval.decision().wireValue(),
+        approval.approvedAt().toString());
+  }
+
+  private static dev.erst.fingrind.core.Money postingDebitTotal(PostingFact postingFact) {
+    long debitMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return dev.erst.fingrind.core.Money.ofMinorUnits(
+        postingFact.journalEntry().currencyUnit(), debitMinorUnits);
+  }
+
+  private static dev.erst.fingrind.core.Money postingCreditTotal(PostingFact postingFact) {
+    long creditMinorUnits =
+        postingFact.journalEntry().lines().stream()
+            .filter(line -> line.side() == dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT)
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return dev.erst.fingrind.core.Money.ofMinorUnits(
+        postingFact.journalEntry().currencyUnit(), creditMinorUnits);
+  }
+}
