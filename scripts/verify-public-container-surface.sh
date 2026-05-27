@@ -145,20 +145,16 @@ JSON
 
 verify_text_trial_balance() {
     local text_output=$1
-    local header_block totals_block account_table_block
+    local status_block totals_block account_table_block context_block
 
-    header_block="$(cat <<'TEXT'
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
-As of            : 2026-04-08
+    status_block="$(cat <<'TEXT'
+As of         : 2026-04-08
+Balance state : Balanced
 TEXT
 )"
     totals_block="$(cat <<'TEXT'
 Current totals
 --------------
-As of         : 2026-04-08
-Balance state : Balanced
-
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
 EUR      |       10.00 |        10.00 |       0.00 | Zero
@@ -166,21 +162,32 @@ TEXT
 )"
 
     account_table_block="$(cat <<'TEXT'
+Accounts
+--------
 Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------+-------------+--------------+------------+-------------
 1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
 2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 TEXT
 )"
+    context_block="$(cat <<'TEXT'
+Context
+-------
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01
+Posting coverage : All posting kinds
+TEXT
+)"
 
     require_match "${text_output}" '^Trial Balance$' || die \
         "published text trial balance did not render the report header"
-    require_literal_block "${text_output}" "${header_block}" \
-        || die "published text trial balance did not render the expected book header"
+    require_literal_block "${text_output}" "${status_block}" \
+        || die "published text trial balance did not render the expected status block"
     require_literal_block "${text_output}" "${totals_block}" \
         || die "published text trial balance did not render the expected totals block"
     require_literal_block "${text_output}" "${account_table_block}" \
         || die "published text trial balance did not render the expected account summary rows"
+    require_literal_block "${text_output}" "${context_block}" \
+        || die "published text trial balance did not render the expected context block"
 }
 
 verify_mounted_book_surface() {
