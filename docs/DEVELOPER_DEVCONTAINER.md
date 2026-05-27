@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]

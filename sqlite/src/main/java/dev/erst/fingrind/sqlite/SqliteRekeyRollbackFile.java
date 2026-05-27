@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static java.lang.System.Logger.Level.WARNING;
 
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -58,7 +59,7 @@ final class SqliteRekeyRollbackFile {
     } catch (IOException exception) {
       throw new SqliteStorageFailureException(
           "Failed to restore the FinGrind SQLite book from the rekey rollback copy at "
-              + path
+              + publicPathHint(path)
               + ".",
           exception);
     }
@@ -140,7 +141,7 @@ final class SqliteRekeyRollbackFile {
     if (parentDirectory == null) {
       throw new IllegalArgumentException(
           "The FinGrind SQLite book path must resolve to a file beneath a parent directory: "
-              + normalizedBookPath);
+              + PublicPathHint.fromPath(normalizedBookPath).value());
     }
     return parentDirectory;
   }
@@ -180,8 +181,7 @@ final class SqliteRekeyRollbackFile {
   }
 
   private static String publicPathHint(Path path) {
-    Path fileName = Objects.requireNonNull(path, "path").getFileName();
-    return fileName == null ? "<redacted>" : "<redacted>/" + fileName;
+    return PublicPathHint.fromPath(path).value();
   }
 
   /** Receives one discovered stale rollback-artifact set for one protected book path. */

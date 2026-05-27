@@ -24,9 +24,9 @@ final class MachineContractLedgerPlanVariantSchemas {
         MachineContractLedgerPlanFieldSupport.operation(OperationId.ACCOUNT_BALANCE)
             + " query payload.",
         List.of(
-            MachineContractLedgerPlanStepQueryFieldSpecs.requiredAccountCodeQueryField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalEffectiveDateFromQueryField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalEffectiveDateToQueryField()));
+            MachineContractLedgerPlanQueryFieldSpecs.requiredAccountCodeQueryField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalEffectiveDateFromQueryField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalEffectiveDateToQueryField()));
   }
 
   static Map<String, Object> assertionSchema() {
@@ -43,60 +43,60 @@ final class MachineContractLedgerPlanVariantSchemas {
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind)));
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind)));
       case DECLARE_ACCOUNT ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredDeclareAccountField()));
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredDeclareAccountField()));
       case PREFLIGHT_ENTRY, POST_ENTRY ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredPostingField()));
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingField()));
       case LIST_ACCOUNTS ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.optionalQueryField(
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.optionalQueryField(
                       listAccountsQuerySchema())));
       case GET_POSTING ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredPostingIdField()));
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingIdField()));
       case LIST_POSTINGS ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.optionalQueryField(
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.optionalQueryField(
                       listPostingsQuerySchema())));
       case ACCOUNT_BALANCE ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredQueryField(
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredQueryField(
                       accountBalanceQuerySchema())));
       case ASSERT ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan assertion step.",
               List.of(
-                  MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepQueryFieldSpecs.requiredAssertionField()));
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredAssertionField()));
     };
   }
 
@@ -106,19 +106,19 @@ final class MachineContractLedgerPlanVariantSchemas {
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.LIST_ACCOUNTS)
             + " query window.",
         List.of(
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalLimitField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalCursorField()));
+            MachineContractLedgerPlanQueryFieldSpecs.optionalLimitField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalCursorField()));
   }
 
   private static Map<String, Object> listPostingsQuerySchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional posting-page filter and continuation window.",
         List.of(
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalAccountCodeQueryField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalEffectiveDateFromQueryField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalEffectiveDateToQueryField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalLimitField(),
-            MachineContractLedgerPlanStepQueryFieldSpecs.optionalCursorField()));
+            MachineContractLedgerPlanQueryFieldSpecs.optionalAccountCodeQueryField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalEffectiveDateFromQueryField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalEffectiveDateToQueryField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalLimitField(),
+            MachineContractLedgerPlanQueryFieldSpecs.optionalCursorField()));
   }
 
   private static Map<String, Object> assertionVariantSchema(LedgerAssertionKind kind) {

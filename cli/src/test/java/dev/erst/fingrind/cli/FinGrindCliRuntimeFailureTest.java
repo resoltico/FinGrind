@@ -270,15 +270,18 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_mapsGenericRuntimeFailureToRuntimeFailureWithGenericHint() throws IOException {
+  void run_mapsGenericRuntimeFailureToInternalErrorWithOpaquePublicIdAndDiagnostics()
+      throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsOutput = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsOutput),
             fixedClock(),
             new ExplodingWorkflow(new IllegalStateException("boom")));
     int exitCode =
@@ -292,25 +295,32 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-    assertEquals(4, exitCode);
-    assertJsonContains(outputStream, "\"code\":\"runtime-failure\"");
+    assertEquals(70, exitCode);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("internal-error", failureEnvelope.path("code").stringValue());
+    assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains(
-                "Inspect the message and rerun after fixing the underlying runtime problem."));
+        failureEnvelope
+            .path("hint")
+            .stringValue()
+            .contains("diagnostic stream for the same error id and stack trace"));
+    String diagnosticsText = diagnosticsOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(diagnosticsText.contains("[internal-error] fg-internal-"));
+    assertTrue(diagnosticsText.contains("IllegalStateException: boom"));
   }
 
   @Test
-  void run_mapsGenericIllegalArgumentExceptionToRuntimeFailure() throws IOException {
+  void run_mapsGenericIllegalArgumentExceptionToInternalError() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsOutput = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsOutput),
             fixedClock(),
             new IllegalArgumentWorkflow());
     int exitCode =
@@ -324,8 +334,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-    assertEquals(4, exitCode);
-    assertJsonContains(outputStream, "\"code\":\"runtime-failure\"");
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
+    assertEquals(70, exitCode);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("internal-error", failureEnvelope.path("code").stringValue());
+    assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
+    assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
+    assertTrue(diagnosticsOutput.toString(StandardCharsets.UTF_8).contains("workflow boom"));
   }
 }

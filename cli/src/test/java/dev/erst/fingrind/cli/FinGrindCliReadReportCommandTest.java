@@ -168,7 +168,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions");
+        "recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message");
     assertCommandOutputContains(
         new String[] {
           "account-balance",
@@ -359,7 +359,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",

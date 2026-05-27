@@ -64,7 +64,7 @@ class RegressionSeedMetadataTest {
       throws IOException {
     Set<String> seenCoverageIntents = new HashSet<>();
     for (JazzerHarness harness : JazzerHarness.values()) {
-      for (Path metadataPath : RegressionSeedCatalog.metadataPaths(PROJECT_DIRECTORY, harness)) {
+      for (Path metadataPath : RegressionSeedPaths.metadataPaths(PROJECT_DIRECTORY, harness)) {
         RegressionSeedMetadata metadata =
             JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
         assertEquals(harness.key(), metadata.targetKey(), "metadata target must match its harness");
@@ -96,8 +96,7 @@ class RegressionSeedMetadataTest {
             .flatMap(
                 harness -> {
                   try {
-                    return RegressionSeedCatalog.orphanedInputs(PROJECT_DIRECTORY, harness)
-                        .stream();
+                    return RegressionSeedPaths.orphanedInputs(PROJECT_DIRECTORY, harness).stream();
                   } catch (IOException exception) {
                     throw new UncheckedIOException(exception);
                   }
@@ -112,15 +111,15 @@ class RegressionSeedMetadataTest {
   @Test
   void catalog_helpers_handle_missing_directories_and_detect_orphaned_inputs() throws IOException {
     assertEquals(
-        List.of(), RegressionSeedCatalog.metadataPaths(tempDirectory, JazzerHarness.cliRequest()));
+        List.of(), RegressionSeedPaths.metadataPaths(tempDirectory, JazzerHarness.cliRequest()));
     assertEquals(
-        List.of(), RegressionSeedCatalog.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+        List.of(), RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
     assertEquals(
-        List.of(), RegressionSeedCatalog.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
+        List.of(), RegressionSeedPaths.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
 
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
     Files.createDirectories(inputDirectory);
     Files.createDirectories(metadataDirectory);
     Path orphanInput = inputDirectory.resolve("orphan.json");
@@ -128,13 +127,13 @@ class RegressionSeedMetadataTest {
 
     assertEquals(
         List.of(orphanInput.toAbsolutePath().normalize()),
-        RegressionSeedCatalog.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
+        RegressionSeedPaths.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
   }
 
   @Test
   void strict_catalog_helpers_fail_fast_on_invalid_metadata() throws IOException {
     Path metadataDirectory =
-        RegressionSeedCatalog.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
+        RegressionSeedPaths.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
     Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
     Files.createDirectories(metadataDirectory);
     Files.createDirectories(inputDirectory);
@@ -148,14 +147,14 @@ class RegressionSeedMetadataTest {
     IllegalStateException entriesFailure =
         assertThrows(
             IllegalStateException.class,
-            () -> RegressionSeedCatalog.entries(tempDirectory, JazzerHarness.cliRequest()));
+            () -> RegressionSeedEntries.entries(tempDirectory, JazzerHarness.cliRequest()));
     String entriesFailureMessage = java.util.Objects.requireNonNull(entriesFailure.getMessage());
     assertTrue(entriesFailureMessage.contains("Committed regression metadata is unreadable:"));
 
     IllegalStateException orphanFailure =
         assertThrows(
             IllegalStateException.class,
-            () -> RegressionSeedCatalog.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
+            () -> RegressionSeedPaths.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
     String orphanFailureMessage = java.util.Objects.requireNonNull(orphanFailure.getMessage());
     assertTrue(orphanFailureMessage.contains("Committed regression metadata is invalid:"));
   }
@@ -200,7 +199,7 @@ class RegressionSeedMetadataTest {
   @Test
   void committedSeedsDoNotReuseIdenticalRawInputBytesAcrossTheCorpus() throws IOException {
     Set<String> seenDigests = new HashSet<>();
-    for (RegressionSeedCatalogEntry entry : RegressionSeedCatalog.entries(PROJECT_DIRECTORY)) {
+    for (RegressionSeedCatalogEntry entry : RegressionSeedEntries.entries(PROJECT_DIRECTORY)) {
       assertTrue(
           seenDigests.add(entry.sha256()),
           "committed seed bytes must be unique across the corpus: " + entry.inputPath());

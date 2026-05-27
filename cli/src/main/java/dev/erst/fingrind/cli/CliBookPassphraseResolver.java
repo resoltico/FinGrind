@@ -24,6 +24,8 @@ import org.jspecify.annotations.Nullable;
 final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private static final String NO_INTERACTIVE_CONSOLE_MESSAGE =
       "FinGrind cannot prompt for a book passphrase because no interactive console is available.";
+  private static final String STANDARD_INPUT_SOURCE_LABEL = "standard input";
+  private static final String INTERACTIVE_PROMPT_SOURCE_LABEL = "interactive prompt";
 
   private final InputStream inputStream;
   private final Terminal terminal;
@@ -72,7 +74,8 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     try {
       return readStandardInputBytes()
           .fold(
-              bytes -> SqliteBookPassphrase.fromUtf8BytesDecision("standard input", bytes),
+              bytes ->
+                  SqliteBookPassphrase.fromUtf8BytesDecision(STANDARD_INPUT_SOURCE_LABEL, bytes),
               ContractDecision::rejected);
     } catch (IOException exception) {
       return ContractDecision.rejected(
@@ -110,8 +113,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
       }
     }
     if (promptStyle == PromptStyle.SINGLE) {
-      return SqliteBookPassphrase.fromCharactersDecision(
-          "interactive prompt for " + normalizedPath, password);
+      return SqliteBookPassphrase.fromCharactersDecision(INTERACTIVE_PROMPT_SOURCE_LABEL, password);
     }
     ContractDecision<char[]> confirmationDecision =
         terminal.readPassword(promptStyle.confirmationPrompt(displayPath));
@@ -132,8 +134,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
               "FinGrind did not receive matching book passphrases from the interactive console."));
     }
     Arrays.fill(confirmation, '\0');
-    return SqliteBookPassphrase.fromCharactersDecision(
-        "interactive prompt for " + normalizedPath, password);
+    return SqliteBookPassphrase.fromCharactersDecision(INTERACTIVE_PROMPT_SOURCE_LABEL, password);
   }
 
   /** Reads one passphrase from an interactive terminal without echo. */
@@ -144,52 +145,15 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   static Terminal systemTerminal() {
-    return new PromptingConsoleLookupTerminal(CliBookPassphraseResolver::systemPromptingConsole);
-  }
-
-  private static @Nullable PromptingConsole systemPromptingConsole() {
-    return systemPromptingConsole(
-        availableSystemConsole(), java.io.Console::isTerminal, java.io.Console::readPassword);
-  }
-
-  private static java.io.@Nullable Console availableSystemConsole() {
-    return System.console();
-  }
-
-  static @Nullable PromptingConsole availableSystemPromptingConsole(
-      @Nullable SystemPromptingConsole systemConsole) {
-    if (systemConsole == null || !systemConsole.isTerminal()) {
-      return null;
-    }
-    return systemConsole;
-  }
-
-  static <T> @Nullable PromptingConsole systemPromptingConsole(
-      @Nullable T source,
-      TerminalStateExtractor<? super T> terminalStateExtractor,
-      FormattedPasswordPromptReader<? super T> passwordPromptReader) {
-    Objects.requireNonNull(terminalStateExtractor, "terminalStateExtractor");
-    Objects.requireNonNull(passwordPromptReader, "passwordPromptReader");
-    if (source == null) {
-      return null;
-    }
-    return interactiveSystemPromptingConsole(
-        () -> terminalStateExtractor.isTerminal(source),
-        prompt -> passwordPromptReader.readPassword(source, "%s", prompt));
-  }
-
-  static @Nullable PromptingConsole interactiveSystemPromptingConsole(
-      TerminalState terminalState, PasswordReader passwordReader) {
-    Objects.requireNonNull(terminalState, "terminalState");
-    Objects.requireNonNull(passwordReader, "passwordReader");
-    return availableSystemPromptingConsole(wrap(terminalState, passwordReader));
+    return new PromptingConsoleLookupTerminal(CliPromptingConsoles::systemPromptingConsole);
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */
   static final class PromptingConsoleLookupTerminal implements Terminal {
-    private final Supplier<@Nullable PromptingConsole> promptingConsoleSupplier;
+    private final Supplier<@Nullable CliPromptingConsole> promptingConsoleSupplier;
 
-    PromptingConsoleLookupTerminal(Supplier<@Nullable PromptingConsole> promptingConsoleSupplier) {
+    PromptingConsoleLookupTerminal(
+        Supplier<@Nullable CliPromptingConsole> promptingConsoleSupplier) {
       this.promptingConsoleSupplier =
           Objects.requireNonNull(promptingConsoleSupplier, "promptingConsoleSupplier");
     }
@@ -197,7 +161,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     @Override
     public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
-      PromptingConsole promptingConsole = promptingConsoleSupplier.get();
+      CliPromptingConsole promptingConsole = promptingConsoleSupplier.get();
       if (promptingConsole == null) {
         return ContractDecision.rejected(noConsole());
       }
@@ -205,78 +169,11 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     }
   }
 
-  /** Typed console seam for password prompts used by the interactive CLI flow. */
-  @FunctionalInterface
-  interface PromptingConsole {
-    /** Reads one password for the supplied prompt and may return {@code null} on EOF. */
-    char @Nullable [] readPassword(String prompt);
-  }
-
-  /** Typed system-console seam that exposes prompt and terminal state together. */
-  interface SystemPromptingConsole extends PromptingConsole {
-    /** Reports whether the backing console is interactive for password prompting. */
-    boolean isTerminal();
-  }
-
-  /** Typed boolean seam for one console-terminal check. */
-  @FunctionalInterface
-  interface TerminalState {
-    /** Reports whether the wrapped console is interactive for prompting. */
-    boolean isTerminal();
-  }
-
-  /** Typed password-reader seam matching the JDK console prompt-aware read contract. */
-  @FunctionalInterface
-  interface PasswordReader {
-    /** Reads one password for the supplied prompt and may return {@code null} on EOF. */
-    char @Nullable [] readPassword(String prompt);
-  }
-
-  /** Typed prompt-aware password reader for one system-console-like source object. */
-  @FunctionalInterface
-  interface FormattedPasswordPromptReader<T> {
-    /** Reads one password from the supplied source for the supplied prompt format and value. */
-    char @Nullable [] readPassword(T source, String promptFormat, String prompt);
-  }
-
-  /** Typed terminal-state reader for one system-console-like source object. */
-  @FunctionalInterface
-  interface TerminalStateExtractor<T> {
-    /** Reports whether the supplied source is interactive for password prompting. */
-    boolean isTerminal(T source);
-  }
-
-  static SystemPromptingConsole wrap(TerminalState terminalState, PasswordReader passwordReader) {
-    return new WrappedConsole(terminalState, passwordReader);
-  }
-
-  /** JDK console adapter that exposes one interactive-terminal check plus prompt reads. */
-  static final class WrappedConsole implements SystemPromptingConsole {
-    private final TerminalState terminalState;
-    private final PasswordReader passwordReader;
-
-    WrappedConsole(TerminalState terminalState, PasswordReader passwordReader) {
-      this.terminalState = Objects.requireNonNull(terminalState, "terminalState");
-      this.passwordReader = Objects.requireNonNull(passwordReader, "passwordReader");
-    }
-
-    @Override
-    public boolean isTerminal() {
-      return terminalState.isTerminal();
-    }
-
-    @Override
-    public char @Nullable [] readPassword(String prompt) {
-      Objects.requireNonNull(prompt, "prompt");
-      return passwordReader.readPassword(prompt);
-    }
-  }
-
   /** Shared terminal adapter that converts one typed prompt seam into FinGrind decisions. */
   static class PromptingConsoleTerminal implements Terminal {
-    private final PromptingConsole promptingConsole;
+    private final CliPromptingConsole promptingConsole;
 
-    PromptingConsoleTerminal(PromptingConsole promptingConsole) {
+    PromptingConsoleTerminal(CliPromptingConsole promptingConsole) {
       this.promptingConsole = Objects.requireNonNull(promptingConsole, "promptingConsole");
     }
 

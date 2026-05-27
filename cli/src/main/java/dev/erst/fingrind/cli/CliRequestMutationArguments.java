@@ -28,15 +28,15 @@ final class CliRequestMutationArguments {
     while (argumentIterator.hasNext()) {
       argumentIterator.next();
       outputMode =
-          CliArgumentValueParser.requireOutputMode(
+          CliOptionModes.requireOutputMode(
               outputMode,
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new DeclareAccount(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
-        CliArgumentValueParser.resolvedOutputMode(outputMode));
+        CliOptionModes.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
@@ -46,7 +46,7 @@ final class CliRequestMutationArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       argumentIterator.next();
-      resultDetail = CliArgumentValueParser.requirePlanResultDetail(resultDetail, argumentIterator);
+      resultDetail = CliOptionModes.requirePlanResultDetail(resultDetail, argumentIterator);
     }
     return new ExecutePlan(
         parsedArguments.bookAccess(),
@@ -71,15 +71,15 @@ final class CliRequestMutationArguments {
     while (argumentIterator.hasNext()) {
       argumentIterator.next();
       outputMode =
-          CliArgumentValueParser.requireOutputMode(
+          CliOptionModes.requireOutputMode(
               outputMode,
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return commandFactory.create(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
-        CliArgumentValueParser.resolvedOutputMode(outputMode));
+        CliOptionModes.resolvedOutputMode(outputMode));
   }
 
   /** Factory for one request-bound write command that also carries an output mode. */

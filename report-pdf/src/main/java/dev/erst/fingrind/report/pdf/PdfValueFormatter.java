@@ -5,7 +5,6 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BusinessActivityTag;
-import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -13,24 +12,12 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
 final class PdfValueFormatter {
-  private static final DateTimeFormatter TEXT_INSTANT_FORMATTER =
-      DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
-
   private PdfValueFormatter() {}
-
-  static String instant(Instant instant) {
-    return TEXT_INSTANT_FORMATTER.format(instant);
-  }
 
   static String displayMoney(Money money) {
     return money.canonicalDecimal();
@@ -149,27 +136,6 @@ final class PdfValueFormatter {
         : businessActivityTags.stream()
             .map(BusinessActivityTag::value)
             .collect(java.util.stream.Collectors.joining(", "));
-  }
-
-  static String optionalDate(@Nullable LocalDate date) {
-    return date == null ? "latest committed posting date" : date.toString();
-  }
-
-  static String optionalDateRange(@Nullable LocalDate from, @Nullable LocalDate to) {
-    String lower = from == null ? "book start" : from.toString();
-    String upper = to == null ? "latest committed posting date" : to.toString();
-    return lower + " to " + upper;
-  }
-
-  static String effectiveDateRange(EffectiveDateRange range) {
-    return optionalDateRange(
-        range.effectiveDateFrom().orElse(null), range.effectiveDateTo().orElse(null));
-  }
-
-  static String comparativeRange(EffectiveDateRange range) {
-    return range.effectiveDateFrom().isEmpty() && range.effectiveDateTo().isEmpty()
-        ? "(none)"
-        : effectiveDateRange(range);
   }
 
   static String reversalTarget(PostingFact postingFact) {

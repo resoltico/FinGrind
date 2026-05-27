@@ -302,8 +302,9 @@ class PdfValueFormatterTest {
 
   @Test
   void optionalDateFormatsNullAndConcreteDates() {
-    assertEquals("latest committed posting date", PdfValueFormatter.optionalDate(null));
-    assertEquals("2026-05-07", PdfValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
+    assertEquals("latest committed posting date", PdfTemporalValueFormatter.optionalDate(null));
+    assertEquals(
+        "2026-05-07", PdfTemporalValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
   }
 
   @Test
@@ -313,12 +314,12 @@ class PdfValueFormatterTest {
 
     assertEquals(
         "book start to latest committed posting date",
-        PdfValueFormatter.optionalDateRange(null, null));
+        PdfTemporalValueFormatter.optionalDateRange(null, null));
     assertEquals(
         "2026-05-01 to latest committed posting date",
-        PdfValueFormatter.optionalDateRange(from, null));
-    assertEquals("book start to 2026-05-31", PdfValueFormatter.optionalDateRange(null, to));
-    assertEquals("2026-05-01 to 2026-05-31", PdfValueFormatter.optionalDateRange(from, to));
+        PdfTemporalValueFormatter.optionalDateRange(from, null));
+    assertEquals("book start to 2026-05-31", PdfTemporalValueFormatter.optionalDateRange(null, to));
+    assertEquals("2026-05-01 to 2026-05-31", PdfTemporalValueFormatter.optionalDateRange(from, to));
   }
 
   @Test
@@ -328,28 +329,29 @@ class PdfValueFormatterTest {
 
     assertEquals(
         "book start to latest committed posting date",
-        PdfValueFormatter.effectiveDateRange(EffectiveDateRange.unbounded()));
+        PdfTemporalValueFormatter.effectiveDateRange(EffectiveDateRange.unbounded()));
     assertEquals(
         "2026-05-01 to latest committed posting date",
-        PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.From(from)));
+        PdfTemporalValueFormatter.effectiveDateRange(new EffectiveDateRange.From(from)));
     assertEquals(
         "book start to 2026-05-31",
-        PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.To(to)));
+        PdfTemporalValueFormatter.effectiveDateRange(new EffectiveDateRange.To(to)));
     assertEquals(
         "2026-05-01 to 2026-05-31",
-        PdfValueFormatter.effectiveDateRange(new EffectiveDateRange.Bounded(from, to)));
+        PdfTemporalValueFormatter.effectiveDateRange(new EffectiveDateRange.Bounded(from, to)));
   }
 
   @Test
   void comparativeRangeFormatsNoneAndBoundedComparatives() {
-    assertEquals("(none)", PdfValueFormatter.comparativeRange(EffectiveDateRange.unbounded()));
+    assertEquals(
+        "(none)", PdfTemporalValueFormatter.comparativeRange(EffectiveDateRange.unbounded()));
     assertEquals(
         "book start to 2026-05-31",
-        PdfValueFormatter.comparativeRange(
+        PdfTemporalValueFormatter.comparativeRange(
             new EffectiveDateRange.To(LocalDate.parse("2026-05-31"))));
     assertEquals(
         "2026-05-01 to 2026-05-31",
-        PdfValueFormatter.comparativeRange(
+        PdfTemporalValueFormatter.comparativeRange(
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-31"))));
   }

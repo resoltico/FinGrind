@@ -42,7 +42,7 @@ class SqliteStoreOpeningTest extends SqlitePostingFactStoreTestSupport {
     }
 
     @Override
-    ContractDecision<SqlitePostingFactStore> prime() {
+    public ContractDecision<SqlitePostingFactStore> prime() {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
               "Simulated priming rejection.", null, null));

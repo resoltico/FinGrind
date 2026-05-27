@@ -7,8 +7,99 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class DistributionContractReaderTest {
+    private val managedSqliteContractPath = DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH
+
+    @Test
+    fun sqliteCompileOptionContracts_failClosedOnMissingNullMalformedDuplicateBlankAndEmptyLists() {
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            null,
+            "Missing required contract property requiredCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            "null",
+            "Missing required contract property requiredCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            "\"THREADSAFE=1\"",
+            "Expected JSON array contract property requiredCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            "[\"THREADSAFE=1\", \"THREADSAFE=1\"]",
+            "Duplicate contract list element THREADSAFE=1 in requiredCompileOptions from $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            "[\"THREADSAFE=1\", \"   \"]",
+            "Expected JSON string elements in contract property requiredCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "requiredCompileOptions",
+            "[]",
+            "Contract property requiredCompileOptions must not be empty in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.requiredSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            null,
+            "Missing required contract property forbiddenCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            "null",
+            "Missing required contract property forbiddenCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            "\"USE_URI\"",
+            "Expected JSON array contract property forbiddenCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            "[\"USE_URI\", \"USE_URI\"]",
+            "Duplicate contract list element USE_URI in forbiddenCompileOptions from $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            "[\"USE_URI\", \"   \"]",
+            "Expected JSON string elements in contract property forbiddenCompileOptions in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+        assertCompileOptionListFailure(
+            "forbiddenCompileOptions",
+            "[]",
+            "Contract property forbiddenCompileOptions must not be empty in $managedSqliteContractPath.",
+        ) {
+            DistributionContractReader.forbiddenSqliteCompileOptions(it)
+        }
+    }
+
     @Test
     fun sharedSchemaKeys_drivePublicDistributionRuntimeSurfaceAndOperationLookups() {
         val repositoryRoot = Files.createTempDirectory("distribution-contract-reader")
@@ -421,6 +512,121 @@ class DistributionContractReaderTest {
             repositoryRoot.resolve("contract/src/main/resources/dev/erst/fingrind/contract/protocol/$fileName")
         path.parent.createDirectories()
         path.writeText(contents + System.lineSeparator())
+    }
+
+    private fun assertCompileOptionListFailure(
+        fieldName: String,
+        fieldJson: String?,
+        expectedMessage: String,
+        reader: (Path) -> List<String>,
+    ) {
+        val repositoryRoot = Files.createTempDirectory("distribution-contract-reader-compile-options")
+        try {
+            writeContractResource(repositoryRoot, "contract-schema-keys.json", contractSchemaKeysJson())
+            writeContractResource(
+                repositoryRoot,
+                "managed-sqlite-contract.json",
+                managedSqliteContractJson(fieldName, fieldJson),
+            )
+            val exception = assertFailsWith<IllegalStateException> { reader(repositoryRoot) }
+            assertEquals(expectedMessage, exception.message)
+        } finally {
+            deleteTree(repositoryRoot)
+        }
+    }
+
+    private fun contractSchemaKeysJson(): String =
+        """
+        {
+          "runtimeSurface": {
+            "directJavaRuntimeDistribution": "directJavaRuntimeDistribution",
+            "sourceCheckoutRuntimeDistribution": "sourceCheckoutRuntimeDistribution",
+            "containerRuntimeDistribution": "containerRuntimeDistribution",
+            "bundleRuntimeDistribution": "bundleRuntimeDistribution",
+            "publicCliDistribution": "publicCliDistribution",
+            "storageDriver": "storageDriver",
+            "storageEngine": "storageEngine",
+            "bookProtectionMode": "bookProtectionMode",
+            "defaultBookCipher": "defaultBookCipher",
+            "sqliteLibraryMode": "sqliteLibraryMode",
+            "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
+          },
+          "publicDistribution": {
+            "supportedPublicCliBundleTargets": "supportedTargets",
+            "unsupportedPublicCliBundleTargets": "unsupportedTargets"
+          },
+          "managedSqlite": {
+            "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
+            "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
+            "requiredSqliteSourceId": "requiredSqliteSourceId",
+            "requiredSourcePackageId": "requiredSourcePackageId",
+            "vendoredReleaseFiles": "vendoredReleaseFiles",
+            "nativeHardening": "nativeHardening",
+            "nativeHardeningUnixCompilerFlags": "unixCompilerFlags",
+            "nativeHardeningLinuxLinkerFlags": "linuxLinkerFlags",
+            "nativeHardeningMacosLinkerFlags": "macosLinkerFlags",
+            "nativeHardeningWindowsCompilerFlags": "windowsCompilerFlags",
+            "nativeHardeningWindowsLinkerFlags": "windowsLinkerFlags",
+            "requiredCompileOptions": "requiredCompileOptions",
+            "forbiddenCompileOptions": "forbiddenCompileOptions",
+            "requiresSecureMemorySupport": "requiresSecureMemorySupport"
+          },
+          "bundleLayout": {
+            "bundleTargets": "bundleTargets",
+            "operatingSystemId": "operatingSystemId",
+            "architectureId": "architectureId",
+            "archiveFormat": "archiveFormat",
+            "launcherPath": "launcherPath",
+            "launcherCommand": "launcherCommand",
+            "sqliteLibraryFileName": "sqliteLibraryFileName"
+          },
+          "operationIdContract": {
+            "help": "HELP",
+            "capabilities": "CAPABILITIES",
+            "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
+            "printPlanTemplate": "PRINT_PLAN_TEMPLATE"
+          }
+        }
+        """.trimIndent()
+
+    private fun managedSqliteContractJson(fieldName: String, fieldJson: String?): String {
+        val compileOptionsEntry =
+            if (fieldName == "requiredCompileOptions" && fieldJson != null) {
+                """"requiredCompileOptions": $fieldJson,"""
+            } else if (fieldName == "requiredCompileOptions") {
+                ""
+            } else {
+                """"requiredCompileOptions": ["THREADSAFE=1"],"""
+            }
+        val forbiddenOptionsEntry =
+            if (fieldName == "forbiddenCompileOptions" && fieldJson != null) {
+                """"forbiddenCompileOptions": $fieldJson,"""
+            } else if (fieldName == "forbiddenCompileOptions") {
+                ""
+            } else {
+                """"forbiddenCompileOptions": ["USE_URI"],"""
+            }
+        return """
+            {
+              "requiredMinimumSqliteVersion": "3.53.1",
+              "requiredSqlite3mcVersion": "2.3.4",
+              "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
+              "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
+              "vendoredReleaseFiles": {
+                "sqlite3mc_amalgamation.c": "sha3-a"
+              },
+              "nativeHardening": {
+                "unixCompilerFlags": ["-fstack-protector-strong"],
+                "linuxLinkerFlags": ["-Wl,-z,relro"],
+                "macosLinkerFlags": [],
+                "windowsCompilerFlags": ["/GS"],
+                "windowsLinkerFlags": ["/NXCOMPAT"]
+              },
+              $compileOptionsEntry
+              $forbiddenOptionsEntry
+              "requiresSecureMemorySupport": true
+            }
+        """.trimIndent()
     }
 
     private fun deleteTree(rootPath: Path) {

@@ -77,15 +77,14 @@ final class CliSummaryReportArguments {
         continue;
       }
       if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
-        postingCoverage =
-            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
+        postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
-      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     PostingCoverage resolvedPostingCoverage =
@@ -97,7 +96,7 @@ final class CliSummaryReportArguments {
             () ->
                 new TrialBalanceQuery(
                     Optional.ofNullable(resolvedEffectiveDateTo), resolvedPostingCoverage)),
-        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   static CliCommand parsePeriodSummaryCommand(List<String> arguments) {
@@ -124,15 +123,14 @@ final class CliSummaryReportArguments {
         continue;
       }
       if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
-        postingCoverage =
-            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
+        postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
-      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
@@ -157,7 +155,7 @@ final class CliSummaryReportArguments {
         parsedArguments.bookAccess(),
         new PeriodSummaryQuery(
             requiredEffectiveDateFrom, requiredEffectiveDateTo, resolvedPostingCoverage),
-        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   static CliCommand parseFinancialPositionCommand(List<String> arguments) {
@@ -179,13 +177,13 @@ final class CliSummaryReportArguments {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
-      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     return new FinancialPosition(
         parsedArguments.bookAccess(),
         new FinancialPositionQuery(Optional.ofNullable(resolvedEffectiveDateTo)),
-        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   static CliCommand parseIncomeStatementCommand(List<String> arguments) {
@@ -234,7 +232,7 @@ final class CliSummaryReportArguments {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
-      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
@@ -254,7 +252,7 @@ final class CliSummaryReportArguments {
         ProtocolOptions.EFFECTIVE_DATE_FROM,
         ProtocolOptions.EFFECTIVE_DATE_TO);
     CliCommand.ReportOutput resolvedOutput =
-        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath);
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
     return commandFactory.create(
         requiredEffectiveDateFrom, requiredEffectiveDateTo, resolvedOutput);
   }

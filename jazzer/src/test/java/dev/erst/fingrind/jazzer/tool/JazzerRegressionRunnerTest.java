@@ -141,7 +141,7 @@ class JazzerRegressionRunnerTest {
           JazzerReplayRequestFixtures.invalidMissingProvenanceRequest());
 
       Path metadataPath =
-          RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+          RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("invalid_missing_provenance.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
       JazzerJson.write(
@@ -192,7 +192,7 @@ class JazzerRegressionRunnerTest {
           "basic_valid.json",
           JazzerReplayRequestFixtures.basicValidRequest());
       Path metadataPath =
-          RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+          RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("basic_valid.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
       JazzerJson.write(
@@ -273,7 +273,7 @@ class JazzerRegressionRunnerTest {
           "basic_valid.json",
           JazzerReplayRequestFixtures.basicValidRequest());
       Path metadataPath =
-          RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+          RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("basic_valid.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
       JazzerJson.write(
@@ -339,7 +339,7 @@ class JazzerRegressionRunnerTest {
               JazzerReplayRunner.expectationFor(
                   JazzerReplayRunner.replay(harness, Files.readAllBytes(inputPath))));
       Path metadataPath =
-          RegressionSeedCatalog.metadataDirectory(projectDirectory, harness).resolve(fileName);
+          RegressionSeedPaths.metadataDirectory(projectDirectory, harness).resolve(fileName);
       Files.createDirectories(metadataPath.getParent());
       JazzerJson.write(metadataPath, metadata);
     }

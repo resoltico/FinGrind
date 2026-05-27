@@ -345,7 +345,7 @@ class SqliteNativeBridgeTestSupport {
   }
 
   static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
-    return SqliteNativeConnections.openKeyFileAccess(
+    return SqliteNativeKeyFileAccess.open(
         bookAccess.bookFilePath(), SqliteStoreFixtureSupport.requireKeyFilePath(bookAccess));
   }
 

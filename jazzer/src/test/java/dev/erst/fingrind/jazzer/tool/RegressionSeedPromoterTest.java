@@ -216,7 +216,7 @@ class RegressionSeedPromoterTest {
             .contains("Committed seed input path already exists"));
 
     Path metadataPath =
-        RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.ledgerPlanRequest())
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.ledgerPlanRequest())
             .resolve("reserved_metadata.json");
     Files.createDirectories(metadataPath.getParent());
     Path existingLedgerPlanInput =
@@ -286,7 +286,7 @@ class RegressionSeedPromoterTest {
                 .resolve("metadata_write_failure.json")));
     assertFalse(
         Files.exists(
-            RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+            RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
                 .resolve("metadata_write_failure.json")));
   }
 
@@ -337,7 +337,7 @@ class RegressionSeedPromoterTest {
                 .resolve("copy_failure.json")));
     assertFalse(
         Files.exists(
-            RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+            RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
                 .resolve("copy_failure.json")));
   }
 

@@ -10,29 +10,22 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.time.Clock;
 import java.util.Objects;
+import java.util.UUID;
 
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
   static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION =
-      ProtocolCatalog.directJavaRuntimeDistribution().wireValue();
+      ProtocolCatalog.distribution().directJavaRuntimeDistribution().wireValue();
   static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION =
-      ProtocolCatalog.sourceCheckoutRuntimeDistribution().wireValue();
+      ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution().wireValue();
   static final String CONTAINER_RUNTIME_DISTRIBUTION =
-      ProtocolCatalog.containerRuntimeDistribution().wireValue();
+      ProtocolCatalog.distribution().containerRuntimeDistribution().wireValue();
   static final String BUNDLE_RUNTIME_DISTRIBUTION =
-      ProtocolCatalog.bundleRuntimeDistribution().wireValue();
+      ProtocolCatalog.distribution().bundleRuntimeDistribution().wireValue();
 
-  private final CliRequestReader requestReader;
-  private final CliResponseWriter responseWriter;
+  private final CliFailureResponseWriter failureWriter;
   private final CliDiagnosticsWriter diagnosticsWriter;
-  private final CliMetadata metadata;
-  private final Clock clock;
-  private final CliAdministrativeCommandExecutor administrativeCommandExecutor;
-  private final CliDiscoveryCommandExecutor discoveryCommandExecutor;
-  private final CliMutationCommandExecutor mutationCommandExecutor;
-  private final CliQueryCommandExecutor queryCommandExecutor;
-  private final CliReportCommandExecutor reportCommandExecutor;
   private final CliExecutionContext executionContext;
 
   static FinGrindCli standard(
@@ -45,13 +38,18 @@ final class FinGrindCli {
         outputStream,
         diagnosticsStream,
         clock,
-        new SqliteCliBookWorkflow(
+        new SqliteCliLifecycleWorkflow(
             clock,
+            new CliBookPassphraseResolver(inputStream, CliBookPassphraseResolver.systemTerminal())),
+        new SqliteCliMutationWorkflow(
+            clock,
+            new CliBookPassphraseResolver(inputStream, CliBookPassphraseResolver.systemTerminal())),
+        new SqliteCliReadWorkflow(
             new CliBookPassphraseResolver(
                 inputStream, CliBookPassphraseResolver.systemTerminal())));
   }
 
-  static App.CliRunner standardRunner(App.CliRuntimeEnvironment runtimeEnvironment) {
+  static CliRunner standardRunner(CliRuntimeEnvironment runtimeEnvironment) {
     Objects.requireNonNull(runtimeEnvironment, "runtimeEnvironment");
     return standard(
             runtimeEnvironment.inputStream(),
@@ -72,8 +70,15 @@ final class FinGrindCli {
         outputStream,
         diagnosticsStream,
         clock,
-        new SqliteCliBookWorkflow(
+        new SqliteCliLifecycleWorkflow(
             clock,
+            new CliBookPassphraseResolver(
+                inputStream, Objects.requireNonNull(terminal, "terminal"))),
+        new SqliteCliMutationWorkflow(
+            clock,
+            new CliBookPassphraseResolver(
+                inputStream, Objects.requireNonNull(terminal, "terminal"))),
+        new SqliteCliReadWorkflow(
             new CliBookPassphraseResolver(
                 inputStream, Objects.requireNonNull(terminal, "terminal"))));
   }
@@ -83,25 +88,54 @@ final class FinGrindCli {
       PrintStream outputStream,
       PrintStream diagnosticsStream,
       Clock clock,
-      CliBookWorkflow bookWorkflow) {
-    this.requestReader = new CliRequestReader(inputStream);
-    this.responseWriter = new CliResponseWriter(outputStream);
+      CliBookLifecycleWorkflow lifecycleWorkflow,
+      CliBookMutationWorkflow mutationWorkflow,
+      CliBookReadWorkflow readWorkflow) {
+    CliRequestReader requestReader = new CliRequestReader(inputStream);
+    CliOutputChannel outputChannel = new CliOutputChannel(outputStream);
+    this.failureWriter = new CliFailureResponseWriter(outputChannel);
     this.diagnosticsWriter = new CliDiagnosticsWriter(diagnosticsStream);
-    this.metadata = new CliMetadata();
-    this.clock = Objects.requireNonNull(clock, "clock");
-    CliBookWorkflow resolvedBookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    CliMetadata metadata = new CliMetadata();
+    Clock resolvedClock = Objects.requireNonNull(clock, "clock");
+    CliBookLifecycleWorkflow resolvedLifecycleWorkflow =
+        Objects.requireNonNull(lifecycleWorkflow, "lifecycleWorkflow");
+    CliBookMutationWorkflow resolvedMutationWorkflow =
+        Objects.requireNonNull(mutationWorkflow, "mutationWorkflow");
+    CliBookReadWorkflow resolvedReadWorkflow = Objects.requireNonNull(readWorkflow, "readWorkflow");
+    CliDiscoveryResponseWriter discoveryResponseWriter =
+        new CliDiscoveryResponseWriter(outputChannel);
+    CliMutationResponseWriter mutationResponseWriter = new CliMutationResponseWriter(outputChannel);
+    CliBookReadResponseWriter bookReadResponseWriter = new CliBookReadResponseWriter(outputChannel);
+    CliReportResponseWriter reportResponseWriter = new CliReportResponseWriter(outputChannel);
+    CliPlanResponseWriter planResponseWriter = new CliPlanResponseWriter(outputChannel);
     CliPdfReportExporter pdfExporter =
         new CliPdfReportExporter(
-            new PdfReportService(metadata.applicationName(), metadata.version(), this.clock));
-    this.administrativeCommandExecutor =
-        new CliAdministrativeCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
-    this.discoveryCommandExecutor = new CliDiscoveryCommandExecutor(responseWriter, metadata);
-    this.mutationCommandExecutor =
-        new CliMutationCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
-    this.queryCommandExecutor = new CliQueryCommandExecutor(responseWriter, resolvedBookWorkflow);
-    this.reportCommandExecutor =
+            new PdfReportService(metadata.applicationName(), metadata.version(), resolvedClock));
+    CliAdministrativeCommandExecutor administrativeCommandExecutor =
+        new CliAdministrativeCommandExecutor(
+            requestReader,
+            mutationResponseWriter,
+            failureWriter,
+            resolvedLifecycleWorkflow,
+            resolvedMutationWorkflow);
+    CliDiscoveryCommandExecutor discoveryCommandExecutor =
+        new CliDiscoveryCommandExecutor(discoveryResponseWriter, metadata);
+    CliMutationCommandExecutor mutationCommandExecutor =
+        new CliMutationCommandExecutor(
+            requestReader,
+            mutationResponseWriter,
+            planResponseWriter,
+            failureWriter,
+            resolvedMutationWorkflow);
+    CliQueryCommandExecutor queryCommandExecutor =
+        new CliQueryCommandExecutor(bookReadResponseWriter, failureWriter, resolvedReadWorkflow);
+    CliReportCommandExecutor reportCommandExecutor =
         new CliReportCommandExecutor(
-            responseWriter, diagnosticsWriter, resolvedBookWorkflow, pdfExporter);
+            reportResponseWriter,
+            failureWriter,
+            diagnosticsWriter,
+            resolvedReadWorkflow,
+            pdfExporter);
     this.executionContext =
         new CliExecutionContext(
             administrativeCommandExecutor,
@@ -119,16 +153,23 @@ final class FinGrindCli {
       failureOutputMode = command.failureOutputMode();
       return command.execute(executionContext);
     } catch (CliArgumentsException | CliRequestException exception) {
-      responseWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
+      failureWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
       return CliExecutionPolicy.invalidInvocationExitCode();
     } catch (ContractFailureException exception) {
       CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
-      responseWriter.writeDeterministicFailure(failure, failureOutputMode);
+      failureWriter.writeDeterministicFailure(failure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (RuntimeException exception) {
       CliFailure failure = CliFailureMapper.runtimeFailure(exception);
-      responseWriter.writeFailure(failure, failureOutputMode);
-      return CliExecutionPolicy.failureExitCode(failure);
+      if (failure != null) {
+        failureWriter.writeFailure(failure, failureOutputMode);
+        return CliExecutionPolicy.failureExitCode(failure);
+      }
+      String errorId = nextInternalErrorId();
+      diagnosticsWriter.writeInternalError(errorId, exception);
+      CliFailure internalFailure = CliFailureMapper.internalError(errorId);
+      failureWriter.writeFailure(internalFailure, failureOutputMode);
+      return CliExecutionPolicy.failureExitCode(internalFailure);
     }
   }
 
@@ -139,5 +180,9 @@ final class FinGrindCli {
 
   static String runtimeDistribution() {
     return System.getProperty(RUNTIME_DISTRIBUTION_PROPERTY, DIRECT_JAVA_RUNTIME_DISTRIBUTION);
+  }
+
+  private static String nextInternalErrorId() {
+    return "fg-internal-" + UUID.randomUUID();
   }
 }

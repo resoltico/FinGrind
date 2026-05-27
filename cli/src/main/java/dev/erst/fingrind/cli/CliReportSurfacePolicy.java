@@ -12,7 +12,11 @@ final class CliReportSurfacePolicy {
   private CliReportSurfacePolicy() {}
 
   static boolean hasComparative(TrialBalanceReport report) {
-    return !report.comparativeRows().isEmpty();
+    return !report.comparativeRows().isEmpty() || !report.comparativeTotals().isEmpty();
+  }
+
+  static boolean hasCurrent(TrialBalanceReport report) {
+    return !report.rows().isEmpty() || !report.totals().isEmpty();
   }
 
   static boolean hasComparative(FinancialPositionReport report) {

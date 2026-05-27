@@ -2,9 +2,9 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Maps thrown CLI exceptions onto deterministic public failure envelopes. */
 final class CliFailureMapper {
@@ -21,10 +21,7 @@ final class CliFailureMapper {
     return CliFailure.fromContractFailure(Objects.requireNonNull(failure, "failure"));
   }
 
-  static CliFailure runtimeFailure(RuntimeException exception) {
-    if (exception instanceof ContractFailureException contractFailureException) {
-      return contractFailure(contractFailureException.failure());
-    }
+  static @Nullable CliFailure runtimeFailure(RuntimeException exception) {
     if (exception instanceof CliPdfExportException pdfExportException) {
       return new CliFailure(
           ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(),
@@ -33,25 +30,43 @@ final class CliFailureMapper {
           "--pdf-out");
     }
     String message = message(exception);
-    String hint =
-        switch (SqliteFailureClassifier.classify(exception)) {
-          case MANAGED_RUNTIME ->
-              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer direct-Java wrapper from that checkout.";
-          case STORAGE ->
-              "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.";
-          case OTHER ->
-              "Inspect the message and rerun after fixing the underlying runtime problem.";
-        };
-    ContractErrors.Descriptor descriptor =
-        switch (SqliteFailureClassifier.classify(exception)) {
-          case MANAGED_RUNTIME -> ContractErrors.Descriptor.MANAGED_RUNTIME_FAILURE;
-          case STORAGE -> ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE;
-          case OTHER -> ContractErrors.Descriptor.RUNTIME_FAILURE;
-        };
-    return new CliFailure(descriptor.code(), message, hint, null);
+    return switch (SqliteFailureClassifier.classify(exception)) {
+      case MANAGED_RUNTIME ->
+          new CliFailure(
+              ContractErrors.Descriptor.MANAGED_RUNTIME_FAILURE.code(),
+              message,
+              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer direct-Java wrapper from that checkout.",
+              null);
+      case STORAGE ->
+          new CliFailure(
+              ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE.code(),
+              message,
+              "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.",
+              null);
+      case OTHER -> null;
+    };
+  }
+
+  static CliFailure internalError(String errorId) {
+    String normalizedErrorId = requireErrorId(errorId);
+    return new CliFailure(
+        ContractErrors.Descriptor.INTERNAL_ERROR.code(),
+        "FinGrind encountered an internal error. Quote error id "
+            + normalizedErrorId
+            + " when reporting this defect.",
+        "Inspect the diagnostic stream for the same error id and stack trace, then report the defect instead of retrying unchanged input.",
+        null);
   }
 
   private static String message(Exception exception) {
     return Objects.requireNonNullElse(exception.getMessage(), "CLI command failed.");
+  }
+
+  private static String requireErrorId(String errorId) {
+    String normalized = Objects.requireNonNull(errorId, "errorId").strip();
+    if (normalized.isEmpty()) {
+      throw new IllegalArgumentException("errorId must not be blank.");
+    }
+    return normalized;
   }
 }

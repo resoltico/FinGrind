@@ -350,10 +350,12 @@ class SqliteNativeInteropTest {
       assertEquals(4L, strlen(messagePointer));
       assertThrows(
           IllegalStateException.class,
-          () -> SqliteNativeBootstrap.sqliteVersion(throwingVersionHandle));
+          () -> SqliteNativeRuntimeMetadata.sqliteVersion(throwingVersionHandle));
       assertThrows(
           IllegalStateException.class,
-          () -> SqliteNativeBootstrap.sqliteVersion(returningVersionHandle, throwingStrlenHandle));
+          () ->
+              SqliteNativeRuntimeMetadata.sqliteVersion(
+                  returningVersionHandle, throwingStrlenHandle));
       assertThrows(
           IllegalStateException.class,
           () -> SqliteNativeErrors.errorMessage(fakeHandle, throwingErrorHandle));
@@ -472,7 +474,7 @@ class SqliteNativeInteropTest {
   }
 
   private static SqliteNativeDatabase openNativeDatabase(BookAccess bookAccess) {
-    return SqliteNativeConnections.openKeyFileAccess(
+    return SqliteNativeKeyFileAccess.open(
         bookAccess.bookFilePath(), SqliteStoreFixtureSupport.requireKeyFilePath(bookAccess));
   }
 

@@ -5,7 +5,9 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedBookReplacement;
+import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
 import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOException;
@@ -51,7 +53,7 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     ProtectedBookAccess sourceAccess =
         new ProtectedBookAccess(bookPath, new ProtectedBookPassphraseSource.KeyFile(bookKeyPath));
-    try (ProtectedBookMaintenanceStore.StagedBackupPair ignored =
+    try (StagedBackupPair ignored =
         acceptedValue(store.stageBackupPair(sourceAccess, backupPath, backupKeyPath))) {
       signalReady(signalPath);
       sleepUntilKilled();
@@ -64,8 +66,7 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     Path targetPath = normalizedPath(args[2]);
     Path signalPath = normalizedPath(args[3]);
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    try (ProtectedBookMaintenanceStore.StagedBookReplacement ignored =
-        store.stageReplacement(sourcePath, targetPath)) {
+    try (StagedBookReplacement ignored = store.stageReplacement(sourcePath, targetPath)) {
       signalReady(signalPath);
       sleepUntilKilled();
     }
@@ -77,7 +78,7 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     Path rollbackArtifactPath = normalizedPath(args[1]);
     Path signalPath = normalizedPath(args[2]);
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    try (ProtectedBookMaintenanceStore.StagedRollbackArtifactDeletion ignored =
+    try (StagedRollbackArtifactDeletion ignored =
         store.stageRollbackArtifactDeletion(rollbackArtifactPath)) {
       signalReady(signalPath);
       sleepUntilKilled();

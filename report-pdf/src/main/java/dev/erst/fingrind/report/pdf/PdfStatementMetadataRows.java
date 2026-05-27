@@ -42,7 +42,7 @@ final class PdfStatementMetadataRows {
     statementRows.add(
         List.of(
             "Comparative range",
-            PdfValueFormatter.comparativeRange(comparativeEffectiveDateRange)));
+            PdfTemporalValueFormatter.comparativeRange(comparativeEffectiveDateRange)));
     statementRows.addAll(rows);
     return List.copyOf(statementRows);
   }

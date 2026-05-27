@@ -200,10 +200,11 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,currencyCode,debitTotal,creditTotal,accountCodes,reversalTarget,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
+            "recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,EUR,10.00,10.00"));
+            "posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
+    assertTrue(postingRegisterCsv.contains("account,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
     assertTrue(postingRegisterCsv.contains("cash-receipt"));
     assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));
@@ -226,10 +227,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
     assertTrue(
         balanceCsv.contains(
-            "1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
+            "row,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
   }
 
   @Test
@@ -367,12 +368,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "rowKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccounts,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions"));
+            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
+    assertTrue(accountLedgerCsv.contains("summary,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(accountLedgerCsv.contains("entry,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
     assertTrue(
-        accountLedgerCsv.contains(
-            "entry,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,,,,,,,,,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,10.00,0.00,10.00,DEBIT,2000"));
+        accountLedgerCsv.contains("counterpart-account,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
     assertTrue(accountLedgerCsv.contains("document-idem-1"));
-    assertTrue(accountLedgerCsv.contains(",document-idem-1,cash-receipt,,"));
+    assertTrue(accountLedgerCsv.contains("source-document,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
   }
 
   @Test
@@ -500,7 +502,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateAsOf,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -539,7 +541,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))

@@ -24,7 +24,8 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
     CapabilitiesDescriptor capabilities = capabilitiesDescriptor();
     EnvironmentDescriptor environment = readyEnvironmentDescriptor();
-    ProtectedBookFormatContract protectedBookFormat = ProtocolCatalog.protectedBookFormat();
+    ProtectedBookFormatContract protectedBookFormat =
+        ProtocolCatalog.runtime().protectedBookFormat();
 
     Set<String> violations = new LinkedHashSet<>();
     requireContains(
@@ -215,40 +216,40 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.47.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.48.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            ProtocolCatalog.bundleRuntimeDistribution(),
-            ProtocolCatalog.publicCliDistribution(),
-            ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
-            ProtocolCatalog.sourceCheckoutJava()),
+            ProtocolCatalog.distribution().bundleRuntimeDistribution(),
+            ProtocolCatalog.distribution().publicCliDistribution(),
+            ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
-            ProtocolCatalog.storageDriver(),
-            ProtocolCatalog.storageEngine(),
-            ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.protectedBookFormat()),
+            ProtocolCatalog.runtime().storageDriver(),
+            ProtocolCatalog.runtime().storageEngine(),
+            ProtocolCatalog.runtime().bookProtectionMode(),
+            ProtocolCatalog.runtime().protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
-            ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
-            ProtocolCatalog.requiredSqliteCompileOptions(),
-            ProtocolCatalog.forbiddenSqliteCompileOptions(),
-            ProtocolCatalog.requiresSecureMemorySupport(),
-            ProtocolCatalog.requiredMinimumSqliteVersion(),
-            ProtocolCatalog.requiredSqlite3mcVersion(),
-            ProtocolCatalog.requiredSqliteSourceId(),
+            ProtocolCatalog.runtime().sqliteLibraryMode(),
+            ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
+            ProtocolCatalog.managedSqlite().requiredCompileOptions(),
+            ProtocolCatalog.managedSqlite().forbiddenCompileOptions(),
+            ProtocolCatalog.managedSqlite().requiresSecureMemorySupport(),
+            ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
+            ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),
+            ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
             EnvironmentSqliteDescriptor.runtime(
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntimeStatus.READY,
                 SqliteRuntimeProvenance.BUNDLE_MANAGED,
                 SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
                 "/tmp/libsqlite3.dylib",
-                ProtocolCatalog.requiredMinimumSqliteVersion(),
-                ProtocolCatalog.requiredSqlite3mcVersion(),
-                ProtocolCatalog.requiredSqliteSourceId(),
+                ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
+                ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),
+                ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 null),
             null));
   }

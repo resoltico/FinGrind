@@ -25,18 +25,18 @@ final class CliRuntimeContractDescriptors {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
             RuntimeDistribution.fromWireValue(runtimeDistribution),
-            ProtocolCatalog.publicCliDistribution(),
-            ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
-            ProtocolCatalog.sourceCheckoutJava()),
+            ProtocolCatalog.distribution().publicCliDistribution(),
+            ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
-            ProtocolCatalog.storageDriver(),
-            ProtocolCatalog.storageEngine(),
-            ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.protectedBookFormat()),
+            ProtocolCatalog.runtime().storageDriver(),
+            ProtocolCatalog.runtime().storageEngine(),
+            ProtocolCatalog.runtime().bookProtectionMode(),
+            ProtocolCatalog.runtime().protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
-            ProtocolCatalog.sqliteLibraryMode(),
-            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+            ProtocolCatalog.runtime().sqliteLibraryMode(),
+            ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
             SqliteRuntime.REQUIRES_SECURE_MEMORY_SUPPORT,

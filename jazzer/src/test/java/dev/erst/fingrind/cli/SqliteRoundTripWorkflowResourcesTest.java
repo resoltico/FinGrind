@@ -25,7 +25,8 @@ class SqliteRoundTripWorkflowResourcesTest {
     IllegalStateException prompt =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteRoundTripWorkflowResources.sqliteWorkflow().inspectBook(interactiveBook));
+            () ->
+                SqliteRoundTripWorkflowResources.sqliteReadWorkflow().inspectBook(interactiveBook));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         prompt, "Interactive passphrase prompting must not occur");
   }

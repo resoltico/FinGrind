@@ -2,6 +2,8 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -11,15 +13,15 @@ import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-/** Verifies deterministic runtime-failure classification for the published CLI contract. */
+/** Verifies deterministic public failure classification for the published CLI contract. */
 class CliFailureMapperTest {
   @Test
-  void runtimeFailure_preservesWrappedContractFailures() {
-    CliFailure failure =
-        CliFailureMapper.runtimeFailure(
-            new ContractFailureException(
-                ContractErrors.Descriptor.INVALID_REQUEST.failure(
-                    "Invalid request.", "Repair it.", "--request-file")));
+  void contractFailure_preservesWrappedContractFailures() {
+    ContractFailureException exception =
+        new ContractFailureException(
+            ContractErrors.Descriptor.INVALID_REQUEST.failure(
+                "Invalid request.", "Repair it.", "--request-file"));
+    CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
 
     assertEquals("invalid-request", failure.code());
     assertEquals("Invalid request.", failure.message());
@@ -34,6 +36,7 @@ class CliFailureMapperTest {
             new CliPdfExportException(
                 Path.of("reports/out.pdf"), new java.io.IOException("disk full")));
 
+    assertNotNull(failure);
     assertEquals("pdf-export-failure", failure.code());
     assertTrue(failure.message().startsWith("Failed to write PDF export to "));
     assertTrue(failure.message().contains("out.pdf"));
@@ -51,21 +54,36 @@ class CliFailureMapperTest {
         CliFailureMapper.runtimeFailure(
             new RuntimeException(new SqliteStorageFailureException("storage broken")));
 
+    assertNotNull(managedFailure);
     assertEquals("managed-runtime-failure", managedFailure.code());
     assertNotNull(managedFailure.hint());
     assertTrue(managedFailure.hint().contains("prepareManagedSqlite"));
+    assertNotNull(storageFailure);
     assertEquals("storage-runtime-failure", storageFailure.code());
     assertNotNull(storageFailure.hint());
     assertTrue(storageFailure.hint().contains("book file path"));
   }
 
   @Test
-  void runtimeFailure_fallsBackToGenericRuntimeFailureWhenNoSpecificClassifierApplies() {
-    CliFailure failure = CliFailureMapper.runtimeFailure(new RuntimeException());
+  void runtimeFailure_returnsNullWhenNoPublicRuntimeClassifierApplies() {
+    assertNull(CliFailureMapper.runtimeFailure(new RuntimeException()));
+  }
 
-    assertEquals("runtime-failure", failure.code());
-    assertEquals("CLI command failed.", failure.message());
+  @Test
+  void internalError_mapsToOpaquePublishedFailure() {
+    CliFailure failure = CliFailureMapper.internalError("fg-internal-123");
+
+    assertEquals("internal-error", failure.code());
+    assertTrue(failure.message().contains("fg-internal-123"));
     assertNotNull(failure.hint());
-    assertTrue(failure.hint().contains("underlying runtime problem"));
+    assertTrue(failure.hint().contains("diagnostic stream"));
+  }
+
+  @Test
+  void internalError_rejectsBlankErrorIds() {
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> CliFailureMapper.internalError("  "));
+
+    assertEquals("errorId must not be blank.", exception.getMessage());
   }
 }

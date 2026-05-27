@@ -18,7 +18,8 @@ final class SqliteProtectedBookFormatIntrospection {
 
   static void requireRuntimeDefaultCipherContract(SqliteNativeApi sqliteApi) {
     Objects.requireNonNull(sqliteApi, "sqliteApi");
-    CipherSettings expected = CipherSettings.fromContract(ProtocolCatalog.protectedBookFormat());
+    CipherSettings expected =
+        CipherSettings.fromContract(ProtocolCatalog.runtime().protectedBookFormat());
     CipherSettings actual = runtimeDefaultCipherSettings(sqliteApi);
     if (!expected.equals(actual)) {
       throw new IllegalStateException(
@@ -36,8 +37,8 @@ final class SqliteProtectedBookFormatIntrospection {
     int pageSize = SqliteStatementQueries.querySingleInt(database, "pragma page_size");
     int reservedBytes = fileControlReserveBytes(database);
     return new ProtectedBookFormatContract(
-        ProtocolCatalog.protectedBookFormat().applicationId(),
-        ProtocolCatalog.protectedBookFormat().formatVersion(),
+        ProtocolCatalog.runtime().protectedBookFormat().applicationId(),
+        ProtocolCatalog.runtime().protectedBookFormat().formatVersion(),
         cipherSettings.cipher(),
         cipherSettings.legacyMode(),
         pageSize,

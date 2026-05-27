@@ -151,15 +151,19 @@ final class MachineContractQuickStarts {
   private static String launcherCommand(WorkflowSurface surface) {
     return switch (surface) {
       case BUNDLE_POSIX_SHELL ->
-          ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
+          ProtocolCatalog.distribution().bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
       case BUNDLE_WINDOWS_POWERSHELL ->
-          ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
-      case SOURCE_CHECKOUT_POSIX_SHELL -> ProtocolCatalog.sourceCheckoutLauncherCommand(false);
+          ProtocolCatalog.distribution()
+              .bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
+      case SOURCE_CHECKOUT_POSIX_SHELL ->
+          ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(false);
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-          ProtocolCatalog.sourceCheckoutLauncherCommand(true);
-      case DIRECT_JAVA_POSIX_SHELL -> ProtocolCatalog.directJavaLauncherCommand(false);
-      case DIRECT_JAVA_WINDOWS_POWERSHELL -> ProtocolCatalog.directJavaLauncherCommand(true);
-      case CONTAINER_DOCKER -> ProtocolCatalog.containerLauncherCommand();
+          ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(true);
+      case DIRECT_JAVA_POSIX_SHELL ->
+          ProtocolCatalog.distribution().directJavaLauncherCommand(false);
+      case DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          ProtocolCatalog.distribution().directJavaLauncherCommand(true);
+      case CONTAINER_DOCKER -> ProtocolCatalog.distribution().containerLauncherCommand();
     };
   }
 

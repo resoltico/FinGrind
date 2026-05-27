@@ -30,7 +30,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     assertThrows(
         NullPointerException.class,
         () ->
-            SqliteNativeConnections.openKeyFileAccess(
+            SqliteNativeKeyFileAccess.open(
                 NullTestSupport.nullOf(Path.class), tempDirectory.resolve("book.key")));
   }
 
@@ -39,7 +39,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     assertThrows(
         NullPointerException.class,
         () ->
-            SqliteNativeConnections.openKeyFileAccess(
+            SqliteNativeKeyFileAccess.open(
                 tempDirectory.resolve("null-key.sqlite"), NullTestSupport.nullOf(Path.class)));
   }
 
@@ -69,8 +69,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     Files.write(keyPath, new byte[] {(byte) 0xFF});
     IllegalStateException exception =
         assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeConnections.openKeyFileAccess(bookPath, keyPath));
+            IllegalStateException.class, () -> SqliteNativeKeyFileAccess.open(bookPath, keyPath));
     assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
@@ -81,7 +80,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     ContractFailureException exception =
         assertThrows(
             ContractFailureException.class,
-            () -> SqliteNativeConnections.openKeyFileAccess(bookPath, missingKeyPath));
+            () -> SqliteNativeKeyFileAccess.open(bookPath, missingKeyPath));
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(), exception.failure().code());
     assertTrue(NullTestSupport.messageOf(exception).contains("does not exist"));
@@ -384,6 +383,25 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                   SqliteNativeConnections.applyKey(
                       MemorySegment.NULL, keyMaterial, sqliteApi, arena));
       assertEquals("SQLITE_CANTOPEN: boom", exception.getMessage());
+    }
+  }
+
+  @Test
+  void applyKey_acceptsSuccessfulNativeInvocation() throws Exception {
+    Path keyFile = tempDirectory.resolve("apply-key-success.key");
+    writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
+    try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
+        Arena arena = Arena.ofConfined()) {
+      SqliteNativeApi sqliteApi =
+          sqliteApi(
+              constantMethodHandle(0, MemorySegment.class, MemorySegment.class, int.class),
+              constantMethodHandle(0, MemorySegment.class),
+              constantMethodHandle(MemorySegment.NULL, MemorySegment.class),
+              constantMethodHandle(MemorySegment.NULL, int.class),
+              constantMethodHandle(0, MemorySegment.class));
+      assertDoesNotThrow(
+          () ->
+              SqliteNativeConnections.applyKey(MemorySegment.NULL, keyMaterial, sqliteApi, arena));
     }
   }
 }

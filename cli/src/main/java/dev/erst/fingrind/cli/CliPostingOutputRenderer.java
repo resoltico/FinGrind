@@ -15,10 +15,8 @@ final class CliPostingOutputRenderer {
     List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
     header.add(List.of("Posting id", postingFact.postingId().value()));
     header.add(
-        List.of(
-            "Posting kind", CliQueryOutputFormatter.displayPostingKind(postingFact.postingKind())));
-    header.add(
-        List.of("Posting role", CliQueryOutputFormatter.displayPostingRoleText(postingFact)));
+        List.of("Posting kind", CliPostingLabels.displayPostingKind(postingFact.postingKind())));
+    header.add(List.of("Posting role", CliPostingLabels.displayPostingRoleText(postingFact)));
     header.add(List.of("Effective date", postingFact.journalEntry().effectiveDate().toString()));
     header.add(
         List.of("Recorded at", CliTextDisplay.instant(postingFact.provenance().recordedAt())));
@@ -52,10 +50,9 @@ final class CliPostingOutputRenderer {
             displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
     header.add(
         List.of(
-            "Source documents", CliQueryOutputFormatter.postingSourceDocumentsText(postingFact)));
-    header.add(List.of("Approvals", CliQueryOutputFormatter.postingApprovalsText(postingFact)));
-    header.add(
-        List.of("Reverses posting", CliQueryOutputFormatter.reversalTargetText(postingFact)));
+            "Source documents", CliPostingFactFormatter.postingSourceDocumentsText(postingFact)));
+    header.add(List.of("Approvals", CliPostingFactFormatter.postingApprovalsText(postingFact)));
+    header.add(List.of("Reverses posting", CliPostingLabels.reversalTargetText(postingFact)));
     header.add(
         List.of(
             "Reversal reason",
@@ -82,19 +79,6 @@ final class CliPostingOutputRenderer {
   }
 
   static String renderPostingRegisterText(PostingPage page) {
-    List<List<String>> headerRows =
-        new ArrayList<>(CliBookIdentityDisplay.summaryRows(page.bookIdentity()));
-    headerRows.add(
-        List.of(
-            "Account filter",
-            page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")));
-    headerRows.add(
-        List.of(
-            "Effective date range",
-            CliQueryOutputFormatter.dateRange(
-                page.effectiveDateRange().effectiveDateFrom().orElse(null),
-                page.effectiveDateRange().effectiveDateTo().orElse(null))));
-    String header = CliTextFormat.renderKeyValueBlock(List.copyOf(headerRows));
     String summary =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -105,52 +89,190 @@ final class CliPostingOutputRenderer {
                     page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
     String postings =
         page.postings().isEmpty()
-            ? CliQueryOutputFormatter.noMatchesLabel("postings")
+            ? CliQueryScopeText.noMatchesLabel("postings")
             : CliTextFormat.renderTable(
                 List.of(
                     "Effective date", "Origin", "Role", "Debit", "Credit", "Accounts", "Posting"),
                 page.postings().stream()
-                    .map(CliQueryOutputFormatter::postingRegisterTextRow)
+                    .map(CliPostingFactFormatter::postingRegisterTextRow)
                     .toList(),
                 3,
                 4);
+    String context =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Book",
+                    CliBookIdentityDisplay.summaryRows(page.bookIdentity()).getFirst().get(1)),
+                List.of(
+                    "Account filter",
+                    page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
+                List.of(
+                    "Effective date range",
+                    CliQueryScopeText.dateRange(
+                        page.effectiveDateRange().effectiveDateFrom().orElse(null),
+                        page.effectiveDateRange().effectiveDateTo().orElse(null)))));
     return CliTextFormat.renderTitledBlock(
         "Postings",
-        header
-            + System.lineSeparator()
-            + System.lineSeparator()
-            + summary
-            + System.lineSeparator()
-            + System.lineSeparator()
-            + postings);
+        CliReportRenderSupport.joinSections(
+            summary, postings, CliReportRenderSupport.section("Context", context)));
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {
     return CliTextFormat.renderCsv(
         List.of(
+            "recordKind",
             "effectiveDate",
             "recordedAt",
             "postingId",
             "postingKind",
             "postingOriginKind",
             "reversalState",
+            "reversalTarget",
             "currencyCode",
             "debitTotal",
             "creditTotal",
-            "accountCodes",
-            "reversalTarget",
-            "sourceDocumentIds",
-            "sourceDocumentTypes",
-            "approvalIds",
-            "approvalDecisions"),
-        page.postings().stream()
-            .map(
-                posting -> {
-                  List<String> row = new ArrayList<>();
-                  row.addAll(CliQueryOutputFormatter.postingRegisterCsvRow(posting));
-                  return List.copyOf(row);
-                })
-            .toList());
+            "accountCode",
+            "sourceDocumentId",
+            "sourceDocumentType",
+            "approvalId",
+            "approvalDecision",
+            "message"),
+        page.postings().isEmpty()
+            ? List.of(
+                List.of(
+                    "empty",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    CliQueryScopeText.noMatchesLabel("postings")))
+            : page.postings().stream()
+                .flatMap(posting -> postingRegisterCsvRows(posting).stream())
+                .toList());
+  }
+
+  private static List<List<String>> postingRegisterCsvRows(PostingFact postingFact) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(postingRegisterPostingCsvRow(postingFact));
+    postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .distinct()
+        .map(accountCode -> postingRegisterAccountCsvRow(postingFact, accountCode))
+        .forEach(rows::add);
+    postingFact.evidence().sourceDocuments().stream()
+        .map(
+            sourceDocument ->
+                postingRegisterSourceDocumentCsvRow(
+                    postingFact,
+                    sourceDocument.sourceDocumentId().value(),
+                    sourceDocument.sourceDocumentType().value()))
+        .forEach(rows::add);
+    postingFact.evidence().approvals().stream()
+        .map(
+            approval ->
+                postingRegisterApprovalCsvRow(
+                    postingFact, approval.approvalId().value(), approval.decision().wireValue()))
+        .forEach(rows::add);
+    return List.copyOf(rows);
+  }
+
+  private static List<String> postingRegisterPostingCsvRow(PostingFact postingFact) {
+    return List.of(
+        "posting",
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        CliPostingLabels.reversalStateWireValue(postingFact),
+        CliPostingLabels.reversalTargetCsv(postingFact),
+        CliPostingLabels.postingCurrency(postingFact),
+        CliPostingLabels.postingDebitTotal(postingFact),
+        CliPostingLabels.postingCreditTotal(postingFact),
+        "",
+        "",
+        "",
+        "",
+        "",
+        "");
+  }
+
+  private static List<String> postingRegisterAccountCsvRow(
+      PostingFact postingFact, String accountCode) {
+    return List.of(
+        "account",
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        CliPostingLabels.reversalStateWireValue(postingFact),
+        CliPostingLabels.reversalTargetCsv(postingFact),
+        "",
+        "",
+        "",
+        accountCode,
+        "",
+        "",
+        "",
+        "",
+        "");
+  }
+
+  private static List<String> postingRegisterSourceDocumentCsvRow(
+      PostingFact postingFact, String sourceDocumentId, String sourceDocumentType) {
+    return List.of(
+        "source-document",
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        CliPostingLabels.reversalStateWireValue(postingFact),
+        CliPostingLabels.reversalTargetCsv(postingFact),
+        "",
+        "",
+        "",
+        "",
+        sourceDocumentId,
+        sourceDocumentType,
+        "",
+        "",
+        "");
+  }
+
+  private static List<String> postingRegisterApprovalCsvRow(
+      PostingFact postingFact, String approvalId, String approvalDecision) {
+    return List.of(
+        "approval",
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.postingId().value(),
+        postingFact.postingKind().wireValue(),
+        postingFact.postingOriginKind().wireValue(),
+        CliPostingLabels.reversalStateWireValue(postingFact),
+        CliPostingLabels.reversalTargetCsv(postingFact),
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        approvalId,
+        approvalDecision,
+        "");
   }
 
   static String displayWireLabel(String wireValue) {

@@ -1,18 +1,12 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
-import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
-import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
@@ -20,10 +14,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -44,157 +36,158 @@ final class SqliteRoundTripWorkflowCliCoverage {
     Path keyPath = workflowRoot.resolve("keys").resolve("entity.book-key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
     BookAccess bookAccess = SqliteRoundTripWorkflowResources.keyFileBookAccess(bookPath, keyPath);
-    SqliteCliBookWorkflow workflow = SqliteRoundTripWorkflowResources.sqliteWorkflow();
+    CliBookLifecycleWorkflow lifecycleWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
+    CliBookMutationWorkflow mutationWorkflow =
+        SqliteRoundTripWorkflowResources.sqliteMutationWorkflow();
+    CliBookReadWorkflow readWorkflow = SqliteRoundTripWorkflowResources.sqliteReadWorkflow();
     PostEntryCommand workflowCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(command, "workflow");
-    PostingId postingId = initializeAndCommitWorkflowBook(workflow, bookAccess, workflowCommand);
-    AccountCode primaryAccount = CliFuzzFixtures.firstAccountCode(workflowCommand);
+    PostingId postingId =
+        initializeAndCommitWorkflowBook(
+            lifecycleWorkflow, mutationWorkflow, bookAccess, workflowCommand);
+    AccountCode primaryAccount = CliFuzzSyntheticAccountFixtures.firstAccountCode(workflowCommand);
     LocalDate effectiveDate = CliFuzzFixtures.journalEntry(workflowCommand).effectiveDate();
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.inspectBook(bookAccess),
+        readWorkflow.inspectBook(bookAccess),
         OutputMode.TEXT,
-        (CliResponseWriter writer, BookInspection inspection) ->
-            writer.writeBookInspection(bookPath, inspection, OutputMode.TEXT),
+        (writers, inspection, mode) ->
+            writers.query().writeBookInspection(bookPath, inspection, mode),
         "State");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.inspectBook(bookAccess),
+        readWorkflow.inspectBook(bookAccess),
         OutputMode.JSON,
-        (CliResponseWriter writer, BookInspection inspection) ->
-            writer.writeBookInspection(bookPath, inspection, OutputMode.JSON),
+        (writers, inspection, mode) ->
+            writers.query().writeBookInspection(bookPath, inspection, mode),
         "\"status\"");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.listAccounts(bookAccess, new ListAccountsQuery(50, Optional.empty())),
+        readWorkflow.listAccounts(bookAccess, new ListAccountsQuery(50, Optional.empty())),
         OutputMode.CSV,
-        (CliResponseWriter writer, ListAccountsResult result) ->
-            writer.writeListAccountsResult(result, OutputMode.CSV),
+        (writers, result, mode) -> writers.query().writeListAccountsResult(result, mode),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.getPosting(bookAccess, postingId),
+        readWorkflow.getPosting(bookAccess, postingId),
         OutputMode.JSON,
-        (CliResponseWriter writer, GetPostingResult result) ->
-            writer.writeGetPostingResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.query().writeGetPostingResult(result, mode),
         postingId.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.listPostings(
+        readWorkflow.listPostings(
             bookAccess, new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty())),
         OutputMode.CSV,
-        (CliResponseWriter writer, ListPostingsResult result) ->
-            writer.writeListPostingsResult(result, OutputMode.CSV),
+        (writers, result, mode) -> writers.query().writeListPostingsResult(result, mode),
         postingId.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(primaryAccount)),
+        readWorkflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(primaryAccount)),
         OutputMode.TEXT,
-        (CliResponseWriter writer, AccountBalanceResult result) ->
-            writer.writeAccountBalanceResult(result, OutputMode.TEXT),
+        (writers, result, mode) -> writers.query().writeAccountBalanceResult(result, mode),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.trialBalance(
+        readWorkflow.trialBalance(
             bookAccess,
             new TrialBalanceQuery(Optional.of(effectiveDate), PostingCoverage.ALL_POSTING_KINDS)),
         OutputMode.CSV,
-        (CliResponseWriter writer, TrialBalanceResult result) ->
-            writer.writeTrialBalanceResult(result, OutputMode.CSV),
+        (writers, result, mode) -> writers.query().writeTrialBalanceResult(result, mode),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(primaryAccount)),
+        readWorkflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(primaryAccount)),
         OutputMode.TEXT,
-        (CliResponseWriter writer, AccountLedgerResult result) ->
-            writer.writeAccountLedgerResult(result, OutputMode.TEXT),
+        (writers, result, mode) -> writers.query().writeAccountLedgerResult(result, mode),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.periodSummary(bookAccess, new PeriodSummaryQuery(effectiveDate, effectiveDate)),
+        readWorkflow.periodSummary(
+            bookAccess, new PeriodSummaryQuery(effectiveDate, effectiveDate)),
         OutputMode.CSV,
-        (CliResponseWriter writer, PeriodSummaryResult result) ->
-            writer.writePeriodSummaryResult(result, OutputMode.CSV),
+        (writers, result, mode) -> writers.query().writePeriodSummaryResult(result, mode),
         primaryAccount.value());
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.getPosting(bookAccess, new PostingId("missing-posting")),
+        readWorkflow.getPosting(bookAccess, new PostingId("missing-posting")),
         OutputMode.JSON,
-        (CliResponseWriter writer, GetPostingResult result) ->
-            writer.writeGetPostingResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.query().writeGetPostingResult(result, mode),
         "posting-not-found");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountBalance(bookAccess, AccountBalanceQuery.unbounded(new AccountCode("9999"))),
+        readWorkflow.accountBalance(
+            bookAccess, AccountBalanceQuery.unbounded(new AccountCode("9999"))),
         OutputMode.JSON,
-        (CliResponseWriter writer, AccountBalanceResult result) ->
-            writer.writeAccountBalanceResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.query().writeAccountBalanceResult(result, mode),
         "unknown-account");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        workflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(new AccountCode("9999"))),
+        readWorkflow.accountLedger(
+            bookAccess, AccountLedgerQuery.unbounded(new AccountCode("9999"))),
         OutputMode.CSV,
-        (CliResponseWriter writer, AccountLedgerResult result) ->
-            writer.writeAccountLedgerResult(result, OutputMode.CSV),
+        (writers, result, mode) -> writers.query().writeAccountLedgerResult(result, mode),
         "unknown-account");
 
     PreflightEntryResult duplicatePreflight =
-        workflow.preflight(bookAccess, workflowCommand).requireAccepted();
+        mutationWorkflow.preflight(bookAccess, workflowCommand).requireAccepted();
     SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
         duplicatePreflight);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicatePreflight),
         OutputMode.TEXT,
-        (writer, result) -> writer.writePostEntryResult((PostEntryResult) result, OutputMode.TEXT),
+        (writers, result, mode) ->
+            writers.mutation().writePostEntryResult((PostEntryResult) result, mode),
         null);
 
     CommitEntryResult duplicateCommit =
-        workflow.commit(bookAccess, workflowCommand).requireAccepted();
+        mutationWorkflow.commit(bookAccess, workflowCommand).requireAccepted();
     SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowCommitRejected(
         duplicateCommit);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicateCommit),
         OutputMode.JSON,
-        (writer, result) -> writer.writePostEntryResult((PostEntryResult) result, OutputMode.JSON),
+        (writers, result, mode) ->
+            writers.mutation().writePostEntryResult((PostEntryResult) result, mode),
         "duplicate-idempotency-key");
 
-    exerciseDerivedReversalScenarios(workflow, bookAccess, workflowCommand, postingId);
+    exerciseDerivedReversalScenarios(mutationWorkflow, bookAccess, workflowCommand, postingId);
   }
 
   private static PostingId initializeAndCommitWorkflowBook(
-      SqliteCliBookWorkflow workflow,
-      dev.erst.fingrind.contract.runtime.BookAccess bookAccess,
+      CliBookLifecycleWorkflow lifecycleWorkflow,
+      CliBookMutationWorkflow mutationWorkflow,
+      BookAccess bookAccess,
       PostEntryCommand command)
       throws IOException {
     Path bookPath = bookAccess.bookFilePath();
     SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
-        workflow.openBook(
+        lifecycleWorkflow.openBook(
             bookAccess,
-            CliFuzzFixtures.openBookCommand(CliFuzzFixtures.journalEntry(command).currencyUnit())),
+            CliFuzzWorkflowFixtures.openBookCommand(
+                CliFuzzFixtures.journalEntry(command).currencyUnit())),
         bookPath,
         OutputMode.JSON,
         "\"initializedAt\"");
     for (DeclareAccountCommand declareAccountCommand :
-        CliFuzzFixtures.declarePostingAccountCommands(command)) {
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(command)) {
       SqliteRoundTripWorkflowRenderingAssertions.assertDeclared(
-          workflow.declareAccount(bookAccess, declareAccountCommand),
+          mutationWorkflow.declareAccount(bookAccess, declareAccountCommand),
           OutputMode.TEXT,
           declareAccountCommand.accountCode().value());
     }
     PreflightAccepted preflightAccepted =
         SqliteRoundTripWorkflowLifecycleAssertions.requirePreflightAccepted(
-            workflow.preflight(bookAccess, command));
+            mutationWorkflow.preflight(bookAccess, command));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(preflightAccepted),
         OutputMode.TEXT,
-        (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.TEXT),
+        (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         command.requestProvenance().idempotencyKey().value());
     Committed committed =
         SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
-            workflow.commit(bookAccess, command));
+            mutationWorkflow.commit(bookAccess, command));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(committed),
         OutputMode.JSON,
-        (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         committed.postingId().value());
     return committed.postingId();
   }
 
   private static void exerciseDerivedReversalScenarios(
-      SqliteCliBookWorkflow workflow,
-      dev.erst.fingrind.contract.runtime.BookAccess bookAccess,
+      CliBookMutationWorkflow mutationWorkflow,
+      BookAccess bookAccess,
       PostEntryCommand committedCommand,
       PostingId targetPostingId)
       throws IOException {
@@ -203,13 +196,12 @@ final class SqliteRoundTripWorkflowCliCoverage {
             committedCommand, targetPostingId, "reversal-near-miss");
     CommitRejected nearMissRejected =
         SqliteRoundTripWorkflowLifecycleAssertions.requireCommitRejected(
-            workflow.commit(bookAccess, nearMiss));
+            mutationWorkflow.commit(bookAccess, nearMiss));
     SqliteRoundTripWorkflowLifecycleAssertions.assertNearMissReversalRejected(nearMissRejected);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(nearMissRejected),
         OutputMode.JSON,
-        (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         "reversal-does-not-negate-target");
 
     PostEntryCommand validReversal =
@@ -217,12 +209,11 @@ final class SqliteRoundTripWorkflowCliCoverage {
             committedCommand, targetPostingId, "reversal-valid");
     Committed reversalCommitted =
         SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
-            workflow.commit(bookAccess, validReversal));
+            mutationWorkflow.commit(bookAccess, validReversal));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(reversalCommitted),
         OutputMode.TEXT,
-        (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.TEXT),
+        (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         null);
 
     PostEntryCommand duplicateReversal =
@@ -230,13 +221,12 @@ final class SqliteRoundTripWorkflowCliCoverage {
             committedCommand, targetPostingId, "reversal-duplicate");
     CommitRejected duplicateRejected =
         SqliteRoundTripWorkflowLifecycleAssertions.requireCommitRejected(
-            workflow.commit(bookAccess, duplicateReversal));
+            mutationWorkflow.commit(bookAccess, duplicateReversal));
     SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateReversalRejected(duplicateRejected);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicateRejected),
         OutputMode.JSON,
-        (CliResponseWriter writer, PostEntryResult result) ->
-            writer.writePostEntryResult(result, OutputMode.JSON),
+        (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         "reversal-already-exists");
   }
 }

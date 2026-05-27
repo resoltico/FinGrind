@@ -297,66 +297,6 @@ public final class PeriodResultTransferPlanner {
     }
   }
 
-  /** One complete close plan containing durable drafts and their published close totals. */
-  public record PeriodResultTransferPlan(
-      List<PostingDraft> closingPostings, List<CurrencyBalance> transferredTotals) {
-    public PeriodResultTransferPlan {
-      Objects.requireNonNull(closingPostings, "closingPostings");
-      Objects.requireNonNull(transferredTotals, "transferredTotals");
-      closingPostings = List.copyOf(closingPostings);
-      transferredTotals = List.copyOf(transferredTotals);
-    }
-  }
-
-  /** Resolution outcome for selecting the single result-holding account required by a close. */
-  public sealed interface ResultHoldingSelection
-      permits AcceptedResultHoldingSelection, RejectedResultHoldingSelection {}
-
-  /** Successful selection of the only valid active result-holding account. */
-  public static final class AcceptedResultHoldingSelection implements ResultHoldingSelection {
-    private final RegisteredAccount account;
-
-    /** Creates one accepted selection for the resolved result-holding account. */
-    public AcceptedResultHoldingSelection(RegisteredAccount account) {
-      this.account = Objects.requireNonNull(account, "account");
-    }
-
-    /** Returns the selected active result-holding account. */
-    public RegisteredAccount account() {
-      return account;
-    }
-  }
-
-  /** Deterministic close rejection caused by missing or ambiguous result-holding candidates. */
-  public static final class RejectedResultHoldingSelection implements ResultHoldingSelection {
-    private final BookkeepingAdministrationRejection rejection;
-    private final List<AccountCode> candidateAccountCodes;
-
-    /** Creates one rejected selection for missing active result-holding candidates. */
-    public RejectedResultHoldingSelection(
-        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing rejection) {
-      this.rejection = Objects.requireNonNull(rejection, "rejection");
-      this.candidateAccountCodes = rejection.inactiveCandidateAccountCodes();
-    }
-
-    /** Creates one rejected selection for ambiguous active result-holding candidates. */
-    public RejectedResultHoldingSelection(
-        BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejection) {
-      this.rejection = Objects.requireNonNull(rejection, "rejection");
-      this.candidateAccountCodes = rejection.candidateAccountCodes();
-    }
-
-    /** Returns the deterministic refusal that prevented close-account selection. */
-    public BookkeepingAdministrationRejection rejection() {
-      return rejection;
-    }
-
-    /** Returns the relevant account candidates named by the deterministic refusal. */
-    public List<AccountCode> candidateAccountCodes() {
-      return candidateAccountCodes;
-    }
-  }
-
   /** Ordered close buckets keyed first by currency and then by account code. */
   private static final class ClosingTotalsByCurrency {
     private final Map<CurrencyUnit, AccountClosingTotals> totalsByCurrency =

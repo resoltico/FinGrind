@@ -17,7 +17,14 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
       PrintStream outputStream,
       Clock clock,
       CliBookWorkflow bookWorkflow) {
-    return new FinGrindCli(inputStream, outputStream, diagnosticsStream(), clock, bookWorkflow);
+    return new FinGrindCli(
+        inputStream,
+        outputStream,
+        diagnosticsStream(),
+        clock,
+        bookWorkflow,
+        bookWorkflow,
+        bookWorkflow);
   }
 
   protected static FinGrindCli cli(
@@ -35,7 +42,14 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
       PrintStream diagnosticsStream,
       Clock clock,
       CliBookWorkflow bookWorkflow) {
-    return new FinGrindCli(inputStream, outputStream, diagnosticsStream, clock, bookWorkflow);
+    return new FinGrindCli(
+        inputStream,
+        outputStream,
+        diagnosticsStream,
+        clock,
+        bookWorkflow,
+        bookWorkflow,
+        bookWorkflow);
   }
 
   private static PrintStream diagnosticsStream() {

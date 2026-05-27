@@ -9,8 +9,8 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -18,8 +18,7 @@ import java.util.List;
 final class CliMutationOutputRenderer {
   private CliMutationOutputRenderer() {}
 
-  static String renderGeneratedBookKeyFileText(
-      SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile) {
+  static String renderGeneratedBookKeyFileText(GeneratedBookKeyFile generatedKeyFile) {
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated",
         CliTextFormat.renderKeyValueBlock(
@@ -122,28 +121,28 @@ final class CliMutationOutputRenderer {
                         .orElse("(none)")),
                 List.of(
                     "Account type",
-                    CliQueryOutputFormatter.displayLineTypeLabel(account.accountType())),
+                    CliAccountStatementLabels.displayLineTypeLabel(account.accountType())),
                 List.of(
                     "Account role",
-                    CliQueryOutputFormatter.displayAccountRoleLabel(account.accountRole())),
+                    CliAccountStatementLabels.displayAccountRoleLabel(account.accountRole())),
                 List.of(
                     "Financial-position line",
                     account
                         .accountTaxonomy()
                         .financialPositionLineClassification()
-                        .map(CliQueryOutputFormatter::displayFinancialPositionLineClassification)
+                        .map(CliAccountStatementLabels::displayFinancialPositionLineClassification)
                         .orElse("(none)")),
                 List.of(
                     "Profit-and-loss line",
                     account
                         .accountTaxonomy()
                         .profitAndLossLineClassification()
-                        .map(CliQueryOutputFormatter::displayProfitAndLossLineClassification)
+                        .map(CliAccountStatementLabels::displayProfitAndLossLineClassification)
                         .orElse("(none)")),
                 List.of(
                     "Normal balance",
-                    CliQueryOutputFormatter.displayNormalBalanceLabel(account.normalBalance())),
-                List.of("Active", CliQueryOutputFormatter.displayBooleanLabel(account.active())),
+                    CliAccountStatementLabels.displayNormalBalanceLabel(account.normalBalance())),
+                List.of("Active", CliQueryScopeText.displayBooleanLabel(account.active())),
                 List.of("Declared at", CliTextDisplay.instant(account.declaredAt())))));
   }
 
@@ -162,7 +161,7 @@ final class CliMutationOutputRenderer {
     rows.add(
         List.of(
             "Transferred totals",
-            CliQueryOutputFormatter.joinedBalances(transferredPeriodResult.transferredTotals())));
+            CliBalanceOutputFormatter.joinedBalances(transferredPeriodResult.transferredTotals())));
     rows.add(
         List.of("Transferred at", CliTextDisplay.instant(transferredPeriodResult.transferredAt())));
     rows.add(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
@@ -45,8 +45,10 @@ public final class BookReadService
   bookkeeping inspection/query/report model served by one selected `BookkeepingReadStore`
 - Translators: the exported `BookInspectionPublishedLanguageTranslator` in the `executor` package
   projects the local `BookLifecycleInspection` family into public `BookInspection`, while
-  `BookkeepingReadPublishedLanguageTranslator` projects local `BookkeepingQueryRejection`,
-  criteria, pages, and report views into the public read/report DTO surface
+  `BookkeepingReadPagePublishedLanguageTranslator`,
+  `BookkeepingReadReportPublishedLanguageTranslator`, and
+  `BookkeepingReadStatementPublishedLanguageTranslator` project local read pages, reports,
+  statements, and query rejections into the public read/report DTO surface
 
 ## `BookkeepingReadService` And `BookkeepingLookupOutcome`
 
@@ -554,7 +556,7 @@ public record ChangesInEquityView(...)
 - Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
   published-language translator renders it into public report DTOs
 
-## `PeriodResultTransferDraft`, `PeriodResultTransferOutcome`, `PeriodResultTransferPlanner`, And `PeriodResultTransferService`
+## `PeriodResultTransferDraft`, `PeriodResultTransferOutcome`, `ResultHoldingSelection`, `AcceptedResultHoldingSelection`, `RejectedResultHoldingSelection`, `PeriodResultTransferPlan`, `PeriodResultTransferPlanner`, And `PeriodResultTransferService`
 
 These executor-owned local bookkeeping types own period-result-transfer generation and durable close
 semantics before the public administration surface is projected.
@@ -562,6 +564,10 @@ semantics before the public administration surface is projected.
 ```java
 public record PeriodResultTransferDraft(...)
 public sealed interface PeriodResultTransferOutcome
+public sealed interface ResultHoldingSelection
+public final class AcceptedResultHoldingSelection
+public final class RejectedResultHoldingSelection
+public record PeriodResultTransferPlan(...)
 public final class PeriodResultTransferPlanner
 public final class PeriodResultTransferService
 ```
@@ -569,6 +575,12 @@ public final class PeriodResultTransferService
 - `PeriodResultTransferDraft`: store-ready close payload containing the reporting period, the close time,
   and every generated posting draft
 - `PeriodResultTransferOutcome`: closed family of accepted-versus-rejected local close outcomes
+- `ResultHoldingSelection`: closed result for the policy-owned result-holding account lookup
+- `AcceptedResultHoldingSelection`: accepted result-holding selection carrying the chosen account
+- `RejectedResultHoldingSelection`: rejected result-holding selection carrying the deterministic
+  administration rejection plus candidate account codes
+- `PeriodResultTransferPlan`: generated close posting drafts plus the transferred totals that the
+  published close result projects afterward
 - `PeriodResultTransferPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
   account, validates close-horizon rules, and generates the `PostingKind.PERIOD_RESULT_TRANSFER` drafts plus
   published transferred totals for one contiguous reporting period

@@ -7,7 +7,6 @@ import java.util.Objects;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.jspecify.annotations.Nullable;
@@ -44,67 +43,78 @@ final class PdfPageWriter implements AutoCloseable {
 
   void writeKeyValueTable(String heading, List<List<String>> rows) throws IOException {
     writeSectionHeading(heading);
-    float labelWidth = keyValueLabelWidth(rows);
-    float valueWidth = contentWidth() - labelWidth - PdfReportTheme.KEY_VALUE_COLUMN_GAP;
+    float labelWidth = PdfTableTextSupport.keyValueLabelWidth(this, rows);
+    float valueWidth = contentWidth() - labelWidth - PdfReportTheme.spacing().keyValueColumnGap();
     for (List<String> row : rows) {
-      TextBlockMetrics labelBlock =
-          textBlock(
+      PdfTableTextSupport.TextBlockMetrics labelBlock =
+          PdfTableTextSupport.textBlock(
               PdfTextWrapper.wrapText(
-                  row.getFirst(), fonts.bold(), PdfReportTheme.BODY_FONT_SIZE, labelWidth),
+                  row.getFirst(),
+                  fonts.bold(),
+                  PdfReportTheme.typography().bodyFontSize(),
+                  labelWidth),
               fonts.bold(),
-              PdfReportTheme.BODY_FONT_SIZE);
-      TextBlockMetrics valueBlock =
-          textBlock(
+              PdfReportTheme.typography().bodyFontSize());
+      PdfTableTextSupport.TextBlockMetrics valueBlock =
+          PdfTableTextSupport.textBlock(
               PdfTextWrapper.wrapText(
-                  row.get(1), fonts.regular(), PdfReportTheme.BODY_FONT_SIZE, valueWidth),
+                  row.get(1),
+                  fonts.regular(),
+                  PdfReportTheme.typography().bodyFontSize(),
+                  valueWidth),
               fonts.regular(),
-              PdfReportTheme.BODY_FONT_SIZE);
+              PdfReportTheme.typography().bodyFontSize());
       float rowHeight =
           Math.max(labelBlock.height(), valueBlock.height())
-              + PdfReportTheme.KEY_VALUE_CELL_PADDING * 2f;
+              + PdfReportTheme.spacing().keyValueCellPadding() * 2f;
       ensureSpace(rowHeight);
       float rowTop = cursorY;
-      drawTextBlock(
+      PdfTableTextSupport.drawTextBlock(
+          this,
           labelBlock,
-          PdfReportTheme.PAGE_MARGIN,
+          PdfReportTheme.spacing().pageMargin(),
           rowTop,
           rowHeight,
           labelWidth,
           PdfTableColumn.CellAlignment.LEFT,
-          PdfReportTheme.KEY_VALUE_CELL_PADDING);
-      drawTextBlock(
+          PdfReportTheme.spacing().keyValueCellPadding());
+      PdfTableTextSupport.drawTextBlock(
+          this,
           valueBlock,
-          PdfReportTheme.PAGE_MARGIN + labelWidth + PdfReportTheme.KEY_VALUE_COLUMN_GAP,
+          PdfReportTheme.spacing().pageMargin()
+              + labelWidth
+              + PdfReportTheme.spacing().keyValueColumnGap(),
           rowTop,
           rowHeight,
           valueWidth,
           PdfTableColumn.CellAlignment.LEFT,
-          PdfReportTheme.KEY_VALUE_CELL_PADDING);
+          PdfReportTheme.spacing().keyValueCellPadding());
       cursorY -= rowHeight;
     }
-    cursorY -= PdfReportTheme.SECTION_AFTER_TABLE_SPACING;
+    cursorY -= PdfReportTheme.spacing().sectionAfterTableSpacing();
   }
 
   void writeTable(String heading, List<PdfTableColumn> columns, List<List<String>> rows)
       throws IOException {
     writeSectionHeading(heading);
-    float[] columnWidths = columnWidths(columns);
+    float[] columnWidths = PdfTableTextSupport.columnWidths(this, columns);
     drawTableHeader(columns, columnWidths);
     for (List<String> row : rows) {
-      float rowHeight = tableRowHeight(row, columnWidths, fonts.regular());
+      float rowHeight =
+          PdfTableTextSupport.tableRowHeight(row, columnWidths, fonts.regular(), this);
       if (!hasSpace(rowHeight)) {
         startNewPage();
         drawTableHeader(columns, columnWidths);
       }
       drawTableRow(row, columns, columnWidths, rowHeight, false);
     }
-    cursorY -= PdfReportTheme.SECTION_AFTER_TABLE_SPACING;
+    cursorY -= PdfReportTheme.spacing().sectionAfterTableSpacing();
   }
 
   @Override
   public void close() throws IOException {
     closeActiveContentStream();
-    appendPageLabels();
+    PdfPageLabelAppender.appendPageLabels(document, currentPageSize, fonts);
   }
 
   private void startNewPage() throws IOException {
@@ -112,7 +122,7 @@ final class PdfPageWriter implements AutoCloseable {
     PDPage page = new PDPage(currentPageSize);
     document.addPage(page);
     contentStream = new PDPageContentStream(document, page);
-    cursorY = currentPageSize.getHeight() - PdfReportTheme.PAGE_MARGIN;
+    cursorY = currentPageSize.getHeight() - PdfReportTheme.spacing().pageMargin();
     drawMasthead();
   }
 
@@ -120,48 +130,52 @@ final class PdfPageWriter implements AutoCloseable {
     drawText(
         reportTitle,
         fonts.bold(),
-        PdfReportTheme.HEADER_TITLE_SIZE,
-        PdfReportTheme.PAGE_MARGIN,
+        PdfReportTheme.typography().headerTitleSize(),
+        PdfReportTheme.spacing().pageMargin(),
         cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT + 2f;
+    cursorY -= PdfReportTheme.typography().lineHeight() + 2f;
     drawText(
-        "Generated: " + PdfValueFormatter.instant(generatedAt),
+        "Generated: " + PdfTemporalValueFormatter.instant(generatedAt),
         fonts.regular(),
-        PdfReportTheme.HEADER_META_SIZE,
-        PdfReportTheme.PAGE_MARGIN,
+        PdfReportTheme.typography().headerMetaSize(),
+        PdfReportTheme.spacing().pageMargin(),
         cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT;
+    cursorY -= PdfReportTheme.typography().lineHeight();
     drawText(
         "Prepared by: " + preparedBy,
         fonts.regular(),
-        PdfReportTheme.HEADER_META_SIZE,
-        PdfReportTheme.PAGE_MARGIN,
+        PdfReportTheme.typography().headerMetaSize(),
+        PdfReportTheme.spacing().pageMargin(),
         cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT / 2f;
-    strokeHorizontalRule(cursorY, PdfReportTheme.SECTION_RULE_RGB);
-    cursorY -= PdfReportTheme.LINE_HEIGHT;
+    cursorY -= PdfReportTheme.typography().lineHeight() / 2f;
+    strokeHorizontalRule(cursorY, PdfReportTheme.grayscale().sectionRuleRgb());
+    cursorY -= PdfReportTheme.typography().lineHeight();
   }
 
   private void writeSectionHeading(String heading) throws IOException {
     ensureSpace(
-        PdfReportTheme.LINE_HEIGHT * 2f
-            + PdfReportTheme.SECTION_TOP_MARGIN
-            + PdfReportTheme.SECTION_BOTTOM_MARGIN);
-    cursorY -= PdfReportTheme.SECTION_TOP_MARGIN;
+        PdfReportTheme.typography().lineHeight() * 2f
+            + PdfReportTheme.spacing().sectionTopMargin()
+            + PdfReportTheme.spacing().sectionBottomMargin());
+    cursorY -= PdfReportTheme.spacing().sectionTopMargin();
     drawText(
         heading,
         fonts.bold(),
-        PdfReportTheme.SECTION_TITLE_SIZE,
-        PdfReportTheme.PAGE_MARGIN,
+        PdfReportTheme.typography().sectionTitleSize(),
+        PdfReportTheme.spacing().pageMargin(),
         cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT + PdfReportTheme.SECTION_BOTTOM_MARGIN;
+    cursorY -=
+        PdfReportTheme.typography().lineHeight() + PdfReportTheme.spacing().sectionBottomMargin();
   }
 
   private void drawTableHeader(List<PdfTableColumn> columns, float[] columnWidths)
       throws IOException {
     float headerHeight =
-        tableRowHeight(
-            columns.stream().map(PdfTableColumn::header).toList(), columnWidths, fonts.bold());
+        PdfTableTextSupport.tableRowHeight(
+            columns.stream().map(PdfTableColumn::header).toList(),
+            columnWidths,
+            fonts.bold(),
+            this);
     ensureSpace(headerHeight);
     drawTableRow(
         columns.stream().map(PdfTableColumn::header).toList(),
@@ -179,9 +193,10 @@ final class PdfPageWriter implements AutoCloseable {
       boolean header)
       throws IOException {
     float rowTop = cursorY;
-    float x = PdfReportTheme.PAGE_MARGIN;
+    float x = PdfReportTheme.spacing().pageMargin();
     if (header) {
-      float normalizedHeaderGray = PdfReportTheme.normalizedGray(PdfReportTheme.HEADER_FILL_RGB);
+      float normalizedHeaderGray =
+          PdfReportTheme.grayscale().normalized(PdfReportTheme.grayscale().headerFillRgb());
       activeContentStream()
           .setNonStrokingColor(normalizedHeaderGray, normalizedHeaderGray, normalizedHeaderGray);
       activeContentStream().addRect(x, rowTop - rowHeight, contentWidth(), rowHeight);
@@ -190,104 +205,40 @@ final class PdfPageWriter implements AutoCloseable {
     }
     PDFont rowFont = header ? fonts.bold() : fonts.regular();
     for (int index = 0; index < row.size(); index++) {
-      TextBlockMetrics block =
-          textBlock(
+      PdfTableTextSupport.TextBlockMetrics block =
+          PdfTableTextSupport.textBlock(
               PdfTextWrapper.wrapText(
                   row.get(index),
                   rowFont,
-                  PdfReportTheme.SMALL_FONT_SIZE,
-                  columnWidths[index] - PdfReportTheme.TABLE_CELL_PADDING * 2f),
+                  PdfReportTheme.typography().smallFontSize(),
+                  columnWidths[index] - PdfReportTheme.spacing().tableCellPadding() * 2f),
               rowFont,
-              PdfReportTheme.SMALL_FONT_SIZE);
-      drawTextBlock(
+              PdfReportTheme.typography().smallFontSize());
+      PdfTableTextSupport.drawTextBlock(
+          this,
           block,
           x,
           rowTop,
           rowHeight,
           columnWidths[index],
           columns.get(index).alignment(),
-          PdfReportTheme.TABLE_CELL_PADDING);
+          PdfReportTheme.spacing().tableCellPadding());
       x += columnWidths[index];
     }
     strokeHorizontalRule(rowTop - rowHeight, 0);
     cursorY -= rowHeight;
   }
 
-  private void drawTextBlock(
-      TextBlockMetrics block,
-      float cellX,
-      float rowTop,
-      float rowHeight,
-      float cellWidth,
-      PdfTableColumn.CellAlignment alignment,
-      float padding)
-      throws IOException {
-    float topInset = (rowHeight - block.height()) / 2f;
-    float y = rowTop - topInset - block.ascent();
-    for (String line : block.lines()) {
-      float x;
-      if (alignment == PdfTableColumn.CellAlignment.LEFT) {
-        x = cellX + padding;
-      } else {
-        x = cellX + cellWidth - padding - stringWidth(line, block.font(), block.fontSize());
-      }
-      drawText(line, block.font(), block.fontSize(), x, y);
-      y -= block.lineAdvance();
-    }
-  }
-
-  private float[] columnWidths(List<PdfTableColumn> columns) {
-    float totalWeight = 0f;
-    for (PdfTableColumn column : columns) {
-      totalWeight += column.widthWeight();
-    }
-    float[] widths = new float[columns.size()];
-    for (int index = 0; index < columns.size(); index++) {
-      widths[index] = contentWidth() * columns.get(index).widthWeight() / totalWeight;
-    }
-    return widths;
-  }
-
-  private float tableRowHeight(List<String> row, float[] columnWidths, PDFont font)
-      throws IOException {
-    float maxTextHeight = 0f;
-    for (int index = 0; index < row.size(); index++) {
-      TextBlockMetrics block =
-          textBlock(
-              PdfTextWrapper.wrapText(
-                  row.get(index),
-                  font,
-                  PdfReportTheme.SMALL_FONT_SIZE,
-                  columnWidths[index] - PdfReportTheme.TABLE_CELL_PADDING * 2f),
-              font,
-              PdfReportTheme.SMALL_FONT_SIZE);
-      maxTextHeight = Math.max(maxTextHeight, block.height());
-    }
-    return maxTextHeight + PdfReportTheme.TABLE_CELL_PADDING * 2f;
-  }
-
-  private void drawText(String text, PDFont font, float fontSize, float x, float y)
-      throws IOException {
-    drawText(activeContentStream(), text, font, fontSize, x, y);
-  }
-
-  private void drawText(
-      PDPageContentStream target, String text, PDFont font, float fontSize, float x, float y)
-      throws IOException {
-    float normalizedTextGray = PdfReportTheme.normalizedGray(PdfReportTheme.TEXT_RGB);
-    target.setNonStrokingColor(normalizedTextGray, normalizedTextGray, normalizedTextGray);
-    target.beginText();
-    target.setFont(font, fontSize);
-    target.newLineAtOffset(x, y);
-    target.showText(text);
-    target.endText();
+  void drawText(String text, PDFont font, float fontSize, float x, float y) throws IOException {
+    PdfPageTextPainter.drawText(activeContentStream(), text, font, fontSize, x, y);
   }
 
   private void strokeHorizontalRule(float y, int gray) throws IOException {
-    float normalizedGray = PdfReportTheme.normalizedGray(gray);
+    float normalizedGray = PdfReportTheme.grayscale().normalized(gray);
     activeContentStream().setStrokingColor(normalizedGray, normalizedGray, normalizedGray);
-    activeContentStream().moveTo(PdfReportTheme.PAGE_MARGIN, y);
-    activeContentStream().lineTo(currentPageSize.getWidth() - PdfReportTheme.PAGE_MARGIN, y);
+    activeContentStream().moveTo(PdfReportTheme.spacing().pageMargin(), y);
+    activeContentStream()
+        .lineTo(currentPageSize.getWidth() - PdfReportTheme.spacing().pageMargin(), y);
     activeContentStream().stroke();
   }
 
@@ -298,33 +249,11 @@ final class PdfPageWriter implements AutoCloseable {
   }
 
   private boolean hasSpace(float height) {
-    return cursorY - height >= PdfReportTheme.PAGE_MARGIN;
+    return cursorY - height >= PdfReportTheme.spacing().pageMargin();
   }
 
-  private float contentWidth() {
-    return currentPageSize.getWidth() - PdfReportTheme.PAGE_MARGIN * 2f;
-  }
-
-  private float stringWidth(String text, PDFont font, float fontSize) throws IOException {
-    return PdfTextWrapper.stringWidth(text, font, fontSize);
-  }
-
-  private TextBlockMetrics textBlock(List<String> lines, PDFont font, float fontSize) {
-    float ascent = PdfFontMetrics.ascent(font, fontSize);
-    float descent = PdfFontMetrics.descent(font, fontSize);
-    float lineAdvance = Math.max(PdfReportTheme.LINE_HEIGHT, ascent + descent + 1f);
-    return new TextBlockMetrics(lines, font, fontSize, lineAdvance, ascent, descent);
-  }
-
-  private float keyValueLabelWidth(List<List<String>> rows) throws IOException {
-    float maxLabelWidth = 0f;
-    for (List<String> row : rows) {
-      maxLabelWidth =
-          Math.max(
-              maxLabelWidth,
-              stringWidth(row.getFirst(), fonts.bold(), PdfReportTheme.BODY_FONT_SIZE));
-    }
-    return Math.min(contentWidth() * 0.34f, Math.max(92f, maxLabelWidth + 8f));
+  float contentWidth() {
+    return currentPageSize.getWidth() - PdfReportTheme.spacing().pageMargin() * 2f;
   }
 
   private void closeActiveContentStream() throws IOException {
@@ -334,42 +263,11 @@ final class PdfPageWriter implements AutoCloseable {
     }
   }
 
-  private void appendPageLabels() throws IOException {
-    int totalPages = document.getNumberOfPages();
-    float labelY =
-        currentPageSize.getHeight() - PdfReportTheme.PAGE_MARGIN - PdfReportTheme.LINE_HEIGHT - 2f;
-    for (int index = 0; index < totalPages; index++) {
-      appendPageLabel(index, totalPages, labelY);
-    }
-  }
-
-  private void appendPageLabel(int pageIndex, int totalPages, float labelY) throws IOException {
-    String label = (pageIndex + 1) + " / " + totalPages;
-    float labelX =
-        currentPageSize.getWidth()
-            - PdfReportTheme.PAGE_MARGIN
-            - stringWidth(label, fonts.regular(), PdfReportTheme.HEADER_META_SIZE);
-    try (PDPageContentStream labelStream =
-        new PDPageContentStream(
-            document, document.getPage(pageIndex), AppendMode.APPEND, true, true)) {
-      drawText(
-          labelStream, label, fonts.regular(), PdfReportTheme.HEADER_META_SIZE, labelX, labelY);
-    }
-  }
-
   private PDPageContentStream activeContentStream() {
     return Objects.requireNonNull(contentStream, "contentStream");
   }
 
-  private record TextBlockMetrics(
-      List<String> lines,
-      PDFont font,
-      float fontSize,
-      float lineAdvance,
-      float ascent,
-      float descent) {
-    float height() {
-      return lineAdvance * Math.max(0, lines.size() - 1) + ascent + descent;
-    }
+  PdfFonts fonts() {
+    return fonts;
   }
 }

@@ -75,7 +75,7 @@ final class CliAccountReportArguments {
               ProtocolOptions.ACCOUNT_CODE, "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
         }
         accountCodeValue =
-            CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+            CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
         continue;
       }
       if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
@@ -91,15 +91,14 @@ final class CliAccountReportArguments {
         continue;
       }
       if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
-        postingCoverage =
-            CliArgumentValueParser.requirePostingCoverage(postingCoverage, argumentIterator);
+        postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
-      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (accountCodeValue == null) {
       throw CliArgumentValueParser.invalid(
@@ -116,7 +115,7 @@ final class CliAccountReportArguments {
         effectiveDateFrom,
         effectiveDateTo,
         postingCoverage == null ? PostingCoverage.ALL_POSTING_KINDS : postingCoverage,
-        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   private record ParsedAccountReportArguments(

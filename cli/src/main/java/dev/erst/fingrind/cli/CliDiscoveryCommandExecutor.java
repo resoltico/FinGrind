@@ -19,10 +19,10 @@ import org.jspecify.annotations.Nullable;
 
 /** Executes discovery and template commands that render contract-owned CLI metadata. */
 final class CliDiscoveryCommandExecutor {
-  private final CliResponseWriter responseWriter;
+  private final CliDiscoveryResponseWriter responseWriter;
   private final CliMetadata metadata;
 
-  CliDiscoveryCommandExecutor(CliResponseWriter responseWriter, CliMetadata metadata) {
+  CliDiscoveryCommandExecutor(CliDiscoveryResponseWriter responseWriter, CliMetadata metadata) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
     this.metadata = Objects.requireNonNull(metadata, "metadata");
   }

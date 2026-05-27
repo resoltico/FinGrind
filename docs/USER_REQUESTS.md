@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -286,8 +286,8 @@ validation against the current book state, but it is not a durable commit guaran
 
 Discovery output also has two intentionally different JSON scopes:
 - `--detail minimal|compact|full` is accepted only when the resolved discovery output mode is JSON
-- `help --output json` defaults to the minimal overview payload with command ids, command
-  categories, and discovery-upgrade hints
+- `help --output json` defaults to the compact command index with usage, getting-started hints,
+  and exit codes
 - `help --output json --detail compact` returns the concise stable discovery payload with usage,
   getting-started hints, and exit codes
 - `help <command> --output json` returns one narrow command-local payload with usage, options,
@@ -296,8 +296,8 @@ Discovery output also has two intentionally different JSON scopes:
   usage, options, examples, operator notes, and request-file guidance
 - `help --output json --detail full` and `help <command> --output json --detail full` include the
   extended discovery body such as embedded templates, enum vocabularies, and request-shape details
-- `capabilities --output json` defaults to the minimal kernel-and-storage contract with
-  `kernelScope`, built-in statement ids, currency-scope facts, and `requestInput`, while
+- `capabilities --output json` defaults to the compact command, storage, and request-entry
+  discovery contract, while
 - `capabilities --output json --detail compact` expands to the stable command, storage, and
   request-entry discovery contract
 - `capabilities --output json --detail full` expands to the full doctrine, command grammar,
@@ -327,8 +327,9 @@ rendered:
   administration, query, and posting rejection families
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
   descriptors such as `invalid-page-cursor`, `protected-book-verification-failed`,
-  `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
-  `interactive-prompt-unavailable`; each descriptor includes its published `exitCode`
+  `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
+  `pdf-export-failure`, and `interactive-prompt-unavailable`; each descriptor includes its
+  published `exitCode`
 - `preflight.semantics` carries the short machine hint and `preflight.commitGuarantee`
   carries the advisory-versus-guaranteed commit relationship
 - `currencyModel` declares the current single-currency scope and the explicit

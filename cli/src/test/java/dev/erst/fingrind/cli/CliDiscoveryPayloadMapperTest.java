@@ -550,7 +550,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.47.0",
+        "0.48.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -559,8 +559,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         RuntimeDistribution.SELF_CONTAINED_BUNDLE.wireValue(),
         SqliteCompileOptionsVerificationStatus.VERIFIED,
         "ready",
-        ProtocolCatalog.requiredMinimumSqliteVersion(),
-        ProtocolCatalog.requiredSqlite3mcVersion(),
+        ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
+        ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),
         null);
   }
 }

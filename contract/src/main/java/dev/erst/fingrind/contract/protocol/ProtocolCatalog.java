@@ -10,6 +10,13 @@ import java.util.stream.Stream;
 
 /** Core-owned protocol catalog for FinGrind public operation and model metadata. */
 public final class ProtocolCatalog {
+  private static final ProtocolEnvelopeCatalog ENVELOPES = ProtocolEnvelopeCatalog.INSTANCE;
+  private static final ProtocolDomainCatalog DOMAIN = ProtocolDomainCatalog.INSTANCE;
+  private static final ProtocolRuntimeCatalog RUNTIME = ProtocolRuntimeCatalog.INSTANCE;
+  private static final ProtocolDistributionCatalog DISTRIBUTION =
+      ProtocolDistributionCatalog.INSTANCE;
+  private static final ProtocolManagedSqliteCatalog MANAGED_SQLITE =
+      ProtocolManagedSqliteCatalog.INSTANCE;
   private static final List<ProtocolOperation> OPERATIONS =
       Stream.of(
               ProtocolDiscoveryOperations.operations(),
@@ -58,184 +65,29 @@ public final class ProtocolCatalog {
         .toList();
   }
 
-  /** Returns the canonical storage engine identifiers. */
-  public static List<StorageEngine> storageEngines() {
-    return ProtocolCatalogFacts.storageEngines();
+  /** Returns the public envelope-status catalog. */
+  public static ProtocolEnvelopeCatalog envelopes() {
+    return ENVELOPES;
   }
 
-  /** Returns the canonical top-level JSON-envelope statuses. */
-  public static List<ProtocolEnvelopeStatus> envelopeStatuses() {
-    return ProtocolCatalogFacts.envelopeStatuses();
+  /** Returns the public domain-facts catalog. */
+  public static ProtocolDomainCatalog domain() {
+    return DOMAIN;
   }
 
-  /** Returns the canonical success envelope status. */
-  public static ProtocolEnvelopeStatus successStatus() {
-    return ProtocolCatalogFacts.successStatus();
+  /** Returns the public runtime and distribution catalog. */
+  public static ProtocolRuntimeCatalog runtime() {
+    return RUNTIME;
   }
 
-  /** Returns the canonical deterministic rejection envelope status. */
-  public static ProtocolEnvelopeStatus rejectionStatus() {
-    return ProtocolCatalogFacts.rejectionStatus();
+  /** Returns the public distribution and launcher catalog. */
+  public static ProtocolDistributionCatalog distribution() {
+    return DISTRIBUTION;
   }
 
-  /** Returns the canonical runtime or invalid-request error envelope status. */
-  public static ProtocolEnvelopeStatus errorStatus() {
-    return ProtocolCatalogFacts.errorStatus();
-  }
-
-  /** Returns the structured hard book-model facts. */
-  public static BookModelFacts bookModel() {
-    return ProtocolCatalogFacts.bookModel();
-  }
-
-  /** Returns the structured currency-model facts. */
-  public static CurrencyFacts currency() {
-    return ProtocolCatalogFacts.currency();
-  }
-
-  /** Returns the structured executable bookkeeping-kernel facts. */
-  public static BookkeepingKernelFacts bookkeepingKernel() {
-    return ProtocolCatalogFacts.bookkeepingKernel();
-  }
-
-  /** Returns the structured preflight semantics. */
-  public static PreflightFacts preflight() {
-    return ProtocolCatalogFacts.preflight();
-  }
-
-  /** Returns the structured ledger-plan execution semantics. */
-  public static PlanExecutionFacts planExecution() {
-    return ProtocolCatalogFacts.planExecution();
-  }
-
-  /** Returns the canonical direct-Java runtime-distribution identifier. */
-  public static RuntimeDistribution directJavaRuntimeDistribution() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().directJavaRuntimeDistribution();
-  }
-
-  /** Returns the canonical source-checkout runtime-distribution identifier. */
-  public static RuntimeDistribution sourceCheckoutRuntimeDistribution() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().sourceCheckoutRuntimeDistribution();
-  }
-
-  /** Returns the canonical container-image runtime-distribution identifier. */
-  public static RuntimeDistribution containerRuntimeDistribution() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().containerRuntimeDistribution();
-  }
-
-  /** Returns the canonical container launcher command for host-mounted execution. */
-  public static String containerLauncherCommand() {
-    return "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>";
-  }
-
-  /** Returns the canonical bundle runtime-distribution identifier. */
-  public static RuntimeDistribution bundleRuntimeDistribution() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().bundleRuntimeDistribution();
-  }
-
-  /** Returns the canonical public CLI distribution identifier. */
-  public static PublicCliDistribution publicCliDistribution() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().publicCliDistribution();
-  }
-
-  /** Returns supported self-contained public CLI bundle targets. */
-  public static List<PublicCliBundleTarget> supportedPublicCliBundleTargets() {
-    return ProtocolCatalogFacts.publicDistributionContract().supportedPublicCliBundleTargets();
-  }
-
-  /** Returns bundle targets outside the current self-contained public CLI contract. */
-  public static List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets() {
-    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliBundleTargets();
-  }
-
-  /** Returns the canonical launcher command for one public bundle target. */
-  public static String bundleLauncherCommand(PublicCliBundleTarget target) {
-    return ProtocolCatalogFacts.bundleLayoutContract().bundleTarget(target).launcherCommand();
-  }
-
-  /** Returns the canonical launcher path for one public bundle target. */
-  public static String bundleLauncherPath(PublicCliBundleTarget target) {
-    return ProtocolCatalogFacts.bundleLayoutContract().bundleTarget(target).launcherPath();
-  }
-
-  /** Returns the canonical source-checkout launcher command for one host shell family. */
-  public static String sourceCheckoutLauncherCommand(boolean windows) {
-    return windows ? ".\\scripts\\source-checkout-cli.ps1" : "./scripts/source-checkout-cli.sh";
-  }
-
-  /** Returns the canonical minimum Java line for source-checkout execution. */
-  public static String sourceCheckoutJava() {
-    return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();
-  }
-
-  /** Returns the canonical direct-Java launcher command for one host shell family. */
-  public static String directJavaLauncherCommand(boolean windows) {
-    return windows ? ".\\scripts\\direct-java-cli.ps1" : "./scripts/direct-java-cli.sh";
-  }
-
-  /** Returns the canonical storage-driver identifier. */
-  public static StorageDriver storageDriver() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().storageDriver();
-  }
-
-  /** Returns the canonical storage-engine identifier. */
-  public static StorageEngine storageEngine() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().storageEngine();
-  }
-
-  /** Returns the canonical book-protection mode. */
-  public static BookProtectionMode bookProtectionMode() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().bookProtectionMode();
-  }
-
-  /** Returns the canonical protected-book format contract. */
-  public static ProtectedBookFormatContract protectedBookFormat() {
-    return ProtocolCatalogFacts.protectedBookFormatContract();
-  }
-
-  /** Returns the canonical default book cipher. */
-  public static BookCipher defaultBookCipher() {
-    return protectedBookFormat().cipher();
-  }
-
-  /** Returns the canonical SQLite library mode. */
-  public static SqliteLibraryMode sqliteLibraryMode() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteLibraryMode();
-  }
-
-  /** Returns the canonical bundle-home system property name. */
-  public static String sqliteBundleHomeSystemProperty() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteBundleHomeSystemProperty();
-  }
-
-  /** Returns the canonical minimum SQLite version for the managed runtime surface. */
-  public static String requiredMinimumSqliteVersion() {
-    return ProtocolCatalogFacts.managedSqliteContract().requiredMinimumSqliteVersion();
-  }
-
-  /** Returns the canonical SQLite3 Multiple Ciphers version for the managed runtime surface. */
-  public static String requiredSqlite3mcVersion() {
-    return ProtocolCatalogFacts.managedSqliteContract().requiredSqlite3mcVersion();
-  }
-
-  /** Returns the canonical SQLite source identifier for the managed runtime surface. */
-  public static String requiredSqliteSourceId() {
-    return ProtocolCatalogFacts.managedSqliteContract().requiredSqliteSourceId();
-  }
-
-  /** Returns the canonical required compile options for the managed runtime surface. */
-  public static List<String> requiredSqliteCompileOptions() {
-    return ProtocolCatalogFacts.managedSqliteContract().requiredCompileOptions();
-  }
-
-  /** Returns compile options that must be absent for the managed runtime surface. */
-  public static List<String> forbiddenSqliteCompileOptions() {
-    return ProtocolCatalogFacts.managedSqliteContract().forbiddenCompileOptions();
-  }
-
-  /** Returns whether the managed runtime contract requires SQLite3MC secure-memory support. */
-  public static boolean requiresSecureMemorySupport() {
-    return ProtocolCatalogFacts.managedSqliteContract().requiresSecureMemorySupport();
+  /** Returns the public managed-SQLite contract catalog. */
+  public static ProtocolManagedSqliteCatalog managedSqlite() {
+    return MANAGED_SQLITE;
   }
 
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(

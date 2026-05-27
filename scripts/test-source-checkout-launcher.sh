@@ -12,6 +12,20 @@ progress() {
     printf 'source-checkout launcher check: %s\n' "$1"
 }
 
+normalized_file_contains() {
+    local needle="$1"
+    local file_path="$2"
+    python3 - "$needle" "$file_path" <<'PY'
+import pathlib
+import re
+import sys
+
+needle = re.sub(r"\s+", " ", sys.argv[1]).strip()
+haystack = re.sub(r"\s+", " ", pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")).strip()
+raise SystemExit(0 if needle in haystack else 1)
+PY
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -151,7 +165,7 @@ progress 'source-checkout help surface'
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
-grep -Fq 'Do Next' "${help_stdout}" ||
+grep -Fq 'Start Here' "${help_stdout}" ||
     die "source-checkout launcher help did not render the front-door guidance section"
 grep -Fq 'Command Groups' "${help_stdout}" ||
     die "source-checkout launcher help did not render the grouped command catalog"
@@ -421,7 +435,7 @@ progress 'direct-java help surface'
     die "developer direct-Java help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
-grep -Fq 'Do Next' "${raw_help_stdout}" ||
+grep -Fq 'Start Here' "${raw_help_stdout}" ||
     die "developer direct-Java help did not render the front-door guidance section"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
     die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
@@ -516,10 +530,10 @@ java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
-grep -Fq 'java --enable-native-access=fingrind --module-path fingrind.jar --module' \
+normalized_file_contains 'java --enable-native-access=fingrind --module-path fingrind.jar --module' \
     "${raw_jar_help_stdout}" || die \
     "raw java -jar help did not publish the modular launcher prefix"
-grep -Fq 'fingrind/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \
+normalized_file_contains 'fingrind/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \
     "raw java -jar help did not publish the modular launcher command token"
 if grep -Fq './scripts/direct-java-cli.sh help' "${raw_jar_help_stdout}"; then
     die "raw java -jar help leaked the source-checkout direct-Java wrapper"

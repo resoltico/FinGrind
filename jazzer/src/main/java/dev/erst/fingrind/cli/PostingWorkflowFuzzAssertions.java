@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.InMemoryBookFixtureMutations;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.PostingWorkflowInvariantAssertions;
@@ -27,15 +28,17 @@ final class PostingWorkflowFuzzAssertions {
   static void exerciseParsedPostingWorkflow(PostEntryCommand command, byte[] input) {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(bookSession);
+          CliFuzzWorkflowFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
-          CliFuzzFixtures.postingApplicationService(
+          CliFuzzWorkflowFixtures.postingApplicationService(
               bookSession, bookSession, CliFuzzFixtures.postingIdGenerator(input));
 
       driveLifecycleToReadyBook(command, bookSession, administrationService, applicationService);
 
-      PreflightEntryResult preflight = CliFuzzFixtures.preflight(applicationService, command);
-      CommitEntryResult committedResult = CliFuzzFixtures.commit(applicationService, command);
+      PreflightEntryResult preflight =
+          CliFuzzWorkflowFixtures.preflight(applicationService, command);
+      CommitEntryResult committedResult =
+          CliFuzzWorkflowFixtures.commit(applicationService, command);
       switch (preflight) {
         case PreflightAccepted accepted -> {
           PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(accepted, command);
@@ -44,17 +47,17 @@ final class PostingWorkflowFuzzAssertions {
                   committedResult);
           var postingFact =
               PostingWorkflowInvariantAssertions.requireStoredPosting(
-                  CliFuzzFixtures.publishedStoredPosting(
+                  CliFuzzWorkflowFixtures.publishedStoredPosting(
                       bookSession, command.requestProvenance().idempotencyKey()));
           PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
           PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-              CliFuzzFixtures.commit(applicationService, command));
+              CliFuzzWorkflowFixtures.commit(applicationService, command));
         }
         case PreflightRejected preflightRejected -> {
           PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
               preflightRejected, committedResult);
           PostingWorkflowInvariantAssertions.assertRejectedStateDidNotPersistPosting(
-              CliFuzzFixtures.publishedStoredPosting(
+              CliFuzzWorkflowFixtures.publishedStoredPosting(
                   bookSession, command.requestProvenance().idempotencyKey()));
         }
       }
@@ -67,36 +70,38 @@ final class PostingWorkflowFuzzAssertions {
       BookAdministrationService administrationService,
       PostingApplicationService applicationService) {
     PostingWorkflowInvariantAssertions.assertRejected(
-        CliFuzzFixtures.preflight(applicationService, command),
+        CliFuzzWorkflowFixtures.preflight(applicationService, command),
         PostingRejection.BookNotInitialized.class);
     PostingWorkflowInvariantAssertions.assertRejected(
-        CliFuzzFixtures.commit(applicationService, command),
+        CliFuzzWorkflowFixtures.commit(applicationService, command),
         PostingRejection.BookNotInitialized.class);
 
-    CliFuzzFixtures.openBook(
+    CliFuzzWorkflowFixtures.openBook(
         administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzFixtures.preflight(applicationService, command),
+        CliFuzzWorkflowFixtures.preflight(applicationService, command),
         PostingRejection.UnknownAccount.class);
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzFixtures.commit(applicationService, command), PostingRejection.UnknownAccount.class);
+        CliFuzzWorkflowFixtures.commit(applicationService, command),
+        PostingRejection.UnknownAccount.class);
 
-    var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+    var declaredAccounts =
+        CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
     PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
-        CliFuzzFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
+        CliFuzzAccountFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
     DeclaredAccount primaryAccount = declaredAccounts.getFirst();
-    bookSession.deactivateAccount(primaryAccount.accountCode());
+    InMemoryBookFixtureMutations.deactivateAccount(bookSession, primaryAccount.accountCode());
 
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzFixtures.preflight(applicationService, command),
+        CliFuzzWorkflowFixtures.preflight(applicationService, command),
         PostingRejection.InactiveAccount.class);
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzFixtures.commit(applicationService, command),
+        CliFuzzWorkflowFixtures.commit(applicationService, command),
         PostingRejection.InactiveAccount.class);
 
-    CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
+    CliFuzzAccountFixtures.reactivateAccount(administrationService, primaryAccount);
     PostingWorkflowInvariantAssertions.assertAccountReactivationPersisted(
-        CliFuzzFixtures.listAccounts(bookSession), primaryAccount);
+        CliFuzzAccountFixtures.listAccounts(bookSession), primaryAccount);
   }
 }

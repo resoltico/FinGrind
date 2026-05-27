@@ -21,7 +21,7 @@ class CommittedRegressionSeedInputsTest {
     List<Path> checkedInputs = new ArrayList<>();
 
     for (var harness : dev.erst.fingrind.jazzer.support.JazzerHarness.values()) {
-      for (Path metadataPath : RegressionSeedCatalog.metadataPaths(PROJECT_DIRECTORY, harness)) {
+      for (Path metadataPath : RegressionSeedPaths.metadataPaths(PROJECT_DIRECTORY, harness)) {
         RegressionSeedMetadata metadata =
             JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
         Path inputPath = metadata.inputPath(PROJECT_DIRECTORY).toAbsolutePath().normalize();

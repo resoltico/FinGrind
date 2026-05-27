@@ -182,7 +182,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             List.of(),
             new LedgerStepFailure("storage-commit-failed", "Commit failed.", List.of()));
     CliPlanJsonModels.LedgerPlanPayload rejectedPayload =
-        CliResponsePayloadMapper.ledgerPlanPayload(
+        CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.Rejected(
                 planId("plan-1"),
                 new LedgerExecutionJournal(
@@ -198,7 +198,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     assertNull(steps.get(1).detailKind());
     assertEquals(LedgerBoundaryPhase.COMMIT, steps.get(1).boundaryPhase());
     CliPlanJsonModels.LedgerPlanPayload assertionFailedPayload =
-        CliResponsePayloadMapper.ledgerPlanPayload(
+        CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.AssertionFailed(
                 planId("plan-2"),
                 new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionEntry))),
@@ -233,7 +233,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
                         LedgerFact.text("balanceSide", "DEBIT")))));
 
     CliPlanJsonModels.LedgerPlanPayload payload =
-        CliResponsePayloadMapper.ledgerPlanPayload(
+        CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.Succeeded(
                 planId("plan-1"),
                 new LedgerExecutionJournal(startedAt, finishedAt, List.of(summaryEntry))),

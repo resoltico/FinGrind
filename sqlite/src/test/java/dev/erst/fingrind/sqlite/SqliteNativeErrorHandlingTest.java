@@ -71,14 +71,15 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                             MemorySegment.class,
                             arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.4"));
                     assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
-                    assertEquals("3.53.1", SqliteNativeBootstrap.sqliteVersion(versionHandle));
+                    assertEquals(
+                        "3.53.1", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
                     assertEquals(
                         "2.3.4",
-                        SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                        SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                             sqlite3mcVersionHandle));
                     assertEquals(
                         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-                        SqliteNativeBootstrap.sqliteSourceId(
+                        SqliteNativeRuntimeMetadata.sqliteSourceId(
                             MethodHandles.constant(
                                 MemorySegment.class,
                                 arena.allocateFrom(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID))));
@@ -128,25 +129,28 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
               MemorySegment.ofAddress(1L), errorMessageHandle, errorStrlenHandle));
       assertEquals(
           "3.53.1",
-          SqliteNativeBootstrap.sqliteVersion(sqliteVersionHandle, sqliteVersionStrlenHandle));
+          SqliteNativeRuntimeMetadata.sqliteVersion(
+              sqliteVersionHandle, sqliteVersionStrlenHandle));
       assertEquals(
           "2.3.4",
-          SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+          SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
       assertEquals(
           SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-          SqliteNativeBootstrap.sqliteSourceId(
+          SqliteNativeRuntimeMetadata.sqliteSourceId(
               constantMethodHandle(arena.allocateFrom(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID)),
               constantMethodHandle(
                   (long) SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID.length(), MemorySegment.class)));
       assertEquals(
-          "3.53.1", SqliteNativeRuntimePolicy.requireSupportedVersion("3.53.1", "managed-only"));
+          "3.53.1",
+          SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.1", "managed-only"));
       assertEquals(
           "2.3.4",
-          SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion("2.3.4", "managed-only"));
+          SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
+              "2.3.4", "managed-only"));
       assertDoesNotThrow(
           () ->
-              SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
+              SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
                   compileOptionPresenceHandle(), "3.53.1", "2.3.4", "managed-only"));
       assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
     }
@@ -158,7 +162,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeRuntimePolicy.compileOptionUsed(
+                SqliteNativeCompatibilityPolicy.compileOptionUsed(
                     throwingMethodHandle(
                         new IllegalStateException("boom"), int.class, MemorySegment.class),
                     "SECURE_DELETE"));
@@ -169,7 +173,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   @Test
   void compileOptionUsed_reportsEnabledCompileOption() {
     assertTrue(
-        SqliteNativeRuntimePolicy.compileOptionUsed(
+        SqliteNativeCompatibilityPolicy.compileOptionUsed(
             constantMethodHandle(1, MemorySegment.class), "SECURE_DELETE"));
   }
 
@@ -179,7 +183,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             AssertionError.class,
             () ->
-                SqliteNativeRuntimePolicy.compileOptionUsed(
+                SqliteNativeCompatibilityPolicy.compileOptionUsed(
                     throwingMethodHandle(
                         new AssertionError("boom"), int.class, MemorySegment.class),
                     "SECURE_DELETE"));
@@ -261,7 +265,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                     throwingMethodHandle(new IllegalStateException("boom"), MemorySegment.class)));
     assertTrue(
         NullTestSupport.messageOf(exception)
@@ -274,7 +278,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             AssertionError.class,
             () ->
-                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                     throwingMethodHandle(new AssertionError("boom"), MemorySegment.class)));
     assertEquals("boom", error.getMessage());
   }

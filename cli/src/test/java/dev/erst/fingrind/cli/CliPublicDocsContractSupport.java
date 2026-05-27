@@ -22,7 +22,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /** Shared workflow and fixture helpers for public CLI docs and example-contract tests. */
-abstract class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
+class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   private static final Pattern UUID_PATTERN =
       Pattern.compile(
           "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");

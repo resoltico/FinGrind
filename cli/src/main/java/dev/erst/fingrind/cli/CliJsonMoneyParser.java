@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import static dev.erst.fingrind.cli.CliJsonFieldAccess.rejectUnexpectedFields;
-import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
+import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
+import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.ProtocolMoneyFields;

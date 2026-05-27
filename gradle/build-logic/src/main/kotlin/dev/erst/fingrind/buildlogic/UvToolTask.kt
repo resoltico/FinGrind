@@ -26,8 +26,9 @@ abstract class UvToolTask @Inject constructor(
     private val requiredPythonMajorMinor: Pair<Int, Int>
         get() = parseRequiredPythonMajorMinor(requiredPythonVersion.get())
 
+    @get:Optional
     @get:Input
-    abstract val pythonExecutable: Property<String>
+    abstract val configuredPythonExecutable: Property<String>
 
     @get:Input
     abstract val uvExecutable: Property<String>
@@ -86,17 +87,76 @@ abstract class UvToolTask @Inject constructor(
         if (toolCacheEnvironmentVariable.isPresent) {
             toolCacheDirectory.get().asFile.mkdirs()
         }
-        verifyPythonVersion()
+        val pythonExecutable = resolvePythonExecutable()
+        verifyPythonVersion(pythonExecutable)
         verifyUvAvailability()
-        executeTool()
+        executeTool(pythonExecutable)
     }
 
-    private fun verifyPythonVersion() {
+    private fun resolvePythonExecutable(): String {
+        val configuredExecutable =
+            configuredPythonExecutable.orNull?.trim()?.takeIf(String::isNotBlank)
+        if (configuredExecutable != null) {
+            return configuredExecutable
+        }
+        return selectExactPythonExecutable(
+            requiredPythonVersion = requiredPythonVersion.get(),
+            osName = System.getProperty("os.name"),
+            probeVersion = ::probePythonMajorMinor,
+            findUvManagedPythonExecutable = ::findUvManagedPythonExecutable,
+        )
+            ?: throw GradleException(
+                "FinGrind requires Python ${requiredPythonVersion.get()} for repo-owned Python tooling. " +
+                    "Install or expose an exact Python ${requiredPythonVersion.get()} interpreter, or set -PfingrindPythonExecutable to one exact interpreter path. " +
+                    bootstrapHint.get(),
+            )
+    }
+
+    private fun probePythonMajorMinor(command: String): Pair<Int, Int>? {
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
         val result =
             execOperations.exec {
-                executable = pythonExecutable.get()
+                executable = command
+                args("--version")
+                isIgnoreExitValue = true
+                configureSharedEnvironment(this)
+                standardOutput = stdout
+                errorOutput = stderr
+            }
+        if (result.exitValue != 0) {
+            return null
+        }
+        return parsePythonMajorMinor(normalizedOutput(stdout, stderr))
+    }
+
+    private fun findUvManagedPythonExecutable(requiredPythonVersion: String): String? {
+        val stdout = ByteArrayOutputStream()
+        val stderr = ByteArrayOutputStream()
+        val result =
+            execOperations.exec {
+                executable = uvExecutable.get()
+                args("python", "find", requiredPythonVersion)
+                isIgnoreExitValue = true
+                configurePythonLocatorEnvironment(this)
+                standardOutput = stdout
+                errorOutput = stderr
+            }
+        if (result.exitValue != 0) {
+            return null
+        }
+        return normalizedOutput(stdout, stderr)
+            .lineSequence()
+            .map(String::trim)
+            .firstOrNull(String::isNotBlank)
+    }
+
+    private fun verifyPythonVersion(pythonExecutable: String) {
+        val stdout = ByteArrayOutputStream()
+        val stderr = ByteArrayOutputStream()
+        val result =
+            execOperations.exec {
+                executable = pythonExecutable
                 args("--version")
                 isIgnoreExitValue = true
                 configureSharedEnvironment(this)
@@ -110,14 +170,14 @@ abstract class UvToolTask @Inject constructor(
             result.exitValue != 0 ||
                 detectedVersion == null ||
                 detectedMajorMinor == null ||
-                !pythonVersionSatisfiesRequirement(detectedMajorMinor, requiredPythonMajorMinor)
+                !pythonVersionMatchesRequirement(detectedMajorMinor, requiredPythonMajorMinor)
         ) {
             throw GradleException(
                 buildString {
-                    append("Python tool tasks require Python ")
+                    append("Python tool tasks require exactly Python ")
                     append(requiredPythonVersion.get())
-                    append("+ but ")
-                    append(pythonExecutable.get())
+                    append(" but ")
+                    append(pythonExecutable)
                     append(" reports ")
                     append(
                         detectedVersion
@@ -163,10 +223,10 @@ abstract class UvToolTask @Inject constructor(
         }
     }
 
-    private fun executeTool() {
+    private fun executeTool(pythonExecutable: String) {
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
-        val command = commandLine()
+        val command = commandLine(pythonExecutable)
         val result =
             execOperations.exec {
                 workingDir = workingDirectory.get().asFile
@@ -195,13 +255,13 @@ abstract class UvToolTask @Inject constructor(
         }
     }
 
-    private fun commandLine(): List<String> =
+    private fun commandLine(pythonExecutable: String): List<String> =
         buildList {
             add("tool")
             add("run")
             add("--isolated")
             add("--python")
-            add(pythonExecutable.get())
+            add(pythonExecutable)
             add("--with-requirements")
             add(requirementsFile.get().asFile.absolutePath)
             add(toolCommand.get())
@@ -225,6 +285,12 @@ abstract class UvToolTask @Inject constructor(
                 toolCacheDirectory.get().asFile.absolutePath,
             )
         }
+    }
+
+    private fun configurePythonLocatorEnvironment(spec: org.gradle.process.ExecSpec) {
+        spec.environment("UV_CACHE_DIR", uvCacheDirectory.get().asFile.absolutePath)
+        spec.environment("UV_PYTHON_DOWNLOADS", "never")
+        spec.environment("UV_NO_PROGRESS", "1")
     }
 
     private fun normalizedOutput(
@@ -254,10 +320,3 @@ internal fun parseRequiredPythonMajorMinor(requiredVersion: String): Pair<Int, I
     }
     return components[0].toInt() to components[1].toInt()
 }
-
-internal fun pythonVersionSatisfiesRequirement(
-    detectedVersion: Pair<Int, Int>,
-    requiredVersion: Pair<Int, Int>,
-): Boolean =
-    detectedVersion.first > requiredVersion.first ||
-        (detectedVersion.first == requiredVersion.first && detectedVersion.second >= requiredVersion.second)

@@ -60,50 +60,50 @@ final class MachineContractDeclareAccountSchemas {
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_CODE,
             "Book-local account code used by journal lines. FinGrind accepts ASCII letters or digits followed by ASCII letters, digits, '.', '_', ':', '/', or '-'.",
-            MachineContractSchemaSupport.tokenStringSchema(
+            MachineContractScalarSchemas.tokenStringSchema(
                 "Book-local account code used by journal lines.",
                 AccountCode.pattern(),
                 AccountCode.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_NAME,
             "Non-blank display name for the declared account.",
-            MachineContractSchemaSupport.nonBlankStringSchema(
+            MachineContractScalarSchemas.nonBlankStringSchema(
                 "Non-blank display name for the declared account.")),
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_TYPE,
             "Canonical chart-of-accounts classification for the declared account.",
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Canonical chart-of-accounts classification for the declared account.",
                 AccountType.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_ROLE,
             "Canonical doctrinal role for the declared account, including ordinary and contra polarity.",
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Canonical doctrinal role for the declared account, including ordinary and contra polarity.",
                 AccountRole.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
             "Canonical chart node kind for the declared account. HEADER accounts organize child nodes and POSTABLE accounts accept direct postings.",
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Canonical chart node kind for the declared account. HEADER accounts organize child nodes and POSTABLE accounts accept direct postings.",
                 AccountNodeKind.wireValues())),
         MachineContractFieldSpec.optional(
             ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
             "Optional parent account code that places this account inside the declared chart hierarchy.",
-            MachineContractSchemaSupport.tokenStringSchema(
+            MachineContractScalarSchemas.tokenStringSchema(
                 "Optional parent account code that places this account inside the declared chart hierarchy.",
                 AccountCode.pattern(),
                 AccountCode.maxLength())),
         MachineContractFieldSpec.conditional(
             ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
             "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",
                 FinancialPositionLineClassification.declaredAccountWireValues())),
         MachineContractFieldSpec.conditional(
             ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
             "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
                 ProfitAndLossLineClassification.wireValues())));
   }
@@ -115,14 +115,14 @@ final class MachineContractDeclareAccountSchemas {
         "properties",
         MachineContractSchemaSupport.orderedMap(
             ProtocolDeclareAccountFields.ACCOUNT_TYPE,
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Balance-sheet account types.",
                 List.of(
                     AccountType.ASSET.wireValue(),
                     AccountType.LIABILITY.wireValue(),
                     AccountType.EQUITY.wireValue())),
             ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Required financial position taxonomy for balance-sheet accounts.",
                 FinancialPositionLineClassification.declaredAccountWireValues())),
         "required",
@@ -139,11 +139,11 @@ final class MachineContractDeclareAccountSchemas {
         "properties",
         MachineContractSchemaSupport.orderedMap(
             ProtocolDeclareAccountFields.ACCOUNT_TYPE,
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Nominal account types.",
                 List.of(AccountType.REVENUE.wireValue(), AccountType.EXPENSE.wireValue())),
             ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
-            MachineContractSchemaSupport.enumStringSchema(
+            MachineContractScalarSchemas.enumStringSchema(
                 "Required profit-and-loss taxonomy for nominal accounts.",
                 ProfitAndLossLineClassification.wireValues())),
         "required",

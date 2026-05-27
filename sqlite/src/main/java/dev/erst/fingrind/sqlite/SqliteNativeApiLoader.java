@@ -17,7 +17,7 @@ final class SqliteNativeApiLoader {
   static SqliteNativeApi loadApi() {
     SqliteNativeAccessGate.requireEnabled();
     return loadApi(
-        SqliteNativeRuntimePolicy.configuredLibraryTarget(
+        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
             System.getenv("FINGRIND_SQLITE_LIBRARY"),
             System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
@@ -28,7 +28,7 @@ final class SqliteNativeApiLoader {
 
   private static SqliteNativeApi loadApi(SqliteLibraryTarget libraryTarget, Arena libraryArena) {
     try {
-      SqliteManagedLibraryIdentity.VerifiedLibrarySnapshot verifiedLibrarySnapshot =
+      SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
           SqliteManagedLibraryIdentity.verifiedSnapshot(libraryTarget);
       SqliteLibraryTarget runtimeTarget = verifiedLibrarySnapshot.runtimeTarget();
       SymbolLookup lookup = libraryLookup(runtimeTarget, libraryArena);
@@ -61,21 +61,22 @@ final class SqliteNativeApiLoader {
             "sqlite3_compileoption_used",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
     String loadedSqlite3mcVersion =
-        SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+        SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
             sqlite3mcVersion, SqliteNativeBootstrap.strlen());
     String loadedSourceId =
-        SqliteNativeBootstrap.sqliteSourceId(sqlite3SourceId, SqliteNativeBootstrap.strlen());
+        SqliteNativeRuntimeMetadata.sqliteSourceId(sqlite3SourceId, SqliteNativeBootstrap.strlen());
     String loadedVersion =
-        SqliteNativeRuntimePolicy.requireSupportedVersion(
-            SqliteNativeBootstrap.sqliteVersion(sqlite3Libversion, SqliteNativeBootstrap.strlen()),
+        SqliteNativeCompatibilityPolicy.requireSupportedVersion(
+            SqliteNativeRuntimeMetadata.sqliteVersion(
+                sqlite3Libversion, SqliteNativeBootstrap.strlen()),
             libraryTarget.mode(),
             loadedSqlite3mcVersion,
             loadedSourceId);
-    SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
+    SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
         loadedSqlite3mcVersion, libraryTarget.mode(), loadedVersion, loadedSourceId);
-    SqliteNativeRuntimePolicy.requireSupportedSourceId(
+    SqliteNativeCompatibilityPolicy.requireSupportedSourceId(
         loadedSourceId, libraryTarget.mode(), loadedVersion, loadedSqlite3mcVersion);
-    SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
+    SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
         sqlite3CompileoptionUsed,
         loadedVersion,
         loadedSqlite3mcVersion,

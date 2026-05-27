@@ -44,16 +44,15 @@ final class CliReportArguments {
     if (currentValue != null) {
       throw CliArgumentValueParser.invalid(optionName, "Duplicate argument: " + optionName);
     }
-    return CliArgumentValueParser.parseLocalDateOption(
-        CliArgumentValueParser.requireValue(argumentIterator, optionName), optionName);
+    return CliOptionValues.parseLocalDateOption(
+        CliOptionValues.requireValue(argumentIterator, optionName), optionName);
   }
 
   static @Nullable OutputMode requireReportOutputMode(
       @Nullable OutputMode currentOutputMode, ListIterator<String> argumentIterator) {
-    return CliArgumentValueParser.requireOutputMode(
+    return CliOptionModes.requireOutputMode(
         currentOutputMode,
-        CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-        CliArgumentValueParser.supportedOutputModes(
-            OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
+        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+        CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
   }
 }

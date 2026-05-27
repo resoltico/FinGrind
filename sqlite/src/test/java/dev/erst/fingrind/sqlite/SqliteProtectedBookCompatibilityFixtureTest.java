@@ -51,7 +51,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
   @Test
   void currentDefaultProtectedBookFixture_metadataAndPersistedFormatMatchCanonicalContract()
       throws Exception {
-    ProtectedBookFormatContract expectedFormat = ProtocolCatalog.protectedBookFormat();
+    ProtectedBookFormatContract expectedFormat = ProtocolCatalog.runtime().protectedBookFormat();
     assertEquals(expectedFormat, fixtureMetadataFormat());
     Path fixtureCopy = copyFixture("current-default-protected-book-format.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(fixtureCopy))) {
@@ -77,7 +77,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
                 "book-format-fixture".getBytes(StandardCharsets.UTF_8));
         SqliteNativeDatabase database = SqliteNativeConnections.open(newBookPath, passphrase)) {
       assertEquals(
-          ProtocolCatalog.protectedBookFormat(),
+          ProtocolCatalog.runtime().protectedBookFormat(),
           SqliteProtectedBookFormatIntrospection.openedBookFormat(database));
     }
   }
@@ -232,8 +232,8 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
   private static ProtectedBookFormatContract fixtureMetadataFormat() throws IOException {
     JsonNode formatNode = fixtureMetadataDocument().path("protectedBookFormat");
     return new ProtectedBookFormatContract(
-        ProtocolCatalog.protectedBookFormat().applicationId(),
-        ProtocolCatalog.protectedBookFormat().formatVersion(),
+        ProtocolCatalog.runtime().protectedBookFormat().applicationId(),
+        ProtocolCatalog.runtime().protectedBookFormat().formatVersion(),
         BookCipher.fromWireValue(requiredTextField(formatNode, "cipher")),
         formatNode.path("legacyMode").booleanValue(),
         formatNode.path("pageSize").intValue(),

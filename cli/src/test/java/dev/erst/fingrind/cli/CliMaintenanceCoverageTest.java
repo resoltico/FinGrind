@@ -490,33 +490,33 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
 
     assertEquals(
         0,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.BackedUp(
                 hint(Path.of("book.sqlite")),
                 hint(Path.of("backup.sqlite")),
                 hint(Path.of("backup.key")))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.Rejected(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
                     hint(Path.of("backup.sqlite"))))));
     assertEquals(
         0,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Restored(
                 hint(Path.of("book.sqlite")),
                 hint(Path.of("backup.sqlite")),
                 hint(Path.of("backup.key")))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                     hint(Path.of("backup.sqlite")), List.of(hint(Path.of("backup.sqlite-wal")))))));
     assertEquals(
         6,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole
@@ -526,16 +526,16 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                         .PROTECTED_BOOK_VERIFICATION_FAILED))));
     assertEquals(
         0,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Inspected(hint(Path.of("book.sqlite")), List.of())));
     assertEquals(
         0,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Deleted(
                 hint(Path.of("book.sqlite")), hint(Path.of("book.rekey-rollback.sqlite")))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Rejected(
                 new BookMaintenanceRejection.NoRollbackArtifactsFound(
                     hint(Path.of("book.sqlite"))))));
@@ -614,27 +614,27 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   void maintenanceExitCodes_coverEveryRejectionFamily() {
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.Rejected(
                 new BookMaintenanceRejection.BookHasBlockingArtifacts(
                     hint(Path.of("books/entity.sqlite")),
                     List.of(hint(Path.of("books/entity.sqlite-wal")))))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                     hint(Path.of("backup/entity.sqlite")),
                     List.of(hint(Path.of("backup/entity.sqlite-wal")))))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
                     hint(Path.of("books/entity.sqlite")), hint(Path.of("backup/entity.sqlite"))))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.ArtifactBusy(
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole
@@ -642,19 +642,19 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                     hint(Path.of("backup/entity.sqlite"))))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.Rejected(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
                     hint(Path.of("backup/entity.sqlite"))))));
     assertEquals(
         7,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.Rejected(
                 new BookMaintenanceRejection.BackupKeyFileAlreadyExists(
                     hint(Path.of("backup/entity.key"))))));
     assertEquals(
         6,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RestoreBookResult.Rejected(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole
@@ -664,13 +664,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                         .PROTECTED_BOOK_VERIFICATION_FAILED))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Rejected(
                 new BookMaintenanceRejection.NoRollbackArtifactsFound(
                     hint(Path.of("books/entity.sqlite"))))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Rejected(
                 new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
                     hint(Path.of("books/entity.sqlite")),
@@ -679,13 +679,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                         hint(Path.of("books/entity.rekey-rollback-b.sqlite")))))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Rejected(
                 new BookMaintenanceRejection.RollbackArtifactNotFound(
                     hint(Path.of("books/entity.rekey-rollback.sqlite"))))));
     assertEquals(
         2,
-        CliExecutionPolicy.exitCodeFor(
+        CliAdministrativeExitCodes.exitCodeFor(
             new RekeyRollbackResult.Rejected(
                 new BookMaintenanceRejection.RollbackArtifactNotForBook(
                     hint(Path.of("books/entity.sqlite")),
@@ -920,7 +920,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void sqliteCliBookWorkflow_routesMaintenanceMethodsThroughFileServices() throws Exception {
+  void sqliteCliLifecycleWorkflow_routesMaintenanceMethodsThroughFileServices() throws Exception {
     Path tempDirectory = Files.createTempDirectory("fingrind-cli-maintenance-workflow");
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
     Path bookFile = Files.createFile(tempDirectory.resolve("book.sqlite"));
@@ -933,7 +933,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             prompt -> {
               throw new AssertionError("interactive prompt should not be used");
             });
-    SqliteCliBookWorkflow workflow = new SqliteCliBookWorkflow(Clock.systemUTC(), resolver);
+    SqliteCliLifecycleWorkflow workflow =
+        new SqliteCliLifecycleWorkflow(Clock.systemUTC(), resolver);
 
     BackupBookResult backupResult =
         workflow

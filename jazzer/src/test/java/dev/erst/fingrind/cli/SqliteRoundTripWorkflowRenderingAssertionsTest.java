@@ -83,7 +83,8 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
             SqliteRoundTripWorkflowRenderingAssertions.assertRenderedDecision(
                 () -> ContractDecision.accepted("accepted value"),
                 OutputMode.JSON,
-                (writer, value) -> writer.writeJson(java.util.Map.of("value", value)),
+                (writers, value, mode) ->
+                    writers.discovery().writeRawTemplate(java.util.Map.of("value", value)),
                 "accepted value"));
 
     assertDoesNotThrow(
@@ -93,7 +94,8 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                     ContractDecision.rejected(
                         SqliteRoundTripWorkflowTestSupport.contractFailure("rendered rejection")),
                 OutputMode.JSON,
-                (writer, value) -> writer.writeJson(java.util.Map.of("value", value)),
+                (writers, value, mode) ->
+                    writers.discovery().writeRawTemplate(java.util.Map.of("value", value)),
                 "rendered rejection"));
 
     assertDoesNotThrow(
@@ -103,13 +105,21 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                   throw new IllegalStateException("runtime render failure");
                 },
                 OutputMode.JSON,
-                (writer, value) -> writer.writeJson(java.util.Map.of("value", value)),
-                "runtime-failure"));
+                (writers, value, mode) ->
+                    writers.discovery().writeRawTemplate(java.util.Map.of("value", value)),
+                "internal-error"));
 
     assertDoesNotThrow(
         () ->
             SqliteRoundTripWorkflowRenderingAssertions.assertRenderedRuntimeFailure(
-                new IllegalStateException("boom"), OutputMode.JSON, "runtime-failure"));
+                new dev.erst.fingrind.sqlite.SqliteStorageFailureException("storage boom"),
+                OutputMode.JSON,
+                "storage-runtime-failure"));
+
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowRenderingAssertions.assertRenderedRuntimeFailure(
+                new IllegalStateException("boom"), OutputMode.JSON, "internal-error"));
   }
 
   @Test

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.IntSupplier;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -374,8 +375,7 @@ class JazzerHarnessRunnerTest {
   /** One-shot harness fixture used only to prove official runner discovery remains reachable. */
   static final class OneShotFuzzHarness extends SingleExecutionFuzzHarnessFixture {}
 
-  private record TestRunnerFactory(
-      boolean supported, Optional<JazzerHarnessRunner.JazzerRunner> runner)
+  private record TestRunnerFactory(boolean supported, Optional<IntSupplier> runner)
       implements JazzerHarnessRunner.JUnitRunnerFactory {
     @Override
     public boolean isSupported() {
@@ -383,7 +383,7 @@ class JazzerHarnessRunnerTest {
     }
 
     @Override
-    public Optional<JazzerHarnessRunner.JazzerRunner> create(String className) {
+    public Optional<IntSupplier> create(String className) {
       return runner;
     }
   }

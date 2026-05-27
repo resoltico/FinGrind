@@ -19,68 +19,13 @@ final class TrialBalancePdfRenderer {
             List.of(
                 List.of(
                     "As of",
-                    PdfValueFormatter.optionalDate(report.effectiveDateAsOf().orElse(null))))));
-    pageWriter.writeTable(
-        "Trial Balance",
-        List.of(
-            new PdfTableColumn("Account", 0.9f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Name", 1.6f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Type", 0.8f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Normal", 0.9f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Active", 0.6f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Credit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Net", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-            new PdfTableColumn("Side", 0.8f, PdfTableColumn.CellAlignment.LEFT)),
-        report.rows().stream()
-            .map(
-                row ->
-                    List.of(
-                        row.account().accountCode().value(),
-                        row.account().accountName().value(),
-                        PdfValueFormatter.displayAccountType(row.account().accountType()),
-                        PdfValueFormatter.displayAccountRole(row.account().accountRole()),
-                        PdfValueFormatter.displayNormalBalance(row.account().normalBalance()),
-                        PdfValueFormatter.displayBoolean(row.account().active()),
-                        row.balance().netAmount().currencyUnit().code(),
-                        PdfValueFormatter.displayMoney(row.balance().debitTotal()),
-                        PdfValueFormatter.displayMoney(row.balance().creditTotal()),
-                        PdfValueFormatter.displayMoney(row.balance().netAmount()),
-                        PdfValueFormatter.displayBalanceSide(row.balance().balanceSide())))
-            .toList());
+                    PdfTemporalValueFormatter.optionalDate(
+                        report.effectiveDateAsOf().orElse(null))))));
+    PdfAccountActivityTableSupport.writeTrialBalanceTable(
+        pageWriter, "Trial Balance", report.rows());
     if (!report.comparativeRows().isEmpty()) {
-      pageWriter.writeTable(
-          "Comparative Trial Balance",
-          List.of(
-              new PdfTableColumn("Account", 0.9f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Name", 1.6f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Type", 0.8f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Role", 1.0f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Normal", 0.9f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Active", 0.6f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Currency", 0.8f, PdfTableColumn.CellAlignment.LEFT),
-              new PdfTableColumn("Debit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Credit", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Net", 0.9f, PdfTableColumn.CellAlignment.RIGHT),
-              new PdfTableColumn("Side", 0.8f, PdfTableColumn.CellAlignment.LEFT)),
-          report.comparativeRows().stream()
-              .map(
-                  row ->
-                      List.of(
-                          row.account().accountCode().value(),
-                          row.account().accountName().value(),
-                          PdfValueFormatter.displayAccountType(row.account().accountType()),
-                          PdfValueFormatter.displayAccountRole(row.account().accountRole()),
-                          PdfValueFormatter.displayNormalBalance(row.account().normalBalance()),
-                          PdfValueFormatter.displayBoolean(row.account().active()),
-                          row.balance().netAmount().currencyUnit().code(),
-                          PdfValueFormatter.displayMoney(row.balance().debitTotal()),
-                          PdfValueFormatter.displayMoney(row.balance().creditTotal()),
-                          PdfValueFormatter.displayMoney(row.balance().netAmount()),
-                          PdfValueFormatter.displayBalanceSide(row.balance().balanceSide())))
-              .toList());
+      PdfAccountActivityTableSupport.writeTrialBalanceTable(
+          pageWriter, "Comparative Trial Balance", report.comparativeRows());
     }
   }
 }

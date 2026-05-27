@@ -88,9 +88,9 @@ class MachineContractRequestSchemasTest {
 
   @Test
   void canonicalTemporalSchemas_includeExactPatternsAlongsideFormatHints() {
-    Map<String, Object> dateSchema = MachineContractSchemaSupport.dateStringSchema("Date.");
+    Map<String, Object> dateSchema = MachineContractScalarSchemas.dateStringSchema("Date.");
     Map<String, Object> instantSchema =
-        MachineContractSchemaSupport.instantStringSchema("Timestamp.");
+        MachineContractScalarSchemas.instantStringSchema("Timestamp.");
 
     assertEquals("date", dateSchema.get("format"));
     assertEquals(

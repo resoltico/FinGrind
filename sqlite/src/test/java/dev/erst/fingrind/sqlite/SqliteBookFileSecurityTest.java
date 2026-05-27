@@ -188,6 +188,22 @@ class SqliteBookFileSecurityTest {
   }
 
   @Test
+  void supportedSecureFilesystemDelegate_acceptsOwnerOnlyPosixRoots() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\supported.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      assertDoesNotThrow(() -> SqliteBookFileSecurity.requireSupportedSecureFilesystem(bookPath));
+    }
+  }
+
+  @Test
   void aclFilesystemRejectsNonAllowOwnerEntriesWhenValidatingParents() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath parentPath = fileSystem.path("\\books");

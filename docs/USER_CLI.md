@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: USER_CLI
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -40,7 +40,7 @@ resolved output mode is JSON.
 Bare `help` is intentionally one short front-door overview. `capabilities` is the deep machine
 contract. `help <command>` and `<command> --help` both return command-scoped usage, options,
 executable examples, operator notes, and exit-code guidance for one selected command.
-JSON discovery output defaults to `minimal`; use `--detail compact` for stable usage, options,
+JSON discovery output defaults to `compact`; use `--detail compact` for stable usage, options,
 and output-contract descriptors, or `--detail full` when you need embedded templates, schemas,
 enum vocabularies, or the complete machine contract body in one response.
 Request-file commands such as `declare-account`, `post-entry`, `preflight-entry`, and
@@ -112,7 +112,7 @@ stdout result is JSON, the success envelope also carries one `artifacts[]` entry
 `format: "pdf"` plus one redacted public-path hint in `path`; text and CSV modes report the same hint on
 the diagnostics stream. If the report itself succeeds but the PDF write later fails, FinGrind
 still returns the primary report on stdout and emits a repair warning on the diagnostics stream
-instead of changing the command exit to `runtime-failure`. Commands that do not advertise
+ instead of replacing the successful primary result with an error envelope. Commands that do not advertise
 `--output` still publish one fixed stdout contract, either one raw JSON document or one fixed JSON
 envelope.
 
@@ -300,10 +300,11 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | `1` | invalid invocation or malformed request | text repair text by default, or `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar when a recognized machine output mode is selected explicitly |
 | `2` | deterministic refusal after the command was understood | text `Rejected`, `error`, `rejected`, or `ok` with `payload.status: "rejected"` for `execute-plan` |
 | `3` | valid `execute-plan` request whose assertion step failed | `ok` with `payload.status: "assertion-failed"` |
-| `4` | runtime failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure`, `pdf-export-failure`, or `runtime-failure` |
+| `4` | classified runtime/storage failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure` or `pdf-export-failure` |
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book passphrase, key-file, or verification failure | `error` with code `protected-book-verification-failed`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
 | `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists` or `book-maintenance-in-progress` |
+| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id, with the stack trace on the diagnostics stream |
 
 ## Common Failures
 
@@ -335,7 +336,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
-| other unexpected runtime failure outside the managed-runtime and storage families | `4` | `runtime-failure` | generic runtime-failure envelope with the thrown message and repair hint |
+| other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id; the diagnostics stream prints the same id and full stack trace |
 
 ## Notes
 

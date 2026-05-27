@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.sqlite.NullTestSupport;
 import java.io.IOException;
@@ -37,8 +38,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_publicFactoryCreatesSecureUtf8KeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("public-acme.book-key");
-    SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
-        SqliteBookKeyFileGenerator.generate(keyFile);
+    GeneratedBookKeyFile generatedKeyFile = SqliteBookKeyFileGenerator.generate(keyFile);
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertTrue(Files.isRegularFile(keyFile));
   }
@@ -46,7 +46,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_createsOneNewSecureUtf8KeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("keys").resolve("acme.book-key");
-    SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
+    GeneratedBookKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertEquals("base64url-no-padding", generatedKeyFile.encoding());
@@ -89,7 +89,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_customMaterializerFactoryReturnsAcceptedMetadataOnSuccess() throws Exception {
     Path keyFile = tempDirectory.resolve("custom-materializer.book-key");
-    SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
+    GeneratedBookKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(
             keyFile,
             deterministicRandom(),
@@ -221,28 +221,22 @@ class SqliteBookKeyFileGeneratorTest {
     IllegalArgumentException directoryException =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new SqliteBookKeyFileGenerator.GeneratedKeyFile(
-                    directoryPath, "base64url-no-padding", 256, "0600"));
+            () -> new GeneratedBookKeyFile(directoryPath, "base64url-no-padding", 256, "0600"));
     assertEquals("bookKeyFilePath must identify a regular file.", directoryException.getMessage());
     IllegalArgumentException blankEncodingException =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new SqliteBookKeyFileGenerator.GeneratedKeyFile(absentPath, " ", 256, "0600"));
+            () -> new GeneratedBookKeyFile(absentPath, " ", 256, "0600"));
     assertEquals("encoding must not be blank.", blankEncodingException.getMessage());
     IllegalArgumentException nonPositiveEntropyException =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new SqliteBookKeyFileGenerator.GeneratedKeyFile(
-                    absentPath, "base64url-no-padding", 0, "0600"));
+            () -> new GeneratedBookKeyFile(absentPath, "base64url-no-padding", 0, "0600"));
     assertEquals("entropyBits must be positive.", nonPositiveEntropyException.getMessage());
     IllegalArgumentException blankPermissionsException =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new SqliteBookKeyFileGenerator.GeneratedKeyFile(
-                    absentPath, "base64url-no-padding", 256, " "));
+            () -> new GeneratedBookKeyFile(absentPath, "base64url-no-padding", 256, " "));
     assertEquals("permissions must not be blank.", blankPermissionsException.getMessage());
   }
 

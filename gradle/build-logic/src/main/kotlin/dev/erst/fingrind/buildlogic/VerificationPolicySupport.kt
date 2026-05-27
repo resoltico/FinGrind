@@ -206,8 +206,8 @@ abstract class VerifyJacksonDependencyPolicyTask : DefaultTask() {
     }
 }
 
-private fun File.invariantSeparatorsPath(): String = path.replace(File.separatorChar, '/')
-private fun File.displayPath(projectDir: File): String =
+internal fun File.invariantSeparatorsPath(): String = path.replace(File.separatorChar, '/')
+internal fun File.displayPath(projectDir: File): String =
     runCatching { relativeTo(projectDir).invariantSeparatorsPath() }.getOrElse { invariantSeparatorsPath() }
 
 private val legacyJacksonModuleRequirePattern =

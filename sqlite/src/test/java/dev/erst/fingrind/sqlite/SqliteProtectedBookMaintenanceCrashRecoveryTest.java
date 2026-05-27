@@ -9,7 +9,9 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedBookReplacement;
+import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
 import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOException;
@@ -63,7 +65,7 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     assertFalse(Files.exists(backupBookKeyFilePath));
     assertNoStageArtifacts(backupBookKeyFilePath, ".backup-key-", ".tmp");
 
-    try (ProtectedBookMaintenanceStore.StagedBackupPair stagedBackupPair =
+    try (StagedBackupPair stagedBackupPair =
         acceptedValue(
             maintenanceStore()
                 .stageBackupPair(
@@ -90,7 +92,7 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
 
     assertEquals("previous", Files.readString(targetPath));
 
-    try (ProtectedBookMaintenanceStore.StagedBookReplacement stagedReplacement =
+    try (StagedBookReplacement stagedReplacement =
         maintenanceStore().stageReplacement(sourcePath, targetPath)) {
       stagedReplacement.commit();
     }
@@ -113,7 +115,7 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
 
     assertTrue(Files.exists(rollbackArtifactPath));
 
-    try (ProtectedBookMaintenanceStore.StagedRollbackArtifactDeletion stagedDeletion =
+    try (StagedRollbackArtifactDeletion stagedDeletion =
         maintenanceStore().stageRollbackArtifactDeletion(rollbackArtifactPath)) {
       stagedDeletion.commit();
     }

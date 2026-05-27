@@ -11,8 +11,16 @@ import java.util.Comparator;
 final class SqliteRoundTripWorkflowResources {
   private SqliteRoundTripWorkflowResources() {}
 
-  static SqliteCliBookWorkflow sqliteWorkflow() {
-    return new SqliteCliBookWorkflow(CliFuzzFixtures.fixedClock(), passphraseResolver());
+  static CliBookLifecycleWorkflow sqliteLifecycleWorkflow() {
+    return new SqliteCliLifecycleWorkflow(CliFuzzFixtures.fixedClock(), passphraseResolver());
+  }
+
+  static CliBookMutationWorkflow sqliteMutationWorkflow() {
+    return new SqliteCliMutationWorkflow(CliFuzzFixtures.fixedClock(), passphraseResolver());
+  }
+
+  static CliBookReadWorkflow sqliteReadWorkflow() {
+    return new SqliteCliReadWorkflow(passphraseResolver());
   }
 
   static CliBookPassphraseResolver passphraseResolver() {

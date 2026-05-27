@@ -23,6 +23,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.InMemoryBookFixtureMutations;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -220,24 +221,26 @@ class CliFuzzFixturesTest {
   void lifecycle_helpers_manage_books_accounts_and_fail_fast_on_drift() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(bookSession);
+          CliFuzzWorkflowFixtures.administrationService(bookSession);
       var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
 
-      CliFuzzFixtures.openBook(administrationService);
+      CliFuzzWorkflowFixtures.openBook(administrationService);
       assertThrows(
-          IllegalStateException.class, () -> CliFuzzFixtures.openBook(administrationService));
+          IllegalStateException.class,
+          () -> CliFuzzWorkflowFixtures.openBook(administrationService));
 
       java.util.List<DeclaredAccount> declaredAccounts =
-          CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+          CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
       assertEquals(2, declaredAccounts.size());
       assertEquals(
-          CliFuzzFixtures.firstAccountCode(command), declaredAccounts.getFirst().accountCode());
-      assertEquals(2, CliFuzzFixtures.listAccounts(bookSession).size());
+          CliFuzzSyntheticAccountFixtures.firstAccountCode(command),
+          declaredAccounts.getFirst().accountCode());
+      assertEquals(2, CliFuzzAccountFixtures.listAccounts(bookSession).size());
 
       DeclaredAccount firstAccount = declaredAccounts.getFirst();
-      bookSession.deactivateAccount(firstAccount.accountCode());
+      InMemoryBookFixtureMutations.deactivateAccount(bookSession, firstAccount.accountCode());
       DeclaredAccount restoredAccount =
-          CliFuzzFixtures.reactivateAccount(administrationService, firstAccount);
+          CliFuzzAccountFixtures.reactivateAccount(administrationService, firstAccount);
       assertTrue(restoredAccount.active());
       assertEquals(firstAccount.declaredAt(), restoredAccount.declaredAt());
     }
@@ -248,7 +251,7 @@ class CliFuzzFixturesTest {
     var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
 
     assertTrue(
-        CliFuzzFixtures.declarePostingAccountCommands(command).stream()
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(command).stream()
             .noneMatch(
                 declareAccountCommand ->
                     declareAccountCommand.accountRole() != AccountRole.ORDINARY
@@ -296,7 +299,7 @@ class CliFuzzFixturesTest {
                 AccountType.REVENUE,
                 AccountRole.ORDINARY,
                 profitAndLossTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE))),
-        CliFuzzFixtures.declarePostingAccountCommands(cashRevenueCommand));
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(cashRevenueCommand));
     assertEquals(
         List.of(
             declaredAccountCommand(
@@ -309,7 +312,7 @@ class CliFuzzFixturesTest {
                 AccountType.ASSET,
                 AccountRole.ORDINARY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET))),
-        CliFuzzFixtures.declarePostingAccountCommands(cashExpenseCommand));
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(cashExpenseCommand));
     assertEquals(
         List.of(
             declaredAccountCommand(
@@ -323,7 +326,7 @@ class CliFuzzFixturesTest {
                 AccountRole.ORDINARY,
                 financialPositionTaxonomy(
                     FinancialPositionLineClassification.EQUITY_CONTRIBUTION))),
-        CliFuzzFixtures.declarePostingAccountCommands(equityContributionCommand));
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(equityContributionCommand));
     assertEquals(
         List.of(
             declaredAccountCommand(
@@ -336,7 +339,7 @@ class CliFuzzFixturesTest {
                 AccountType.ASSET,
                 AccountRole.ORDINARY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET))),
-        CliFuzzFixtures.declarePostingAccountCommands(equityWithdrawalCommand));
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(equityWithdrawalCommand));
   }
 
   @Test
@@ -424,13 +427,16 @@ class CliFuzzFixturesTest {
 
     assertEquals(
         List.of("1000", "3000"),
-        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(openingBalanceCommand)));
+        accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(openingBalanceCommand)));
     assertEquals(
         List.of("5000", "6000"),
-        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(correctionCommand)));
+        accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(correctionCommand)));
     assertEquals(
         List.of("1000", "2000"),
-        accountCodes(CliFuzzFixtures.declarePostingAccountCommands(reversalCommand)));
+        accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(reversalCommand)));
   }
 
   @Test
@@ -449,7 +455,7 @@ class CliFuzzFixturesTest {
             hashedFallbackCodeForBucket(4));
 
     Map<String, AccountType> accountTypes =
-        CliFuzzFixtures.declarePostingAccountCommands(command).stream()
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(command).stream()
             .collect(
                 java.util.stream.Collectors.toMap(
                     declareAccountCommand -> declareAccountCommand.accountCode().value(),
@@ -464,18 +470,19 @@ class CliFuzzFixturesTest {
   void lifecycle_helpers_reject_uninitialized_service_states() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(bookSession);
+          CliFuzzWorkflowFixtures.administrationService(bookSession);
       var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
       DeclaredAccount account =
           declaredAccount(new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, false);
 
       assertThrows(
           IllegalStateException.class,
-          () -> CliFuzzFixtures.declarePostingAccounts(administrationService, command));
-      assertThrows(IllegalStateException.class, () -> CliFuzzFixtures.listAccounts(bookSession));
+          () -> CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command));
+      assertThrows(
+          IllegalStateException.class, () -> CliFuzzAccountFixtures.listAccounts(bookSession));
       assertThrows(
           IllegalStateException.class,
-          () -> CliFuzzFixtures.reactivateAccount(administrationService, account));
+          () -> CliFuzzAccountFixtures.reactivateAccount(administrationService, account));
     }
   }
 
@@ -503,7 +510,7 @@ class CliFuzzFixturesTest {
                     dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
                     dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
                     CliFuzzFixtures.fixedClock().instant(),
-                    CliFuzzFixtures.bookIdentity()),
+                    CliFuzzWorkflowFixtures.bookIdentity()),
             new AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
@@ -534,7 +541,7 @@ class CliFuzzFixturesTest {
                     dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
                     dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
                     CliFuzzFixtures.fixedClock().instant(),
-                    CliFuzzFixtures.bookIdentity()),
+                    CliFuzzWorkflowFixtures.bookIdentity()),
             new AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
@@ -559,13 +566,14 @@ class CliFuzzFixturesTest {
             CliFuzzFixtures.fixedClock());
 
     assertThrows(
-        IllegalStateException.class, () -> CliFuzzFixtures.openBook(driftedOpenBookService));
+        IllegalStateException.class,
+        () -> CliFuzzWorkflowFixtures.openBook(driftedOpenBookService));
     assertThrows(
         IllegalStateException.class,
-        () -> CliFuzzFixtures.reactivateAccount(inactiveReactivationService, account));
+        () -> CliFuzzAccountFixtures.reactivateAccount(inactiveReactivationService, account));
     assertThrows(
         IllegalStateException.class,
-        () -> CliFuzzFixtures.reactivateAccount(changedDeclaredAtService, account));
+        () -> CliFuzzAccountFixtures.reactivateAccount(changedDeclaredAtService, account));
   }
 
   @Test
@@ -582,7 +590,7 @@ class CliFuzzFixturesTest {
           @Override
           public BookLifecycleInspection inspectBook() {
             return new BookLifecycleInspection.Initialized(
-                7, 1, 1, Instant.EPOCH, CliFuzzFixtures.bookIdentity());
+                7, 1, 1, Instant.EPOCH, CliFuzzWorkflowFixtures.bookIdentity());
           }
 
           @Override
@@ -599,7 +607,8 @@ class CliFuzzFixturesTest {
           }
         };
 
-    assertEquals(List.of(firstAccount, secondAccount), CliFuzzFixtures.listAccounts(pagedStore));
+    assertEquals(
+        List.of(firstAccount, secondAccount), CliFuzzAccountFixtures.listAccounts(pagedStore));
     assertEquals(List.of(Optional.empty(), Optional.of(nextCursor)), cursors);
   }
 

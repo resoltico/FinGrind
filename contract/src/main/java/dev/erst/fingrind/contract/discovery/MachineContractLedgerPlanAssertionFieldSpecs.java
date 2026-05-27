@@ -14,7 +14,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.required(
         ProtocolLedgerPlanFields.Assertion.KIND,
         description,
-        MachineContractSchemaSupport.enumStringSchema(
+        MachineContractScalarSchemas.enumStringSchema(
             description, LedgerAssertionKind.wireValues()));
   }
 
@@ -23,7 +23,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.required(
         ProtocolLedgerPlanFields.Assertion.KIND,
         description,
-        MachineContractSchemaSupport.constSchema(kind.wireValue(), description));
+        MachineContractScalarSchemas.constSchema(kind.wireValue(), description));
   }
 
   static MachineContractFieldSpec conditionalAssertionAccountCodeField() {
@@ -31,7 +31,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE,
         description,
-        MachineContractSchemaSupport.nonBlankStringSchema(description));
+        MachineContractScalarSchemas.nonBlankStringSchema(description));
   }
 
   static MachineContractFieldSpec requiredAssertionAccountCodeField() {
@@ -47,7 +47,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.POSTING_ID,
         description,
-        MachineContractSchemaSupport.nonBlankStringSchema(description));
+        MachineContractScalarSchemas.nonBlankStringSchema(description));
   }
 
   static MachineContractFieldSpec requiredAssertionPostingIdField() {
@@ -62,7 +62,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM,
         description,
-        MachineContractSchemaSupport.dateStringSchema(description));
+        MachineContractScalarSchemas.dateStringSchema(description));
   }
 
   static MachineContractFieldSpec optionalAssertionEffectiveDateFromField() {
@@ -78,7 +78,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO,
         description,
-        MachineContractSchemaSupport.dateStringSchema(description));
+        MachineContractScalarSchemas.dateStringSchema(description));
   }
 
   static MachineContractFieldSpec optionalAssertionEffectiveDateToField() {
@@ -97,7 +97,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.NET_AMOUNT,
         description,
-        MachineContractSchemaSupport.moneyObjectSchema(description, false));
+        MachineContractScalarSchemas.moneyObjectSchema(description, false));
   }
 
   static MachineContractFieldSpec requiredAssertionNetAmountField() {
@@ -115,7 +115,7 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE,
         description,
-        MachineContractSchemaSupport.enumStringSchema(description, BalanceSide.wireValues()));
+        MachineContractScalarSchemas.enumStringSchema(description, BalanceSide.wireValues()));
   }
 
   static MachineContractFieldSpec requiredAssertionBalanceSideField() {

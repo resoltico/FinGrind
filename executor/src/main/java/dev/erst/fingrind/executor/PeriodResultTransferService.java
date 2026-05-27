@@ -1,11 +1,15 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlan;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection;
+import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -64,10 +68,9 @@ public final class PeriodResultTransferService {
             KernelAccountingRulesResolver.forBookIdentity(initialized.bookIdentity())
                 .resultTransferPolicy());
     List<RegisteredAccount> accounts = accountCatalogStore.allAccounts();
-    PeriodResultTransferPlanner.ResultHoldingSelection resultHoldingSelection =
+    ResultHoldingSelection resultHoldingSelection =
         planner.resultHoldingAccount(initialized.bookIdentity(), accounts);
-    if (resultHoldingSelection
-        instanceof PeriodResultTransferPlanner.RejectedResultHoldingSelection rejected) {
+    if (resultHoldingSelection instanceof RejectedResultHoldingSelection rejected) {
       return new PeriodResultTransferOutcome.Rejected(rejected.rejection());
     }
 
@@ -83,9 +86,8 @@ public final class PeriodResultTransferService {
 
     Instant transferredAt = clock.instant();
     RegisteredAccount resultHoldingAccount =
-        ((PeriodResultTransferPlanner.AcceptedResultHoldingSelection) resultHoldingSelection)
-            .account();
-    PeriodResultTransferPlanner.PeriodResultTransferPlan closePlan =
+        ((AcceptedResultHoldingSelection) resultHoldingSelection).account();
+    PeriodResultTransferPlan closePlan =
         planner.closingPostings(
             reportingPeriod,
             resultHoldingAccount,

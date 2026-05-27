@@ -221,7 +221,7 @@ final class SqliteRoundTripWorkflowTestSupport {
     @Override
     public BookLifecycleInspection inspectBook() {
       return new BookLifecycleInspection.Initialized(
-          7, 1, 1, CliFuzzFixtures.fixedClock().instant(), CliFuzzFixtures.bookIdentity());
+          7, 1, 1, CliFuzzFixtures.fixedClock().instant(), CliFuzzWorkflowFixtures.bookIdentity());
     }
 
     @Override

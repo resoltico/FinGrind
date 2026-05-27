@@ -45,4 +45,12 @@ final class CliDiagnosticsWriter {
     diagnosticsStream.println();
     diagnosticsStream.flush();
   }
+
+  void writeInternalError(String errorId, Throwable throwable) {
+    Objects.requireNonNull(errorId, "errorId");
+    Objects.requireNonNull(throwable, "throwable");
+    diagnosticsStream.println("[internal-error] " + errorId);
+    throwable.printStackTrace(diagnosticsStream);
+    diagnosticsStream.flush();
+  }
 }

@@ -37,11 +37,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path managedParent =
         java.util.Objects.requireNonNull(artifactPath.getParent(), "artifactPath parent");
 
-    try (SqliteBookMaintenanceLease.HeldLease heldLease =
+    try (SqliteHeldLease heldLease =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.HeldLease.class,
+            SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteBookMaintenanceLease.LeaseIntent.MANAGED_TARGET))) {
+                artifactPath, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
       assertTrue(Files.isDirectory(managedParent, LinkOption.NOFOLLOW_LINKS));
       assertEquals(artifactPath.toAbsolutePath().normalize(), heldLease.artifactPath());
       assertTrue(Files.exists(leasePath));
@@ -59,7 +59,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteBookMaintenanceLease.acquire(
-                    artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                    artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
 
     assertTrue(
         NullTestSupport.messageOf(exception)
@@ -77,7 +77,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteBookMaintenanceLease.acquire(
-                    artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                    artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
 
     assertTrue(
         NullTestSupport.messageOf(exception).contains("existing regular artifact file"),
@@ -89,17 +89,17 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path artifactPath = writeArtifact("duplicate.sqlite", "content");
     Path leasePath = leasePath(artifactPath);
 
-    try (SqliteBookMaintenanceLease.HeldLease ignored =
+    try (SqliteHeldLease ignored =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.HeldLease.class,
+            SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT))) {
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertTrue(
           NullTestSupport.messageOf(exception).contains("already owns"),
           () -> NullTestSupport.messageOf(exception));
@@ -113,16 +113,16 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   void acquire_returnsBusyWhenTheCurrentProcessHasOneOpenBookConnection() throws Exception {
     Path artifactPath = writeArtifact("busy.sqlite", "content");
 
-    SqliteNativeBootstrap.recordOpeningConnection(artifactPath);
+    SqliteNativeRuntimeActivity.recordOpeningConnection(artifactPath);
     try {
-      SqliteBookMaintenanceLease.LeaseBusy leaseBusy =
+      SqliteLeaseBusy leaseBusy =
           assertInstanceOf(
-              SqliteBookMaintenanceLease.LeaseBusy.class,
+              SqliteLeaseBusy.class,
               SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertEquals(artifactPath.toAbsolutePath().normalize(), leaseBusy.artifactPath());
     } finally {
-      SqliteNativeBootstrap.recordConnectionClosed(artifactPath);
+      SqliteNativeRuntimeActivity.recordConnectionClosed(artifactPath);
     }
   }
 
@@ -147,11 +147,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
         StandardOpenOption.WRITE);
     SqliteBookFileSecurity.hardenOwnerOnlyFile(markerPath);
 
-    SqliteBookMaintenanceLease.LeaseBusy leaseBusy =
+    SqliteLeaseBusy leaseBusy =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.LeaseBusy.class,
+            SqliteLeaseBusy.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
     assertEquals(artifactPath.toAbsolutePath().normalize(), leaseBusy.artifactPath());
   }
 
@@ -186,11 +186,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path artifactPath = writeArtifact("owned.sqlite", "content");
     Path leasePath = leasePath(artifactPath);
 
-    try (SqliteBookMaintenanceLease.HeldLease heldLease =
+    try (SqliteHeldLease heldLease =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.HeldLease.class,
+            SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT))) {
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
       assertDoesNotThrow(() -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
       assertTrue(Files.exists(leasePath));
       heldLease.close();
@@ -207,11 +207,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path liveLeasePath = leasePath(liveArtifactPath);
     writeLeaseMetadata(liveLeasePath, SqliteProcessIdentity.current().leaseMetadataText());
 
-    SqliteBookMaintenanceLease.LeaseBusy liveBusy =
+    SqliteLeaseBusy liveBusy =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.LeaseBusy.class,
+            SqliteLeaseBusy.class,
             SqliteBookMaintenanceLease.acquire(
-                liveArtifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                liveArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
     assertEquals(liveArtifactPath, liveBusy.artifactPath());
     assertTrue(Files.exists(liveLeasePath));
 
@@ -221,11 +221,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Files.setLastModifiedTime(
         malformedLeasePath, FileTime.from(Instant.now().minus(Duration.ofMinutes(10))));
 
-    try (SqliteBookMaintenanceLease.HeldLease heldLease =
+    try (SqliteHeldLease heldLease =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.HeldLease.class,
+            SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                malformedArtifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT))) {
+                malformedArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
       assertEquals(malformedArtifactPath, heldLease.artifactPath());
       assertTrue(Files.exists(leasePath(malformedArtifactPath)));
     }
@@ -293,7 +293,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
               IllegalStateException.class,
               () ->
                   SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertTrue(NullTestSupport.messageOf(openFailure).contains("Failed to acquire"));
     }
 
@@ -312,7 +312,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
               IllegalStateException.class,
               () ->
                   SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertTrue(NullTestSupport.messageOf(writeFailure).contains("Failed to acquire"));
     }
   }
@@ -323,11 +323,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path leasePath = leasePath(artifactPath);
     writeLeaseMetadata(leasePath, "pid=99999999\nstartEpochMillis=-1\n");
 
-    try (SqliteBookMaintenanceLease.HeldLease heldLease =
+    try (SqliteHeldLease heldLease =
         assertInstanceOf(
-            SqliteBookMaintenanceLease.HeldLease.class,
+            SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT))) {
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
       assertEquals(artifactPath, heldLease.artifactPath());
       assertTrue(Files.exists(leasePath));
     }
@@ -354,11 +354,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       leasePath.regularFile = true;
       leasePath.failNewByteChannelAfter(1, new NoSuchFileException(leasePath.toString()));
 
-      try (SqliteBookMaintenanceLease.HeldLease heldLease =
+      try (SqliteHeldLease heldLease =
           assertInstanceOf(
-              SqliteBookMaintenanceLease.HeldLease.class,
+              SqliteHeldLease.class,
               SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT))) {
+                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
         assertEquals(artifactPath, heldLease.artifactPath());
         assertTrue(leasePath.exists);
       }
@@ -381,11 +381,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       leasePath.regularFile = true;
       leasePath.preserveExistingEntryOnDeleteIfExists();
 
-      SqliteBookMaintenanceLease.LeaseBusy leaseBusy =
+      SqliteLeaseBusy leaseBusy =
           assertInstanceOf(
-              SqliteBookMaintenanceLease.LeaseBusy.class,
+              SqliteLeaseBusy.class,
               SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
 
       assertEquals(artifactPath, leaseBusy.artifactPath());
       assertTrue(leasePath.exists);
@@ -411,7 +411,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
               IllegalStateException.class,
               () ->
                   SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteBookMaintenanceLease.LeaseIntent.EXISTING_ARTIFACT));
+                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
 
       assertTrue(NullTestSupport.messageOf(exception).contains("Failed to acquire"));
       assertEquals(

@@ -85,7 +85,7 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
             new BookAccess(
                 tempDirectory.resolve("book-passphrase.sqlite"),
                 new BookAccess.PassphraseSource.KeyFile(keyFile)))) {
-      assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
+      assertEquals("key file", passphrase.sourceDescription());
       assertEquals(TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
     }
   }

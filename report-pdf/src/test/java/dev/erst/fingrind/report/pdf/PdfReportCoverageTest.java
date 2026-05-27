@@ -53,7 +53,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.47.0",
+                "0.48.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -69,7 +69,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.47.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.48.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -151,9 +151,9 @@ class PdfReportCoverageTest {
 
   @Test
   void reportThemeRejectsOutOfRangeGrayValues() {
-    assertEquals(1f, PdfReportTheme.normalizedGray(255));
-    assertThrows(IllegalArgumentException.class, () -> PdfReportTheme.normalizedGray(-1));
-    assertThrows(IllegalArgumentException.class, () -> PdfReportTheme.normalizedGray(256));
+    assertEquals(1f, PdfReportTheme.grayscale().normalized(255));
+    assertThrows(IllegalArgumentException.class, () -> PdfReportTheme.grayscale().normalized(-1));
+    assertThrows(IllegalArgumentException.class, () -> PdfReportTheme.grayscale().normalized(256));
   }
 
   @Test
@@ -170,7 +170,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.47.0");
+    return new PdfDocumentFactory("FinGrind", "0.48.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {

@@ -21,7 +21,7 @@ final class CliDiscoveryResponseWriter {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(
+                CliEnvelopeMapper.successEnvelope(
                     CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail))),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor)),
         () -> {
@@ -37,7 +37,7 @@ final class CliDiscoveryResponseWriter {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(
+                CliEnvelopeMapper.successEnvelope(
                     CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
                         capabilitiesDescriptor, detail))),
         () ->
@@ -51,9 +51,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(environmentDescriptor)),
+        () -> outputChannel.writeEnvelope(CliEnvelopeMapper.successEnvelope(environmentDescriptor)),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderEnvironmentText(environmentDescriptor)),
@@ -65,9 +63,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliResponsePayloadMapper.successEnvelope(versionDescriptor)),
+        () -> outputChannel.writeEnvelope(CliEnvelopeMapper.successEnvelope(versionDescriptor)),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderVersionText(versionDescriptor)),

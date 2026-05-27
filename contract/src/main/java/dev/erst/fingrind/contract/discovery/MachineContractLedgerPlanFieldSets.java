@@ -8,28 +8,28 @@ final class MachineContractLedgerPlanFieldSets {
 
   static List<MachineContractFieldSpec> topLevelFields() {
     return List.of(
-        MachineContractLedgerPlanStepQueryFieldSpecs.planIdField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.stepsField());
+        MachineContractLedgerPlanStructureFieldSpecs.planIdField(),
+        MachineContractLedgerPlanStructureFieldSpecs.stepsField());
   }
 
   static List<MachineContractFieldSpec> stepFields() {
     return List.of(
-        MachineContractLedgerPlanStepQueryFieldSpecs.stepIdField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.genericStepKindField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalPostingField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalDeclareAccountField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalQueryField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalAssertionField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalPostingIdField());
+        MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+        MachineContractLedgerPlanStructureFieldSpecs.genericStepKindField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalPostingField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalDeclareAccountField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalQueryField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalAssertionField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalPostingIdField());
   }
 
   static List<MachineContractFieldSpec> queryFields() {
     return List.of(
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalAccountCodeQueryField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalEffectiveDateFromQueryField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalEffectiveDateToQueryField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalLimitField(),
-        MachineContractLedgerPlanStepQueryFieldSpecs.conditionalCursorField());
+        MachineContractLedgerPlanQueryFieldSpecs.conditionalAccountCodeQueryField(),
+        MachineContractLedgerPlanQueryFieldSpecs.conditionalEffectiveDateFromQueryField(),
+        MachineContractLedgerPlanQueryFieldSpecs.conditionalEffectiveDateToQueryField(),
+        MachineContractLedgerPlanQueryFieldSpecs.conditionalLimitField(),
+        MachineContractLedgerPlanQueryFieldSpecs.conditionalCursorField());
   }
 
   static List<MachineContractFieldSpec> assertionFields() {

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.47.0"
+version: "0.48.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-26"
+updated: "2026-05-27"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -407,6 +407,46 @@ public final class ProtocolLedgerPlanFields
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
 
+## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
+
+These protocol field-set owners are the canonical accepted-field registries across public request
+families.
+
+```java
+public final class ProtocolBookRequestFieldSets
+public final class ProtocolPostingRequestFieldSets
+public final class ProtocolLedgerPlanRequestFieldSets
+```
+
+- Purpose: keep JSON schema descriptors, CLI request validation, and docs aligned on one
+  allowed-field registry instead of hand-maintained accepted-key sets in multiple surfaces
+- Scope: `ProtocolBookRequestFieldSets` owns explicit field inventories for `open-book` and
+  `declare-account`; `ProtocolPostingRequestFieldSets` owns posting top-level and nested objects;
+  `ProtocolLedgerPlanRequestFieldSets` owns ledger-plan top-level, step, query, and assertion
+  objects
+- Boundary: these types own accepted-field inventories only; scalar grammar, requiredness, and
+  nested object semantics remain owned by the narrower protocol field classes and request-shape
+  descriptors
+
+## `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog`
+
+These catalog owners split the top-level protocol registry into bounded public subcatalogs.
+
+```java
+public final class ProtocolEnvelopeCatalog
+public final class ProtocolDomainCatalog
+public final class ProtocolRuntimeCatalog
+public final class ProtocolDistributionCatalog
+public final class ProtocolManagedSqliteCatalog
+```
+
+- Purpose: keep envelope defaults, domain facts, runtime facts, distribution facts, and managed
+  SQLite facts owned by explicit catalog roots instead of one swollen registry type
+- Scope: `ProtocolCatalog` composes these catalogs into the public discovery surface without
+  collapsing their ownership boundaries
+- Boundary: each catalog owns one coherent slice of public protocol metadata and leaves field-level
+  structure to the narrower protocol field owners above
+
 ## `MachineContract`
 
 `MachineContract` is the public discovery assembler for `help`, `version`, `capabilities`,
@@ -543,9 +583,10 @@ public final class ContractFailureException extends IllegalStateException
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `protected-book-verification-failed`, `managed-runtime-failure`,
-  `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`, plus
-  the published process `exitCode` for each deterministic machine error
+  `invalid-page-cursor`, `protected-book-verification-failed`, `internal-error`,
+  `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
+  `interactive-prompt-unavailable`, plus the published process `exitCode` for each deterministic
+  machine error
 - `invalid-request` now advertises structured `detailFields` when the malformed request reaches
   aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
   set of detected issues

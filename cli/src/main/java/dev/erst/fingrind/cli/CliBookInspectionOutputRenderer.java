@@ -26,14 +26,14 @@ final class CliBookInspectionOutputRenderer {
                         List.of("State", displayStatus(status)),
                         List.of(
                             "Initialized",
-                            CliQueryOutputFormatter.displayBooleanLabel(status.initialized())),
+                            CliQueryScopeText.displayBooleanLabel(status.initialized())),
                         List.of(
                             "Compatible with current binary",
-                            CliQueryOutputFormatter.displayBooleanLabel(
+                            CliQueryScopeText.displayBooleanLabel(
                                 status.compatibleWithCurrentBinary())),
                         List.of(
                             CliOperationText.initializeWithOpenBookLabel(),
-                            CliQueryOutputFormatter.displayBooleanLabel(
+                            CliQueryScopeText.displayBooleanLabel(
                                 status.canInitializeWithOpenBook()))),
                     TEXT_WRAP_WIDTH)),
             section(
@@ -59,13 +59,13 @@ final class CliBookInspectionOutputRenderer {
         List.of("Migration policy", displayMigrationPolicyMode(migrationPolicy.mode())),
         List.of(
             "In-place upgrade supported",
-            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.inPlaceUpgradeSupported())),
+            CliQueryScopeText.displayBooleanLabel(migrationPolicy.inPlaceUpgradeSupported())),
         List.of(
             "Older book formats accepted",
-            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.olderFormatsAccepted())),
+            CliQueryScopeText.displayBooleanLabel(migrationPolicy.olderFormatsAccepted())),
         List.of(
             "Newer book formats accepted",
-            CliQueryOutputFormatter.displayBooleanLabel(migrationPolicy.newerFormatsAccepted())));
+            CliQueryScopeText.displayBooleanLabel(migrationPolicy.newerFormatsAccepted())));
   }
 
   private static List<List<String>> formatDetailRows(BookInspection inspection) {
@@ -122,12 +122,11 @@ final class CliBookInspectionOutputRenderer {
       ResultTransferReadiness resultTransferReadiness) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(
-        List.of(
-            "Ready", CliQueryOutputFormatter.displayBooleanLabel(resultTransferReadiness.ready())));
+        List.of("Ready", CliQueryScopeText.displayBooleanLabel(resultTransferReadiness.ready())));
     rows.add(
         List.of(
             "Required result-holding classification",
-            CliQueryOutputFormatter.displayFinancialPositionLineClassification(
+            CliAccountStatementLabels.displayFinancialPositionLineClassification(
                 resultTransferReadiness.requiredFinancialPositionLineClassification())));
     rows.add(
         List.of(

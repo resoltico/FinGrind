@@ -35,6 +35,8 @@ object DistributionContractReader {
             projectRootDirectory,
             DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
             loadContractSchema(projectRootDirectory).managedSqlite.requiredCompileOptions,
+            requireExplicitKey = true,
+            requireNonEmpty = true,
         )
 
     fun forbiddenSqliteCompileOptions(projectRootDirectory: Path): List<String> =
@@ -42,6 +44,8 @@ object DistributionContractReader {
             projectRootDirectory,
             DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
             loadContractSchema(projectRootDirectory).managedSqlite.forbiddenCompileOptions,
+            requireExplicitKey = true,
+            requireNonEmpty = true,
         )
 
     fun requiresSecureMemorySupport(projectRootDirectory: Path): Boolean =
