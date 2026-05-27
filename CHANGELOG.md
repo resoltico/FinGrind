@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the public-container verification contract so the mounted `trial-balance --output text`
+  check now proves the current published section surface instead of an older pre-refactor header
+  ordering. The verifier and its regression harness now assert the active `Trial Balance`,
+  status, totals, accounts, and context blocks independently, matching the shipped container
+  output used by release publication.
+
 ## [0.48.0] - 2026-05-27
 
 ### Changed

@@ -297,46 +297,52 @@ TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
-As of            : 2026-04-08
-
-Current totals
---------------
 As of         : 2026-04-08
 Balance state : Balanced
 
+Current totals
+--------------
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
 EUR      |       10.00 |        10.00 |       0.00 | Zero
 
+Accounts
+--------
 Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------+-------------+--------------+------------+-------------
 1000    | Cash    | USD      |       10.00 |         0.00 |      10.00 | Debit
 2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+
+Context
+-------
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01
+Posting coverage : All posting kinds
 TEXT
                 else
                     cat <<TEXT
 Trial Balance
 =============
 
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
-As of            : 2026-04-08
-
-Current totals
---------------
 As of         : 2026-04-08
 Balance state : Balanced
 
+Current totals
+--------------
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
 EUR      |       10.00 |        10.00 |       0.00 | Zero
 
+Accounts
+--------
 Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------+-------------+--------------+------------+-------------
 1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
 2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+
+Context
+-------
+Book             : Release Protocol Fixture | Currency EUR | FY 01-01
+Posting coverage : All posting kinds
 TEXT
                 fi
                 ;;
