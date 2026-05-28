@@ -119,7 +119,7 @@ final class CliPeriodSummaryReportRenderer {
                     report.currencyTotals().isEmpty()
                         ? java.util.stream.Stream.of(
                             List.of(
-                                "empty",
+                                CliCsvEmptyKinds.SECTION_EMPTY,
                                 "currency",
                                 "",
                                 "",
@@ -178,7 +178,7 @@ final class CliPeriodSummaryReportRenderer {
                     report.accountActivity().isEmpty()
                         ? java.util.stream.Stream.of(
                             List.of(
-                                "empty",
+                                CliCsvEmptyKinds.SECTION_EMPTY,
                                 "account",
                                 "",
                                 "",

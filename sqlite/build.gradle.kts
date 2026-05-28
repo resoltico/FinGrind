@@ -70,7 +70,6 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
-    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite.secret", "ALL-UNNAMED")
 }
 
 val stageRefreshedProtectedBookFixtureForTestRuntime =
@@ -90,7 +89,6 @@ tasks.named<Test>("test") {
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
-    addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite.secret", "ALL-UNNAMED")
 }
 
 tasks.named<Pmd>("pmdTest") {

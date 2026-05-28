@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: DEVELOPER_JAVA
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -65,12 +65,12 @@ FinGrind contributors using the host-native path should therefore treat:
 Reasons:
 - the wrapper pins FinGrind's actual Gradle version and downloads the official Gradle distribution
   declared by the repository
-- source-driven Gradle and the developer direct-Java wrappers use the ambient shell `java`, not
-  Gradle toolchains
+- source-driven Gradle uses the repository-owned Java 26 toolchain contract after the wrapper JVM
+  launches, while the developer direct-Java wrappers use the ambient shell `java`
 - the public packaged CLI bundles its own Java 26 runtime instead of depending on ambient shell
   Java
-- FinGrind's SQLite adapter relies on Java 26 FFM, so shell Java and Gradle-launched Java must
-  both meet the same baseline
+- FinGrind's SQLite adapter relies on Java 26 FFM, so product compilation, tests, and packaging
+  must all resolve the same Java 26 baseline through the repo-owned toolchain contract
 - CI already runs on Java 26, so local shells should match that contract
 - `https://openjdk.org` is the upstream project source of truth for Java 26 release status
 - the Java 26 macOS AArch64 binary must be selected from the OpenJDK links published from
@@ -229,7 +229,7 @@ normal repo work here.
 
 FinGrind's product modules, runtime baseline, and shared included build logic all target Java 26.
 
-`gradle/build-logic` now compiles with Kotlin `2.4.0-RC` and emits JVM 26 bytecode directly.
+`gradle/build-logic` now compiles with Kotlin `2.4.0-RC2` and emits JVM 26 bytecode directly.
 `./gradlew --version` still reports the Kotlin version embedded in the Gradle distribution itself;
 that discovery output is not the authoritative owner of the build-logic Kotlin plugin pin.
 The Kotlin build-logic pin is still an intentionally temporary prerelease choice; move it to the
@@ -259,6 +259,8 @@ Current practical result:
 
 Known pitfalls:
 - the developer direct-Java wrappers do not use Gradle toolchains
+- assuming `./check.sh` requires an ambient Java 26 product JDK in the shell; the wrapper only
+  needs a launch JVM, while Gradle toolchains own the product baseline
 - Homebrew `gradle` declares a dependency on `openjdk`, which can reintroduce Java drift during
   unrelated Brew upgrades
 - `~/.zprofile` alone is not enough for terminals that start interactive non-login shells
@@ -314,9 +316,10 @@ Run those commands from a real terminal session.
 
 Why:
 - local shell startup files are what make Java 26 the default `java`
-- the public packaged CLI bundles its own runtime, while source-driven Gradle and the
-  developer direct-Java wrappers depend on the ambient launcher runtime
-- Gradle toolchains complement the shell JDK; they do not replace it
+- the public packaged CLI bundles its own runtime, while the developer direct-Java wrappers depend
+  on the ambient launcher runtime
+- Gradle toolchains own FinGrind's product JDK baseline after the wrapper launches, while direct
+  Java wrapper flows remain explicit ambient-runtime workflows
 
 ## Maintenance Guidance
 

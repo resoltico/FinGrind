@@ -239,7 +239,7 @@ final class CliChangesInEquityReportRenderer {
     return java.util.stream.Stream.of(
         List.of(
             reportBasis,
-            "empty",
+            CliCsvEmptyKinds.REPORT_EMPTY,
             effectiveDateFrom,
             effectiveDateTo,
             "",

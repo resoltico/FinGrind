@@ -2,9 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.nio.file.Path;
 
 /** Public factory for SQLite-backed read sessions. */

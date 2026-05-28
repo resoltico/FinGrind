@@ -6,7 +6,6 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.time.Instant;
 
 /** Owns protected-book maintenance audit persistence for SQLite-backed workflows. */

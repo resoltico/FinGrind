@@ -457,11 +457,6 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 )
                 addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
                 addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
-                addOpens(
-                    "dev.erst.fingrind.sqlite",
-                    "dev.erst.fingrind.sqlite.secret",
-                    "ALL-UNNAMED",
-                )
                 systemProperty(jazzerTestProjectRootProperty, layout.projectDirectory.asFile.absolutePath)
                 doFirst {
                     addTestListener(JazzerDeterministicTestPulseListener())

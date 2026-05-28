@@ -8,8 +8,6 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

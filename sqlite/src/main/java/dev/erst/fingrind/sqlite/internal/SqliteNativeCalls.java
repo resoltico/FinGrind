@@ -1,12 +1,9 @@
 package dev.erst.fingrind.sqlite.internal;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandleProxies;
-import java.util.Objects;
 
-/** Typed adapters over raw SQLite method handles so callers avoid raw bridge signatures. */
-public final class SqliteNativeCalls {
+/** Typed SQLite native-call interfaces used by the FFM bridge. */
+public interface SqliteNativeCalls {
   /** Functional view of {@code sqlite3_open_v2}. */
   @FunctionalInterface
   public interface OpenV2Call {
@@ -156,114 +153,5 @@ public final class SqliteNativeCalls {
   public interface AddressIntIntToIntCall {
     /** Invokes the adapted native call. */
     int invoke(MemorySegment value, int left, int right);
-  }
-
-  private SqliteNativeCalls() {}
-
-  /** Adapts one raw method handle to the typed {@code sqlite3_open_v2} view. */
-  public static OpenV2Call openV2(MethodHandle handle) {
-    return adapt(OpenV2Call.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address) -> int} view. */
-  public static AddressToIntCall addressToInt(MethodHandle handle) {
-    return adapt(AddressToIntCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, int) -> int} view. */
-  public static AddressIntToIntCall addressIntToInt(MethodHandle handle) {
-    return adapt(AddressIntToIntCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, int) -> long} view. */
-  public static AddressIntToLongCall addressIntToLong(MethodHandle handle) {
-    return adapt(AddressIntToLongCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, int, long) -> int} view. */
-  public static AddressIntLongToIntCall addressIntLongToInt(MethodHandle handle) {
-    return adapt(AddressIntLongToIntCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, address, int) -> int} view. */
-  public static AddressAddressIntToIntCall addressAddressIntToInt(MethodHandle handle) {
-    return adapt(AddressAddressIntToIntCall.class, handle);
-  }
-
-  /**
-   * Adapts one raw method handle to the typed {@code (address, address, address, int) -> int} view.
-   */
-  public static AddressAddressAddressIntToIntCall addressAddressAddressIntToInt(
-      MethodHandle handle) {
-    return adapt(AddressAddressAddressIntToIntCall.class, handle);
-  }
-
-  /**
-   * Adapts one raw method handle to the typed {@code (address, address, int, address) -> int} view.
-   */
-  public static AddressAddressIntAddressToIntCall addressAddressIntAddressToInt(
-      MethodHandle handle) {
-    return adapt(AddressAddressIntAddressToIntCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code sqlite3_exec} view. */
-  public static ExecCall exec(MethodHandle handle) {
-    return adapt(ExecCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code sqlite3_prepare_v2} view. */
-  public static PrepareV2Call prepareV2(MethodHandle handle) {
-    return adapt(PrepareV2Call.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code sqlite3_bind_text} view. */
-  public static BindTextCall bindText(MethodHandle handle) {
-    return adapt(BindTextCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, int) -> address} view. */
-  public static AddressIntToAddressCall addressIntToAddress(MethodHandle handle) {
-    return adapt(AddressIntToAddressCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address) -> address} view. */
-  public static AddressToAddressCall addressToAddress(MethodHandle handle) {
-    return adapt(AddressToAddressCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (int) -> address} view. */
-  public static IntToAddressCall intToAddress(MethodHandle handle) {
-    return adapt(IntToAddressCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed no-argument address-returning view. */
-  public static NoArgAddressCall noArgAddress(MethodHandle handle) {
-    return adapt(NoArgAddressCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address) -> long} view. */
-  public static AddressToLongCall addressToLong(MethodHandle handle) {
-    return adapt(AddressToLongCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address) -> void} view. */
-  public static AddressToVoidCall addressToVoid(MethodHandle handle) {
-    return adapt(AddressToVoidCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed no-argument integer-returning view. */
-  public static NoArgIntCall noArgInt(MethodHandle handle) {
-    return adapt(NoArgIntCall.class, handle);
-  }
-
-  /** Adapts one raw method handle to the typed {@code (address, int, int) -> int} view. */
-  public static AddressIntIntToIntCall addressIntIntToInt(MethodHandle handle) {
-    return adapt(AddressIntIntToIntCall.class, handle);
-  }
-
-  private static <T> T adapt(Class<T> interfaceType, MethodHandle handle) {
-    Objects.requireNonNull(interfaceType, "interfaceType");
-    Objects.requireNonNull(handle, "handle");
-    return interfaceType.cast(MethodHandleProxies.asInterfaceInstance(interfaceType, handle));
   }
 }

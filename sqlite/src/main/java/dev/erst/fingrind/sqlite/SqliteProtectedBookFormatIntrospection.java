@@ -3,10 +3,10 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +53,14 @@ final class SqliteProtectedBookFormatIntrospection {
   }
 
   private static CipherSettings openedBookCipherSettings(SqliteNativeDatabase database) {
-    return cipherSettings(database.handle(), database.sqliteApi());
+    BookCipher cipher = configuredCipher(database);
+    String cipherName = cipher.wireValue();
+    return new CipherSettings(
+        cipher,
+        database.protectedBookRuntime().cipherParameter(cipherName, "legacy") != 0,
+        database.protectedBookRuntime().cipherParameter(cipherName, "legacy_page_size"),
+        database.protectedBookRuntime().cipherParameter(cipherName, "kdf_iter"),
+        database.protectedBookRuntime().cipherParameter(cipherName, "plaintext_header_size"));
   }
 
   private static CipherSettings cipherSettings(
@@ -75,7 +82,8 @@ final class SqliteProtectedBookFormatIntrospection {
         SqliteNativeInvocation.invoke(
             "Failed to read the SQLite3MC cipher name.",
             () ->
-                SqliteNativeCalls.intToAddress(sqliteApi.sqlite3mcCipherName())
+                SqliteNativeCallAdapter.adapt(
+                        SqliteNativeCalls.IntToAddressCall.class, sqliteApi.sqlite3mcCipherName())
                     .invoke(cipherIndex));
     if (cipherNamePointer == null || cipherNamePointer.equals(MemorySegment.NULL)) {
       throw new IllegalStateException(
@@ -85,6 +93,11 @@ final class SqliteProtectedBookFormatIntrospection {
         SqliteNativeErrors.cString(cipherNamePointer, SqliteNativeBootstrap.strlen()));
   }
 
+  private static BookCipher configuredCipher(SqliteNativeDatabase database) {
+    int cipherIndex = database.protectedBookRuntime().runtimeParameter("cipher");
+    return BookCipher.fromWireValue(database.protectedBookRuntime().cipherName(cipherIndex));
+  }
+
   private static int config(
       @Nullable MemorySegment databaseHandle, String parameterName, SqliteNativeApi sqliteApi) {
     try (Arena arena = Arena.ofConfined()) {
@@ -92,7 +105,9 @@ final class SqliteProtectedBookFormatIntrospection {
           SqliteNativeInvocation.invoke(
               "Failed to read one SQLite3MC runtime parameter.",
               () ->
-                  SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3mcConfig())
+                  SqliteNativeCallAdapter.adapt(
+                          SqliteNativeCalls.AddressAddressIntToIntCall.class,
+                          sqliteApi.sqlite3mcConfig())
                       .invoke(
                           nullableHandle(databaseHandle), arena.allocateFrom(parameterName), -1));
       if (value < 0) {
@@ -115,7 +130,9 @@ final class SqliteProtectedBookFormatIntrospection {
           SqliteNativeInvocation.invoke(
               "Failed to read one SQLite3MC cipher parameter.",
               () ->
-                  SqliteNativeCalls.addressAddressAddressIntToInt(sqliteApi.sqlite3mcConfigCipher())
+                  SqliteNativeCallAdapter.adapt(
+                          SqliteNativeCalls.AddressAddressAddressIntToIntCall.class,
+                          sqliteApi.sqlite3mcConfigCipher())
                       .invoke(
                           nullableHandle(databaseHandle),
                           arena.allocateFrom(cipherName),
@@ -134,24 +151,7 @@ final class SqliteProtectedBookFormatIntrospection {
   }
 
   private static int fileControlReserveBytes(SqliteNativeDatabase database) {
-    SqliteNativeApi sqliteApi = database.sqliteApi();
-    try (Arena arena = Arena.ofConfined()) {
-      MemorySegment reservedBytesPointer = arena.allocate(ValueLayout.JAVA_INT);
-      int resultCode =
-          SqliteNativeInvocation.invokeSqlite(
-              "Failed to inspect SQLite reserve bytes.",
-              () ->
-                  SqliteNativeCalls.addressAddressIntAddressToInt(sqliteApi.sqlite3FileControl())
-                      .invoke(
-                          database.handle(),
-                          MemorySegment.NULL,
-                          SQLITE_FCNTL_RESERVE_BYTES,
-                          reservedBytesPointer));
-      if (resultCode != SqliteNativeResultCodes.OK) {
-        throw SqliteNativeErrors.failure(resultCode, sqliteApi);
-      }
-      return reservedBytesPointer.get(ValueLayout.JAVA_INT, 0L);
-    }
+    return database.protectedBookRuntime().fileControlReserveBytes(SQLITE_FCNTL_RESERVE_BYTES);
   }
 
   private static MemorySegment nullableHandle(@Nullable MemorySegment databaseHandle) {

@@ -6,8 +6,7 @@ import java.util.Objects;
 
 /** Stable user-facing diagnostics identifiers emitted on the auxiliary CLI stream. */
 public enum ProtocolDiagnosticCode implements WireValue {
-  PDF_EXPORTED("pdf-exported"),
-  PDF_EXPORT_WARNING("pdf-export-warning");
+  PDF_EXPORTED("pdf-exported");
 
   private final String wireValue;
 

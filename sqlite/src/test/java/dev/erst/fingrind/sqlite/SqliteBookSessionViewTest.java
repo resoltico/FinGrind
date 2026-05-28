@@ -43,7 +43,6 @@ import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;

@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Objects;

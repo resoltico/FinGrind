@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;

@@ -12,8 +12,6 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;

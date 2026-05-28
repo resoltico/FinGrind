@@ -7,7 +7,6 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BookVerification;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.util.Objects;
 

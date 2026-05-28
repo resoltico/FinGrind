@@ -23,6 +23,7 @@ readonly build_logic_dir="${repo_root}/gradle/build-logic"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly repo_hygiene_verifier="${repo_root}/scripts/verify-repo-hygiene.sh"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
+readonly structural_governance_verifier="${repo_root}/scripts/verify-structural-governance.sh"
 
 print_usage() {
     printf '%s\n' \
@@ -30,8 +31,9 @@ print_usage() {
         '' \
         'Runs the canonical Stage 1 verification surface:' \
         '  1. ./scripts/verify-repo-hygiene.sh' \
-        '  2. ./gradlew check coverage' \
-        '  3. ./gradlew -p gradle/build-logic test' \
+        '  2. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin' \
+        '  3. ./gradlew check coverage' \
+        '  4. ./gradlew -p gradle/build-logic check' \
         '' \
         'Any remaining arguments are forwarded to both Gradle invocations.' \
         'Use ./check.sh for the full six-stage repository gate.'
@@ -66,6 +68,10 @@ done
     printf 'error: missing Python runtime support helper at %s\n' "${python_runtime_support}" >&2
     exit 1
 }
+[[ -x "${structural_governance_verifier}" ]] || {
+    printf 'error: missing executable structural governance verifier at %s\n' "${structural_governance_verifier}" >&2
+    exit 1
+}
 
 # shellcheck source=/dev/null
 source "${repo_lock_support}"
@@ -76,5 +82,6 @@ acquire_lock
 prepare_python_runtime_env
 
 "${repo_hygiene_verifier}"
+"${structural_governance_verifier}" --surface build-logic-kotlin
 "${gradlew}" check coverage "$@"
-"${gradlew}" -p "${build_logic_dir}" test "$@"
+"${gradlew}" -p "${build_logic_dir}" check "$@"

@@ -8,8 +8,6 @@ import java.util.Objects;
 final class CliDiagnosticsWriter {
   private static final String PDF_EXPORT_INFO_MESSAGE_PREFIX =
       "Wrote the requested PDF report artifact to ";
-  private static final String PDF_EXPORT_WARNING_HINT =
-      "Inspect the selected --pdf-out destination, its parent directory permissions, and the available filesystem space, then rerun the command if you still need the PDF artifact.";
 
   private final PrintStream diagnosticsStream;
 
@@ -25,22 +23,6 @@ final class CliDiagnosticsWriter {
                 ProtocolDiagnosticCode.PDF_EXPORTED.wireValue(),
                 PDF_EXPORT_INFO_MESSAGE_PREFIX + CliPublicPaths.redactedValue(outputPath),
                 null,
-                "--pdf-out")));
-    diagnosticsStream.println();
-    diagnosticsStream.flush();
-  }
-
-  void writePdfExportWarning(RuntimeException exception) {
-    Objects.requireNonNull(exception, "exception");
-    String message =
-        Objects.requireNonNullElse(
-            exception.getMessage(), "Failed to render or write the requested PDF report artifact.");
-    diagnosticsStream.print(
-        CliFailureOutputRenderer.renderWarningText(
-            new CliFailure(
-                ProtocolDiagnosticCode.PDF_EXPORT_WARNING.wireValue(),
-                message,
-                PDF_EXPORT_WARNING_HINT,
                 "--pdf-out")));
     diagnosticsStream.println();
     diagnosticsStream.flush();

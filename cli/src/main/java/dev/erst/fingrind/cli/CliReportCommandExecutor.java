@@ -187,13 +187,8 @@ final class CliReportCommandExecutor {
   }
 
   private @Nullable Path exportPdf(Path outputPath, Consumer<Path> pdfExport) {
-    try {
-      pdfExport.accept(outputPath);
-      return outputPath.toAbsolutePath().normalize();
-    } catch (RuntimeException exception) {
-      diagnosticsWriter.writePdfExportWarning(exception);
-      return null;
-    }
+    pdfExport.accept(outputPath);
+    return outputPath.toAbsolutePath().normalize();
   }
 
   private void writePdfExportInfo(OutputMode outputMode, @Nullable Path outputPath) {

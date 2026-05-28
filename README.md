@@ -69,23 +69,26 @@ fingrind capabilities --output json
 Trial Balance
 =============
 
-Book             : Acme Studio | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
-As of            : 2026-04-08
+As of         : 2026-04-08
+Balance state : Balanced
 
 Current totals
 --------------
-As of    : 2026-04-08
-Balanced : Yes
-
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | ZERO
+EUR      |       10.00 |        10.00 |       0.00 | Zero
 
+Accounts
+--------
 Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------+-------------+--------------+------------+-------------
 1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
 2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+
+Context
+-------
+Book             : Acme Studio | Currency EUR | FY 01-01
+Posting coverage : All posting kinds
 ```
 
 Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced

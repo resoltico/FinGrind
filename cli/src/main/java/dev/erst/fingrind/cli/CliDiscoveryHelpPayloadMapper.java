@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -228,10 +227,7 @@ final class CliDiscoveryHelpPayloadMapper {
             command ->
                 new CliDiscoveryJsonModels.CommandIndexPayload(
                     command.name(),
-                    ProtocolCatalog.operation(command.name())
-                        .category()
-                        .name()
-                        .toLowerCase(Locale.ROOT),
+                    ProtocolCatalog.operation(command.name()).category().wireValue(),
                     command.summary()))
         .toList();
   }
@@ -243,10 +239,7 @@ final class CliDiscoveryHelpPayloadMapper {
             command ->
                 new CliDiscoveryJsonModels.CommandNamePayload(
                     command.name(),
-                    ProtocolCatalog.operation(command.name())
-                        .category()
-                        .name()
-                        .toLowerCase(Locale.ROOT)))
+                    ProtocolCatalog.operation(command.name()).category().wireValue()))
         .toList();
   }
 }

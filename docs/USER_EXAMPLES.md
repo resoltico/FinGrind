@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: USER_EXAMPLES
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -490,8 +490,8 @@ These report commands keep JSON as the default machine surface, while `--output 
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
 is selected on stdout, the success envelope also publishes one redacted PDF path hint under
 `artifacts[]`. Text and CSV stdout flows emit an info diagnostic with the same redacted written-path hint. If the
-artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
-diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
+artifact write fails, the command returns one deterministic `pdf-export-failure` error instead of
+publishing a successful report. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.
 
 ## Book Must Exist And Be Opened

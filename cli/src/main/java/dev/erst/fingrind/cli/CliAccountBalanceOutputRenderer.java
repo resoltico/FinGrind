@@ -82,7 +82,7 @@ final class CliAccountBalanceOutputRenderer {
         snapshot.balances().isEmpty()
             ? List.of(
                 List.of(
-                    "empty",
+                    CliCsvEmptyKinds.SCOPE_EMPTY,
                     snapshot.account().accountCode().value(),
                     snapshot.account().accountName().value(),
                     snapshot.account().accountType().wireValue(),

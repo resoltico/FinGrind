@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Contract-lint tests for documentation indexes and routed reference symbols. */
-class ProtocolDocumentationIndexLintTest extends ProtocolContractLintSupport {
+class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSupport {
   private static final Pattern RELATIVE_DOC_LINK_PATTERN =
       Pattern.compile("\\]\\(\\./([^)]+\\.md)\\)");
   private static final Pattern VERSION_FRONTMATTER_PATTERN =

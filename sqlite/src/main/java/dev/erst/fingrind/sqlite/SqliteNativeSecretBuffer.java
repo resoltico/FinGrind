@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;

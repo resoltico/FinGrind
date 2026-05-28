@@ -35,9 +35,7 @@ public final class ContractErrors {
         "Command failed because SQLite storage or book-handle execution encountered a runtime problem outside the deterministic caller contract.",
         4),
     PDF_EXPORT_FAILURE(
-        "pdf-export-failure",
-        "Command completed its core work but failed while exporting the requested PDF artifact.",
-        4),
+        "pdf-export-failure", "Command failed while exporting the requested PDF artifact.", 4),
     INVALID_PAGE_CURSOR(
         "invalid-page-cursor",
         "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.",

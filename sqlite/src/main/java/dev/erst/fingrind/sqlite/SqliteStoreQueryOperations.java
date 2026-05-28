@@ -191,7 +191,7 @@ final class SqliteStoreQueryOperations {
         "Failed to query SQLite book.",
         activeDatabase ->
             context
-                .postingReader()
+                .postingBalanceReader()
                 .loadAccountTotals(activeDatabase, range, requiredPostingCoverage));
   }
 

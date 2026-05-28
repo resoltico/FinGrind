@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
@@ -68,10 +68,10 @@ public sealed interface BookkeepingLookupOutcome<T>
   `accountLedger(...)`, `periodSummary(...)`, `financialPosition(...)`,
   `incomeStatement(...)`, and `changesInEquity(...)`
 - Lookup variants: `Found`, `Missing`, `Rejected`
-- Statement computation owners: `BookkeepingStatementService` now coordinates
+- Statement computation owners: `BookkeepingReportingService` now coordinates
   `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and
-  `ChangesInEquityStatementCalculator` instead of carrying all statement doctrine in one read
-  service collaborator
+  `ChangesInEquityStatementCalculator` inside `executor.bookkeeping.reporting` instead of
+  carrying all statement doctrine inside the read-service collaborator
 - Boundary: this service stays inside the bookkeeping context and returns only local lifecycle,
   lookup, query-rejection, and report-view outcomes
 

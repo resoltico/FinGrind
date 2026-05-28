@@ -1,9 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
@@ -20,6 +20,31 @@ import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport {
+  @Test
+  void close_defaultPublishesActivityMarkerOverload_closesOneOpenedHandle() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    Path bookPath = tempDirectory.resolve("native-close-overload.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath);
+    assertEquals(
+        activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+    Object[] sqliteApiArguments = defaultSqliteApiArguments();
+    sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+        MethodHandles.insertArguments(
+            MethodHandles.lookup()
+                .findStatic(
+                    SqliteNativeBridgeTestSupport.class,
+                    "recordCloseCall",
+                    MethodType.methodType(int.class, AtomicInteger.class, MemorySegment.class)),
+            0,
+            closeCalls);
+    SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+    assertDoesNotThrow(
+        () -> SqliteNativeConnections.close(MemorySegment.ofAddress(1L), bookPath, sqliteApi));
+    assertEquals(1, closeCalls.get());
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
   @Test
   void open_wrapsUnexpectedThrowableFromOpenInvocation() throws Exception {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
@@ -607,6 +632,14 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               () -> SqliteNativeConnections.requireOpenConfigurationSuccess(14, sqliteApi));
       assertEquals("SQLITE_CANTOPEN", exception.getMessage());
     }
+  }
+
+  @Test
+  void requireOpenConfigurationSuccess_acceptsOkResult() {
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeConnections.requireOpenConfigurationSuccess(
+                SqliteNativeResultCodes.OK, SqliteNativeBootstrap.api()));
   }
 
   private static SqliteNativeDatabase hardenOpenedDatabase(

@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.time.Instant;
 
 /** Rekey-only wrapper over the shared SQLite store core. */

@@ -12,13 +12,18 @@ final class CliAccountPageOutputRenderer {
         page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
     String summary =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Returned accounts", Integer.toString(page.accounts().size())),
-                List.of("Limit", Integer.toString(page.limit())),
-                List.of("Next cursor", nextCursor)));
+            page.accounts().isEmpty()
+                ? List.of(
+                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("accounts")),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of("Next cursor", nextCursor))
+                : List.of(
+                    List.of("Returned accounts", Integer.toString(page.accounts().size())),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of("Next cursor", nextCursor)));
     String accounts =
         page.accounts().isEmpty()
-            ? CliQueryScopeText.noMatchesLabel("accounts")
+            ? ""
             : CliTextFormat.renderTable(
                 List.of("Account", "Name", "Type", "Statement line", "Parent", "Normal", "Active"),
                 page.accounts().stream()
@@ -80,7 +85,7 @@ final class CliAccountPageOutputRenderer {
         page.accounts().isEmpty()
             ? List.of(
                 List.of(
-                    "empty",
+                    CliCsvEmptyKinds.SCOPE_EMPTY,
                     "",
                     "",
                     "",

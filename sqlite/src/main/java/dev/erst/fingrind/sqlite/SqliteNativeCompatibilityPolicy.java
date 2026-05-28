@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
@@ -154,7 +155,8 @@ final class SqliteNativeCompatibilityPolicy {
       return SqliteNativeInvocation.invoke(
           "Failed to read the SQLite compile option: " + compileOption,
           () ->
-              SqliteNativeCalls.addressToInt(compileOptionUsedHandle)
+              SqliteNativeCallAdapter.adapt(
+                          SqliteNativeCalls.AddressToIntCall.class, compileOptionUsedHandle)
                       .invoke(arena.allocateFrom(compileOption))
                   != 0);
     }

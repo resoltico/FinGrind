@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
 import java.nio.file.Path;
 import java.util.Objects;
 

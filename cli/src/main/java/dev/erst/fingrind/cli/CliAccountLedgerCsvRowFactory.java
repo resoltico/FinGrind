@@ -85,7 +85,7 @@ final class CliAccountLedgerCsvRowFactory {
 
   static List<String> emptyRow(AccountLedgerReport report) {
     return ledgerCsvRow(
-        "empty",
+        CliCsvEmptyKinds.SCOPE_EMPTY,
         CliAccountLedgerCsvColumns.reportColumns(
             report, report.bookIdentity().functionalCurrency().code()),
         CliAccountLedgerCsvColumns.blankSummaryBalanceColumns(),

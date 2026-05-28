@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;

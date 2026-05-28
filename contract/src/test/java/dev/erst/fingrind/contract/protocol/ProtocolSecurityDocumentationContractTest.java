@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Guards the canonical security-model reference against contract drift. */
-class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupport {
+class ProtocolSecurityDocumentationContractTest extends ProtocolContractRepositorySupport {
   @Test
   void developerSecurityReference_coversCanonicalSecurityFacts() throws IOException {
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
@@ -216,7 +216,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.48.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.49.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {

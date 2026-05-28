@@ -2,8 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 
 /** Public factory for SQLite-backed rekey sessions. */
 public final class SqliteRekeySessions {

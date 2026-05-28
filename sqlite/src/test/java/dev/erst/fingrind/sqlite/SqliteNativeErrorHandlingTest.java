@@ -70,6 +70,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                         MethodHandles.constant(
                             MemorySegment.class,
                             arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.4"));
+                    assertFalse(database.diagnostics().errorMessage().isBlank());
                     assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
                     assertEquals(
                         "3.53.1", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
