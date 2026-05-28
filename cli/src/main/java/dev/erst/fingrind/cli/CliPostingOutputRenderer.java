@@ -81,15 +81,22 @@ final class CliPostingOutputRenderer {
   static String renderPostingRegisterText(PostingPage page) {
     String summary =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Returned postings", Integer.toString(page.postings().size())),
-                List.of("Limit", Integer.toString(page.limit())),
-                List.of(
-                    "Next cursor",
-                    page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
+            page.postings().isEmpty()
+                ? List.of(
+                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("postings")),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of(
+                        "Next cursor",
+                        page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)")))
+                : List.of(
+                    List.of("Returned postings", Integer.toString(page.postings().size())),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of(
+                        "Next cursor",
+                        page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
     String postings =
         page.postings().isEmpty()
-            ? CliQueryScopeText.noMatchesLabel("postings")
+            ? ""
             : CliTextFormat.renderTable(
                 List.of(
                     "Effective date", "Origin", "Role", "Debit", "Credit", "Accounts", "Posting"),
@@ -141,7 +148,7 @@ final class CliPostingOutputRenderer {
         page.postings().isEmpty()
             ? List.of(
                 List.of(
-                    "empty",
+                    CliCsvEmptyKinds.SCOPE_EMPTY,
                     "",
                     "",
                     "",

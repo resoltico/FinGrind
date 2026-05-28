@@ -18,8 +18,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

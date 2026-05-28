@@ -17,8 +17,8 @@ val fingrindJavaVersion =
 plugins {
     // This pin stays prerelease only until the matching stable Kotlin 2.4.x line is available
     // and verified against FinGrind's included-build/plugin surface.
-    kotlin("jvm") version "2.4.0-RC"
-    kotlin("plugin.sam.with.receiver") version "2.4.0-RC"
+    kotlin("jvm") version "2.4.0-RC2"
+    kotlin("plugin.sam.with.receiver") version "2.4.0-RC2"
     `java-gradle-plugin`
 }
 

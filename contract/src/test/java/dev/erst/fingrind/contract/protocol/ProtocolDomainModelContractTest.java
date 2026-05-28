@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Guards the canonical bounded-context and vocabulary theory against drift. */
-class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
+class ProtocolDomainModelContractTest extends ProtocolContractRepositorySupport {
   @Test
   void developerDomainModelReference_coversCanonicalContextMap() throws IOException {
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_DOMAIN_MODEL.md"));

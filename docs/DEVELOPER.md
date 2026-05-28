@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: DEVELOPER
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -234,7 +234,7 @@ Generated-state stance:
 | Java | 26 |
 | Python helper toolchain | Python 3.12 in CI, `uv` 0.11.15 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.5.1 |
-| Kotlin build logic | 2.4.0-RC in `gradle/build-logic`, emitting JVM 26 bytecode |
+| Kotlin build logic | 2.4.0-RC2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, generated source-checkout launchers, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
 | Jackson Databind | 3.1.3 |
@@ -244,7 +244,7 @@ Generated-state stance:
 | PMD | 7.24.0 |
 
 The build-logic Kotlin pin is intentionally prerelease:
-- Kotlin build logic: `2.4.0-RC`
+- Kotlin build logic: `2.4.0-RC2`
 
 Treat that as a temporary compatibility-sensitive choice rather than a steady-state baseline.
 Removal trigger: move to the matching stable `2.4.x` line as soon as that release is available

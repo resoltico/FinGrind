@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -10,6 +9,7 @@ class SqliteStoreContext {
   private final Path bookPath;
   private final SqliteStoreAccessMode accessMode;
   private final SqlitePostingReader postingReader;
+  private final SqlitePostingBalanceReader postingBalanceReader;
   private final SqliteReportReader reportReader;
   private final SqliteBookStateReader bookStateReader;
   private final Supplier<SqliteNativeApi> sqliteApiSupplier;
@@ -22,7 +22,8 @@ class SqliteStoreContext {
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
     this.sqliteApiSupplier = Objects.requireNonNull(sqliteApiSupplier, "sqliteApiSupplier");
     this.postingReader = new SqlitePostingReader();
-    this.reportReader = new SqliteReportReader(postingReader);
+    this.postingBalanceReader = new SqlitePostingBalanceReader();
+    this.reportReader = new SqliteReportReader(postingReader, postingBalanceReader);
     this.bookStateReader = SqliteBookContract.BOOK_STATE_READER;
   }
 
@@ -36,6 +37,10 @@ class SqliteStoreContext {
 
   SqlitePostingReader postingReader() {
     return postingReader;
+  }
+
+  SqlitePostingBalanceReader postingBalanceReader() {
+    return postingBalanceReader;
   }
 
   SqliteReportReader reportReader() {

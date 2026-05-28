@@ -314,12 +314,34 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String comparativeTrialBalanceText =
         CliReportOutputRenderer.renderTrialBalanceText(comparativeWithoutReference);
 
+    assertTrue(emptyAccountsText.contains("Outcome"));
     assertTrue(emptyAccountsText.contains("No accounts matched the selected scope."));
+    assertFalse(emptyAccountsText.contains("Returned accounts"));
+    assertTrue(emptyPostingsText.contains("Outcome"));
     assertTrue(emptyPostingsText.contains("No postings matched the selected scope."));
+    assertFalse(emptyPostingsText.contains("Returned postings"));
     assertTrue(emptyLedgerText.contains("Entries"));
     assertTrue(emptyLedgerText.contains("No ledger entries matched the selected scope."));
     assertTrue(comparativeTrialBalanceText.contains("Comparative Trial Balance"));
     assertTrue(comparativeTrialBalanceText.contains("(none)"));
+  }
+
+  @Test
+  void renderPostingRegisterText_rendersNextCursorForEmptyPostingScope() {
+    PostingPageCursor nextCursor =
+        new PostingPageCursor(
+            LocalDate.parse("2026-04-30"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            new PostingId("posting-1"));
+
+    String emptyPostingsText =
+        CliPostingOutputRenderer.renderPostingRegisterText(
+            postingPage(List.of(), 10, Optional.of(nextCursor)));
+
+    assertTrue(emptyPostingsText.contains("Outcome"));
+    assertTrue(emptyPostingsText.contains("No postings matched the selected scope."));
+    assertTrue(emptyPostingsText.contains(nextCursor.wireValue()));
+    assertFalse(emptyPostingsText.contains("Returned postings"));
   }
 
   @Test

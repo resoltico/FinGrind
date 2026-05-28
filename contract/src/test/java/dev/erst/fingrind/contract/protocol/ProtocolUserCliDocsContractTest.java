@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Locks the public CLI guide command table to the canonical protocol catalog. */
-class ProtocolUserCliDocsContractTest extends ProtocolContractLintSupport {
+class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport {
   private static final Pattern RELEASE_NUMBERED_LAUNCHER_PATH_PATTERN =
       Pattern.compile(
           "fingrind-\\d+\\.\\d+\\.\\d+-[^\\s`/\\\\]+(?:/bin/fingrind|\\\\bin\\\\fingrind\\.ps1)");
@@ -61,5 +61,25 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractLintSupport {
     assertTrue(examplesGuide.contains(".\\secrets\\acme.book-key"));
     assertFalse(examplesGuide.contains("./backup/acme.book-key"));
     assertFalse(examplesGuide.contains(".\\backup\\acme.book-key"));
+  }
+
+  @Test
+  void readmeQuickStartTrialBalanceBlock_matchesCanonicalExampleFixture() throws IOException {
+    String readme = Files.readString(repositoryRoot().resolve("README.md")).replace("\r\n", "\n");
+    String expected =
+        Files.readString(repositoryRoot().resolve("docs/examples/trial-balance-text.txt"))
+            .replace("\r\n", "\n");
+
+    assertEquals(expected.stripTrailing(), extractReadmeTrialBalanceBlock(readme).stripTrailing());
+  }
+
+  private static String extractReadmeTrialBalanceBlock(String readme) {
+    String marker = "\n```\nTrial Balance\n=============\n";
+    int markerIndex = readme.indexOf(marker);
+    assertTrue(markerIndex >= 0, "README.md must publish the quick-start trial-balance block.");
+    int contentStart = markerIndex + "\n```\n".length();
+    int contentEnd = readme.indexOf("\n```", contentStart);
+    assertTrue(contentEnd >= 0, "README.md quick-start trial-balance block must close cleanly.");
+    return readme.substring(contentStart, contentEnd + 1);
   }
 }

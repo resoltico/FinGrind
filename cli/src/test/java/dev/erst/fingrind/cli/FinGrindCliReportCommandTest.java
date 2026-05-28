@@ -482,7 +482,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_preservesReportStdoutWhenPdfExportFails() throws IOException {
+  void run_failsCommandWhenPdfExportFails() throws IOException {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path blockedParent = tempDirectory.resolve("blocked output parent");
@@ -510,9 +510,10 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
               pdfOutputPath.toString()
             });
 
-    assertEquals(0, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"ok\"");
-    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("pdf-export-warning"));
-    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
+    assertEquals(4, exitCode);
+    assertJsonContains(outputStream, "\"code\":\"pdf-export-failure\"");
+    assertJsonContains(outputStream, "\"status\":\"error\"");
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
+    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 }

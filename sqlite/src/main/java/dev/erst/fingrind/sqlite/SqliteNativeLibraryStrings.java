@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
@@ -13,7 +14,9 @@ final class SqliteNativeLibraryStrings {
         "Failed to read the SQLite library version.",
         () -> {
           MemorySegment versionPointer =
-              SqliteNativeCalls.noArgAddress(libraryVersionHandle).invoke();
+              SqliteNativeCallAdapter.adapt(
+                      SqliteNativeCalls.NoArgAddressCall.class, libraryVersionHandle)
+                  .invoke();
           return SqliteNativeErrors.cString(versionPointer, strlenHandle);
         });
   }
@@ -23,7 +26,9 @@ final class SqliteNativeLibraryStrings {
     return SqliteNativeInvocation.invoke(
         "Failed to read the SQLite3 Multiple Ciphers library version.",
         () -> {
-          MemorySegment versionPointer = SqliteNativeCalls.noArgAddress(versionHandle).invoke();
+          MemorySegment versionPointer =
+              SqliteNativeCallAdapter.adapt(SqliteNativeCalls.NoArgAddressCall.class, versionHandle)
+                  .invoke();
           String loadedVersion = SqliteNativeErrors.cString(versionPointer, strlenHandle);
           return loadedVersion.replace("SQLite3 Multiple Ciphers ", "").strip();
         });
@@ -33,7 +38,10 @@ final class SqliteNativeLibraryStrings {
     return SqliteNativeInvocation.invoke(
         "Failed to read the SQLite source id.",
         () -> {
-          MemorySegment sourceIdPointer = SqliteNativeCalls.noArgAddress(sourceIdHandle).invoke();
+          MemorySegment sourceIdPointer =
+              SqliteNativeCallAdapter.adapt(
+                      SqliteNativeCalls.NoArgAddressCall.class, sourceIdHandle)
+                  .invoke();
           return SqliteNativeErrors.cString(sourceIdPointer, strlenHandle);
         });
   }

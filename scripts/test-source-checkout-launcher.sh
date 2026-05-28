@@ -44,6 +44,7 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly launcher_wrapper="${repo_root}/scripts/source-checkout-cli.sh"
+readonly launcher_wrapper_common="${repo_root}/scripts/source-checkout-cli-common.sh"
 readonly launcher_wrapper_ps1="${repo_root}/scripts/source-checkout-cli.ps1"
 readonly raw_java_wrapper="${repo_root}/scripts/direct-java-cli.sh"
 readonly raw_java_wrapper_ps1="${repo_root}/scripts/direct-java-cli.ps1"
@@ -53,6 +54,7 @@ readonly repo_tmp_dir="${repo_root}/tmp"
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper"
 [[ -x "${launcher_wrapper}" ]] || die "missing POSIX source-checkout launcher wrapper"
+[[ -f "${launcher_wrapper_common}" ]] || die "missing POSIX source-checkout launcher shared helper"
 [[ -f "${launcher_wrapper_ps1}" ]] || die "missing PowerShell source-checkout launcher wrapper"
 [[ -x "${raw_java_wrapper}" ]] || die "missing POSIX direct-Java wrapper"
 [[ -f "${raw_java_wrapper_ps1}" ]] || die "missing PowerShell direct-Java wrapper"
@@ -61,10 +63,12 @@ grep -Fq 'gradle-wrapper-support.ps1' "${launcher_wrapper_ps1}" || die \
     "PowerShell source-checkout launcher wrapper no longer sources the shared Gradle wrapper helper"
 grep -Fq 'gradle-wrapper-support.ps1' "${raw_java_wrapper_ps1}" || die \
     "PowerShell direct-Java wrapper no longer sources the shared Gradle wrapper helper"
-grep -Fq 'fg_gradle_source_checkout_artifact_needs_refresh' "${launcher_wrapper}" || die \
-    "POSIX source-checkout launcher wrapper no longer verifies raw-JAR freshness"
-grep -Fq 'fg_gradle_source_checkout_artifact_needs_refresh' "${raw_java_wrapper}" || die \
-    "POSIX direct-Java wrapper no longer verifies raw-JAR freshness"
+grep -Fq 'source-checkout-cli-common.sh' "${launcher_wrapper}" || die \
+    "POSIX source-checkout launcher wrapper no longer delegates through the shared wrapper owner"
+grep -Fq 'source-checkout-cli-common.sh' "${raw_java_wrapper}" || die \
+    "POSIX direct-Java wrapper no longer delegates through the shared wrapper owner"
+grep -Fq 'fg_gradle_source_checkout_artifact_needs_refresh' "${launcher_wrapper_common}" || die \
+    "POSIX launcher shared helper no longer verifies raw-JAR freshness"
 grep -Fq 'Invoke-FinGrindEnsureSourceCheckoutArtifact' "${launcher_wrapper_ps1}" || die \
     "PowerShell source-checkout launcher wrapper no longer verifies raw-JAR freshness"
 grep -Fq 'Invoke-FinGrindEnsureSourceCheckoutArtifact' "${raw_java_wrapper_ps1}" || die \

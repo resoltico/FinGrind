@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 

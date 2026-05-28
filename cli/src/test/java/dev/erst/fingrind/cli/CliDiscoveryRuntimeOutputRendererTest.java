@@ -28,17 +28,17 @@ class CliDiscoveryRuntimeOutputRendererTest {
   void renderCapabilitiesText_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesText(
-            MachineContract.capabilities(CliDiscoveryOutputRendererTest.identity()));
+            MachineContract.capabilities(CliDiscoveryTestSupport.identity()));
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("What Exists"));
-    assertTrue(rendered.contains("Start Here"));
-    assertTrue(rendered.contains("Automation"));
+    assertTrue(rendered.contains("Contracts And Automation"));
+    assertTrue(rendered.contains("Operator guide"));
     assertTrue(rendered.contains("Kernel scope"));
     assertTrue(rendered.contains("Built-in statements"));
-    assertTrue(rendered.contains("trial-balance"));
     assertTrue(rendered.contains("Machine-readable contract"));
     assertTrue(rendered.contains("PDF-capable reports"));
+    assertFalse(rendered.contains("Start Here"));
     assertFalse(rendered.contains("Targeted Retrieval"));
     assertFalse(rendered.contains("Timestamp"));
     assertFalse(rendered.contains("Reporting position"));
@@ -48,7 +48,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
   @Test
   void renderCapabilitiesText_rendersSharedSelectableDefaultsAsOneValue() {
     CapabilitiesDescriptor canonical =
-        MachineContract.capabilities(CliDiscoveryOutputRendererTest.identity());
+        MachineContract.capabilities(CliDiscoveryTestSupport.identity());
     CapabilitiesDescriptor customized =
         new CapabilitiesDescriptor(
             canonical.application(),
@@ -91,8 +91,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
   void renderHelpText_commandHelpRendersArtifactOutputsAndCollapsedSelectableDefaults() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpText(
-            CliDiscoveryOutputRendererTest.helpDescriptor(
-                CliDiscoveryOutputRendererTest.identity(),
+            CliDiscoveryTestSupport.helpDescriptor(
+                CliDiscoveryTestSupport.identity(),
                 List.of("fingrind trial-balance --output json --pdf-out report.pdf"),
                 new ContractResponse.BookModelDescriptor(
                     "single-sqlite-file",
@@ -120,10 +120,10 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Next Step"));
+    assertTrue(rendered.contains("Try It"));
     assertTrue(rendered.contains("--pdf-out <path>"));
-    assertTrue(rendered.contains("Reference"));
-    assertTrue(rendered.contains("Machine contract"));
+    assertTrue(rendered.contains("Run"));
+    assertTrue(rendered.contains("More Detail"));
     assertFalse(rendered.contains("Artifact outputs"));
     assertFalse(rendered.contains("Selectable defaults"));
     assertFalse(rendered.contains("json interactive / json redirected"));
@@ -131,7 +131,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
   @Test
   void renderCapabilitiesText_omitsBookkeepingKernelDoctrineFromTextSurface() {
-    var canonical = MachineContract.capabilities(CliDiscoveryOutputRendererTest.identity());
+    var canonical = MachineContract.capabilities(CliDiscoveryTestSupport.identity());
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(canonical);
 
     assertTrue(rendered.contains("Cash Single Entity Internal Management Kernel"));
@@ -145,7 +145,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
   @Test
   void renderCapabilitiesText_normalizesRepeatedKernelScopeSeparators() {
     CapabilitiesDescriptor canonical =
-        MachineContract.capabilities(CliDiscoveryOutputRendererTest.identity());
+        MachineContract.capabilities(CliDiscoveryTestSupport.identity());
     CapabilitiesDescriptor customized =
         new CapabilitiesDescriptor(
             canonical.application(),
@@ -179,7 +179,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
   void renderEnvironmentText_coversExplicitRuntimeStateFamilies() {
     String readyRendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
-            CliDiscoveryOutputRendererTest.environmentWithRuntime(
+            CliDiscoveryTestSupport.environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.ReadyRuntime(
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
@@ -189,7 +189,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId())));
     String failedRendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
-            CliDiscoveryOutputRendererTest.environmentWithRuntime(
+            CliDiscoveryTestSupport.environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.FailedRuntime(
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
@@ -197,7 +197,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     "load failed")));
     String incompatibleRendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
-            CliDiscoveryOutputRendererTest.environmentWithRuntime(
+            CliDiscoveryTestSupport.environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.FAILED,
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
@@ -209,7 +209,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     "compile options mismatch")));
     String unavailableRendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
-            CliDiscoveryOutputRendererTest.environmentWithRuntime(
+            CliDiscoveryTestSupport.environmentWithRuntime(
                 new EnvironmentSqliteDescriptor.UnavailableRuntime("no SQLite runtime available")));
 
     assertTrue(readyRendered.contains("Runtime"));
@@ -242,10 +242,10 @@ class CliDiscoveryRuntimeOutputRendererTest {
   void renderVersionText_rendersTitleAndKeyValues() {
     String rendered =
         CliDiscoveryOutputRenderer.renderVersionText(
-            MachineContract.version(CliDiscoveryOutputRendererTest.identity()));
+            MachineContract.version(CliDiscoveryTestSupport.identity()));
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.48.0"));
+    assertTrue(rendered.contains("0.49.0"));
   }
 }

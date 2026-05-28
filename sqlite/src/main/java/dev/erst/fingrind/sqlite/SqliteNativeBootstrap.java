@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
@@ -60,7 +61,7 @@ final class SqliteNativeBootstrap {
     Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
     Objects.requireNonNull(reporter, "reporter");
     try {
-      SqliteNativeCalls.noArgInt(sqlite3Shutdown).invoke();
+      SqliteNativeCallAdapter.adapt(SqliteNativeCalls.NoArgIntCall.class, sqlite3Shutdown).invoke();
     } catch (RuntimeException exception) {
       reporter.report("shutting down the process-scoped SQLite runtime", exception);
     }

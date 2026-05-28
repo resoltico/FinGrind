@@ -11,8 +11,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseResolver;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;

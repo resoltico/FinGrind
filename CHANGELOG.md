@@ -5,6 +5,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-05-28
+
+### Changed
+
+- Hard-broke structural governance beyond production Java code. God-file, duplication, and
+  ownership pressure now applies across Gradle build logic, release shell surfaces, production
+  Java, and test Java, with oversized CLI, contract, SQLite, and verifier helpers split into
+  smaller responsibility-owned seams instead of broad utility files.
+- Hard-broke the release-control plane into narrower owners. Release-smoke contract checks,
+  structural-governance verification, launcher verification, and public-container verification now
+  live under focused repo-owned script and helper surfaces instead of larger mixed-purpose test and
+  wrapper files.
+- Hard-broke bookkeeping statement doctrine out of the technical `executor.bookkeeping.read`
+  slice. Financial-position, income-statement, and changes-in-equity computation now live under
+  `executor.bookkeeping.reporting`, while `BookkeepingReadService` remains an orchestrator over
+  query and reporting outcomes.
+- Hard-broke operator discovery and help toward one clearer front door. `help --output text` is
+  now the task-first operator surface, `capabilities --output text` is the factual inventory
+  surface, and command help now prefers one direct runnable example before scaffolds, machine
+  schemas, and deeper contract detail.
+- Hard-broke the protected-book secret seam back to one tighter SQLite package boundary. Key-file,
+  passphrase, and resolver types now live under `dev.erst.fingrind.sqlite`, the exported
+  `dev.erst.fingrind.sqlite.secret` package is gone, raw passphrase-byte copy helpers are no
+  longer public, and the internal native bridge is split into narrower purpose-owned collaborators
+  instead of wider raw-handle reachability.
+- Bumped the Gradle build-logic Kotlin pin from `2.4.0-RC` to `2.4.0-RC2`.
+
 ### Fixed
 
 - Fixed the public-container verification contract so the mounted `trial-balance --output text`
@@ -12,6 +39,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ordering. The verifier and its regression harness now assert the active `Trial Balance`,
   status, totals, accounts, and context blocks independently, matching the shipped container
   output used by release publication.
+- Fixed `--pdf-out` command semantics so PDF artifact creation is now part of the requested
+  operation. Report commands fail with deterministic `pdf-export-failure` instead of succeeding
+  with one warning when the requested PDF cannot be written.
+- Fixed discovery category serialization so machine-readable help and capabilities now publish
+  stable `OperationCategory` wire values instead of deriving protocol strings from Java enum
+  constant names.
+- Fixed SQLite text decoding so exact-length UTF-8 values survive embedded-NUL round trips instead
+  of truncating at the first zero byte during readback.
+- Fixed the canonical repository check entrypoint so product verification now defers to the
+  project-owned Gradle toolchain baseline instead of rejecting environments based on ambient
+  `java` / `javac` product versions before the wrapper can apply the build contract.
+- Fixed the front-door and supporting docs so the README quick start, operator guides, request
+  guides, developer guides, and report examples now match the live trial-balance surface, current
+  PDF failure semantics, current Java-toolchain ownership, and the moved bookkeeping reporting
+  package.
+- Fixed empty-scope read and report surfaces so no-result list pages are result-first and CSV
+  empties now publish one explicit granularity vocabulary: scope-empty for list/query scopes,
+  section-empty for empty report sections, and report-empty for whole-report absences.
 
 ## [0.48.0] - 2026-05-27
 
@@ -784,7 +829,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped the included Gradle build-logic compiler pin to Kotlin `2.4.0-RC` and moved the
+- Bumped the included Gradle build-logic compiler pin to Kotlin `2.4.0-RC2` and moved the
   Java-26-ready JaCoCo snapshot pin forward to `0.8.15-20260513.074320-106`, with the matching
   developer-build references updated to the same live coordinates.
 - Hardened the current bookkeeping foundation around explicit book identity and reporting scope:
@@ -2468,7 +2513,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.48.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.49.0...HEAD
+[0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0
 [0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0
 [0.47.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.47.0
 [0.46.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.46.0

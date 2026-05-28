@@ -80,7 +80,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 List.of(),
@@ -93,7 +93,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -106,7 +106,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -118,7 +118,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 DiscoveryDetail.COMPACT,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -130,7 +130,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 List.of(),
@@ -141,7 +141,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.bookkeepingKernel().scope(),
                 capabilitiesDescriptor.bookkeepingKernel().builtInStatements(),
@@ -164,7 +164,7 @@ class CliJsonModelValidationTest {
             ProtocolEnvelopeStatus.OK,
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.48.0",
+                "0.49.0",
                 DiscoveryDetail.FULL,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
@@ -387,7 +387,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.48.0",
+        "0.49.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

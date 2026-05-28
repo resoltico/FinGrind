@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -229,8 +229,10 @@ Interpretation:
 - the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics
   before any public DTO or public rejection family is projected; statement doctrine is now split
   across `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and
-  `ChangesInEquityStatementCalculator` while `BookkeepingStatementService` coordinates that local
-  read/report slice
+  `ChangesInEquityStatementCalculator` inside `executor.bookkeeping.reporting`, while
+  `BookkeepingReportingService` coordinates that local reporting slice and
+  `executor.bookkeeping.read.BookkeepingReadService` remains an orchestrator over query and
+  reporting outcomes
 - `execute-plan` enters through the public workflow schema, then runs as internal workflow steps
   plus workflow-owned `BookWorkflowFact` observations before the public journal/result surface is
   projected back out

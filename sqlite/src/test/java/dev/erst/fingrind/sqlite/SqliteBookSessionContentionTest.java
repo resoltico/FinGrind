@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Set;
@@ -42,9 +41,6 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
   }
 
   private static void setBusyTimeout(SqliteNativeDatabase database, int timeoutMillis) {
-    int resultCode =
-        SqliteNativeCalls.addressIntToInt(database.sqliteApi().sqlite3BusyTimeout())
-            .invoke(database.handle(), timeoutMillis);
-    SqliteNativeConnections.requireOpenConfigurationSuccess(resultCode, database.sqliteApi());
+    database.configuration().configureBusyTimeout(timeoutMillis);
   }
 }

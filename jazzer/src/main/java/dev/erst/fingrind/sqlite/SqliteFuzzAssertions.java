@@ -1,8 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;

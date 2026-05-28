@@ -28,6 +28,7 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
+readonly structural_governance_verifier="${repo_root}/scripts/verify-structural-governance.sh"
 
 for argument in "$@"; do
     case "${argument}" in
@@ -48,6 +49,10 @@ done
     printf 'error: missing check stage contract helper at %s\n' "${stage_contract_script}" >&2
     exit 1
 }
+[[ -x "${structural_governance_verifier}" ]] || {
+    printf 'error: missing executable structural governance verifier at %s\n' "${structural_governance_verifier}" >&2
+    exit 1
+}
 
 # shellcheck source=/dev/null
 source "${stage_contract_script}"
@@ -65,6 +70,7 @@ if [[ -d "${repo_root}/jazzer/bin" ]]; then
 fi
 
 bash -n "${release_surface_script_targets[@]}"
+"${structural_governance_verifier}" --surface shell-release
 for script_path in "${check_stage5_executable_script_paths[@]}"; do
     printf 'release-surface subcheck: %s\n' "${script_path}"
     bash "${repo_root}/${script_path}"

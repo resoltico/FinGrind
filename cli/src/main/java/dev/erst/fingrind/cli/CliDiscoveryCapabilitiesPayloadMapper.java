@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /** Maps executable capability descriptors into compact and full CLI JSON discovery payloads. */
@@ -127,7 +126,6 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
   private static String commandCategory(CommandDescriptor command) {
     return dev.erst.fingrind.contract.protocol.ProtocolCatalog.operation(command.name())
         .category()
-        .name()
-        .toLowerCase(Locale.ROOT);
+        .wireValue();
   }
 }

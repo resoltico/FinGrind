@@ -57,6 +57,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-no-product-bigdecimal.sh
     scripts/test-render-sqlite-schema-doc.sh
     scripts/test-source-checkout-launcher.sh
+    scripts/test-verify-structural-governance.sh
     scripts/test-publish-github-release.sh
     scripts/test-verify-github-release.sh
     scripts/test-verify-security-policy-surface.sh
@@ -78,7 +79,7 @@ readonly check_stage5_shell_only_script_paths=(
 
 check_stage_usage_lines() {
     printf '%s\n' \
-        '  1. scripts/run-quality-gates.sh (repo hygiene + check coverage + included build-logic test)' \
+        '  1. scripts/run-quality-gates.sh (repo hygiene + structural governance + check coverage + included build-logic check)' \
         '  2. jazzer/bin/check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \

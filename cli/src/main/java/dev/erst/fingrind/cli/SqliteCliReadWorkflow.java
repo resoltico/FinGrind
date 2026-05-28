@@ -24,9 +24,9 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookReadService;
+import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import dev.erst.fingrind.sqlite.SqliteReadSessions;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
 import java.util.Objects;
 import java.util.function.Function;
 

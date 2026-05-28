@@ -3,8 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;

@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;

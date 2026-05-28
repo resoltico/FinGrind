@@ -15,10 +15,12 @@ final class SqliteReportReader {
   private final SqliteAccountLedgerReader accountLedgerReader;
   private final SqlitePeriodSummaryReader periodSummaryReader;
 
-  SqliteReportReader(SqlitePostingReader postingReader) {
+  SqliteReportReader(
+      SqlitePostingReader postingReader, SqlitePostingBalanceReader postingBalanceReader) {
     Objects.requireNonNull(postingReader, "postingReader");
+    Objects.requireNonNull(postingBalanceReader);
     this.trialBalanceReader = new SqliteTrialBalanceReader();
-    this.accountLedgerReader = new SqliteAccountLedgerReader(postingReader);
+    this.accountLedgerReader = new SqliteAccountLedgerReader(postingReader, postingBalanceReader);
     this.periodSummaryReader = new SqlitePeriodSummaryReader();
   }
 

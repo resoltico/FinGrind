@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -143,7 +143,7 @@ prunes each processed-resource destination directory before real resource syncs 
 removed committed seeds cannot linger in `jazzer-build/resources/` and skew replay or packaged
 corpus behavior away from `src/fuzz/resources`.
 Its own Kotlin compiler is now pinned explicitly in
-`gradle/build-logic/build.gradle.kts` at `2.4.0-RC` so the shared build logic can compile
+`gradle/build-logic/build.gradle.kts` at `2.4.0-RC2` so the shared build logic can compile
 against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
 That Kotlin pin is also intentionally temporary and prerelease-sensitive: move to the matching
 stable `2.4.x` line as soon as it is available and the included build still verifies cleanly on
@@ -428,7 +428,7 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 
 - Does `gradle/build-logic` still compile and emit JVM 26 bytecode after the current Kotlin plugin pin?
 - Is the Gradle wrapper still on the current verified stable `9.5.x` line?
-- Is the build-logic Kotlin pin still `2.4.0-RC`, and can it move to the matching stable 2.4.x line yet?
+- Is the build-logic Kotlin pin still `2.4.0-RC2`, and can it move to the matching stable 2.4.x line yet?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
   `gradle/build-logic`, beyond the deliberate Jazzer source-set pruning that prevents orphaned
   cached classfiles?

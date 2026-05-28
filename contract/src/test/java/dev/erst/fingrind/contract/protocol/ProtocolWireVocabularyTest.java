@@ -14,9 +14,14 @@ class ProtocolWireVocabularyTest {
     assertEquals("ok", ProtocolEnvelopeStatus.OK.toString());
     assertEquals("rejected", ProtocolEnvelopeStatus.REJECTED.toString());
     assertEquals("error", ProtocolEnvelopeStatus.ERROR.toString());
+    assertEquals(List.of("pdf-exported"), ProtocolDiagnosticCode.wireValues());
+    assertEquals("pdf-exported", ProtocolDiagnosticCode.PDF_EXPORTED.toString());
     assertEquals(
-        List.of("pdf-exported", "pdf-export-warning"), ProtocolDiagnosticCode.wireValues());
-    assertEquals("pdf-export-warning", ProtocolDiagnosticCode.PDF_EXPORT_WARNING.toString());
+        List.of("discovery", "administration", "query", "write"), OperationCategory.wireValues());
+    assertEquals("discovery", OperationCategory.DISCOVERY.toString());
+    assertEquals("administration", OperationCategory.ADMINISTRATION.toString());
+    assertEquals("query", OperationCategory.QUERY.toString());
+    assertEquals("write", OperationCategory.WRITE.toString());
     assertEquals(List.of("atomic"), PlanTransactionMode.wireValues());
     assertEquals("atomic", PlanTransactionMode.ATOMIC.toString());
     assertEquals(List.of("halt-on-first-failure"), PlanFailurePolicy.wireValues());
@@ -59,6 +64,11 @@ class ProtocolWireVocabularyTest {
     assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolEnvelopeStatus.fromWireValue("error"));
     assertEquals(
         ProtocolDiagnosticCode.PDF_EXPORTED, ProtocolDiagnosticCode.fromWireValue("pdf-exported"));
+    assertEquals(OperationCategory.DISCOVERY, OperationCategory.fromWireValue("discovery"));
+    assertEquals(
+        OperationCategory.ADMINISTRATION, OperationCategory.fromWireValue("administration"));
+    assertEquals(OperationCategory.QUERY, OperationCategory.fromWireValue("query"));
+    assertEquals(OperationCategory.WRITE, OperationCategory.fromWireValue("write"));
     assertEquals(PlanTransactionMode.ATOMIC, PlanTransactionMode.fromWireValue("atomic"));
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
@@ -95,6 +105,8 @@ class ProtocolWireVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> ProtocolDiagnosticCode.fromWireValue("pdf-export-pending"));
+    assertThrows(
+        IllegalArgumentException.class, () -> OperationCategory.fromWireValue("inspection"));
     assertThrows(
         IllegalArgumentException.class, () -> PlanTransactionMode.fromWireValue("best-effort"));
     assertThrows(

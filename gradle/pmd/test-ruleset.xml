@@ -7,7 +7,8 @@
     <description>
         High-signal PMD rules for FinGrind test code. Structural, design, performance, security,
         and concurrency checks are enforced to the same standard as production code. Test-specific
-        relaxations are limited to assertion volume and method count only.
+        relaxations are limited to assertion ergonomics, fixture import breadth, method count, and
+        explicitly thread-owning concurrency scenarios.
     </description>
 
     <rule ref="category/java/errorprone.xml">
@@ -34,12 +35,10 @@
         <exclude name="ExcessiveImports"/>
         <!-- Test classes legitimately contain many test methods -->
         <exclude name="TooManyMethods"/>
-        <!-- Integration tests couple to both the production API and test framework
-             types, legitimately exceeding the default threshold -->
-        <exclude name="CouplingBetweenObjects"/>
-        <!-- Test suites legitimately exercise boundary adapters and translation-heavy fixtures -->
         <exclude name="GodClass"/>
     </rule>
+
+    <rule ref="category/java/design.xml/GodClass"/>
 
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
@@ -51,6 +50,12 @@
     <rule ref="category/java/design.xml/CognitiveComplexity">
         <properties>
             <property name="reportLevel" value="22"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="threshold" value="80"/>
         </properties>
     </rule>
 

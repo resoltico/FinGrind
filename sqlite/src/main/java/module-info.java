@@ -1,6 +1,5 @@
 module dev.erst.fingrind.sqlite {
   exports dev.erst.fingrind.sqlite;
-  exports dev.erst.fingrind.sqlite.secret;
 
   requires transitive dev.erst.fingrind.contract;
   requires transitive dev.erst.fingrind.core;

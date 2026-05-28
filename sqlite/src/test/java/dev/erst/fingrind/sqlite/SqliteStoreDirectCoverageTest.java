@@ -397,7 +397,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
 
           assertEquals(
               List.of("EUR"),
-              new SqlitePostingReader()
+              new SqlitePostingBalanceReader()
                       .accountBalance(
                           database,
                           AccountBalanceCriteria.unbounded(new AccountCode("1000")),

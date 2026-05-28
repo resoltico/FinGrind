@@ -109,14 +109,19 @@ final class CliDiscoveryHelpTextRenderer {
             ? "(none)"
             : CliTextFormat.renderLiteralBlock(command.options(), "");
     String requestGuidance = renderRequestGuidance(helpDescriptor, command.name());
-    String reference = renderReferenceSection(command.name(), usage, options);
+    String run = CliDiscoveryTextSupport.section("Run", usage);
+    String renderedOptions =
+        "(none)".equals(options) ? "" : CliDiscoveryTextSupport.section("Options", options);
+    String moreDetail = renderMoreDetailSection(command.name());
     return CliTextFormat.renderTitledBlock(
         command.name().wireName(),
         CliDiscoveryTextSupport.joinSections(
             summary,
-            CliDiscoveryTextSupport.section("Next Step", renderCommandExamples(operation)),
+            CliDiscoveryTextSupport.section("Try It", renderCommandExamples(operation)),
             requestGuidance,
-            reference));
+            run,
+            renderedOptions,
+            moreDetail));
   }
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {
@@ -157,11 +162,13 @@ final class CliDiscoveryHelpTextRenderer {
         commandExamples.isEmpty()
             ? "(none)"
             : CliTextFormat.renderShellCommandBlock(
-                List.of(primaryCommandExample(operation, commandExamples)),
+                List.of(
+                    CliDiscoveryExampleSelector.selectPrimaryCommandExample(
+                        operation.id(), commandExamples)),
                 CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
     if (commandExamples.size() > 1) {
       sections.add(
-          "Published invocations"
+          "More examples"
               + System.lineSeparator()
               + CliTextFormat.renderLiteralBlock(commandExamples, "$ "));
     }
@@ -172,18 +179,6 @@ final class CliDiscoveryHelpTextRenderer {
               + CliTextFormat.renderBulletedBlock(notes, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
     }
     return String.join(System.lineSeparator() + System.lineSeparator(), sections);
-  }
-
-  private static String primaryCommandExample(
-      ProtocolOperation operation, List<String> commandExamples) {
-    return commandExamples.stream()
-        .filter(example -> containsOperationToken(example, operation.id().wireName()))
-        .findFirst()
-        .orElseGet(commandExamples::getFirst);
-  }
-
-  private static boolean containsOperationToken(String example, String operationWireName) {
-    return java.util.Arrays.stream(example.split("\\s+")).anyMatch(operationWireName::equals);
   }
 
   private static String renderRequestGuidance(
@@ -204,7 +199,7 @@ final class CliDiscoveryHelpTextRenderer {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request Document",
+        "Input",
         requestFileGuidance(
             "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -219,7 +214,7 @@ final class CliDiscoveryHelpTextRenderer {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request Document",
+        "Input",
         requestFileGuidance(
             "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -234,7 +229,7 @@ final class CliDiscoveryHelpTextRenderer {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request Document",
+        "Input",
         requestFileGuidance(
             "Pass one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
@@ -243,32 +238,23 @@ final class CliDiscoveryHelpTextRenderer {
   private static String requestFileGuidance(String introduction, String shortcutCommand) {
     List<String> blocks = new ArrayList<>();
     blocks.add(CliTextFormat.wrap(introduction, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
-    blocks.add(labeledLiteralBlock("Scaffold", List.of(shortcutCommand), "$ "));
+    blocks.add(
+        "Generate a starter document"
+            + System.lineSeparator()
+            + CliTextFormat.renderLiteralBlock(List.of(shortcutCommand), "$ "));
     return String.join(System.lineSeparator() + System.lineSeparator(), blocks);
   }
 
-  private static String renderReferenceSection(
-      OperationId operationId, String usage, String options) {
+  private static String renderMoreDetailSection(OperationId operationId) {
     return CliDiscoveryTextSupport.section(
-        "Reference",
-        CliDiscoveryTextSupport.joinSections(
-            labeledSection("Run", usage),
-            labeledSection("Options", options),
-            labeledLiteralBlock(
-                "Machine contract",
+        "More Detail",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
                 List.of(
+                    "JSON contract",
                     CliInvocationText.commandExample(OperationId.HELP)
                         + " "
                         + ProtocolCatalog.operationName(operationId)
-                        + " --output json"),
-                "$ ")));
-  }
-
-  private static String labeledLiteralBlock(String label, List<String> lines, String prefix) {
-    return label + System.lineSeparator() + CliTextFormat.renderLiteralBlock(lines, prefix);
-  }
-
-  private static String labeledSection(String label, String body) {
-    return label + System.lineSeparator() + body;
+                        + " --output json"))));
   }
 }

@@ -17,12 +17,6 @@
 # trees remain outside the checkout by default. Non-interactive runs use --console=plain unless
 # the caller already selected a console mode.
 #
-# Local shell resolution must already provide Java 26. FinGrind's product modules, CLI fat JAR,
-# and release flow all rely on the ambient `java` and `javac` commands, not only Gradle
-# toolchains. On macOS those commands may resolve either directly into a JDK bin directory or
-# through `/usr/bin/*` launcher stubs, so this script validates version output instead of path
-# shape alone.
-#
 # Exit status: 0 on success. Any failing Gradle stage or script precondition returns a non-zero
 # exit status. The script emits per-stage finish lines with durations plus one final plain-language
 # result line and one machine-readable summary line:
@@ -39,7 +33,7 @@ die() {
 
 print_usage_stage_lines() {
     printf '%s\n' \
-        '  1. scripts/run-quality-gates.sh (repo hygiene + check coverage + included build-logic test)' \
+        '  1. scripts/run-quality-gates.sh (repo hygiene + structural governance + check coverage + included build-logic check)' \
         '  2. jazzer/bin/check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
@@ -93,34 +87,6 @@ for early_argument in "$@"; do
             ;;
     esac
 done
-
-require_shell_java_26() {
-    local resolved_java resolved_javac java_version_line java_version_token javac_version_line javac_version_token
-
-    resolved_java="$(command -v java || true)"
-    [[ -n "${resolved_java}" ]] || die "no 'java' command found in PATH; FinGrind requires Java 26 in the active shell. See docs/DEVELOPER_JAVA.md."
-
-    resolved_javac="$(command -v javac || true)"
-    [[ -n "${resolved_javac}" ]] || die "no 'javac' command found in PATH; FinGrind requires a full Java 26 JDK in the active shell. See docs/DEVELOPER_JAVA.md."
-
-    java_version_line="$("${resolved_java}" --version 2>/dev/null | head -1 || true)"
-    java_version_token="$(printf '%s\n' "${java_version_line}" | awk 'NR == 1 { print $2 }')"
-    case "${java_version_token}" in
-        26|26.*) ;;
-        *)
-            die "java resolves to ${resolved_java} but reports '${java_version_line:-unknown version}'. FinGrind requires Java 26 in the active shell. See docs/DEVELOPER_JAVA.md."
-            ;;
-    esac
-
-    javac_version_line="$("${resolved_javac}" --version 2>/dev/null | head -1 || true)"
-    javac_version_token="$(printf '%s\n' "${javac_version_line}" | awk 'NR == 1 { print $2 }')"
-    case "${javac_version_token}" in
-        26|26.*) ;;
-        *)
-            die "javac resolves to ${resolved_javac} but reports '${javac_version_line:-unknown version}'. FinGrind requires a full Java 26 JDK in the active shell. See docs/DEVELOPER_JAVA.md."
-            ;;
-    esac
-}
 
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
@@ -300,9 +266,6 @@ if [[ ( -n "${CI:-}" || ! -t 1 ) && "${has_console_flag}" == false ]]; then
     gradle_args+=(--console=plain)
 fi
 
-current_stage_id='java-validation'
-current_stage_label='Java 26 shell validation'
-require_shell_java_26
 mkdir -p "${gradle_user_home}"
 export GRADLE_USER_HOME="${gradle_user_home}"
 acquire_lock

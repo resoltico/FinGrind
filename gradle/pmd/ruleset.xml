@@ -43,6 +43,12 @@
 
     <rule ref="category/java/design.xml/GodClass"/>
 
+    <rule ref="category/java/design.xml/TooManyMethods">
+        <properties>
+            <property name="maxmethods" value="18"/>
+        </properties>
+    </rule>
+
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
             <property name="methodReportLevel" value="15"/>

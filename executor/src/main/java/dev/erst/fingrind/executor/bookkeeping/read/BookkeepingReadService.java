@@ -28,6 +28,7 @@ import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
+import dev.erst.fingrind.executor.bookkeeping.reporting.BookkeepingReportingService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.Objects;
@@ -37,12 +38,12 @@ import java.util.function.Supplier;
 /** Local bookkeeping read/query service used before any public published-language projection. */
 public final class BookkeepingReadService {
   private final BookkeepingReadStore bookStore;
-  private final BookkeepingStatementService statementService;
+  private final BookkeepingReportingService reportingService;
 
   /** Creates the local bookkeeping read service over one selected-book store seam. */
   public BookkeepingReadService(BookkeepingReadStore bookStore) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
-    this.statementService = new BookkeepingStatementService(this.bookStore, this.bookStore);
+    this.reportingService = new BookkeepingReportingService(this.bookStore, this.bookStore);
   }
 
   /** Returns the local lifecycle snapshot before public contract projection. */
@@ -149,7 +150,7 @@ public final class BookkeepingReadService {
       FinancialPositionCriteria query) {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(statementService.financialPosition(query)));
+        () -> new BookkeepingReadOutcome.Reported<>(reportingService.financialPosition(query)));
   }
 
   /** Computes one income statement for a bounded reporting period. */
@@ -157,7 +158,7 @@ public final class BookkeepingReadService {
       IncomeStatementCriteria query) {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(statementService.incomeStatement(query)));
+        () -> new BookkeepingReadOutcome.Reported<>(reportingService.incomeStatement(query)));
   }
 
   /** Computes one statement of changes in equity for a bounded reporting period. */
@@ -165,7 +166,7 @@ public final class BookkeepingReadService {
       ChangesInEquityCriteria query) {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(statementService.changesInEquity(query)));
+        () -> new BookkeepingReadOutcome.Reported<>(reportingService.changesInEquity(query)));
   }
 
   /**

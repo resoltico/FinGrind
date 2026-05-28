@@ -9,9 +9,6 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFile;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.secret.SqliteBookPassphrase;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -148,8 +145,26 @@ class SqliteNativeInteropTest {
         duplicateInsertFailure = assertThrows(SqliteNativeException.class, duplicateInsert::step);
         assertEquals(
             SqliteNativeResultCodes.CONSTRAINT_PRIMARYKEY,
-            SqliteNativeStatements.extendedErrorCode(database.handle(), database.sqliteApi()));
+            database.diagnostics().extendedErrorCode());
         assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", duplicateInsertFailure.resultName());
+      }
+    }
+  }
+
+  @Test
+  void columnText_preservesEmbeddedNulByExactByteLength() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(bookAccess(tempDirectory.resolve("embedded-nul.sqlite")))) {
+      database.executeStatement("create table sample (label text not null)");
+      try (SqliteNativeStatement insert =
+          SqliteNativeStatements.prepare(database, "insert into sample (label) values (?)")) {
+        insert.bindText(1, "Cash\0Reserve");
+        assertEquals(SqliteNativeResultCodes.DONE, insert.step());
+      }
+      try (SqliteNativeStatement query =
+          SqliteNativeStatements.prepare(database, "select label from sample")) {
+        assertEquals(SqliteNativeResultCodes.ROW, query.step());
+        assertEquals("Cash\0Reserve", query.columnText(0));
       }
     }
   }

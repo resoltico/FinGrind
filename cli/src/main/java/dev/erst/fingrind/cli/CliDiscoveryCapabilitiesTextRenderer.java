@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
-import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 
 /** Renders operator-facing capability inventory text for the CLI discovery surface. */
@@ -39,50 +38,20 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                         + " / "
                         + capabilitiesDescriptor.currencyModel().multiCurrencyStatus()),
                 java.util.List.of(
-                    "Command families",
-                    Integer.toString(commandCatalog.discovery().size())
-                        + " discovery, "
-                        + commandCatalog.administration().size()
-                        + " administration, "
-                        + commandCatalog.query().size()
-                        + " query/report, "
-                        + commandCatalog.write().size()
-                        + " write")),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String startHere =
-        CliTextFormat.renderKeyValueBlock(
-            java.util.List.of(
+                    "Discovery commands", Integer.toString(commandCatalog.discovery().size())),
                 java.util.List.of(
-                    "Create or open one book",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + OperationId.OPEN_BOOK.wireName()),
+                    "Administration commands",
+                    Integer.toString(commandCatalog.administration().size())),
                 java.util.List.of(
-                    "Declare the chart",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + OperationId.DECLARE_ACCOUNT.wireName()),
+                    "Query and report commands", Integer.toString(commandCatalog.query().size())),
                 java.util.List.of(
-                    "Preflight or commit bookkeeping",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + OperationId.PREFLIGHT_ENTRY.wireName()
-                        + " / "
-                        + OperationId.POST_ENTRY.wireName()),
-                java.util.List.of(
-                    "Read accounts and statements",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + OperationId.LIST_ACCOUNTS.wireName()
-                        + " / "
-                        + OperationId.TRIAL_BALANCE.wireName()),
-                java.util.List.of(
-                    "Browse one command",
-                    CliInvocationText.commandExample(OperationId.HELP) + " <command>")),
+                    "Write commands", Integer.toString(commandCatalog.write().size()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     String automation =
         CliTextFormat.renderKeyValueBlock(
             java.util.List.of(
+                java.util.List.of(
+                    "Operator guide", CliInvocationText.commandExample(OperationId.HELP)),
                 java.util.List.of(
                     "Machine-readable contract",
                     CliInvocationText.commandExample(OperationId.CAPABILITIES) + " --output json"),
@@ -91,23 +60,12 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                     CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json"),
                 java.util.List.of("PDF-capable reports", pdfCapableReportSummary())),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String commandGroups =
-        CliTextFormat.renderKeyValueBlock(
-            java.util.List.of(
-                java.util.List.of("Discovery", joinedCommandNames(commandCatalog.discovery())),
-                java.util.List.of(
-                    "Administration", joinedCommandNames(commandCatalog.administration())),
-                java.util.List.of("Query and reports", joinedCommandNames(commandCatalog.query())),
-                java.util.List.of("Write", joinedCommandNames(commandCatalog.write()))),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         CliDiscoveryTextSupport.joinSections(
             header,
             CliDiscoveryTextSupport.section("What Exists", operatorOverview),
-            CliDiscoveryTextSupport.section("Start Here", startHere),
-            CliDiscoveryTextSupport.section("Command Groups", commandGroups),
-            CliDiscoveryTextSupport.section("Automation", automation)));
+            CliDiscoveryTextSupport.section("Contracts And Automation", automation)));
   }
 
   private static String displayKernelScope(String scope) {
@@ -131,9 +89,5 @@ final class CliDiscoveryCapabilitiesTextRenderer {
         + ", and "
         + CliInvocationText.commandExample(OperationId.CHANGES_IN_EQUITY)
         + " can emit pdf via --pdf-out <path>.";
-  }
-
-  private static String joinedCommandNames(java.util.List<CommandDescriptor> commands) {
-    return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
   }
 }

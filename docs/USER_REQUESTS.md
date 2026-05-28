@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -608,9 +608,9 @@ explicitly, such as `--output json`.
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
 JSON report payload itself, but successful JSON success envelopes now also publish one
 `artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. Successful text
-and CSV exports also emit a diagnostics info message with the same redacted artifact path hint. If the report result
-succeeds but the PDF artifact later fails, stdout still carries the same report payload while
-diagnostics emit a repair warning for the `--pdf-out` path.
+and CSV exports also emit a diagnostics info message with the same redacted artifact path hint. If
+the requested PDF artifact cannot be written, the command returns one deterministic
+`pdf-export-failure` error instead of a successful report payload.
 Deterministic failures for commands that accept `--output text` are rendered in the same
 operator-facing format instead of falling back to JSON envelopes. Deterministic non-business contract
 failures render with the `Rejected` heading in text mode so operator refusals do not masquerade

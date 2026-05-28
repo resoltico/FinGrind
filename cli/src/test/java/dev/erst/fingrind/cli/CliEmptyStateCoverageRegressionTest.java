@@ -49,7 +49,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     String csv = CliAccountBalanceOutputRenderer.renderCsv(snapshot);
     List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
 
-    assertEquals("empty", row.get(0));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
     assertEquals("1000", row.get(1));
     assertEquals("Cash", row.get(2));
     assertEquals("ASSET", row.get(3));
@@ -62,7 +62,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
         CliAccountPageOutputRenderer.renderCsv(accountPage(List.of(), 50, Optional.empty()));
     List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
 
-    assertEquals("empty", row.get(0));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
     assertEquals("No accounts matched the selected scope.", row.get(11));
   }
 
@@ -73,7 +73,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     String csv = CliPostingOutputRenderer.renderPostingRegisterCsv(page);
     List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
 
-    assertEquals("empty", row.get(0));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
     assertEquals("No postings matched the selected scope.", row.get(16));
   }
 
@@ -96,8 +96,12 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     assertTrue(text.contains("No currency totals matched the selected scope."));
     assertTrue(text.contains("No account activity matched the selected scope."));
-    assertTrue(csv.contains("empty,currency,,,,,,,No currency totals matched the selected scope."));
-    assertTrue(csv.contains("empty,account,,,,,,,No account activity matched the selected scope."));
+    assertTrue(
+        csv.contains(
+            "section-empty,currency,,,,,,,No currency totals matched the selected scope."));
+    assertTrue(
+        csv.contains(
+            "section-empty,account,,,,,,,No account activity matched the selected scope."));
   }
 
   @Test
@@ -121,9 +125,9 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(text.contains("Outcome"));
     assertTrue(text.contains("No account balances matched the selected scope."));
     assertTrue(text.contains("Comparative Trial Balance"));
-    assertTrue(csv.contains("current,empty,2026-04-30"));
+    assertTrue(csv.contains("current,report-empty,2026-04-30"));
     assertTrue(csv.contains("comparative,total,2025-04-30,true"));
-    assertTrue(csv.contains("comparative,empty,2025-04-30"));
+    assertTrue(csv.contains("comparative,report-empty,2025-04-30"));
   }
 
   @Test
@@ -248,11 +252,11 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     List<String> comparativeRow = CliCsvFormat.parseRow(csv.lines().toList().get(2));
 
     assertEquals("current", currentRow.get(0));
-    assertEquals("empty", currentRow.get(1));
+    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, currentRow.get(1));
     assertEquals("2026-04-30", currentRow.get(2));
     assertEquals("No financial position lines matched the selected scope.", currentRow.get(15));
     assertEquals("comparative", comparativeRow.get(0));
-    assertEquals("empty", comparativeRow.get(1));
+    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, comparativeRow.get(1));
     assertEquals("2025-04-30", comparativeRow.get(2));
     assertEquals("No financial position lines matched the selected scope.", comparativeRow.get(15));
   }
@@ -275,10 +279,10 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     assertTrue(
         csv.contains(
-            "current,empty,2026-04-01,2026-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
+            "current,report-empty,2026-04-01,2026-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
     assertTrue(
         csv.contains(
-            "comparative,empty,2025-04-01,2025-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
+            "comparative,report-empty,2025-04-01,2025-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
   }
 
   @Test

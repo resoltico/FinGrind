@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
-import dev.erst.fingrind.sqlite.secret.SqliteBookKeyFileGenerator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;

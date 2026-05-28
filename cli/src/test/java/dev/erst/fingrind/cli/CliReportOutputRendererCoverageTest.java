@@ -49,7 +49,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             .get(1)
             .contains(
                 "summary,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,0.00,0.00,0.00,ZERO,10.00,0.00,10.00,DEBIT"));
-    assertTrue(lines.get(2).contains("empty,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(lines.get(2).contains("scope-empty,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
     assertTrue(lines.get(2).contains("No ledger entries matched the selected scope."));
   }
 
@@ -214,13 +214,13 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
         lines.stream()
             .anyMatch(
                 line ->
-                    "current,empty,2026-04-01,2026-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
+                    "current,report-empty,2026-04-01,2026-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
                         .equals(line)));
     assertTrue(
         lines.stream()
             .anyMatch(
                 line ->
-                    "comparative,empty,2025-04-01,2025-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
+                    "comparative,report-empty,2025-04-01,2025-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
                         .equals(line)));
     int columnCount = csvFieldCount(lines.getFirst());
     for (String line : lines) {

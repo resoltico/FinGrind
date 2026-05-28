@@ -18,10 +18,10 @@ import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
+import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePeriodResultTransferSessions;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSessions;
 import dev.erst.fingrind.sqlite.SqlitePostingSessions;
-import dev.erst.fingrind.sqlite.secret.SqlitePassphraseIntent;
 import java.time.Clock;
 import java.util.Objects;
 

@@ -24,9 +24,12 @@ import java.util.Optional;
 /** Loads running-ledger views for one declared account. */
 final class SqliteAccountLedgerReader {
   private final SqlitePostingReader postingReader;
+  private final SqlitePostingBalanceReader postingBalanceReader;
 
-  SqliteAccountLedgerReader(SqlitePostingReader postingReader) {
+  SqliteAccountLedgerReader(
+      SqlitePostingReader postingReader, SqlitePostingBalanceReader postingBalanceReader) {
     this.postingReader = Objects.requireNonNull(postingReader, "postingReader");
+    this.postingBalanceReader = Objects.requireNonNull(postingBalanceReader);
   }
 
   AccountLedgerView accountLedger(
@@ -65,7 +68,7 @@ final class SqliteAccountLedgerReader {
     if (lowerBound.equals(LocalDate.MIN)) {
       return List.of();
     }
-    return postingReader
+    return postingBalanceReader
         .accountBalance(
             activeDatabase,
             new AccountBalanceCriteria(
@@ -78,7 +81,7 @@ final class SqliteAccountLedgerReader {
 
   private List<CurrencyBalance> closingBalances(
       SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
-    return postingReader
+    return postingBalanceReader
         .accountBalance(
             activeDatabase,
             new AccountBalanceCriteria(

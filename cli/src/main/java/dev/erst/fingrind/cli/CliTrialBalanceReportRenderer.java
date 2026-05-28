@@ -238,7 +238,7 @@ final class CliTrialBalanceReportRenderer {
       String reportBasis, String effectiveDateAsOf, String currencyCode, String message) {
     return List.of(
         reportBasis,
-        "empty",
+        CliCsvEmptyKinds.REPORT_EMPTY,
         effectiveDateAsOf,
         "",
         "",

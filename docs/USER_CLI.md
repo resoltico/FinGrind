@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.48.0"
+version: "0.49.0"
 domain: USER_CLI
-updated: "2026-05-27"
+updated: "2026-05-28"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -333,7 +333,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | unreadable, oversized, malformed, empty, or control-character passphrase payload on stdin or another selected passphrase route | `6` | `invalid-book-passphrase-source` | `Failed to read the FinGrind book passphrase from standard input.`, `The FinGrind book passphrase source exceeded the 4096-byte UTF-8 limit: ...`, or UTF-8/single-line passphrase validation text |
 | unsupported prompt environment | `5` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
 | requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout; JSON success envelopes also publish `artifacts[].format` plus one redacted public-path-hint `artifacts[].path`, and diagnostics report the same path hint for text/CSV flows |
-| requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
+| requested PDF artifact cannot be written for one report command that requested `--pdf-out` | `4` | `pdf-export-failure` | the command fails atomically because the requested PDF artifact was not produced |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 | other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id; the diagnostics stream prints the same id and full stack trace |
@@ -423,8 +423,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the
   primary report succeeds, JSON success envelopes publish one redacted artifact-path hint under
   `artifacts[]`, while text/CSV flows emit a text info block with code `pdf-exported` and the
-  same hint on diagnostics. If the PDF artifact fails, stdout still carries the report result and
-  diagnostics emit a text warning with code `pdf-export-warning`.
+  same hint on diagnostics. If the PDF artifact fails, the command returns one deterministic
+  `pdf-export-failure` error instead of publishing a successful report result.
 - JSON money fields are typed exact-money objects with `currencyCode` and `minorUnits`,
   while `--output text` and `--output csv` render accounting-grade currency scale for operators
   and spreadsheet import.

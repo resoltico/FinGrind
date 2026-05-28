@@ -246,7 +246,7 @@ final class CliIncomeStatementReportRenderer {
                     renderedRows.add(
                         List.of(
                             reportBasis,
-                            "empty",
+                            CliCsvEmptyKinds.SECTION_EMPTY,
                             effectiveDateFrom,
                             effectiveDateTo,
                             section.accountType().wireValue(),
@@ -299,7 +299,7 @@ final class CliIncomeStatementReportRenderer {
     return java.util.stream.Stream.of(
         List.of(
             reportBasis,
-            "empty",
+            CliCsvEmptyKinds.REPORT_EMPTY,
             effectiveDateFrom,
             effectiveDateTo,
             "",

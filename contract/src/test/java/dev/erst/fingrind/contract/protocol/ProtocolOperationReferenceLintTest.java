@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Contract-lint tests for operation identifiers referenced from code and docs. */
-class ProtocolOperationReferenceLintTest extends ProtocolContractLintSupport {
+class ProtocolOperationReferenceLintTest extends ProtocolContractOperationSupport {
   @Test
   void productionJavaDoesNotEmbedHyphenatedOperationIdsInStringLiteralsOutsideContractProtocol()
       throws IOException {

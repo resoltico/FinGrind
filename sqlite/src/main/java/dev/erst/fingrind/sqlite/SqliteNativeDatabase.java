@@ -12,6 +12,9 @@ class SqliteNativeDatabase implements AutoCloseable {
   private final @Nullable Path normalizedBookPath;
   private final boolean publishesActivityMarker;
   private final SqliteNativeApi sqliteApi;
+  private final SqliteNativeDatabaseConfiguration configuration;
+  private final SqliteNativeDatabaseDiagnostics diagnostics;
+  private final SqliteNativeProtectedBookRuntime protectedBookRuntime;
   private final SqliteThreadOwner threadOwner =
       new SqliteThreadOwner("SQLite native database handle");
   private boolean closed;
@@ -33,6 +36,9 @@ class SqliteNativeDatabase implements AutoCloseable {
     this.normalizedBookPath = normalizedBookPath;
     this.publishesActivityMarker = publishesActivityMarker;
     this.sqliteApi = Objects.requireNonNull(sqliteApi, "sqliteApi");
+    this.configuration = new SqliteNativeDatabaseConfiguration(this);
+    this.diagnostics = new SqliteNativeDatabaseDiagnostics(this);
+    this.protectedBookRuntime = new SqliteNativeProtectedBookRuntime(this);
   }
 
   MemorySegment handle() {
@@ -44,6 +50,24 @@ class SqliteNativeDatabase implements AutoCloseable {
   SqliteNativeApi sqliteApi() {
     threadOwner.requireOwnerThread();
     return sqliteApi;
+  }
+
+  SqliteNativeDatabaseConfiguration configuration() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+    return configuration;
+  }
+
+  SqliteNativeDatabaseDiagnostics diagnostics() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+    return diagnostics;
+  }
+
+  SqliteNativeProtectedBookRuntime protectedBookRuntime() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+    return protectedBookRuntime;
   }
 
   SqliteNativeStatement prepare(String sql) {

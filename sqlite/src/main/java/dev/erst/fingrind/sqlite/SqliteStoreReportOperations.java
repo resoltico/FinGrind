@@ -34,7 +34,7 @@ final class SqliteStoreReportOperations {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> context.postingReader().accountBalance(activeDatabase, query));
+        activeDatabase -> context.postingBalanceReader().accountBalance(activeDatabase, query));
   }
 
   TrialBalanceView trialBalance(TrialBalanceCriteria query) {
