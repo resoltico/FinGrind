@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped the current release-control and formatting dependency pins to the presently accepted
+  mainline set. The CI and container workflows now use `docker/setup-buildx-action` `v4.1.0`,
+  `docker/setup-qemu-action` `v4.1.0`, `docker/login-action` `v4.2.0`, and
+  `docker/metadata-action` `v6.1.0`, while Gradle build tooling now pins `com.gradleup.shadow`
+  `9.4.2` and `com.diffplug.spotless` `8.6.0`.
+
 ## [0.49.0] - 2026-05-28
 
 ### Changed
