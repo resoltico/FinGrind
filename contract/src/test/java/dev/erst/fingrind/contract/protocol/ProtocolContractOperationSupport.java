@@ -12,16 +12,17 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /** Operation-id and hyphenated public-vocabulary helpers for split contract-lint tests. */
 class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport {
   protected static final Pattern FINGRIND_COMMAND_PATTERN =
       Pattern.compile("\\bfingrind\\s+([a-z][a-z0-9-]*)");
-  protected static final Pattern STRING_LITERAL_PATTERN =
-      Pattern.compile("\"(?:\\\\.|[^\"\\\\])*\"", Pattern.DOTALL);
   protected static final Pattern BACKTICKED_HYPHEN_ID_PATTERN =
       Pattern.compile("`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`");
   protected static final Set<String> NON_OPERATION_BACKTICK_IDS = nonOperationBacktickIds();
@@ -56,6 +57,40 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
       searchFrom = index + 1;
     }
     return false;
+  }
+
+  protected final Stream<String> stringLiterals(String source) {
+    List<String> literals = new ArrayList<>();
+    StringBuilder literal = new StringBuilder();
+    boolean insideLiteral = false;
+    boolean escaping = false;
+    for (int index = 0; index < source.length(); index++) {
+      char character = source.charAt(index);
+      if (!insideLiteral) {
+        if (character == '"') {
+          literal.setLength(0);
+          insideLiteral = true;
+        }
+        continue;
+      }
+      if (escaping) {
+        literal.append(character);
+        escaping = false;
+        continue;
+      }
+      if (character == '\\') {
+        literal.append(character);
+        escaping = true;
+        continue;
+      }
+      if (character == '"') {
+        literals.add(literal.toString());
+        insideLiteral = false;
+        continue;
+      }
+      literal.append(character);
+    }
+    return literals.stream();
   }
 
   private static boolean isOperationTokenChar(char character) {

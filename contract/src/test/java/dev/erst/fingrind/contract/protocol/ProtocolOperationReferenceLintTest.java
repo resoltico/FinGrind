@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -20,10 +21,7 @@ class ProtocolOperationReferenceLintTest extends ProtocolContractOperationSuppor
     Set<String> violations = new HashSet<>();
     for (Path sourceFile : productionJavaFiles()) {
       String source = Files.readString(sourceFile);
-      STRING_LITERAL_PATTERN
-          .matcher(source)
-          .results()
-          .map(match -> match.group().substring(1, match.group().length() - 1))
+      stringLiterals(source)
           .forEach(
               literal ->
                   registeredHyphenatedIds.stream()
@@ -40,6 +38,17 @@ class ProtocolOperationReferenceLintTest extends ProtocolContractOperationSuppor
     assertTrue(
         violations.isEmpty(),
         () -> "Operation id string-literal authorship drift:\n" + sorted(violations));
+  }
+
+  @Test
+  void stringLiteralScanner_handlesLargeEscapedSourceWithoutRegexBacktracking() {
+    String literal = "\"escaped \\\"help\\\" token and post-entry\"";
+    String source = ("final String sample = " + literal + ";\n").repeat(20_000);
+
+    long matchingLiteralCount =
+        stringLiterals(source).filter(extracted -> containsToken(extracted, "post-entry")).count();
+
+    assertEquals(20_000L, matchingLiteralCount);
   }
 
   @Test
