@@ -11,7 +11,11 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -102,6 +106,27 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
               PosixFilePermission.OWNER_WRITE,
               PosixFilePermission.OWNER_EXECUTE),
           ((AclFixturePath) snapshotDirectory).posixPermissions);
+    }
+  }
+
+  @Test
+  void createPrivateSnapshotDirectory_supportsAclOwnerOnlyCreation() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath tempRoot = fileSystem.path("\\tmp");
+      tempRoot.exists = true;
+      tempRoot.regularFile = false;
+
+      Path snapshotDirectory =
+          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, false);
+
+      assertTrue(Files.isDirectory(snapshotDirectory));
+      List<AclEntry> acl =
+          Objects.requireNonNull(((AclFixturePath) snapshotDirectory).aclViewValue()).getAcl();
+      assertEquals(1, acl.size());
+      assertEquals(AclEntryType.ALLOW, acl.getFirst().type());
+      assertEquals(fileSystem.owner(), acl.getFirst().principal());
+      assertTrue(acl.getFirst().permissions().contains(AclEntryPermission.LIST_DIRECTORY));
+      assertTrue(acl.getFirst().permissions().contains(AclEntryPermission.ADD_FILE));
     }
   }
 

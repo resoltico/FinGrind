@@ -91,4 +91,43 @@ class SqliteBookKeyFileFilesystemSecurityCoverageTest {
       assertTrue(aclSecurity.acl().getFirst().permissions().contains(AclEntryPermission.EXECUTE));
     }
   }
+
+  @Test
+  void aclFacadeCoverage_reportsAclDescriptorsAndRehardensOneDirectoryAndKeyFile()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath bookKeyFilePath = fileSystem.path("\\facade\\acl.book-key");
+      AclFixturePath parentDirectory =
+          assertInstanceOf(
+              AclFixturePath.class, Objects.requireNonNull(bookKeyFilePath.getParent()));
+
+      assertEquals(
+          SqliteBookKeyFileSecurity.WINDOWS_OWNER_ONLY_ACL_DESCRIPTOR,
+          SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(bookKeyFilePath));
+      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(bookKeyFilePath);
+      SqliteBookKeyFileSecurity.ensureSecureParentDirectory(bookKeyFilePath);
+      SqliteBookKeyFileSecurity.createSecureEmptyFile(bookKeyFilePath);
+      assertEquals(
+          bookKeyFilePath,
+          SqliteBookKeyFileSecurity.requireSecureKeyFile(bookKeyFilePath).requireAccepted());
+
+      Objects.requireNonNull(parentDirectory.aclViewValue())
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.group())
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
+
+      SqliteBookKeyFileSecurity.hardenDirectory(parentDirectory);
+
+      List<AclEntry> hardenedAcl = Objects.requireNonNull(parentDirectory.aclViewValue()).getAcl();
+      assertEquals(1, hardenedAcl.size());
+      assertEquals(AclEntryType.ALLOW, hardenedAcl.getFirst().type());
+      assertEquals(fileSystem.owner(), hardenedAcl.getFirst().principal());
+      assertTrue(hardenedAcl.getFirst().permissions().contains(AclEntryPermission.LIST_DIRECTORY));
+      assertTrue(hardenedAcl.getFirst().permissions().contains(AclEntryPermission.EXECUTE));
+    }
+  }
 }
