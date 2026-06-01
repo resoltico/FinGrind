@@ -580,6 +580,25 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     }
 
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath missingParentArtifactPath = fileSystem.path("\\acl-key-parent\\book.key");
+      AclFixturePath missingParent = fileSystem.path("\\acl-key-parent");
+      missingParent.overrideAclView =
+          new ThrowingAclFileAttributeView(
+              java.util.Objects.requireNonNull(missingParent.aclView, "missingParent.aclView")
+                  .getOwner(),
+              "key-parent-acl-boom");
+      IllegalStateException parentHardeningFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingSupport.ensureSecureBackupKeyFileParentDirectory(
+                      missingParentArtifactPath));
+      assertTrue(
+          NullTestSupport.messageOf(parentHardeningFailure)
+              .contains("Failed to secure the parent directory"));
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath parentPath = fileSystem.path("\\acl-books");
       parentPath.exists = true;
       parentPath.regularFile = false;
