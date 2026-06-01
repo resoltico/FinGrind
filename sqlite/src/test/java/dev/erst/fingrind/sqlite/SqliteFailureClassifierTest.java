@@ -71,4 +71,18 @@ class SqliteFailureClassifierTest {
     assertEquals("storage failure", exception.getMessage());
     assertSame(cause, exception.getCause());
   }
+
+  @Test
+  void managedRuntimeUnavailableException_withCause_preservesMessageAndClassification() {
+    RuntimeException cause = new RuntimeException("boom");
+
+    ManagedSqliteRuntimeUnavailableException exception =
+        new ManagedSqliteRuntimeUnavailableException("managed runtime unavailable", cause);
+
+    assertEquals("managed runtime unavailable", exception.getMessage());
+    assertSame(cause, exception.getCause());
+    assertSame(
+        SqliteFailureClassifier.Category.MANAGED_RUNTIME,
+        SqliteFailureClassifier.classify(exception));
+  }
 }
