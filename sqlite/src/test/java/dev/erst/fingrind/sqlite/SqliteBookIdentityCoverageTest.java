@@ -42,10 +42,18 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
               insert into book_identity (
                   singleton_id,
                   entity_name,
+                  accounting_kernel_profile,
                   functional_currency_code,
                   fiscal_year_start_month,
                   fiscal_year_start_day
-              ) values (1, 'Acme Studio', 'EUR', 1, 1)
+              ) values (
+                  1,
+                  'Acme Studio',
+                  'country-agnostic-bookkeeping-kernel',
+                  'EUR',
+                  1,
+                  1
+              )
               """);
           IllegalStateException exception =
               assertThrows(
@@ -116,6 +124,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(
@@ -131,13 +140,14 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_roundTripsPolicyProfileWithoutTaxProfileMetadata() {
+  void loadBookIdentity_roundTripsBuiltInAccountingKernelProfile() {
     Path bookPath = tempDirectory.resolve("book-identity-registered-tax-status.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(
                 new BookEntityName("Registered Studio"),
                 List.of(new BusinessActivityTag("translation-services"))),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(

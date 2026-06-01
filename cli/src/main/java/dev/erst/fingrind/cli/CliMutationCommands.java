@@ -24,35 +24,35 @@ record ExecutePlan(BookAccess bookAccess, Path requestFile, PlanResultDetail res
 }
 
 /** Mutation CLI commands that validate or commit request-backed changes. */
-record PreflightEntry(BookAccess bookAccess, Path requestFile, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  PreflightEntry {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(requestFile, "requestFile");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class PreflightEntry extends CliBookRequestOutputModeCommand {
+  PreflightEntry(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
         .mutation()
         .runPreflightEntryCommand(bookAccess, requestFile, outputMode);
   }
 }
 
 /** Mutation CLI commands that validate or commit request-backed changes. */
-record PostEntry(BookAccess bookAccess, Path requestFile, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  PostEntry {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(requestFile, "requestFile");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class PostEntry extends CliBookRequestOutputModeCommand {
+  PostEntry(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
-        .mutation()
-        .runPostEntryCommand(bookAccess, requestFile, outputMode);
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext.mutation().runPostEntryCommand(bookAccess, requestFile, outputMode);
   }
 }

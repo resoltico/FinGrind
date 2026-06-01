@@ -22,7 +22,7 @@ import org.gradle.kotlin.dsl.withType
 import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.api.provider.Provider
 
-private const val jazzerTestProjectRootProperty = "fingrind.jazzer.test-project-root"
+internal const val jazzerTestProjectRootProperty = "fingrind.jazzer.test-project-root"
 private const val jazzerWrapperExitStatusProperty = "fingrind.jazzer.wrapper.exit-status-file"
 
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
@@ -437,70 +437,15 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 }
             }
 
-            tasks.named<Test>("test") {
-                description = "Runs deterministic Jazzer replay and harness tests."
-                group = "verification"
-                useJUnitPlatform()
-                maxParallelForks = 1
-                dependsOn(sqliteWhiteBoxTestPatch)
-                dependsOn(executorWhiteBoxTestPatch)
-                enableUnnamedNativeAccess()
-                allowSunMiscUnsafeMemoryAccess()
-                disableClassDataSharing()
-                patchModule(
-                    "dev.erst.fingrind.sqlite",
-                    files(sqliteWhiteBoxTestPatchDirectory),
-                )
-                patchModule(
-                    "dev.erst.fingrind.executor",
-                    files(executorWhiteBoxTestPatchDirectory),
-                )
-                addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
-                addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
-                systemProperty(jazzerTestProjectRootProperty, layout.projectDirectory.asFile.absolutePath)
-                doFirst {
-                    addTestListener(JazzerDeterministicTestPulseListener())
-                }
-            }
-
-            tasks.named("check") {
-                dependsOn(jazzerRegression)
-            }
-
-            tasks.register("fuzzAllLocal") {
-                description = "Runs all active local-only FinGrind fuzzing tasks."
-                group = "verification"
-                dependsOn(fuzzTasks)
-            }
-
-            fuzzTasks.windowed(size = 2, step = 1, partialWindows = false).forEach { (first, second) ->
-                second.configure {
-                    mustRunAfter(first)
-                }
-            }
-
-            val jazzerDeterministicTests = tasks.named<Test>("test")
-            regressionTasks.windowed(size = 2, step = 1, partialWindows = false).forEach { (first, second) ->
-                second.configure {
-                    mustRunAfter(first)
-                    mustRunAfter(jazzerDeterministicTests)
-                }
-            }
-            regressionTasks.firstOrNull()?.configure {
-                mustRunAfter(jazzerDeterministicTests)
-            }
-
-            tasks.register<CleanLocalCorpusTask>("cleanLocalCorpus") {
-                description = "Deletes generated Jazzer corpora under .local."
-                group = "build"
-                localDirectory.set(layout.projectDirectory.dir(".local"))
-            }
-
-            tasks.register<CleanLocalFindingsTask>("cleanLocalFindings") {
-                description = "Deletes local crash files and non-corpus run state under .local."
-                group = "build"
-                runsDirectory.set(layout.projectDirectory.dir(".local/runs"))
-            }
+            configureJazzerVerificationLifecycle(
+                fuzzTasks = fuzzTasks,
+                regressionTasks = regressionTasks,
+                jazzerRegression = jazzerRegression,
+                sqliteWhiteBoxTestPatch = sqliteWhiteBoxTestPatch,
+                executorWhiteBoxTestPatch = executorWhiteBoxTestPatch,
+                sqliteWhiteBoxTestPatchDirectory = sqliteWhiteBoxTestPatchDirectory,
+                executorWhiteBoxTestPatchDirectory = executorWhiteBoxTestPatchDirectory,
+            )
         }
     }
 }

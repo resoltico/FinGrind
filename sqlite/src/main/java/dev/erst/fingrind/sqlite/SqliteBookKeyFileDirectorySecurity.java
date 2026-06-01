@@ -3,18 +3,14 @@ package dev.erst.fingrind.sqlite;
 import static dev.erst.fingrind.sqlite.SqliteBookKeyFileSecuritySupport.redactedPath;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -96,7 +92,8 @@ final class SqliteBookKeyFileDirectorySecurity {
       Files.setPosixFilePermissions(directoryPath, POSIX_KEY_DIRECTORY_PERMISSIONS);
       return;
     }
-    applyOwnerOnlyAcl(directoryPath, WINDOWS_OWNER_KEY_DIRECTORY_PERMISSIONS);
+    SqliteBookKeyFileSecurityPolicy.applyOwnerOnlyAcl(
+        directoryPath, WINDOWS_OWNER_KEY_DIRECTORY_PERMISSIONS);
   }
 
   static ContractDecision<Path> requireSecureParentDirectorySecurity(
@@ -124,63 +121,23 @@ final class SqliteBookKeyFileDirectorySecurity {
 
   private static ContractDecision<Path> requireSecureParentDirectoryPosixPermissions(
       Path parentDirectory, Set<PosixFilePermission> permissions) {
-    if (!permissions.contains(PosixFilePermission.OWNER_EXECUTE)) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file parent directory must be owner-searchable: "
-                  + redactedPath(parentDirectory)));
-    }
-    if (!POSIX_KEY_DIRECTORY_PERMISSIONS.containsAll(permissions)) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file parent directory must use owner-only permissions: "
-                  + redactedPath(parentDirectory)));
-    }
-    return ContractDecision.accepted(parentDirectory);
+    return SqliteBookKeyFileSecurityPolicy.requireOwnerOnlyPosixPermissions(
+        parentDirectory,
+        permissions,
+        PosixFilePermission.OWNER_EXECUTE,
+        POSIX_KEY_DIRECTORY_PERMISSIONS,
+        "The FinGrind book key file parent directory must be owner-searchable: ",
+        "The FinGrind book key file parent directory must use owner-only permissions: ");
   }
 
   private static ContractDecision<Path> requireSecureParentDirectoryAcl(
       Path parentDirectory, SqliteAclKeyFileSecurity security) {
-    if (security.acl().stream()
-        .filter(entry -> entry.type() == AclEntryType.ALLOW)
-        .filter(entry -> security.owner().equals(entry.principal()))
-        .noneMatch(entry -> entry.permissions().containsAll(ACL_DIRECTORY_REQUIRED_PERMISSIONS))) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file parent directory ACL must grant the directory owner traversal access: "
-                  + redactedPath(parentDirectory)));
-    }
-    java.util.Optional<ContractFailure> nonOwnerAccessFailure =
-        security.acl().stream()
-            .filter(entry -> entry.type() == AclEntryType.ALLOW)
-            .filter(entry -> !security.owner().equals(entry.principal()))
-            .filter(
-                entry ->
-                    SqliteBookKeyFileSecuritySupport.containsAny(
-                        entry.permissions(), ACL_SECRET_DIRECTORY_ACCESS_PERMISSIONS))
-            .findFirst()
-            .map(
-                entry ->
-                    SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-                        "The FinGrind book key file parent directory ACL must grant secret-directory access only to the directory owner: "
-                            + redactedPath(parentDirectory)
-                            + " grants access to one non-owner principal."));
-    if (nonOwnerAccessFailure.isPresent()) {
-      return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
-    }
-    return ContractDecision.accepted(parentDirectory);
-  }
-
-  private static void applyOwnerOnlyAcl(Path normalizedPath, Set<AclEntryPermission> permissions)
-      throws IOException {
-    AclFileAttributeView view = SqliteBookKeyFileSecuritySupport.aclView(normalizedPath);
-    UserPrincipal owner = view.getOwner();
-    AclEntry ownerEntry =
-        AclEntry.newBuilder()
-            .setType(AclEntryType.ALLOW)
-            .setPrincipal(owner)
-            .setPermissions(permissions)
-            .build();
-    view.setAcl(List.of(ownerEntry));
+    return SqliteBookKeyFileSecurityPolicy.requireOwnerOnlyAcl(
+        parentDirectory,
+        security,
+        ACL_DIRECTORY_REQUIRED_PERMISSIONS,
+        ACL_SECRET_DIRECTORY_ACCESS_PERMISSIONS,
+        "The FinGrind book key file parent directory ACL must grant the directory owner traversal access: ",
+        "The FinGrind book key file parent directory ACL must grant secret-directory access only to the directory owner: ");
   }
 }

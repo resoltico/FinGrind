@@ -343,8 +343,9 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void sourceCheckoutManagedLibraryPath_returnsNullWhenDirectoryIsMissingOrFinderFails()
-      throws IOException {
+  void
+      sourceCheckoutManagedLibraryPath_returnsNullWhenDirectoryIsMissingAndFailsWhenInspectionBreaks()
+          throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
     Path managedSqliteRoot =
         sourceCheckoutRoot
@@ -359,13 +360,17 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
               throw new IOException("boom");
             }));
     Files.createDirectories(managedSqliteRoot);
-    assertEquals(
-        null,
-        SqliteSourceCheckoutRuntimeLocator.sourceCheckoutManagedLibraryPath(
-            sourceCheckoutRoot,
-            (root, expectedFileName) -> {
-              throw new IOException("boom");
-            }));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteSourceCheckoutRuntimeLocator.sourceCheckoutManagedLibraryPath(
+                    sourceCheckoutRoot,
+                    (root, expectedFileName) -> {
+                      throw new IOException("boom");
+                    }));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("could not inspect it"));
+    assertEquals("boom", Objects.requireNonNull(exception.getCause()).getMessage());
   }
 
   @Test

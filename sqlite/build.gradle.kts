@@ -1,4 +1,5 @@
 import dev.erst.fingrind.buildlogic.DistributionContractReader
+import dev.erst.fingrind.buildlogic.DistributionBundleTargetReader
 import dev.erst.fingrind.buildlogic.addOpens
 import dev.erst.fingrind.buildlogic.addReads
 import dev.erst.fingrind.buildlogic.patchModule
@@ -17,7 +18,7 @@ plugins {
 description = "SQLite-backed FinGrind persistence adapter"
 
 val repositoryRootDirectory = rootProject.projectDir.toPath()
-val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
+val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
 val managedSqliteToolchainFingerprintPath =
     rootProject.layout.buildDirectory.file(
         "managed-sqlite/${hostBundleTarget.classifier}/toolchain-fingerprint.json",

@@ -1,8 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import java.util.List;
 
@@ -15,36 +18,29 @@ final class CliDiscoveryRuntimeTextRenderer {
     String summary =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Runtime status", runtime.status().wireValue()),
+                List.of("Runtime status", displayRuntimeStatus(runtime.status().wireValue())),
                 List.of(
-                    "Runtime",
-                    environmentDescriptor.distribution().runtimeDistribution().wireValue()),
-                List.of(
-                    "Storage",
-                    environmentDescriptor.storage().storageDriver().wireValue()
-                        + " / "
-                        + environmentDescriptor.storage().storageEngine().wireValue()),
-                List.of(
-                    "Protection", environmentDescriptor.storage().bookProtectionMode().wireValue()),
+                    "Distribution",
+                    displayRuntimeDistribution(environmentDescriptor.distribution())),
+                List.of("Book storage", displayStorage(environmentDescriptor.storage())),
+                List.of("Book protection", displayProtection(environmentDescriptor.storage())),
                 List.of(
                     "Book format",
-                    "v"
+                    "format v"
                         + environmentDescriptor
                             .storage()
                             .defaultProtectedBookFormat()
                             .formatVersion()
-                        + " / "
-                        + environmentDescriptor
-                            .storage()
-                            .defaultProtectedBookFormat()
-                            .cipher()
-                            .wireValue()),
-                List.of("SQLite runtime", environmentDescriptor.sqlite().libraryMode().wireValue()),
+                        + " using "
+                        + displayCipher(environmentDescriptor.storage())),
+                List.of(
+                    "SQLite runtime",
+                    displaySqliteRuntimeMode(environmentDescriptor.sqlite().libraryMode())),
                 List.of("SQLite", loadedSqliteVersion(runtime)),
                 List.of("SQLite3MC", loadedSqlite3mcVersion(runtime)),
                 List.of("Issue", runtimeIssue(runtime)),
                 List.of(
-                    "Full inventory",
+                    "Full machine inventory",
                     CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json")),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock("FinGrind Environment", summary);
@@ -88,5 +84,35 @@ final class CliDiscoveryRuntimeTextRenderer {
       case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
           incompatible.runtimeIssue();
     };
+  }
+
+  private static String displayRuntimeStatus(String wireValue) {
+    return CliTextDisplay.wireLabel(wireValue);
+  }
+
+  private static String displayRuntimeDistribution(
+      EnvironmentDistributionDescriptor distributionDescriptor) {
+    return switch (distributionDescriptor.runtimeDistribution()) {
+      case SELF_CONTAINED_BUNDLE -> "Self-contained public bundle";
+      case SOURCE_CHECKOUT_GRADLE -> "Source checkout launcher";
+      case DIRECT_JAVA_INVOCATION -> "Developer direct-Java launcher";
+      case CONTAINER_IMAGE -> "Container image launcher";
+    };
+  }
+
+  private static String displayStorage(EnvironmentStorageDescriptor ignored) {
+    return "Protected SQLite book file via the managed SQLite native bridge.";
+  }
+
+  private static String displayProtection(EnvironmentStorageDescriptor ignored) {
+    return "Encrypted keyed protected book";
+  }
+
+  private static String displayCipher(EnvironmentStorageDescriptor ignored) {
+    return "ChaCha20";
+  }
+
+  private static String displaySqliteRuntimeMode(SqliteLibraryMode ignored) {
+    return "Managed protected-book runtime";
   }
 }

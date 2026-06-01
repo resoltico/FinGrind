@@ -57,7 +57,7 @@ class SqliteCommittedRowImmutabilityTest extends SqlitePostingFactStoreTestSuppo
       SqliteNativeDatabase database, String sql, String relationName) {
     SqliteNativeException exception =
         assertThrows(SqliteNativeException.class, () -> database.executeStatement(sql));
-    assertEquals(SqliteNativeResultCodes.CONSTRAINT_TRIGGER, exception.resultCode());
+    assertEquals(SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"), exception.resultCode());
     assertFalse(NullTestSupport.messageOf(exception).isBlank(), () -> relationName + " message");
   }
 }

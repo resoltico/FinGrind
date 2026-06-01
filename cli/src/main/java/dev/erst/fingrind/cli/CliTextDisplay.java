@@ -44,7 +44,7 @@ final class CliTextDisplay {
   }
 
   static String upperDateBoundary(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null ? "latest committed posting date" : effectiveDateTo.toString();
+    return effectiveDateTo == null ? "current book horizon" : effectiveDateTo.toString();
   }
 
   static String dateRange(

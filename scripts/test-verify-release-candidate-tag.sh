@@ -29,14 +29,12 @@ readonly release_check_support="${repo_root}/scripts/release-check-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 readonly release_workflow="${repo_root}/.github/workflows/release.yml"
-readonly container_workflow="${repo_root}/.github/workflows/container.yml"
 
 [[ -x "${verifier}" ]] || die "missing executable release-candidate verifier at ${verifier}"
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
-[[ -f "${container_workflow}" ]] || die "missing container workflow at ${container_workflow}"
 
 # shellcheck source=/dev/null
 source "${release_check_support}"
@@ -52,14 +50,18 @@ grep -Fq 'verify-release-candidate-tag.sh' "${release_workflow}" || die \
     "release workflow no longer invokes the release-candidate verifier"
 grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
     "release workflow no longer resolves the workflow helper-root contract"
-grep -Fq 'workflow-helper-root' "${container_workflow}" || die \
-    "container workflow no longer resolves the workflow helper-root contract"
-grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${container_workflow}" || die \
-    "container workflow no longer validates publication candidates before publishing images"
+grep -Fq 'container:' "${release_workflow}" || die \
+    "release workflow no longer carries the container publication job after the release handoff"
+if [[ -e "${repo_root}/.github/workflows/container.yml" ]]; then
+    die "retired standalone container workflow resurfaced after publication unification"
+fi
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "release-candidate verifier no longer sources the canonical release-check owner"
 grep -Fq "${expected_check_name}" "${release_protocol}" || die \
     "release protocol no longer documents the canonical Gate release check"
+if grep -Fq 'gh workflow run container.yml' "${release_protocol}"; then
+    die "release protocol still documents rerunning a retired standalone container workflow"
+fi
 if grep -Fq 'Contributor devcontainer' "${verifier}"; then
     die "release-candidate verifier reintroduced the obsolete contributor-devcontainer release check"
 fi

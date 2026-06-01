@@ -21,8 +21,7 @@ class CliTextDisplayTest {
         "<redacted>/book.sqlite",
         CliTextDisplay.path(new PublicPathHint("<redacted>/book.sqlite")));
     assertEquals("book start", CliQueryTextFormatAccess.lowerDateBoundaryLabel(null));
-    assertEquals(
-        "latest committed posting date", CliQueryTextFormatAccess.upperDateBoundaryLabel(null));
+    assertEquals("current book horizon", CliQueryTextFormatAccess.upperDateBoundaryLabel(null));
     assertEquals(
         "tmp/book.sqlite", CliQueryTextFormatAccess.absolutePath(Path.of("/tmp/book.sqlite")));
   }

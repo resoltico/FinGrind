@@ -289,14 +289,14 @@ class CliFailureOutputRendererTest {
             List.of(
                 new CliPlanJsonModels.LedgerJournalEntryPayload(
                     "step-1",
-                    LedgerJournalKind.POST_ENTRY,
+                    LedgerJournalKind.ASSERT,
                     LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                     null,
-                    LedgerStepStatus.REJECTED,
+                    LedgerStepStatus.ASSERTION_FAILED,
                     "2026-05-13T10:15:30Z",
                     "2026-05-13T10:15:31Z",
-                    new CliPlanJsonModels.CommittedEntryStepDataPayload(
-                        "posting-1", "idem-1", "2026-05-13", "2026-05-13T10:15:31Z"),
-                    null))));
+                    new CliPlanJsonModels.AccountCodeAssertionStepDataPayload("1000"),
+                    new CliPlanJsonModels.LedgerStepFailurePayload(
+                        "assertion-failed", "Rejected message.", List.of())))));
   }
 }

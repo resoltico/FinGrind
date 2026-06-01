@@ -57,7 +57,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, runtimeProbe.runtimeProvenance());
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeProbe.runtimeTrustBasis());
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
+        runtimeProbe.runtimeTrustBasis());
     assertFalse(requireLoadedLibraryPath(runtimeProbe).isBlank());
     assertEquals("3.53.1", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
@@ -68,7 +69,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(
         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, SqliteRuntime.runtimeProvenance());
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, SqliteRuntime.runtimeTrustBasis());
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
+        SqliteRuntime.runtimeTrustBasis());
     assertFalse(SqliteRuntime.loadedLibraryPath().isBlank());
     assertEquals(
         new SqliteProtectedBookFormatIntrospection.CipherSettings(
@@ -253,7 +255,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
         runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
     assertEquals("3.51.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
@@ -277,7 +280,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntime.Status.FAILED, runtimeProbe.status());
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
     assertNull(runtimeProbe.loadedSqliteVersion());
     assertNull(runtimeProbe.loadedSqlite3mcVersion());
@@ -303,7 +307,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
         runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertEquals("3.53.1", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.2", runtimeProbe.loadedSqlite3mcVersion());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
@@ -328,7 +333,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(
         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
         runtimeProbe.compileOptionsVerification());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertEquals("3.53.1", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
     assertEquals("2026-04-09 wrong-source-id", runtimeProbe.loadedSqliteSourceId());
@@ -356,7 +362,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals(
         SqliteCompileOptionsVerificationStatus.FAILED, runtimeProbe.compileOptionsVerification());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertEquals("3.53.1", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
@@ -374,7 +381,8 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
         SqliteCompileOptionsVerificationStatus.VERIFIED, runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeProbe.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
     assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertEquals("3.53.1", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.4", runtimeProbe.loadedSqlite3mcVersion());
@@ -433,7 +441,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
                     SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                     SqliteRuntime.Status.UNAVAILABLE,
                     null,
-                    SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                    SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                     null,
                     null,
                     null,
@@ -460,7 +468,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
             null,
             null);
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
         derivedTrustBasisProbe.runtimeTrustBasis());
     IllegalArgumentException mismatchedTrustBasisException =
         assertThrows(
@@ -474,7 +482,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntime.Status.READY,
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                    SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                    SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",

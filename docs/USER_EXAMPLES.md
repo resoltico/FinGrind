@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: USER_EXAMPLES
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -119,7 +119,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"country-agnostic-bookkeeping-kernel","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
 ## Inspect Compatibility Before Mutating
@@ -195,6 +195,9 @@ fingrind \
 
 That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
 artifacts beside it.
+If `./backup/books/` or `./backup/secrets/` does not exist yet, FinGrind creates those parent
+directories with owner-only protection. If either directory already exists, keep it owner-only
+before you reuse that backup path.
 
 To restore, verify the backup pair and replace the live book path in one step:
 
@@ -208,6 +211,9 @@ fingrind \
 
 After restore completes, reopen `./books/acme.sqlite` with that same backup key file because the
 restored encrypted book keeps the backup pair's secret.
+If the selected live-book parent directory does not exist yet, FinGrind creates it with
+owner-only protection before publishing the restored book. If it already exists, keep it
+owner-only before you reuse that restore target.
 
 ## Inspect Or Repair One Interrupted Rekey
 

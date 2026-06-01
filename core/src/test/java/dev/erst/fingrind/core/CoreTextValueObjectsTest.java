@@ -96,18 +96,60 @@ class CoreTextValueObjectsTest {
     EntityProfile entityProfile = new EntityProfile(entityName, List.of());
 
     BookIdentity bookIdentity =
-        new BookIdentity(entityProfile, functionalCurrency, fiscalYearStart);
+        new BookIdentity(
+            entityProfile,
+            AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            functionalCurrency,
+            fiscalYearStart);
 
     assertEquals(entityName, bookIdentity.entityName());
+    assertEquals(
+        AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        bookIdentity.accountingKernelProfileId());
     assertThrows(
         NullPointerException.class,
-        () -> new BookIdentity(nullOf(), functionalCurrency, fiscalYearStart));
+        () ->
+            new BookIdentity(
+                nullOf(),
+                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                functionalCurrency,
+                fiscalYearStart));
     assertThrows(
         NullPointerException.class,
-        () -> new BookIdentity(entityProfile, nullOf(), fiscalYearStart));
+        () -> new BookIdentity(entityProfile, nullOf(), functionalCurrency, fiscalYearStart));
     assertThrows(
         NullPointerException.class,
-        () -> new BookIdentity(entityProfile, functionalCurrency, nullOf()));
+        () ->
+            new BookIdentity(
+                entityProfile,
+                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                nullOf(),
+                fiscalYearStart));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookIdentity(
+                entityProfile,
+                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                functionalCurrency,
+                nullOf()));
+  }
+
+  @Test
+  void accountingKernelProfileId_stripsWhitespaceAndRejectsInvalidValues() {
+    assertEquals(
+        "country-agnostic-bookkeeping-kernel",
+        new AccountingKernelProfileId("  country-agnostic-bookkeeping-kernel  ").value());
+    assertThrows(NullPointerException.class, () -> new AccountingKernelProfileId(nullOf()));
+    assertThrows(IllegalArgumentException.class, () -> new AccountingKernelProfileId("   "));
+    assertThrows(
+        IllegalArgumentException.class, () -> new AccountingKernelProfileId("x".repeat(121)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AccountingKernelProfileId("Country-Agnostic-Bookkeeping-Kernel"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AccountingKernelProfileId("country_agnostic_bookkeeping_kernel"));
   }
 
   @Test

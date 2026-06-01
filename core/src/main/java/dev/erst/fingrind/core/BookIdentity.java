@@ -4,10 +4,14 @@ import java.util.Objects;
 
 /** Canonical identity metadata for one accounting entity book. */
 public record BookIdentity(
-    EntityProfile entityProfile, CurrencyUnit functionalCurrency, FiscalYearStart fiscalYearStart) {
+    EntityProfile entityProfile,
+    AccountingKernelProfileId accountingKernelProfileId,
+    CurrencyUnit functionalCurrency,
+    FiscalYearStart fiscalYearStart) {
   /** Validates one book identity. */
   public BookIdentity {
     Objects.requireNonNull(entityProfile, "entityProfile");
+    Objects.requireNonNull(accountingKernelProfileId, "accountingKernelProfileId");
     Objects.requireNonNull(functionalCurrency, "functionalCurrency");
     Objects.requireNonNull(fiscalYearStart, "fiscalYearStart");
   }

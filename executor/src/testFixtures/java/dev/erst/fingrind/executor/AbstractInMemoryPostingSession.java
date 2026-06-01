@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -8,14 +9,18 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlan;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -152,9 +157,67 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
 
   @Override
   public PeriodResultTransferOutcome transferPeriodResult(
-      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
-    Objects.requireNonNull(periodResultTransferDraft, "periodResultTransferDraft");
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      PeriodResultTransferPlanner planner,
+      LocalDate currentUtcDate,
+      Instant transferredAt,
+      PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(planner, "planner");
+    Objects.requireNonNull(currentUtcDate, "currentUtcDate");
+    Objects.requireNonNull(transferredAt, "transferredAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    return InMemoryBookSessionSupport.withLock(
+        lock,
+        () -> {
+          if (!initialized) {
+            return new PeriodResultTransferOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookNotInitialized());
+          }
+          List<RegisteredAccount> accounts =
+              accountsByCode.values().stream()
+                  .sorted(java.util.Comparator.comparing(account -> account.accountCode().value()))
+                  .toList();
+          var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
+          if (resultHoldingSelection
+              instanceof
+              dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection rejected) {
+            return new PeriodResultTransferOutcome.Rejected(rejected.rejection());
+          }
+          var closeHorizonRejection =
+              planner.closeHorizonRejection(
+                  reportingPeriod, bookIdentity, currentUtcDate, transferredThroughEffectiveDate());
+          if (closeHorizonRejection.isPresent()) {
+            return new PeriodResultTransferOutcome.Rejected(closeHorizonRejection.orElseThrow());
+          }
+          RegisteredAccount resultHoldingAccount =
+              ((dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection)
+                      resultHoldingSelection)
+                  .account();
+          PeriodResultTransferPlan closePlan =
+              planner.closingPostings(
+                  reportingPeriod,
+                  resultHoldingAccount,
+                  accounts,
+                  postings(reportingPeriod.effectiveDateRange()),
+                  transferredAt);
+          return transferPeriodResult(
+              new PeriodResultTransferDraft(
+                  reportingPeriod,
+                  resultHoldingAccount.accountCode(),
+                  closePlan.transferredTotals(),
+                  transferredAt,
+                  closePlan.closingPostings()),
+              postingIdGenerator);
+        });
+  }
+
+  PeriodResultTransferOutcome transferPeriodResult(
+      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(periodResultTransferDraft);
+    Objects.requireNonNull(postingIdGenerator);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {

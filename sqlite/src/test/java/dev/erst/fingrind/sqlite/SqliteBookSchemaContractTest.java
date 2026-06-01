@@ -372,7 +372,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                       1000
                                   )
                                   """));
-                  assertEquals(SqliteNativeResultCodes.CONSTRAINT_DATATYPE, exception.resultCode());
+                  assertEquals(
+                      SqliteNativeResultCode.code("CONSTRAINT_DATATYPE"), exception.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
                 }));
@@ -395,7 +396,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                               insertAccountRow(
                                   database, "_1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountCode.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidAccountCode.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountCode.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from account"));
                   SqliteNativeException invalidAccountName =
@@ -405,7 +407,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                               insertAccountRow(
                                   database, "1000", "   ", "DEBIT", 1, "2026-04-07T10:15:30Z"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountName.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidAccountName.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountName.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from account"));
                   insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
@@ -414,7 +417,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                           SqliteNativeException.class,
                           () -> insertPostingFactRow(database, "posting-1", "idem key"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidIdempotencyKey.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidIdempotencyKey.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidIdempotencyKey.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidActorId =
@@ -430,7 +434,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   "cause-actor",
                                   "null"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidActorId.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"), invalidActorId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidActorId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidCommandId =
@@ -446,7 +450,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   "cause-command",
                                   "null"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCommandId.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidCommandId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCommandId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidCausationId =
@@ -462,7 +467,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   "   ",
                                   "null"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCausationId.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidCausationId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCausationId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidCorrelationId =
@@ -478,7 +484,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   "cause-correlation",
                                   "'   '"));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCorrelationId.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+                      invalidCorrelationId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCorrelationId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                 }));
@@ -502,19 +509,21 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   insert into book_identity (
                                       singleton_id,
                                       entity_name,
+                                      accounting_kernel_profile,
                                       functional_currency_code,
                                       fiscal_year_start_month,
                                       fiscal_year_start_day
                                   ) values (
                                       1,
                                       'Acme Studio',
+                                      'country-agnostic-bookkeeping-kernel',
                                       'EUR',
                                       2,
                                       30
                                   )
                                   """));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAnchor.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"), invalidAnchor.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAnchor.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from book_identity"));
                 }));
@@ -542,7 +551,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                               insertJournalLineRow(
                                   database, "posting-1", 0, "1000", "DEBIT", "USD", 1000));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, mismatchedCurrency.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      mismatchedCurrency.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", mismatchedCurrency.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
                 }));
@@ -591,7 +601,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   )
                                   """));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, nonHeaderParent.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      nonHeaderParent.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", nonHeaderParent.resultName());
 
                   database.executeStatement(
@@ -652,7 +663,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   )
                                   """));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, taxonomyMismatch.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      taxonomyMismatch.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", taxonomyMismatch.resultName());
                   assertEquals(2, queryInt(database, "select count(*) from account"));
                 }));
@@ -720,7 +732,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                       SourceChannel.CLI.wireValue(),
                                       "null")));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, lateOpeningBalance.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      lateOpeningBalance.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", lateOpeningBalance.resultName());
                   assertEquals(1, queryInt(database, "select count(*) from posting_fact"));
                 }));
@@ -755,7 +768,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                               insertJournalLineRow(
                                   database, "posting-inactive", 0, "1100", "DEBIT", "EUR", 1000));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, inactiveAccountLine.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      inactiveAccountLine.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", inactiveAccountLine.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
                 }));
@@ -802,7 +816,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   "EUR",
                                   1000));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER,
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
                       nominalOpeningBalanceLine.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", nominalOpeningBalanceLine.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
@@ -845,7 +859,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   )
                                   """));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, invalidCloseTarget.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      invalidCloseTarget.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", invalidCloseTarget.resultName());
                 }));
 
@@ -957,7 +972,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                       SourceChannel.CLI.wireValue(),
                                       "null")));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, backfilledPosting.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      backfilledPosting.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", backfilledPosting.resultName());
 
                   SqliteNativeException brokenCloseLink =
@@ -975,7 +991,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                   )
                                   """));
                   assertEquals(
-                      SqliteNativeResultCodes.CONSTRAINT_TRIGGER, brokenCloseLink.resultCode());
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      brokenCloseLink.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", brokenCloseLink.resultName());
                 }));
   }

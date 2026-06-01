@@ -84,9 +84,6 @@ abstract class PrepareManagedSqliteTask
         @get:OutputFile
         abstract val checksumFile: RegularFileProperty
 
-        @get:OutputFile
-        abstract val trustedChecksumFile: RegularFileProperty
-
         @TaskAction
         fun compile() {
             val outputLibraryFile = outputFile.get().asFile
@@ -124,7 +121,6 @@ abstract class PrepareManagedSqliteTask
             writeChecksumFiles(
                 outputLibraryFile,
                 checksumFile.get().asFile,
-                trustedChecksumFile.get().asFile,
             )
         }
 
@@ -162,7 +158,6 @@ abstract class PrepareManagedSqliteTask
             writeChecksumFiles(
                 outputLibraryFile,
                 checksumFile.get().asFile,
-                trustedChecksumFile.get().asFile,
             )
         }
 
@@ -279,11 +274,9 @@ abstract class PrepareManagedSqliteTask
         private fun writeChecksumFiles(
             outputLibraryFile: java.io.File,
             checksumOutputFile: java.io.File,
-            trustedChecksumOutputFile: java.io.File,
         ) {
             val digest = MessageDigest.getInstance("SHA-256").digest(outputLibraryFile.readBytes())
             writeChecksumFile(outputLibraryFile, checksumOutputFile, digest)
-            writeChecksumFile(outputLibraryFile, trustedChecksumOutputFile, digest)
         }
 
         private fun writeBuildContractFile(buildContractOutputFile: java.io.File) {

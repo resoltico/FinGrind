@@ -95,6 +95,24 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "launcherCommand": "launcherCommand",
                 "sqliteLibraryFileName": "sqliteLibraryFileName",
             },
+            "releasePublication": {
+                "workflowDispatchHelperRef": "workflowDispatchHelperRef",
+                "bundleOutputArchivePrefixes": "bundleOutputArchivePrefixes",
+                "bundleOutputChecksumPrefixes": "bundleOutputChecksumPrefixes",
+                "publicBundleBuildTargets": "publicBundleBuildTargets",
+                "runnerLabel": "runnerLabel",
+                "expectedRunnerOs": "expectedRunnerOs",
+                "expectedRunnerArch": "expectedRunnerArch",
+                "requiredCiWorkflowName": "requiredCiWorkflowName",
+                "requiredCiWorkflowPath": "requiredCiWorkflowPath",
+                "requiredCiGateJobName": "requiredCiGateJobName",
+                "requiredCiJobNames": "requiredCiJobNames",
+                "containerRegistry": "containerRegistry",
+                "containerImageName": "containerImageName",
+                "containerRunnerLabel": "containerRunnerLabel",
+                "containerPlatforms": "containerPlatforms",
+                "latestPublicationPolicy": "latestPublicationPolicy",
+            },
             "operationIdContract": {
                 "help": "HELP",
                 "version": "VERSION",
@@ -213,6 +231,36 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         },
     )
     write_json(
+        protocol_root / "release-publication-contract.json",
+        {
+            "workflowDispatchHelperRef": "main",
+            "bundleOutputArchivePrefixes": [
+                "FINGRIND_BUNDLE_ARCHIVE=",
+                "FinGrind bundle archive: ",
+            ],
+            "bundleOutputChecksumPrefixes": [
+                "FINGRIND_BUNDLE_CHECKSUM=",
+                "FinGrind bundle checksum: ",
+            ],
+            "publicBundleBuildTargets": {
+                "linux-x86_64": {
+                    "runnerLabel": "ubuntu-24.04",
+                    "expectedRunnerOs": "Linux",
+                    "expectedRunnerArch": "x86_64",
+                }
+            },
+            "requiredCiWorkflowName": "CI",
+            "requiredCiWorkflowPath": ".github/workflows/ci.yml",
+            "requiredCiGateJobName": "Gate",
+            "requiredCiJobNames": ["Check", "Gate"],
+            "containerRegistry": "ghcr.io",
+            "containerImageName": "fingrind",
+            "containerRunnerLabel": "ubuntu-24.04",
+            "containerPlatforms": ["linux/amd64", "linux/arm64"],
+            "latestPublicationPolicy": "newest-stable-release-only",
+        },
+    )
+    write_json(
         protocol_root / "operation-id-contract.json",
         {
             "HELP": "help",
@@ -275,6 +323,19 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["publicDistribution"]["unsupportedPublicCliBundleTargets"] == [
         "windows-aarch64"
     ]
+    assert loaded["releasePublication"]["workflowDispatchHelperRef"] == "main"
+    assert loaded["releasePublication"]["publicBundleBuildTargets"] == {
+        "linux-x86_64": {
+            "runnerLabel": "ubuntu-24.04",
+            "expectedRunnerOs": "Linux",
+            "expectedRunnerArch": "x86_64",
+        }
+    }
+    assert loaded["releasePublication"]["requiredCiWorkflowName"] == "CI"
+    assert loaded["releasePublication"]["containerPlatforms"] == [
+        "linux/amd64",
+        "linux/arm64",
+    ]
     assert loaded["operationIds"]["version"] == "version"
     assert loaded["operationIds"]["generateBookKeyFile"] == "generate-book-key-file"
 
@@ -299,6 +360,63 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         {
             "supportedPublicCliBundleTargets": ["linux-x86_64"],
             "unsupportedPublicCliBundleTargets": ["windows-aarch64"],
+        },
+    )
+    write_json(
+        protocol_root / "release-publication-contract.json",
+        {
+            **read_json(protocol_root / "release-publication-contract.json"),
+            "publicBundleBuildTargets": {
+                "linux-x86_64": {
+                    "runnerLabel": "ubuntu-24.04",
+                    "expectedRunnerOs": "Linux",
+                    "expectedRunnerArch": "x86_64",
+                },
+                "windows-aarch64": {
+                    "runnerLabel": "windows-2022",
+                    "expectedRunnerOs": "Windows",
+                    "expectedRunnerArch": "ARM64",
+                },
+            },
+        },
+    )
+    try:
+        contract_values.load_contract_values(
+            fixture_root, os_name="Linux", architecture="x86_64"
+        )
+    except ValueError as exc:
+        assert "unsupported build targets" in str(exc)
+    else:
+        raise AssertionError("expected unsupported release build-target validation failure")
+
+    write_json(
+        protocol_root / "release-publication-contract.json",
+        {
+            "workflowDispatchHelperRef": "main",
+            "bundleOutputArchivePrefixes": [
+                "FINGRIND_BUNDLE_ARCHIVE=",
+                "FinGrind bundle archive: ",
+            ],
+            "bundleOutputChecksumPrefixes": [
+                "FINGRIND_BUNDLE_CHECKSUM=",
+                "FinGrind bundle checksum: ",
+            ],
+            "publicBundleBuildTargets": {
+                "linux-x86_64": {
+                    "runnerLabel": "ubuntu-24.04",
+                    "expectedRunnerOs": "Linux",
+                    "expectedRunnerArch": "x86_64",
+                }
+            },
+            "requiredCiWorkflowName": "CI",
+            "requiredCiWorkflowPath": ".github/workflows/ci.yml",
+            "requiredCiGateJobName": "Gate",
+            "requiredCiJobNames": ["Check", "Gate"],
+            "containerRegistry": "ghcr.io",
+            "containerImageName": "fingrind",
+            "containerRunnerLabel": "ubuntu-24.04",
+            "containerPlatforms": ["linux/amd64", "linux/arm64"],
+            "latestPublicationPolicy": "newest-stable-release-only",
         },
     )
     write_json(

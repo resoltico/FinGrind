@@ -572,7 +572,7 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteProtectedBookStagingSupport.ensureSecureParentDirectory(
+                  SqliteProtectedBookStagingSupport.ensureSecureBackupFileParentDirectory(
                       missingParentArtifactPath));
       assertTrue(
           NullTestSupport.messageOf(parentHardeningFailure)
@@ -886,9 +886,9 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
               SqliteNativeStatements.prepare(
                   database,
                   "select count(*) from audit_event where event_kind = '" + eventKind + "'")) {
-            assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+            assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
             count[0] = statement.columnInt(0);
-            assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+            assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
           }
         });
     return count[0];

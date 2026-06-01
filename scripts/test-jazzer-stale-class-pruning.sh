@@ -42,7 +42,7 @@ readonly stale_executor_class="${main_classes_dir}/SqliteRoundTripWorkflowConcur
 readonly stale_classifier_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage\$ConcurrentDecisionClass.class"
 readonly live_owner_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage.class"
 readonly live_task_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage\$ConcurrentCommitTask.class"
-readonly compile_log="$(mktemp "${TMPDIR:-/tmp}/fingrind-jazzer-compile.XXXXXX.log")"
+readonly compile_log="$(mktemp "${TMPDIR:-/tmp}/fingrind-jazzer-compile.XXXXXX")"
 
 cleanup() {
     rm -f "${compile_log}"

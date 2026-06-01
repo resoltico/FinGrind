@@ -22,11 +22,13 @@ public interface CliAdministrationJsonModels {
 
   record BookIdentityPayload(
       String entityName,
+      String accountingKernelProfile,
       java.util.List<String> businessActivityTags,
       String functionalCurrency,
       String fiscalYearStart) {
     public BookIdentityPayload {
       entityName = requireText(entityName, "entityName");
+      accountingKernelProfile = requireText(accountingKernelProfile, "accountingKernelProfile");
       businessActivityTags =
           CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");

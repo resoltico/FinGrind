@@ -117,6 +117,10 @@ final class CliTrialBalanceReportRenderer {
   static String renderCsv(TrialBalanceReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "exportFamily",
+            "rowId",
+            "parentRowId",
+            "relationKind",
             "reportBasis",
             "recordKind",
             "effectiveDateAsOf",
@@ -237,6 +241,10 @@ final class CliTrialBalanceReportRenderer {
   private static List<String> emptyCsvRow(
       String reportBasis, String effectiveDateAsOf, String currencyCode, String message) {
     return List.of(
+        CliCsvExportFamilies.STATEMENT,
+        "trial-balance-empty:" + reportBasis + ":" + effectiveDateAsOf,
+        "",
+        "report-empty",
         reportBasis,
         CliCsvEmptyKinds.REPORT_EMPTY,
         effectiveDateAsOf,
@@ -258,6 +266,10 @@ final class CliTrialBalanceReportRenderer {
   private static List<String> csvRow(
       String reportBasis, String effectiveDateAsOf, TrialBalanceRow row) {
     return List.of(
+        CliCsvExportFamilies.STATEMENT,
+        "trial-balance-row:" + reportBasis + ":" + row.account().accountCode().value(),
+        "",
+        "line",
         reportBasis,
         "row",
         effectiveDateAsOf,
@@ -279,6 +291,10 @@ final class CliTrialBalanceReportRenderer {
   private static List<String> totalCsvRow(
       String reportBasis, String effectiveDateAsOf, boolean balanced, CurrencyBalance total) {
     return List.of(
+        CliCsvExportFamilies.STATEMENT,
+        "trial-balance-total:" + reportBasis + ":" + total.netAmount().currencyUnit().code(),
+        "",
+        "report-total",
         reportBasis,
         "total",
         effectiveDateAsOf,

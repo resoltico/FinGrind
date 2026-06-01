@@ -28,65 +28,46 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
 
   static MachineContractFieldSpec conditionalAssertionAccountCodeField() {
     String description = "Account code consumed by account assertions.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE,
-        description,
-        MachineContractScalarSchemas.nonBlankStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalNonBlankStringField(
+        ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE, description);
   }
 
   static MachineContractFieldSpec requiredAssertionAccountCodeField() {
-    return MachineContractFieldSpec.required(
-        conditionalAssertionAccountCodeField().name(),
-        conditionalAssertionAccountCodeField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalAssertionAccountCodeField()));
+    return MachineContractLedgerPlanFieldSpecs.requiredFromConditional(
+        conditionalAssertionAccountCodeField());
   }
 
   static MachineContractFieldSpec conditionalAssertionPostingIdField() {
     String description = "Posting identifier consumed by posting-existence assertions.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Assertion.POSTING_ID,
-        description,
-        MachineContractScalarSchemas.nonBlankStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalNonBlankStringField(
+        ProtocolLedgerPlanFields.Assertion.POSTING_ID, description);
   }
 
   static MachineContractFieldSpec requiredAssertionPostingIdField() {
-    return MachineContractFieldSpec.required(
-        conditionalAssertionPostingIdField().name(),
-        conditionalAssertionPostingIdField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalAssertionPostingIdField()));
+    return MachineContractLedgerPlanFieldSpecs.requiredFromConditional(
+        conditionalAssertionPostingIdField());
   }
 
   static MachineContractFieldSpec conditionalAssertionEffectiveDateFromField() {
     String description = "Inclusive ISO-8601 effective-date lower bound for balance assertions.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM,
-        description,
-        MachineContractScalarSchemas.dateStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalDateField(
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM, description);
   }
 
   static MachineContractFieldSpec optionalAssertionEffectiveDateFromField() {
-    return MachineContractFieldSpec.optional(
-        conditionalAssertionEffectiveDateFromField().name(),
-        conditionalAssertionEffectiveDateFromField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalAssertionEffectiveDateFromField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(
+        conditionalAssertionEffectiveDateFromField());
   }
 
   static MachineContractFieldSpec conditionalAssertionEffectiveDateToField() {
     String description = "Inclusive ISO-8601 effective-date upper bound for balance assertions.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO,
-        description,
-        MachineContractScalarSchemas.dateStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalDateField(
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO, description);
   }
 
   static MachineContractFieldSpec optionalAssertionEffectiveDateToField() {
-    return MachineContractFieldSpec.optional(
-        conditionalAssertionEffectiveDateToField().name(),
-        conditionalAssertionEffectiveDateToField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalAssertionEffectiveDateToField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(
+        conditionalAssertionEffectiveDateToField());
   }
 
   static MachineContractFieldSpec conditionalAssertionNetAmountField() {

@@ -108,7 +108,7 @@ final class SqlitePostingMapper {
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
     List<JournalLine> lines = new ArrayList<>();
-    while (lineRows.step() == SqliteNativeResultCodes.ROW) {
+    while (lineRows.step() == SqliteNativeResultCode.code("ROW")) {
       lines.add(
           new JournalLine(
               new AccountCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_ACCOUNT_CODE)),
@@ -156,7 +156,7 @@ final class SqlitePostingMapper {
   static List<SourceDocumentReference> sourceDocumentReferences(
       SqliteNativeStatement sourceDocumentRows) {
     List<SourceDocumentReference> sourceDocuments = new ArrayList<>();
-    while (sourceDocumentRows.step() == SqliteNativeResultCodes.ROW) {
+    while (sourceDocumentRows.step() == SqliteNativeResultCode.code("ROW")) {
       sourceDocuments.add(
           new SourceDocumentReference(
               new SourceDocumentId(
@@ -182,7 +182,7 @@ final class SqlitePostingMapper {
 
   static List<ApprovalReference> approvalReferences(SqliteNativeStatement approvalRows) {
     List<ApprovalReference> approvals = new ArrayList<>();
-    while (approvalRows.step() == SqliteNativeResultCodes.ROW) {
+    while (approvalRows.step() == SqliteNativeResultCode.code("ROW")) {
       approvals.add(
           new ApprovalReference(
               new ApprovalId(requiredText(approvalRows, SqlitePostingSql.COL_APPROVAL_ID)),

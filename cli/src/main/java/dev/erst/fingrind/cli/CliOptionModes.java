@@ -3,6 +3,8 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -111,6 +113,53 @@ final class CliOptionModes {
               + ". Accepted values: "
               + String.join(
                   ", ", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryDetail.class))
+              + ".",
+          exception);
+    }
+  }
+
+  static DiscoveryFocus requireDiscoveryFocus(
+      @Nullable DiscoveryFocus currentFocus, ListIterator<String> argumentIterator) {
+    if (currentFocus != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FOCUS, "Duplicate argument: " + ProtocolOptions.FOCUS);
+    }
+    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.FOCUS);
+    try {
+      return DiscoveryFocus.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.FOCUS,
+          "Unsupported discovery focus for "
+              + ProtocolOptions.FOCUS
+              + ": "
+              + rawValue
+              + ". Accepted values: "
+              + String.join(", ", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryFocus.class))
+              + ".",
+          exception);
+    }
+  }
+
+  static OperationCategory requireOperationCategory(
+      @Nullable OperationCategory currentCategory, ListIterator<String> argumentIterator) {
+    if (currentCategory != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.CATEGORY, "Duplicate argument: " + ProtocolOptions.CATEGORY);
+    }
+    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.CATEGORY);
+    try {
+      return OperationCategory.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.CATEGORY,
+          "Unsupported operation category for "
+              + ProtocolOptions.CATEGORY
+              + ": "
+              + rawValue
+              + ". Accepted values: "
+              + String.join(
+                  ", ", dev.erst.fingrind.core.WireValue.wireValues(OperationCategory.class))
               + ".",
           exception);
     }

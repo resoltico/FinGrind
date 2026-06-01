@@ -87,7 +87,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
       String launcher =
           CliInvocationText.launcherCommandFor(
               runtimeDistribution, System.getProperty("os.name", ""));
-      assertTrue(help.contains("Start Here"), help);
+      assertTrue(help.contains("First Successful Run"), help);
       assertTrue(containsCollapsedText(help, launcher + " help <command>"), help);
       assertFalse(help.contains("Source Checkout Launcher"), help);
       assertFalse(help.contains("Developer Raw JAR"), help);

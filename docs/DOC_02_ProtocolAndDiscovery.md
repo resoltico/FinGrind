@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -163,6 +163,21 @@ public enum DiscoveryDetail implements WireValue
 - Boundary: accepted on JSON discovery surfaces only; text discovery surfaces reject it instead
   of silently ignoring it
 
+## `DiscoveryFocus`
+
+`DiscoveryFocus` is the typed wire vocabulary for concern-scoped JSON discovery retrieval.
+
+```java
+public enum DiscoveryFocus implements WireValue
+```
+
+- Members: `OVERVIEW`, `COMMANDS`, `STORAGE`, `REQUEST_INPUT`, `CURRENCY_MODEL`,
+  `BOOKKEEPING_KERNEL`, `RESPONSE_CONTRACT`
+- Purpose: let machine callers retrieve one discovery concern without overfetching unrelated
+  contract bodies
+- Boundary: accepted on JSON discovery surfaces only; text discovery surfaces reject it instead
+  of silently ignoring it
+
 ## `ProtocolContractSchemaKeys`
 
 `ProtocolContractSchemaKeys` is the typed owner for the external field names used by the
@@ -306,7 +321,7 @@ public final class SqliteRuntimeStateValidator
   defaults, managed SQLite loading mode, runtime provenance, runtime trust basis, and runtime
   readiness in enum-owned wire vocabularies
 - `SqliteRuntimeTrustBasis`: publishes whether the selected runtime is
-  `publisher-authenticated` or `source-verified-local-build`, so machine consumers can distinguish
+  `bundle-sidecar-consistency` or `source-checkout-sidecar-consistency`, so machine consumers can distinguish
   public bundle identity from checkout-local build identity
 - `SqliteRuntimeStatus`: distinguishes `ready`, `unavailable`, `failed`, and `incompatible`, so
   discovery can separate missing-runtime failures from late probe failures after one concrete
@@ -622,7 +637,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 21`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 22`
 
 ## `ProtectedBookFormatContract`
 

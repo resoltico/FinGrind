@@ -1,13 +1,18 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Discovery-oriented CLI commands that never require a book session. */
-record Help(@Nullable OperationId commandTopic, OutputMode outputMode, DiscoveryDetail detail)
+record Help(
+    @Nullable OperationId commandTopic,
+    OutputMode outputMode,
+    DiscoveryDetail detail,
+    @Nullable OperationCategory category)
     implements CliCommand.OutputModeCommand {
   Help {
     Objects.requireNonNull(outputMode, "outputMode");
@@ -18,7 +23,7 @@ record Help(@Nullable OperationId commandTopic, OutputMode outputMode, Discovery
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeHelp(commandTopic, outputMode, detail);
+        .writeHelp(commandTopic, outputMode, detail, category);
   }
 }
 
@@ -37,18 +42,20 @@ record Version(OutputMode outputMode) implements CliCommand.OutputModeCommand {
 }
 
 /** Discovery-oriented CLI commands that never require a book session. */
-record Capabilities(OutputMode outputMode, DiscoveryDetail detail)
+record Capabilities(
+    OutputMode outputMode, DiscoveryDetail detail, CliDiscoverySelections selections)
     implements CliCommand.OutputModeCommand {
   Capabilities {
     Objects.requireNonNull(outputMode, "outputMode");
     Objects.requireNonNull(detail, "detail");
+    Objects.requireNonNull(selections, "selections");
   }
 
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeCapabilities(outputMode, detail);
+        .writeCapabilities(outputMode, detail, selections);
   }
 }
 

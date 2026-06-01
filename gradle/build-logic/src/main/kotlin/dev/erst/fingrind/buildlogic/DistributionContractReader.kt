@@ -100,6 +100,15 @@ object DistributionContractReader {
     fun sqliteBundleHomeSystemProperty(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sqliteBundleHomeSystemProperty }
 
+    fun allowedRuntimeModuleMissingDependencyPrefixes(projectRootDirectory: Path): List<String> =
+        DistributionContractJson.listProperty(
+            projectRootDirectory,
+            DistributionContractPaths.RUNTIME_MODULE_DISCOVERY_CONTRACT_PATH,
+            loadContractSchema(projectRootDirectory).runtimeModuleDiscovery.allowedMissingDependencyPrefixes,
+            requireExplicitKey = true,
+            requireNonEmpty = true,
+        )
+
     fun helpOperationName(projectRootDirectory: Path): String =
         operationIdProperty(projectRootDirectory) { it.help }
 
@@ -114,45 +123,6 @@ object DistributionContractReader {
 
     fun requiredContractFiles(projectRootDirectory: Path): List<Path> =
         DistributionContractPaths.requiredContractFiles(projectRootDirectory)
-
-    fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String =
-        DistributionHostPlatform.operatingSystemId(osName)
-
-    fun architectureId(architecture: String = System.getProperty("os.arch", "unknown")): String =
-        DistributionHostPlatform.architectureId(architecture)
-
-    fun hostBundleTarget(
-        projectRootDirectory: Path,
-        osName: String = System.getProperty("os.name", ""),
-        architecture: String = System.getProperty("os.arch", "unknown"),
-    ): BundleTargetContract =
-        bundleTarget(
-            projectRootDirectory,
-            operatingSystemId(osName) + "-" + architectureId(architecture),
-        )
-
-    fun hostClassifier(
-        projectRootDirectory: Path,
-        osName: String = System.getProperty("os.name", ""),
-        architecture: String = System.getProperty("os.arch", "unknown"),
-    ): String = hostBundleTarget(projectRootDirectory, osName, architecture).classifier
-
-    fun bundleTarget(projectRootDirectory: Path, classifier: String): BundleTargetContract {
-        val normalizedClassifier = classifier.trim()
-        if (normalizedClassifier.isEmpty()) {
-            throw IllegalStateException("Bundle target classifier must not be blank.")
-        }
-        return DistributionContractModels.bundleLayoutContract(projectRootDirectory)
-            .bundleTargets[normalizedClassifier]
-            ?: throw IllegalStateException(
-                "Bundle target $normalizedClassifier is not declared in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
-            )
-    }
-
-    fun jsonString(value: String): String = DistributionTextRendering.jsonString(value)
-
-    fun markdownBulletList(values: List<String>): String =
-        DistributionTextRendering.markdownBulletList(values)
 
     internal fun loadContractSchema(projectRootDirectory: Path): ContractSchema =
         DistributionContractSchemas.loadContractSchema(projectRootDirectory)
@@ -228,6 +198,7 @@ object DistributionContractReader {
 
     internal data class ContractSchema(
         val runtimeSurface: RuntimeSurfaceSchema,
+        val runtimeModuleDiscovery: RuntimeModuleDiscoverySchema,
         val publicDistribution: PublicDistributionSchema,
         val managedSqlite: ManagedSqliteSchema,
         val bundleLayout: BundleLayoutSchema,
@@ -246,6 +217,10 @@ object DistributionContractReader {
         val defaultBookCipher: String,
         val sqliteLibraryMode: String,
         val sqliteBundleHomeSystemProperty: String,
+    )
+
+    internal data class RuntimeModuleDiscoverySchema(
+        val allowedMissingDependencyPrefixes: String,
     )
 
     internal data class PublicDistributionSchema(

@@ -86,7 +86,7 @@ class SqliteNativeDatabase implements AutoCloseable {
     ensureOpen();
     try (SqliteNativeStatement statement = prepare(sql)) {
       int resultCode = statement.step();
-      if (resultCode != SqliteNativeResultCodes.DONE) {
+      if (resultCode != SqliteNativeResultCode.code("DONE")) {
         throw new IllegalStateException("SQLite control statement must not produce rows: " + sql);
       }
     }

@@ -2,9 +2,9 @@
   "fixtureName" : "current-default-protected-book.sqlite",
   "purpose" : "Current default protected-book compatibility fixture for format, reopen, wrong-key, and backup-restore tests.",
   "testOnlyPassphraseUtf8" : "posting-fact-store-test-book-key",
-  "bookFormatVersion" : 21,
+  "bookFormatVersion" : 22,
   "initializedAt" : "2026-04-07T10:15:30Z",
-  "schemaFingerprintSha256" : "bb90ea8268eeac7fea4b3017dcdd946edd1dbf93f3e6b873a9c4296b11461625",
+  "schemaFingerprintSha256" : "a671cfa85f9c872d6c4cfe4aac8c7b4ba5f8bef330670705a6cde363447d19ca",
   "protectedBookFormat" : {
     "cipher" : "chacha20",
     "legacyMode" : false,

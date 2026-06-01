@@ -17,6 +17,10 @@ import org.gradle.api.tasks.TaskAction
 
 @CacheableTask
 abstract class WriteRuntimeModuleListTask : DefaultTask() {
+    companion object {
+        private val missingDependencyPattern = Regex("""->\s+([A-Za-z0-9_$.]+)\s+not found$""")
+    }
+
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val javaHomeDirectory: DirectoryProperty
@@ -30,6 +34,9 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
 
     @get:Input
     abstract val additionalModules: org.gradle.api.provider.ListProperty<String>
+
+    @get:Input
+    abstract val allowedMissingDependencyPrefixes: org.gradle.api.provider.ListProperty<String>
 
     @get:Classpath
     abstract val dependencyClasspath: ConfigurableFileCollection
@@ -48,26 +55,26 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
                 jdepsExecutable.absolutePath,
                 "--multi-release",
                 javaVersion.get().toString(),
-                // Bundled third-party jars may contain optional integration classes
-                // for logging backends or crypto providers that are not part of
-                // FinGrind's actual runtime closure. jdeps should derive modules
-                // from the reachable runtime path rather than fail on those
-                // deliberately absent optional dependencies.
-                "--ignore-missing-deps",
             )
         val classpathEntries = dependencyClasspath.files
         if (classpathEntries.isNotEmpty()) {
             command += "--class-path"
             command += classpathEntries.joinToString(File.pathSeparator) { file -> file.absolutePath }
         }
-        command += "--print-module-deps"
-        command += applicationJar.get().asFile.absolutePath
+        val applicationJarPath = applicationJar.get().asFile.absolutePath
+        val missingDependencies = missingDependencies(command, applicationJarPath)
+        val moduleCommand = command.toMutableList()
+        if (missingDependencies.isNotEmpty()) {
+            moduleCommand += "--ignore-missing-deps"
+        }
+        moduleCommand += "--print-module-deps"
+        moduleCommand += applicationJarPath
         val detectedModuleList =
-            CommandLineRunner.run(command)
+            CommandLineRunner.run(moduleCommand)
                 .trim()
         if (detectedModuleList.isEmpty()) {
             throw IllegalStateException(
-                "jdeps produced an empty module list for ${applicationJar.get().asFile.absolutePath}.",
+                "jdeps produced an empty module list for $applicationJarPath.",
             )
         }
         val mergedModuleList =
@@ -78,6 +85,44 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
                 .sorted()
                 .joinToString(",")
         outputPath.writeText(mergedModuleList + System.lineSeparator())
+    }
+
+    private fun missingDependencies(command: List<String>, applicationJarPath: String): List<String> {
+        val missingDependencyOutput =
+            CommandLineRunner.run(command + listOf("--missing-deps", applicationJarPath))
+        val missingDependencies =
+            missingDependencyOutput
+                .lineSequence()
+                .map(String::trim)
+                .mapNotNull { line -> missingDependencyPattern.find(line)?.groupValues?.get(1) }
+                .distinct()
+                .sorted()
+                .toList()
+        if (missingDependencies.isEmpty()) {
+            return emptyList()
+        }
+        val allowedPrefixes = allowedMissingDependencyPrefixes.get()
+        val uncoveredDependencies =
+            missingDependencies.filter { dependency ->
+                allowedPrefixes.none { prefix -> dependency.startsWith(prefix) }
+            }
+        if (uncoveredDependencies.isNotEmpty()) {
+            throw IllegalStateException(
+                "jdeps reported missing dependencies outside the runtime-module discovery allowlist: " +
+                    uncoveredDependencies.joinToString(", "),
+            )
+        }
+        val unusedPrefixes =
+            allowedPrefixes.filter { prefix ->
+                missingDependencies.none { dependency -> dependency.startsWith(prefix) }
+            }
+        if (unusedPrefixes.isNotEmpty()) {
+            throw IllegalStateException(
+                "runtime-module discovery allowlist contains unused prefixes: " +
+                    unusedPrefixes.joinToString(", "),
+            )
+        }
+        return missingDependencies
     }
 
     private fun executable(javaHomeDirectory: File, executableName: String): File {

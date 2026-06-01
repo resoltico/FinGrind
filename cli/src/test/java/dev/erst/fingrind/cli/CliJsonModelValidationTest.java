@@ -6,22 +6,27 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -80,9 +85,10 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
+                null,
                 List.of(),
                 List.of(),
                 List.of(),
@@ -93,9 +99,10 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
+                null,
                 List.of(),
                 List.of(),
                 List.of(),
@@ -106,8 +113,9 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 DiscoveryDetail.FULL,
+                DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
                 capabilitiesDescriptor.requestInput(),
@@ -118,8 +126,9 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 DiscoveryDetail.COMPACT,
+                DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
                 capabilitiesDescriptor.requestInput(),
@@ -130,9 +139,10 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
+                null,
                 List.of(),
                 "Run fingrind help --output json --detail compact.",
                 "Run fingrind help --output json --detail full."));
@@ -141,8 +151,9 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 DiscoveryDetail.FULL,
+                DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.bookkeepingKernel().scope(),
                 capabilitiesDescriptor.bookkeepingKernel().builtInStatements(),
                 capabilitiesDescriptor.storage().bookBoundary(),
@@ -164,8 +175,9 @@ class CliJsonModelValidationTest {
             ProtocolEnvelopeStatus.OK,
             new CliDiscoveryJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 DiscoveryDetail.FULL,
+                DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
                 capabilitiesDescriptor.commands(),
                 capabilitiesDescriptor.requestInput(),
@@ -289,6 +301,242 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
                 "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, -1, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                2,
+                1,
+                0,
+                "step-1",
+                "failure",
+                "message"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                2,
+                1,
+                1,
+                null,
+                "failure",
+                "message"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, 2, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 2, 0, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, "step-1", null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, "failure", null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, null, "message"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                1,
+                0,
+                1,
+                null,
+                "failure",
+                "message"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                1,
+                0,
+                1,
+                "step-1",
+                null,
+                "message"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                1,
+                0,
+                1,
+                "step-1",
+                "failure",
+                null));
+  }
+
+  @Test
+  void ledgerPlanStepPayloads_rejectContradictoryKindsStatusesAndPages() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.OPEN_BOOK,
+                null,
+                null,
+                LedgerStepStatus.SUCCEEDED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                new CliPlanJsonModels.LedgerStepFailurePayload("failure", "message", List.of())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.OPEN_BOOK,
+                null,
+                null,
+                LedgerStepStatus.REJECTED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountPageStepDataPayload(
+                -1, 1, null, false, List.of(accountPayload("1000", "Cash"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountPageStepDataPayload(
+                1, 0, null, false, List.of(accountPayload("1000", "Cash"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountPageStepDataPayload(
+                2,
+                1,
+                null,
+                false,
+                List.of(accountPayload("1000", "Cash"), accountPayload("2000", "Receivable"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountPageStepDataPayload(
+                2, 2, null, false, List.of(accountPayload("1000", "Cash"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                1, 2, "cursor-1", false, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                -1, 1, null, false, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                1, 0, null, false, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                2, 2, null, false, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                1, 2, null, true, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountBalanceStepDataPayload(
+                accountPayload("1000", "Cash"), null, null, -1, List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.OPEN_BOOK,
+                LedgerAssertionKind.ACCOUNT_DECLARED,
+                null,
+                LedgerStepStatus.SUCCEEDED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.PLAN_BOUNDARY,
+                null,
+                null,
+                LedgerStepStatus.REJECTED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                new CliPlanJsonModels.LedgerStepFailurePayload("failure", "message", List.of())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.OPEN_BOOK,
+                null,
+                LedgerBoundaryPhase.BEGIN,
+                LedgerStepStatus.SUCCEEDED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerJournalEntryPayload(
+                "step-1",
+                LedgerJournalKind.OPEN_BOOK,
+                null,
+                null,
+                LedgerStepStatus.ASSERTION_FAILED,
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:01Z",
+                null,
+                new CliPlanJsonModels.LedgerStepFailurePayload("failure", "message", List.of())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountPageStepDataPayload(
+                1, 2, null, true, List.of(accountPayload("1000", "Cash"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.PostingPageStepDataPayload(
+                2, 1, "cursor-1", true, List.of(postingSummaryPayload("posting-1"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.AccountBalanceStepDataPayload(
+                accountPayload("1000", "Cash"), null, null, 2, List.of()));
   }
 
   @Test
@@ -387,7 +635,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.49.0",
+        "0.50.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -399,5 +647,38 @@ class CliJsonModelValidationTest {
         ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
         ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),
         null);
+  }
+
+  private static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(
+      String accountCode, String accountName) {
+    return new CliBookQueryJsonModels.DeclaredAccountPayload(
+        accountCode,
+        accountName,
+        "ASSET",
+        "ORDINARY",
+        "POSTABLE",
+        null,
+        "CURRENT_ASSET",
+        null,
+        "DEBIT",
+        true,
+        "2026-05-14T10:00:00Z");
+  }
+
+  private static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      String postingId) {
+    return new CliBookQueryJsonModels.PostingSummaryPayload(
+        postingId,
+        "STANDARD",
+        "CASH_REVENUE",
+        "ACTIVE",
+        null,
+        "2026-05-14",
+        "2026-05-14T10:00:00Z",
+        MonetaryAmount.of(dev.erst.fingrind.core.Money.parse("EUR", "0.00")),
+        MonetaryAmount.of(dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
+        List.of("4000"),
+        List.of("invoice-1"),
+        List.of());
   }
 }

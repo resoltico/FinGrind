@@ -25,7 +25,15 @@ final class CliAccountPageOutputRenderer {
         page.accounts().isEmpty()
             ? ""
             : CliTextFormat.renderTable(
-                List.of("Account", "Name", "Type", "Statement line", "Parent", "Normal", "Active"),
+                List.of(
+                    "Account",
+                    "Name",
+                    "Type",
+                    "Financial position line",
+                    "Profit or loss line",
+                    "Parent",
+                    "Normal",
+                    "Active"),
                 page.accounts().stream()
                     .map(
                         account ->
@@ -40,15 +48,14 @@ final class CliAccountPageOutputRenderer {
                                     .map(
                                         CliAccountStatementLabels
                                             ::displayFinancialPositionLineClassification)
-                                    .orElseGet(
-                                        () ->
-                                            account
-                                                .accountTaxonomy()
-                                                .profitAndLossLineClassification()
-                                                .map(
-                                                    CliAccountStatementLabels
-                                                        ::displayProfitAndLossLineClassification)
-                                                .orElse("(none)")),
+                                    .orElse("(none)"),
+                                account
+                                    .accountTaxonomy()
+                                    .profitAndLossLineClassification()
+                                    .map(
+                                        CliAccountStatementLabels
+                                            ::displayProfitAndLossLineClassification)
+                                    .orElse("(none)"),
                                 account
                                     .accountTaxonomy()
                                     .parentAccountCode()
@@ -64,12 +71,16 @@ final class CliAccountPageOutputRenderer {
             summary,
             accounts,
             CliReportRenderSupport.keyValueSection(
-                "Context", CliBookIdentityDisplay.summaryRows(page.bookIdentity()))));
+                "Context", CliBookIdentityDisplay.detailRows(page.bookIdentity()))));
   }
 
   static String renderCsv(AccountPage page) {
     return CliTextFormat.renderCsv(
         List.of(
+            "exportFamily",
+            "rowId",
+            "parentRowId",
+            "relationKind",
             "recordKind",
             "accountCode",
             "accountName",
@@ -85,6 +96,10 @@ final class CliAccountPageOutputRenderer {
         page.accounts().isEmpty()
             ? List.of(
                 List.of(
+                    CliCsvExportFamilies.FLAT_REGISTER,
+                    "accounts:scope-empty",
+                    "",
+                    "scope-empty",
                     CliCsvEmptyKinds.SCOPE_EMPTY,
                     "",
                     "",
@@ -101,6 +116,10 @@ final class CliAccountPageOutputRenderer {
                 .map(
                     account ->
                         List.of(
+                            CliCsvExportFamilies.FLAT_REGISTER,
+                            "account:" + account.accountCode().value(),
+                            "",
+                            "account",
                             "row",
                             account.accountCode().value(),
                             account.accountName().value(),

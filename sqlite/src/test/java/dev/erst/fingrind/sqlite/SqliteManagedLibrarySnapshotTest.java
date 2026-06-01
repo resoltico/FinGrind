@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,7 +22,6 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   void verifiedSnapshot_copiesManagedLibraryIntoPrivateVerifiedPath() throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
-    writeTrustedChecksum(libraryPath);
 
     SqliteVerifiedLibrarySnapshot snapshot =
         SqliteManagedLibraryIdentity.verifiedSnapshot(
@@ -42,12 +40,6 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         Files.readString(
             SqliteManagedLibraryIdentity.checksumPath(libraryPath), StandardCharsets.UTF_8),
         Files.readString(snapshot.snapshotChecksumPath(), StandardCharsets.UTF_8));
-    assertEquals(
-        Files.readString(
-            SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath), StandardCharsets.UTF_8),
-        Files.readString(
-            Objects.requireNonNull(snapshot.snapshotTrustedChecksumPath()),
-            StandardCharsets.UTF_8));
     assertEquals(
         snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
 
@@ -72,8 +64,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                           SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                           libraryPath.toString()),
                       libraryPath,
-                      SqliteManagedLibraryIdentity.checksumPath(libraryPath),
-                      null));
+                      SqliteManagedLibraryIdentity.checksumPath(libraryPath)));
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
@@ -136,31 +127,18 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
             IllegalArgumentException.class,
             () ->
                 new SqliteVerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, outsideLibraryPath, validChecksumPath, null));
+                    sourceTarget, snapshotDirectory, outsideLibraryPath, validChecksumPath));
     IllegalArgumentException outsideChecksum =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new SqliteVerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, validLibraryPath, outsideChecksumPath, null));
-    IllegalArgumentException outsideTrustedChecksum =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new SqliteVerifiedLibrarySnapshot(
-                    sourceTarget,
-                    snapshotDirectory,
-                    validLibraryPath,
-                    validChecksumPath,
-                    outsideChecksumPath));
+                    sourceTarget, snapshotDirectory, validLibraryPath, outsideChecksumPath));
 
     assertEquals(
         "snapshotLibraryPath must live inside snapshotDirectory.", outsideLibrary.getMessage());
     assertEquals(
         "snapshotChecksumPath must live inside snapshotDirectory.", outsideChecksum.getMessage());
-    assertEquals(
-        "snapshotTrustedChecksumPath must live inside snapshotDirectory.",
-        outsideTrustedChecksum.getMessage());
   }
 
   @Test
@@ -178,8 +156,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString()),
                     libraryPath,
-                    missingChecksumPath,
-                    null));
+                    missingChecksumPath));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
@@ -187,8 +164,8 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
-  void verifiedSnapshot_copyOf_supportsSnapshotsWithoutTrustedChecksumSidecars() throws Exception {
-    Path libraryPath = writeLibrary("untrusted-snapshot.dylib", "sqlite3mc");
+  void verifiedSnapshot_copyOf_copiesOnlyLibraryAndChecksumArtifacts() throws Exception {
+    Path libraryPath = writeLibrary("snapshot.dylib", "sqlite3mc");
     writeSiblingChecksum(libraryPath);
 
     SqliteVerifiedLibrarySnapshot snapshot =
@@ -198,51 +175,15 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                 libraryPath.toString()),
             libraryPath,
-            SqliteManagedLibraryIdentity.checksumPath(libraryPath),
-            null);
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
 
-    assertNull(snapshot.snapshotTrustedChecksumPath());
     assertEquals(
         snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
+    assertTrue(Files.isRegularFile(snapshot.snapshotLibraryPath()));
+    assertTrue(Files.isRegularFile(snapshot.snapshotChecksumPath()));
     snapshot.deleteQuietly();
     assertFalse(Files.exists(snapshot.snapshotLibraryPath()));
     assertFalse(Files.exists(snapshot.snapshotChecksumPath()));
-  }
-
-  @Test
-  void verifiedSnapshot_copyOfCleansUpTrustedChecksumArtifactsAfterTrustedCopyFailures()
-      throws Exception {
-    Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "sqlite3mc");
-    Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
-    Path missingTrustedChecksumPath = tempDirectory.resolve("missing.trusted.sha256");
-    writeSiblingChecksum(libraryPath);
-    String originalTempRoot = System.getProperty("java.io.tmpdir");
-    System.setProperty("java.io.tmpdir", tempDirectory.toString());
-    try {
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteVerifiedLibrarySnapshot.copyOf(
-                      new SqliteLibraryTarget(
-                          "managed-only",
-                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                          libraryPath.toString()),
-                      libraryPath,
-                      checksumPath,
-                      missingTrustedChecksumPath));
-
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("Failed to create the private managed SQLite verification snapshot"));
-      try (var snapshotPaths = Files.list(tempDirectory)) {
-        assertTrue(
-            snapshotPaths.noneMatch(
-                path -> path.getFileName().toString().startsWith("fingrind-managed-sqlite-")));
-      }
-    } finally {
-      System.setProperty("java.io.tmpdir", originalTempRoot);
-    }
   }
 
   @Test
@@ -267,7 +208,6 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                           sourceLibraryPath.toString()),
                       sourceLibraryPath,
                       sourceChecksumPath,
-                      null,
                       () -> snapshotDirectory));
 
       assertTrue(
@@ -276,45 +216,6 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       assertFalse(snapshotDirectory.exists);
       assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
       assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
-    }
-  }
-
-  @Test
-  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpTrustedArtifactsOnFailure() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
-      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
-      sourceLibraryPath.exists = true;
-      sourceLibraryPath.regularFile = true;
-      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
-      sourceChecksumPath.exists = true;
-      sourceChecksumPath.regularFile = true;
-      AclFixturePath sourceTrustedChecksumPath =
-          fileSystem.path("\\source\\sqlite3.dll.trusted.sha256");
-      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
-      snapshotDirectory.exists = true;
-      snapshotDirectory.regularFile = false;
-
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteVerifiedLibrarySnapshot.copyOf(
-                      new SqliteLibraryTarget(
-                          "managed-only",
-                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                          sourceLibraryPath.toString()),
-                      sourceLibraryPath,
-                      sourceChecksumPath,
-                      sourceTrustedChecksumPath,
-                      () -> snapshotDirectory));
-
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("Failed to create the private managed SQLite verification snapshot"));
-      assertFalse(snapshotDirectory.exists);
-      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
-      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
-      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.trusted.sha256").exists);
     }
   }
 
@@ -323,11 +224,9 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("snapshot-cleanup"));
     Path snapshotLibraryPath = snapshotDirectory.resolve("library.dylib");
     Path snapshotChecksumPath = snapshotDirectory.resolve("library.dylib.sha256");
-    Path snapshotTrustedChecksumPath = snapshotDirectory.resolve("library.dylib.trusted.sha256");
     Path sentinel = snapshotDirectory.resolve("sentinel.txt");
     Files.writeString(snapshotLibraryPath, "library", StandardCharsets.UTF_8);
     Files.writeString(snapshotChecksumPath, "checksum", StandardCharsets.UTF_8);
-    Files.writeString(snapshotTrustedChecksumPath, "trusted", StandardCharsets.UTF_8);
     Files.writeString(sentinel, "keep", StandardCharsets.UTF_8);
     SqliteVerifiedLibrarySnapshot snapshot =
         new SqliteVerifiedLibrarySnapshot(
@@ -337,14 +236,12 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 snapshotLibraryPath.toString()),
             snapshotDirectory,
             snapshotLibraryPath,
-            snapshotChecksumPath,
-            snapshotTrustedChecksumPath);
+            snapshotChecksumPath);
 
     assertDoesNotThrow(snapshot::deleteQuietly);
     assertTrue(Files.exists(snapshotDirectory));
     assertTrue(Files.exists(sentinel));
     assertTrue(Files.notExists(snapshotLibraryPath));
     assertTrue(Files.notExists(snapshotChecksumPath));
-    assertTrue(Files.notExists(snapshotTrustedChecksumPath));
   }
 }

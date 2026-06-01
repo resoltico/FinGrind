@@ -68,8 +68,7 @@ class StructuralGovernanceContractTest {
     fun changelogStructuralGovernanceClaim_matchesLiveGateOwners() {
         val changelogText = changelog.readText()
         assertTrue(
-            "PMD now fails god-class, method-count, complexity, and coupling violations" in
-                changelogText,
+            "PMD now fails god-class, method-count, complexity, and coupling violations" in changelogText,
             "Changelog must describe the live PMD structural-governance claim precisely.",
         )
         assertTrue(
@@ -79,6 +78,16 @@ class StructuralGovernanceContractTest {
         assertTrue(
             "duplication checks reject large repeated" in changelogText,
             "Changelog must describe the live duplication structural-governance owner.",
+        )
+        assertTrue(
+            "reviewed structural inventory now owns every near-ceiling production Java surface" in
+                changelogText,
+            "Changelog must describe the reviewed structural inventory owner.",
+        )
+        assertTrue(
+            "Python support scripts and SQLite schema SQL now sit under the same structural governance surface" in
+                changelogText,
+            "Changelog must describe the broadened non-Java structural-governance owner.",
         )
     }
 

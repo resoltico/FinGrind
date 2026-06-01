@@ -8,4 +8,9 @@ public final class ManagedSqliteRuntimeUnavailableException extends IllegalState
   public ManagedSqliteRuntimeUnavailableException(String message) {
     super(message);
   }
+
+  /** Creates a runtime-unavailable failure with a user-facing explanation and root cause. */
+  public ManagedSqliteRuntimeUnavailableException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

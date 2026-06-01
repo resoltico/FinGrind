@@ -234,7 +234,9 @@ class ProtocolCatalogTest {
   @Test
   void bookkeepingKernelFacts_publishCurrentExecutableKernelInventory() {
     BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
-    assertEquals("cash-single-entity-internal-management-kernel", kernel.scope());
+    assertEquals(
+        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.value(),
+        kernel.scope());
     assertEquals(
         List.of("financial-position", "income-statement", "changes-in-equity"),
         kernel.builtInStatements());
@@ -245,6 +247,15 @@ class ProtocolCatalogTest {
         kernel.reportCapabilities().stream()
             .allMatch(reportCapability -> reportCapability.comparativeSupported()));
     assertTrue(kernel.description().contains("cash-oriented"));
+  }
+
+  @Test
+  void asOfReportDescriptions_publishCurrentBookHorizonLanguage() {
+    ProtocolOperation trialBalance = ProtocolCatalog.operation(OperationId.TRIAL_BALANCE);
+    ProtocolOperation financialPosition = ProtocolCatalog.operation(OperationId.FINANCIAL_POSITION);
+
+    assertTrue(trialBalance.analysisSummary().contains("current book horizon"));
+    assertTrue(financialPosition.analysisSummary().contains("current book horizon"));
   }
 
   @Test

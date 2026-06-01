@@ -60,12 +60,7 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new PeriodResultTransferService(
-                        bookSession,
-                        bookSession,
-                        bookSession,
-                        bookSession,
-                        new UuidV7PostingIdGenerator(),
-                        clock)
+                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
                     .transferPeriodResult(
                         BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }

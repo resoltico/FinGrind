@@ -16,7 +16,8 @@ final class ProtocolDiscoveryOperations {
             List.of(
                 "[<command>]",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
-                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
+                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax(),
+                ProtocolOptions.optionalJsonOnlyOperationCategorySyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print command usage, examples, and workflow guidance.",
@@ -44,12 +45,16 @@ final class ProtocolDiscoveryOperations {
             List.of(),
             List.of(
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
-                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax()),
+                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax(),
+                ProtocolOptions.optionalJsonOnlyDiscoveryFocusSyntax(),
+                ProtocolOptions.optionalJsonOnlyOperationCategorySyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of(
                 ProtocolExampleStep.command("fingrind capabilities --output json"),
+                ProtocolExampleStep.command(
+                    "fingrind capabilities --output json --focus commands --category query"),
                 ProtocolExampleStep.command("fingrind capabilities --output json --detail full"))),
         ProtocolOperationDefinitions.operation(
             OperationId.ENVIRONMENT,

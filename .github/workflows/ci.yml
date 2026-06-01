@@ -299,15 +299,20 @@ jobs:
   devcontainer:
     name: Contributor devcontainer
     needs: [devcontainer-changes]
-    if: needs.devcontainer-changes.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
+      - name: Record no-op contributor devcontainer verification
+        if: needs.devcontainer-changes.outputs.changed != 'true'
+        run: echo "No devcontainer-relevant changes detected; contributor devcontainer verification is a clean no-op."
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: needs.devcontainer-changes.outputs.changed == 'true'
 
       - name: Resolve Python toolchain version
         id: build-metadata
+        if: needs.devcontainer-changes.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -316,12 +321,15 @@ jobs:
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        if: needs.devcontainer-changes.outputs.changed == 'true'
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
 
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        if: needs.devcontainer-changes.outputs.changed == 'true'
 
       - name: Validate the committed contributor devcontainer surface
+        if: needs.devcontainer-changes.outputs.changed == 'true'
         run: ./scripts/validate-devcontainer.sh
 
   gate:
@@ -343,12 +351,18 @@ jobs:
           RESULTS: ${{ toJSON(needs.*.result) }}
         run: |
           set -euo pipefail
-          if echo "$RESULTS" | grep -q '"failure"'; then
-            echo "A required job failed."
-            exit 1
-          fi
-          if echo "$RESULTS" | grep -q '"cancelled"'; then
-            echo "A required job was cancelled."
-            exit 1
-          fi
-          echo "All required jobs passed or were skipped."
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ["RESULTS"])
+          if not isinstance(results, list) or not results:
+              print("Release-blocking CI results did not resolve to one non-empty JSON array.")
+              sys.exit(1)
+          if any(result != "success" for result in results):
+              print("Every release-blocking CI owner must conclude with success.")
+              print("Observed:", results)
+              sys.exit(1)
+          PY
+          echo "Every release-blocking CI owner concluded with success."

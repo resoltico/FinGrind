@@ -29,12 +29,15 @@ readonly verification_support="${repo_root}/scripts/release-check-verification-s
 readonly release_check_support="${repo_root}/scripts/release-check-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
+readonly release_publication_contract_reader="${repo_root}/scripts/read-release-publication-contract.py"
 
 [[ -x "${verifier}" ]] || die "missing executable PR Gate verifier at ${verifier}"
 [[ -f "${verification_support}" ]] || die "missing verification helper at ${verification_support}"
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
+[[ -f "${release_publication_contract_reader}" ]] || die \
+    "missing release-publication contract reader at ${release_publication_contract_reader}"
 
 grep -Fq 'scripts/test-verify-release-pr-gate.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the PR Gate verifier regression"
@@ -67,6 +70,17 @@ trap cleanup EXIT
 
 mkdir -p "${fixture_root}/bin" "${fixture_root}/state"
 
+readonly required_ci_jobs_json="$(
+    python3 "${release_publication_contract_reader}" | jq -c \
+        '[.requiredCiGateJobName] + .requiredCiJobNames'
+)"
+readonly required_ci_workflow_name="$(
+    python3 "${release_publication_contract_reader}" | jq -r '.requiredCiWorkflowName'
+)"
+readonly required_ci_workflow_path="$(
+    python3 "${release_publication_contract_reader}" | jq -r '.requiredCiWorkflowPath'
+)"
+
 cat > "${fixture_root}/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -79,6 +93,10 @@ pr_head_ref_oid="${FAKE_GH_HEAD_REF_OID:-99e1257ea944d7b7c10acb3b14cbede94cc93c1
 pr_url="${FAKE_GH_PR_URL:-https://github.com/resoltico/FinGrind/pull/52}"
 check_mode="${FAKE_GH_CHECK_MODE:-pending-then-success}"
 state_dir="${FAKE_GH_STATE_DIR:?}"
+required_ci_jobs_json="${FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON:-[]}"
+required_ci_workflow_name="${FAKE_GH_REQUIRED_CI_WORKFLOW_NAME:-CI}"
+required_ci_workflow_path="${FAKE_GH_REQUIRED_CI_WORKFLOW_PATH:-.github/workflows/ci.yml}"
+workflow_run_id="${FAKE_GH_WORKFLOW_RUN_ID:-7001}"
 
 if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
     [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
@@ -98,8 +116,39 @@ if [[ "${1:-}" == "pr" && "${2:-}" == "view" ]]; then
     exit 0
 fi
 
-if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/commits/${pr_head_ref_oid}/check-runs?per_page=100" ]]; then
-    [[ "${3:-}" == "--jq" ]] || exit 1
+if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/actions/runs?head_sha=${pr_head_ref_oid}&per_page=100" ]]; then
+    python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+print(
+    json.dumps(
+        {
+            "workflow_runs": [
+                {
+                    "id": int(os.environ.get("FAKE_GH_WORKFLOW_RUN_ID", "7001")),
+                    "name": os.environ.get("FAKE_GH_REQUIRED_CI_WORKFLOW_NAME", "CI"),
+                    "path": os.environ.get("FAKE_GH_REQUIRED_CI_WORKFLOW_PATH", ".github/workflows/ci.yml"),
+                    "status": "completed",
+                    "conclusion": "success",
+                    "event": "pull_request",
+                    "html_url": "https://example.invalid/actions/runs/7001",
+                    "run_number": 88,
+                    "run_attempt": 1,
+                    "created_at": "2026-06-01T00:00:00Z",
+                }
+            ]
+        }
+    )
+)
+PY
+    exit 0
+fi
+
+if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/actions/runs/${workflow_run_id}/jobs?per_page=100" ]]; then
+    [[ "${3:-}" == "--paginate" ]] || exit 1
     counter_file="${state_dir}/check-runs-count"
     count=0
     if [[ -f "${counter_file}" ]]; then
@@ -108,32 +157,38 @@ if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/commits/${pr_head_ref_oid
     count="$((count + 1))"
     printf '%s' "${count}" > "${counter_file}"
 
-    case "${check_mode}" in
-        pending-then-success)
-            if (( count == 1 )); then
-                printf '%s\n' \
-                    $'Check\tcompleted\tsuccess' \
-                    $'Windows bundle smoke\tin_progress\t' \
-                    $'Docker smoke\tqueued\t'
-            else
-                printf '%s\n' \
-                    $'Check\tcompleted\tsuccess' \
-                    $'Windows bundle smoke\tcompleted\tsuccess' \
-                    $'Docker smoke\tcompleted\tsuccess' \
-                    $'Gate\tcompleted\tsuccess'
-            fi
-            ;;
-        gate-failure)
-            printf '%s\n' \
-                $'Check\tcompleted\tsuccess' \
-                $'Windows bundle smoke\tcompleted\tsuccess' \
-                $'Docker smoke\tcompleted\tsuccess' \
-                $'Gate\tcompleted\tfailure'
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
+    FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+        FAKE_GH_CHECK_MODE="${check_mode}" \
+        FAKE_GH_JOB_CALL_COUNT="${count}" \
+        python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+jobs = [
+    {"name": name, "status": "completed", "conclusion": "success"}
+    for name in json.loads(os.environ["FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON"])
+]
+mode = os.environ["FAKE_GH_CHECK_MODE"]
+count = int(os.environ["FAKE_GH_JOB_CALL_COUNT"])
+
+if mode == "pending-then-success" and count == 1:
+    for job in jobs:
+        if job["name"] == "Gate":
+            job["status"] = "in_progress"
+            job["conclusion"] = None
+            break
+elif mode == "gate-failure":
+    for job in jobs:
+        if job["name"] == "Gate":
+            job["conclusion"] = "failure"
+            break
+elif mode != "pending-then-success":
+    raise SystemExit(f"unsupported check mode: {mode}")
+
+print(json.dumps({"jobs": jobs}))
+PY
     exit 0
 fi
 
@@ -143,6 +198,9 @@ chmod +x "${fixture_root}/bin/gh"
 
 PATH="${fixture_root}/bin:${PATH}" \
     FAKE_GH_STATE_DIR="${fixture_root}/state" \
+    FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
     bash "${verifier}" 52 >/dev/null
 
 check_runs_count="$(cat "${fixture_root}/state/check-runs-count")"
@@ -156,6 +214,9 @@ failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         FAKE_GH_STATE_DIR="${fixture_root}/state" \
         FAKE_GH_CHECK_MODE='gate-failure' \
+        FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
         bash "${verifier}" 52 2>&1
 )"
 failure_exit=$?
@@ -164,7 +225,7 @@ set -e
 if [[ ${failure_exit} -eq 0 ]]; then
     die "PR Gate verifier accepted a failed Gate check"
 fi
-printf '%s\n' "${failure_output}" | grep -Fq 'release-blocking checks failed (Gate)' || die \
+printf '%s\n' "${failure_output}" | grep -Fq 'required CI jobs did not conclude with success: Gate=failure' || die \
     "PR Gate verifier did not report the failed Gate check"
 
 printf 'verify-release-pr-gate regression: success\n'

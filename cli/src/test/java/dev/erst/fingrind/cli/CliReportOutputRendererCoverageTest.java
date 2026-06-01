@@ -43,14 +43,22 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     java.util.List<String> lines = csv.lines().toList();
 
     assertEquals(3, lines.size());
-    assertTrue(lines.get(0).startsWith("recordKind,accountCode,accountName,accountType"));
     assertTrue(
-        lines
-            .get(1)
-            .contains(
-                "summary,1000,Cash,ASSET,ORDINARY,DEBIT,true,2026-04-01,2026-04-30,EUR,0.00,0.00,0.00,ZERO,10.00,0.00,10.00,DEBIT"));
-    assertTrue(lines.get(2).contains("scope-empty,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
-    assertTrue(lines.get(2).contains("No ledger entries matched the selected scope."));
+        lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind,recordKind"));
+    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(lines, 1, "exportFamily"));
+    assertEquals("ledger-summary", csvValue(lines, 1, "relationKind"));
+    assertEquals("summary", csvValue(lines, 1, "recordKind"));
+    assertEquals("1000", csvValue(lines, 1, "accountCode"));
+    assertEquals("Cash", csvValue(lines, 1, "accountName"));
+    assertEquals("2026-04-01", csvValue(lines, 1, "effectiveDateFrom"));
+    assertEquals("2026-04-30", csvValue(lines, 1, "effectiveDateTo"));
+    assertEquals("EUR", csvValue(lines, 1, "currencyCode"));
+    assertEquals("10.00", csvValue(lines, 1, "closingDebitTotal"));
+    assertEquals("10.00", csvValue(lines, 1, "closingNetAmount"));
+    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(lines, 2, "exportFamily"));
+    assertEquals("scope-empty", csvValue(lines, 2, "relationKind"));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(lines, 2, "recordKind"));
+    assertEquals("No ledger entries matched the selected scope.", csvValue(lines, 2, "message"));
   }
 
   @Test
@@ -128,12 +136,32 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     String csv = CliReportOutputRenderer.renderAccountLedgerCsv(report);
     List<String> lines = csv.lines().toList();
 
-    assertTrue(lines.stream().anyMatch(line -> line.startsWith("approval,1000,Cash,ASSET")));
     assertTrue(
-        lines.stream().anyMatch(line -> line.contains(",approval-ledger-approval,APPROVED")));
+        lines.stream()
+            .skip(1)
+            .anyMatch(
+                line ->
+                    CliCsvExportFamilies.POSTING_RELATIONSHIPS.equals(
+                            csvValue(line, lines.getFirst(), "exportFamily"))
+                        && "approval".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "approval-ledger-approval"
+                            .equals(csvValue(line, lines.getFirst(), "approvalId"))
+                        && "APPROVED"
+                            .equals(csvValue(line, lines.getFirst(), "approvalDecision"))));
     assertTrue(
-        lines.stream().anyMatch(line -> line.startsWith("counterpart-account,1000,Cash,ASSET")));
-    assertTrue(lines.stream().anyMatch(line -> line.startsWith("source-document,1000,Cash,ASSET")));
+        lines.stream()
+            .skip(1)
+            .anyMatch(
+                line ->
+                    "counterpart-account".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "1000".equals(csvValue(line, lines.getFirst(), "accountCode"))));
+    assertTrue(
+        lines.stream()
+            .skip(1)
+            .anyMatch(
+                line ->
+                    "source-document".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "1000".equals(csvValue(line, lines.getFirst(), "accountCode"))));
     int columnCount = csvFieldCount(lines.getFirst());
     for (String line : lines) {
       assertEquals(columnCount, csvFieldCount(line));
@@ -171,18 +199,41 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     List<String> lines = csv.lines().toList();
 
     assertTrue(
-        lines.stream().anyMatch(line -> line.startsWith("current,row,2026-04-30,ASSET,1000,Cash")));
+        lines.stream()
+            .skip(1)
+            .anyMatch(
+                line ->
+                    "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
+                        && "line".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "row".equals(csvValue(line, lines.getFirst(), "recordKind"))
+                        && "ASSET".equals(csvValue(line, lines.getFirst(), "accountType"))
+                        && "1000".equals(csvValue(line, lines.getFirst(), "lineCode"))
+                        && "Cash".equals(csvValue(line, lines.getFirst(), "lineName"))));
     assertTrue(
         lines.stream()
-            .anyMatch(line -> line.contains("No liability lines matched the selected scope.")));
+            .skip(1)
+            .anyMatch(
+                line ->
+                    "section-empty".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "LIABILITY".equals(csvValue(line, lines.getFirst(), "accountType"))
+                        && "No liability lines matched the selected scope."
+                            .equals(csvValue(line, lines.getFirst(), "message"))));
     assertTrue(
         lines.stream()
             .anyMatch(
-                line -> line.startsWith("current,section-total,2026-04-30,ASSET,asset-total")));
+                line ->
+                    "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
+                        && "section-total".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "ASSET".equals(csvValue(line, lines.getFirst(), "accountType"))
+                        && "asset-total".equals(csvValue(line, lines.getFirst(), "lineCode"))));
     assertTrue(
         lines.stream()
             .anyMatch(
-                line -> line.startsWith("current,section-total,2026-04-30,EQUITY,equity-total")));
+                line ->
+                    "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
+                        && "section-total".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "EQUITY".equals(csvValue(line, lines.getFirst(), "accountType"))
+                        && "equity-total".equals(csvValue(line, lines.getFirst(), "lineCode"))));
     int columnCount = csvFieldCount(lines.getFirst());
     for (String line : lines) {
       assertEquals(columnCount, csvFieldCount(line));
@@ -212,16 +263,38 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
 
     assertTrue(
         lines.stream()
+            .skip(1)
             .anyMatch(
                 line ->
-                    "current,report-empty,2026-04-01,2026-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
-                        .equals(line)));
+                    CliCsvExportFamilies.STATEMENT.equals(
+                            csvValue(line, lines.getFirst(), "exportFamily"))
+                        && "report-empty".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
+                        && CliCsvEmptyKinds.REPORT_EMPTY.equals(
+                            csvValue(line, lines.getFirst(), "recordKind"))
+                        && "2026-04-01"
+                            .equals(csvValue(line, lines.getFirst(), "effectiveDateFrom"))
+                        && "2026-04-30".equals(csvValue(line, lines.getFirst(), "effectiveDateTo"))
+                        && "EUR".equals(csvValue(line, lines.getFirst(), "currencyCode"))
+                        && "No equity lines matched the selected scope."
+                            .equals(csvValue(line, lines.getFirst(), "message"))));
     assertTrue(
         lines.stream()
+            .skip(1)
             .anyMatch(
                 line ->
-                    "comparative,report-empty,2025-04-01,2025-04-30,,,,,,EUR,,,,,,,,,,,,,No equity lines matched the selected scope."
-                        .equals(line)));
+                    CliCsvExportFamilies.STATEMENT.equals(
+                            csvValue(line, lines.getFirst(), "exportFamily"))
+                        && "report-empty".equals(csvValue(line, lines.getFirst(), "relationKind"))
+                        && "comparative".equals(csvValue(line, lines.getFirst(), "reportBasis"))
+                        && CliCsvEmptyKinds.REPORT_EMPTY.equals(
+                            csvValue(line, lines.getFirst(), "recordKind"))
+                        && "2025-04-01"
+                            .equals(csvValue(line, lines.getFirst(), "effectiveDateFrom"))
+                        && "2025-04-30".equals(csvValue(line, lines.getFirst(), "effectiveDateTo"))
+                        && "EUR".equals(csvValue(line, lines.getFirst(), "currencyCode"))
+                        && "No equity lines matched the selected scope."
+                            .equals(csvValue(line, lines.getFirst(), "message"))));
     int columnCount = csvFieldCount(lines.getFirst());
     for (String line : lines) {
       assertEquals(columnCount, csvFieldCount(line));
@@ -230,5 +303,15 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
 
   private static int csvFieldCount(String line) {
     return CliCsvFormat.csvFieldCount(line);
+  }
+
+  private static String csvValue(List<String> lines, int rowIndex, String headerName) {
+    return csvValue(lines.get(rowIndex), lines.getFirst(), headerName);
+  }
+
+  private static String csvValue(String line, String headerLine, String headerName) {
+    List<String> headers = CliCsvFormat.parseRow(headerLine);
+    List<String> row = CliCsvFormat.parseRow(line);
+    return row.get(headers.indexOf(headerName));
   }
 }

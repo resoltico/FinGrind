@@ -23,7 +23,7 @@ object BundleManifestRenderer {
             "Bundle manifest bundle classifier must not be blank."
         }
         val bundleTarget =
-            DistributionContractReader.bundleTarget(projectRootDirectory, normalizedBundleClassifier)
+            DistributionBundleTargetReader.bundleTarget(projectRootDirectory, normalizedBundleClassifier)
         val document =
             BundleManifestDocument(
                 application = normalizedApplicationName,

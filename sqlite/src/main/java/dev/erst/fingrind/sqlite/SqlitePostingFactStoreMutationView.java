@@ -9,15 +9,18 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 
 /** Mutation surface over one SQLite posting-fact store. */
@@ -59,6 +62,25 @@ interface SqlitePostingFactStoreMutationView {
   }
 
   /** Commits a generated period-result transfer into the protected book. */
+  default PeriodResultTransferOutcome transferPeriodResult(
+      ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      PeriodResultTransferPlanner planner,
+      LocalDate currentUtcDate,
+      Instant transferredAt,
+      PostingIdGenerator postingIdGenerator) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations()
+        .transferPeriodResult(
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            transferredAt,
+            postingIdGenerator);
+  }
+
+  /** Commits a preplanned period-result transfer into the protected book. */
   default PeriodResultTransferOutcome transferPeriodResult(
       PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
     storeThreadOwner().requireOwnerThread();

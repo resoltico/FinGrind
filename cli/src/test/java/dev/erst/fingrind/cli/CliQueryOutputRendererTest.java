@@ -146,6 +146,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 List.of(
                     new BusinessActivityTag("translation,localization"),
                     new BusinessActivityTag("cafe services"))),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =
@@ -160,6 +161,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 resultTransferReadyInspection()));
 
     assertTrue(inspection.contains("Business activity"));
+    assertTrue(inspection.contains("Accounting profile"));
+    assertTrue(inspection.contains("country-agnostic-bookkeeping-kernel"));
     assertTrue(inspection.contains("translation,localization, cafe services"));
     assertTrue(inspection.contains("Functional currency"));
   }
@@ -169,6 +172,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Registered Studio"), List.of()),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =

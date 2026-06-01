@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from .models import FileBudget, ReviewedSurface
+
+REVIEWED_SURFACES = {
+    "scripts/verify-structural-governance.py": ReviewedSurface(
+        relative_path="scripts/verify-structural-governance.py",
+        owner="repo-governance",
+        reason="The public verifier entrypoint is one intentionally reviewed control-plane surface.",
+        split_trigger="Keep the wrapper thin and move any new surface-specific logic into the structural_governance package.",
+        budget=FileBudget(
+            role_name="python-structural-governance",
+            max_physical_lines=80,
+            max_logical_lines=40,
+            max_import_like_lines=6,
+            max_functions=2,
+            max_nested_types=2,
+            max_duplicate_window_lines=24,
+            split_hint="keep the entrypoint thin and route structural-governance behavior through focused support modules.",
+        ),
+    ),
+    "scripts/test-release-smoke-workflow-contract.py": ReviewedSurface(
+        relative_path="scripts/test-release-smoke-workflow-contract.py",
+        owner="release-smoke-contract",
+        reason="The release smoke contract suite is a deliberately broad verification matrix over one public workflow.",
+        split_trigger="Split by workflow phase before adding another independent smoke contract family.",
+        budget=FileBudget(
+            role_name="python-release-contract-suite",
+            max_physical_lines=700,
+            max_logical_lines=540,
+            max_import_like_lines=18,
+            max_functions=26,
+            max_nested_types=8,
+            max_duplicate_window_lines=28,
+            split_hint="split the contract suite by release workflow phase or artifact family.",
+        ),
+    ),
+    "scripts/release_smoke_workflow/assertions.py": ReviewedSurface(
+        relative_path="scripts/release_smoke_workflow/assertions.py",
+        owner="release-smoke-assertions",
+        reason="The release smoke assertions surface is the compatibility re-export seam for focused assertion owners.",
+        split_trigger="Keep the façade thin and add new assertion families under focused modules instead of re-growing the umbrella file.",
+        budget=FileBudget(
+            role_name="python-release-assertions",
+            max_physical_lines=80,
+            max_logical_lines=40,
+            max_import_like_lines=10,
+            max_functions=0,
+            max_nested_types=0,
+            max_duplicate_window_lines=24,
+            split_hint="keep the assertions façade thin and add focused assertion owners underneath it.",
+        ),
+    ),
+    "scripts/contract_values.py": ReviewedSurface(
+        relative_path="scripts/contract_values.py",
+        owner="contract-values",
+        reason="The contract-values reader intentionally groups canonical contract extraction helpers behind one script surface.",
+        split_trigger="Split by contract family before adding another independent extraction seam.",
+        budget=FileBudget(
+            role_name="python-contract-values",
+            max_physical_lines=480,
+            max_logical_lines=380,
+            max_import_like_lines=16,
+            max_functions=24,
+            max_nested_types=8,
+            max_duplicate_window_lines=28,
+            split_hint="split the contract-value reader by one contract family per helper cluster.",
+        ),
+    ),
+    "sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql": ReviewedSurface(
+        relative_path="sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql",
+        owner="sqlite-schema",
+        reason="The canonical SQLite schema is one intentionally reviewed data catalog owned by the storage adapter.",
+        split_trigger="Break out reusable generated fragments before adding another independent schema family.",
+        budget=FileBudget(
+            role_name="sqlite-schema-catalog",
+            max_physical_lines=1400,
+            max_logical_lines=1180,
+            max_import_like_lines=90,
+            max_functions=0,
+            max_nested_types=0,
+            max_duplicate_window_lines=36,
+            split_hint="split the schema into generated or named fragments instead of growing one monolithic catalog.",
+        ),
+    ),
+}

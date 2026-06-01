@@ -115,14 +115,14 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                           database, "insert into sample (id, note) values (?, ?)")) {
                     insert.bindInt(1, 7);
                     insert.bindText(2, null);
-                    assertEquals(SqliteNativeResultCodes.DONE, insert.step());
+                    assertEquals(SqliteNativeResultCode.code("DONE"), insert.step());
                   }
                   try (SqliteNativeStatement select =
                       SqliteNativeStatements.prepare(database, "select id, note from sample")) {
-                    assertEquals(SqliteNativeResultCodes.ROW, select.step());
+                    assertEquals(SqliteNativeResultCode.code("ROW"), select.step());
                     assertEquals(7, select.columnInt(0));
                     assertNull(select.columnText(1));
-                    assertEquals(SqliteNativeResultCodes.DONE, select.step());
+                    assertEquals(SqliteNativeResultCode.code("DONE"), select.step());
                   }
                 }));
   }
@@ -212,7 +212,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             SqliteNativeConnections.open(bookPath, replacementPassphrase)) {
       try (SqliteNativeStatement statement =
           SqliteNativeStatements.prepare(reopened, "select count(*) from sample")) {
-        assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
         assertEquals(1, statement.columnInt(0));
       }
     }
@@ -240,7 +240,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
       database.executeStatement("insert into sample (id, note) values (1, 'ok')");
       try (SqliteNativeStatement statement =
           SqliteNativeStatements.prepare(database, "select count(*) from sample")) {
-        assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
         assertEquals(1, statement.columnInt(0));
       }
     }

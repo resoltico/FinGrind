@@ -62,6 +62,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
+        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

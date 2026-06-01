@@ -51,7 +51,7 @@ final class SqliteBookIntegrityVerifier {
   static boolean hasValidPersistedMoney(SqliteNativeDatabase activeDatabase) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.LOAD_PERSISTED_MONEY_AUDIT_ROWS)) {
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         SqlitePersistedMoneyCodec.readPositiveMoney(statement, 0, 1);
       }
       return true;
@@ -97,7 +97,7 @@ final class SqliteBookIntegrityVerifier {
     int rowCount = 0;
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.LOAD_CANONICAL_SCHEMA_OBJECTS)) {
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         material
             .append(SqlitePostingMapper.requiredText(statement, 0))
             .append('\u0000')

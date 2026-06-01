@@ -44,6 +44,10 @@ final class CliChangesInEquityReportRenderer {
   static String renderCsv(ChangesInEquityReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "exportFamily",
+            "rowId",
+            "parentRowId",
+            "relationKind",
             "reportBasis",
             "recordKind",
             "effectiveDateFrom",
@@ -204,6 +208,10 @@ final class CliChangesInEquityReportRenderer {
             .map(
                 row ->
                     List.of(
+                        CliCsvExportFamilies.STATEMENT,
+                        "changes-in-equity-row:" + reportBasis + ":" + row.lineCode(),
+                        "",
+                        "line",
                         reportBasis,
                         "row",
                         effectiveDateFrom,
@@ -238,6 +246,15 @@ final class CliChangesInEquityReportRenderer {
     }
     return java.util.stream.Stream.of(
         List.of(
+            CliCsvExportFamilies.STATEMENT,
+            "changes-in-equity-report-empty:"
+                + reportBasis
+                + ":"
+                + effectiveDateFrom
+                + ":"
+                + effectiveDateTo,
+            "",
+            "report-empty",
             reportBasis,
             CliCsvEmptyKinds.REPORT_EMPTY,
             effectiveDateFrom,
@@ -301,6 +318,15 @@ final class CliChangesInEquityReportRenderer {
               CurrencyBalance closing =
                   CliReportRenderSupport.balanceForCurrency(closingTotals, currencyCode);
               return List.of(
+                  CliCsvExportFamilies.STATEMENT,
+                  "changes-in-equity-total:"
+                      + reportBasis
+                      + ":"
+                      + currencyCode
+                      + ":"
+                      + closing.balanceSide().wireValue(),
+                  "",
+                  "report-total",
                   reportBasis,
                   "report-total",
                   effectiveDateFrom,

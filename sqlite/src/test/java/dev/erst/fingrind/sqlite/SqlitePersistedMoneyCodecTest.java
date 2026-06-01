@@ -30,7 +30,7 @@ class SqlitePersistedMoneyCodecTest extends SqlitePostingFactStoreTestSupport {
         database -> {
           try (SqliteNativeStatement statement =
               SqliteNativeStatements.prepare(database, "select 'EUR', -1")) {
-            assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+            assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
             IllegalStateException exception =
                 assertThrows(
                     IllegalStateException.class,
@@ -51,7 +51,7 @@ class SqlitePersistedMoneyCodecTest extends SqlitePostingFactStoreTestSupport {
     try (SqliteNativeStatement statement =
         SqliteNativeStatements.prepare(
             database, "select '%s', %d".formatted(currencyCode, Long.valueOf(amountMinor)))) {
-      assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+      assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
       assertEquals(expected, SqlitePersistedMoneyCodec.readMoney(statement, 0, 1));
     }
   }

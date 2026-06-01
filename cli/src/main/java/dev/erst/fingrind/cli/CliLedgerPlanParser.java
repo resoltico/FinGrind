@@ -29,6 +29,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingKernelProfiles;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -209,6 +210,7 @@ final class CliLedgerPlanParser {
                     requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
                     "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
                 requiredBusinessActivityTags(openBookNode)),
+            AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CliOptionValues.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),

@@ -45,18 +45,18 @@ class SqliteStoreFixtureSupport {
 
   protected final int queryInt(SqliteNativeDatabase database, String sql) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
-      assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+      assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
       int value = statement.columnInt(0);
-      assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+      assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
       return value;
     }
   }
 
   protected final String queryText(SqliteNativeDatabase database, String sql) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
-      assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+      assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
       String value = statement.columnText(0);
-      assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+      assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
       return Objects.requireNonNull(value, "SQLite text query returned null.");
     }
   }

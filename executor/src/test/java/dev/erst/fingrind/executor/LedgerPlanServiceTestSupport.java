@@ -44,6 +44,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
@@ -359,6 +360,22 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public PeriodResultTransferOutcome transferPeriodResult(
+        dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        PeriodResultTransferPlanner planner,
+        LocalDate currentUtcDate,
+        Instant transferredAt,
+        PostingIdGenerator postingIdGenerator) {
+      return delegate.transferPeriodResult(
+          reportingPeriod,
+          bookIdentity,
+          planner,
+          currentUtcDate,
+          transferredAt,
+          postingIdGenerator);
+    }
+
+    PeriodResultTransferOutcome transferPeriodResult(
         PeriodResultTransferDraft periodResultTransferDraft,
         PostingIdGenerator postingIdGenerator) {
       return delegate.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);

@@ -73,8 +73,6 @@ public final class ProtocolOptions {
   /** Option selecting the {@code MM-DD} fiscal-year start used when initializing one new book. */
   public static final String FISCAL_YEAR_START = "--fiscal-year-start";
 
-  /** Option selecting the result-holding account used by one transfer-period-result command. */
-
   /** Option selecting which posting kinds one report query should include. */
   public static final String POSTING_COVERAGE = "--posting-coverage";
 
@@ -89,6 +87,12 @@ public final class ProtocolOptions {
 
   /** Option selecting one discovery-payload detail level. */
   public static final String DETAIL = "--detail";
+
+  /** Option selecting one discovery concern for JSON discovery responses. */
+  public static final String FOCUS = "--focus";
+
+  /** Option selecting one command family for JSON discovery responses. */
+  public static final String CATEGORY = "--category";
 
   /** Option selecting whether execute-plan returns one summary or the full execution journal. */
   public static final String RESULT_DETAIL = "--result-detail";
@@ -186,6 +190,26 @@ public final class ProtocolOptions {
         + DETAIL
         + " <"
         + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryDetail.class))
+        + ">"
+        + " (json only)]";
+  }
+
+  /** Returns the rendered optional discovery-focus syntax for JSON-only discovery surfaces. */
+  public static String optionalJsonOnlyDiscoveryFocusSyntax() {
+    return "["
+        + FOCUS
+        + " <"
+        + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(DiscoveryFocus.class))
+        + ">"
+        + " (json only)]";
+  }
+
+  /** Returns the rendered optional operation-category syntax for JSON-only discovery surfaces. */
+  public static String optionalJsonOnlyOperationCategorySyntax() {
+    return "["
+        + CATEGORY
+        + " <"
+        + String.join("|", dev.erst.fingrind.core.WireValue.wireValues(OperationCategory.class))
         + ">"
         + " (json only)]";
   }

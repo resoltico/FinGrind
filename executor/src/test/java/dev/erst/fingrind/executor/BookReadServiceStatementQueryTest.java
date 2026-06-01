@@ -186,8 +186,6 @@ class BookReadServiceStatementQueryTest {
           new PeriodResultTransferService(
               bookSession,
               bookSession,
-              bookSession,
-              bookSession,
               () -> new PostingId("period-result-transfer-1"),
               FIXED_CLOCK);
 

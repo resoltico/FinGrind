@@ -103,7 +103,11 @@ final class SqliteSourceCheckoutRuntimeLocator {
           return managedLibraryPath;
         }
       } catch (IOException exception) {
-        return null;
+        throw new ManagedSqliteRuntimeUnavailableException(
+            "FinGrind found the prepared source-checkout managed SQLite runtime root at "
+                + classifierRoot
+                + " but could not inspect it.",
+            exception);
       }
     }
     return null;

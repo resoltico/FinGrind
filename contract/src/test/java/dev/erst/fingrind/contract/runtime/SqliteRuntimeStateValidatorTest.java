@@ -27,7 +27,8 @@ class SqliteRuntimeStateValidatorTest {
                 ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 null));
 
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, readyRuntime.runtimeTrustBasis());
+    assertEquals(
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, readyRuntime.runtimeTrustBasis());
   }
 
   @Test
@@ -47,7 +48,7 @@ class SqliteRuntimeStateValidatorTest {
                 "compile options mismatch"));
 
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
         incompatibleRuntime.runtimeTrustBasis());
   }
 }

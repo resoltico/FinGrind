@@ -46,13 +46,6 @@ final class SqliteNativeBootstrap {
         reportedCause);
   }
 
-  static void shutdownIfQuiescent(MethodHandle sqlite3Shutdown, int activeConnections) {
-    Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
-    if (activeConnections == 0) {
-      shutdownQuietly(sqlite3Shutdown);
-    }
-  }
-
   static void shutdownQuietly(MethodHandle sqlite3Shutdown) {
     shutdownQuietly(sqlite3Shutdown, SqliteBestEffort::reportCleanupFailure);
   }

@@ -2,12 +2,16 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -16,20 +20,22 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   @Test
   void parse_returnsHelpWhenArgumentsAreEmpty() {
     Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[0]));
-    assertEquals(DiscoveryDetail.COMPACT, command.detail());
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
   }
 
   @Test
   void parse_returnsCapabilitiesWhenCommandIsCapabilities() {
     Capabilities command =
         assertInstanceOf(Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
-    assertEquals(DiscoveryDetail.COMPACT, command.detail());
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryFocus.OVERVIEW, command.selections().focus());
+    assertNull(command.selections().category());
   }
 
   @Test
   void parse_returnsHelpForFlagAlias() {
     Help command = assertInstanceOf(Help.class, CliArguments.parse(new String[] {"--help"}));
-    assertEquals(DiscoveryDetail.COMPACT, command.detail());
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
   }
 
   @Test
@@ -90,6 +96,52 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_supportsJsonCategoryFilterForTopLevelHelp() {
+    Help command =
+        assertInstanceOf(
+            Help.class,
+            CliArguments.parse(new String[] {"help", "--output", "json", "--category", "query"}));
+
+    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(OperationCategory.QUERY, command.category());
+  }
+
+  @Test
+  void parse_rejectsHelpCategoryWhenCommandTopicIsSelected() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "help", "post-entry", "--output", "json", "--category", "query"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--category", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("applies only to top-level help discovery"));
+  }
+
+  @Test
+  void parse_rejectsHelpCategoryWhenResolvedOutputModeIsText() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {"help", "--output", "text", "--category", "query"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--output", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("supported only when the resolved output mode is json"));
+  }
+
+  @Test
   void parse_rejectsDiscoveryDetailWhenCommandHelpResolvesToTextOutput() {
     CliArgumentsException exception =
         assertThrows(
@@ -99,10 +151,171 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
                     new String[] {"post-entry", "--help", "--output", "text", "--detail", "full"}));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--detail", exception.argument());
+    assertEquals("--output", exception.argument());
     assertTrue(
         java.util.Objects.requireNonNull(exception.getMessage())
             .contains("supported only when the resolved output mode is json"));
+  }
+
+  @Test
+  void parse_supportsCapabilitiesFocusAndCategorySelectors() {
+    Capabilities command =
+        assertInstanceOf(
+            Capabilities.class,
+            CliArguments.parse(
+                new String[] {
+                  "capabilities",
+                  "--output",
+                  "json",
+                  "--detail",
+                  "compact",
+                  "--focus",
+                  "commands",
+                  "--category",
+                  "write"
+                }));
+
+    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(DiscoveryDetail.COMPACT, command.detail());
+    assertEquals(DiscoveryFocus.COMMANDS, command.selections().focus());
+    assertEquals(OperationCategory.WRITE, command.selections().category());
+  }
+
+  @Test
+  void parse_supportsCapabilitiesTextOutputWithoutJsonOnlySelectors() {
+    Capabilities command =
+        assertInstanceOf(
+            Capabilities.class,
+            CliArguments.parse(new String[] {"capabilities", "--output", "text"}));
+
+    assertEquals(OutputMode.TEXT, command.outputMode());
+    assertEquals(DiscoveryFocus.OVERVIEW, command.selections().focus());
+    assertNull(command.selections().category());
+  }
+
+  @Test
+  void parse_rejectsCapabilitiesFocusSelectorWhenResolvedOutputModeIsText() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {"capabilities", "--output", "text", "--focus", "commands"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--output", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("supported only when the resolved output mode is json"));
+  }
+
+  @Test
+  void parse_rejectsCapabilitiesCategoryWithoutCommandFocus() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "capabilities",
+                      "--output",
+                      "json",
+                      "--focus",
+                      "storage",
+                      "--category",
+                      "query"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--category", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("--category requires --focus commands"));
+  }
+
+  @Test
+  void parse_rejectsCapabilitiesSelectorsWhenResolvedOutputModeIsText() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "capabilities",
+                      "--output",
+                      "text",
+                      "--focus",
+                      "commands",
+                      "--category",
+                      "query"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--output", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("supported only when the resolved output mode is json"));
+  }
+
+  @Test
+  void parse_rejectsUnsupportedDiscoveryFocusAndCategoryValues() {
+    CliArgumentsException focusException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {"capabilities", "--output", "json", "--focus", "bad-focus"}));
+    CliArgumentsException categoryException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {"help", "--output", "json", "--category", "bad-category"}));
+
+    assertEquals("--focus", focusException.argument());
+    assertTrue(Objects.requireNonNull(focusException.getMessage()).contains("Accepted values"));
+    assertEquals("--category", categoryException.argument());
+    assertTrue(Objects.requireNonNull(categoryException.getMessage()).contains("Accepted values"));
+  }
+
+  @Test
+  void parse_rejectsDuplicateCapabilitiesFocusAndCategorySelectors() {
+    CliArgumentsException duplicateFocus =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "capabilities",
+                      "--output",
+                      "json",
+                      "--focus",
+                      "commands",
+                      "--focus",
+                      "storage"
+                    }));
+    CliArgumentsException duplicateCategory =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "capabilities",
+                      "--output",
+                      "json",
+                      "--focus",
+                      "commands",
+                      "--category",
+                      "query",
+                      "--category",
+                      "write"
+                    }));
+
+    assertEquals("--focus", duplicateFocus.argument());
+    assertTrue(Objects.requireNonNull(duplicateFocus.getMessage()).contains("Duplicate argument"));
+    assertEquals("--category", duplicateCategory.argument());
+    assertTrue(
+        Objects.requireNonNull(duplicateCategory.getMessage()).contains("Duplicate argument"));
   }
 
   @Test

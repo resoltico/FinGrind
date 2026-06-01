@@ -146,7 +146,7 @@ final class CliReportRenderSupport {
   static List<List<String>> identityRows(
       BookIdentity bookIdentity, PostingCoverage postingCoverage, List<List<String>> rows) {
     List<List<String>> identityRows =
-        new ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
+        new ArrayList<>(CliBookIdentityDisplay.detailRows(bookIdentity));
     identityRows.add(
         List.of("Posting coverage", CliPostingLabels.displayPostingCoverage(postingCoverage)));
     identityRows.addAll(rows);

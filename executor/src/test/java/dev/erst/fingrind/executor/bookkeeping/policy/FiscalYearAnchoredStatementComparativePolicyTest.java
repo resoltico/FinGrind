@@ -18,11 +18,13 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
   private static final BookIdentity FEBRUARY_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Leap Shop"), java.util.List.of()),
+          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("02-29"));
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Calendar Shop"), java.util.List.of()),
+          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
 

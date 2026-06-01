@@ -23,6 +23,10 @@ internal object DistributionContractSchemas {
                 sqliteBundleHomeSystemProperty =
                     schemaKey(document, "runtimeSurface", "sqliteBundleHomeSystemProperty"),
             ),
+            runtimeModuleDiscovery = DistributionContractReader.RuntimeModuleDiscoverySchema(
+                allowedMissingDependencyPrefixes =
+                    schemaKey(document, "runtimeModuleDiscovery", "allowedMissingDependencyPrefixes"),
+            ),
             publicDistribution = DistributionContractReader.PublicDistributionSchema(
                 supportedPublicCliBundleTargets =
                     schemaKey(document, "publicDistribution", "supportedPublicCliBundleTargets"),

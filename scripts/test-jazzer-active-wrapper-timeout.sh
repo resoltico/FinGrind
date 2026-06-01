@@ -40,6 +40,8 @@ readonly source_wrapper="${repo_root}/jazzer/bin/fuzz-cli-request"
 readonly source_common="${repo_root}/jazzer/bin/common.sh"
 readonly source_run_lock_support="${repo_root}/jazzer/bin/_run-lock-support"
 readonly source_repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
+readonly source_repo_lock_path_support="${repo_root}/scripts/repo-verification-lock-path-support.sh"
+readonly source_repo_lock_process_support="${repo_root}/scripts/repo-verification-lock-process-support.sh"
 readonly source_topology_reader="${repo_root}/scripts/read-jazzer-topology.py"
 readonly source_topology_file="${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
 
@@ -47,6 +49,8 @@ readonly source_topology_file="${repo_root}/jazzer/src/main/resources/dev/erst/f
 [[ -f "${source_common}" ]] || die "missing common.sh wrapper library"
 [[ -f "${source_run_lock_support}" ]] || die "missing Jazzer run-lock helper"
 [[ -f "${source_repo_lock_support}" ]] || die "missing repo verification lock helper"
+[[ -f "${source_repo_lock_path_support}" ]] || die "missing repo verification lock path helper"
+[[ -f "${source_repo_lock_process_support}" ]] || die "missing repo verification lock process helper"
 [[ -f "${source_topology_reader}" ]] || die "missing Jazzer topology reader"
 [[ -f "${source_topology_file}" ]] || die "missing Jazzer topology file"
 
@@ -70,9 +74,13 @@ cp "${source_common}" "${tmp_dir}/common.sh"
 chmod +x "${tmp_dir}/common.sh"
 cp "${source_run_lock_support}" "${stub_bin_dir}/_run-lock-support"
 cp "${source_repo_lock_support}" "${stub_scripts_dir}/repo-verification-lock-support.sh"
+cp "${source_repo_lock_path_support}" "${stub_scripts_dir}/repo-verification-lock-path-support.sh"
+cp "${source_repo_lock_process_support}" "${stub_scripts_dir}/repo-verification-lock-process-support.sh"
 cp "${source_topology_reader}" "${stub_scripts_dir}/read-jazzer-topology.py"
 cp "${source_topology_file}" "${stub_topology_dir}/jazzer-topology.json"
-chmod +x "${stub_bin_dir}/_run-lock-support" "${stub_scripts_dir}/repo-verification-lock-support.sh"
+chmod +x \
+    "${stub_bin_dir}/_run-lock-support" \
+    "${stub_scripts_dir}/repo-verification-lock-support.sh"
 
 cat > "${tmp_dir}/gradlew" <<'EOF'
 #!/usr/bin/env bash

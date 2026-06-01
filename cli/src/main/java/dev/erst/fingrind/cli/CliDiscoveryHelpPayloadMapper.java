@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
@@ -14,30 +15,37 @@ import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Maps help descriptors into command-scoped and overview CLI JSON payloads. */
 final class CliDiscoveryHelpPayloadMapper {
   private CliDiscoveryHelpPayloadMapper() {}
 
-  static ProtocolSuccessPayload helpPayload(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+  static ProtocolSuccessPayload helpPayload(
+      HelpDescriptor helpDescriptor, DiscoveryDetail detail, @Nullable OperationCategory category) {
     Objects.requireNonNull(helpDescriptor, "helpDescriptor");
     Objects.requireNonNull(detail, "detail");
-    return isCommandScoped(helpDescriptor)
-        ? commandHelpPayload(helpDescriptor, detail)
+    HelpDescriptor selectedHelp =
+        category == null || isCommandScoped(helpDescriptor)
+            ? helpDescriptor
+            : filteredHelpDescriptor(helpDescriptor, category);
+    return isCommandScoped(selectedHelp)
+        ? commandHelpPayload(selectedHelp, detail)
         : switch (detail) {
-          case MINIMAL -> minimalHelpOverviewPayload(helpDescriptor);
-          case COMPACT -> compactHelpOverviewPayload(helpDescriptor);
-          case FULL -> helpOverviewPayload(helpDescriptor);
+          case MINIMAL -> minimalHelpOverviewPayload(selectedHelp, category);
+          case COMPACT -> compactHelpOverviewPayload(selectedHelp, category);
+          case FULL -> helpOverviewPayload(selectedHelp, category);
         };
   }
 
   private static CliDiscoveryJsonModels.HelpOverviewMinimalPayload minimalHelpOverviewPayload(
-      HelpDescriptor helpDescriptor) {
+      HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
     return new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
         DiscoveryDetail.MINIMAL,
+        category == null ? null : category.wireValue(),
         commandNamePayloads(helpDescriptor.commands()),
         "Rerun with '"
             + CliInvocationText.commandExample(OperationId.HELP)
@@ -52,12 +60,13 @@ final class CliDiscoveryHelpPayloadMapper {
   }
 
   private static CliDiscoveryJsonModels.HelpOverviewCompactPayload compactHelpOverviewPayload(
-      HelpDescriptor helpDescriptor) {
+      HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
     return new CliDiscoveryJsonModels.HelpOverviewCompactPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
         DiscoveryDetail.COMPACT,
+        category == null ? null : category.wireValue(),
         commandIndexPayloads(helpDescriptor.commands()),
         helpDescriptor.exitCodes(),
         "Run '"
@@ -71,12 +80,13 @@ final class CliDiscoveryHelpPayloadMapper {
   }
 
   private static CliDiscoveryJsonModels.HelpOverviewPayload helpOverviewPayload(
-      HelpDescriptor helpDescriptor) {
+      HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
     return new CliDiscoveryJsonModels.HelpOverviewPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
         DiscoveryDetail.FULL,
+        category == null ? null : category.wireValue(),
         helpDescriptor.commands(),
         List.of(
             "Run '"
@@ -93,6 +103,30 @@ final class CliDiscoveryHelpPayloadMapper {
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json' for the stable machine-readable command contract.",
         helpDescriptor);
+  }
+
+  private static HelpDescriptor filteredHelpDescriptor(
+      HelpDescriptor helpDescriptor, OperationCategory category) {
+    List<CommandDescriptor> filteredCommands =
+        helpDescriptor.commands().stream()
+            .filter(command -> ProtocolCatalog.operation(command.name()).category() == category)
+            .toList();
+    return new HelpDescriptor(
+        helpDescriptor.application(),
+        helpDescriptor.version(),
+        helpDescriptor.description(),
+        helpDescriptor.usage(),
+        helpDescriptor.bookModel(),
+        helpDescriptor.bookkeepingKernel(),
+        helpDescriptor.requestShapes(),
+        helpDescriptor.requestTemplate(),
+        helpDescriptor.declareAccountTemplate(),
+        helpDescriptor.planTemplate(),
+        filteredCommands,
+        helpDescriptor.quickStart(),
+        helpDescriptor.exitCodes(),
+        helpDescriptor.preflight(),
+        helpDescriptor.currencyModel());
   }
 
   private static CliDiscoveryJsonModels.CommandHelpPayload commandHelpPayload(

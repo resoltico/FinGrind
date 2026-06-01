@@ -6,8 +6,8 @@ import java.util.Objects;
 
 /** Stable machine-readable trust basis for the loaded SQLite runtime artifact. */
 public enum SqliteRuntimeTrustBasis implements WireValue {
-  PUBLISHER_AUTHENTICATED("publisher-authenticated"),
-  SOURCE_VERIFIED_LOCAL_BUILD("source-verified-local-build");
+  BUNDLE_SIDECAR_CONSISTENCY("bundle-sidecar-consistency"),
+  SOURCE_CHECKOUT_SIDECAR_CONSISTENCY("source-checkout-sidecar-consistency");
 
   private final String wireValue;
 
@@ -34,8 +34,8 @@ public enum SqliteRuntimeTrustBasis implements WireValue {
   /** Maps one runtime provenance class to its public trust basis. */
   public static SqliteRuntimeTrustBasis fromProvenance(SqliteRuntimeProvenance provenance) {
     return switch (Objects.requireNonNull(provenance, "provenance")) {
-      case BUNDLE_MANAGED -> PUBLISHER_AUTHENTICATED;
-      case SOURCE_CHECKOUT_MANAGED -> SOURCE_VERIFIED_LOCAL_BUILD;
+      case BUNDLE_MANAGED -> BUNDLE_SIDECAR_CONSISTENCY;
+      case SOURCE_CHECKOUT_MANAGED -> SOURCE_CHECKOUT_SIDECAR_CONSISTENCY;
     };
   }
 

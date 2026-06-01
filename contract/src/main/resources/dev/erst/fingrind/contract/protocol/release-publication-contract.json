@@ -1,0 +1,59 @@
+{
+  "workflowDispatchHelperRef": "main",
+  "bundleOutputArchivePrefixes": [
+    "FINGRIND_BUNDLE_ARCHIVE=",
+    "FinGrind bundle archive: "
+  ],
+  "bundleOutputChecksumPrefixes": [
+    "FINGRIND_BUNDLE_CHECKSUM=",
+    "FinGrind bundle checksum: "
+  ],
+  "publicBundleBuildTargets": {
+    "linux-x86_64": {
+      "runnerLabel": "ubuntu-24.04",
+      "expectedRunnerOs": "Linux",
+      "expectedRunnerArch": "x86_64"
+    },
+    "linux-aarch64": {
+      "runnerLabel": "ubuntu-24.04-arm",
+      "expectedRunnerOs": "Linux",
+      "expectedRunnerArch": "aarch64"
+    },
+    "macos-aarch64": {
+      "runnerLabel": "macos-15",
+      "expectedRunnerOs": "Darwin",
+      "expectedRunnerArch": "arm64"
+    },
+    "macos-x86_64": {
+      "runnerLabel": "macos-15-intel",
+      "expectedRunnerOs": "Darwin",
+      "expectedRunnerArch": "x86_64"
+    },
+    "windows-x86_64": {
+      "runnerLabel": "windows-2022",
+      "expectedRunnerOs": "Windows",
+      "expectedRunnerArch": "X64"
+    }
+  },
+  "requiredCiWorkflowName": "CI",
+  "requiredCiWorkflowPath": ".github/workflows/ci.yml",
+  "requiredCiGateJobName": "Gate",
+  "requiredCiJobNames": [
+    "Check",
+    "Windows bundle smoke",
+    "Published bundle smoke (linux-x86_64)",
+    "Published bundle smoke (linux-aarch64)",
+    "Published bundle smoke (macos-aarch64)",
+    "Published bundle smoke (macos-x86_64)",
+    "Detect devcontainer changes",
+    "Contributor devcontainer"
+  ],
+  "containerRegistry": "ghcr.io",
+  "containerImageName": "fingrind",
+  "containerRunnerLabel": "ubuntu-24.04",
+  "containerPlatforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "latestPublicationPolicy": "newest-stable-release-only"
+}

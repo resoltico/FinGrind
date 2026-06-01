@@ -9,14 +9,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.nio.file.attribute.UserPrincipal;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -65,7 +60,8 @@ final class SqliteBookKeyFileArtifactSecurity {
     }
     if (SqliteBookKeyFileSecuritySupport.supportsAcl(normalizedPath)) {
       Files.createFile(normalizedPath);
-      applyOwnerOnlyAcl(normalizedPath, WINDOWS_OWNER_KEY_FILE_PERMISSIONS);
+      SqliteBookKeyFileSecurityPolicy.applyOwnerOnlyAcl(
+          normalizedPath, WINDOWS_OWNER_KEY_FILE_PERMISSIONS);
       return;
     }
     throw new IllegalStateException(
@@ -127,63 +123,23 @@ final class SqliteBookKeyFileArtifactSecurity {
 
   private static ContractDecision<Path> requireSecurePosixPermissions(
       Path bookKeyFilePath, Set<PosixFilePermission> permissions) {
-    if (!permissions.contains(PosixFilePermission.OWNER_READ)) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file must be owner-readable: "
-                  + redactedPath(bookKeyFilePath)));
-    }
-    if (!POSIX_KEY_FILE_PERMISSIONS.containsAll(permissions)) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file must use owner-only permissions (0400 or 0600): "
-                  + redactedPath(bookKeyFilePath)));
-    }
-    return ContractDecision.accepted(bookKeyFilePath);
+    return SqliteBookKeyFileSecurityPolicy.requireOwnerOnlyPosixPermissions(
+        bookKeyFilePath,
+        permissions,
+        PosixFilePermission.OWNER_READ,
+        POSIX_KEY_FILE_PERMISSIONS,
+        "The FinGrind book key file must be owner-readable: ",
+        "The FinGrind book key file must use owner-only permissions (0400 or 0600): ");
   }
 
   private static ContractDecision<Path> requireSecureAcl(
       Path bookKeyFilePath, SqliteAclKeyFileSecurity security) {
-    if (security.acl().stream()
-        .filter(entry -> entry.type() == AclEntryType.ALLOW)
-        .filter(entry -> security.owner().equals(entry.principal()))
-        .noneMatch(entry -> entry.permissions().containsAll(ACL_READ_PERMISSIONS))) {
-      return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              "The FinGrind book key file ACL must grant the file owner read access: "
-                  + redactedPath(bookKeyFilePath)));
-    }
-    java.util.Optional<ContractFailure> nonOwnerAccessFailure =
-        security.acl().stream()
-            .filter(entry -> entry.type() == AclEntryType.ALLOW)
-            .filter(entry -> !security.owner().equals(entry.principal()))
-            .filter(
-                entry ->
-                    !java.util.Collections.disjoint(
-                        entry.permissions(), ACL_SECRET_ACCESS_PERMISSIONS))
-            .findFirst()
-            .map(
-                entry ->
-                    SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-                        "The FinGrind book key file ACL must grant secret access only to the file owner: "
-                            + redactedPath(bookKeyFilePath)
-                            + " grants access to one non-owner principal."));
-    if (nonOwnerAccessFailure.isPresent()) {
-      return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
-    }
-    return ContractDecision.accepted(bookKeyFilePath);
-  }
-
-  private static void applyOwnerOnlyAcl(Path normalizedPath, Set<AclEntryPermission> permissions)
-      throws IOException {
-    AclFileAttributeView view = SqliteBookKeyFileSecuritySupport.aclView(normalizedPath);
-    UserPrincipal owner = view.getOwner();
-    AclEntry ownerEntry =
-        AclEntry.newBuilder()
-            .setType(AclEntryType.ALLOW)
-            .setPrincipal(owner)
-            .setPermissions(permissions)
-            .build();
-    view.setAcl(List.of(ownerEntry));
+    return SqliteBookKeyFileSecurityPolicy.requireOwnerOnlyAcl(
+        bookKeyFilePath,
+        security,
+        ACL_READ_PERMISSIONS,
+        ACL_SECRET_ACCESS_PERMISSIONS,
+        "The FinGrind book key file ACL must grant the file owner read access: ",
+        "The FinGrind book key file ACL must grant secret access only to the file owner: ");
   }
 }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.policy;
 
+import dev.erst.fingrind.core.AccountingKernelProfiles;
 import dev.erst.fingrind.core.BookIdentity;
 import java.util.Objects;
 
@@ -10,6 +11,13 @@ public final class KernelAccountingRulesResolver {
   /** Returns the executable built-in policy pack selected by one initialized book identity. */
   public static KernelAccountingRules forBookIdentity(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return InternalManagementKernelAccountingRules.current();
+    if (AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.equals(
+        bookIdentity.accountingKernelProfileId())) {
+      return InternalManagementKernelAccountingRules.current();
+    }
+    throw new IllegalArgumentException(
+        "Unsupported accounting kernel profile: "
+            + bookIdentity.accountingKernelProfileId().value()
+            + ".");
   }
 }

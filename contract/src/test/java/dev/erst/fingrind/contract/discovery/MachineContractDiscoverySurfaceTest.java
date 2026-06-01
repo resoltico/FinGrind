@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.49.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.50.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {

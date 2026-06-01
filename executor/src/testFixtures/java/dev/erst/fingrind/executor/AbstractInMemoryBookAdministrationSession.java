@@ -47,6 +47,7 @@ abstract class AbstractInMemoryBookAdministrationSession
   protected BookIdentity bookIdentity =
       new BookIdentity(
           new EntityProfile(new BookEntityName("FinGrind Test Entity"), List.of()),
+          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1));
 

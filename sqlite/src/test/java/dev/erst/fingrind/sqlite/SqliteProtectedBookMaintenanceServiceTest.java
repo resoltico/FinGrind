@@ -18,9 +18,12 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /** Behavioral tests for the executor-owned protected-book maintenance service on SQLite. */
@@ -72,6 +75,42 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
   }
 
   @Test
+  void backupBook_createsMissingNestedBackupTargetParentsWithOwnerOnlyProtection() {
+    Path bookPath = tempDirectory.resolve("books").resolve("nested").resolve("entity.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    Path backupFilePath =
+        tempDirectory
+            .resolve("backup odd")
+            .resolve("Rīga büro")
+            .resolve("nested")
+            .resolve("entity backup.sqlite");
+    Path backupBookKeyFilePath =
+        tempDirectory
+            .resolve("backup odd")
+            .resolve("Rīga büro")
+            .resolve("nested")
+            .resolve("entity backup.key");
+
+    BackupBookResult.BackedUp backedUp =
+        assertInstanceOf(
+            BackupBookResult.BackedUp.class,
+            maintenanceService()
+                .backupBook(liveBookAccess, backupFilePath, backupBookKeyFilePath)
+                .requireAccepted());
+
+    assertEquals(hint(backupFilePath), backedUp.backupFilePath());
+    assertEquals(hint(backupBookKeyFilePath), backedUp.backupBookKeyFilePath());
+    assertTrue(Files.exists(backupFilePath));
+    assertTrue(Files.exists(backupBookKeyFilePath));
+    assertOwnerOnlyDirectoryIfPosix(
+        java.util.Objects.requireNonNull(backupFilePath.getParent(), "backupFilePath parent"));
+    assertOwnerOnlyDirectoryIfPosix(
+        java.util.Objects.requireNonNull(
+            backupBookKeyFilePath.getParent(), "backupBookKeyFilePath parent"));
+  }
+
+  @Test
   void backupBook_rejectsOneMissingLiveBookAsOneVerificationFailure() {
     Path missingBookPath = tempDirectory.resolve("books").resolve("missing.sqlite");
     BookAccess missingBookAccess = bookAccess(missingBookPath);
@@ -113,6 +152,66 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
     assertEquals(hint(bookPath), conflict.bookFilePath());
     assertEquals(hint(bookPath), conflict.backupFilePath());
     assertEquals(0, auditEventCount(liveBookAccess, "BACKUP_RESTORED"));
+  }
+
+  @Test
+  void restoreBook_createsMissingNestedTargetParentsWithOwnerOnlyProtection() {
+    Path liveBookPath = tempDirectory.resolve("books").resolve("restore-source.sqlite");
+    BookAccess liveBookAccess = bookAccess(liveBookPath);
+    initializeBook(liveBookAccess);
+    Path backupFilePath = tempDirectory.resolve("backup").resolve("restore-source.sqlite");
+    Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("restore-source.key");
+    maintenanceService()
+        .backupBook(liveBookAccess, backupFilePath, backupBookKeyFilePath)
+        .requireAccepted();
+    Path restoredBookPath =
+        tempDirectory
+            .resolve("restored odd")
+            .resolve("Rīga büro")
+            .resolve("nested")
+            .resolve("restore-target.sqlite");
+
+    RestoreBookResult.Restored restored =
+        assertInstanceOf(
+            RestoreBookResult.Restored.class,
+            maintenanceService()
+                .restoreBook(restoredBookPath, backupFilePath, backupBookKeyFilePath)
+                .requireAccepted());
+
+    assertEquals(hint(restoredBookPath), restored.bookFilePath());
+    assertTrue(Files.exists(restoredBookPath));
+    assertOwnerOnlyDirectoryIfPosix(
+        java.util.Objects.requireNonNull(restoredBookPath.getParent(), "restoredBookPath parent"));
+  }
+
+  @Test
+  void ensureSecureBackupKeyFileParentDirectory_wrapsIoFailuresFromNestedParentCreation()
+      throws Exception {
+    Assumptions.assumeTrue(
+        Files.getFileStore(tempDirectory).supportsFileAttributeView("posix"),
+        "This coverage path requires a POSIX filesystem.");
+    Path lockedParent = tempDirectory.resolve("locked-parent");
+    Files.createDirectory(lockedParent);
+    Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(lockedParent);
+    Files.setPosixFilePermissions(
+        lockedParent, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+    Path nestedKeyPath = lockedParent.resolve("nested").resolve("book.key");
+
+    try {
+      IllegalStateException exception =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingSupport.ensureSecureBackupKeyFileParentDirectory(
+                      nestedKeyPath));
+
+      assertTrue(
+          java.util.Objects.requireNonNull(exception.getMessage())
+              .contains("Failed to secure the parent directory"));
+      assertTrue(exception.getCause() instanceof IOException);
+    } finally {
+      Files.setPosixFilePermissions(lockedParent, originalPermissions);
+    }
   }
 
   @Test
@@ -219,9 +318,9 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
               SqliteNativeStatements.prepare(
                   database,
                   "select count(*) from audit_event where event_kind = '" + eventKind + "'")) {
-            assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+            assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
             count[0] = statement.columnInt(0);
-            assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+            assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
           }
         });
     return count[0];
@@ -239,5 +338,22 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
       case BookAccess.PassphraseSource.InteractivePrompt _ ->
           throw new AssertionError("Expected one key-file-backed access tuple.");
     };
+  }
+
+  private static void assertOwnerOnlyDirectoryIfPosix(Path directoryPath) {
+    try {
+      if (directoryPath != null
+          && Files.getFileStore(directoryPath).supportsFileAttributeView("posix")) {
+        assertEquals(
+            Set.of(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.OWNER_EXECUTE),
+            Files.getPosixFilePermissions(directoryPath));
+      }
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to inspect the test maintenance directory permissions.", exception);
+    }
   }
 }

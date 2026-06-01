@@ -35,6 +35,9 @@ class BundleManifestRendererTest {
                     "sqliteLibraryMode": "libraryMode",
                     "sqliteBundleHomeSystemProperty": "bundleHome"
                   },
+                  "runtimeModuleDiscovery": {
+                    "allowedMissingDependencyPrefixes": "allowedMissingDependencyPrefixes"
+                  },
                   "publicDistribution": {
                     "supportedPublicCliBundleTargets": "supportedTargets",
                     "unsupportedPublicCliBundleTargets": "unsupportedTargets"

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -53,6 +53,9 @@ This Docker runtime guidance is separate from the contributor devcontainer:
 The container image itself also stays on the same managed-runtime policy as the bundle archives:
 - it verifies the pinned vendored SQLite3MC source hash during image build before compiling the
   native library
+- it pins both Docker base images by digest and installs exact Alpine package revisions for the
+  builder and runtime layers, so container assembly does not float forward on mutable tags or
+  repository package updates
 - it derives the SQLite compiler flags from the canonical managed-SQLite contract through
   `scripts/render-managed-sqlite-compiler-flags.py`, so Docker does not carry a private handwritten
   compile-option surface
@@ -147,8 +150,9 @@ Then the supported local gates are:
   `protected-book-verification-failed` error rather than silently reading the file or leaking raw
   SQLite storage symptoms
 
-The tag-driven public container workflow also waits for the complete GitHub release asset set
-before image publication, so the public image cannot race ahead of an incomplete bundle release.
+The tag-driven `Release` workflow's `container` job also waits for the complete GitHub release
+asset set before image publication, so the public image cannot race ahead of an incomplete bundle
+release.
 
 ## Troubleshooting
 

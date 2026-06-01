@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Guard the GitHub release publisher against drifting back to name-only convergence.
+# Guard the GitHub release publisher against drifting away from the draft-first, digest-aware
+# publication contract.
 
 set -euo pipefail
 
@@ -38,9 +39,58 @@ cat > "${fixture_root}/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-state_file="${FAKE_RELEASE_STATE_FILE:?}"
-operation_log="${FAKE_RELEASE_OPERATION_LOG:?}"
-release_exists_file="${FAKE_RELEASE_EXISTS_FILE:?}"
+readonly state_file="${FAKE_RELEASE_STATE_FILE:?}"
+readonly operation_log="${FAKE_RELEASE_OPERATION_LOG:?}"
+
+python3_state() {
+    python3 - "${state_file}" "$@" <<'PY'
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+state_path = Path(sys.argv[1])
+action = sys.argv[2]
+
+if state_path.exists():
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+else:
+    state = {"exists": False, "id": 444, "draft": False, "make_latest": "false", "assets": {}}
+
+if action == "dump":
+    print(json.dumps(state))
+elif action == "exists":
+    raise SystemExit(0 if state["exists"] else 1)
+elif action == "field":
+    value = state[sys.argv[3]]
+    if isinstance(value, bool):
+        print("true" if value else "false")
+    else:
+        print(value)
+elif action == "asset-digest":
+    print(state["assets"].get(sys.argv[3], ""))
+elif action == "create":
+    state["exists"] = True
+    state["draft"] = True
+    state["make_latest"] = "false"
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+elif action == "patch":
+    payload = json.loads(sys.argv[3])
+    state["exists"] = True
+    state["draft"] = payload["draft"]
+    state["make_latest"] = payload["make_latest"]
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+elif action == "delete-asset":
+    state["assets"].pop(sys.argv[3], None)
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+elif action == "upload":
+    state["assets"][sys.argv[3]] = sys.argv[4]
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+else:
+    raise SystemExit(f"unsupported state action: {action}")
+PY
+}
 
 compute_sha256() {
     python3 - "$1" <<'PY'
@@ -48,70 +98,74 @@ from hashlib import sha256
 from pathlib import Path
 import sys
 
+target = Path(sys.argv[1])
 digest = sha256()
-with Path(sys.argv[1]).open("rb") as handle:
+with target.open("rb") as handle:
     for chunk in iter(lambda: handle.read(1024 * 1024), b""):
         digest.update(chunk)
 print(digest.hexdigest())
 PY
 }
 
-asset_digest() {
-    local asset_name=$1
-    [[ -f "${state_file}" ]] || return 0
-    awk -F'|' -v name="${asset_name}" '$1 == name { print $2; exit }' "${state_file}"
-}
-
-remove_asset() {
-    local asset_name=$1
-    [[ -f "${state_file}" ]] || return 0
-    awk -F'|' -v name="${asset_name}" '$1 != name { print $0 }' "${state_file}" > "${state_file}.next"
-    mv "${state_file}.next" "${state_file}"
+log_operation() {
+    printf '%s\n' "$1" >> "${operation_log}"
 }
 
 case "${1:-}:${2:-}" in
-    release:view)
-        tag_name="${3:-}"
-        if [[ ! -f "${release_exists_file}" ]]; then
+    repo:view)
+        [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
+        printf 'resoltico/FinGrind\n'
+        ;;
+    api:/repos/resoltico/FinGrind/releases/tags/*)
+        if ! python3_state exists; then
             exit 1
         fi
-        if [[ $# -eq 3 ]]; then
-            printf 'release %s\n' "${tag_name}"
-            exit 0
+        if [[ "${3:-}" == "--jq" ]]; then
+            field_query="${4:-}"
+            case "${field_query}" in
+                .id)
+                    python3_state field id
+                    ;;
+                .draft)
+                    python3_state field draft
+                    ;;
+                *)
+                    if [[ "${field_query}" == *'.assets[]?'*'.digest // empty' ]]; then
+                        asset_name="${field_query#*select(.name == \"}"
+                        asset_name="${asset_name%%\"*}"
+                        python3_state asset-digest "${asset_name}"
+                    else
+                        exit 1
+                    fi
+                    ;;
+            esac
+        else
+            python3_state dump
         fi
-        [[ "${4:-}" == "--json" ]] || exit 1
-        [[ "${5:-}" == "assets" ]] || exit 1
-        [[ "${6:-}" == "--jq" ]] || exit 1
-        jq_query="${7:-}"
-        asset_name="${jq_query#*select(.name == \"}"
-        asset_name="${asset_name%%\"*}"
-        asset_digest_output="$(asset_digest "${asset_name}")"
-        printf '%s\n' "${asset_digest_output}"
         ;;
-    release:edit)
-        : > /dev/null
-        printf 'edit\n' >> "${operation_log}"
+    api:--method)
+        [[ "${3:-}" == "PATCH" ]] || exit 1
+        [[ "${4:-}" == "/repos/resoltico/FinGrind/releases/444" ]] || exit 1
+        [[ "${5:-}" == "--input" && "${6:-}" == "-" ]] || exit 1
+        payload="$(cat)"
+        python3_state patch "${payload}"
+        log_operation "patch ${payload}"
         ;;
     release:create)
-        touch "${release_exists_file}"
-        printf 'create\n' >> "${operation_log}"
+        python3_state create
+        log_operation "create"
         ;;
     release:delete-asset)
         asset_name="${4:-}"
-        remove_asset "${asset_name}"
-        printf 'delete %s\n' "${asset_name}" >> "${operation_log}"
+        python3_state delete-asset "${asset_name}"
+        log_operation "delete ${asset_name}"
         ;;
     release:upload)
         asset_path="${4:-}"
         asset_name="$(basename -- "${asset_path}")"
         digest="sha256:$(compute_sha256 "${asset_path}")"
-        remove_asset "${asset_name}"
-        {
-            [[ -f "${state_file}" ]] && cat "${state_file}"
-            printf '%s|%s\n' "${asset_name}" "${digest}"
-        } > "${state_file}.next"
-        mv "${state_file}.next" "${state_file}"
-        printf 'upload %s %s\n' "${asset_name}" "${digest}" >> "${operation_log}"
+        python3_state upload "${asset_name}" "${digest}"
+        log_operation "upload ${asset_name} ${digest}"
         ;;
     *)
         exit 1
@@ -119,6 +173,12 @@ case "${1:-}:${2:-}" in
 esac
 EOF
 chmod +x "${fixture_root}/bin/gh"
+
+write_state() {
+    local state_path=$1
+    local payload=$2
+    printf '%s\n' "${payload}" > "${state_path}"
+}
 
 create_asset() {
     local destination=$1
@@ -129,62 +189,67 @@ create_asset() {
 run_publish_fixture() {
     local state_dir=$1
     local asset_path=$2
-    local tag_name=$3
     PATH="${fixture_root}/bin:${PATH}" \
         GH_TOKEN='test-token' \
-        RELEASE_TAG="${tag_name}" \
-        FAKE_RELEASE_STATE_FILE="${state_dir}/assets.tsv" \
+        RELEASE_TAG='v9.9.9' \
+        FINGRIND_RELEASE_MARK_LATEST="${3}" \
+        FAKE_RELEASE_STATE_FILE="${state_dir}/release-state.json" \
         FAKE_RELEASE_OPERATION_LOG="${state_dir}/operations.log" \
-        FAKE_RELEASE_EXISTS_FILE="${state_dir}/release-exists" \
         bash "${publisher}" "${asset_path}" >/dev/null
 }
 
 matching_state_dir="${fixture_root}/matching"
 mkdir -p "${matching_state_dir}"
 create_asset "${matching_state_dir}/fingrind.tar.gz" 'matching-asset'
-touch "${matching_state_dir}/release-exists"
 matching_digest="sha256:$(python3 - "${matching_state_dir}/fingrind.tar.gz" <<'PY'
 from hashlib import sha256
 from pathlib import Path
 import sys
-data = Path(sys.argv[1]).read_bytes()
-print(sha256(data).hexdigest())
+print(sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
 PY
 )"
-printf 'fingrind.tar.gz|%s\n' "${matching_digest}" > "${matching_state_dir}/assets.tsv"
+write_state "${matching_state_dir}/release-state.json" "$(cat <<JSON
+{"exists": true, "id": 444, "draft": false, "make_latest": "false", "assets": {"fingrind.tar.gz": "${matching_digest}"}}
+JSON
+)"
 : > "${matching_state_dir}/operations.log"
-(
-    cd "${matching_state_dir}"
-    run_publish_fixture "${matching_state_dir}" "${matching_state_dir}/fingrind.tar.gz" 'v9.9.9'
-)
+run_publish_fixture "${matching_state_dir}" "${matching_state_dir}/fingrind.tar.gz" true
 if grep -Eq '^(delete|upload) ' "${matching_state_dir}/operations.log"; then
     die "release publisher rewrote an already matching release asset"
 fi
+grep -Fq '"make_latest": "true"' "${matching_state_dir}/operations.log" || die \
+    "release publisher did not finalize the matching release with the resolved latest policy"
 
 replacement_state_dir="${fixture_root}/replacement"
 mkdir -p "${replacement_state_dir}"
 create_asset "${replacement_state_dir}/fingrind.tar.gz" 'replacement-asset'
-touch "${replacement_state_dir}/release-exists"
-printf 'fingrind.tar.gz|sha256:obsolete\n' > "${replacement_state_dir}/assets.tsv"
+write_state "${replacement_state_dir}/release-state.json" \
+    '{"exists": true, "id": 444, "draft": false, "make_latest": "true", "assets": {"fingrind.tar.gz": "sha256:obsolete"}}'
 : > "${replacement_state_dir}/operations.log"
-(
-    cd "${replacement_state_dir}"
-    run_publish_fixture "${replacement_state_dir}" "${replacement_state_dir}/fingrind.tar.gz" 'v9.9.9'
-)
+run_publish_fixture "${replacement_state_dir}" "${replacement_state_dir}/fingrind.tar.gz" false
+grep -Fq '"draft": true' "${replacement_state_dir}/operations.log" || die \
+    "release publisher did not reopen the published release as a draft before asset replacement"
 grep -Fq 'delete fingrind.tar.gz' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not delete the stale release asset before re-upload"
+    "release publisher did not delete the stale draft asset before re-upload"
 grep -Fq 'upload fingrind.tar.gz ' "${replacement_state_dir}/operations.log" || die \
     "release publisher did not upload the replacement release asset"
-current_digest="$(awk -F'|' '$1 == "fingrind.tar.gz" { print $2; exit }' "${replacement_state_dir}/assets.tsv")"
-expected_digest="sha256:$(python3 - "${replacement_state_dir}/fingrind.tar.gz" <<'PY'
-from hashlib import sha256
-from pathlib import Path
-import sys
-data = Path(sys.argv[1]).read_bytes()
-print(sha256(data).hexdigest())
-PY
-)"
-[[ "${current_digest}" == "${expected_digest}" ]] || die \
-    "release publisher did not converge the replacement asset onto the expected digest"
+grep -Fq '"draft": false' "${replacement_state_dir}/operations.log" || die \
+    "release publisher did not finalize the release after replacement"
+grep -Fq '"make_latest": "false"' "${replacement_state_dir}/operations.log" || die \
+    "release publisher did not finalize the replaced release with the resolved latest policy"
+
+created_state_dir="${fixture_root}/created"
+mkdir -p "${created_state_dir}"
+create_asset "${created_state_dir}/fingrind.tar.gz" 'created-asset'
+write_state "${created_state_dir}/release-state.json" \
+    '{"exists": false, "id": 444, "draft": false, "make_latest": "false", "assets": {}}'
+: > "${created_state_dir}/operations.log"
+run_publish_fixture "${created_state_dir}" "${created_state_dir}/fingrind.tar.gz" true
+grep -Fq 'create' "${created_state_dir}/operations.log" || die \
+    "release publisher did not create a draft release when none existed"
+grep -Fq 'upload fingrind.tar.gz ' "${created_state_dir}/operations.log" || die \
+    "release publisher did not upload the initial release asset"
+grep -Fq '"draft": false' "${created_state_dir}/operations.log" || die \
+    "release publisher did not finalize the newly created release"
 
 printf 'GitHub release publisher regression: success\n'

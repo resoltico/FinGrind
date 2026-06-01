@@ -62,7 +62,7 @@ final class SqlitePostingBalanceReader {
             CanonicalTemporalText.formatLocalDate(
                 effectiveDateRange.effectiveDateTo().orElseThrow()));
       }
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         totals.add(
             new AccountCurrencyTotals(
                 SqlitePostingMapper.registeredAccount(statement),
@@ -88,7 +88,7 @@ final class SqlitePostingBalanceReader {
     Map<CurrencyUnit, Totals> totalsByCurrency = mutableTotalsByCurrency();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindAccountBalanceQuery(statement, query);
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         JournalLine.EntrySide side = readEntrySide(statement);
         CurrencyUnit currencyCode = readCurrencyCode(statement);
         long amountMinor = readAmountMinor(statement);

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 21;
+pragma user_version = 22;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -83,6 +83,13 @@ create table if not exists book_meta (
 create table if not exists book_identity (
     singleton_id integer primary key check (singleton_id = 1),
     entity_name text not null check (length(trim(entity_name)) > 0),
+    accounting_kernel_profile text not null check (
+        length(accounting_kernel_profile) between 1 and 120
+        and accounting_kernel_profile not glob '*[^a-z0-9-]*'
+        and accounting_kernel_profile not like '-%'
+        and accounting_kernel_profile not like '%-'
+        and accounting_kernel_profile not like '%--%'
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -860,6 +867,20 @@ begin
     );
 end;
 
+create trigger if not exists period_result_transfer_validate_contiguous_horizon_on_insert
+before insert on period_result_transfer
+when exists (select 1 from period_result_transfer)
+begin
+    select raise(
+        fail,
+        'period-result-transfer ranges must append contiguously from the prior transferred-through date.'
+    )
+    where new.effective_date_from <> (
+        select date(max(period_result_transfer.effective_date_to), '+1 day')
+        from period_result_transfer
+    );
+end;
+
 create table if not exists period_result_transfer_total (
     period_result_transfer_order integer not null,
     currency_code text not null check (
@@ -1166,6 +1187,7 @@ Table-level constraints:
 Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
 - `entity_name`: `text not null check (length(trim(entity_name)) > 0)`
+- `accounting_kernel_profile`: `text not null check ( length(accounting_kernel_profile) between 1 and 120 and accounting_kernel_profile not glob '*[^a-z0-9-]*' and accounting_kernel_profile not like '-%' and accounting_kernel_profile not like '%-' and accounting_kernel_profile not like '%--%' )`
 - `functional_currency_code`: `text not null check ( length(functional_currency_code) = 3 and functional_currency_code glob '[A-Z][A-Z][A-Z]' )`
 - `fiscal_year_start_month`: `integer not null check ( fiscal_year_start_month between 1 and 12 )`
 - `fiscal_year_start_day`: `integer not null check ( fiscal_year_start_day between 1 and 31 )`
@@ -1344,7 +1366,7 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `21`
+- `user_version`: `22`
 - Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_result_transfer`, `period_result_transfer_total`, `period_result_transfer_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_result_transfer_by_effective_date_to`, `period_result_transfer_total_by_currency`, `period_result_transfer_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.

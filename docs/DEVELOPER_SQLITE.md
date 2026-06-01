@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -289,9 +289,9 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
-- bundle-managed runtimes verify the exact loaded native library against the publisher
-  `.trusted.sha256` sidecar and the local-consistency `.sha256` sidecar, source-checkout-managed
-  runtimes verify one checkout-local build identity through those same sidecars
+- bundle-managed runtimes verify the exact loaded native library against the bundle-owned sibling
+  `.sha256` sidecar, and source-checkout-managed runtimes verify one checkout-local build
+  identity through that same sidecar shape
 - runtime probes distinguish bundle-managed and source-checkout-managed library provenance and
   report `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.forbiddenCompileOptions`,

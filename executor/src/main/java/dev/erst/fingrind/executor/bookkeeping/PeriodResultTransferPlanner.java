@@ -261,13 +261,16 @@ public final class PeriodResultTransferPlanner {
         PostingLineageModel.direct(),
         PostingKind.PERIOD_RESULT_TRANSFER,
         PostingOriginKind.PERIOD_RESULT_TRANSFER,
-        periodResultTransferEvidence(reportingPeriod, currencyUnit, transferredAt),
+        periodResultTransferEvidence(reportingPeriod, currencyUnit, lines, transferredAt),
         new CommittedProvenance(
             requestProvenance, transferredAt, PERIOD_RESULT_TRANSFER_SOURCE_CHANNEL));
   }
 
   private static AccountingEvidence periodResultTransferEvidence(
-      ReportingPeriod reportingPeriod, CurrencyUnit currencyUnit, Instant transferredAt) {
+      ReportingPeriod reportingPeriod,
+      CurrencyUnit currencyUnit,
+      List<JournalLine> lines,
+      Instant transferredAt) {
     String closeToken =
         reportingPeriod.effectiveDateFrom()
             + ":"
@@ -276,6 +279,8 @@ public final class PeriodResultTransferPlanner {
             + currencyUnit.code()
             + ":"
             + transferredAt.toEpochMilli();
+    String artifactContent =
+        periodResultTransferArtifactContent(reportingPeriod, currencyUnit, lines, transferredAt);
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
@@ -284,8 +289,42 @@ public final class PeriodResultTransferPlanner {
                 reportingPeriod.effectiveDateTo(),
                 transferredAt,
                 new StorageLocator("system://period-result-transfer/" + closeToken),
-                new ContentSha256(sha256Hex(closeToken)))),
+                new ContentSha256(sha256Hex(artifactContent)))),
         List.of());
+  }
+
+  private static String periodResultTransferArtifactContent(
+      ReportingPeriod reportingPeriod,
+      CurrencyUnit currencyUnit,
+      List<JournalLine> lines,
+      Instant transferredAt) {
+    String serializedLines =
+        lines.stream()
+            .map(
+                line ->
+                    line.accountCode().value()
+                        + "|"
+                        + line.side().wireValue()
+                        + "|"
+                        + line.amount().currencyUnit().code()
+                        + "|"
+                        + line.amount().minorUnits())
+            .collect(java.util.stream.Collectors.joining("\n"));
+    return """
+        kind=period-result-transfer-plan
+        effectiveDateFrom=%s
+        effectiveDateTo=%s
+        currency=%s
+        transferredAt=%s
+        lines=
+        %s
+        """
+        .formatted(
+            reportingPeriod.effectiveDateFrom(),
+            reportingPeriod.effectiveDateTo(),
+            currencyUnit.code(),
+            transferredAt,
+            serializedLines);
   }
 
   private static String sha256Hex(String value) {

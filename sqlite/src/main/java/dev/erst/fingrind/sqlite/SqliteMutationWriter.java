@@ -37,9 +37,10 @@ final class SqliteMutationWriter {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_IDENTITY)) {
       statement.bindText(1, bookIdentity.entityName().value());
-      statement.bindText(2, bookIdentity.functionalCurrency().code());
-      statement.bindInt(3, bookIdentity.fiscalYearStart().month());
-      statement.bindInt(4, bookIdentity.fiscalYearStart().day());
+      statement.bindText(2, bookIdentity.accountingKernelProfileId().value());
+      statement.bindText(3, bookIdentity.functionalCurrency().code());
+      statement.bindInt(4, bookIdentity.fiscalYearStart().month());
+      statement.bindInt(5, bookIdentity.fiscalYearStart().day());
       statement.step();
     }
     try (SqliteNativeStatement statement =
@@ -200,12 +201,12 @@ final class SqliteMutationWriter {
           2, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateTo()));
       statement.bindText(3, resultHoldingAccountCode.value());
       statement.bindText(4, CanonicalTemporalText.formatUtcInstant(transferredAt));
-      if (statement.step() != SqliteNativeResultCodes.ROW) {
+      if (statement.step() != SqliteNativeResultCode.code("ROW")) {
         throw new IllegalStateException(
             "SQLite period result transfer insert returned no transfer order.");
       }
       transferOrder = statement.columnInt(0);
-      if (statement.step() != SqliteNativeResultCodes.DONE) {
+      if (statement.step() != SqliteNativeResultCode.code("DONE")) {
         throw new IllegalStateException(
             "SQLite period result transfer insert returned more than one transfer order.");
       }

@@ -87,10 +87,11 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.49.0", CLOCK);
+      new PdfReportService("FinGrind", "0.50.0", CLOCK);
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
+          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
   private static final DeclaredAccount CASH_ACCOUNT =
@@ -137,7 +138,7 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Functional currency"));
+    assertTrue(trialBalanceText.contains("Book context"));
     assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
@@ -703,10 +704,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.49.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.50.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.49.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.50.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -723,7 +724,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.49.0", information.getCreator());
+      assertEquals("FinGrind 0.50.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

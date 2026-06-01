@@ -26,16 +26,9 @@ final class SqliteManagedLibraryIdentity {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           sourceLibraryPath, sourceChecksumPath);
     }
-    Path sourceTrustedChecksumPath = trustedChecksumPath(sourceLibraryPath);
-    if (!Files.isRegularFile(sourceTrustedChecksumPath)) {
-      throw SqliteManagedLibraryDigestSupport.missingTrustedChecksumFile(
-          sourceLibraryPath, sourceTrustedChecksumPath);
-    }
     SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
-        SqliteVerifiedLibrarySnapshot.copyOf(
-            libraryTarget, sourceLibraryPath, sourceChecksumPath, sourceTrustedChecksumPath);
+        SqliteVerifiedLibrarySnapshot.copyOf(libraryTarget, sourceLibraryPath, sourceChecksumPath);
     try {
-      requireTrustedManagedLibrary(verifiedLibrarySnapshot.snapshotLibraryPath());
       requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
       return verifiedLibrarySnapshot;
     } catch (RuntimeException | Error exception) {
@@ -65,36 +58,8 @@ final class SqliteManagedLibraryIdentity {
     }
   }
 
-  static void requireTrustedManagedLibrary(Path libraryPath) {
-    Path normalizedLibraryPath =
-        SqliteManagedLibraryDigestSupport.normalizedLibraryPath(libraryPath);
-    SqliteManagedLibraryDigestSupport.requireManagedLibrary(normalizedLibraryPath);
-    Path trustedChecksumPath = trustedChecksumPath(normalizedLibraryPath);
-    if (!Files.isRegularFile(trustedChecksumPath)) {
-      throw SqliteManagedLibraryDigestSupport.missingTrustedChecksumFile(
-          normalizedLibraryPath, trustedChecksumPath);
-    }
-    String expectedSha256 =
-        expectedSha256(
-            trustedChecksumPath,
-            SqliteManagedLibraryDigestSupport.trustedIdentitySourceDescription(trustedChecksumPath),
-            normalizedLibraryPath.getFileName().toString());
-    String actualSha256 = actualSha256(normalizedLibraryPath);
-    if (!actualSha256.equals(expectedSha256)) {
-      throw SqliteManagedLibraryDigestSupport.mismatchedIdentity(
-          normalizedLibraryPath,
-          SqliteManagedLibraryDigestSupport.trustedIdentitySourceDescription(trustedChecksumPath),
-          expectedSha256,
-          actualSha256);
-    }
-  }
-
   static Path checksumPath(Path libraryPath) {
     return SqliteManagedLibraryDigestSupport.checksumPath(libraryPath);
-  }
-
-  static Path trustedChecksumPath(Path libraryPath) {
-    return SqliteManagedLibraryDigestSupport.trustedChecksumPath(libraryPath);
   }
 
   static String expectedSha256(Path checksumPath, String expectedFileName) {

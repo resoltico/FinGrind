@@ -47,23 +47,24 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliAccountBalanceOutputRenderer.renderCsv(snapshot);
-    List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
-
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
-    assertEquals("1000", row.get(1));
-    assertEquals("Cash", row.get(2));
-    assertEquals("ASSET", row.get(3));
-    assertEquals("No balances matched the selected scope.", row.get(13));
+    assertEquals(CliCsvExportFamilies.FLAT_REGISTER, csvValue(csv, 1, "exportFamily"));
+    assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals("1000", csvValue(csv, 1, "accountCode"));
+    assertEquals("Cash", csvValue(csv, 1, "accountName"));
+    assertEquals("ASSET", csvValue(csv, 1, "accountType"));
+    assertEquals("No balances matched the selected scope.", csvValue(csv, 1, "message"));
   }
 
   @Test
   void renderAccountPageCsv_emitsExplicitEmptyRow() {
     String csv =
         CliAccountPageOutputRenderer.renderCsv(accountPage(List.of(), 50, Optional.empty()));
-    List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
 
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
-    assertEquals("No accounts matched the selected scope.", row.get(11));
+    assertEquals(CliCsvExportFamilies.FLAT_REGISTER, csvValue(csv, 1, "exportFamily"));
+    assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals("No accounts matched the selected scope.", csvValue(csv, 1, "message"));
   }
 
   @Test
@@ -71,10 +72,11 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     PostingPage page = postingPage(List.of(), 50, Optional.empty());
 
     String csv = CliPostingOutputRenderer.renderPostingRegisterCsv(page);
-    List<String> row = CliCsvFormat.parseRow(csv.lines().toList().get(1));
 
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, row.get(0));
-    assertEquals("No postings matched the selected scope.", row.get(16));
+    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(csv, 1, "exportFamily"));
+    assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
+    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals("No postings matched the selected scope.", csvValue(csv, 1, "message"));
   }
 
   @Test
@@ -248,17 +250,20 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliFinancialPositionReportRenderer.renderCsv(report);
-    List<String> currentRow = CliCsvFormat.parseRow(csv.lines().toList().get(1));
-    List<String> comparativeRow = CliCsvFormat.parseRow(csv.lines().toList().get(2));
-
-    assertEquals("current", currentRow.get(0));
-    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, currentRow.get(1));
-    assertEquals("2026-04-30", currentRow.get(2));
-    assertEquals("No financial position lines matched the selected scope.", currentRow.get(15));
-    assertEquals("comparative", comparativeRow.get(0));
-    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, comparativeRow.get(1));
-    assertEquals("2025-04-30", comparativeRow.get(2));
-    assertEquals("No financial position lines matched the selected scope.", comparativeRow.get(15));
+    assertEquals(CliCsvExportFamilies.STATEMENT, csvValue(csv, 1, "exportFamily"));
+    assertEquals("report-empty", csvValue(csv, 1, "relationKind"));
+    assertEquals("current", csvValue(csv, 1, "reportBasis"));
+    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals("2026-04-30", csvValue(csv, 1, "effectiveDateAsOf"));
+    assertEquals(
+        "No financial position lines matched the selected scope.", csvValue(csv, 1, "message"));
+    assertEquals(CliCsvExportFamilies.STATEMENT, csvValue(csv, 2, "exportFamily"));
+    assertEquals("report-empty", csvValue(csv, 2, "relationKind"));
+    assertEquals("comparative", csvValue(csv, 2, "reportBasis"));
+    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, csvValue(csv, 2, "recordKind"));
+    assertEquals("2025-04-30", csvValue(csv, 2, "effectiveDateAsOf"));
+    assertEquals(
+        "No financial position lines matched the selected scope.", csvValue(csv, 2, "message"));
   }
 
   @Test
@@ -320,5 +325,12 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
       count++;
       index = foundIndex + token.length();
     }
+  }
+
+  private static String csvValue(String csv, int rowIndex, String headerName) {
+    List<String> lines = csv.lines().toList();
+    List<String> headers = CliCsvFormat.parseRow(lines.getFirst());
+    List<String> row = CliCsvFormat.parseRow(lines.get(rowIndex));
+    return row.get(headers.indexOf(headerName));
   }
 }

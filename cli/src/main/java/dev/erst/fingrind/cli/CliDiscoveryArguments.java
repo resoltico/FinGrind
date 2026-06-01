@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -18,6 +20,7 @@ final class CliDiscoveryArguments {
     @Nullable OperationId commandTopic = null;
     @Nullable OutputMode outputMode = null;
     @Nullable DiscoveryDetail detail = null;
+    @Nullable OperationCategory category = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -33,15 +36,28 @@ final class CliDiscoveryArguments {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
+      if (ProtocolOptions.CATEGORY.equals(argument)) {
+        category = CliOptionModes.requireOperationCategory(category, argumentIterator);
+        continue;
+      }
       if (commandTopic != null) {
         throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       commandTopic = requiredCommandTopic(argument, "help");
     }
     OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
-    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
+    requireJsonDiscoverySelections(detail, category, null, resolvedOutputMode);
+    if (commandTopic != null && category != null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.CATEGORY,
+          ProtocolOptions.CATEGORY
+              + " applies only to top-level help discovery. Remove it when one command topic is selected.");
+    }
     return new Help(
-        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+        commandTopic,
+        resolvedOutputMode,
+        detail == null ? DiscoveryDetail.MINIMAL : detail,
+        category);
   }
 
   static CliCommand parseCommandHelp(OperationId commandTopic, List<String> arguments) {
@@ -65,9 +81,9 @@ final class CliDiscoveryArguments {
       throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
     OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
-    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
+    requireJsonDiscoverySelections(detail, null, null, resolvedOutputMode);
     return new Help(
-        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.MINIMAL : detail, null);
   }
 
   static CliCommand parseVersion(List<String> arguments) {
@@ -77,6 +93,8 @@ final class CliDiscoveryArguments {
   static CliCommand parseCapabilities(List<String> arguments) {
     @Nullable OutputMode outputMode = null;
     @Nullable DiscoveryDetail detail = null;
+    @Nullable DiscoveryFocus focus = null;
+    @Nullable OperationCategory category = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -92,11 +110,31 @@ final class CliDiscoveryArguments {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
+      if (ProtocolOptions.FOCUS.equals(argument)) {
+        focus = CliOptionModes.requireDiscoveryFocus(focus, argumentIterator);
+        continue;
+      }
+      if (ProtocolOptions.CATEGORY.equals(argument)) {
+        category = CliOptionModes.requireOperationCategory(category, argumentIterator);
+        continue;
+      }
       throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
     }
     OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
-    requireJsonDiscoveryDetail(detail, resolvedOutputMode);
-    return new Capabilities(resolvedOutputMode, detail == null ? DiscoveryDetail.COMPACT : detail);
+    requireJsonDiscoverySelections(detail, category, focus, resolvedOutputMode);
+    DiscoveryFocus resolvedFocus = focus == null ? DiscoveryFocus.OVERVIEW : focus;
+    if (category != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.CATEGORY,
+          ProtocolOptions.CATEGORY
+              + " requires "
+              + ProtocolOptions.FOCUS
+              + " commands on the capabilities surface.");
+    }
+    return new Capabilities(
+        resolvedOutputMode,
+        detail == null ? DiscoveryDetail.MINIMAL : detail,
+        new CliDiscoverySelections(resolvedFocus, category));
   }
 
   static CliCommand parseEnvironment(List<String> arguments) {
@@ -189,19 +227,28 @@ final class CliDiscoveryArguments {
         ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT));
   }
 
-  private static void requireJsonDiscoveryDetail(
-      @Nullable DiscoveryDetail detail, OutputMode resolvedOutputMode) {
-    if (detail == null || resolvedOutputMode == OutputMode.JSON) {
+  private static void requireJsonDiscoverySelections(
+      @Nullable DiscoveryDetail detail,
+      @Nullable OperationCategory category,
+      @Nullable DiscoveryFocus focus,
+      OutputMode resolvedOutputMode) {
+    if (resolvedOutputMode == OutputMode.JSON) {
+      return;
+    }
+    if (detail == null && category == null && focus == null) {
       return;
     }
     throw CliArgumentValueParser.invalid(
-        ProtocolOptions.DETAIL,
+        ProtocolOptions.OUTPUT,
         ProtocolOptions.DETAIL
-            + " is supported only when the resolved output mode is json. "
+            + ", "
+            + ProtocolOptions.FOCUS
+            + ", and "
+            + ProtocolOptions.CATEGORY
+            + " are supported only when the resolved output mode is json. "
             + "Add "
             + ProtocolOptions.OUTPUT
-            + " json or omit "
-            + ProtocolOptions.DETAIL
+            + " json or omit the JSON-only discovery selectors"
             + ".");
   }
 

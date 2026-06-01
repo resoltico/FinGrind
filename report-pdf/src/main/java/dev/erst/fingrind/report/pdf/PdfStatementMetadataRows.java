@@ -20,13 +20,19 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
     statementRows.add(
         List.of(
-            "Business activity",
-            PdfValueFormatter.displayBusinessActivityTags(
-                bookIdentity.entityProfile().businessActivityTags())));
-    statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
-    statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
-    statementRows.add(
-        List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
+            "Book context",
+            "Currency "
+                + bookIdentity.functionalCurrency().code()
+                + " / Fiscal year start "
+                + bookIdentity.fiscalYearStart().wireValue()
+                + " / Posting coverage "
+                + PdfValueFormatter.displayPostingCoverage(postingCoverage)));
+    String businessActivity =
+        PdfValueFormatter.displayBusinessActivityTags(
+            bookIdentity.entityProfile().businessActivityTags());
+    if (!"(none)".equals(businessActivity)) {
+      statementRows.add(List.of("Business activity", businessActivity));
+    }
     statementRows.addAll(rows);
     return List.copyOf(statementRows);
   }
@@ -39,10 +45,11 @@ final class PdfStatementMetadataRows {
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     List<List<String>> statementRows =
         new ArrayList<>(reportParameters(bookIdentity, postingCoverage, List.of()));
-    statementRows.add(
-        List.of(
-            "Comparative range",
-            PdfTemporalValueFormatter.comparativeRange(comparativeEffectiveDateRange)));
+    String comparativeRange =
+        PdfTemporalValueFormatter.comparativeRange(comparativeEffectiveDateRange);
+    if (!"(none)".equals(comparativeRange)) {
+      statementRows.add(List.of("Comparative range", comparativeRange));
+    }
     statementRows.addAll(rows);
     return List.copyOf(statementRows);
   }

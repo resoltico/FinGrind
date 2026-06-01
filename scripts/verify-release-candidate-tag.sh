@@ -27,13 +27,19 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly script_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly release_check_support="${script_repo_root}/scripts/release-check-support.sh"
+readonly verification_support="${script_repo_root}/scripts/release-check-verification-support.sh"
 readonly tag_name="${1:-${RELEASE_TAG:-${GITHUB_REF_NAME:-}}}"
 
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
+[[ -f "${verification_support}" ]] || die "missing release-check verification helper at ${verification_support}"
 # shellcheck source=/dev/null
 source "${release_check_support}"
+# shellcheck source=/dev/null
+source "${verification_support}"
 
 readonly blocking_checks_csv="$(fingrind_required_ci_checks_csv)"
+readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
+readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -n "${tag_name}" ]] || die "release tag is required"
 [[ "${tag_name}" == v* ]] || die "release tag must start with v"
@@ -98,50 +104,12 @@ git show-ref --verify --quiet "${default_branch_ref}" || die \
 
 git merge-base --is-ancestor "${tag_commit_sha}" "${default_branch_ref}" || die \
     "tag ${tag_name} commit ${tag_commit_sha} is not reachable from origin/${default_branch}"
-
-readonly check_runs_tsv="$(gh api \
-    "/repos/${repo_full_name}/commits/${tag_commit_sha}/check-runs?per_page=100" \
-    --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv')"
-
-blocking_check_names=()
-while IFS= read -r raw_check_name || [[ -n "${raw_check_name}" ]]; do
-    trimmed_check_name="$(printf '%s' "${raw_check_name}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
-    [[ -n "${trimmed_check_name}" ]] || continue
-    blocking_check_names+=("${trimmed_check_name}")
-done < <(printf '%s' "${blocking_checks_csv}" | tr ',' '\n')
-
-((${#blocking_check_names[@]} > 0)) || die "no release-blocking publication checks configured"
-
-missing_checks=()
-for blocking_check_name in "${blocking_check_names[@]}"; do
-    if ! printf '%s\n' "${check_runs_tsv}" | awk -F '\t' -v target="${blocking_check_name}" '
-        $1 == target && $2 == "completed" && $3 == "success" { found = 1 }
-        END { exit found ? 0 : 1 }
-    '; then
-        missing_checks+=("${blocking_check_name}")
-    fi
-done
-
-if ((${#missing_checks[@]} > 0)); then
-    observed_checks="$(
-        if [[ -n "${check_runs_tsv}" ]]; then
-            printf '%s\n' "${check_runs_tsv}" | awk -F '\t' '
-                BEGIN { separator = "" }
-                {
-                    printf "%s%s[%s/%s]", separator, $1, $2, $3
-                    separator = ", "
-                }
-            '
-        else
-            printf 'none'
-        fi
-    )"
-    die \
-        "tag ${tag_name} commit ${tag_commit_sha} is missing successful release-blocking checks (${missing_checks[*]}). Observed check runs: ${observed_checks}"
-fi
-
-printf 'Verified release candidate %s at %s on origin/%s with release-blocking checks: %s\n' \
-    "${tag_name}" \
+fingrind_wait_for_release_blocking_checks \
+    "${repo_full_name}" \
     "${tag_commit_sha}" \
-    "${default_branch}" \
-    "$(IFS=', '; printf '%s' "${blocking_check_names[*]}")"
+    "${blocking_checks_csv}" \
+    "${poll_interval_seconds}" \
+    "${timeout_seconds}" \
+    "release candidate ${tag_name} on origin/${default_branch}" \
+    "release candidate ${tag_name}" \
+    "release candidate ${tag_name}"

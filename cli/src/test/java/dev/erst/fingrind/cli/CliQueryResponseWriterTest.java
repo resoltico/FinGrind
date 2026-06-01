@@ -200,11 +200,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
-    assertTrue(postingRegisterCsv.contains("account,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
+            "posting-relationships,posting:posting-1,,posting,posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
+    assertTrue(
+        postingRegisterCsv.contains(
+            "posting-relationships,posting-account:posting-1:1000,posting:posting-1,counterpart-account,account,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
     assertTrue(postingRegisterCsv.contains("cash-receipt"));
     assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));
@@ -215,7 +217,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceText = balanceTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(balanceText.contains("Account"));
     assertTrue(balanceText.contains("1000"));
-    assertTrue(balanceText.contains("Book"));
+    assertTrue(balanceText.contains("Entity"));
     assertTrue(balanceText.contains("Acme Studio"));
     assertTrue(balanceText.contains("Debit total"));
     assertTrue(balanceText.contains("10.00"));
@@ -227,10 +229,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
     assertTrue(
         balanceCsv.contains(
-            "row,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
+            "flat-register,account-balance:1000:EUR,,balance,row,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
   }
 
   @Test
@@ -368,13 +370,20 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
-    assertTrue(accountLedgerCsv.contains("summary,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
-    assertTrue(accountLedgerCsv.contains("entry,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(
-        accountLedgerCsv.contains("counterpart-account,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+        accountLedgerCsv.contains(
+            "posting-relationships,ledger-summary:1000:EUR,,ledger-summary,summary,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "posting-relationships,ledger-entry:posting-1,,entry,entry,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "posting-relationships,ledger-counterpart:posting-1:2000,ledger-entry:posting-1,counterpart-account,counterpart-account,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
     assertTrue(accountLedgerCsv.contains("document-idem-1"));
-    assertTrue(accountLedgerCsv.contains("source-document,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "posting-relationships,ledger-source-document:posting-1:document-idem-1,ledger-entry:posting-1,source-document,source-document,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
   }
 
   @Test
@@ -419,9 +428,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         periodSummaryCsv.startsWith(
-            "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message"));
     assertTrue(
-        periodSummaryCsv.contains("account-activity,account,1000,Cash,debitTotal,10.00,EUR,money"));
+        periodSummaryCsv.contains(
+            "metrics,period-summary:account:1000:debit,period-summary:account:1000,metric,account-activity,account,1000,Cash,debitTotal,10.00,EUR,money,"));
   }
 
   @Test
@@ -502,7 +512,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -541,7 +551,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -573,7 +583,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,message"));
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {

@@ -29,6 +29,7 @@ internal fun Project.registerJavaSourceDuplicationTask() =
             group = "verification"
             description =
                 "Fails the build when Java source files contain duplicate token sequences."
+            projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
             sourceRoots.from(
                 listOf(
                     file("src/main/java"),
@@ -39,6 +40,9 @@ internal fun Project.registerJavaSourceDuplicationTask() =
     }
 
 abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
+    @get:Input
+    abstract val projectDirectoryPath: org.gradle.api.provider.Property<String>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceRoots: ConfigurableFileCollection
@@ -49,6 +53,8 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     @TaskAction
     fun verify() {
         val existingSourceRoots = sourceRoots.files.filter(File::isDirectory).sortedBy { it.path }
+        val projectDirectory = File(projectDirectoryPath.get())
+        val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val report = reportFile.get().asFile
         if (existingSourceRoots.isEmpty()) {
             report.delete()
@@ -74,7 +80,15 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                         .walkTopDown()
                         .filter(File::isFile)
                         .filter { it.extension == "java" }
-                        .filter { translationHeavyClassNamePattern.matches(it.name) }
+                        .filter { it.name != "module-info.java" && it.name != "package-info.java" }
+                        .filter { sourceFile ->
+                            val relativePath = sourceFile.displayPath(projectDirectory)
+                            JavaSourceStructuralContracts.includeInDuplicationCheck(
+                                relativePath = relativePath,
+                                packageName = JavaSourceStructuralContracts.packageNameFor(sourceFile),
+                                exportedPackages = exportedPackages,
+                            )
+                        }
                         .forEach { sourceFile ->
                             analysis.files().addFile(sourceFile.toPath())
                         }

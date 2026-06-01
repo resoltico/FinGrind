@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: ADAPTERS
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -490,11 +490,11 @@ public final class SqliteStorageFailureException extends IllegalStateException
 ```
 
 - `ManagedSqliteRuntimeUnavailableException`: managed runtime not found or unusable on this host
-- `UnsupportedManagedSqliteLibraryIdentityException`: selected managed library failed the trusted
-  managed-runtime identity check before any native symbol lookup; publisher-owned runtimes are
-  checked against the publisher-owned `.trusted.sha256` sidecar and their sibling `.sha256` file,
-  while source-checkout-managed runtimes are checked against checkout-local `.trusted.sha256` plus
-  sibling `.sha256` sidecars
+- `UnsupportedManagedSqliteLibraryIdentityException`: selected managed library failed the
+  managed-runtime identity check before any native symbol lookup; bundle-managed and
+  source-checkout-managed runtimes are both checked against their sibling `.sha256` sidecars,
+  with the public contract distinguishing bundle-sidecar and source-checkout-sidecar provenance
+  separately
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 

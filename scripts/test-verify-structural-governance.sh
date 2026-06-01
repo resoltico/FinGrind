@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Guard the repo-owned structural-governance verifier for build-logic Kotlin and release shell surfaces.
+# Guard the repo-owned structural-governance verifier for build-logic Kotlin, release shell, Python, and SQL surfaces.
 
 set -euo pipefail
 
@@ -76,6 +76,23 @@ release_support_message() {
 EOF
 }
 
+python_fixture() {
+    local fixture_root=$1
+    mkdir -p "${fixture_root}/scripts/release_smoke_workflow"
+    cat > "${fixture_root}/scripts/support.py" <<'EOF'
+def ok() -> str:
+    return "ok"
+EOF
+}
+
+sql_fixture() {
+    local fixture_root=$1
+    mkdir -p "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite"
+    cat > "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/schema.sql" <<'EOF'
+create table sample (id integer primary key);
+EOF
+}
+
 run_in_temp_fixture() {
     local callback=$1
     local temp_dir
@@ -87,8 +104,12 @@ run_in_temp_fixture() {
 fixture_root_success() {
     build_logic_fixture "$1"
     shell_fixture "$1"
+    python_fixture "$1"
+    sql_fixture "$1"
     run_expect_success "$1" --surface build-logic-kotlin
     run_expect_success "$1" --surface shell-release
+    run_expect_success "$1" --surface python-support
+    run_expect_success "$1" --surface sqlite-sql
 }
 
 fixture_root_build_logic_budget_failure() {
@@ -161,10 +182,42 @@ PY
     run_expect_failure "duplicate normalized" "$1" --surface shell-release
 }
 
+fixture_root_python_budget_failure() {
+    python_fixture "$1"
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]) / "scripts/oversized_support.py"
+lines = []
+for index in range(0, 330):
+    lines.append(f"def helper_{index}():\n    return {index}\n")
+path.write_text("\n".join(lines), encoding="utf-8")
+PY
+    run_expect_failure "oversized_support.py" "$1" --surface python-support
+}
+
+fixture_root_sql_budget_failure() {
+    sql_fixture "$1"
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]) / "sqlite/src/main/resources/dev/erst/fingrind/sqlite/oversized.sql"
+lines = []
+for index in range(0, 260):
+    lines.append(f"create table t{index} (id integer primary key);")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+    run_expect_failure "oversized.sql" "$1" --surface sqlite-sql
+}
+
 run_in_temp_fixture fixture_root_success
 run_in_temp_fixture fixture_root_build_logic_budget_failure
 run_in_temp_fixture fixture_root_build_logic_duplicate_failure
 run_in_temp_fixture fixture_root_shell_budget_failure
 run_in_temp_fixture fixture_root_shell_duplicate_failure
+run_in_temp_fixture fixture_root_python_budget_failure
+run_in_temp_fixture fixture_root_sql_budget_failure
 
 printf 'structural governance verifier regression: success\n'

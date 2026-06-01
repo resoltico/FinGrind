@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Focused tests for managed-library digest verification contracts. */
@@ -26,7 +25,6 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
   @Test
   void requireVerified_rejectsManagedLibraryWithoutTrustedChecksum() throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-    writeSiblingChecksum(libraryPath);
 
     IllegalStateException exception =
         assertThrows(
@@ -38,14 +36,14 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString())));
     assertTrue(
-        Objects.requireNonNull(exception.getMessage()).contains("trusted FinGrind digest file"));
+        Objects.requireNonNull(exception.getMessage())
+            .contains("missing the sibling SHA-256 file"));
   }
 
   @Test
-  void requireVerified_acceptsMatchingBundleManagedSiblingAndTrustedDigests() throws Exception {
+  void requireVerified_acceptsMatchingBundleManagedSiblingDigest() throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
-    writeTrustedChecksum(libraryPath);
 
     assertDoesNotThrow(
         () ->
@@ -91,11 +89,10 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
   }
 
   @Test
-  void requireVerified_acceptsSourceCheckoutManagedLibraryWhenTrustedAndSiblingDigestsMatch()
+  void requireVerified_acceptsSourceCheckoutManagedLibraryWhenSiblingDigestMatches()
       throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
-    writeTrustedChecksum(libraryPath);
 
     assertDoesNotThrow(
         () ->
@@ -126,30 +123,9 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
   }
 
   @Test
-  void verifiedSnapshot_rejectsMissingTrustedChecksumBeforeCreatingCopy() throws Exception {
-    Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "sqlite3mc");
-    writeSiblingChecksum(libraryPath);
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryIdentity.verifiedSnapshot(
-                    new SqliteLibraryTarget(
-                        "managed-only",
-                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                        libraryPath.toString())));
-
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("missing the trusted FinGrind digest file"));
-  }
-
-  @Test
-  void requireVerified_rejectsManagedRuntimeWhenTrustedDigestDoesNotMatch() throws Exception {
+  void requireVerified_rejectsManagedRuntimeWhenSiblingDigestDoesNotMatch() throws Exception {
     Path libraryPath = writeLibrary(hostManagedLibraryFileName(), "tampered-library");
-    writeSiblingChecksum(libraryPath);
-    writeTrustedChecksum(libraryPath, hostManagedLibraryPath());
+    writeSiblingChecksum(libraryPath, hostManagedLibraryPath());
 
     UnsupportedManagedSqliteLibraryIdentityException exception =
         assertThrows(
@@ -161,62 +137,7 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString())));
 
-    assertTrue(exception.identitySource().contains("trusted FinGrind managed SQLite digest"));
-  }
-
-  @Test
-  void requireTrustedManagedLibrary_acceptsMatchingTrustedDigestText() throws Exception {
-    Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-    writeTrustedChecksum(libraryPath);
-
-    assertDoesNotThrow(
-        () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
-  }
-
-  @Test
-  void requireTrustedManagedLibrary_rejectsMalformedTrustedDigestText() throws Exception {
-    Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-    Files.writeString(
-        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
-        "not-a-checksum\n",
-        StandardCharsets.UTF_8);
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
-
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is malformed"));
-  }
-
-  @Test
-  void requireTrustedManagedLibrary_rejectsMissingTrustedDigestText() throws Exception {
-    Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
-
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("is missing the trusted FinGrind digest file"));
-  }
-
-  @Test
-  void requireTrustedManagedLibrary_rejectsBlankTrustedDigestText() throws Exception {
-    Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
-    Files.writeString(
-        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
-        " \n",
-        StandardCharsets.UTF_8);
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
-
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("is empty"));
+    assertTrue(exception.identitySource().contains(".sha256"));
   }
 
   @Test
@@ -235,40 +156,6 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
   }
 
   @Test
-  void requireTrustedManagedLibrary_wrapsTrustedDigestReadIoFailures() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath libraryPath = fileSystem.path("\\sqlite3.dll");
-      libraryPath.exists = true;
-      libraryPath.regularFile = true;
-      AclFixturePath trustedChecksumPath =
-          (AclFixturePath) SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath);
-      trustedChecksumPath.exists = true;
-      trustedChecksumPath.regularFile = true;
-      trustedChecksumPath.failNewByteChannelWith(new java.io.IOException("trusted-read-failure"));
-
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteManagedLibraryIdentity.requireTrustedManagedLibrary(libraryPath));
-
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("Failed to read the managed SQLite checksum file"));
-      assertEquals(
-          "trusted-read-failure", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-    }
-  }
-
-  @Test
-  void trustedChecksumPath_appendsTrustedDigestSuffixBesideLibrary() {
-    Path libraryPath = tempDirectory.resolve("libsqlite3.so.0");
-
-    assertEquals(
-        tempDirectory.resolve("libsqlite3.so.0.trusted.sha256"),
-        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath));
-  }
-
-  @Test
   void expectedSha256_ignoresBlankLinesBeforeFirstChecksumLine() throws Exception {
     Path libraryPath = writeLibrary("blank-lines.dylib", "sqlite3mc");
     Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
@@ -281,6 +168,21 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
         SqliteManagedLibraryIdentity.actualSha256(libraryPath),
         SqliteManagedLibraryIdentity.expectedSha256(
             checksumPath, libraryPath.getFileName().toString()));
+  }
+
+  @Test
+  void expectedSha256_withExplicitSourceDescription_readsChecksumLinesFromPath() throws Exception {
+    Path libraryPath = writeLibrary("explicit-source.dylib", "sqlite3mc");
+    Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
+    Files.writeString(
+        checksumPath,
+        sha256Line(libraryPath, libraryPath.getFileName().toString()),
+        StandardCharsets.UTF_8);
+
+    assertEquals(
+        SqliteManagedLibraryIdentity.actualSha256(libraryPath),
+        SqliteManagedLibraryIdentity.expectedSha256(
+            checksumPath, "explicit checksum source", libraryPath.getFileName().toString()));
   }
 
   @Test
@@ -336,6 +238,22 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
         assertThrows(
             IllegalStateException.class,
             () -> SqliteManagedLibraryIdentity.expectedSha256(checksumPath, "libsqlite3.dylib"));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("Failed to read the managed SQLite checksum file"));
+  }
+
+  @Test
+  void expectedSha256_withExplicitSourceDescription_wrapsChecksumReadIoFailures() {
+    Path checksumPath = tempDirectory.resolve("missing-explicit.sha256");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteManagedLibraryIdentity.expectedSha256(
+                    checksumPath, "explicit checksum source", "libsqlite3.dylib"));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())

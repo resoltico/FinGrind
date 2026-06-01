@@ -78,6 +78,13 @@ samWithReceiver {
 }
 
 tasks.withType<KotlinCompile>().configureEach {
+    outputs.cacheIf {
+        // The included-build plugin surface is the repository's control plane. Kotlin 2.4 RC2
+        // plus Gradle's externalized build directory can restore compile outputs incompletely from
+        // cache here, producing descriptor-only plugin jars. Compile build-logic locally until the
+        // upstream cache path is proven safe for this surface.
+        false
+    }
     compilerOptions {
         jvmTarget.set(JvmTarget.fromTarget(fingrindJavaVersion.toString()))
         jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)

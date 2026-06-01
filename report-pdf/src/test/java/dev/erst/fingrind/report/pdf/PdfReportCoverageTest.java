@@ -53,7 +53,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.49.0",
+                "0.50.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -69,7 +69,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.49.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.50.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -170,7 +170,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.49.0");
+    return new PdfDocumentFactory("FinGrind", "0.50.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -201,6 +201,7 @@ class PdfReportCoverageTest {
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
+        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

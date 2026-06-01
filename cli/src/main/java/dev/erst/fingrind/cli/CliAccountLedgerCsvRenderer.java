@@ -12,6 +12,10 @@ import java.util.List;
 final class CliAccountLedgerCsvRenderer {
   private static final List<String> CSV_HEADERS =
       List.of(
+          "exportFamily",
+          "rowId",
+          "parentRowId",
+          "relationKind",
           "recordKind",
           "accountCode",
           "accountName",

@@ -19,7 +19,6 @@ internal data class ManagedSqliteProvisioning(
     val libraryFileName: String,
     val libraryPath: Provider<RegularFile>,
     val checksumPath: Provider<RegularFile>,
-    val trustedChecksumPath: Provider<RegularFile>,
     val toolchainFingerprintPath: Provider<RegularFile>,
     val buildContractPath: Provider<RegularFile>,
     val prepareTask: TaskProvider<PrepareManagedSqliteTask>,
@@ -36,7 +35,7 @@ internal object ManagedSqliteProvisioningLogic {
     ): ManagedSqliteProvisioning {
         val hostBundleTarget =
             try {
-                DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
+                DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
             } catch (_: IllegalStateException) {
                 throw GradleException(
                     "FinGrind's managed SQLite build currently supports only declared bundle-layout targets. Detected host: ${System.getProperty("os.name")} / ${System.getProperty("os.arch")}",
@@ -65,10 +64,6 @@ internal object ManagedSqliteProvisioningLogic {
             project.layout.buildDirectory.file("managed-sqlite/$classifier/$libraryFileName")
         val checksumPath =
             project.layout.buildDirectory.file("managed-sqlite/$classifier/$libraryFileName.sha256")
-        val trustedChecksumPath =
-            project.layout.buildDirectory.file(
-                "managed-sqlite/$classifier/$libraryFileName.trusted.sha256",
-            )
         val toolchainFingerprintPath =
             project.layout.buildDirectory.file("managed-sqlite/$classifier/toolchain-fingerprint.json")
         val buildContractPath =
@@ -93,7 +88,7 @@ internal object ManagedSqliteProvisioningLogic {
                     "Captures the compiler, linker, target, and SDK identity for the managed SQLite native build."
                 compiler.set(sqliteCompiler)
                 operatingSystemId.set(managedSqliteOperatingSystemId)
-                hostArchitecture.set(DistributionContractReader.architectureId())
+                hostArchitecture.set(DistributionBundleTargetReader.architectureId())
                 outputFile.set(toolchainFingerprintPath)
             }
 
@@ -137,7 +132,6 @@ internal object ManagedSqliteProvisioningLogic {
                 buildContractFile.set(buildContractPath)
                 outputFile.set(libraryPath)
                 checksumFile.set(checksumPath)
-                trustedChecksumFile.set(trustedChecksumPath)
             }
 
         return ManagedSqliteProvisioning(
@@ -145,7 +139,6 @@ internal object ManagedSqliteProvisioningLogic {
             libraryFileName = libraryFileName,
             libraryPath = libraryPath,
             checksumPath = checksumPath,
-            trustedChecksumPath = trustedChecksumPath,
             toolchainFingerprintPath = toolchainFingerprintPath,
             buildContractPath = buildContractPath,
             prepareTask = prepareManagedSqlite,

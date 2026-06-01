@@ -1,6 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
-internal object DistributionTextRendering {
+object DistributionTextRendering {
     fun jsonString(value: String): String =
         buildString {
             append('"')

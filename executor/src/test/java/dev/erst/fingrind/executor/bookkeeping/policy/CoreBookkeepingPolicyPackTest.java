@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingKernelProfileId;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +30,24 @@ class InternalManagementKernelAccountingRulesTest {
         InternalManagementKernelAccountingRules.current();
 
     assertSame(accountingRules, KernelAccountingRulesResolver.forBookIdentity(bookIdentity()));
+  }
+
+  @Test
+  void resolver_rejectsUnsupportedAccountingKernelProfiles() {
+    BookIdentity unsupportedProfileBook =
+        new BookIdentity(
+            bookIdentity().entityProfile(),
+            new AccountingKernelProfileId("unsupported-kernel-profile"),
+            bookIdentity().functionalCurrency(),
+            bookIdentity().fiscalYearStart());
+
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> KernelAccountingRulesResolver.forBookIdentity(unsupportedProfileBook));
+
+    assertEquals(
+        "Unsupported accounting kernel profile: unsupported-kernel-profile.", failure.getMessage());
   }
 
   @Test

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -21,7 +21,7 @@ and [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md).
 FinGrind's public CLI download is a self-contained per-platform archive, not a raw JAR.
 
 Each published archive contains:
-- launcher scripts under `bin/`: `fingrind`, `fingrind.ps1`, and `fingrind.cmd`
+- launcher scripts under `bin/`: `fingrind` and, on Windows, `fingrind.ps1`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite native library pinned by the canonical managed-SQLite contract for that target
@@ -90,7 +90,6 @@ Windows bundle policy:
 - public Windows bundles are built on Windows GitHub-hosted runners
 - they use the native MSVC toolchain through the Developer Command Prompt environment
 - they are published as `.zip` archives and use `bin\fingrind.ps1` as the canonical launcher
-- `bin\fingrind.cmd` remains in the archive as a compatibility wrapper
 
 ## Release Build Policy
 
@@ -118,8 +117,9 @@ FinGrind's private Java runtime images are intentionally built as minimal execut
 full developer JDKs or inherited full JRE installations.
 
 Current rules:
-- module discovery must fail loud on unresolved runtime dependencies; do not use
-  `jdeps --ignore-missing-deps` on the public-runtime path
+- module discovery must fail loud on unresolved runtime dependencies; if `jdeps` can only finish
+  with `--ignore-missing-deps`, those missing classes must first be proven against the
+  repo-owned `runtime-module-discovery-contract.json` allowlist instead of being ignored blindly
 - runtime compression uses `jlink --compress=zip-6`, not deprecated numeric aliases
 - the runtime image must not pull in tool modules such as `jdk.jdeps`, `jdk.jlink`, or
   `jdk.jpackage`
@@ -231,7 +231,7 @@ checkout-local Docker work sees the same payload Gradle assembled instead of an 
 tree under the repository.
 The resulting image mirrors the bundle-owned runtime layout as well: `/opt/fingrind/` now
 contains `runtime/`, `lib/app/fingrind.jar`, and `lib/native/libsqlite3.so.0` plus its
-`.sha256` and `.trusted.sha256` sidecars, and the rendered entrypoint sets
+`.sha256` sidecar, and the rendered entrypoint sets
 `fingrind.bundle.home` before launch. The published container therefore resolves SQLite through
 the same publisher-managed bundle contract as the extracted archive instead of routing through the
 operator override path.
@@ -288,14 +288,12 @@ Every release must verify:
 - the GitHub release object contains the complete bundle-and-checksum set
 - the published archive and checksum assets verify through `gh attestation verify` against
   `.github/workflows/release.yml`
-- the container workflow waits for the complete GitHub release asset set before it publishes the
-  public image, so Docker publication cannot outrun an incomplete release handoff
-- the container workflow gives that release-asset wait budget enough runway to outlast the
-  slowest supported release bundle build on GitHub-hosted runners, particularly the Intel macOS
-  archive path, rather than assuming a few minutes of propagation is always enough
-- the container workflow keeps enough timeout budget for post-publish verification of both the
-  versioned and `latest` public tags on real GitHub-hosted runners, so a successful registry push
-  cannot still end as a red release-surface workflow
+- the release workflow's `container` job waits for the complete GitHub release asset set before it
+  publishes the public image, so Docker publication cannot outrun an incomplete release handoff
+- the release workflow's `container` job keeps enough timeout budget for post-publish verification
+  of the versioned public tag, and of `latest` when the release owns that pointer, on real
+  GitHub-hosted runners, so a successful registry push cannot still end as a red release-surface
+  workflow
 
 Release helper scripts are part of that contract and must remain portable across the actual
 GitHub-hosted release runners. In practice this means publication-critical shell code must work

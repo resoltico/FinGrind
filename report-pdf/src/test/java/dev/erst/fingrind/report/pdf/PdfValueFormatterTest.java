@@ -302,7 +302,7 @@ class PdfValueFormatterTest {
 
   @Test
   void optionalDateFormatsNullAndConcreteDates() {
-    assertEquals("latest committed posting date", PdfTemporalValueFormatter.optionalDate(null));
+    assertEquals("current book horizon", PdfTemporalValueFormatter.optionalDate(null));
     assertEquals(
         "2026-05-07", PdfTemporalValueFormatter.optionalDate(LocalDate.parse("2026-05-07")));
   }
@@ -313,10 +313,10 @@ class PdfValueFormatterTest {
     LocalDate to = LocalDate.parse("2026-05-31");
 
     assertEquals(
-        "book start to latest committed posting date",
+        "book start to current book horizon",
         PdfTemporalValueFormatter.optionalDateRange(null, null));
     assertEquals(
-        "2026-05-01 to latest committed posting date",
+        "2026-05-01 to current book horizon",
         PdfTemporalValueFormatter.optionalDateRange(from, null));
     assertEquals("book start to 2026-05-31", PdfTemporalValueFormatter.optionalDateRange(null, to));
     assertEquals("2026-05-01 to 2026-05-31", PdfTemporalValueFormatter.optionalDateRange(from, to));
@@ -328,10 +328,10 @@ class PdfValueFormatterTest {
     LocalDate to = LocalDate.parse("2026-05-31");
 
     assertEquals(
-        "book start to latest committed posting date",
+        "book start to current book horizon",
         PdfTemporalValueFormatter.effectiveDateRange(EffectiveDateRange.unbounded()));
     assertEquals(
-        "2026-05-01 to latest committed posting date",
+        "2026-05-01 to current book horizon",
         PdfTemporalValueFormatter.effectiveDateRange(new EffectiveDateRange.From(from)));
     assertEquals(
         "book start to 2026-05-31",

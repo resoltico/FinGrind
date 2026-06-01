@@ -112,6 +112,7 @@ class BookAdministrationModelTest {
   private static BookIdentity bookIdentity(List<BusinessActivityTag> businessActivityTags) {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio"), businessActivityTags),
+        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

@@ -116,7 +116,7 @@ final class SqliteManagedLibraryTargetLocator {
               + normalizedBundleHomePath
               + " does not contain the managed SQLite library at "
               + bundleLibraryPath
-              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
+              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
     }
     return new SqliteLibraryTarget(
         SqliteRuntime.LIBRARY_MODE,
@@ -126,7 +126,7 @@ final class SqliteManagedLibraryTargetLocator {
 
   private static ManagedSqliteRuntimeUnavailableException missingLibraryTargetFailure() {
     return new ManagedSqliteRuntimeUnavailableException(
-        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
+        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout.");
   }
 
   private static ManagedSqliteRuntimeUnavailableException retiredConfiguredRuntimeFailure(
@@ -134,7 +134,7 @@ final class SqliteManagedLibraryTargetLocator {
     return new ManagedSqliteRuntimeUnavailableException(
         "The operator-configured SQLite runtime override via "
             + RETIRED_LIBRARY_ENVIRONMENT_VARIABLE
-            + " has been removed. FinGrind now loads only publisher-authenticated bundle runtimes or source-checkout-managed runtimes from a prepared checkout. Remove "
+            + " has been removed. FinGrind now loads only bundle-managed runtimes or source-checkout-managed runtimes from a prepared checkout. Remove "
             + RETIRED_LIBRARY_ENVIRONMENT_VARIABLE
             + "="
             + normalizedConfiguredPath
