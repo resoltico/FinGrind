@@ -102,9 +102,39 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("FinGrind Help"));
-    assertTrue(rendered.contains("Start Here"));
-    assertTrue(rendered.contains("Command Groups"));
-    assertTrue(rendered.contains("Automation"));
+    assertTrue(rendered.contains("First Successful Run"));
+    assertTrue(rendered.contains("Generate one key file"));
+    assertTrue(rendered.contains("Print the first account scaffold"));
+    assertTrue(rendered.contains("Print the first entry scaffold"));
+    assertTrue(rendered.contains("Command Families"));
+    assertTrue(rendered.contains("For Agents And Automation"));
+  }
+
+  @Test
+  void renderHelpText_placesKeyGenerationBeforeBookOpeningInRootHelp() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            MachineContract.help(
+                CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment()));
+
+    int generateKeyIndex = rendered.indexOf("Generate one key file");
+    int openBookIndex = rendered.indexOf("Open one protected book");
+    int declareScaffoldIndex = rendered.indexOf("Print the first account scaffold");
+    int declareIndex = rendered.indexOf("Declare the first account");
+    int entryScaffoldIndex = rendered.indexOf("Print the first entry scaffold");
+    int postEntryIndex = rendered.indexOf("Preflight or commit one entry");
+
+    assertTrue(generateKeyIndex >= 0, rendered);
+    assertTrue(openBookIndex >= 0, rendered);
+    assertTrue(declareScaffoldIndex >= 0, rendered);
+    assertTrue(declareIndex >= 0, rendered);
+    assertTrue(entryScaffoldIndex >= 0, rendered);
+    assertTrue(postEntryIndex >= 0, rendered);
+    assertTrue(generateKeyIndex < openBookIndex, rendered);
+    assertTrue(openBookIndex < declareScaffoldIndex, rendered);
+    assertTrue(declareScaffoldIndex < declareIndex, rendered);
+    assertTrue(declareIndex < entryScaffoldIndex, rendered);
+    assertTrue(entryScaffoldIndex < postEntryIndex, rendered);
   }
 
   @Test
@@ -145,7 +175,7 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("FinGrind Help"));
-    assertTrue(rendered.contains("Start Here"));
+    assertTrue(rendered.contains("First Successful Run"));
     assertFalse(rendered.contains("bundle bootstrap note body"));
   }
 
@@ -182,11 +212,13 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Run"));
+    assertTrue(rendered.contains("Before You Run"));
+    assertTrue(rendered.contains("Command"));
     assertTrue(rendered.contains("Options"));
-    assertTrue(rendered.contains("More Detail"));
+    assertTrue(rendered.contains("Need JSON Contract"));
     assertTrue(rendered.contains("More examples"));
-    assertTrue(rendered.contains("post-entry --output json"));
+    assertTrue(rendered.contains("print-request-template post-entry > request.json"));
+    assertTrue(rendered.contains("post-entry --book-file <path> --request-file <path|->"));
   }
 
   @Test
@@ -222,10 +254,10 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Run"));
+    assertTrue(rendered.contains("Command"));
     assertTrue(rendered.contains("(none)"));
     assertFalse(rendered.contains("Options"));
-    assertFalse(rendered.contains("Input"));
+    assertFalse(rendered.contains("Request File"));
   }
 
   @Test
@@ -287,12 +319,12 @@ class CliDiscoveryHelpTextRendererTest {
                 executePlanCanonical.currencyModel(),
                 Objects.requireNonNull(executePlanCanonical.requestShapes())));
 
-    assertTrue(declareRendered.contains("Input"));
-    assertTrue(declareRendered.contains("Generate a starter document"));
-    assertTrue(declareRendered.contains("declare-account --output json"));
-    assertTrue(executePlanRendered.contains("Input"));
-    assertTrue(executePlanRendered.contains("Generate a starter document"));
-    assertTrue(executePlanRendered.contains("execute-plan --output json"));
+    assertTrue(declareRendered.contains("Request File"));
+    assertTrue(declareRendered.contains("Need a starter file?"));
+    assertTrue(declareRendered.contains("declare-account --request-file <path|->"));
+    assertTrue(executePlanRendered.contains("Request File"));
+    assertTrue(executePlanRendered.contains("Need a starter file?"));
+    assertTrue(executePlanRendered.contains("execute-plan --request-file <path|->"));
   }
 
   @Test

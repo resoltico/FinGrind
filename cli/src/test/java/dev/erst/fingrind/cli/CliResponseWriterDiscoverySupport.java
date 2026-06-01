@@ -16,30 +16,31 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
   }
 
   void writeHelp(HelpDescriptor helpDescriptor) {
-    writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
+    writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.MINIMAL);
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
-    writeHelp(helpDescriptor, outputMode, DiscoveryDetail.COMPACT);
+    writeHelp(helpDescriptor, outputMode, DiscoveryDetail.MINIMAL);
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
-    discoveryWriter.writeHelp(helpDescriptor, outputMode, detail);
+    discoveryWriter.writeHelp(helpDescriptor, outputMode, detail, null);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor) {
-    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON, DiscoveryDetail.COMPACT);
+    writeCapabilities(capabilitiesDescriptor, OutputMode.JSON, DiscoveryDetail.MINIMAL);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
-    writeCapabilities(capabilitiesDescriptor, outputMode, DiscoveryDetail.COMPACT);
+    writeCapabilities(capabilitiesDescriptor, outputMode, DiscoveryDetail.MINIMAL);
   }
 
   void writeCapabilities(
       CapabilitiesDescriptor capabilitiesDescriptor,
       OutputMode outputMode,
       DiscoveryDetail detail) {
-    discoveryWriter.writeCapabilities(capabilitiesDescriptor, outputMode, detail);
+    discoveryWriter.writeCapabilities(
+        capabilitiesDescriptor, outputMode, detail, CliDiscoverySelections.overview());
   }
 
   void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {

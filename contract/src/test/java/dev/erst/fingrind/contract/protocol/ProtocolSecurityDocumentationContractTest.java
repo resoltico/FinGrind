@@ -146,17 +146,17 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
     EnvironmentSqliteDescriptor sqlite = readyEnvironmentDescriptor().sqlite();
 
     assertTrue(
-        document.contains("`bundle-managed` is publisher-authenticated"),
+        document.contains("`bundle-managed` is bundle-sidecar-consistency"),
         "docs/DEVELOPER_SECURITY.md must describe the trusted managed-runtime identity boundary explicitly.");
     assertTrue(
-        document.contains("`source-checkout-managed` is source-verified-local-build"),
-        "docs/DEVELOPER_SECURITY.md must describe source-checkout-managed as one local-build trust class rather than publisher-authenticated release identity.");
+        document.contains("`source-checkout-managed` is source-checkout-sidecar-consistency"),
+        "docs/DEVELOPER_SECURITY.md must describe source-checkout-managed as one local-build trust class rather than bundle-sidecar-consistency release identity.");
     assertTrue(
         document.contains("`runtimeTrustBasis`"),
         "docs/DEVELOPER_SECURITY.md must describe the machine-readable runtimeTrustBasis field.");
     assertTrue(
         document.contains(
-            "environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes from source-verified local-build runtimes"),
+            "environment.sqlite.runtime.runtimeTrustBasis distinguishes bundle-sidecar-consistency bundle runtimes from source-verified local-build runtimes"),
         "docs/DEVELOPER_SECURITY.md must explain how machine consumers distinguish runtime trust classes.");
     EnvironmentSqliteDescriptor.ReadyRuntime readyRuntime =
         (EnvironmentSqliteDescriptor.ReadyRuntime) sqlite.runtime();
@@ -216,7 +216,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.49.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.50.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
@@ -245,7 +245,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntimeStatus.READY,
                 SqliteRuntimeProvenance.BUNDLE_MANAGED,
-                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                 "/tmp/libsqlite3.dylib",
                 ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
                 ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),

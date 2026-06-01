@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.InteractionLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -61,7 +62,11 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals("Missing required field: accountName", exception.getMessage());
-    assertEquals(CliJsonRequestHints.declareAccountRequestHint(), exception.failure().hint());
+    assertEquals(
+        "Add accountName to the request document, then rerun. If you need a starter file, run '"
+            + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " declare-account'.",
+        exception.failure().hint());
   }
 
   @Test

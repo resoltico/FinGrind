@@ -14,6 +14,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -299,6 +300,40 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void shutdownQuietly_invokesSuccessfulNativeShutdownWithoutReportingFailures() throws Exception {
+    AtomicInteger shutdownCalls = new AtomicInteger();
+    List<String> cleanupReports = new ArrayList<>();
+    MethodHandle shutdownHandle =
+        MethodHandles.insertArguments(
+            MethodHandles.lookup()
+                .findStatic(
+                    SqliteNativeBridgeTestSupport.class,
+                    "recordShutdownCall",
+                    MethodType.methodType(int.class, AtomicInteger.class)),
+            0,
+            shutdownCalls);
+
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                shutdownHandle,
+                (action, exception) ->
+                    cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
+    assertEquals(1, shutdownCalls.get());
+    assertTrue(cleanupReports.isEmpty());
+    assertDoesNotThrow(() -> SqliteNativeBootstrap.shutdownQuietly(shutdownHandle));
+    assertEquals(2, shutdownCalls.get());
+  }
+
+  @Test
+  void shutdownQuietly_oneArgOverloadSwallowsRuntimeFailuresFromNativeShutdown() {
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                throwingMethodHandle(new IllegalStateException("boom"), int.class)));
+  }
+
+  @Test
   void shutdownQuietly_rethrowsErrorsFromNativeShutdown() {
     AssertionError error =
         assertThrows(
@@ -307,24 +342,6 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                 SqliteNativeBootstrap.shutdownQuietly(
                     throwingMethodHandle(new AssertionError("boom"), int.class)));
     assertEquals("boom", error.getMessage());
-  }
-
-  @Test
-  void shutdownIfQuiescent_runsShutdownOnlyWhenNoConnectionsRemain() throws Throwable {
-    AtomicInteger shutdownCalls = new AtomicInteger();
-    MethodHandle shutdownHandle =
-        MethodHandles.insertArguments(
-            MethodHandles.lookup()
-                .findStatic(
-                    SqliteNativeBridgeTestSupport.class,
-                    "recordShutdownCall",
-                    java.lang.invoke.MethodType.methodType(int.class, AtomicInteger.class)),
-            0,
-            shutdownCalls);
-    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 1);
-    assertEquals(0, shutdownCalls.get());
-    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 0);
-    assertEquals(1, shutdownCalls.get());
   }
 
   @Test

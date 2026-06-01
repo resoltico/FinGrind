@@ -33,14 +33,10 @@ import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StorageLocator;
 import java.util.List;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /** Request and ledger-plan template descriptor namespace for discovery commands. */
 public final class ContractTemplates {
-  private static final Map<BookkeepingEntryKind, PostingRequestTemplateValidator>
-      POSTING_REQUEST_TEMPLATE_VALIDATORS = postingRequestTemplateValidators();
-
   private ContractTemplates() {}
 
   /** Returns the descriptor record types owned by this namespace. */
@@ -95,15 +91,16 @@ public final class ContractTemplates {
       lines = lines == null ? null : ContractDescriptorValidation.copyList(lines, "lines");
       evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
-      validatorFor(entryKind)
-          .validate(
+      ContractPostingRequestTemplateValidators.validate(
+          entryKind,
+          new ContractPostingRequestTemplateValidators.PostingTemplateFields(
               cashAccountCode,
               revenueAccountCode,
               expenseAccountCode,
               equityAccountCode,
               amount,
-              lines,
-              reversal);
+              lines),
+          reversal);
     }
   }
 
@@ -243,237 +240,6 @@ public final class ContractTemplates {
       priorPostingId = ContractDescriptorValidation.requireText(priorPostingId, "priorPostingId");
       reason = ContractDescriptorValidation.requireText(reason, "reason");
     }
-  }
-
-  private static void validateCashRevenueTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    requireText(cashAccountCode, "cashAccountCode");
-    requireText(revenueAccountCode, "revenueAccountCode");
-    requirePositiveAmount(amount);
-    forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidText(equityAccountCode, "equityAccountCode");
-    forbidLines(lines);
-    forbidReversal(reversal);
-  }
-
-  private static void validateCashExpenseTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    requireText(cashAccountCode, "cashAccountCode");
-    requireText(expenseAccountCode, "expenseAccountCode");
-    requirePositiveAmount(amount);
-    forbidText(revenueAccountCode, "revenueAccountCode");
-    forbidText(equityAccountCode, "equityAccountCode");
-    forbidLines(lines);
-    forbidReversal(reversal);
-  }
-
-  private static void validateEquityContributionTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    requireText(cashAccountCode, "cashAccountCode");
-    requireText(equityAccountCode, "equityAccountCode");
-    requirePositiveAmount(amount);
-    forbidText(revenueAccountCode, "revenueAccountCode");
-    forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidLines(lines);
-    forbidReversal(reversal);
-  }
-
-  private static void validateEquityWithdrawalTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    requireText(cashAccountCode, "cashAccountCode");
-    requireText(equityAccountCode, "equityAccountCode");
-    requirePositiveAmount(amount);
-    forbidText(revenueAccountCode, "revenueAccountCode");
-    forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidLines(lines);
-    forbidReversal(reversal);
-  }
-
-  private static void validateOpeningBalanceAdjustmentTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines) {
-    if (lines == null || lines.size() < 2) {
-      throw new IllegalArgumentException(
-          "lines must contain at least two journal lines for openingBalanceAdjustment.");
-    }
-    forbidText(cashAccountCode, "cashAccountCode");
-    forbidText(revenueAccountCode, "revenueAccountCode");
-    forbidText(expenseAccountCode, "expenseAccountCode");
-    forbidText(equityAccountCode, "equityAccountCode");
-    if (amount != null) {
-      throw new IllegalArgumentException("amount must be absent for openingBalanceAdjustment.");
-    }
-  }
-
-  private static void validateCorrectionAdjustmentTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    validateOpeningBalanceAdjustmentTemplate(
-        cashAccountCode, revenueAccountCode, expenseAccountCode, equityAccountCode, amount, lines);
-    forbidReversal(reversal);
-  }
-
-  private static void validateReversalAdjustmentTemplate(
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable ReversalTemplateDescriptor reversal) {
-    validateOpeningBalanceAdjustmentTemplate(
-        cashAccountCode, revenueAccountCode, expenseAccountCode, equityAccountCode, amount, lines);
-    if (reversal == null) {
-      throw new IllegalArgumentException("reversal must be present for reversalAdjustment.");
-    }
-  }
-
-  private static String requireText(@Nullable String value, String fieldName) {
-    if (value == null) {
-      throw new IllegalArgumentException(fieldName + " must not be null.");
-    }
-    return ContractDescriptorValidation.requireText(value, fieldName);
-  }
-
-  private static void forbidText(@Nullable String value, String fieldName) {
-    if (value != null) {
-      throw new IllegalArgumentException(fieldName + " must be absent for this entryKind.");
-    }
-  }
-
-  private static MonetaryAmount requirePositiveAmount(@Nullable MonetaryAmount amount) {
-    if (amount == null) {
-      throw new IllegalArgumentException("amount must not be null.");
-    }
-    MonetaryAmount requiredAmount = ContractDescriptorValidation.requireValue(amount, "amount");
-    if (!requiredAmount.toMoney().isPositive()) {
-      throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
-    }
-    return requiredAmount;
-  }
-
-  private static void forbidLines(@Nullable List<JournalLineTemplateDescriptor> lines) {
-    if (lines != null) {
-      throw new IllegalArgumentException("lines must be absent for typed business events.");
-    }
-  }
-
-  private static void forbidReversal(@Nullable ReversalTemplateDescriptor reversal) {
-    if (reversal != null) {
-      throw new IllegalArgumentException("reversal must be absent for this entryKind.");
-    }
-  }
-
-  private static PostingRequestTemplateValidator validatorFor(BookkeepingEntryKind entryKind) {
-    return java.util.Objects.requireNonNull(
-        POSTING_REQUEST_TEMPLATE_VALIDATORS.get(entryKind), "entryKind validator");
-  }
-
-  private static Map<BookkeepingEntryKind, PostingRequestTemplateValidator>
-      postingRequestTemplateValidators() {
-    return Map.of(
-        BookkeepingEntryKind.CASH_REVENUE,
-        ContractTemplates::validateCashRevenueTemplate,
-        BookkeepingEntryKind.CASH_EXPENSE,
-        ContractTemplates::validateCashExpenseTemplate,
-        BookkeepingEntryKind.EQUITY_CONTRIBUTION,
-        ContractTemplates::validateEquityContributionTemplate,
-        BookkeepingEntryKind.EQUITY_WITHDRAWAL,
-        ContractTemplates::validateEquityWithdrawalTemplate,
-        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
-        (cashAccountCode,
-            revenueAccountCode,
-            expenseAccountCode,
-            equityAccountCode,
-            amount,
-            lines,
-            reversal) ->
-            validateOpeningBalanceAdjustmentTemplate(
-                cashAccountCode,
-                revenueAccountCode,
-                expenseAccountCode,
-                equityAccountCode,
-                amount,
-                lines),
-        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
-        (cashAccountCode,
-            revenueAccountCode,
-            expenseAccountCode,
-            equityAccountCode,
-            amount,
-            lines,
-            reversal) ->
-            validateCorrectionAdjustmentTemplate(
-                cashAccountCode,
-                revenueAccountCode,
-                expenseAccountCode,
-                equityAccountCode,
-                amount,
-                lines,
-                reversal),
-        BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
-        (cashAccountCode,
-            revenueAccountCode,
-            expenseAccountCode,
-            equityAccountCode,
-            amount,
-            lines,
-            reversal) ->
-            validateReversalAdjustmentTemplate(
-                cashAccountCode,
-                revenueAccountCode,
-                expenseAccountCode,
-                equityAccountCode,
-                amount,
-                lines,
-                reversal));
-  }
-
-  /** Validator for one entry-kind-specific posting-template shape. */
-  @FunctionalInterface
-  private interface PostingRequestTemplateValidator {
-    /** Validates one posting template using the shape rules for one selected entry kind. */
-    void validate(
-        @Nullable String cashAccountCode,
-        @Nullable String revenueAccountCode,
-        @Nullable String expenseAccountCode,
-        @Nullable String equityAccountCode,
-        @Nullable MonetaryAmount amount,
-        @Nullable List<JournalLineTemplateDescriptor> lines,
-        @Nullable ReversalTemplateDescriptor reversal);
   }
 
   /** Canonical ledger-plan template document for print-plan-template. */

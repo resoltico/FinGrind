@@ -24,9 +24,9 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
       long elapsedMillis = Duration.ofNanos(System.nanoTime() - startNanos).toMillis();
       assertTrue(
           Set.of(
-                  SqliteNativeResultCodes.BUSY,
-                  SqliteNativeResultCodes.BUSY_TIMEOUT,
-                  SqliteNativeResultCodes.LOCKED)
+                  SqliteNativeResultCode.code("BUSY"),
+                  SqliteNativeResultCode.code("BUSY_TIMEOUT"),
+                  SqliteNativeResultCode.code("LOCKED"))
               .contains(exception.resultCode()),
           () -> "Unexpected SQLite contention code: " + exception.resultName());
       assertTrue(

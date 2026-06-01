@@ -16,8 +16,10 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemp
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import java.util.List;
@@ -47,6 +49,7 @@ public interface CliDiscoveryJsonModels {
       String version,
       String description,
       DiscoveryDetail detail,
+      @Nullable String category,
       List<CommandNamePayload> commands,
       String compactDetailHint,
       String fullDetailHint)
@@ -56,6 +59,7 @@ public interface CliDiscoveryJsonModels {
       version = requireText(version, "version");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
+      category = requireOptionalText(category, "category");
       commands = copyList(commands, "commands");
       compactDetailHint = requireText(compactDetailHint, "compactDetailHint");
       fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
@@ -70,6 +74,7 @@ public interface CliDiscoveryJsonModels {
       String version,
       String description,
       DiscoveryDetail detail,
+      @Nullable String category,
       List<CommandDescriptor> commands,
       List<String> gettingStarted,
       List<ExitCodeDescriptor> exitCodes,
@@ -81,6 +86,7 @@ public interface CliDiscoveryJsonModels {
       version = requireText(version, "version");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
+      category = requireOptionalText(category, "category");
       commands = copyList(commands, "commands");
       gettingStarted = copyList(gettingStarted, "gettingStarted");
       exitCodes = copyList(exitCodes, "exitCodes");
@@ -99,6 +105,7 @@ public interface CliDiscoveryJsonModels {
       String version,
       String description,
       DiscoveryDetail detail,
+      @Nullable String category,
       List<CommandIndexPayload> commands,
       List<ExitCodeDescriptor> exitCodes,
       String capabilitiesHint,
@@ -109,6 +116,7 @@ public interface CliDiscoveryJsonModels {
       version = requireText(version, "version");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
+      category = requireOptionalText(category, "category");
       commands = copyList(commands, "commands");
       exitCodes = copyList(exitCodes, "exitCodes");
       capabilitiesHint = requireText(capabilitiesHint, "capabilitiesHint");
@@ -150,6 +158,7 @@ public interface CliDiscoveryJsonModels {
       String application,
       String version,
       DiscoveryDetail detail,
+      DiscoveryFocus focus,
       String kernelScope,
       List<String> builtInStatements,
       String bookBoundary,
@@ -163,6 +172,7 @@ public interface CliDiscoveryJsonModels {
       application = requireText(application, "application");
       version = requireText(version, "version");
       detail = requireValue(detail, "detail");
+      focus = requireValue(focus, "focus");
       kernelScope = requireText(kernelScope, "kernelScope");
       builtInStatements = copyList(builtInStatements, "builtInStatements");
       bookBoundary = requireText(bookBoundary, "bookBoundary");
@@ -174,6 +184,9 @@ public interface CliDiscoveryJsonModels {
       if (detail != DiscoveryDetail.MINIMAL) {
         throw new IllegalArgumentException("minimal capabilities payload requires minimal detail.");
       }
+      if (focus != DiscoveryFocus.OVERVIEW) {
+        throw new IllegalArgumentException("minimal overview payload requires overview focus.");
+      }
     }
   }
 
@@ -181,6 +194,7 @@ public interface CliDiscoveryJsonModels {
       String application,
       String version,
       DiscoveryDetail detail,
+      DiscoveryFocus focus,
       StorageSurfaceDescriptor storage,
       CommandCatalogDescriptor commands,
       RequestInputDescriptor requestInput,
@@ -191,6 +205,7 @@ public interface CliDiscoveryJsonModels {
       application = requireText(application, "application");
       version = requireText(version, "version");
       detail = requireValue(detail, "detail");
+      focus = requireValue(focus, "focus");
       storage = requireValue(storage, "storage");
       commands = requireValue(commands, "commands");
       requestInput = requireValue(requestInput, "requestInput");
@@ -200,6 +215,9 @@ public interface CliDiscoveryJsonModels {
       }
       if (detail != DiscoveryDetail.FULL && fullContract != null) {
         throw new IllegalArgumentException("fullContract must be absent unless detail is full.");
+      }
+      if (focus != DiscoveryFocus.OVERVIEW) {
+        throw new IllegalArgumentException("full overview payload requires overview focus.");
       }
     }
   }
@@ -246,28 +264,131 @@ public interface CliDiscoveryJsonModels {
     }
   }
 
+  record CommandCountPayload(String category, int count) implements ProtocolSuccessPayload {
+    public CommandCountPayload {
+      category = requireText(category, "category");
+      if (count < 0) {
+        throw new IllegalArgumentException("count must not be negative.");
+      }
+    }
+  }
+
   record CapabilitiesCompactPayload(
       String application,
       String version,
       DiscoveryDetail detail,
+      DiscoveryFocus focus,
       String bookBoundary,
       List<String> storageEngines,
       RequestInputCompactPayload requestInput,
-      List<CommandSurfacePayload> commands,
+      List<CommandCountPayload> commandCounts,
       String fullDetailHint)
       implements ProtocolSuccessPayload {
     public CapabilitiesCompactPayload {
       application = requireText(application, "application");
       version = requireText(version, "version");
       detail = requireValue(detail, "detail");
+      focus = requireValue(focus, "focus");
       bookBoundary = requireText(bookBoundary, "bookBoundary");
       storageEngines = copyList(storageEngines, "storageEngines");
       requestInput = requireValue(requestInput, "requestInput");
-      commands = copyList(commands, "commands");
+      commandCounts = copyList(commandCounts, "commandCounts");
       fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
       if (detail != DiscoveryDetail.COMPACT) {
         throw new IllegalArgumentException("compact capabilities payload requires compact detail.");
       }
+      if (focus != DiscoveryFocus.OVERVIEW) {
+        throw new IllegalArgumentException("compact overview payload requires overview focus.");
+      }
+    }
+  }
+
+  record CapabilitiesSlicePayload(
+      String application,
+      String version,
+      DiscoveryDetail detail,
+      DiscoveryFocus focus,
+      @Nullable String category,
+      ProtocolSuccessPayload data,
+      List<String> nextHints)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesSlicePayload {
+      application = requireText(application, "application");
+      version = requireText(version, "version");
+      detail = requireValue(detail, "detail");
+      focus = requireValue(focus, "focus");
+      category = requireOptionalText(category, "category");
+      data = requireValue(data, "data");
+      nextHints = copyList(nextHints, "nextHints");
+      if (focus == DiscoveryFocus.OVERVIEW) {
+        throw new IllegalArgumentException("slice payload requires a non-overview focus.");
+      }
+    }
+  }
+
+  record CapabilitiesCommandsSlicePayload(
+      @Nullable String category,
+      List<CommandNamePayload> commands,
+      @Nullable List<CommandSurfacePayload> commandSurfaces,
+      @Nullable List<CommandDescriptor> fullCommands)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesCommandsSlicePayload {
+      category = requireOptionalText(category, "category");
+      commands = copyList(commands, "commands");
+      if (commandSurfaces != null) {
+        commandSurfaces = copyList(commandSurfaces, "commandSurfaces");
+      }
+      if (fullCommands != null) {
+        fullCommands = copyList(fullCommands, "fullCommands");
+      }
+    }
+  }
+
+  record CapabilitiesStorageSlicePayload(StorageSurfaceDescriptor storage)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesStorageSlicePayload {
+      storage = requireValue(storage, "storage");
+    }
+  }
+
+  record CapabilitiesRequestInputSlicePayload(
+      RequestInputCompactPayload requestInput, @Nullable RequestInputDescriptor fullRequestInput)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesRequestInputSlicePayload {
+      requestInput = requireValue(requestInput, "requestInput");
+    }
+  }
+
+  record CapabilitiesCurrencySlicePayload(ContractResponse.CurrencyDescriptor currencyModel)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesCurrencySlicePayload {
+      currencyModel = requireValue(currencyModel, "currencyModel");
+    }
+  }
+
+  record CapabilitiesKernelSlicePayload(
+      ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesKernelSlicePayload {
+      bookkeepingKernel = requireValue(bookkeepingKernel, "bookkeepingKernel");
+    }
+  }
+
+  record CapabilitiesResponseContractSlicePayload(
+      ContractResponse.ResponseModelDescriptor responseModel,
+      ContractResponse.PlanExecutionDescriptor planExecution,
+      ContractResponse.AuditDescriptor audit,
+      ContractResponse.AccountRegistryDescriptor accountRegistry,
+      ContractResponse.ReversalDescriptor reversals,
+      ContractResponse.PreflightDescriptor preflight)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesResponseContractSlicePayload {
+      responseModel = requireValue(responseModel, "responseModel");
+      planExecution = requireValue(planExecution, "planExecution");
+      audit = requireValue(audit, "audit");
+      accountRegistry = requireValue(accountRegistry, "accountRegistry");
+      reversals = requireValue(reversals, "reversals");
+      preflight = requireValue(preflight, "preflight");
     }
   }
 

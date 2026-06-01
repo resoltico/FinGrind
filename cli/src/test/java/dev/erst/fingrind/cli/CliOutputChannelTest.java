@@ -21,9 +21,10 @@ class CliOutputChannelTest {
     outputChannel.writePrettySuccess(
         new CliDiscoveryJsonModels.HelpOverviewPayload(
             "FinGrind",
-            "0.49.0",
+            "0.50.0",
             "CLI help",
             DiscoveryDetail.COMPACT,
+            null,
             List.of(),
             List.of("help"),
             List.of(),

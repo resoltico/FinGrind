@@ -129,11 +129,11 @@ public final class SqliteFuzzAssertions {
 
   static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
-      if (statement.step() != SqliteNativeResultCodes.ROW) {
+      if (statement.step() != SqliteNativeResultCode.code("ROW")) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
       }
       int actualValue = statement.columnInt(0);
-      if (statement.step() != SqliteNativeResultCodes.DONE) {
+      if (statement.step() != SqliteNativeResultCode.code("DONE")) {
         throw new IllegalStateException(
             "Expected one SQLite row only for hardening assertion: " + sql);
       }
@@ -146,11 +146,11 @@ public final class SqliteFuzzAssertions {
 
   static void assertQueryText(SqliteNativeDatabase database, String sql, String expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
-      if (statement.step() != SqliteNativeResultCodes.ROW) {
+      if (statement.step() != SqliteNativeResultCode.code("ROW")) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
       }
       String actualValue = statement.columnText(0);
-      if (statement.step() != SqliteNativeResultCodes.DONE) {
+      if (statement.step() != SqliteNativeResultCode.code("DONE")) {
         throw new IllegalStateException(
             "Expected one SQLite row only for hardening assertion: " + sql);
       }

@@ -144,7 +144,7 @@ class SqliteNativeInteropTest {
           SqliteNativeStatements.prepare(database, "insert into sample (id) values (1)")) {
         duplicateInsertFailure = assertThrows(SqliteNativeException.class, duplicateInsert::step);
         assertEquals(
-            SqliteNativeResultCodes.CONSTRAINT_PRIMARYKEY,
+            SqliteNativeResultCode.code("CONSTRAINT_PRIMARYKEY"),
             database.diagnostics().extendedErrorCode());
         assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", duplicateInsertFailure.resultName());
       }
@@ -159,11 +159,11 @@ class SqliteNativeInteropTest {
       try (SqliteNativeStatement insert =
           SqliteNativeStatements.prepare(database, "insert into sample (label) values (?)")) {
         insert.bindText(1, "Cash\0Reserve");
-        assertEquals(SqliteNativeResultCodes.DONE, insert.step());
+        assertEquals(SqliteNativeResultCode.code("DONE"), insert.step());
       }
       try (SqliteNativeStatement query =
           SqliteNativeStatements.prepare(database, "select label from sample")) {
-        assertEquals(SqliteNativeResultCodes.ROW, query.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), query.step());
         assertEquals("Cash\0Reserve", query.columnText(0));
       }
     }
@@ -209,7 +209,7 @@ class SqliteNativeInteropTest {
               select
                   null, null, null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, missingPrior.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), missingPrior.step());
         assertEquals(PostingLineage.direct(), SqlitePostingMapper.readPostingLineage(missingPrior));
       }
       try (SqliteNativeStatement missingPriorForWrapper =
@@ -219,7 +219,7 @@ class SqliteNativeInteropTest {
               select
                   null, null, null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, missingPriorForWrapper.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), missingPriorForWrapper.step());
         assertEquals(
             java.util.Optional.empty(),
             SqlitePostingMapper.readReversalReference(missingPriorForWrapper));
@@ -231,7 +231,7 @@ class SqliteNativeInteropTest {
               select
                   null, null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, 'posting-1'
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, presentPriorPostingId.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), presentPriorPostingId.step());
         assertEquals(
             PostingLineage.reversal(
                 new dev.erst.fingrind.core.ReversalReference(
@@ -246,7 +246,7 @@ class SqliteNativeInteropTest {
               select
                   null, null, null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, missingReason.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), missingReason.step());
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
@@ -262,7 +262,7 @@ class SqliteNativeInteropTest {
               select
                   null, null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, null
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, missingPriorPostingId.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), missingPriorPostingId.step());
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
@@ -298,7 +298,7 @@ class SqliteNativeInteropTest {
                   'CLI',
                   null
               """)) {
-        assertEquals(SqliteNativeResultCodes.ROW, postingRow.step());
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
             List.of(
                 new JournalLine(

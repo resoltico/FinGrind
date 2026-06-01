@@ -92,7 +92,7 @@ final class SqliteNativeProtectedBookRuntime {
                           MemorySegment.NULL,
                           fileControlCode,
                           reservedBytesPointer));
-      if (resultCode != SqliteNativeResultCodes.OK) {
+      if (resultCode != SqliteNativeResultCode.code("OK")) {
         throw SqliteNativeErrors.failure(resultCode, database.sqliteApi());
       }
       return reservedBytesPointer.get(ValueLayout.JAVA_INT, 0L);

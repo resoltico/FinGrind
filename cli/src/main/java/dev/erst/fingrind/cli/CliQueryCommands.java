@@ -24,19 +24,18 @@ record InspectBook(BookAccess bookAccess, OutputMode outputMode)
 }
 
 /** Query CLI commands that inspect existing book data without mutating it. */
-record ListAccounts(BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  ListAccounts {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(query, "query");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class ListAccounts extends CliBookQueryOutputModeCommand<ListAccountsQuery> {
+  ListAccounts(BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode) {
+    super(bookAccess, query, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
-        .query()
-        .runListAccountsCommand(bookAccess, query, outputMode);
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      ListAccountsQuery query,
+      OutputMode outputMode) {
+    return executionContext.query().runListAccountsCommand(bookAccess, query, outputMode);
   }
 }
 
@@ -58,18 +57,17 @@ record GetPosting(BookAccess bookAccess, PostingId postingId, OutputMode outputM
 }
 
 /** Query CLI commands that inspect existing book data without mutating it. */
-record ListPostings(BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  ListPostings {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(query, "query");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class ListPostings extends CliBookQueryOutputModeCommand<ListPostingsQuery> {
+  ListPostings(BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode) {
+    super(bookAccess, query, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
-        .query()
-        .runListPostingsCommand(bookAccess, query, outputMode);
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      ListPostingsQuery query,
+      OutputMode outputMode) {
+    return executionContext.query().runListPostingsCommand(bookAccess, query, outputMode);
   }
 }

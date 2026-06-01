@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 /** Digest parsing and hashing support for the managed SQLite library contract. */
 final class SqliteManagedLibraryDigestSupport {
   private static final Pattern CHECKSUM_LINE = Pattern.compile("^([0-9a-fA-F]{64})\\s+\\*?(.+)$");
-  private static final String TRUSTED_CHECKSUM_SUFFIX = ".trusted.sha256";
 
   private SqliteManagedLibraryDigestSupport() {}
 
@@ -34,12 +33,6 @@ final class SqliteManagedLibraryDigestSupport {
   static Path checksumPath(Path libraryPath) {
     Path normalizedLibraryPath = normalizedLibraryPath(libraryPath);
     return normalizedLibraryPath.resolveSibling(normalizedLibraryPath.getFileName() + ".sha256");
-  }
-
-  static Path trustedChecksumPath(Path libraryPath) {
-    Path normalizedLibraryPath = normalizedLibraryPath(libraryPath);
-    return normalizedLibraryPath.resolveSibling(
-        normalizedLibraryPath.getFileName() + TRUSTED_CHECKSUM_SUFFIX);
   }
 
   static String expectedSha256(Path checksumPath, String expectedFileName) {
@@ -119,11 +112,6 @@ final class SqliteManagedLibraryDigestSupport {
     }
   }
 
-  static String trustedIdentitySourceDescription(Path trustedChecksumPath) {
-    return "trusted FinGrind managed SQLite digest file at "
-        + trustedChecksumPath.toAbsolutePath().normalize();
-  }
-
   static String identitySourceDescription(Path checksumPath) {
     return "sibling SHA-256 file " + checksumPath.toAbsolutePath().normalize();
   }
@@ -141,16 +129,6 @@ final class SqliteManagedLibraryDigestSupport {
             + libraryPath
             + " is missing the sibling SHA-256 file "
             + checksumPath
-            + ". Rebuild the managed runtime with ./gradlew prepareManagedSqlite, or use the published FinGrind bundle without relocating library files.");
-  }
-
-  static IllegalStateException missingTrustedChecksumFile(
-      Path libraryPath, Path trustedChecksumPath) {
-    return new IllegalStateException(
-        "Managed SQLite library at "
-            + libraryPath
-            + " is missing the trusted FinGrind digest file "
-            + trustedChecksumPath
             + ". Rebuild the managed runtime with ./gradlew prepareManagedSqlite, or use the published FinGrind bundle without relocating library files.");
   }
 

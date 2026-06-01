@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -147,6 +147,7 @@ Repo-owned JSON contract snapshots back that typed public surface:
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json`
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-module-discovery-contract.json`
 - `contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json`
 
 Build logic, runtime loaders, shell verifiers, and distribution assembly must consume those shared
@@ -428,8 +429,8 @@ regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
 source, compiles its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library
-from `../third_party/sqlite/`, writes both the local-consistency `.sha256` file and the
-publisher-trust `.trusted.sha256` sidecar for that built library, and resolves that managed
+from `../third_party/sqlite/`, writes the local-consistency `.sha256` file for that built
+library, and resolves that managed
 runtime from its prepared nested build layout for deterministic tests, regression replay, and
 local active fuzzing commands.
 

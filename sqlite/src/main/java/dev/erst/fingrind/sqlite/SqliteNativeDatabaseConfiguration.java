@@ -52,7 +52,7 @@ final class SqliteNativeDatabaseConfiguration {
                           SqliteNativeCalls.AddressAddressIntToIntCall.class,
                           database.sqliteApi().sqlite3Rekey())
                       .invoke(database.handle(), keyBuffer.pointer(), bookPassphrase.byteLength()));
-      if (resultCode != SqliteNativeResultCodes.OK) {
+      if (resultCode != SqliteNativeResultCode.code("OK")) {
         throw SqliteNativeErrors.failure(resultCode, database.sqliteApi());
       }
     }

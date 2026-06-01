@@ -130,7 +130,7 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
               null,
               null,
               null,
-              fileControlHandle(SqliteNativeResultCodes.CANTOPEN, 0));
+              fileControlHandle(SqliteNativeResultCode.code("CANTOPEN"), 0));
       // This wrapper aliases the live handle owned by `database`; closing it here would
       // double-close.
       SqliteNativeDatabase probingDatabase =
@@ -139,7 +139,7 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
           assertThrows(
               SqliteNativeException.class,
               () -> SqliteProtectedBookFormatIntrospection.openedBookFormat(probingDatabase));
-      assertEquals(SqliteNativeResultCodes.CANTOPEN, exception.resultCode());
+      assertEquals(SqliteNativeResultCode.code("CANTOPEN"), exception.resultCode());
       assertEquals("SQLITE_CANTOPEN", exception.resultName());
     }
   }
@@ -253,7 +253,7 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
                       "kdf_iter", 777,
                       "plaintext_header_size", 16)),
               constantMethodHandle(arena.allocateFrom("chacha20"), int.class),
-              fileControlHandle(SqliteNativeResultCodes.OK, 32));
+              fileControlHandle(SqliteNativeResultCode.code("OK"), 32));
       SqliteNativeDatabase probingDatabase =
           new SqliteNativeDatabase(database.handle(), probingApi);
       ProtectedBookFormatContract contract =
@@ -399,7 +399,7 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
       MemorySegment fileName,
       int operation,
       MemorySegment resultPointer) {
-    if (resultCode == SqliteNativeResultCodes.OK) {
+    if (resultCode == SqliteNativeResultCode.code("OK")) {
       resultPointer.set(ValueLayout.JAVA_INT, 0L, reserveBytes);
     }
     return resultCode;

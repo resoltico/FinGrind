@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: INDEX
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -73,6 +73,8 @@ route:
 | `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountingEvidence` | `DOC_01_Core.md` | `AccountingEvidence` |
+| `AccountingKernelProfileId` | `DOC_01_Core.md` | `AccountingKernelProfileId` |
+| `AccountingKernelProfiles` | `DOC_01_Core.md` | `AccountingKernelProfiles` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
 | `ActorType` | `DOC_01_Core.md` | `ActorType` |
 | `ApprovalDecision` | `DOC_01_Core.md` | `ApprovalDecision` |
@@ -145,6 +147,7 @@ route:
 | `ContractErrors.Descriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailure` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailureException` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `DiscoveryFocus` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryFocus` |
 | `ContractRequestShapes` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.EnumVocabularyDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |

@@ -100,208 +100,210 @@ final class ProtocolQueryOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.ACCOUNT_CODE,
                             ProtocolOptions.LIMIT)))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.ACCOUNT_BALANCE,
-                OperationCategory.QUERY,
-                "Account Balance",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    ProtocolOptions.ACCOUNT_CODE + " <account-code>",
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-                    ProtocolOptions.optionalPostingCoverageSyntax(),
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute grouped per-currency balances for one declared account.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s ./reports/cash-balance.pdf"
-                            .formatted(
-                                OperationId.ACCOUNT_BALANCE.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.ACCOUNT_CODE,
-                                ProtocolOptions.PDF_OUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.TRIAL_BALANCE,
-                OperationCategory.QUERY,
-                "Trial Balance",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one book-wide trial balance as of the selected effective date or the latest committed posting date when no date filter is supplied.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s text"
-                            .formatted(
-                                OperationId.TRIAL_BALANCE.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.ACCOUNT_LEDGER,
-                OperationCategory.QUERY,
-                "Account Ledger",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    ProtocolOptions.ACCOUNT_CODE + " <account-code>",
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-                    ProtocolOptions.optionalPostingCoverageSyntax(),
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 2026-04-01 %s 2026-04-30 %s ./reports/cash-ledger.pdf %s text"
-                            .formatted(
-                                OperationId.ACCOUNT_LEDGER.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.ACCOUNT_CODE,
-                                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.PERIOD_SUMMARY,
-                OperationCategory.QUERY,
-                "Period Summary",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
-                    ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
-                    ProtocolOptions.optionalPostingCoverageSyntax(),
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s text"
-                            .formatted(
-                                OperationId.PERIOD_SUMMARY.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.FINANCIAL_POSITION,
-                OperationCategory.QUERY,
-                "Financial Position",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one statement of financial position as of the selected effective date or the latest committed posting date when no date filter is supplied.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/financial-position.pdf %s text"
-                            .formatted(
-                                OperationId.FINANCIAL_POSITION.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.INCOME_STATEMENT,
-                OperationCategory.QUERY,
-                "Income Statement",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
-                    ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one bounded income statement for the selected reporting period.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/income-statement.pdf %s text"
-                            .formatted(
-                                OperationId.INCOME_STATEMENT.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))),
-        ProtocolOperationDefinitions.operation(
-            new ProtocolOperationDefinitions.OperationDefinition(
-                OperationId.CHANGES_IN_EQUITY,
-                OperationCategory.QUERY,
-                "Changes In Equity",
-                List.of(),
-                List.of(
-                    ProtocolOptions.BOOK_FILE + " <path>",
-                    ProtocolOptions.currentPassphraseSourceSyntax(),
-                    ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
-                    ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
-                    ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(
-                        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-                List.of(ProtocolArtifactOutput.pdf()),
-                "Compute one bounded statement of changes in equity for the selected reporting period.",
-                List.of(
-                    ProtocolExampleStep.command(
-                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/changes-in-equity.pdf %s text"
-                            .formatted(
-                                OperationId.CHANGES_IN_EQUITY.wireName(),
-                                ProtocolOptions.BOOK_FILE,
-                                ProtocolOptions.BOOK_KEY_FILE,
-                                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                                ProtocolOptions.EFFECTIVE_DATE_TO,
-                                ProtocolOptions.PDF_OUT,
-                                ProtocolOptions.OUTPUT))))));
+        accountWindowReportOperation(
+            OperationId.ACCOUNT_BALANCE,
+            "Account Balance",
+            "Compute grouped per-currency balances for one declared account.",
+            accountBalanceExample()),
+        asOfReportOperation(
+            OperationId.TRIAL_BALANCE,
+            "Trial Balance",
+            "Compute one book-wide trial balance as of the selected effective date or the current book horizon when no date filter is supplied.",
+            trialBalanceExample()),
+        accountWindowReportOperation(
+            OperationId.ACCOUNT_LEDGER,
+            "Account Ledger",
+            "Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.",
+            accountLedgerExample()),
+        periodReportOperation(
+            OperationId.PERIOD_SUMMARY,
+            "Period Summary",
+            true,
+            "Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
+            periodSummaryExample()),
+        asOfReportOperation(
+            OperationId.FINANCIAL_POSITION,
+            "Financial Position",
+            "Compute one statement of financial position as of the selected effective date or the current book horizon when no date filter is supplied.",
+            financialPositionExample()),
+        periodReportOperation(
+            OperationId.INCOME_STATEMENT,
+            "Income Statement",
+            false,
+            "Compute one bounded income statement for the selected reporting period.",
+            incomeStatementExample()),
+        periodReportOperation(
+            OperationId.CHANGES_IN_EQUITY,
+            "Changes In Equity",
+            false,
+            "Compute one bounded statement of changes in equity for the selected reporting period.",
+            changesInEquityExample()));
+  }
+
+  private static ProtocolOperation accountWindowReportOperation(
+      OperationId operationId, String title, String description, String example) {
+    return pdfQueryOperation(
+        operationId, title, accountWindowInvocationSyntax(), description, example);
+  }
+
+  private static ProtocolOperation asOfReportOperation(
+      OperationId operationId, String title, String description, String example) {
+    return pdfQueryOperation(operationId, title, asOfInvocationSyntax(), description, example);
+  }
+
+  private static ProtocolOperation periodReportOperation(
+      OperationId operationId,
+      String title,
+      boolean includePostingCoverage,
+      String description,
+      String example) {
+    return pdfQueryOperation(
+        operationId, title, periodInvocationSyntax(includePostingCoverage), description, example);
+  }
+
+  private static ProtocolOperation pdfQueryOperation(
+      OperationId operationId,
+      String title,
+      List<String> invocationSyntax,
+      String description,
+      String example) {
+    return ProtocolOperationDefinitions.operation(
+        new ProtocolOperationDefinitions.OperationDefinition(
+            operationId,
+            OperationCategory.QUERY,
+            title,
+            List.of(),
+            invocationSyntax,
+            ExecutionMode.JSON_ENVELOPE,
+            pdfOutputModes(),
+            pdfArtifactOutputs(),
+            description,
+            List.of(ProtocolExampleStep.command(example))));
+  }
+
+  private static List<String> accountWindowInvocationSyntax() {
+    return List.of(
+        ProtocolOptions.BOOK_FILE + " <path>",
+        ProtocolOptions.currentPassphraseSourceSyntax(),
+        ProtocolOptions.ACCOUNT_CODE + " <account-code>",
+        "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
+        "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
+        ProtocolOptions.optionalPostingCoverageSyntax(),
+        ProtocolOptions.optionalPdfOutSyntax(),
+        ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+  }
+
+  private static List<String> asOfInvocationSyntax() {
+    return List.of(
+        ProtocolOptions.BOOK_FILE + " <path>",
+        ProtocolOptions.currentPassphraseSourceSyntax(),
+        "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
+        ProtocolOptions.optionalPdfOutSyntax(),
+        ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+  }
+
+  private static List<String> periodInvocationSyntax(boolean includePostingCoverage) {
+    List<String> invocationSyntax =
+        new java.util.ArrayList<>(
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
+                ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>"));
+    if (includePostingCoverage) {
+      invocationSyntax.add(ProtocolOptions.optionalPostingCoverageSyntax());
+    }
+    invocationSyntax.add(ProtocolOptions.optionalPdfOutSyntax());
+    invocationSyntax.add(ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+    return List.copyOf(invocationSyntax);
+  }
+
+  private static List<OutputMode> pdfOutputModes() {
+    return List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV);
+  }
+
+  private static List<ProtocolArtifactOutput> pdfArtifactOutputs() {
+    return List.of(ProtocolArtifactOutput.pdf());
+  }
+
+  private static String accountBalanceExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s ./reports/cash-balance.pdf"
+        .formatted(
+            OperationId.ACCOUNT_BALANCE.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.ACCOUNT_CODE,
+            ProtocolOptions.PDF_OUT);
+  }
+
+  private static String trialBalanceExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s text"
+        .formatted(
+            OperationId.TRIAL_BALANCE.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
+  }
+
+  private static String accountLedgerExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 2026-04-01 %s 2026-04-30 %s ./reports/cash-ledger.pdf %s text"
+        .formatted(
+            OperationId.ACCOUNT_LEDGER.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.ACCOUNT_CODE,
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
+  }
+
+  private static String periodSummaryExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s text"
+        .formatted(
+            OperationId.PERIOD_SUMMARY.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
+  }
+
+  private static String financialPositionExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/financial-position.pdf %s text"
+        .formatted(
+            OperationId.FINANCIAL_POSITION.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
+  }
+
+  private static String incomeStatementExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/income-statement.pdf %s text"
+        .formatted(
+            OperationId.INCOME_STATEMENT.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
+  }
+
+  private static String changesInEquityExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/changes-in-equity.pdf %s text"
+        .formatted(
+            OperationId.CHANGES_IN_EQUITY.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PDF_OUT,
+            ProtocolOptions.OUTPUT);
   }
 }

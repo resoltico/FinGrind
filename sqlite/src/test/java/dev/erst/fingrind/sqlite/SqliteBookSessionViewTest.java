@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,14 +15,18 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.executor.PeriodResultTransferService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
@@ -157,6 +162,70 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertNotSame(postingFactStore, rekeySession);
       assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
       assertEquals(postingFactStore.inspectBook(), readSession.inspectBook());
+    }
+  }
+
+  @Test
+  void
+      periodResultTransferSession_delegatesHighLevelAndLowLevelTransfersWithoutOwningStoreLifecycle() {
+    LocalDate effectiveDate = LocalDate.parse("2026-04-07");
+    Instant transferredAt = Instant.parse("2026-04-19T10:15:30Z");
+    Path databasePath = tempDirectory.resolve("period-result-transfer-session.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      AccountDeclarationOutcome.Declared declared =
+          assertInstanceOf(
+              AccountDeclarationOutcome.Declared.class,
+              postingFactStore.declareAccount(
+                  new AccountCode("3200"),
+                  new AccountName("Retained Earnings"),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+                  transferredAt));
+      assertEquals(new AccountCode("3200"), declared.account().accountCode());
+      commitPosting(
+          postingFactStore,
+          postingFact(
+              "posting-1",
+              "idem-1",
+              effectiveDate,
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
+
+      PeriodResultTransferOutcome.Transferred transferred =
+          assertInstanceOf(
+              PeriodResultTransferOutcome.Transferred.class,
+              new PeriodResultTransferService(
+                      periodResultTransferSession,
+                      periodResultTransferSession,
+                      () -> new PostingId("period-result-transfer-1"),
+                      java.time.Clock.fixed(transferredAt, java.time.ZoneOffset.UTC))
+                  .transferPeriodResult(new ReportingPeriod(effectiveDate, effectiveDate)));
+
+      assertEquals(1, transferred.transferredPeriodResult().transferOrder());
+      assertEquals(
+          Optional.of(effectiveDate),
+          periodResultTransferSession.transferredThroughEffectiveDate());
+      assertEquals(2, periodResultTransferSession.postings(EffectiveDateRange.unbounded()).size());
+    }
+
+    Path missingBookPath = tempDirectory.resolve("period-result-transfer-session-missing.sqlite");
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(missingStore)) {
+      assertEquals(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          assertInstanceOf(
+                  SqlitePeriodResultTransferCapabilitySession.class, periodResultTransferSession)
+              .transferPeriodResult(
+                  emptyPeriodResultTransferDraft(effectiveDate, transferredAt),
+                  () -> new PostingId("unused")));
     }
   }
 
@@ -642,8 +711,14 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
         SqlitePeriodResultTransferSession periodResultTransferSession =
             SqliteCapabilitySessions.periodResultTransfer(missingStore)) {
-      return periodResultTransferSession.transferPeriodResult(
-          emptyPeriodResultTransferDraft(), () -> new PostingId("unused"));
+      return new PeriodResultTransferService(
+              periodResultTransferSession,
+              periodResultTransferSession,
+              () -> new PostingId("unused"),
+              java.time.Clock.fixed(
+                  Instant.parse("2026-04-07T10:15:30Z"), java.time.ZoneOffset.UTC))
+          .transferPeriodResult(
+              new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")));
     }
   }
 
@@ -664,15 +739,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
-  private static PeriodResultTransferDraft emptyPeriodResultTransferDraft() {
-    return new PeriodResultTransferDraft(
-        new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
-        new AccountCode("3200"),
-        List.of(),
-        Instant.parse("2026-04-07T10:15:30Z"),
-        List.of());
-  }
-
   private static BookAdministrationStore administrationView(
       SqlitePostingFactStore postingFactStore) {
     return SqliteCapabilitySessions.administration(postingFactStore);
@@ -688,6 +754,16 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
 
   private static BookkeepingReadStore readView(SqlitePostingFactStore postingFactStore) {
     return SqliteCapabilitySessions.read(postingFactStore);
+  }
+
+  private static PeriodResultTransferDraft emptyPeriodResultTransferDraft(
+      LocalDate effectiveDate, Instant transferredAt) {
+    return new PeriodResultTransferDraft(
+        new ReportingPeriod(effectiveDate, effectiveDate),
+        new AccountCode("3200"),
+        List.of(),
+        transferredAt,
+        List.of());
   }
 
   private static CurrencyBalance balance(

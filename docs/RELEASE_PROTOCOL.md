@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -407,22 +407,22 @@ commit matches the remote tag, the tag version matches `gradle.properties`, the 
 still reachable from `origin/main`, and the release-blocking CI set is still green on that exact
 commit before any publication workflow is trusted.
 
-The tag push is what triggers the Release and Container workflows. The PR merge alone does
-not. These are two separate actions — both are required.
+The tag push is what triggers the `Release` workflow. The PR merge alone does not. The same
+workflow now owns bundle publication, GitHub Release verification, container publication, and
+public-container verification.
 
 If either publication workflow later needs a targeted rerun against the existing tag, use:
 
 ```bash
 gh workflow run release.yml -f release_tag=vX.Y.Z
-gh workflow run container.yml -f release_tag=vX.Y.Z
 ```
 
-If the tag-triggered `Release` or `Container` workflow fails because the workflow definition
-itself is wrong — for example a missing permission, broken verifier wiring, or an incorrect
-publication timeout — do **not** move the tag and do **not** cut a second release tag. Fix the
-workflow on `main`, merge that fix, and then use the `workflow_dispatch` rerun commands above
-against the existing `vX.Y.Z` tag so the rebuilt assets and container are produced from the same
-verified release commit.
+If the tag-triggered `Release` workflow fails because the workflow definition itself is wrong —
+for example a missing permission, broken verifier wiring, or an incorrect publication timeout —
+do **not** move the tag and do **not** cut a second release tag. Fix the workflow on `main`,
+merge that fix, and then use the `workflow_dispatch` rerun command above against the existing
+`vX.Y.Z` tag so the rebuilt assets and container are produced from the same verified release
+commit.
 
 If the repair changes how `release.yml` parses `:cli:bundleCliArchive` output, verify that the
 rerun workflow accepts both the current `main` output contract and the immutable tag's output
@@ -430,21 +430,20 @@ contract before dispatching it. `workflow_dispatch` executes the workflow file f
 checks out the tagged release source; those surfaces can legitimately differ after a post-tag
 publication repair.
 
-If the repair changes container publication, verify that `container.yml` builds from the staged
-Docker context at `cli/build/docker-context` instead of the repository root before dispatching the
-rerun. The local Docker acceptance gate already proves the staged context path; the public
-container workflow must publish from that same checked assembly boundary rather than reopening the
-checkout root under repository-root `.dockerignore` rules. The tagged rerun must also materialize
-workflow-owned helper scripts from `main` before it replays the immutable tag checkout; otherwise
-the rerun will silently keep the stale tag-owned verifier or release-asset helper and ignore the
-merged repair.
+If the repair changes container publication, verify that the `Release` workflow's `container` job
+builds from the staged Docker context at `cli/build/docker-context` instead of the repository root
+before dispatching the rerun. The local Docker acceptance gate already proves the staged context
+path; the public container publication path must reuse that same checked assembly boundary rather
+than reopening the checkout root under repository-root `.dockerignore` rules. The tagged rerun
+must also materialize workflow-owned helper scripts from `main` before it replays the immutable
+tag checkout; otherwise the rerun will keep the stale tag-owned verifier or release-asset helper
+and ignore the merged repair.
 
 Never create a second tag or move an existing release tag just to retry CI.
 
-The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`
-internally before they build or publish anything. That guard is intentional: tag-driven release
-publication must not depend on an operator remembering the verification step only from the prose
-protocol.
+The `Release` workflow also runs `./scripts/verify-release-candidate-tag.sh` internally before it
+builds or publishes anything. That guard is intentional: tag-driven release publication must not
+depend on an operator remembering the verification step only from the prose protocol.
 
 ### Step 6
 
@@ -488,7 +487,6 @@ Monitor workflows with duplicate-run awareness.
 ```bash
 TAG_SHA=$(git rev-list -n 1 vX.Y.Z)
 gh run list --workflow=release.yml --commit "$TAG_SHA" --event=push --limit=10
-gh run list --workflow=container.yml --commit "$TAG_SHA" --event=push --limit=10
 ```
 
 Do not assume there is exactly one run per workflow. A single tag push may produce multiple runs
@@ -496,14 +494,13 @@ for the same workflow. Treat the workflow boundary as a **handoff checkpoint**:
 
 1. Resolve the tag commit with `git rev-list -n 1 vX.Y.Z`.
 2. Enumerate **all** `release.yml` runs for that commit.
-3. Enumerate **all** `container.yml` runs for that commit.
-4. Inspect each run that is not `completed/success` with:
+3. Inspect each run that is not `completed/success` with:
 
 ```bash
 gh run view <run-id> --log-failed
 ```
 
-5. Verify the external GitHub state directly before deciding the release is failed.
+4. Verify the external GitHub state directly before deciding the release is failed.
 
 Rules:
 
@@ -537,18 +534,7 @@ Do not infer release publication from workflow success alone. Verify the release
 
 ```bash
 gh release view vX.Y.Z --json tagName,isDraft,isPrerelease,publishedAt,url,assets
-./scripts/verify-github-release.sh \
-  vX.Y.Z \
-  fingrind-X.Y.Z-macos-aarch64.tar.gz \
-  fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256 \
-  fingrind-X.Y.Z-macos-x86_64.tar.gz \
-  fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256 \
-  fingrind-X.Y.Z-linux-x86_64.tar.gz \
-  fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256 \
-  fingrind-X.Y.Z-linux-aarch64.tar.gz \
-  fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256 \
-  fingrind-X.Y.Z-windows-x86_64.zip \
-  fingrind-X.Y.Z-windows-x86_64.zip.sha256
+./scripts/verify-github-release.sh vX.Y.Z
 ```
 
 Requirements:
@@ -578,9 +564,14 @@ Requirements:
   themselves. Upload the bundle and checksum files first, download the published bytes back from
   GitHub on a neutral attestation job, and attest those downloaded files. Do not attest
   runner-local build outputs directly.
+- The release workflow must also attest the runner-built archive and checksum bytes on each
+  target runner before publication so build-output provenance and public-byte provenance both
+  exist and can be compared by digest.
 - Publication convergence is by asset name and digest, not by asset name alone. If a repaired
   rerun rebuilds `fingrind-X.Y.Z-...` under an existing release asset name and the bytes differ,
   the publication step must replace the stale release asset before attestation verification runs.
+- Every published checksum file must target the matching archive name and its declared digest must
+  match the downloadable archive bytes.
 - The generated GitHub source archives do not include repo-owned agent metadata such as
   `AGENTS.md` or `.codex/**`.
 
@@ -594,14 +585,15 @@ release object and the published attestation-backed provenance of the shipped bu
 `./scripts/verify-github-release.sh` also runs `./scripts/verify-security-policy-surface.sh`, so
 public release verification fails if the repository's private vulnerability reporting surface no
 longer matches the checked-in security policy.
-The release and container workflows both carry an explicit retry budget for release-asset and
-attestation propagation because GitHub can publish those surfaces asynchronously after the bundle
-jobs complete. The release workflow's verifier job timeout must exceed that retry budget with
-headroom; treat a shorter timeout as a release-system defect.
+The release workflow carries an explicit retry budget for release-asset and attestation
+propagation because GitHub can publish those surfaces asynchronously after the bundle jobs
+complete. The release workflow's verifier job timeout must exceed that retry budget with headroom;
+treat a shorter timeout as a release-system defect.
 
-The container workflow is also expected to wait for this complete GitHub release asset set before
-it publishes the public image. If container publication succeeds while the release asset set is
-incomplete, treat that as a release-system defect and fix the repository before the next release.
+The release workflow's `container` job is also expected to wait for this complete GitHub release
+asset set before it publishes the public image. If container publication succeeds while the
+release asset set is incomplete, treat that as a release-system defect and fix the repository
+before the next release.
 
 ### Step 9
 
@@ -619,11 +611,20 @@ gh release view vX.Y.Z
 ./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
 ```
 
-The verifier retries anonymous exact-tag and `latest` pulls until both containers report the
-target release version through `version --output json`. A successful `docker pull` alone is not
-sufficient verification. In particular: a multi-arch `docker pull` can succeed even when the
-platform manifests have been deleted — the index manifest is still present but the image is not
+The verifier always retries anonymous exact-tag pulls until the container reports the target
+release version through `version --output json`. When the release owns the canonical `latest`
+pointer, it also verifies `latest` through that same check. A successful `docker pull` alone is
+not sufficient verification. In particular: a multi-arch `docker pull` can succeed even when the
+platform manifests have been deleted — the index manifest is present but the image is not
 actually runnable. The `docker run ... version --output json` check is the definitive test.
+
+If you are replaying a historical stable release that no longer owns `latest`, disable the
+`latest` check explicitly:
+
+```bash
+FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST=false \
+  ./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
+```
 
 The temporary mounted-book workflow is also mandatory. It proves that the published public image
 can still perform one end-to-end bookkeeping/reporting loop, not just print discovery metadata.
@@ -644,9 +645,9 @@ request fields — or when the mounted-workspace user contract changes — updat
 `scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
 process where the operator-side verifier lags behind the published statement surface.
 
-The tagged container workflow runs this same verifier after image publication, so a green
-container workflow and a green Step 9 operator run now speak to the same public contract rather
-than two different verification depths.
+The release workflow's `container` job runs this same verifier after image publication, so a
+green publication workflow and a green Step 9 operator run now speak to the same public contract
+rather than two different verification depths.
 
 If the public verifier fails, inspect the reported step, fix the published state or the verifier
 owner if the probe itself is wrong, and rerun the same anonymous verification command. Do not
@@ -661,9 +662,10 @@ published per release; there is no `X.Y` floating tag.
 Only after the full anonymous pull, run, mounted-book, and PDF verification sequence succeeds
 report to the user: the release is publicly available.
 
-The container workflow is expected to perform the exact-tag and `latest` pull-and-run verification
-internally after publication. The operator-side verification remains mandatory because public
-availability, not workflow success, is the authoritative state.
+The release workflow is expected to perform the exact-tag pull-and-run verification internally
+after publication, and to perform the `latest` proof only when the release owns the canonical
+`latest` pointer. The operator-side verification remains mandatory because public availability,
+not workflow success, is the authoritative state.
 
 ### Step 10
 
@@ -812,7 +814,8 @@ decision before landing on `main`.
 
 ### Required gates before any Dependabot merge
 
-1. The full CI `Gate` check passes on the Dependabot PR head commit (i.e., all jobs in `ci.yml` succeeded or were correctly skipped).
+1. The full CI `Gate` check passes on the Dependabot PR head commit, and every release-blocking
+   job in `ci.yml` concluded with `success`.
 2. For Docker base image updates: `docker-smoke` specifically passes, confirming the new base image does not break the containerized runtime.
 3. For Gradle dependency updates that touch `sqlite` or `sqlite3mc`: the `Verify managed SQLite CLI runtime` step in `check` passes and the managed SQLite hash in `gradle.properties` is still consistent.
 4. For GitHub Actions updates: the pinned commit SHA in the workflow file matches the SHA of the tagged release being adopted — verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`.

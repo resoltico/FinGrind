@@ -10,15 +10,6 @@ final class IncomeStatementPdfRenderer {
   void render(PdfPageWriter pageWriter, IncomeStatementReport report) throws IOException {
     Objects.requireNonNull(pageWriter, "pageWriter");
     Objects.requireNonNull(report, "report");
-    pageWriter.writeKeyValueTable(
-        "Parameters",
-        PdfStatementMetadataRows.statementParameters(
-            report.bookIdentity(),
-            report.comparativeEffectiveDateRange(),
-            report.postingCoverage(),
-            List.of(
-                List.of("Effective date from", report.effectiveDateFrom().toString()),
-                List.of("Effective date to", report.effectiveDateTo().toString()))));
     PdfStatementSectionTableRenderer.renderSections(
         pageWriter,
         report.sections(),
@@ -41,5 +32,14 @@ final class IncomeStatementPdfRenderer {
       PdfBalanceTableSupport.writeSummaryTable(
           pageWriter, "Comparative Net Income Totals", report.comparativeNetIncomeTotals());
     }
+    pageWriter.writeKeyValueTable(
+        "Context",
+        PdfStatementMetadataRows.statementParameters(
+            report.bookIdentity(),
+            report.comparativeEffectiveDateRange(),
+            report.postingCoverage(),
+            List.of(
+                List.of("Effective date from", report.effectiveDateFrom().toString()),
+                List.of("Effective date to", report.effectiveDateTo().toString()))));
   }
 }

@@ -63,6 +63,30 @@ def build_release_smoke_scenario(
             / "nested"
             / f"--entity [{normalized_scenario_id}].key",
         ),
+        backup_book=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("backup odd")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "nested"
+            / f"-entity backup [{normalized_scenario_id}].sqlite",
+        ),
+        backup_book_key=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("backup odd")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "nested"
+            / f"--entity backup [{normalized_scenario_id}].key",
+        ),
+        restored_book=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("restored odd")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "nested"
+            / f"-entity restored [{normalized_scenario_id}].sqlite",
+        ),
         replacement_book_key=smoke_path(
             work_root,
             normalized_path_mode,

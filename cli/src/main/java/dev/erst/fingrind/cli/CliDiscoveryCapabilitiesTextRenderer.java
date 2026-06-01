@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.StorageEngine;
 
 /** Renders operator-facing capability inventory text for the CLI discovery surface. */
 final class CliDiscoveryCapabilitiesTextRenderer {
@@ -16,11 +17,14 @@ final class CliDiscoveryCapabilitiesTextRenderer {
             java.util.List.of(
                 java.util.List.of("Application", capabilitiesDescriptor.application()),
                 java.util.List.of("Version", capabilitiesDescriptor.version()),
-                java.util.List.of("Book boundary", storageDescriptor.bookBoundary()),
                 java.util.List.of(
-                    "Storage",
+                    "Book boundary", displayBookBoundary(storageDescriptor.bookBoundary())),
+                java.util.List.of(
+                    "Storage engine",
                     CliTextFormat.joined(
-                        storageDescriptor.engines().stream().map(Object::toString).toList()))),
+                        storageDescriptor.engines().stream()
+                            .map(CliDiscoveryCapabilitiesTextRenderer::displayStorageEngine)
+                            .toList()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     String operatorOverview =
         CliTextFormat.renderKeyValueBlock(
@@ -32,11 +36,7 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                     "Built-in statements",
                     CliTextFormat.joined(
                         capabilitiesDescriptor.bookkeepingKernel().builtInStatements())),
-                java.util.List.of(
-                    "Currency model",
-                    capabilitiesDescriptor.currencyModel().scope()
-                        + " / "
-                        + capabilitiesDescriptor.currencyModel().multiCurrencyStatus()),
+                java.util.List.of("Currency model", displayCurrencyModel(capabilitiesDescriptor)),
                 java.util.List.of(
                     "Discovery commands", Integer.toString(commandCatalog.discovery().size())),
                 java.util.List.of(
@@ -47,25 +47,48 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                 java.util.List.of(
                     "Write commands", Integer.toString(commandCatalog.write().size()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String automation =
+    String operatorNextSteps =
         CliTextFormat.renderKeyValueBlock(
             java.util.List.of(
                 java.util.List.of(
                     "Operator guide", CliInvocationText.commandExample(OperationId.HELP)),
                 java.util.List.of(
-                    "Machine-readable contract",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES) + " --output json"),
-                java.util.List.of(
-                    "Live runtime evidence",
-                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json"),
+                    "First report path",
+                    CliInvocationText.commandExample(OperationId.HELP)
+                        + " "
+                        + OperationId.TRIAL_BALANCE.wireName()),
                 java.util.List.of("PDF-capable reports", pdfCapableReportSummary())),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    String machineRetrieval =
+        CliTextFormat.renderKeyValueBlock(
+            java.util.List.of(
+                java.util.List.of(
+                    "Command families",
+                    CliInvocationText.commandExample(OperationId.HELP)
+                        + " --output json --category query"),
+                java.util.List.of(
+                    "Command contracts",
+                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json --focus commands --category query"),
+                java.util.List.of(
+                    "Request-file contract",
+                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json --focus request-input"),
+                java.util.List.of(
+                    "Book and storage contract",
+                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
+                        + " --output json --focus storage"),
+                java.util.List.of(
+                    "Runtime evidence",
+                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json")),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         CliDiscoveryTextSupport.joinSections(
             header,
-            CliDiscoveryTextSupport.section("What Exists", operatorOverview),
-            CliDiscoveryTextSupport.section("Contracts And Automation", automation)));
+            CliDiscoveryTextSupport.section("Operator Overview", operatorOverview),
+            CliDiscoveryTextSupport.section("Next Steps", operatorNextSteps),
+            CliDiscoveryTextSupport.section("For Agents And Automation", machineRetrieval)));
   }
 
   private static String displayKernelScope(String scope) {
@@ -89,5 +112,30 @@ final class CliDiscoveryCapabilitiesTextRenderer {
         + ", and "
         + CliInvocationText.commandExample(OperationId.CHANGES_IN_EQUITY)
         + " can emit pdf via --pdf-out <path>.";
+  }
+
+  private static String displayCurrencyModel(CapabilitiesDescriptor capabilitiesDescriptor) {
+    String scope = displayKernelScope(capabilitiesDescriptor.currencyModel().scope());
+    String multiCurrency =
+        switch (capabilitiesDescriptor.currencyModel().multiCurrencyStatus()) {
+          case "not-supported" -> "additional transaction currencies are not available";
+          case "supported" -> "additional transaction currencies are available";
+          default -> capabilitiesDescriptor.currencyModel().multiCurrencyStatus().replace('-', ' ');
+        };
+    return scope + "; " + multiCurrency + ".";
+  }
+
+  private static String displayBookBoundary(String wireValue) {
+    if ("protected-book-file".equals(wireValue)) {
+      return "One protected book per file.";
+    }
+    if ("single-sqlite-file".equals(wireValue)) {
+      return "One SQLite-backed protected book per file.";
+    }
+    return displayKernelScope(wireValue) + ".";
+  }
+
+  private static String displayStorageEngine(StorageEngine ignored) {
+    return "SQLite";
   }
 }

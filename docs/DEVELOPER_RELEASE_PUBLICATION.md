@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -25,20 +25,23 @@ One public FinGrind release is the combination of:
 - one GitHub Release object for that tag
 - one complete archive-and-checksum asset set on that release object
 - one GitHub artifact attestation per published archive and checksum file
-- one public container publication that waits for the complete verified release asset set
+- one public container publication from the same release workflow after the complete verified
+  release asset set exists
 
-The attested subject is the published release asset, not the runner-local build output.
+The public release proof is the published release asset, not the runner-local build output alone.
 
 That means the workflow order is:
 1. build each archive on its target runner
-2. upload the archive and checksum into the GitHub Release object
-3. download those published bytes back on one neutral post-upload job
-4. create artifact attestations from those downloaded bytes
-5. verify the release object and published attestations
-6. publish or verify the public container only after the release asset handoff is complete
+2. attest the runner-built archive and checksum bytes for each target
+3. upload the archive and checksum set into a draft GitHub Release object
+4. download those published bytes back on one neutral post-upload job
+5. create artifact attestations from those downloaded bytes
+6. verify the release object, published archive/checksum pairs, and published attestations
+7. publish or verify the public container only after the release asset handoff is complete
 
-Any flow that attests runner-local artifacts instead of the published bytes is proving the wrong
-thing. It can pass while GitHub serves different bytes under the same asset name.
+Any flow that attests only runner-local artifacts without also attesting the published bytes is
+proving the wrong public surface. It can pass while GitHub serves different bytes under the same
+asset name.
 
 ## Non-Negotiable Invariants
 
@@ -54,11 +57,10 @@ These publication invariants are release-critical:
   strand a tagged release because the task output text evolved afterward
 - each published archive and checksum file must verify through `gh attestation verify`
 - the attested digest must match the exact asset bytes downloadable from GitHub Release
-- the container workflow must wait for the verified release asset set before treating publication
-  as complete
-- the container workflow wait budget must outlast the slowest supported release bundle build,
-  not just artifact-attestation propagation, because the release object remains incomplete until
-  the final platform publisher uploads its archive and checksum
+- the release workflow's `container` job must wait for the verified release asset set before
+  treating publication as complete
+- the release workflow's container-job timeout must leave room for buildx publication and
+  post-push public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
   propagation
 
@@ -112,8 +114,7 @@ safe repair path is:
 1. fix the workflow or verifier on `main`
 2. merge that repair normally through branch protection
 3. rerun the release workflow with `workflow_dispatch` against the existing tag
-4. rerun the container workflow only after the release asset handoff verifies cleanly
-5. verify the public GitHub Release and public container surfaces directly
+4. verify the public GitHub Release and public container surfaces directly
 
 Do not move the release tag. Do not create a replacement tag for the same version. Repair the
 publication machinery and replay it against the immutable released commit.
@@ -137,7 +138,6 @@ the very repair you just merged.
 
 The main executable evidence owners for this surface are:
 - `.github/workflows/release.yml`
-- `.github/workflows/container.yml`
 - `./scripts/verify-github-release.sh`
 - `./scripts/verify-public-container-surface.sh`
 - `./scripts/test-verify-github-release.sh`
@@ -148,7 +148,7 @@ The minimum operator proof after a public release is:
 
 ```bash
 gh release view vX.Y.Z
-./scripts/verify-github-release.sh <owner/repo> X.Y.Z
+./scripts/verify-github-release.sh vX.Y.Z
 ./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
 ```
 
@@ -171,9 +171,9 @@ workflow, and expose the published native-provenance files through a shell probe
 route filesystem checks back through the FinGrind entrypoint. The mounted-workspace portion of
 that verifier must run the container as the caller's numeric `UID:GID`, matching the repo-owned
 `docker-smoke` contract, so Linux bind-mounted book, key, and PDF artifacts are owned by the
-invoking operator instead of by container-root. The tagged container workflow now runs this same
-verifier after push, so workflow automation and the operator's Step 9 command are held to one
-public surface contract. When that mounted-book grammar changes, that text report layout changes,
-the mounted-workspace user contract changes, or the container-native provenance surface moves,
-repair the verifier and its mock-backed shell regression harness together before trusting the
-release protocol again.
+invoking operator instead of by container-root. The release workflow's `container` job now runs
+this same verifier after push, so workflow automation and the operator's Step 9 command are held
+to one public surface contract. When that mounted-book grammar changes, that text report layout
+changes, the mounted-workspace user contract changes, or the container-native provenance surface
+moves, repair the verifier and its mock-backed shell regression harness together before trusting
+the release protocol again.

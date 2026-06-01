@@ -572,7 +572,26 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteProtectedBookStagingSupport.ensureSecureParentDirectory(
+                  SqliteProtectedBookStagingSupport.ensureSecureBackupFileParentDirectory(
+                      missingParentArtifactPath));
+      assertTrue(
+          NullTestSupport.messageOf(parentHardeningFailure)
+              .contains("Failed to secure the parent directory"));
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath missingParentArtifactPath = fileSystem.path("\\acl-key-parent\\book.key");
+      AclFixturePath missingParent = fileSystem.path("\\acl-key-parent");
+      missingParent.overrideAclView =
+          new ThrowingAclFileAttributeView(
+              java.util.Objects.requireNonNull(missingParent.aclView, "missingParent.aclView")
+                  .getOwner(),
+              "key-parent-acl-boom");
+      IllegalStateException parentHardeningFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingSupport.ensureSecureBackupKeyFileParentDirectory(
                       missingParentArtifactPath));
       assertTrue(
           NullTestSupport.messageOf(parentHardeningFailure)
@@ -886,9 +905,9 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
               SqliteNativeStatements.prepare(
                   database,
                   "select count(*) from audit_event where event_kind = '" + eventKind + "'")) {
-            assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+            assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
             count[0] = statement.columnInt(0);
-            assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+            assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
           }
         });
     return count[0];

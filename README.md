@@ -35,7 +35,7 @@ walkthrough that creates those files locally, use [docs/USER_QUICK_START.md](doc
 # Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --business-activity-tag consulting-services \
+  --entity-name "Acme Studio" --business-activity-tag translation-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01
 
@@ -87,8 +87,12 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 
 Context
 -------
-Book             : Acme Studio | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
+Entity              : Acme Studio
+Accounting profile  : country-agnostic-bookkeeping-kernel
+Business activity   : translation-services
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds
 ```
 
 Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced

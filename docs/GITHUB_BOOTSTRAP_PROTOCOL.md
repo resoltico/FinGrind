@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -77,7 +77,8 @@ Do not continue until the first `CI` workflow has completed successfully.
 
 ## Step 4
 
-Grant Actions workflow write permissions so the release and container workflows can publish:
+Grant Actions workflow write permissions so the release workflow can publish both release assets
+and the public container:
 
 ```bash
 gh api \
@@ -127,16 +128,17 @@ Recommended repository settings alignment:
 
 ## Step 7
 
-Container posture should follow the same hardened publication stance already proven out in the sibling project:
+Container posture should follow the same hardened publication stance already proven out in the
+sibling project:
 - keep GHCR publication enabled
-- publish only `X.Y.Z` and `latest`
-- verify both exact-tag and `latest` pulls after publication
+- publish exact-tag images for every stable release
+- publish `latest` only when the release tag is the newest stable release
+- verify the exact tag on every release and verify `latest` only when that latest-policy applies
 - prune old GHCR package versions conservatively by anchored tagged releases
 
 FinGrind already carries the matching workflow surfaces locally:
 - [../.github/workflows/ci.yml](../.github/workflows/ci.yml)
 - [../.github/workflows/release.yml](../.github/workflows/release.yml)
-- [../.github/workflows/container.yml](../.github/workflows/container.yml)
 
 ## Notes
 

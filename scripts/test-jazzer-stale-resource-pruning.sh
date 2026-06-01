@@ -42,7 +42,7 @@ readonly stale_input_resource="${fuzz_resources_dir}/cli/SqliteBookRoundTripFuzz
 readonly stale_metadata_resource="${fuzz_resources_dir}/jazzer/regression-metadata/sqlite-book-roundtrip/unicode_valid.json"
 readonly live_input_resource="${fuzz_resources_dir}/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_unicode_account_code.json"
 readonly live_metadata_resource="${fuzz_resources_dir}/jazzer/regression-metadata/sqlite-book-roundtrip/invalid_unicode_account_code.json"
-readonly process_log="$(mktemp "${TMPDIR:-/tmp}/fingrind-jazzer-process-resources.XXXXXX.log")"
+readonly process_log="$(mktemp "${TMPDIR:-/tmp}/fingrind-jazzer-process-resources.XXXXXX")"
 
 cleanup() {
     rm -f "${process_log}"

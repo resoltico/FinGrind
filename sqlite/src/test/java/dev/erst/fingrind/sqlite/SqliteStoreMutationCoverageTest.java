@@ -13,10 +13,14 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.executor.PeriodResultTransferService;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -144,6 +148,64 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
+  void transferPeriodResult_highLevelRejectsMissingAndRawUninitializedBooksAtTheStoreBoundary() {
+    Path missingBookPath =
+        tempDirectory.resolve("transfer-period-result-high-level-missing.sqlite");
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath))) {
+      PeriodResultTransferService service =
+          periodResultTransferService(
+              fixedInitializedReader(),
+              (reportingPeriod,
+                  bookIdentity,
+                  planner,
+                  currentUtcDate,
+                  transferredAt,
+                  postingIdGenerator) ->
+                  missingStore.transferPeriodResult(
+                      reportingPeriod,
+                      bookIdentity,
+                      planner,
+                      currentUtcDate,
+                      transferredAt,
+                      postingIdGenerator),
+              () -> new PostingId("unused"),
+              FIXED_INSTANT);
+      assertEquals(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          service.transferPeriodResult(new ReportingPeriod(PERIOD_DATE, PERIOD_DATE)));
+      assertTrue(Files.notExists(missingBookPath));
+    }
+
+    Path blankBookPath = tempDirectory.resolve("transfer-period-result-high-level-blank.sqlite");
+    createEmptySqliteFile(blankBookPath);
+    try (SqlitePostingFactStore blankStore = openStore(bookAccess(blankBookPath))) {
+      PeriodResultTransferService service =
+          periodResultTransferService(
+              fixedInitializedReader(),
+              (reportingPeriod,
+                  bookIdentity,
+                  planner,
+                  currentUtcDate,
+                  transferredAt,
+                  postingIdGenerator) ->
+                  blankStore.transferPeriodResult(
+                      reportingPeriod,
+                      bookIdentity,
+                      planner,
+                      currentUtcDate,
+                      transferredAt,
+                      postingIdGenerator),
+              () -> new PostingId("unused"),
+              FIXED_INSTANT);
+      assertEquals(
+          new PeriodResultTransferOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          service.transferPeriodResult(new ReportingPeriod(PERIOD_DATE, PERIOD_DATE)));
+    }
+  }
+
+  @Test
   void transferPeriodResult_rollsBackRejectedGeneratedPostingsBeforeAnyCloseFactIsStored() {
     Path databasePath = tempDirectory.resolve("transfer-period-result-generated-rejection.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
@@ -220,6 +282,98 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
     }
   }
 
+  @Test
+  void transferPeriodResult_highLevelWrapsNativeFailuresFromStaleDatabaseHandles()
+      throws Exception {
+    Path databasePath = tempDirectory.resolve("transfer-period-result-high-level-stale.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath))) {
+        PeriodResultTransferService service =
+            periodResultTransferService(
+                fixedInitializedReader(),
+                (reportingPeriod,
+                    bookIdentity,
+                    planner,
+                    currentUtcDate,
+                    transferredAt,
+                    postingIdGenerator) ->
+                    postingFactStore.transferPeriodResult(
+                        reportingPeriod,
+                        bookIdentity,
+                        planner,
+                        currentUtcDate,
+                        transferredAt,
+                        postingIdGenerator),
+                () -> new PostingId("unused"),
+                FIXED_INSTANT);
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () -> service.transferPeriodResult(new ReportingPeriod(PERIOD_DATE, PERIOD_DATE)));
+        assertTrue(
+            NullTestSupport.messageOf(failure)
+                .contains("Failed to close one SQLite reporting period."));
+      }
+    }
+  }
+
+  @Test
+  void transferPeriodResult_highLevelRollsBackRuntimeFailuresAfterTheTransactionBegins() {
+    Path databasePath = tempDirectory.resolve("transfer-period-result-high-level-runtime.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      AtomicReference<SqliteNativeDatabase> realDatabase =
+          new AtomicReference<>(requireStoreDatabase(postingFactStore));
+      setStoreDatabase(
+          postingFactStore,
+          new SqliteStatementRedirectingDatabase(
+              realDatabase.get(),
+              sql -> {
+                if (SqlitePostingSql.LOAD_ALL_ACCOUNTS.equals(sql)) {
+                  throw new IllegalStateException("forced high-level account-load failure");
+                }
+                return realDatabase.get().prepare(sql);
+              }));
+
+      try {
+        PeriodResultTransferService service =
+            periodResultTransferService(
+                fixedInitializedReader(),
+                (reportingPeriod,
+                    bookIdentity,
+                    planner,
+                    currentUtcDate,
+                    transferredAt,
+                    postingIdGenerator) ->
+                    postingFactStore.transferPeriodResult(
+                        reportingPeriod,
+                        bookIdentity,
+                        planner,
+                        currentUtcDate,
+                        transferredAt,
+                        postingIdGenerator),
+                () -> new PostingId("unused"),
+                FIXED_INSTANT);
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () -> service.transferPeriodResult(new ReportingPeriod(PERIOD_DATE, PERIOD_DATE)));
+        assertEquals("forced high-level account-load failure", failure.getMessage());
+        assertEquals(
+            0, queryInt(realDatabase.get(), "select count(*) from period_result_transfer"));
+        assertEquals(
+            0,
+            queryInt(
+                realDatabase.get(),
+                "select count(*) from audit_event where event_kind = 'PERIOD_RESULT_TRANSFERRED'"));
+      } finally {
+        setStoreDatabase(postingFactStore, realDatabase.get());
+      }
+    }
+  }
+
   private static PeriodResultTransferDraft emptyPeriodResultTransferDraft() {
     return new PeriodResultTransferDraft(
         new ReportingPeriod(PERIOD_DATE, PERIOD_DATE),
@@ -227,5 +381,27 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
         List.of(),
         FIXED_INSTANT,
         List.of());
+  }
+
+  private static BookLifecycleReader fixedInitializedReader() {
+    BookLifecycleInspection.Initialized initialized =
+        initializedLifecycleInspection(
+            SqliteBookContract.APPLICATION_ID,
+            SqliteBookContract.FORMAT_VERSION,
+            SqliteBookContract.FORMAT_VERSION,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    return () -> initialized;
+  }
+
+  private static PeriodResultTransferService periodResultTransferService(
+      BookLifecycleReader lifecycleReader,
+      PeriodResultTransferStore store,
+      dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator,
+      Instant transferredAt) {
+    return new PeriodResultTransferService(
+        lifecycleReader,
+        store,
+        postingIdGenerator,
+        java.time.Clock.fixed(transferredAt, java.time.ZoneOffset.UTC));
   }
 }

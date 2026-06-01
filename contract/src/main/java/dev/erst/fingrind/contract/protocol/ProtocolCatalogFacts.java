@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.AccountingKernelProfiles;
 import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
@@ -28,7 +29,7 @@ final class ProtocolCatalogFacts {
           "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
   private static final BookkeepingKernelFacts BOOKKEEPING_KERNEL =
       new BookkeepingKernelFacts(
-          "cash-single-entity-internal-management-kernel",
+          AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.value(),
           List.of(
               OperationId.FINANCIAL_POSITION.wireName(),
               OperationId.INCOME_STATEMENT.wireName(),

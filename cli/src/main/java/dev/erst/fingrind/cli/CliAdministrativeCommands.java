@@ -137,36 +137,39 @@ record RestoreRekeyRollback(
 }
 
 /** Administrative CLI command that deletes one selected sibling rekey rollback artifact. */
-record DeleteRekeyRollback(
-    BookAccess bookAccess,
-    @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
-    OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  DeleteRekeyRollback {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class DeleteRekeyRollback extends CliBookNullablePathOutputModeCommand {
+  DeleteRekeyRollback(
+      BookAccess bookAccess,
+      @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
+      OutputMode outputMode) {
+    super(bookAccess, rollbackArtifactPath, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
+      OutputMode outputMode) {
+    return executionContext
         .administrative()
         .runDeleteRekeyRollbackCommand(bookAccess, rollbackArtifactPath, outputMode);
   }
 }
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  DeclareAccount {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(requestFile, "requestFile");
-    Objects.requireNonNull(outputMode, "outputMode");
+final class DeclareAccount extends CliBookRequestOutputModeCommand {
+  DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
         .administrative()
         .runDeclareAccountCommand(bookAccess, requestFile, outputMode);
   }

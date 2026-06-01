@@ -135,14 +135,10 @@ final class PdfPageWriter implements AutoCloseable {
         cursorY);
     cursorY -= PdfReportTheme.typography().lineHeight() + 2f;
     drawText(
-        "Generated: " + PdfTemporalValueFormatter.instant(generatedAt),
-        fonts.regular(),
-        PdfReportTheme.typography().headerMetaSize(),
-        PdfReportTheme.spacing().pageMargin(),
-        cursorY);
-    cursorY -= PdfReportTheme.typography().lineHeight();
-    drawText(
-        "Prepared by: " + preparedBy,
+        "Generated "
+            + PdfTemporalValueFormatter.instant(generatedAt)
+            + " / Prepared by "
+            + preparedBy,
         fonts.regular(),
         PdfReportTheme.typography().headerMetaSize(),
         PdfReportTheme.spacing().pageMargin(),

@@ -247,7 +247,7 @@ class EnvironmentSqliteDescriptorTest {
                         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                         SqliteRuntimeStatus.UNAVAILABLE,
                         null,
-                        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                         null,
                         null,
                         null,
@@ -274,7 +274,7 @@ class EnvironmentSqliteDescriptorTest {
                         SqliteCompileOptionsVerificationStatus.VERIFIED,
                         SqliteRuntimeStatus.READY,
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                         "/tmp/libsqlite3.dylib",
                         "3.53.1",
                         "2.3.4",
@@ -306,7 +306,7 @@ class EnvironmentSqliteDescriptorTest {
                 null),
             null);
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY, runtimeTrustBasis(descriptor));
   }
 
   @Test
@@ -428,7 +428,7 @@ class EnvironmentSqliteDescriptorTest {
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, runtimeStatus(descriptor));
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY, runtimeTrustBasis(descriptor));
     assertEquals("native bridge failed", runtimeIssue(descriptor));
   }
 
@@ -552,7 +552,7 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, runtimeStatus(descriptor));
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, runtimeProvenance(descriptor));
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD, runtimeTrustBasis(descriptor));
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY, runtimeTrustBasis(descriptor));
     assertEquals("different-source-id", loadedSqliteSourceId(descriptor));
     assertEquals("source id mismatch", runtimeIssue(descriptor));
   }
@@ -562,7 +562,7 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor.ReadyRuntime ready =
         new EnvironmentSqliteDescriptor.ReadyRuntime(
             SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+            SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
@@ -581,7 +581,7 @@ class EnvironmentSqliteDescriptorTest {
     EnvironmentSqliteDescriptor.FailedRuntime failed =
         new EnvironmentSqliteDescriptor.FailedRuntime(
             SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-            SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+            SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
             "/tmp/libsqlite3.dylib",
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, failed.status());
@@ -592,7 +592,7 @@ class EnvironmentSqliteDescriptorTest {
         new EnvironmentSqliteDescriptor.IncompatibleRuntime(
             SqliteCompileOptionsVerificationStatus.FAILED,
             SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-            SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+            SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
             "/tmp/libsqlite3.dylib",
             "3.53.1",
             "2.3.4",
@@ -612,7 +612,7 @@ class EnvironmentSqliteDescriptorTest {
                 new EnvironmentSqliteDescriptor.IncompatibleRuntime(
                     SqliteCompileOptionsVerificationStatus.VERIFIED,
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                    SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+                    SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "/tmp/libsqlite3.dylib",
                     "3.53.1",
                     "2.3.4",

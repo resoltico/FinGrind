@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemp
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -27,18 +28,24 @@ final class CliDiscoveryCommandExecutor {
     this.metadata = Objects.requireNonNull(metadata, "metadata");
   }
 
-  int writeHelp(@Nullable OperationId commandTopic, OutputMode outputMode, DiscoveryDetail detail) {
+  int writeHelp(
+      @Nullable OperationId commandTopic,
+      OutputMode outputMode,
+      DiscoveryDetail detail,
+      @Nullable OperationCategory category) {
     responseWriter.writeHelp(
         launcherAwareHelp(
             MachineContract.help(applicationIdentity(), environmentDescriptor(), commandTopic)),
         outputMode,
-        detail);
+        detail,
+        category);
     return 0;
   }
 
-  int writeCapabilities(OutputMode outputMode, DiscoveryDetail detail) {
+  int writeCapabilities(
+      OutputMode outputMode, DiscoveryDetail detail, CliDiscoverySelections selections) {
     responseWriter.writeCapabilities(
-        MachineContract.capabilities(applicationIdentity()), outputMode, detail);
+        MachineContract.capabilities(applicationIdentity()), outputMode, detail, selections);
     return 0;
   }
 

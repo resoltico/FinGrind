@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
@@ -17,12 +18,16 @@ final class CliDiscoveryResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
+  void writeHelp(
+      HelpDescriptor helpDescriptor,
+      OutputMode outputMode,
+      DiscoveryDetail detail,
+      @org.jspecify.annotations.Nullable OperationCategory category) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
-                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail))),
+                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail, category))),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -33,13 +38,14 @@ final class CliDiscoveryResponseWriter {
   void writeCapabilities(
       CapabilitiesDescriptor capabilitiesDescriptor,
       OutputMode outputMode,
-      DiscoveryDetail detail) {
+      DiscoveryDetail detail,
+      CliDiscoverySelections selections) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
                     CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
-                        capabilitiesDescriptor, detail))),
+                        capabilitiesDescriptor, detail, selections))),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderCapabilitiesText(capabilitiesDescriptor)),

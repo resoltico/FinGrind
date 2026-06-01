@@ -32,6 +32,9 @@ class ReleaseSmokeConfig:
     declare_revenue: SmokePath
     book: SmokePath
     book_key: SmokePath
+    backup_book: SmokePath
+    backup_book_key: SmokePath
+    restored_book: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath
@@ -54,6 +57,9 @@ class ReleaseSmokeScenario:
     declare_revenue: SmokePath
     book: SmokePath
     book_key: SmokePath
+    backup_book: SmokePath
+    backup_book_key: SmokePath
+    restored_book: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath

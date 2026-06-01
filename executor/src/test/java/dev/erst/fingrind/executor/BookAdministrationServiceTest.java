@@ -220,8 +220,6 @@ class BookAdministrationServiceTest {
           new PeriodResultTransferService(
                   bookSession,
                   bookSession,
-                  bookSession,
-                  bookSession,
                   () -> new dev.erst.fingrind.core.PostingId("period-result-transfer-1"),
                   FIXED_CLOCK)
               .transferPeriodResult(

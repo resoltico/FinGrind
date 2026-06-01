@@ -14,6 +14,7 @@ final class CliBookIdentityDisplay {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Entity", bookIdentity.entityName().value()));
+    rows.add(List.of("Accounting profile", bookIdentity.accountingKernelProfileId().value()));
     rows.add(
         List.of(
             "Business activity",
@@ -42,6 +43,8 @@ final class CliBookIdentityDisplay {
 
   private static String summaryLine(BookIdentity bookIdentity) {
     return bookIdentity.entityName().value()
+        + " | "
+        + bookIdentity.accountingKernelProfileId().value()
         + " | Currency "
         + bookIdentity.functionalCurrency().code()
         + " | FY "

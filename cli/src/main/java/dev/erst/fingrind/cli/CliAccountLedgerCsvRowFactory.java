@@ -16,18 +16,24 @@ final class CliAccountLedgerCsvRowFactory {
       CurrencyBalance opening,
       CurrencyBalance closing) {
     return ledgerCsvRow(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "ledger-summary:" + report.account().accountCode().value() + ":" + currencyCode,
+        "",
+        "ledger-summary",
         "summary",
-        CliAccountLedgerCsvColumns.reportColumns(report, currencyCode),
-        CliAccountLedgerCsvColumns.summaryBalanceColumns(opening, closing),
-        CliAccountLedgerCsvColumns.blankEntryColumns(),
-        CliAccountLedgerCsvColumns.blankMovementColumns(),
-        CliAccountLedgerCsvColumns.blankEvidenceColumns(),
+        new LedgerCsvRowParts(
+            CliAccountLedgerCsvColumns.reportColumns(report, currencyCode),
+            CliAccountLedgerCsvColumns.summaryBalanceColumns(opening, closing),
+            CliAccountLedgerCsvColumns.blankEntryColumns(),
+            CliAccountLedgerCsvColumns.blankMovementColumns(),
+            CliAccountLedgerCsvColumns.blankEvidenceColumns()),
         "");
   }
 
   static List<String> entryRow(AccountLedgerReport report, AccountLedgerEntry entry) {
     return entryRelatedRow(
-        "entry",
+        new LedgerCsvRowIdentity(
+            "ledger-entry:" + entry.postingFact().postingId().value(), "", "entry", "entry", ""),
         report,
         entry,
         entry.movement().netAmount().currencyUnit().code(),
@@ -36,20 +42,26 @@ final class CliAccountLedgerCsvRowFactory {
             CliQueryScopeText.displayMoney(entry.movement().creditTotal()),
             CliQueryScopeText.displayMoney(entry.runningNetAmount()),
             entry.runningBalanceSide().wireValue()),
-        CliAccountLedgerCsvColumns.blankEvidenceColumns(),
-        "");
+        CliAccountLedgerCsvColumns.blankEvidenceColumns());
   }
 
   static List<String> counterpartRow(
       AccountLedgerReport report, AccountLedgerEntry entry, String counterpartAccountCode) {
     return entryRelatedRow(
-        "counterpart-account",
+        new LedgerCsvRowIdentity(
+            "ledger-counterpart:"
+                + entry.postingFact().postingId().value()
+                + ":"
+                + counterpartAccountCode,
+            "ledger-entry:" + entry.postingFact().postingId().value(),
+            "counterpart-account",
+            "counterpart-account",
+            ""),
         report,
         entry,
         "",
         CliAccountLedgerCsvColumns.blankMovementColumns(),
-        CliAccountLedgerCsvColumns.evidenceColumns(counterpartAccountCode, "", "", "", ""),
-        "");
+        CliAccountLedgerCsvColumns.evidenceColumns(counterpartAccountCode, "", "", "", ""));
   }
 
   static List<String> sourceDocumentRow(
@@ -58,14 +70,21 @@ final class CliAccountLedgerCsvRowFactory {
       String sourceDocumentId,
       String sourceDocumentType) {
     return entryRelatedRow(
-        "source-document",
+        new LedgerCsvRowIdentity(
+            "ledger-source-document:"
+                + entry.postingFact().postingId().value()
+                + ":"
+                + sourceDocumentId,
+            "ledger-entry:" + entry.postingFact().postingId().value(),
+            "source-document",
+            "source-document",
+            ""),
         report,
         entry,
         "",
         CliAccountLedgerCsvColumns.blankMovementColumns(),
         CliAccountLedgerCsvColumns.evidenceColumns(
-            "", sourceDocumentId, sourceDocumentType, "", ""),
-        "");
+            "", sourceDocumentId, sourceDocumentType, "", ""));
   }
 
   static List<String> approvalRow(
@@ -74,61 +93,88 @@ final class CliAccountLedgerCsvRowFactory {
       String approvalId,
       String approvalDecision) {
     return entryRelatedRow(
-        "approval",
+        new LedgerCsvRowIdentity(
+            "ledger-approval:" + entry.postingFact().postingId().value() + ":" + approvalId,
+            "ledger-entry:" + entry.postingFact().postingId().value(),
+            "approval",
+            "approval",
+            ""),
         report,
         entry,
         "",
         CliAccountLedgerCsvColumns.blankMovementColumns(),
-        CliAccountLedgerCsvColumns.evidenceColumns("", "", "", approvalId, approvalDecision),
-        "");
+        CliAccountLedgerCsvColumns.evidenceColumns("", "", "", approvalId, approvalDecision));
   }
 
   static List<String> emptyRow(AccountLedgerReport report) {
     return ledgerCsvRow(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "ledger-scope-empty:" + report.account().accountCode().value(),
+        "",
+        "scope-empty",
         CliCsvEmptyKinds.SCOPE_EMPTY,
-        CliAccountLedgerCsvColumns.reportColumns(
-            report, report.bookIdentity().functionalCurrency().code()),
-        CliAccountLedgerCsvColumns.blankSummaryBalanceColumns(),
-        CliAccountLedgerCsvColumns.blankEntryColumns(),
-        CliAccountLedgerCsvColumns.blankMovementColumns(),
-        CliAccountLedgerCsvColumns.blankEvidenceColumns(),
+        new LedgerCsvRowParts(
+            CliAccountLedgerCsvColumns.reportColumns(
+                report, report.bookIdentity().functionalCurrency().code()),
+            CliAccountLedgerCsvColumns.blankSummaryBalanceColumns(),
+            CliAccountLedgerCsvColumns.blankEntryColumns(),
+            CliAccountLedgerCsvColumns.blankMovementColumns(),
+            CliAccountLedgerCsvColumns.blankEvidenceColumns()),
         CliQueryScopeText.noMatchesLabel("ledger entries"));
   }
 
   private static List<String> entryRelatedRow(
-      String rowKind,
+      LedgerCsvRowIdentity rowIdentity,
       AccountLedgerReport report,
       AccountLedgerEntry entry,
       String currencyCode,
       List<String> movementColumns,
-      List<String> evidenceColumns,
-      String message) {
+      List<String> evidenceColumns) {
     return ledgerCsvRow(
-        rowKind,
-        CliAccountLedgerCsvColumns.reportColumns(report, currencyCode),
-        CliAccountLedgerCsvColumns.blankSummaryBalanceColumns(),
-        CliAccountLedgerCsvColumns.entryColumns(entry),
-        movementColumns,
-        evidenceColumns,
-        message);
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        rowIdentity.rowId(),
+        rowIdentity.parentRowId(),
+        rowIdentity.relationKind(),
+        rowIdentity.rowKind(),
+        new LedgerCsvRowParts(
+            CliAccountLedgerCsvColumns.reportColumns(report, currencyCode),
+            CliAccountLedgerCsvColumns.blankSummaryBalanceColumns(),
+            CliAccountLedgerCsvColumns.entryColumns(entry),
+            movementColumns,
+            evidenceColumns),
+        rowIdentity.message());
   }
 
   private static List<String> ledgerCsvRow(
+      String exportFamily,
+      String rowId,
+      String parentRowId,
+      String relationKind,
       String rowKind,
+      LedgerCsvRowParts rowParts,
+      String message) {
+    List<String> row = new ArrayList<>(39);
+    row.add(exportFamily);
+    row.add(rowId);
+    row.add(parentRowId);
+    row.add(relationKind);
+    row.add(rowKind);
+    row.addAll(rowParts.reportColumns());
+    row.addAll(rowParts.summaryBalanceColumns());
+    row.addAll(rowParts.entryColumns());
+    row.addAll(rowParts.movementColumns());
+    row.addAll(rowParts.evidenceColumns());
+    row.add(message);
+    return List.copyOf(row);
+  }
+
+  private record LedgerCsvRowParts(
       List<String> reportColumns,
       List<String> summaryBalanceColumns,
       List<String> entryColumns,
       List<String> movementColumns,
-      List<String> evidenceColumns,
-      String message) {
-    List<String> row = new ArrayList<>(35);
-    row.add(rowKind);
-    row.addAll(reportColumns);
-    row.addAll(summaryBalanceColumns);
-    row.addAll(entryColumns);
-    row.addAll(movementColumns);
-    row.addAll(evidenceColumns);
-    row.add(message);
-    return List.copyOf(row);
-  }
+      List<String> evidenceColumns) {}
+
+  private record LedgerCsvRowIdentity(
+      String rowId, String parentRowId, String relationKind, String rowKind, String message) {}
 }

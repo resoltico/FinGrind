@@ -187,6 +187,7 @@ public final class ExecutorAccountingTestSupport {
         new EntityProfile(
             new BookEntityName("Acme Studio"),
             List.of(new BusinessActivityTag("translation-services"))),
+        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

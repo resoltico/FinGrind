@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: CORE
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -183,15 +183,43 @@ public record EntityProfile(
 ```java
 public record BookIdentity(
     EntityProfile entityProfile,
+    AccountingKernelProfileId accountingKernelProfileId,
     CurrencyUnit functionalCurrency,
     FiscalYearStart fiscalYearStart)
 ```
 
-- Purpose: couple entity profile, functional currency, and fiscal-year anchor as one typed
-  bookkeeping fact for one initialized book
+- Purpose: couple entity profile, persisted accounting-kernel profile, functional currency, and
+  fiscal-year anchor as one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
   full entity profile
-- Validation: rejects `null` entity profile, functional currency, and fiscal-year start
+- Validation: rejects `null` entity profile, accounting-kernel profile, functional currency, and
+  fiscal-year start
+
+## `AccountingKernelProfileId`
+
+`AccountingKernelProfileId` is the durable identifier for one executable accounting-kernel
+profile.
+
+```java
+public record AccountingKernelProfileId(String value)
+```
+
+- Purpose: persist one explicit kernel-profile owner with each initialized book instead of hiding
+  doctrine only in prose
+- Validation: rejects blank values, values longer than 120 characters, uppercase characters, and
+  tokens outside lowercase kebab-case
+
+## `AccountingKernelProfiles`
+
+`AccountingKernelProfiles` publishes the built-in executable accounting-kernel profile inventory.
+
+```java
+public final class AccountingKernelProfiles
+```
+
+- Purpose: keep built-in profile ids centralized so CLI, executor, SQLite, discovery, and tests
+  all speak one canonical vocabulary
+- Current built-in profile: "country-agnostic-bookkeeping-kernel"
 
 ## `AccountType`
 

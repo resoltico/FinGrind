@@ -26,18 +26,23 @@ readonly verifier="${script_dir}/verify-security-policy-surface.sh"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_verifier="${repo_root}/scripts/verify-github-release.sh"
+readonly release_verifier_support="${repo_root}/scripts/verify-github-release-support.sh"
 readonly security_reference="${repo_root}/docs/DEVELOPER_SECURITY.md"
 readonly security_policy="${repo_root}/SECURITY.md"
 
 [[ -x "${verifier}" ]] || die "missing executable security-policy verifier"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_verifier}" ]] || die "missing GitHub release verifier at ${release_verifier}"
+[[ -f "${release_verifier_support}" ]] || die \
+    "missing GitHub release verifier support owner at ${release_verifier_support}"
 [[ -f "${security_reference}" ]] || die "missing developer security reference"
 [[ -f "${security_policy}" ]] || die "missing SECURITY.md"
 grep -Fq 'scripts/test-verify-security-policy-surface.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the security-policy verifier regression"
-grep -Fq 'verify-security-policy-surface.sh' "${release_verifier}" || die \
-    "GitHub release verifier no longer checks the live security-policy surface"
+grep -Fq 'verify-github-release-support.sh' "${release_verifier}" || die \
+    "GitHub release verifier no longer delegates to its support owner"
+grep -Fq 'verify-security-policy-surface.sh' "${release_verifier_support}" || die \
+    "GitHub release verifier support no longer checks the live security-policy surface"
 grep -Fq './scripts/verify-security-policy-surface.sh' "${security_reference}" || die \
     "developer security reference no longer points at the live security-policy verifier"
 grep -Fq './scripts/verify-security-policy-surface.sh' "${security_policy}" || die \

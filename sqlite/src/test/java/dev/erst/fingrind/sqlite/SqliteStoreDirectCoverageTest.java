@@ -28,9 +28,11 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.PeriodResultTransferService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
@@ -182,6 +184,119 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           queryInt(
               requireStoreDatabase(postingFactStore),
               "select count(*) from period_result_transfer_posting where period_result_transfer_order = 1"));
+    }
+  }
+
+  @Test
+  void
+      transferPeriodResult_highLevelRejectsMissingResultHoldingAccountWithoutPersistingCloseFacts() {
+    Path bookPath =
+        tempDirectory.resolve("transfer-period-result-high-level-missing-result.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      commitPosting(
+          postingFactStore,
+          postingFact(
+              "posting-1",
+              "idem-1",
+              EFFECTIVE_DATE,
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
+
+      PeriodResultTransferOutcome.Rejected rejected =
+          assertInstanceOf(
+              PeriodResultTransferOutcome.Rejected.class,
+              new PeriodResultTransferService(
+                      periodResultTransferSession,
+                      periodResultTransferSession,
+                      () -> new PostingId("unused"),
+                      java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
+                  .transferPeriodResult(new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+
+      assertInstanceOf(
+          BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing.class,
+          rejected.rejection());
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from period_result_transfer"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from audit_event where event_kind = 'PERIOD_RESULT_TRANSFERRED'"));
+    }
+  }
+
+  @Test
+  void transferPeriodResult_highLevelPersistsAtomicCloseAndRejectsNoncontiguousFollowUpPeriods() {
+    Path bookPath = tempDirectory.resolve("transfer-period-result-high-level-direct.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
+        SqlitePeriodResultTransferSession periodResultTransferSession =
+            SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      assertEquals(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
+                  new AccountCode("3200"),
+                  new AccountName("Retained Earnings"),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+                  true,
+                  FIXED_INSTANT)),
+          postingFactStore.declareAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              AccountRole.ORDINARY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              FIXED_INSTANT));
+      commitPosting(
+          postingFactStore,
+          postingFact(
+              "posting-1",
+              "idem-1",
+              EFFECTIVE_DATE,
+              Instant.parse("2026-04-07T10:15:30Z"),
+              List.of(
+                  line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
+
+      PeriodResultTransferOutcome.Transferred transferred =
+          assertInstanceOf(
+              PeriodResultTransferOutcome.Transferred.class,
+              new PeriodResultTransferService(
+                      periodResultTransferSession,
+                      periodResultTransferSession,
+                      () -> new PostingId("period-result-transfer-1"),
+                      java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
+                  .transferPeriodResult(new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+
+      assertEquals(1, transferred.transferredPeriodResult().transferOrder());
+      assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.transferredThroughEffectiveDate());
+
+      PeriodResultTransferOutcome.Rejected rejected =
+          assertInstanceOf(
+              PeriodResultTransferOutcome.Rejected.class,
+              new PeriodResultTransferService(
+                      periodResultTransferSession,
+                      periodResultTransferSession,
+                      () -> new PostingId("period-result-transfer-gap"),
+                      java.time.Clock.fixed(FIXED_INSTANT.plusSeconds(1), java.time.ZoneOffset.UTC))
+                  .transferPeriodResult(
+                      new ReportingPeriod(
+                          LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09"))));
+
+      assertEquals(
+          new BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt(
+              LocalDate.parse("2026-04-08")),
+          rejected.rejection());
     }
   }
 

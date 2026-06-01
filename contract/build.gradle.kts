@@ -1,4 +1,4 @@
-import dev.erst.fingrind.buildlogic.DistributionContractReader
+import dev.erst.fingrind.buildlogic.DistributionTextRendering
 import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
@@ -32,7 +32,7 @@ abstract class WriteRuntimeEnvironmentContractTask : DefaultTask() {
         destination.writeText(
             """
             {
-              "sourceCheckoutJava": ${DistributionContractReader.jsonString(sourceCheckoutJava.get())}
+              "sourceCheckoutJava": ${DistributionTextRendering.jsonString(sourceCheckoutJava.get())}
             }
             """
                 .trimIndent()

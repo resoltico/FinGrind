@@ -639,7 +639,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
     assertDoesNotThrow(
         () ->
             SqliteNativeConnections.requireOpenConfigurationSuccess(
-                SqliteNativeResultCodes.OK, SqliteNativeBootstrap.api()));
+                SqliteNativeResultCode.code("OK"), SqliteNativeBootstrap.api()));
   }
 
   private static SqliteNativeDatabase hardenOpenedDatabase(

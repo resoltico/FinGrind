@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -122,18 +122,19 @@ two runtime-provenance values:
   generated checkout layout
 
 Runtime identity rules:
-- `bundle-managed` is publisher-authenticated: the public bundle ships one publisher-owned trusted
-  digest sidecar (`<library>.trusted.sha256`), FinGrind copies that pair into one private
-  verification snapshot, and also checks the sibling `.sha256` file beside the extracted library
-  before the verified snapshot is loaded
-- `source-checkout-managed` is source-verified-local-build: FinGrind verifies the locally prepared
-  library against the checkout-local `.trusted.sha256` and `.sha256` sidecars, but that proof is
+- `bundle-managed` is bundle-sidecar-consistency: the public bundle ships one sibling
+  digest sidecar (`<library>.sha256`), FinGrind copies that pair into one private
+  verification snapshot, and verifies the extracted library against that sidecar before the
+  verified snapshot is loaded
+- `source-checkout-managed` is source-checkout-sidecar-consistency: FinGrind verifies the locally prepared
+  library against the checkout-local `.sha256` sidecar, but that proof is
   one source-checkout build identity check rather than one public-release publisher attestation
 - machine consumers read `environment.sqlite.runtime.runtimeProvenance` together with
   `environment.sqlite.runtime.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field
-  reports `publisher-authenticated` for `bundle-managed`,
-  `source-verified-local-build` for `source-checkout-managed`
-- environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated bundle runtimes from source-verified local-build runtimes without requiring agents to infer that distinction from prose alone
+  reports `bundle-sidecar-consistency` for `bundle-managed`,
+  `source-checkout-sidecar-consistency` for `source-checkout-managed`
+- environment.sqlite.runtime.runtimeTrustBasis distinguishes bundle-sidecar-consistency bundle runtimes from source-verified local-build runtimes
+- environment.sqlite.runtime.runtimeTrustBasis distinguishes bundle-sidecar-consistency bundle runtimes from source-checkout-sidecar-consistency source-checkout runtimes without requiring agents to infer that distinction from prose alone
 - the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
   and the active root-project build directory, so relocated Gradle build roots resolve the same
   managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
@@ -207,9 +208,9 @@ Current evidence that this model is implemented:
   deterministic `protected-book-verification-failed` contract
 - `SqliteAuditEventStreamTest` proves durable bookkeeping audit rows are appended in the same book
   as the protected facts they describe and are rejected for in-place update/delete mutation
-- `SqliteManagedLibraryIdentityTest` proves bundle-managed runtimes require the trusted
-  `.trusted.sha256` sidecar plus the sibling `.sha256` sidecar, source-checkout-managed runtimes
-  verify one checkout-local build identity through those same sidecars
+- `SqliteManagedLibraryIdentityTest` proves bundle-managed runtimes require the sibling
+  `.sha256` sidecar and source-checkout-managed runtimes verify one checkout-local build identity
+  through that same sidecar contract
 - `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the
   same-book rollback naming contract before one warning is reported
 - `scripts/test-verify-github-release.sh` proves release verification now requires attested

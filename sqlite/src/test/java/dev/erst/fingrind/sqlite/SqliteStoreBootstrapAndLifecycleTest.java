@@ -58,9 +58,9 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
                   database.executeStatement("insert into sample (id, note) values (1, 'ok')");
                   try (SqliteNativeStatement statement =
                       SqliteNativeStatements.prepare(database, "select note from sample_audit")) {
-                    assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+                    assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
                     assertEquals("semi;colon", statement.columnText(0));
-                    assertEquals(SqliteNativeResultCodes.DONE, statement.step());
+                    assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
                   }
                 }));
   }
@@ -185,22 +185,23 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
   void protectedBookVerificationFailure_coversAllCanonicalVerificationResultCodes() {
     assertTrue(
         SqliteStoreOperations.protectedBookVerificationFailure(
-                new SqliteNativeException(SqliteNativeResultCodes.NOTADB, "not a database"))
+                new SqliteNativeException(SqliteNativeResultCode.code("NOTADB"), "not a database"))
             .isPresent());
     assertTrue(
         SqliteStoreOperations.protectedBookVerificationFailure(
                 new SqliteNativeException(
-                    SqliteNativeResultCodes.IOERR_BADKEY, "cipher verification failed"))
+                    SqliteNativeResultCode.code("IOERR_BADKEY"), "cipher verification failed"))
             .isPresent());
     assertTrue(
         SqliteStoreOperations.protectedBookVerificationFailure(
                 new SqliteNativeException(
-                    SqliteNativeResultCodes.IOERR_CODEC, "codec verification failed"))
+                    SqliteNativeResultCode.code("IOERR_CODEC"), "codec verification failed"))
             .isPresent());
     assertEquals(
         Optional.empty(),
         SqliteStoreOperations.protectedBookVerificationFailure(
-            new SqliteNativeException(SqliteNativeResultCodes.ERROR, "ordinary runtime failure")));
+            new SqliteNativeException(
+                SqliteNativeResultCode.code("ERROR"), "ordinary runtime failure")));
   }
 
   @Test
@@ -211,7 +212,7 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
             bookPath, SqliteStoreAccessMode.READ_ONLY, SqliteNativeBootstrap::api) {
           @Override
           SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
-            throw new SqliteNativeException(SqliteNativeResultCodes.ERROR, "open-boom");
+            throw new SqliteNativeException(SqliteNativeResultCode.code("ERROR"), "open-boom");
           }
         };
     try (SqliteSessionSecret sessionSecret =

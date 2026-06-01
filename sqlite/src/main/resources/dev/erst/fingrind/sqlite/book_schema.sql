@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 21;
+pragma user_version = 22;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -64,6 +64,13 @@ create table if not exists book_meta (
 create table if not exists book_identity (
     singleton_id integer primary key check (singleton_id = 1),
     entity_name text not null check (length(trim(entity_name)) > 0),
+    accounting_kernel_profile text not null check (
+        length(accounting_kernel_profile) between 1 and 120
+        and accounting_kernel_profile not glob '*[^a-z0-9-]*'
+        and accounting_kernel_profile not like '-%'
+        and accounting_kernel_profile not like '%-'
+        and accounting_kernel_profile not like '%--%'
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -838,6 +845,20 @@ begin
                 account.account_type <> 'EQUITY'
                 or account.active = 0
             )
+    );
+end;
+
+create trigger if not exists period_result_transfer_validate_contiguous_horizon_on_insert
+before insert on period_result_transfer
+when exists (select 1 from period_result_transfer)
+begin
+    select raise(
+        fail,
+        'period-result-transfer ranges must append contiguously from the prior transferred-through date.'
+    )
+    where new.effective_date_from <> (
+        select date(max(period_result_transfer.effective_date_to), '+1 day')
+        from period_result_transfer
     );
 end;
 

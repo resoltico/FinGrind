@@ -27,15 +27,12 @@ sealed interface CliCommand
           RestoreBook,
           InspectRekeyRollback,
           RestoreRekeyRollback,
-          DeleteRekeyRollback,
-          DeclareAccount,
+          CliBookNullablePathOutputModeCommand,
+          CliBookRequestOutputModeCommand,
           TransferPeriodResult,
           InspectBook,
-          ListAccounts,
           GetPosting,
-          ListPostings,
-          PreflightEntry,
-          PostEntry {
+          CliBookQueryOutputModeCommand {
     /** Selected operator-facing output mode for this command. */
     OutputMode outputMode();
 
@@ -55,14 +52,7 @@ sealed interface CliCommand
   }
 
   /** Command family whose successful output can target either terminal text/JSON or a PDF file. */
-  sealed interface ReportCommand extends CliCommand
-      permits AccountBalance,
-          TrialBalance,
-          AccountLedger,
-          PeriodSummary,
-          FinancialPosition,
-          IncomeStatement,
-          ChangesInEquity {
+  sealed interface ReportCommand extends CliCommand permits CliBookQueryReportCommand {
     /** Selected report presentation settings for this command. */
     ReportOutput output();
 

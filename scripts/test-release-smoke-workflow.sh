@@ -54,15 +54,15 @@ grep -Fq 'release-smoke-workflow.py' "${workflow_support_sh}" || die \
 grep -Fq 'release_smoke_workflow.runner import main' "${workflow_py}" || die \
     "release-smoke-workflow.py no longer delegates into the release_smoke_workflow package"
 grep -Fq 'operation_ids["capabilities"], "--output", "json", "--detail", "full"' \
-    "${workflow_package_dir}/setup_checks.py" || die \
+    "${workflow_package_dir}/discovery_checks.py" || die \
     "release smoke runtime verification no longer requests the full capabilities contract"
 grep -Fq 'required_mapping(payload, "fullContract")' \
-    "${workflow_package_dir}/assertions.py" || die \
+    "${workflow_package_dir}/discovery_assertions.py" || die \
     "release smoke assertions no longer require the full capabilities contract envelope"
 grep -Fq 'required_mapping(full_contract, "responseModel")' \
-    "${workflow_package_dir}/assertions.py" || die \
+    "${workflow_package_dir}/discovery_assertions.py" || die \
     "release smoke assertions no longer read responseModel from the full capabilities contract"
-grep -Fq 'error_descriptor_exit_codes' "${workflow_package_dir}/assertions.py" || die \
+grep -Fq 'error_descriptor_exit_codes' "${workflow_package_dir}/discovery_assertions.py" || die \
     "release smoke assertions no longer derive published exit-code mappings from error descriptors"
 grep -Fq 'error_exit_codes["protected-book-verification-failed"]' \
     "${workflow_package_dir}/failure_checks.py" || die \
@@ -76,7 +76,8 @@ grep -Fq 'terminal_prompt_failure_status == error_exit_codes["interactive-prompt
 grep -Fq 'error_exit_codes["invalid-request"]' \
     "${workflow_package_dir}/failure_checks.py" || die \
     "release smoke invalid-request verification no longer uses the published invalid-request exit code"
-if grep -Fq 'required_mapping(payload, "responseModel")' "${workflow_package_dir}/assertions.py"; then
+if grep -Fq 'required_mapping(payload, "responseModel")' \
+    "${workflow_package_dir}/discovery_assertions.py"; then
     die "release smoke assertions still read responseModel from the compact capabilities payload"
 fi
 grep -Fq '"--effective-date-as-of"' "${workflow_package_dir}/query_checks.py" || die \

@@ -24,8 +24,8 @@ final class SqliteProtectedBookStagingSupport {
     try (SqliteBookPassphrase ignoredSource = sourcePassphrase;
         SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy();
         SqliteBookPassphrase exportPassphrase = sourcePassphrase.copy()) {
-      ensureSecureParentDirectory(normalizedBackupFilePath);
-      ensureSecureParentDirectory(normalizedBackupBookKeyFilePath);
+      ensureSecureBackupFileParentDirectory(normalizedBackupFilePath);
+      ensureSecureBackupKeyFileParentDirectory(normalizedBackupBookKeyFilePath);
       SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(normalizedBackupFilePath);
       SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(normalizedBackupBookKeyFilePath);
       Path stagedBackupFilePath =
@@ -82,9 +82,21 @@ final class SqliteProtectedBookStagingSupport {
     }
   }
 
-  static void ensureSecureParentDirectory(Path artifactPath) {
+  static void ensureSecureBackupFileParentDirectory(Path artifactPath) {
     try {
       SqliteBookFileSecurity.ensureSecureParentDirectory(artifactPath);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to secure the parent directory for "
+              + PublicPathHint.fromPath(artifactPath).value()
+              + ".",
+          exception);
+    }
+  }
+
+  static void ensureSecureBackupKeyFileParentDirectory(Path artifactPath) {
+    try {
+      SqliteBookKeyFileSecurity.ensureSecureParentDirectory(artifactPath);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to secure the parent directory for "

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -175,7 +175,8 @@ Current ledger-plan rules:
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `open-book` uses nested `openBook`, which requires `entityName`,
-  `businessActivityTags`, `functionalCurrency`, and `fiscalYearStart`
+  `businessActivityTags`, `functionalCurrency`, and `fiscalYearStart`; the built-in accounting
+  kernel profile is persisted by the runtime and echoed back in response payloads
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request, including required `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -254,8 +255,9 @@ Dynamic fields:
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
-- `open-book.payload.bookIdentity.entityName`, `.businessActivityTags`,
-  `.functionalCurrency` and `.fiscalYearStart` echo the persisted initialized-book identity
+- `open-book.payload.bookIdentity.entityName`, `.accountingKernelProfile`,
+  `.businessActivityTags`, `.functionalCurrency`, and `.fiscalYearStart` echo the persisted
+  initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is a redacted public path hint for the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
@@ -270,7 +272,7 @@ Dynamic fields:
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries
-  `businessActivityTags`
+  `accountingKernelProfile` and `businessActivityTags`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `post-entry` and `get-posting` plan steps emit typed `evidence` data with source
@@ -361,6 +363,7 @@ smallest trailing directory context needed for that response, for example
 
 Shared initialized-book identity payload:
 - `entityName`
+- `accountingKernelProfile`
 - `businessActivityTags[]`
 - `functionalCurrency`
 - `fiscalYearStart`

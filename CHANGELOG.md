@@ -5,6 +5,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-06-01
+
+### Changed
+
+- Bumped the current release-control and formatting dependency pins to the presently accepted
+  mainline set. The CI and container workflows now use `docker/setup-buildx-action` `v4.1.0`,
+  `docker/setup-qemu-action` `v4.1.0`, `docker/login-action` `v4.2.0`, and
+  `docker/metadata-action` `v6.1.0`, while Gradle build tooling now pins `com.gradleup.shadow`
+  `9.4.2` and `com.diffplug.spotless` `8.6.0`.
+- Hard-broke structural governance into repository-owned seams instead of filename-privilege
+  exceptions. PMD now fails god-class, method-count, complexity, and coupling violations;
+  source-shape budgets fail oversized Java files; duplication checks reject large repeated
+  translation-heavy blocks; reviewed structural inventory now owns every near-ceiling production Java surface;
+  and Python support scripts and SQLite schema SQL now sit under the same structural governance surface
+  instead of living outside the mechanical governance model.
+- Hard-broke several large control-plane and bookkeeping-adjacent ownership seams to match that
+  governance model. CLI command families, protected-book maintenance, SQLite posting SQL, SQLite
+  native/result-code seams, contract discovery metadata, and template-validation owners now flow
+  through narrower responsibility-held collaborators instead of broader mixed-purpose files.
+- Hard-broke operator discovery and report exports toward one clearer public contract. Help text
+  now leads with a runnable zero-state lifecycle that includes key-file and request-scaffold
+  creation, request-file command help now shows scaffold-plus-run examples in the primary `Try It`
+  path, machine discovery can be narrowed by focus and command category instead of forcing one
+  coarse payload tier, and CSV outputs now publish explicit export-family, row-identity, and
+  relation semantics instead of command-local ad hoc dialects.
+- Hard-broke PDF and empty-scope report presentation toward answer-first surfaces. Short PDF
+  reports now lead with the statement tables and compress context into a lighter metadata band,
+  empty read/report text no longer borrows fictive posting dates, and list-account output now
+  separates financial-position and profit-or-loss classifications instead of collapsing them into
+  one overloaded human column.
+- Hard-broke initialized-book identity and bookkeeping-kernel policy selection onto one explicit
+  executable accounting-kernel owner. Book identity now persists and publishes the built-in
+  country-agnostic-bookkeeping-kernel profile, protected-book format `22` stores that owner
+  durably, and SQLite fixtures, protocol facts, request/inspection payloads, examples, and docs
+  now agree on the same profile-bearing book boundary.
+- Hard-broke period close from a caller-assembled sequence into one atomic capability with durable
+  contiguous close-horizon enforcement. Period-result transfer now commits through one owned
+  transfer surface, while ledger-plan JSON models reject impossible close/result shapes before
+  execution instead of relying on deeper executor failure paths.
+- Hard-broke the managed SQLite runtime identity surface to one sidecar-consistency contract.
+  Bundle-managed and source-checkout-managed runtimes now verify against one sibling `.sha256`
+  file, the machine-readable runtime trust basis names match that public contract, and Windows
+  bundle archives now publish the canonical `bin\fingrind.ps1` launcher without the retired
+  `bin\fingrind.cmd` compatibility wrapper.
+- Hard-broke runtime-image and container assembly onto explicit reproducibility owners. Runtime
+  module derivation now validates optional `jdeps` misses against one repo-owned allowlist before
+  module closure is computed, and the Docker build now pins both base images and Alpine package
+  revisions instead of floating on mutable tags or repository package updates.
+
+### Fixed
+
+- Fixed SQLite runtime/bootstrap truth surfaces so managed-runtime unavailability, native bootstrap
+  failures, shutdown faults, and source-checkout runtime inspection now preserve causality and
+  publish the current runtime contract instead of collapsing into looser failure shapes.
+- Fixed release, protocol, example, and operator documentation drift so the current structural
+  governance surface, accounting-kernel profile ownership, protected-book format `22`, and live
+  request/inspection/report contracts now agree across checked-in docs, examples, fixtures, and
+  verification scripts.
+- Fixed public discovery and validation truth so top-level help no longer presumes missing key or
+  request files, query/report discovery summaries now use the current book horizon language
+  instead of the retired latest-posting wording, and ledger-plan date repair hints preserve the
+  dotted request path in their corrective guidance.
+- Fixed protected-book maintenance target handling so `backup-book` and `restore-book` now own
+  missing nested output parent directories with owner-only protection, and the bundle/container
+  acceptance workflows prove those maintenance paths from the shipped public surfaces instead of
+  pre-seeding insecure destination directories.
+- Fixed late-cycle release-control regressions so the contract-operation lint no longer falls over
+  on large escaped source literals, SQLite key-file security coverage is proven directly across
+  platform filesystem capability seams, and the Jazzer replay wrapper regression now tolerates
+  brief repo-lock cleanup windows for non-lock contract paths inside the Stage 5 shell gate.
+
 ## [0.49.0] - 2026-05-28
 
 ### Changed
@@ -2513,7 +2584,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.49.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.50.0...HEAD
+[0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0
 [0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0
 [0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0
 [0.47.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.47.0

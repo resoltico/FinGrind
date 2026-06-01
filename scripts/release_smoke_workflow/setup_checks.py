@@ -2,53 +2,10 @@ from __future__ import annotations
 
 import stat
 
-from .assertions import assert_discovery_payloads
 from .cli import run_cli
-from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
-from .support import (
-    parse_json_output,
-    payload_field,
-    project_version,
-    require,
-    require_match,
-)
-
-
-def verify_version_command(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> None:
-    print(f"{config.label}: verifying version command")
-    version_payload = parse_json_output(
-        run_cli(config, operation_ids["version"], "--output", "json"),
-        f"{config.label} version output was not valid JSON",
-    )
-    require(
-        version_payload.get("status") == "ok",
-        f"{config.label} version output did not report ok status",
-    )
-    require(
-        payload_field(version_payload, "payload", "application") == "FinGrind",
-        f"{config.label} version output did not include application name",
-    )
-    require(
-        payload_field(version_payload, "payload", "version") == project_version(config.repo_root),
-        f"{config.label} version output did not report the expected version",
-    )
-
-
-def verify_runtime_contract(
-    config: ReleaseSmokeConfig,
-    contract: dict[str, object],
-    operation_ids: dict[str, str],
-) -> dict[str, int]:
-    print(f"{config.label}: verifying runtime contract")
-    capabilities_payload = parse_json_output(
-        run_cli(config, operation_ids["capabilities"], "--output", "json", "--detail", "full"),
-        f"{config.label} capabilities output was not valid JSON",
-    )
-    environment_payload = parse_json_output(
-        run_cli(config, operation_ids["environment"], "--output", "json"),
-        f"{config.label} environment output was not valid JSON",
-    )
-    return assert_discovery_payloads(config, contract, capabilities_payload, environment_payload)
+from .models import ReleaseSmokeConfig
+from .open_book_support import open_book
+from .support import parse_json_output, payload_field, require, require_match
 
 
 def verify_book_key_generation(
@@ -169,49 +126,4 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         list_output,
         r'"accountCode"[[:space:]]*:[[:space:]]*"2000"',
         f"{config.label} account listing did not include account 2000",
-    )
-
-
-def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
-    if config.open_book_mode == "generated-key-stdin":
-        generated_passphrase = config.book_key.local_path.read_text(encoding="utf-8")
-        require(
-            bool(generated_passphrase),
-            f"{config.label} generated an empty key file",
-        )
-        return run_cli(
-            config,
-            operation_ids["openBook"],
-            "--book-file",
-            config.book.argument,
-            "--entity-name",
-            config.entity_name,
-            "--business-activity-tag",
-            *config.business_activity_tags,
-            "--functional-currency",
-            config.functional_currency,
-            "--fiscal-year-start",
-            config.fiscal_year_start,
-            "--book-passphrase-stdin",
-            stdin_text=generated_passphrase,
-        )
-    if config.open_book_mode == "book-key-file":
-        return run_cli(
-            config,
-            operation_ids["openBook"],
-            "--book-file",
-            config.book.argument,
-            "--entity-name",
-            config.entity_name,
-            "--business-activity-tag",
-            *config.business_activity_tags,
-            "--functional-currency",
-            config.functional_currency,
-            "--fiscal-year-start",
-            config.fiscal_year_start,
-            "--book-key-file",
-            config.book_key.argument,
-        )
-    raise ReleaseSmokeFailure(
-        f"{config.label} configured unsupported open-book mode: {config.open_book_mode}"
     )

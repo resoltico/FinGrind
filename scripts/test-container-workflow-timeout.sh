@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Keep the tagged container publication workflow aligned with the real release path.
+# Keep the container publication job inside the release workflow aligned with the real release
+# path.
 
 set -euo pipefail
 
@@ -23,16 +24,16 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly workflow_file="${repo_root}/.github/workflows/container.yml"
+readonly workflow_file="${repo_root}/.github/workflows/release.yml"
 readonly developer_distribution_doc="${repo_root}/docs/DEVELOPER_DISTRIBUTION.md"
 
-[[ -f "${workflow_file}" ]] || die "missing container workflow at ${workflow_file}"
+[[ -f "${workflow_file}" ]] || die "missing release workflow at ${workflow_file}"
 [[ -f "${developer_distribution_doc}" ]] || die \
     "missing developer distribution doc at ${developer_distribution_doc}"
 
 timeout_minutes="$(
     awk '
-        /name: Build and push container image/ {
+        /^  container:/ {
             in_container_job = 1
             next
         }
@@ -43,62 +44,28 @@ timeout_minutes="$(
     ' "${workflow_file}"
 )"
 
-[[ -n "${timeout_minutes}" ]] || die "failed to resolve container workflow timeout"
+[[ -n "${timeout_minutes}" ]] || die "failed to resolve container publication timeout"
 [[ "${timeout_minutes}" =~ ^[0-9]+$ ]] || die \
-    "container workflow timeout must be an integer, got '${timeout_minutes}'"
+    "container publication timeout must be an integer, got '${timeout_minutes}'"
 (( timeout_minutes >= 30 )) || die \
-    "container workflow timeout must leave budget for post-publish verification; expected at least 30 minutes, got ${timeout_minutes}"
-
-read -r release_retry_count release_delay_seconds release_wait_budget_seconds <<<"$(
-    python3 - <<'PY' "${workflow_file}"
-from pathlib import Path
-import re
-import sys
-
-workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
-match = re.search(
-    r'- name: Wait for GitHub release assets before publishing the container(?P<body>.*?)(?:\n\s*-\s+name:|\Z)',
-    workflow,
-    re.S,
-)
-if match is None:
-    raise SystemExit("missing release-asset wait step")
-body = match.group("body")
-retry_match = re.search(r'FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:\s*"(\d+)"', body)
-delay_match = re.search(r'FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:\s*"(\d+)"', body)
-if retry_match is None or delay_match is None:
-    raise SystemExit("missing release-asset wait retry controls")
-retry_count = int(retry_match.group(1))
-delay_seconds = int(delay_match.group(1))
-print(retry_count, delay_seconds, retry_count * delay_seconds)
-PY
-)"
-
-[[ "${release_retry_count}" =~ ^[0-9]+$ ]] || die \
-    "container workflow release wait retry count must be an integer, got '${release_retry_count}'"
-[[ "${release_delay_seconds}" =~ ^[0-9]+$ ]] || die \
-    "container workflow release wait delay must be an integer, got '${release_delay_seconds}'"
-[[ "${release_wait_budget_seconds}" =~ ^[0-9]+$ ]] || die \
-    "container workflow release wait budget must be an integer, got '${release_wait_budget_seconds}'"
-
-(( release_wait_budget_seconds >= 20 * 60 )) || die \
-    "container workflow release wait budget must cover slow multi-platform release publication; expected at least 20 minutes, got ${release_wait_budget_seconds} seconds"
-(( timeout_minutes * 60 >= release_wait_budget_seconds + 15 * 60 )) || die \
-    "container workflow timeout must leave at least 15 minutes beyond the release wait budget for image build and post-publish verification"
+    "container publication timeout must leave budget for buildx publication and post-push verification; expected at least 30 minutes, got ${timeout_minutes}"
 
 grep -Fq 'workflow-helper-root' "${workflow_file}" || die \
-    "container workflow no longer resolves a workflow helper-root for immutable-tag reruns"
-grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${workflow_file}" || die \
-    "container workflow no longer executes the release-candidate verifier from the workflow helper-root"
-grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh' "${workflow_file}" || die \
-    "container workflow no longer waits for the release-asset handoff through the workflow helper-root"
+    "release workflow no longer resolves a workflow helper-root for immutable-tag reruns"
+grep -Fq '      - verify-release' "${workflow_file}" || die \
+    "container publication no longer waits for the verified GitHub release handoff"
 grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
-    "container workflow no longer verifies the published public container surface through the workflow helper-root"
+    "container publication no longer verifies the published public container surface through the workflow helper-root"
+grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${workflow_file}" || die \
+    "container publication no longer aligns latest verification with the canonical latest policy"
 grep -Fq 'context: cli/build/docker-context' "${workflow_file}" || die \
-    "container workflow no longer publishes from the staged Docker build context"
+    "container publication no longer publishes from the staged Docker build context"
 grep -Fq 'context: .' "${workflow_file}" && die \
-    "container workflow reopened the repository root instead of the staged Docker build context"
+    "container publication reopened the repository root instead of the staged Docker build context"
 grep -Fq 'post-publish verification' "${developer_distribution_doc}" || die \
     "developer distribution doc no longer describes the post-publish verification budget"
+if [[ -e "${repo_root}/.github/workflows/container.yml" ]]; then
+    die "retired standalone container workflow resurfaced after publication unification"
+fi
 
-printf 'container workflow regression: success\n'
+printf 'container publication regression: success\n'

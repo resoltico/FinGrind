@@ -23,6 +23,10 @@ class CliDistributionBuildContractTest {
   void dockerBuild_reusesTheStagedRuntimeModuleList() throws IOException {
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
 
+    assertTrue(
+        dockerfile.contains(
+            "FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder"));
+    assertTrue(dockerfile.contains("RUN apk add --no-cache build-base=0.5-r3 python3=3.12.13-r0"));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
@@ -57,13 +61,13 @@ class CliDistributionBuildContractTest {
         dockerfile.contains(
             "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
     assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
-    assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.trusted.sha256"));
+    assertTrue(
+        dockerfile.contains(
+            "FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"));
+    assertTrue(dockerfile.contains("RUN apk add --no-cache libstdc++=15.2.0-r2"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.sha256"));
-    assertTrue(
-        dockerfile.contains(
-            "COPY --from=builder /build/libsqlite3.so.0.trusted.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.trusted.sha256"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0"));
@@ -150,7 +154,6 @@ class CliDistributionBuildContractTest {
         distributionPlugin.contains(
             "\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
     assertTrue(distributionPlugin.contains("managedSqliteLibrarySha256Path"));
-    assertTrue(distributionPlugin.contains("managedSqliteLibraryTrustedSha256Path"));
     assertTrue(distributionPlugin.contains("managedSqliteToolchainFingerprintPath"));
     assertTrue(distributionPlugin.contains("managedSqliteBuildContractPath"));
     assertTrue(
@@ -167,7 +170,7 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
     assertTrue(
         distributionPlugin.contains(
-            "DistributionContractReader.hostBundleTarget(repositoryRootDirectory)"));
+            "DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)"));
     assertTrue(
         distributionPlugin.contains(
             "rootProject.layout.projectDirectory.file(\"gradle/build-logic/build.gradle.kts\")"));
@@ -327,6 +330,10 @@ class CliDistributionBuildContractTest {
         Files.readString(
             repositoryRoot.resolve(
                 "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ReportBundleArchiveOutputsTask.kt"));
+    String bundleArchiveTasks =
+        Files.readString(
+            repositoryRoot.resolve(
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliBundleArchiveTasks.kt"));
 
     assertTrue(
         distributionPlugin.contains(
@@ -356,7 +363,7 @@ class CliDistributionBuildContractTest {
         pruneTask.contains(".filter { entry -> entry.fileName.toString().startsWith(prefix) }"));
     assertTrue(distributionPlugin.contains("dependsOn(cleanBundleOutputs)"));
     assertTrue(
-        distributionPlugin.contains(
+        bundleArchiveTasks.contains(
             "tasks.register<ReportBundleArchiveOutputsTask>(\"bundleCliArchive\")"));
     assertTrue(reportTask.contains("FINGRIND_BUNDLE_ARCHIVE="));
     assertTrue(reportTask.contains("FINGRIND_BUNDLE_CHECKSUM="));

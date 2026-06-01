@@ -167,7 +167,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeCapabilities_usesCompactDefaultPayload() throws IOException {
+  void writeCapabilities_usesMinimalDefaultPayload() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeCapabilities(
@@ -178,12 +178,14 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "Command-line double-entry bookkeeping with one protected book per accounting entity")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
-    assertEquals("compact", payload.path("detail").stringValue());
+    assertEquals("minimal", payload.path("detail").stringValue());
+    assertEquals("overview", payload.path("focus").stringValue());
     assertTrue(payload.has("bookBoundary"));
-    assertTrue(payload.has("storageEngines"));
     assertTrue(payload.has("requestInput"));
-    assertTrue(payload.has("commands"));
-    assertFalse(payload.has("compactDetailHint"));
+    assertTrue(payload.has("builtInStatements"));
+    assertTrue(payload.has("compactDetailHint"));
+    assertFalse(payload.has("storageEngines"));
+    assertFalse(payload.has("commands"));
     assertFalse(payload.has("storage"));
     assertFalse(payload.has("fullContract"));
   }

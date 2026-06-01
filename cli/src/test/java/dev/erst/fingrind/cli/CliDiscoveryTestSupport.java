@@ -93,7 +93,7 @@ final class CliDiscoveryTestSupport {
   static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.49.0",
+        "0.50.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -103,7 +103,7 @@ final class CliDiscoveryTestSupport {
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             SqliteRuntimeStatus.READY,
             SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+            SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
             "<redacted>/libsqlite3.dylib",
             ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
             ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),

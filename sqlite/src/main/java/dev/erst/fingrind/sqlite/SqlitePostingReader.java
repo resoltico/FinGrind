@@ -19,7 +19,7 @@ final class SqlitePostingReader {
     String sql = SqlitePostingSql.listPostings(query);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindPostingPageQuery(statement, query);
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
     }
@@ -41,7 +41,7 @@ final class SqlitePostingReader {
     List<CommittedPosting> postings = new ArrayList<>();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       binder.bind(statement);
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
     }

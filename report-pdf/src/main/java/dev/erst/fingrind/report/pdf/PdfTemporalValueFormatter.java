@@ -19,12 +19,12 @@ final class PdfTemporalValueFormatter {
   }
 
   static String optionalDate(@Nullable LocalDate date) {
-    return date == null ? "latest committed posting date" : date.toString();
+    return date == null ? "current book horizon" : date.toString();
   }
 
   static String optionalDateRange(@Nullable LocalDate from, @Nullable LocalDate to) {
     String lower = from == null ? "book start" : from.toString();
-    String upper = to == null ? "latest committed posting date" : to.toString();
+    String upper = to == null ? "current book horizon" : to.toString();
     return lower + " to " + upper;
   }
 

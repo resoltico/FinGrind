@@ -44,16 +44,15 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlan;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import dev.erst.fingrind.executor.spi.PostingRangeStore;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -369,8 +368,7 @@ class PeriodResultTransferServiceTest {
                     moneyLine("1000", JournalLine.EntrySide.CREDIT, "BHD", "7.000"))));
 
     PeriodResultTransferOutcome outcome =
-        new PeriodResultTransferService(
-                book, book, book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
+        new PeriodResultTransferService(book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
             .transferPeriodResult(PERIOD);
     dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
         assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
@@ -555,8 +553,7 @@ class PeriodResultTransferServiceTest {
 
   private static PeriodResultTransferService service(InMemoryBookSession bookSession, Clock clock) {
     PostingIdGenerator postingIdGenerator = new SequencePostingIdGenerator();
-    return new PeriodResultTransferService(
-        bookSession, bookSession, bookSession, bookSession, postingIdGenerator, clock);
+    return new PeriodResultTransferService(bookSession, bookSession, postingIdGenerator, clock);
   }
 
   private static PeriodResultTransferOutcome transferPeriodResult(
@@ -770,8 +767,33 @@ class PeriodResultTransferServiceTest {
                 PERIOD.effectiveDateTo(),
                 FIXED_INSTANT,
                 new StorageLocator("system://period-result-transfer/" + closeToken),
-                new ContentSha256(sha256Hex(closeToken)))),
+                new ContentSha256(sha256Hex(periodResultTransferArtifactContent(currencyCode))))),
         List.of());
+  }
+
+  private static String periodResultTransferArtifactContent(String currencyCode) {
+    String serializedLines =
+        switch (currencyCode) {
+          case "BHD" -> "5000|CREDIT|BHD|7000\n3200|DEBIT|BHD|7000";
+          case "USD" -> "4000|DEBIT|USD|3000\n3200|CREDIT|USD|3000";
+          default ->
+              throw new IllegalArgumentException("Unsupported currency for test: " + currencyCode);
+        };
+    return """
+        kind=period-result-transfer-plan
+        effectiveDateFrom=%s
+        effectiveDateTo=%s
+        currency=%s
+        transferredAt=%s
+        lines=
+        %s
+        """
+        .formatted(
+            PERIOD.effectiveDateFrom(),
+            PERIOD.effectiveDateTo(),
+            currencyCode,
+            FIXED_INSTANT,
+            serializedLines);
   }
 
   private static String sha256Hex(String value) {
@@ -797,10 +819,7 @@ class PeriodResultTransferServiceTest {
 
   /** Recording book double that captures generated close drafts and account/posting inputs. */
   private static final class RecordingCloseBook
-      implements BookLifecycleReader,
-          AccountCatalogStore,
-          PostingRangeStore,
-          PeriodResultTransferStore {
+      implements BookLifecycleReader, PeriodResultTransferStore {
     private List<RegisteredAccount> accounts = List.of();
     private List<CommittedPosting> postings = List.of();
     private PeriodResultTransferDraft recordedDraft =
@@ -817,40 +836,39 @@ class PeriodResultTransferServiceTest {
     }
 
     @Override
-    public List<RegisteredAccount> allAccounts() {
-      return accounts;
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
-        dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
-      throw unsupported();
-    }
-
-    @Override
-    public List<CommittedPosting> postings(
-        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
-      return postings.stream()
-          .filter(posting -> effectiveDateRange.contains(posting.journalEntry().effectiveDate()))
-          .toList();
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      return postings.stream()
-          .map(posting -> posting.journalEntry().effectiveDate())
-          .min(LocalDate::compareTo);
-    }
-
-    @Override
-    public Optional<LocalDate> transferredThroughEffectiveDate() {
-      return Optional.empty();
-    }
-
-    @Override
     public PeriodResultTransferOutcome transferPeriodResult(
-        PeriodResultTransferDraft periodResultTransferDraft,
+        ReportingPeriod reportingPeriod,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner planner,
+        LocalDate currentUtcDate,
+        java.time.Instant transferredAt,
         PostingIdGenerator postingIdGenerator) {
+      var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
+      if (resultHoldingSelection
+          instanceof
+          dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection rejected) {
+        return new PeriodResultTransferOutcome.Rejected(rejected.rejection());
+      }
+      Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
+          planner.closeHorizonRejection(
+              reportingPeriod, bookIdentity, currentUtcDate, Optional.empty());
+      if (closeHorizonRejection.isPresent()) {
+        return new PeriodResultTransferOutcome.Rejected(closeHorizonRejection.orElseThrow());
+      }
+      RegisteredAccount resultHoldingAccount =
+          ((dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection)
+                  resultHoldingSelection)
+              .account();
+      PeriodResultTransferPlan closePlan =
+          planner.closingPostings(
+              reportingPeriod, resultHoldingAccount, accounts, postings, transferredAt);
+      PeriodResultTransferDraft periodResultTransferDraft =
+          new PeriodResultTransferDraft(
+              reportingPeriod,
+              resultHoldingAccount.accountCode(),
+              closePlan.transferredTotals(),
+              transferredAt,
+              closePlan.closingPostings());
       recordedDraft = periodResultTransferDraft;
       List<PostingId> generatedPostingIds = new ArrayList<>();
       for (int index = 0; index < periodResultTransferDraft.closingPostings().size(); index++) {
@@ -864,10 +882,6 @@ class PeriodResultTransferServiceTest {
               periodResultTransferDraft.transferredTotals(),
               periodResultTransferDraft.transferredAt(),
               generatedPostingIds));
-    }
-
-    private static AssertionError unsupported() {
-      return new AssertionError("This close-service test double does not support that seam.");
     }
   }
 }

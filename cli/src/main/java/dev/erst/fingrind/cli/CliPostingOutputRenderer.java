@@ -107,18 +107,17 @@ final class CliPostingOutputRenderer {
                 4);
     String context =
         CliTextFormat.renderKeyValueBlock(
-            List.of(
+            mergeContextRows(
+                CliBookIdentityDisplay.detailRows(page.bookIdentity()),
                 List.of(
-                    "Book",
-                    CliBookIdentityDisplay.summaryRows(page.bookIdentity()).getFirst().get(1)),
-                List.of(
-                    "Account filter",
-                    page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
-                List.of(
-                    "Effective date range",
-                    CliQueryScopeText.dateRange(
-                        page.effectiveDateRange().effectiveDateFrom().orElse(null),
-                        page.effectiveDateRange().effectiveDateTo().orElse(null)))));
+                    List.of(
+                        "Account filter",
+                        page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
+                    List.of(
+                        "Effective date range",
+                        CliQueryScopeText.dateRange(
+                            page.effectiveDateRange().effectiveDateFrom().orElse(null),
+                            page.effectiveDateRange().effectiveDateTo().orElse(null))))));
     return CliTextFormat.renderTitledBlock(
         "Postings",
         CliReportRenderSupport.joinSections(
@@ -128,6 +127,10 @@ final class CliPostingOutputRenderer {
   static String renderPostingRegisterCsv(PostingPage page) {
     return CliTextFormat.renderCsv(
         List.of(
+            "exportFamily",
+            "rowId",
+            "parentRowId",
+            "relationKind",
             "recordKind",
             "effectiveDate",
             "recordedAt",
@@ -148,6 +151,10 @@ final class CliPostingOutputRenderer {
         page.postings().isEmpty()
             ? List.of(
                 List.of(
+                    CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+                    "posting-page:scope-empty",
+                    "",
+                    "scope-empty",
                     CliCsvEmptyKinds.SCOPE_EMPTY,
                     "",
                     "",
@@ -197,6 +204,10 @@ final class CliPostingOutputRenderer {
 
   private static List<String> postingRegisterPostingCsvRow(PostingFact postingFact) {
     return List.of(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "posting:" + postingFact.postingId().value(),
+        "",
+        "posting",
         "posting",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -219,6 +230,10 @@ final class CliPostingOutputRenderer {
   private static List<String> postingRegisterAccountCsvRow(
       PostingFact postingFact, String accountCode) {
     return List.of(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "posting-account:" + postingFact.postingId().value() + ":" + accountCode,
+        "posting:" + postingFact.postingId().value(),
+        "counterpart-account",
         "account",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -241,6 +256,10 @@ final class CliPostingOutputRenderer {
   private static List<String> postingRegisterSourceDocumentCsvRow(
       PostingFact postingFact, String sourceDocumentId, String sourceDocumentType) {
     return List.of(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "posting-source-document:" + postingFact.postingId().value() + ":" + sourceDocumentId,
+        "posting:" + postingFact.postingId().value(),
+        "source-document",
         "source-document",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -263,6 +282,10 @@ final class CliPostingOutputRenderer {
   private static List<String> postingRegisterApprovalCsvRow(
       PostingFact postingFact, String approvalId, String approvalDecision) {
     return List.of(
+        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        "posting-approval:" + postingFact.postingId().value() + ":" + approvalId,
+        "posting:" + postingFact.postingId().value(),
+        "approval",
         "approval",
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -293,5 +316,12 @@ final class CliPostingOutputRenderer {
       case "INTERNAL" -> "Internal";
       default -> wireValue.replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
     };
+  }
+
+  private static List<List<String>> mergeContextRows(
+      List<List<String>> firstRows, List<List<String>> secondRows) {
+    List<List<String>> rows = new ArrayList<>(firstRows);
+    rows.addAll(secondRows);
+    return List.copyOf(rows);
   }
 }

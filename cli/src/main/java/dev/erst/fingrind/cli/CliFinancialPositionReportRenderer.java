@@ -2,9 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +40,10 @@ final class CliFinancialPositionReportRenderer {
   static String renderCsv(FinancialPositionReport report) {
     return CliTextFormat.renderCsv(
         List.of(
+            "exportFamily",
+            "rowId",
+            "parentRowId",
+            "relationKind",
             "reportBasis",
             "recordKind",
             "effectiveDateAsOf",
@@ -60,8 +61,9 @@ final class CliFinancialPositionReportRenderer {
             "balanceSide",
             "message"),
         java.util.stream.Stream.concat(
-                csvRows(report, "current", report.sections()),
-                csvRows(report, "comparative", report.comparativeSections()))
+                CliFinancialPositionCsvRows.rows(report, "current", report.sections()),
+                CliFinancialPositionCsvRows.rows(
+                    report, "comparative", report.comparativeSections()))
             .toList());
   }
 
@@ -141,118 +143,5 @@ final class CliFinancialPositionReportRenderer {
                     row.lineClassification()),
                 CliQueryScopeText.displayMoney(row.balance().netAmount()),
                 CliBalanceOutputFormatter.displayBalanceSideLabel(row.balance().balanceSide())));
-  }
-
-  private static java.util.stream.Stream<List<String>> csvRows(
-      FinancialPositionReport report, String reportBasis, List<FinancialPositionSection> sections) {
-    String effectiveDateAsOf =
-        "comparative".equals(reportBasis)
-            ? report
-                .comparativeEffectiveDateRange()
-                .effectiveDateTo()
-                .map(LocalDate::toString)
-                .orElse("")
-            : report.effectiveDateAsOf().map(LocalDate::toString).orElse("");
-    List<List<String>> rows =
-        sections.stream()
-            .flatMap(
-                section -> {
-                  List<List<String>> renderedRows = new ArrayList<>();
-                  section.rows().stream()
-                      .map(
-                          row ->
-                              List.of(
-                                  reportBasis,
-                                  "row",
-                                  effectiveDateAsOf,
-                                  section.accountType().wireValue(),
-                                  row.lineCode(),
-                                  row.lineName(),
-                                  row.lineRole().map(AccountRole::wireValue).orElse(""),
-                                  row.lineType().wireValue(),
-                                  row.lineClassification()
-                                      .map(FinancialPositionLineClassification::wireValue)
-                                      .orElse(""),
-                                  row.lineKind().wireValue(),
-                                  row.balance().netAmount().currencyUnit().code(),
-                                  CliQueryScopeText.displayMoney(row.balance().debitTotal()),
-                                  CliQueryScopeText.displayMoney(row.balance().creditTotal()),
-                                  CliQueryScopeText.displayMoney(row.balance().netAmount()),
-                                  row.balance().balanceSide().wireValue(),
-                                  ""))
-                      .forEach(renderedRows::add);
-                  section.totals().stream()
-                      .map(
-                          total ->
-                              List.of(
-                                  reportBasis,
-                                  "section-total",
-                                  effectiveDateAsOf,
-                                  section.accountType().wireValue(),
-                                  section
-                                          .accountType()
-                                          .wireValue()
-                                          .toLowerCase(java.util.Locale.ROOT)
-                                      + "-total",
-                                  CliAccountStatementLabels.displayAccountTypeSectionLabel(
-                                          section.accountType())
-                                      + " total",
-                                  "",
-                                  section.accountType().wireValue(),
-                                  "",
-                                  "SECTION_TOTAL",
-                                  total.netAmount().currencyUnit().code(),
-                                  CliQueryScopeText.displayMoney(total.debitTotal()),
-                                  CliQueryScopeText.displayMoney(total.creditTotal()),
-                                  CliQueryScopeText.displayMoney(total.netAmount()),
-                                  total.balanceSide().wireValue(),
-                                  ""))
-                      .forEach(renderedRows::add);
-                  if (renderedRows.isEmpty()) {
-                    renderedRows.add(
-                        List.of(
-                            reportBasis,
-                            CliCsvEmptyKinds.SECTION_EMPTY,
-                            effectiveDateAsOf,
-                            section.accountType().wireValue(),
-                            "",
-                            "",
-                            "",
-                            section.accountType().wireValue(),
-                            "",
-                            "",
-                            report.bookIdentity().functionalCurrency().code(),
-                            "",
-                            "",
-                            "",
-                            "",
-                            CliReportRenderSupport.emptySectionLinesMessage(
-                                CliAccountStatementLabels.displayAccountTypeSectionLabel(
-                                    section.accountType()))));
-                  }
-                  return renderedRows.stream();
-                })
-            .toList();
-    if (!rows.isEmpty()) {
-      return rows.stream();
-    }
-    return java.util.stream.Stream.of(
-        List.of(
-            reportBasis,
-            CliCsvEmptyKinds.REPORT_EMPTY,
-            effectiveDateAsOf,
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            report.bookIdentity().functionalCurrency().code(),
-            "",
-            "",
-            "",
-            "",
-            CliQueryScopeText.noMatchesLabel("financial position lines")));
   }
 }

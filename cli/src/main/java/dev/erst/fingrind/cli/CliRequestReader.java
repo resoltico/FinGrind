@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
@@ -33,6 +34,7 @@ final class CliRequestReader {
     return parseRequest(
         requestFile,
         CliJsonRequestHints.postEntryRequestHint(),
+        OperationId.POST_ENTRY,
         CliPostingRequestParser::readPostEntryCommand);
   }
 
@@ -41,6 +43,7 @@ final class CliRequestReader {
     return parseRequest(
         requestFile,
         CliJsonRequestHints.declareAccountRequestHint(),
+        OperationId.DECLARE_ACCOUNT,
         CliPostingRequestParser::readDeclareAccountCommand);
   }
 
@@ -49,12 +52,14 @@ final class CliRequestReader {
     return parseRequest(
         requestFile,
         CliJsonRequestHints.ledgerPlanRequestHint(),
+        null,
         CliLedgerPlanParser::readLedgerPlan);
   }
 
   private <T> T parseRequest(
       Path requestFile,
       String requestHint,
+      @org.jspecify.annotations.Nullable OperationId templateOperation,
       Function<tools.jackson.databind.node.ObjectNode, T> parser) {
     try {
       return parser.apply(
@@ -62,19 +67,41 @@ final class CliRequestReader {
     } catch (CliRequestException exception) {
       throw exception;
     } catch (JournalEntryValidationException exception) {
-      throw new CliRequestException(
-          ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestFailures.normalizedMessage(exception),
-          requestHint,
-          exception,
-          new CliErrorJsonModels.InvalidRequestDetails(exception.violations()));
+      throw invalidRequestFromJournalValidation(exception, requestHint, templateOperation);
     } catch (IllegalArgumentException | ArithmeticException exception) {
-      throw new CliRequestException(
-          ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestFailures.normalizedMessage(exception),
-          requestHint,
-          exception);
+      throw invalidRequestFromValueFailure(exception, requestHint, templateOperation);
     }
+  }
+
+  static CliRequestException invalidRequestFromJournalValidation(
+      JournalEntryValidationException exception,
+      String requestHint,
+      @org.jspecify.annotations.Nullable OperationId templateOperation) {
+    CliErrorJsonModels.InvalidRequestDetails details =
+        new CliErrorJsonModels.InvalidRequestDetails(exception.violations());
+    String message = CliJsonRequestFailures.normalizedMessage(exception);
+    return new CliRequestException(
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
+        message,
+        templateOperation == null
+            ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
+            : CliRequestRepairHints.refine(message, requestHint, details, templateOperation),
+        exception,
+        details);
+  }
+
+  static CliRequestException invalidRequestFromValueFailure(
+      RuntimeException exception,
+      String requestHint,
+      @org.jspecify.annotations.Nullable OperationId templateOperation) {
+    String message = CliJsonRequestFailures.normalizedMessage(exception);
+    return new CliRequestException(
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
+        message,
+        templateOperation == null
+            ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
+            : CliRequestRepairHints.refine(message, requestHint, null, templateOperation),
+        exception);
   }
 
   private JsonNode readRootNode(Path requestFile, String readFailureHint) {

@@ -11,14 +11,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
+import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
+import dev.erst.fingrind.contract.protocol.ExecutionMode;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -73,25 +79,342 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         assertInstanceOf(
             CliDiscoveryJsonModels.CapabilitiesMinimalPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
-                capabilitiesDescriptor, DiscoveryDetail.MINIMAL));
+                capabilitiesDescriptor, DiscoveryDetail.MINIMAL, overviewSelections()));
     CliDiscoveryJsonModels.CapabilitiesCompactPayload compact =
         assertInstanceOf(
             CliDiscoveryJsonModels.CapabilitiesCompactPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
-                capabilitiesDescriptor, DiscoveryDetail.COMPACT));
+                capabilitiesDescriptor, DiscoveryDetail.COMPACT, overviewSelections()));
     CliDiscoveryJsonModels.CapabilitiesPayload full =
         assertInstanceOf(
             CliDiscoveryJsonModels.CapabilitiesPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
-                capabilitiesDescriptor, DiscoveryDetail.FULL));
+                capabilitiesDescriptor, DiscoveryDetail.FULL, overviewSelections()));
 
     assertEquals(DiscoveryDetail.MINIMAL, minimal.detail());
+    assertEquals(DiscoveryFocus.OVERVIEW, minimal.focus());
     assertTrue(minimal.compactDetailHint().contains("--detail compact"));
     assertEquals(DiscoveryDetail.COMPACT, compact.detail());
-    assertFalse(compact.commands().isEmpty());
+    assertEquals(DiscoveryFocus.OVERVIEW, compact.focus());
+    assertFalse(compact.commandCounts().isEmpty());
+    assertTrue(
+        compact.commandCounts().stream()
+            .anyMatch(commandCount -> "query".equals(commandCount.category())));
     assertNotNull(compact.requestInput());
     assertEquals(DiscoveryDetail.FULL, full.detail());
+    assertEquals(DiscoveryFocus.OVERVIEW, full.focus());
     assertNotNull(full.fullContract());
+  }
+
+  @Test
+  void capabilitiesPayload_mapsFocusedCommandSlicesAcrossDetailsAndCategories() {
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload minimal =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.QUERY)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload compact =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.COMPACT,
+                new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.QUERY)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload full =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.FULL,
+                new CliDiscoverySelections(DiscoveryFocus.COMMANDS, null)));
+
+    assertEquals(DiscoveryFocus.COMMANDS, minimal.focus());
+    assertEquals(OperationCategory.QUERY.wireValue(), minimal.category());
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload minimalCommands =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, minimal.data());
+    assertFalse(minimalCommands.commands().isEmpty());
+    assertTrue(
+        minimalCommands.commands().stream()
+            .allMatch(command -> OperationCategory.QUERY.wireValue().equals(command.category())));
+    assertNull(minimalCommands.commandSurfaces());
+    assertNull(minimalCommands.fullCommands());
+    assertTrue(minimal.nextHints().getFirst().contains("--category"));
+
+    assertEquals(DiscoveryFocus.COMMANDS, compact.focus());
+    assertEquals(OperationCategory.QUERY.wireValue(), compact.category());
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload compactCommands =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, compact.data());
+    assertFalse(Objects.requireNonNull(compactCommands.commandSurfaces()).isEmpty());
+    assertNull(compactCommands.fullCommands());
+    assertTrue(
+        compactCommands.commandSurfaces().stream()
+            .allMatch(
+                commandSurface ->
+                    OperationCategory.QUERY.wireValue().equals(commandSurface.category())));
+    assertTrue(compact.nextHints().get(1).contains("--detail compact"));
+
+    assertEquals(DiscoveryFocus.COMMANDS, full.focus());
+    assertNull(full.category());
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload fullCommands =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, full.data());
+    assertEquals(
+        capabilitiesDescriptor.commands().allCommands().size(), fullCommands.commands().size());
+    assertNull(fullCommands.commandSurfaces());
+    assertFalse(Objects.requireNonNull(fullCommands.fullCommands()).isEmpty());
+
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload minimalWithoutCategory =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            assertInstanceOf(
+                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryPayloadMapper.capabilitiesPayload(
+                        capabilitiesDescriptor,
+                        DiscoveryDetail.MINIMAL,
+                        new CliDiscoverySelections(DiscoveryFocus.COMMANDS, null)))
+                .data());
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload compactWithoutCategory =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            assertInstanceOf(
+                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryPayloadMapper.capabilitiesPayload(
+                        capabilitiesDescriptor,
+                        DiscoveryDetail.COMPACT,
+                        new CliDiscoverySelections(DiscoveryFocus.COMMANDS, null)))
+                .data());
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload fullWithCategory =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            assertInstanceOf(
+                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryPayloadMapper.capabilitiesPayload(
+                        capabilitiesDescriptor,
+                        DiscoveryDetail.FULL,
+                        new CliDiscoverySelections(
+                            DiscoveryFocus.COMMANDS, OperationCategory.WRITE)))
+                .data());
+
+    assertNull(minimalWithoutCategory.category());
+    assertNull(compactWithoutCategory.category());
+    assertEquals(OperationCategory.WRITE.wireValue(), fullWithCategory.category());
+
+    List<OperationCategory> categories = List.of(OperationCategory.values());
+    List<CliDiscoverySelections> selections =
+        categories.stream()
+            .map(category -> new CliDiscoverySelections(DiscoveryFocus.COMMANDS, category))
+            .toList();
+    for (int index = 0; index < categories.size(); index++) {
+      OperationCategory category = categories.get(index);
+      CliDiscoveryJsonModels.CapabilitiesSlicePayload filtered =
+          assertInstanceOf(
+              CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+              CliDiscoveryPayloadMapper.capabilitiesPayload(
+                  capabilitiesDescriptor, DiscoveryDetail.MINIMAL, selections.get(index)));
+      CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload filteredCommands =
+          assertInstanceOf(
+              CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, filtered.data());
+      assertTrue(
+          filteredCommands.commands().stream()
+              .allMatch(command -> category.wireValue().equals(command.category())));
+    }
+  }
+
+  @Test
+  void capabilitiesPayload_mapsFocusedStorageRequestInputCurrencyKernelAndResponseSlices() {
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload storage =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.STORAGE, null)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload requestInputCompact =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.COMPACT,
+                new CliDiscoverySelections(DiscoveryFocus.REQUEST_INPUT, null)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload requestInputFull =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.FULL,
+                new CliDiscoverySelections(DiscoveryFocus.REQUEST_INPUT, null)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload currency =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.CURRENCY_MODEL, null)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload kernel =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.BOOKKEEPING_KERNEL, null)));
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload response =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.RESPONSE_CONTRACT, null)));
+
+    assertInstanceOf(CliDiscoveryJsonModels.CapabilitiesStorageSlicePayload.class, storage.data());
+    assertTrue(storage.nextHints().getFirst().contains("environment --output json"));
+
+    CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload compactRequestInput =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload.class,
+            requestInputCompact.data());
+    assertNull(compactRequestInput.fullRequestInput());
+    assertTrue(requestInputCompact.nextHints().getFirst().contains("print-request-template"));
+
+    CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload fullRequestInput =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload.class,
+            requestInputFull.data());
+    assertNotNull(fullRequestInput.fullRequestInput());
+
+    assertInstanceOf(
+        CliDiscoveryJsonModels.CapabilitiesCurrencySlicePayload.class, currency.data());
+    assertTrue(currency.nextHints().getFirst().contains("--detail full"));
+    assertInstanceOf(CliDiscoveryJsonModels.CapabilitiesKernelSlicePayload.class, kernel.data());
+    assertTrue(kernel.nextHints().getFirst().contains("--detail full"));
+    assertInstanceOf(
+        CliDiscoveryJsonModels.CapabilitiesResponseContractSlicePayload.class, response.data());
+    assertTrue(response.nextHints().getFirst().contains("--detail full"));
+  }
+
+  @Test
+  void capabilitiesPayload_mapsRawJsonExecutionModeInCompactCommandSurface() {
+    CapabilitiesDescriptor canonical = MachineContract.capabilities(identity());
+    CapabilitiesDescriptor customized =
+        new CapabilitiesDescriptor(
+            canonical.application(),
+            canonical.version(),
+            canonical.storage(),
+            new CommandCatalogDescriptor(
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.PRINT_PLAN_TEMPLATE,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.RAW_JSON,
+                        List.of(),
+                        List.of(),
+                        "Emit one ledger plan template")),
+                List.of(),
+                List.of(),
+                List.of()),
+            canonical.requestInput(),
+            canonical.requestShapes(),
+            canonical.responseModel(),
+            canonical.planExecution(),
+            canonical.audit(),
+            canonical.accountRegistry(),
+            canonical.reversals(),
+            canonical.preflight(),
+            canonical.currencyModel(),
+            canonical.bookkeepingKernel());
+
+    CliDiscoveryJsonModels.CapabilitiesSlicePayload payload =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                customized,
+                DiscoveryDetail.COMPACT,
+                new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.DISCOVERY)));
+    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload commandSlice =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, payload.data());
+
+    assertEquals(
+        "raw-json",
+        Objects.requireNonNull(commandSlice.commandSurfaces()).getFirst().executionMode());
+  }
+
+  @Test
+  void helpPayload_filtersTopLevelOverviewByCategoryAcrossDetails() {
+    HelpDescriptor helpDescriptor = MachineContract.help(identity(), environment());
+
+    CliDiscoveryJsonModels.HelpOverviewMinimalPayload minimal =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.HelpOverviewMinimalPayload.class,
+            CliDiscoveryPayloadMapper.helpPayload(
+                helpDescriptor, DiscoveryDetail.MINIMAL, OperationCategory.QUERY));
+    CliDiscoveryJsonModels.HelpOverviewCompactPayload compact =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.HelpOverviewCompactPayload.class,
+            CliDiscoveryPayloadMapper.helpPayload(
+                helpDescriptor, DiscoveryDetail.COMPACT, OperationCategory.QUERY));
+    CliDiscoveryJsonModels.HelpOverviewPayload full =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.HelpOverviewPayload.class,
+            CliDiscoveryPayloadMapper.helpPayload(
+                helpDescriptor, DiscoveryDetail.FULL, OperationCategory.QUERY));
+
+    assertEquals(OperationCategory.QUERY.wireValue(), minimal.category());
+    assertFalse(minimal.commands().isEmpty());
+    assertTrue(
+        minimal.commands().stream()
+            .allMatch(command -> OperationCategory.QUERY.wireValue().equals(command.category())));
+    assertEquals(OperationCategory.QUERY.wireValue(), compact.category());
+    assertFalse(compact.commands().isEmpty());
+    assertTrue(
+        compact.commands().stream()
+            .allMatch(command -> OperationCategory.QUERY.wireValue().equals(command.category())));
+    assertEquals(OperationCategory.QUERY.wireValue(), full.category());
+    assertFalse(full.commands().isEmpty());
+    assertTrue(
+        full.commands().stream()
+            .allMatch(
+                command ->
+                    ProtocolCatalog.operation(command.name()).category()
+                        == OperationCategory.QUERY));
+  }
+
+  @Test
+  void helpPayload_ignoresCategoryWhenHelpIsAlreadyCommandScoped() {
+    HelpDescriptor commandScoped =
+        MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
+
+    CliDiscoveryJsonModels.CommandHelpPayload payload =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapper.helpPayload(
+                commandScoped, DiscoveryDetail.COMPACT, OperationCategory.ADMINISTRATION));
+
+    assertEquals(OperationId.POST_ENTRY, payload.command().name());
+  }
+
+  @Test
+  void helpPayload_mapsCompactPostingRequestGuidanceWithoutFullArtifacts() {
+    CliDiscoveryJsonModels.CommandHelpPayload payload =
+        assertInstanceOf(
+            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            compactHelpPayload(
+                MachineContract.help(identity(), environment(), OperationId.POST_ENTRY)));
+
+    assertNotNull(payload.requestFile());
+    assertNull(payload.requestFile().postingTemplate());
+    assertNull(payload.requestFile().requestShapes());
+    assertEquals(
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE),
+        payload.requestFile().shortcutCommand());
   }
 
   @Test
@@ -536,21 +859,25 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   }
 
   private static Object compactHelpPayload(HelpDescriptor helpDescriptor) {
-    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.COMPACT);
+    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.COMPACT, null);
   }
 
   private static Object minimalHelpPayload(HelpDescriptor helpDescriptor) {
-    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.MINIMAL);
+    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.MINIMAL, null);
   }
 
   private static Object fullHelpPayload(HelpDescriptor helpDescriptor) {
-    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.FULL);
+    return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.FULL, null);
+  }
+
+  private static CliDiscoverySelections overviewSelections() {
+    return CliDiscoverySelections.overview();
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.49.0",
+        "0.50.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

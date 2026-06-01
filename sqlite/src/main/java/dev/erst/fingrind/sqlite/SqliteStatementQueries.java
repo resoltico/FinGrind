@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingKernelProfileId;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -70,6 +71,7 @@ final class SqliteStatementQueries {
 
   private record BookIdentityCoreRow(
       String entityName,
+      String accountingKernelProfile,
       String functionalCurrencyCode,
       int fiscalYearStartMonth,
       int fiscalYearStartDay) {}
@@ -88,7 +90,7 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           binder.bind(statement);
-          if (statement.step() == SqliteNativeResultCodes.DONE) {
+          if (statement.step() == SqliteNativeResultCode.code("DONE")) {
             return Optional.empty();
           }
           PostingId postingId =
@@ -108,7 +110,7 @@ final class SqliteStatementQueries {
         SqlitePostingSql.FIND_ACCOUNT_BY_CODE,
         statement -> {
           statement.bindText(1, accountCode.value());
-          if (statement.step() == SqliteNativeResultCodes.DONE) {
+          if (statement.step() == SqliteNativeResultCode.code("DONE")) {
             return Optional.empty();
           }
           return Optional.of(SqlitePostingMapper.registeredAccount(statement));
@@ -128,7 +130,7 @@ final class SqliteStatementQueries {
             bindIndex++;
           }
           List<RegisteredAccount> accounts = new ArrayList<>();
-          while (statement.step() == SqliteNativeResultCodes.ROW) {
+          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
             accounts.add(SqlitePostingMapper.registeredAccount(statement));
           }
           return accounts.stream()
@@ -144,7 +146,7 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           List<RegisteredAccount> accounts = new ArrayList<>();
-          while (statement.step() == SqliteNativeResultCodes.ROW) {
+          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
             accounts.add(SqlitePostingMapper.registeredAccount(statement));
           }
           return List.copyOf(accounts);
@@ -167,7 +169,7 @@ final class SqliteStatementQueries {
           statement.bindText(1, cursorAccountCode);
           statement.bindText(2, cursorAccountCode);
           statement.bindInt(3, query.limit() + 1);
-          while (statement.step() == SqliteNativeResultCodes.ROW) {
+          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
             accounts.add(SqlitePostingMapper.registeredAccount(statement));
           }
           return Boolean.TRUE;
@@ -188,7 +190,7 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           binder.bind(statement);
-          return statement.step() == SqliteNativeResultCodes.ROW;
+          return statement.step() == SqliteNativeResultCode.code("ROW");
         });
   }
 
@@ -198,7 +200,7 @@ final class SqliteStatementQueries {
         SqlitePostingSql.FIND_BOOK_INITIALIZED_AT,
         statement -> {
           statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY);
-          if (statement.step() == SqliteNativeResultCodes.DONE) {
+          if (statement.step() == SqliteNativeResultCode.code("DONE")) {
             return Optional.empty();
           }
           return Optional.of(
@@ -221,6 +223,7 @@ final class SqliteStatementQueries {
             new EntityProfile(
                 new BookEntityName(coreRow.entityName()),
                 decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
+            new AccountingKernelProfileId(coreRow.accountingKernelProfile()),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay())));
   }
@@ -238,11 +241,11 @@ final class SqliteStatementQueries {
         activeDatabase,
         sql,
         statement -> {
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
+          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
             return OptionalInt.empty();
           }
           int value = statement.columnInt(0);
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
+          if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite integer query returned more than one row: " + sql);
           }
@@ -255,13 +258,13 @@ final class SqliteStatementQueries {
         activeDatabase,
         sql,
         statement -> {
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
+          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
             throw new IllegalStateException("SQLite text query returned no rows: " + sql);
           }
           String value =
               Objects.requireNonNull(
                   statement.columnText(0), "SQLite text query returned NULL: " + sql);
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
+          if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
           }
           return value;
@@ -284,12 +287,12 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           binder.bind(statement);
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
+          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
             return new OptionalTextRow(Optional.empty(), true);
           }
           String value = statement.columnText(0);
           return new OptionalTextRow(
-              Optional.ofNullable(value), statement.step() == SqliteNativeResultCodes.DONE);
+              Optional.ofNullable(value), statement.step() == SqliteNativeResultCode.code("DONE"));
         });
   }
 
@@ -299,16 +302,17 @@ final class SqliteStatementQueries {
         activeDatabase,
         SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
         statement -> {
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
+          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
             return Optional.empty();
           }
           BookIdentityCoreRow row =
               new BookIdentityCoreRow(
                   SqlitePostingMapper.requiredText(statement, 0),
                   SqlitePostingMapper.requiredText(statement, 1),
-                  SqlitePostingMapper.requiredInt(statement, 2),
-                  SqlitePostingMapper.requiredInt(statement, 3));
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
+                  SqlitePostingMapper.requiredText(statement, 2),
+                  SqlitePostingMapper.requiredInt(statement, 3),
+                  SqlitePostingMapper.requiredInt(statement, 4));
+          if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite book identity core query returned more than one row.");
           }
@@ -322,12 +326,12 @@ final class SqliteStatementQueries {
         activeDatabase,
         SqlitePostingSql.FIND_ENTITY_PROFILE,
         statement -> {
-          if (statement.step() != SqliteNativeResultCodes.ROW) {
+          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
             throw new IllegalStateException(missingMessage);
           }
           EntityProfileRow row =
               new EntityProfileRow(SqlitePostingMapper.requiredText(statement, 0));
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
+          if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite entity profile query returned more than one row.");
           }

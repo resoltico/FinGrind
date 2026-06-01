@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.AccountingKernelProfiles;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BusinessActivityTag;
@@ -40,6 +41,7 @@ final class CliOpenBookArguments {
                 new EntityProfile(
                     requireEntityName(argumentValues.entityName),
                     requireBusinessActivityTags(argumentValues.businessActivityTags)),
+                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart))),
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));

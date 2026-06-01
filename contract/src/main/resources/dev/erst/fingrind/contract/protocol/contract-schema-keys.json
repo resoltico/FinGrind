@@ -12,6 +12,9 @@
     "sqliteLibraryMode": "sqliteLibraryMode",
     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
   },
+  "runtimeModuleDiscovery": {
+    "allowedMissingDependencyPrefixes": "allowedMissingDependencyPrefixes"
+  },
   "protectedBookFormat": {
     "applicationId": "applicationId",
     "formatVersion": "formatVersion",
@@ -54,6 +57,24 @@
     "launcherPath": "launcherPath",
     "launcherCommand": "launcherCommand",
     "sqliteLibraryFileName": "sqliteLibraryFileName"
+  },
+  "releasePublication": {
+    "workflowDispatchHelperRef": "workflowDispatchHelperRef",
+    "bundleOutputArchivePrefixes": "bundleOutputArchivePrefixes",
+    "bundleOutputChecksumPrefixes": "bundleOutputChecksumPrefixes",
+    "publicBundleBuildTargets": "publicBundleBuildTargets",
+    "runnerLabel": "runnerLabel",
+    "expectedRunnerOs": "expectedRunnerOs",
+    "expectedRunnerArch": "expectedRunnerArch",
+    "requiredCiWorkflowName": "requiredCiWorkflowName",
+    "requiredCiWorkflowPath": "requiredCiWorkflowPath",
+    "requiredCiGateJobName": "requiredCiGateJobName",
+    "requiredCiJobNames": "requiredCiJobNames",
+    "containerRegistry": "containerRegistry",
+    "containerImageName": "containerImageName",
+    "containerRunnerLabel": "containerRunnerLabel",
+    "containerPlatforms": "containerPlatforms",
+    "latestPublicationPolicy": "latestPublicationPolicy"
   },
   "operationIdContract": {
     "help": "HELP",

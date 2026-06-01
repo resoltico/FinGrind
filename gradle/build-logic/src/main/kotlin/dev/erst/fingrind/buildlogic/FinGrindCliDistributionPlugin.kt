@@ -31,7 +31,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
             val unsupportedPublicCliBundleTargets =
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
-            val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
+            val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
             val containerRuntimeDistribution =
                 DistributionContractReader.containerRuntimeDistribution(repositoryRootDirectory)
             val bundleRuntimeDistribution =
@@ -49,6 +49,10 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 DistributionContractReader.sqliteLibraryMode(repositoryRootDirectory)
             val sqliteBundleHomeSystemProperty =
                 DistributionContractReader.sqliteBundleHomeSystemProperty(repositoryRootDirectory)
+            val allowedRuntimeModuleMissingDependencyPrefixes =
+                DistributionContractReader.allowedRuntimeModuleMissingDependencyPrefixes(
+                    repositoryRootDirectory,
+                )
             val bundleClassifier =
                 providers.gradleProperty("fingrindBundleClassifier").orElse(
                     providers.provider { hostBundleTarget.classifier },
@@ -83,12 +87,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 rootProject.layout.buildDirectory.file(
                     providers.provider {
                         "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/${managedSqliteLibraryFileNameForHost(repositoryRootDirectory)}.sha256"
-                    },
-                )
-            val managedSqliteLibraryTrustedSha256Path =
-                rootProject.layout.buildDirectory.file(
-                    providers.provider {
-                        "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/${managedSqliteLibraryFileNameForHost(repositoryRootDirectory)}.trusted.sha256"
                     },
                 )
             val managedSqliteToolchainFingerprintPath =
@@ -147,7 +145,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 }
             val bundleClassifierValue = bundleClassifier.get()
             val bundleTarget =
-                DistributionContractReader.bundleTarget(
+                DistributionBundleTargetReader.bundleTarget(
                     repositoryRootDirectory,
                     bundleClassifierValue,
                 )
@@ -193,9 +191,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     "planTemplateOperation" to
                         DistributionContractReader.planTemplateOperationName(repositoryRootDirectory),
                     "publicBundleTargetsMarkdown" to
-                        DistributionContractReader.markdownBulletList(publicCliBundleTargets),
+                        DistributionTextRendering.markdownBulletList(publicCliBundleTargets),
                     "unsupportedPublicBundleTargetsMarkdown" to
-                        DistributionContractReader.markdownBulletList(unsupportedPublicCliBundleTargets),
+                        DistributionTextRendering.markdownBulletList(unsupportedPublicCliBundleTargets),
                 )
 
             if (bundleClassifierValue != hostBundleClassifier) {
@@ -272,6 +270,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     applicationJar.set(shadowJarArchiveFile)
                     javaVersion.set(fingrindJavaVersion)
                     additionalModules.set(listOf("jdk.unsupported"))
+                    allowedMissingDependencyPrefixes.set(
+                        allowedRuntimeModuleMissingDependencyPrefixes,
+                    )
                     dependencyClasspath.from(jdepsInputsConfiguration)
                     outputFile.set(runtimeModuleListOutputFile)
                 }
@@ -372,9 +373,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(managedSqliteLibrarySha256Path) {
                         into("lib/native")
                     }
-                    from(managedSqliteLibraryTrustedSha256Path) {
-                        into("lib/native")
-                    }
                     from(managedSqliteToolchainFingerprintPath) {
                         into("lib/native")
                     }
@@ -389,81 +387,15 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(rootProject.file("PATENTS.md"))
                 }
 
-            val bundleArchiveTask: org.gradle.api.tasks.TaskProvider<out AbstractArchiveTask> =
-                if (bundleOperatingSystemId == "windows") {
-                    tasks.register<Zip>("bundleCliZip") {
-                        group = "distribution"
-                        description =
-                            "Builds the compressed self-contained FinGrind CLI bundle archive."
-                        dependsOn(stageCliBundle)
-                        destinationDirectory.set(distributionDirectory)
-                        archiveFileName.set(bundleArchiveFileName)
-                        isReproducibleFileOrder = true
-                        dirPermissions {
-                            unix(493)
-                        }
-                        filePermissions {
-                            unix(420)
-                        }
-                        from(bundleRootDirectory) {
-                            into(bundleName)
-                            eachFile {
-                                if (file.canExecute()) {
-                                    permissions {
-                                        unix(493)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    tasks.register<Tar>("bundleCliTarGz") {
-                        group = "distribution"
-                        description =
-                            "Builds the compressed self-contained FinGrind CLI bundle archive."
-                        dependsOn(stageCliBundle)
-                        destinationDirectory.set(distributionDirectory)
-                        archiveFileName.set(bundleArchiveFileName)
-                        compression = Compression.GZIP
-                        isReproducibleFileOrder = true
-                        dirPermissions {
-                            unix(493)
-                        }
-                        filePermissions {
-                            unix(420)
-                        }
-                        from(bundleRootDirectory) {
-                            into(bundleName)
-                            eachFile {
-                                if (file.canExecute()) {
-                                    permissions {
-                                        unix(493)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-            val bundleCliSha256 =
-                tasks.register<WriteSha256FileTask>("bundleCliSha256") {
-                    group = "distribution"
-                    description =
-                        "Writes the SHA-256 checksum file for the FinGrind CLI bundle archive."
-                    dependsOn(bundleArchiveTask)
-                    inputFile.set(bundleArchiveTask.flatMap { it.archiveFile })
-                    outputFile.set(bundleSha256File)
-                }
-
-            tasks.register<ReportBundleArchiveOutputsTask>("bundleCliArchive") {
-                group = "distribution"
-                description =
-                    "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
-                dependsOn(bundleArchiveTask)
-                dependsOn(bundleCliSha256)
-                archiveFile.set(bundleArchiveTask.flatMap { it.archiveFile })
-                checksumFile.set(bundleCliSha256.flatMap { it.outputFile })
-            }
+            registerCliBundleArchiveTasks(
+                bundleOperatingSystemId = bundleOperatingSystemId,
+                stageCliBundle = stageCliBundle,
+                distributionDirectory = distributionDirectory,
+                bundleArchiveFileName = bundleArchiveFileName,
+                bundleRootDirectory = bundleRootDirectory,
+                bundleName = bundleName,
+                bundleSha256File = bundleSha256File,
+            )
 
             tasks.named<Test>("test") {
                 inputs.file(rootProject.layout.projectDirectory.file("Dockerfile"))
@@ -489,9 +421,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
     }
 
     private fun managedSqliteHostClassifier(repositoryRootDirectory: java.nio.file.Path): String =
-        DistributionContractReader.hostBundleTarget(repositoryRootDirectory).classifier
+        DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory).classifier
 
     private fun managedSqliteLibraryFileNameForHost(
         repositoryRootDirectory: java.nio.file.Path,
-    ): String = DistributionContractReader.hostBundleTarget(repositoryRootDirectory).sqliteLibraryFileName
+    ): String = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory).sqliteLibraryFileName
 }

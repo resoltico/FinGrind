@@ -24,7 +24,7 @@ final class SqliteTrialBalanceReader {
         statement.bindText(
             1, CanonicalTemporalText.formatLocalDate(query.effectiveDateAsOf().orElseThrow()));
       }
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
         CurrencyUnit currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
         long amountMinor = SqliteReportRowValues.reportAmountMinor(statement);

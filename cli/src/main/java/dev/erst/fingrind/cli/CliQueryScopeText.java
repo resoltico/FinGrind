@@ -22,7 +22,7 @@ final class CliQueryScopeText {
   }
 
   static String upperDateBoundaryMeaning(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null ? "latest-committed-posting" : "selected-date";
+    return effectiveDateTo == null ? "current-book-horizon" : "selected-date";
   }
 
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {

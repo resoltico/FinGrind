@@ -58,7 +58,7 @@ final class SqliteNativeKeyConfiguration {
   }
 
   static void requireOpenConfigurationSuccess(int resultCode, SqliteNativeApi sqliteApi) {
-    if (resultCode != SqliteNativeResultCodes.OK) {
+    if (resultCode != SqliteNativeResultCode.code("OK")) {
       throw SqliteNativeErrors.failure(resultCode, sqliteApi);
     }
   }

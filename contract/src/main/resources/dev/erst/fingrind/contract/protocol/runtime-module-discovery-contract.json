@@ -1,0 +1,11 @@
+{
+  "allowedMissingDependencyPrefixes": [
+    "org.apache.avalon.framework.logger.",
+    "org.apache.log4j.",
+    "org.apache.logging.log4j.",
+    "org.apache.log.",
+    "javax.servlet.",
+    "org.slf4j.",
+    "org.bouncycastle."
+  ]
+}

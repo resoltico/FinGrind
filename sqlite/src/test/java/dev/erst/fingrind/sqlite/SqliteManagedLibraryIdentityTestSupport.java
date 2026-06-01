@@ -35,20 +35,13 @@ class SqliteManagedLibraryIdentityTestSupport {
   }
 
   protected void writeSiblingChecksum(Path libraryPath) throws IOException {
-    Files.writeString(
-        SqliteManagedLibraryIdentity.checksumPath(libraryPath),
-        sha256Line(libraryPath, libraryPath.getFileName().toString()),
-        StandardCharsets.UTF_8);
+    writeSiblingChecksum(libraryPath, libraryPath);
   }
 
-  protected void writeTrustedChecksum(Path libraryPath) throws IOException {
-    writeTrustedChecksum(libraryPath, libraryPath);
-  }
-
-  protected void writeTrustedChecksum(Path libraryPath, Path checksumSourceLibraryPath)
+  protected void writeSiblingChecksum(Path libraryPath, Path checksumSourceLibraryPath)
       throws IOException {
     Files.writeString(
-        SqliteManagedLibraryIdentity.trustedChecksumPath(libraryPath),
+        SqliteManagedLibraryIdentity.checksumPath(libraryPath),
         sha256Line(checksumSourceLibraryPath, libraryPath.getFileName().toString()),
         StandardCharsets.UTF_8);
   }

@@ -19,5 +19,9 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 
 Context
 -------
-Book             : Acme Studio | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
+Entity              : Acme Studio
+Accounting profile  : country-agnostic-bookkeeping-kernel
+Business activity   : translation-services
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds

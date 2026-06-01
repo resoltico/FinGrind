@@ -36,7 +36,7 @@ final class SqliteNativeStatements {
                           errorPointer));
       MemorySegment execErrorPointer = errorPointer.get(ValueLayout.ADDRESS, 0);
       try {
-        if (resultCode != SqliteNativeResultCodes.OK) {
+        if (resultCode != SqliteNativeResultCode.code("OK")) {
           throw new SqliteNativeException(
               resultCode,
               SqliteNativeErrors.scriptErrorMessage(
@@ -65,7 +65,7 @@ final class SqliteNativeStatements {
                 SqliteNativeCallAdapter.adapt(
                         SqliteNativeCalls.PrepareV2Call.class, sqliteApi.sqlite3PrepareV2())
                     .invoke(databaseHandle, sql, -1, statementPointer, tailPointer);
-            if (resultCode != SqliteNativeResultCodes.OK) {
+            if (resultCode != SqliteNativeResultCode.code("OK")) {
               throw SqliteNativeErrors.failure(resultCode, sqliteApi);
             }
             return resultCode;
@@ -82,7 +82,7 @@ final class SqliteNativeStatements {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressIntToIntCall.class, sqliteApi.sqlite3BindNull())
                   .invoke(statementHandle, parameterIndex);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(resultCode, "Failed to bind a SQLite null parameter.");
           }
         });
@@ -97,7 +97,7 @@ final class SqliteNativeStatements {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressIntIntToIntCall.class, sqliteApi.sqlite3BindInt())
                   .invoke(statementHandle, parameterIndex, value);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(
                 resultCode, "Failed to bind a SQLite integer parameter.");
           }
@@ -113,7 +113,7 @@ final class SqliteNativeStatements {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressIntLongToIntCall.class, sqliteApi.sqlite3BindInt64())
                   .invoke(statementHandle, parameterIndex, value);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(
                 resultCode, "Failed to bind a SQLite integer parameter.");
           }
@@ -134,7 +134,7 @@ final class SqliteNativeStatements {
                       SqliteNativeCalls.BindTextCall.class, sqliteApi.sqlite3BindText())
                   .invoke(
                       statementHandle, parameterIndex, textPointer, byteLength, SQLITE_TRANSIENT);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(resultCode, "Failed to bind a SQLite text parameter.");
           }
         });
@@ -149,8 +149,8 @@ final class SqliteNativeStatements {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3Step())
                   .invoke(statementHandle);
-          if (resultCode == SqliteNativeResultCodes.ROW
-              || resultCode == SqliteNativeResultCodes.DONE) {
+          if (resultCode == SqliteNativeResultCode.code("ROW")
+              || resultCode == SqliteNativeResultCode.code("DONE")) {
             return resultCode;
           }
           int extendedResultCode = extendedErrorCode(databaseHandle, sqliteApi);
@@ -166,7 +166,7 @@ final class SqliteNativeStatements {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3Finalize())
                   .invoke(statementHandle);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
           }
         });

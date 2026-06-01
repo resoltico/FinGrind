@@ -89,7 +89,7 @@ final class SqliteNativeConnections {
         MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
         int resultCode = openNativeDatabase(filename, databasePointer, openMode, sqliteApi);
         MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
-        if (resultCode != SqliteNativeResultCodes.OK) {
+        if (resultCode != SqliteNativeResultCode.code("OK")) {
           SqliteNativeException failure = SqliteNativeErrors.failure(resultCode, sqliteApi);
           suppressCloseFailure(databaseHandle, sqliteApi, failure);
           throw failure;
@@ -143,13 +143,11 @@ final class SqliteNativeConnections {
               SqliteNativeCallAdapter.adapt(
                       SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
                   .invoke(databaseHandle);
-          if (resultCode != SqliteNativeResultCodes.OK) {
+          if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
           }
           SqliteNativeRuntimeActivity.recordConnectionClosed(
               normalizedBookPath, publishesActivityMarker);
-          SqliteNativeBootstrap.shutdownIfQuiescent(
-              sqliteApi.sqlite3Shutdown(), SqliteNativeRuntimeActivity.activeConnectionCount());
         });
   }
 
@@ -240,7 +238,7 @@ final class SqliteNativeConnections {
           SqliteNativeCallAdapter.adapt(
                   SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
               .invoke(databaseHandle);
-      if (resultCode != SqliteNativeResultCodes.OK) {
+      if (resultCode != SqliteNativeResultCode.code("OK")) {
         primaryFailure.addSuppressed(SqliteNativeErrors.failure(resultCode, sqliteApi));
       }
     } catch (RuntimeException exception) {

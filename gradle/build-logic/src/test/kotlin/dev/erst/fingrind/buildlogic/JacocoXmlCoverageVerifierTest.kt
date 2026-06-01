@@ -35,6 +35,12 @@ class JacocoXmlCoverageVerifierTest {
         reportFile.writeText(
             """
             <report name="sqlite">
+              <package name="dev/erst/fingrind/sqlite">
+                <sourcefile name="SqliteStore.java">
+                  <line nr="41" mi="1" ci="0" mb="2" cb="0"/>
+                  <line nr="42" mi="0" ci="1" mb="0" cb="0"/>
+                </sourcefile>
+              </package>
               <counter type="LINE" missed="1" covered="41"/>
               <counter type="BRANCH" missed="2" covered="15"/>
             </report>
@@ -47,7 +53,9 @@ class JacocoXmlCoverageVerifierTest {
             }
 
         assertEquals(
-            "JaCoCo coverage verification failed for ${reportFile.absolutePath}: 1 missed line(s), 2 missed branch(es).",
+            "JaCoCo coverage verification failed for ${reportFile.absolutePath}: 1 missed line(s), 2 missed branch(es). " +
+                "Missed lines: dev/erst/fingrind/sqlite/SqliteStore.java:41. " +
+                "Missed branches: dev/erst/fingrind/sqlite/SqliteStore.java:41.",
             failure.message,
         )
     }
@@ -76,6 +84,36 @@ class JacocoXmlCoverageVerifierTest {
         assertEquals(42, summary.coveredLines)
         assertEquals(0, summary.missedBranches)
         assertEquals(17, summary.coveredBranches)
+    }
+
+    @Test
+    fun parseSummary_collectsMissedCoverageDetailsPerSourceLine() {
+        val summary =
+            JacocoXmlCoverageVerifier.parseSummary(
+                reportInputStream(
+                    """
+                    <report name="sqlite">
+                      <package name="dev/erst/fingrind/sqlite">
+                        <sourcefile name="SqliteStore.java">
+                          <line nr="41" mi="1" ci="0" mb="0" cb="0"/>
+                          <line nr="42" mi="0" ci="1" mb="3" cb="0"/>
+                        </sourcefile>
+                      </package>
+                      <counter type="LINE" missed="1" covered="41"/>
+                      <counter type="BRANCH" missed="3" covered="15"/>
+                    </report>
+                    """.trimIndent(),
+                ),
+            )
+
+        assertEquals(
+            listOf(JacocoXmlCoverageVerifier.CoverageMiss("dev/erst/fingrind/sqlite/SqliteStore.java", 41)),
+            summary.missedLineDetails,
+        )
+        assertEquals(
+            listOf(JacocoXmlCoverageVerifier.CoverageMiss("dev/erst/fingrind/sqlite/SqliteStore.java", 42)),
+            summary.missedBranchDetails,
+        )
     }
 
     @Test

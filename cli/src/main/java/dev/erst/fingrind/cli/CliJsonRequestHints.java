@@ -8,30 +8,28 @@ final class CliJsonRequestHints {
   private CliJsonRequestHints() {}
 
   static String postEntryRequestHint() {
-    return "Run '"
+    return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-        + "' for the canonical request scaffold, then replace its placeholder evidence and provenance values before real-world use, or run '"
+        + "' for a starter request file, then replace its placeholder evidence and provenance values before real-world use. For accepted entry fields, run '"
         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + "' for accepted enums and fields.";
+        + " --output json --focus request-input'.";
   }
 
   static String declareAccountRequestHint() {
-    return "Run '"
+    return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
         + " "
         + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
-        + "' for the canonical "
+        + "' for a starter "
         + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
-        + " sample document, then replace its sample account values before real-world use, or run '"
+        + " request file, then replace its sample account values before real-world use. For accepted declaration fields, run '"
         + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + "' for the accepted account-declaration fields and enums.";
+        + " --output json --focus request-input'.";
   }
 
   static String ledgerPlanRequestHint() {
-    return "Run '"
+    return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)
-        + "' for the canonical ledger plan scaffold, then replace its placeholder evidence and provenance values before real-world use, or run '"
-        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + "' for accepted enums and fields.";
+        + "' for a starter ledger plan, then replace its placeholder evidence and provenance values before real-world use.";
   }
 }

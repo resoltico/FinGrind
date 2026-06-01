@@ -32,7 +32,7 @@ final class SqlitePeriodSummaryReader {
         statement.bindText(
             3, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
       }
-      while (statement.step() == SqliteNativeResultCodes.ROW) {
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         postingIds.add(
             SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
         postingLineCount++;

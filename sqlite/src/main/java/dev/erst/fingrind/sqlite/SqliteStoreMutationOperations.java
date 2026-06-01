@@ -7,6 +7,8 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CanonicalTemporalText;
+import dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
@@ -16,14 +18,18 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlan;
+import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -202,6 +208,83 @@ final class SqliteStoreMutationOperations {
   }
 
   PeriodResultTransferOutcome transferPeriodResult(
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      PeriodResultTransferPlanner planner,
+      LocalDate currentUtcDate,
+      Instant transferredAt,
+      PostingIdGenerator postingIdGenerator) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(planner, "planner");
+    Objects.requireNonNull(currentUtcDate, "currentUtcDate");
+    Objects.requireNonNull(transferredAt, "transferredAt");
+    if (Files.notExists(context.bookPath())) {
+      return new PeriodResultTransferOutcome.Rejected(
+          new BookkeepingAdministrationRejection.BookNotInitialized());
+    }
+    return withBorrowedDatabase(
+        activeDatabase -> {
+          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
+          try {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
+              return new PeriodResultTransferOutcome.Rejected(
+                  new BookkeepingAdministrationRejection.BookNotInitialized());
+            }
+            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            List<RegisteredAccount> accounts =
+                SqliteStatementQueries.loadAllAccounts(
+                    activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
+            var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
+            if (resultHoldingSelection instanceof RejectedResultHoldingSelection rejected) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+              return new PeriodResultTransferOutcome.Rejected(rejected.rejection());
+            }
+            Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
+                planner.closeHorizonRejection(
+                    reportingPeriod,
+                    bookIdentity,
+                    currentUtcDate,
+                    loadTransferredThroughEffectiveDate(activeDatabase));
+            if (closeHorizonRejection.isPresent()) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+              return new PeriodResultTransferOutcome.Rejected(closeHorizonRejection.orElseThrow());
+            }
+            RegisteredAccount resultHoldingAccount =
+                ((AcceptedResultHoldingSelection) resultHoldingSelection).account();
+            PeriodResultTransferPlan closePlan =
+                planner.closingPostings(
+                    reportingPeriod,
+                    resultHoldingAccount,
+                    accounts,
+                    loadPostingsInRange(activeDatabase, reportingPeriod.effectiveDateRange()),
+                    transferredAt);
+            PeriodResultTransferOutcome outcome =
+                persistPeriodResultTransfer(
+                    activeDatabase,
+                    new PeriodResultTransferDraft(
+                        reportingPeriod,
+                        resultHoldingAccount.accountCode(),
+                        closePlan.transferredTotals(),
+                        transferredAt,
+                        closePlan.closingPostings()),
+                    postingIdGenerator);
+            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+            return outcome;
+          } catch (SqliteNativeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw SqliteStoreOperations.sqliteFailure(
+                "Failed to close one SQLite reporting period.", exception);
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw exception;
+          }
+        });
+  }
+
+  PeriodResultTransferOutcome transferPeriodResult(
       PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
@@ -218,41 +301,13 @@ final class SqliteStoreMutationOperations {
               return new PeriodResultTransferOutcome.Rejected(
                   new BookkeepingAdministrationRejection.BookNotInitialized());
             }
-
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
-            SqliteTransactionValidationBook validationBook =
-                new SqliteTransactionValidationBook(activeDatabase, context.postingReader());
-            PostingIdGenerator requiredPostingIdGenerator =
-                Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-            List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
-            for (PostingDraft closingPostingDraft : periodResultTransferDraft.closingPostings()) {
-              Optional<BookkeepingPostingRejection> rejection =
-                  postingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
-              if (rejection.isPresent()) {
-                throw new IllegalStateException(
-                    "Generated period-result-transfer posting failed bookkeeping acceptance: "
-                        + rejection.orElseThrow());
-              }
-              closingPostings.add(
-                  persistAcceptedPosting(
-                      activeDatabase, closingPostingDraft, requiredPostingIdGenerator));
-            }
-            TransferredPeriodResult transferredPeriodResult =
-                SqliteMutationWriter.insertPeriodResultTransfer(
-                    activeDatabase,
-                    periodResultTransferDraft.reportingPeriod(),
-                    periodResultTransferDraft.resultHoldingAccountCode(),
-                    periodResultTransferDraft.transferredTotals(),
-                    periodResultTransferDraft.transferredAt(),
-                    closingPostings);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase,
-                BookAuditEvent.periodResultTransferred(
-                    periodResultTransferDraft.transferredAt(),
-                    transferredPeriodResult.transferOrder()));
+            PeriodResultTransferOutcome outcome =
+                persistPeriodResultTransfer(
+                    activeDatabase, periodResultTransferDraft, postingIdGenerator);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
-            return new PeriodResultTransferOutcome.Transferred(transferredPeriodResult);
+            return outcome;
           } catch (SqliteNativeException exception) {
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to close one SQLite reporting period.", exception);
@@ -264,12 +319,76 @@ final class SqliteStoreMutationOperations {
         });
   }
 
+  private List<CommittedPosting> loadPostingsInRange(
+      SqliteNativeDatabase activeDatabase, dev.erst.fingrind.core.EffectiveDateRange range) {
+    return context
+        .postingReader()
+        .loadCommittedPostings(
+            activeDatabase,
+            SqlitePostingSql.LOAD_POSTINGS_IN_RANGE,
+            statement -> {
+              String effectiveDateFrom =
+                  range
+                      .effectiveDateFrom()
+                      .map(CanonicalTemporalText::formatLocalDate)
+                      .orElse(null);
+              String effectiveDateTo =
+                  range.effectiveDateTo().map(CanonicalTemporalText::formatLocalDate).orElse(null);
+              statement.bindText(1, effectiveDateFrom);
+              statement.bindText(2, effectiveDateFrom);
+              statement.bindText(3, effectiveDateTo);
+              statement.bindText(4, effectiveDateTo);
+            });
+  }
+
+  private Optional<LocalDate> loadTransferredThroughEffectiveDate(
+      SqliteNativeDatabase activeDatabase) {
+    return SqliteStatementQueries.loadOptionalText(
+            activeDatabase, SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE, statement -> {})
+        .map(LocalDate::parse);
+  }
+
   RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
     return rekeyService.rekeyBook(replacementPassphrase, rekeyedAt);
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {
     return action.run(lifecycle.database());
+  }
+
+  private PeriodResultTransferOutcome persistPeriodResultTransfer(
+      SqliteNativeDatabase activeDatabase,
+      PeriodResultTransferDraft periodResultTransferDraft,
+      PostingIdGenerator postingIdGenerator) {
+    SqliteTransactionValidationBook validationBook =
+        new SqliteTransactionValidationBook(activeDatabase, context.postingReader());
+    PostingIdGenerator requiredPostingIdGenerator =
+        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
+    for (PostingDraft closingPostingDraft : periodResultTransferDraft.closingPostings()) {
+      Optional<BookkeepingPostingRejection> rejection =
+          postingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
+      if (rejection.isPresent()) {
+        throw new IllegalStateException(
+            "Generated period-result-transfer posting failed bookkeeping acceptance: "
+                + rejection.orElseThrow());
+      }
+      closingPostings.add(
+          persistAcceptedPosting(activeDatabase, closingPostingDraft, requiredPostingIdGenerator));
+    }
+    TransferredPeriodResult transferredPeriodResult =
+        SqliteMutationWriter.insertPeriodResultTransfer(
+            activeDatabase,
+            periodResultTransferDraft.reportingPeriod(),
+            periodResultTransferDraft.resultHoldingAccountCode(),
+            periodResultTransferDraft.transferredTotals(),
+            periodResultTransferDraft.transferredAt(),
+            closingPostings);
+    SqliteAuditEventWriter.insertAuditEvent(
+        activeDatabase,
+        BookAuditEvent.periodResultTransferred(
+            periodResultTransferDraft.transferredAt(), transferredPeriodResult.transferOrder()));
+    return new PeriodResultTransferOutcome.Transferred(transferredPeriodResult);
   }
 
   private CommittedPosting persistAcceptedPosting(

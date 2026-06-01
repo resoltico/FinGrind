@@ -14,56 +14,40 @@ final class MachineContractLedgerPlanQueryFieldSpecs {
             + " or required account target for "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.ACCOUNT_BALANCE)
             + ".";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Query.ACCOUNT_CODE,
-        description,
-        MachineContractScalarSchemas.nonBlankStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalNonBlankStringField(
+        ProtocolLedgerPlanFields.Query.ACCOUNT_CODE, description);
   }
 
   static MachineContractFieldSpec optionalAccountCodeQueryField() {
-    return MachineContractFieldSpec.optional(
-        conditionalAccountCodeQueryField().name(),
-        conditionalAccountCodeQueryField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalAccountCodeQueryField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(
+        conditionalAccountCodeQueryField());
   }
 
   static MachineContractFieldSpec requiredAccountCodeQueryField() {
-    return MachineContractFieldSpec.required(
-        conditionalAccountCodeQueryField().name(),
-        conditionalAccountCodeQueryField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalAccountCodeQueryField()));
+    return MachineContractLedgerPlanFieldSpecs.requiredFromConditional(
+        conditionalAccountCodeQueryField());
   }
 
   static MachineContractFieldSpec conditionalEffectiveDateFromQueryField() {
     String description = "Inclusive ISO-8601 effective-date lower bound.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM,
-        description,
-        MachineContractScalarSchemas.dateStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalDateField(
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM, description);
   }
 
   static MachineContractFieldSpec optionalEffectiveDateFromQueryField() {
-    return MachineContractFieldSpec.optional(
-        conditionalEffectiveDateFromQueryField().name(),
-        conditionalEffectiveDateFromQueryField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalEffectiveDateFromQueryField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(
+        conditionalEffectiveDateFromQueryField());
   }
 
   static MachineContractFieldSpec conditionalEffectiveDateToQueryField() {
     String description = "Inclusive ISO-8601 effective-date upper bound.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO,
-        description,
-        MachineContractScalarSchemas.dateStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalDateField(
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO, description);
   }
 
   static MachineContractFieldSpec optionalEffectiveDateToQueryField() {
-    return MachineContractFieldSpec.optional(
-        conditionalEffectiveDateToQueryField().name(),
-        conditionalEffectiveDateToQueryField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalEffectiveDateToQueryField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(
+        conditionalEffectiveDateToQueryField());
   }
 
   static MachineContractFieldSpec conditionalLimitField() {
@@ -75,10 +59,7 @@ final class MachineContractLedgerPlanQueryFieldSpecs {
   }
 
   static MachineContractFieldSpec optionalLimitField() {
-    return MachineContractFieldSpec.optional(
-        conditionalLimitField().name(),
-        conditionalLimitField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalLimitField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(conditionalLimitField());
   }
 
   static MachineContractFieldSpec conditionalCursorField() {
@@ -88,16 +69,11 @@ final class MachineContractLedgerPlanQueryFieldSpecs {
             + " or "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.LIST_ACCOUNTS)
             + " from the prior page.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Query.CURSOR,
-        description,
-        MachineContractScalarSchemas.nonBlankStringSchema(description));
+    return MachineContractLedgerPlanFieldSpecs.conditionalNonBlankStringField(
+        ProtocolLedgerPlanFields.Query.CURSOR, description);
   }
 
   static MachineContractFieldSpec optionalCursorField() {
-    return MachineContractFieldSpec.optional(
-        conditionalCursorField().name(),
-        conditionalCursorField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalCursorField()));
+    return MachineContractLedgerPlanFieldSpecs.optionalFromConditional(conditionalCursorField());
   }
 }

@@ -32,13 +32,16 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals("Acme Studio", bookContext.bookIdentity().entityName());
     assertEquals(
+        "country-agnostic-bookkeeping-kernel",
+        bookContext.bookIdentity().accountingKernelProfile());
+    assertEquals(
         List.of("translation-services"), bookContext.bookIdentity().businessActivityTags());
 
     assertNull(unbounded.accountCodeFilter());
     assertNull(unbounded.effectiveDateFrom());
     assertEquals("book-start", unbounded.effectiveDateFromMeaning());
     assertNull(unbounded.effectiveDateTo());
-    assertEquals("latest-committed-posting", unbounded.effectiveDateToMeaning());
+    assertEquals("current-book-horizon", unbounded.effectiveDateToMeaning());
 
     assertEquals("1000", filtered.accountCodeFilter());
     assertEquals("2026-04-01", filtered.effectiveDateFrom());
@@ -56,11 +59,13 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
 
+    assertEquals("country-agnostic-bookkeeping-kernel", payload.accountingKernelProfile());
     assertEquals(List.of("translation-services", "platform-sales"), payload.businessActivityTags());
   }
 

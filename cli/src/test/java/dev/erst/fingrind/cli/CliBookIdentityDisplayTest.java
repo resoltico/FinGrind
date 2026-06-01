@@ -22,14 +22,24 @@ class CliBookIdentityDisplayTest {
                 List.of(
                     new BusinessActivityTag("translation-services"),
                     new BusinessActivityTag("platform-sales"))),
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
     assertEquals(
-        List.of(List.of("Book", "Acme Studio | Currency EUR | FY 01-01")),
+        List.of(
+            List.of(
+                "Book",
+                "Acme Studio | country-agnostic-bookkeeping-kernel | Currency EUR | FY 01-01")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
     assertEquals(
-        List.of("Business activity", "translation-services, platform-sales"),
+        List.of(
+            "Accounting profile",
+            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL
+                .value()),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(1));
+    assertEquals(
+        List.of("Business activity", "translation-services, platform-sales"),
+        CliBookIdentityDisplay.detailRows(bookIdentity).get(2));
   }
 }

@@ -1,8 +1,8 @@
-FROM azul/zulu-openjdk-alpine:26.0.1-jdk AS builder
+FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder
 
 WORKDIR /build
 
-RUN apk add --no-cache build-base python3
+RUN apk add --no-cache build-base=0.5-r3 python3=3.12.13-r0
 
 COPY source-root/ /build/source-root/
 COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar managed-sqlite-contract.json runtime-modules.txt /build/
@@ -158,7 +158,6 @@ Path("build-contract.json").write_text(json.dumps(build_contract, indent=2) + "\
 PY
 
 RUN sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256
-RUN sha256sum libsqlite3.so.0 > libsqlite3.so.0.trusted.sha256
 
 RUN jlink \
     --module-path "${JAVA_HOME}/jmods" \
@@ -169,16 +168,15 @@ RUN jlink \
     --compress=zip-6 \
     --output /opt/fingrind/runtime
 
-FROM alpine:3.23
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
 WORKDIR /workdir
 
-RUN apk add --no-cache libstdc++
+RUN apk add --no-cache libstdc++=15.2.0-r2
 
 COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0
 COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.sha256
-COPY --from=builder /build/libsqlite3.so.0.trusted.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.trusted.sha256
 COPY --from=builder /build/toolchain-fingerprint.json /opt/fingrind/lib/native/toolchain-fingerprint.json
 COPY --from=builder /build/build-contract.json /opt/fingrind/lib/native/build-contract.json
 COPY --from=builder /build/fingrind.jar /opt/fingrind/lib/app/fingrind.jar

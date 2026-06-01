@@ -18,6 +18,8 @@ internal object DistributionContractPaths {
         "contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json"
     const val RUNTIME_SURFACE_CONTRACT_PATH =
         "contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json"
+    const val RUNTIME_MODULE_DISCOVERY_CONTRACT_PATH =
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-module-discovery-contract.json"
 
     fun requiredContractFiles(projectRootDirectory: Path): List<Path> =
         listOf(
@@ -28,6 +30,7 @@ internal object DistributionContractPaths {
             BUNDLE_LAYOUT_CONTRACT_PATH,
             OPERATION_ID_CONTRACT_PATH,
             RUNTIME_SURFACE_CONTRACT_PATH,
+            RUNTIME_MODULE_DISCOVERY_CONTRACT_PATH,
         ).map { relativePath -> contractPath(projectRootDirectory, relativePath) }
 
     fun contractPath(projectRootDirectory: Path, relativePath: String): Path =

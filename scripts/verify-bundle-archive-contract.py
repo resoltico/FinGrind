@@ -7,9 +7,19 @@ import argparse
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
+from bundle_archive_contract_support import (
+    bundled_java_command,
+    joined_path,
+    normalize_newlines,
+    normalized_command_output,
+    require,
+    require_executable,
+    require_match,
+    require_no_match,
+    verify_java_version,
+)
 from contract_values import load_contract_values
 
 
@@ -32,71 +42,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def require(condition: bool, message: str) -> None:
-    if not condition:
-        raise SystemExit(message)
-
-
-def require_match(text: str, pattern: str, message: str) -> None:
-    if re.search(pattern, text, re.MULTILINE) is None:
-        raise SystemExit(message)
-
-
-def require_no_match(text: str, pattern: str, message: str) -> None:
-    if re.search(pattern, text, re.MULTILINE) is not None:
-        raise SystemExit(message)
-
-
-def normalize_newlines(text: str) -> str:
-    return text.replace("\r", "")
-
-
-def joined_path(root: Path, relative_path: str) -> Path:
-    segments = [segment for segment in relative_path.replace("\\", "/").split("/") if segment]
-    return root.joinpath(*segments)
-
-
-def bundled_java_command(bundle_root: Path) -> Path:
-    candidates = [
-        bundle_root / "runtime" / "bin" / "java",
-        bundle_root / "runtime" / "bin" / "java.exe",
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    raise SystemExit(f"missing bundled Java runtime under {bundle_root / 'runtime' / 'bin'}")
-
-
-def normalized_command_output(command: list[str]) -> str:
-    completed = subprocess.run(
-        command,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return normalize_newlines(completed.stdout + completed.stderr)
-
-
-def verify_java_version(java_command: Path, expected_source_checkout_java: str) -> None:
-    expected_feature_version = expected_source_checkout_java.rstrip("+")
-    require(
-        bool(expected_feature_version),
-        "source-checkout Java contract must not be blank when verifying the bundled runtime",
-    )
-
-    version_output = normalized_command_output([str(java_command), "--version"])
-    first_line = next((line for line in version_output.splitlines() if line.strip()), "")
-    version_tokens = [token for token in first_line.split() if token]
-    require(
-        len(version_tokens) >= 2
-        and (
-            version_tokens[1] == expected_feature_version
-            or version_tokens[1].startswith(expected_feature_version + ".")
-        ),
-        f"bundled Java runtime did not report Java {expected_feature_version}",
-    )
-
-
 def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> None:
     host_bundle_target = contract["bundleLayout"]["hostBundleTarget"]
     assert isinstance(host_bundle_target, dict)
@@ -111,12 +56,6 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         / "native"
         / (str(host_bundle_target["sqliteLibraryFileName"]) + ".sha256")
     )
-    native_library_trusted_checksum = (
-        bundle_root
-        / "lib"
-        / "native"
-        / (str(host_bundle_target["sqliteLibraryFileName"]) + ".trusted.sha256")
-    )
     java_command = bundled_java_command(bundle_root)
 
     required_files = [
@@ -124,7 +63,6 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         application_jar,
         native_library,
         native_library_checksum,
-        native_library_trusted_checksum,
         bundle_root / "LICENSE",
         bundle_root / "LICENSE-APACHE-2.0",
         bundle_root / "LICENSE-SIL-OFL-1.1",
@@ -138,13 +76,9 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         require(required_file.is_file(), f"missing bundle file at {required_file}")
 
     if os.name != "nt":
-        require(
-            os.access(launcher_path, os.X_OK),
-            f"missing executable bundle launcher at {launcher_path}",
-        )
-        require(
-            os.access(java_command, os.X_OK),
-            f"missing executable bundled Java runtime at {java_command}",
+        require_executable(launcher_path, f"missing executable bundle launcher at {launcher_path}")
+        require_executable(
+            java_command, f"missing executable bundled Java runtime at {java_command}"
         )
 
 

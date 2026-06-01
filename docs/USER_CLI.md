@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.49.0"
+version: "0.50.0"
 domain: USER_CLI
-updated: "2026-05-28"
+updated: "2026-06-01"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -35,14 +35,16 @@ Every book-bound command also requires exactly one passphrase source:
 terminal and to JSON when stdout is redirected or captured; they also accept `--output json` or
 `--output text` explicitly.
 `help` and `capabilities` additionally accept `--detail minimal`, `--detail compact`, or
-`--detail full` only when the
-resolved output mode is JSON.
+`--detail full` only when the resolved output mode is JSON. `capabilities` also accepts `--focus`
+for one discovery concern, and both discovery commands accept `--category` for one command-family
+slice in JSON mode.
 Bare `help` is intentionally one short front-door overview. `capabilities` is the deep machine
 contract. `help <command>` and `<command> --help` both return command-scoped usage, options,
 executable examples, operator notes, and exit-code guidance for one selected command.
-JSON discovery output defaults to `compact`; use `--detail compact` for stable usage, options,
-and output-contract descriptors, or `--detail full` when you need embedded templates, schemas,
-enum vocabularies, or the complete machine contract body in one response.
+JSON discovery output defaults to `minimal`; use `--detail compact` for stable usage, options,
+and output-contract descriptors, `--detail full` when you need embedded templates, schemas, enum
+vocabularies, or doctrine bodies, and `--focus` / `--category` when you want one machine-retrieval
+slice instead of the full catalog family.
 Request-file commands such as `declare-account`, `post-entry`, `preflight-entry`, and
 `execute-plan` also inline the accepted request shape, one canonical template, and the relevant
 enum vocabulary so an operator or agent can form a valid payload from the CLI alone.
@@ -107,12 +109,12 @@ commands also accept `--output csv`. Invalid invocation failures default to text
 unless one recognized machine output mode is selected explicitly, such as `--output json`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
-`--pdf-out <path>`. Successful exports keep the main stdout result unchanged. When the primary
-stdout result is JSON, the success envelope also carries one `artifacts[]` entry with
-`format: "pdf"` plus one redacted public-path hint in `path`; text and CSV modes report the same hint on
-the diagnostics stream. If the report itself succeeds but the PDF write later fails, FinGrind
-still returns the primary report on stdout and emits a repair warning on the diagnostics stream
- instead of replacing the successful primary result with an error envelope. Commands that do not advertise
+`--pdf-out <path>`. Successful exports keep the main stdout result unchanged and publish one PDF
+artifact hint beside that primary result. When the primary stdout result is JSON, the success
+envelope also carries one `artifacts[]` entry with `format: "pdf"` plus one redacted public-path
+hint in `path`; text and CSV modes report the same hint on the diagnostics stream. If the PDF
+artifact fails, FinGrind returns one deterministic `pdf-export-failure` instead of publishing a
+successful report result. Commands that do not advertise
 `--output` still publish one fixed stdout contract, either one raw JSON document or one fixed JSON
 envelope.
 
@@ -126,9 +128,9 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><th>Command</th><th>Aliases</th><th>Extra Arguments</th><th>Result</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[&lt;command&gt;]</code><br><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
+    <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[&lt;command&gt;]</code><br><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code><br><code>[--category &lt;discovery|administration|query|write&gt; (json only)]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
-    <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
+    <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code><br><code>[--focus &lt;overview|commands|storage|request-input|currency-model|bookkeeping-kernel|response-contract&gt; (json only)]</code><br><code>[--category &lt;discovery|administration|query|write&gt; (json only)]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
     <tr><td><code>environment</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print live runtime, distribution, and SQLite provenance facts for this launcher instance.</td></tr>
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|declare-account]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
@@ -147,10 +149,10 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
     <tr><td><code>list-postings</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--account-code &lt;account-code&gt;]</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.</td></tr>
     <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute grouped per-currency balances for one declared account.</td></tr>
-    <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the latest committed posting date when no date filter is supplied.</td></tr>
+    <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the current book horizon when no date filter is supplied.</td></tr>
     <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
     <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
-    <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the latest committed posting date when no date filter is supplied.</td></tr>
+    <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the current book horizon when no date filter is supplied.</td></tr>
     <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
     <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
     <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
@@ -177,7 +179,6 @@ Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ord
 hosts. They are not presented as a universal Linux binary for every libc variant.
 Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
 published as `.zip` archives with the `bin\fingrind.ps1` launcher.
-They also include `bin\fingrind.cmd` as a compatibility wrapper.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
@@ -189,7 +190,7 @@ Those bundle metadata surfaces disclose the same canonical target matrix and man
 version pins that the source checkout, release automation, and shell acceptance verifiers use.
 Each published bundle archive also ships with one sibling `.sha256` digest file on the GitHub
 Release and one GitHub artifact attestation. Use `gh attestation verify --repo resoltico/FinGrind
-<downloaded-archive>` when you need publisher-authenticated provenance, and treat the `.sha256`
+<downloaded-archive>` when you need bundle-sidecar-consistency provenance, and treat the `.sha256`
 file as a convenience integrity digest rather than the only trust anchor.
 
 One public Unix bundle flow:
@@ -354,6 +355,12 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   owner-only protection; when the parent already exists, FinGrind requires it to remain
   owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
   Windows.
+- `backup-book` creates missing parent directories for nested `--backup-file-out` and
+  `--backup-book-key-file-out` paths with owner-only protection. When either parent directory
+  already exists, FinGrind requires it to remain owner-only before the backup pair is published.
+- `restore-book` creates missing parent directories for nested `--book-file` targets with
+  owner-only protection. When the selected parent directory already exists, FinGrind requires it
+  to remain owner-only before the restored live book is published.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than
   4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
   are rejected.

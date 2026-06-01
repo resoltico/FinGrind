@@ -10,8 +10,14 @@ final class TrialBalancePdfRenderer {
   void render(PdfPageWriter pageWriter, TrialBalanceReport report) throws IOException {
     Objects.requireNonNull(pageWriter, "pageWriter");
     Objects.requireNonNull(report, "report");
+    PdfAccountActivityTableSupport.writeTrialBalanceTable(
+        pageWriter, "Trial Balance", report.rows());
+    if (!report.comparativeRows().isEmpty()) {
+      PdfAccountActivityTableSupport.writeTrialBalanceTable(
+          pageWriter, "Comparative Trial Balance", report.comparativeRows());
+    }
     pageWriter.writeKeyValueTable(
-        "Parameters",
+        "Context",
         PdfStatementMetadataRows.statementParameters(
             report.bookIdentity(),
             report.comparativeEffectiveDateRange(),
@@ -21,11 +27,5 @@ final class TrialBalancePdfRenderer {
                     "As of",
                     PdfTemporalValueFormatter.optionalDate(
                         report.effectiveDateAsOf().orElse(null))))));
-    PdfAccountActivityTableSupport.writeTrialBalanceTable(
-        pageWriter, "Trial Balance", report.rows());
-    if (!report.comparativeRows().isEmpty()) {
-      PdfAccountActivityTableSupport.writeTrialBalanceTable(
-          pageWriter, "Comparative Trial Balance", report.comparativeRows());
-    }
   }
 }

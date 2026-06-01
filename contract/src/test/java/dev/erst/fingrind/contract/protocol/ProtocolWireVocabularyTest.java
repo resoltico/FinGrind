@@ -34,18 +34,31 @@ class ProtocolWireVocabularyTest {
     assertEquals("compact", DiscoveryDetail.COMPACT.toString());
     assertEquals("full", DiscoveryDetail.FULL.toString());
     assertEquals(
+        List.of(
+            "overview",
+            "commands",
+            "storage",
+            "request-input",
+            "currency-model",
+            "bookkeeping-kernel",
+            "response-contract"),
+        DiscoveryFocus.wireValues());
+    assertEquals("overview", DiscoveryFocus.OVERVIEW.toString());
+    assertEquals("commands", DiscoveryFocus.COMMANDS.toString());
+    assertEquals(
         List.of("bundle-managed", "source-checkout-managed"), SqliteRuntimeProvenance.wireValues());
     assertEquals("bundle-managed", SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue());
     assertEquals(
         "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
     assertEquals(
-        List.of("publisher-authenticated", "source-verified-local-build"),
+        List.of("bundle-sidecar-consistency", "source-checkout-sidecar-consistency"),
         SqliteRuntimeTrustBasis.wireValues());
     assertEquals(
-        "publisher-authenticated", SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED.wireValue());
+        "bundle-sidecar-consistency",
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY.wireValue());
     assertEquals(
-        "source-verified-local-build",
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD.toString());
+        "source-checkout-sidecar-consistency",
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY.toString());
     assertEquals(
         List.of(
             "macos-aarch64",
@@ -78,6 +91,8 @@ class ProtocolWireVocabularyTest {
     assertEquals(DiscoveryDetail.MINIMAL, DiscoveryDetail.fromWireValue("minimal"));
     assertEquals(DiscoveryDetail.COMPACT, DiscoveryDetail.fromWireValue("compact"));
     assertEquals(DiscoveryDetail.FULL, DiscoveryDetail.fromWireValue("full"));
+    assertEquals(DiscoveryFocus.OVERVIEW, DiscoveryFocus.fromWireValue("overview"));
+    assertEquals(DiscoveryFocus.COMMANDS, DiscoveryFocus.fromWireValue("commands"));
     assertEquals(
         SqliteRuntimeProvenance.BUNDLE_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
@@ -85,16 +100,16 @@ class ProtocolWireVocabularyTest {
         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("source-checkout-managed"));
     assertEquals(
-        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-        SqliteRuntimeTrustBasis.fromWireValue("publisher-authenticated"));
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
+        SqliteRuntimeTrustBasis.fromWireValue("bundle-sidecar-consistency"));
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
-        SqliteRuntimeTrustBasis.fromWireValue("source-verified-local-build"));
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
+        SqliteRuntimeTrustBasis.fromWireValue("source-checkout-sidecar-consistency"));
     assertEquals(
-        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.BUNDLE_MANAGED));
     assertEquals(
-        SqliteRuntimeTrustBasis.SOURCE_VERIFIED_LOCAL_BUILD,
+        SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
         SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED));
     assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,
@@ -113,6 +128,8 @@ class ProtocolWireVocabularyTest {
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
     assertThrows(IllegalArgumentException.class, () -> PlanResultDetail.fromWireValue("verbose"));
     assertThrows(IllegalArgumentException.class, () -> DiscoveryDetail.fromWireValue("expanded"));
+    assertThrows(
+        IllegalArgumentException.class, () -> DiscoveryFocus.fromWireValue("documentation"));
     assertThrows(
         IllegalArgumentException.class,
         () -> SqliteRuntimeProvenance.fromWireValue("maybe-managed"));

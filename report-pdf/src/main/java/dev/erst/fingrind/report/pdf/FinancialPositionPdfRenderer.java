@@ -10,17 +10,6 @@ final class FinancialPositionPdfRenderer {
   void render(PdfPageWriter pageWriter, FinancialPositionReport report) throws IOException {
     Objects.requireNonNull(pageWriter, "pageWriter");
     Objects.requireNonNull(report, "report");
-    pageWriter.writeKeyValueTable(
-        "Parameters",
-        PdfStatementMetadataRows.statementParameters(
-            report.bookIdentity(),
-            report.comparativeEffectiveDateRange(),
-            report.postingCoverage(),
-            List.of(
-                List.of(
-                    "Effective date as of",
-                    PdfTemporalValueFormatter.optionalDate(
-                        report.effectiveDateAsOf().orElse(null))))));
     PdfStatementSectionTableRenderer.renderSections(
         pageWriter,
         report.sections(),
@@ -37,5 +26,16 @@ final class FinancialPositionPdfRenderer {
         dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection::rows,
         dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection::totals,
         PdfStatementRowRenderers::financialPositionRow);
+    pageWriter.writeKeyValueTable(
+        "Context",
+        PdfStatementMetadataRows.statementParameters(
+            report.bookIdentity(),
+            report.comparativeEffectiveDateRange(),
+            report.postingCoverage(),
+            List.of(
+                List.of(
+                    "Effective date as of",
+                    PdfTemporalValueFormatter.optionalDate(
+                        report.effectiveDateAsOf().orElse(null))))));
   }
 }
