@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   missing nested output parent directories with owner-only protection, and the bundle/container
   acceptance workflows prove those maintenance paths from the shipped public surfaces instead of
   pre-seeding insecure destination directories.
+- Fixed late-cycle release-control regressions so the contract-operation lint no longer falls over
+  on large escaped source literals, SQLite key-file security coverage is proven directly across
+  platform filesystem capability seams, and the Jazzer replay wrapper regression now tolerates
+  brief repo-lock cleanup windows for non-lock contract paths inside the Stage 5 shell gate.
 
 ## [0.49.0] - 2026-05-28
 

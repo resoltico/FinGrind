@@ -113,8 +113,10 @@ readonly missing_parent_file_path="${tmp_dir}/missing-parent/input.bin"
 readonly resolved_missing_file_path="$(cd "${tmp_dir}" && pwd -P)/$(basename "${missing_file_path}")"
 
 note 'unknown-target fast-fail'
+output=''
 set +e
-output="$("${wrapper}" missing-target "${input_path}" 2>&1)"
+run_with_lock_retry output \
+    "${wrapper}" missing-target "${input_path}"
 status=$?
 set -e
 
@@ -154,8 +156,10 @@ set -e
     "replay wrapper leaked Gradle task output for a missing parent directory"
 
 note 'valid replay json path'
+valid_replay_output=''
 set +e
-valid_replay_output="$("${wrapper}" cli-request "${input_path}" --json --console=plain 2>&1)"
+run_with_lock_retry valid_replay_output \
+    "${wrapper}" cli-request "${input_path}" --json --console=plain
 valid_replay_status=$?
 set -e
 
