@@ -315,8 +315,12 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 
 Context
 -------
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
+Entity              : Release Protocol Fixture
+Accounting profile  : country-agnostic-bookkeeping-kernel
+Business activity   : consulting-services
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds
 TEXT
                 else
                     cat <<TEXT
@@ -341,8 +345,12 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 
 Context
 -------
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
+Entity              : Release Protocol Fixture
+Accounting profile  : country-agnostic-bookkeeping-kernel
+Business activity   : consulting-services
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds
 TEXT
                 fi
                 ;;

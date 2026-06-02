@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer repo-lock cleanup windows before declaring a valid replay invocation broken. The replay
   wrapper contract test now retries lock-contention exits long enough to match CI-scale cleanup
   latency instead of treating short-lived verification-lock turnover as a hard failure.
+- Fixed the public-container release verifier so release replay now proves the live trial-balance
+  text contract instead of the retired compressed context block. The mounted verification path and
+  its fake-Docker regression now both require the current multi-line entity, accounting-profile,
+  business-activity, currency, fiscal-year, and posting-coverage context surface.
+
+### Changed
+
+- Bumped the release-workflow artifact staging actions to the current Node24-backed pins.
+  `release.yml` now uses `actions/upload-artifact` `v7.0.1` and
+  `actions/download-artifact` `v8.0.1`, and the release-workflow contract test now locks those
+  publication-staging pins so deprecated Node20 runtime drift cannot quietly re-enter the release
+  path.
 
 ## [0.50.0] - 2026-06-01
 

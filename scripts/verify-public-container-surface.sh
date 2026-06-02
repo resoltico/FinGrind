@@ -108,8 +108,12 @@ TEXT
     context_block="$(cat <<'TEXT'
 Context
 -------
-Book             : Release Protocol Fixture | Currency EUR | FY 01-01
-Posting coverage : All posting kinds
+Entity              : Release Protocol Fixture
+Accounting profile  : country-agnostic-bookkeeping-kernel
+Business activity   : consulting-services
+Functional currency : EUR
+Fiscal year start   : 01-01
+Posting coverage    : All posting kinds
 TEXT
 )"
 
