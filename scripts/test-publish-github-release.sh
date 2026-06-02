@@ -41,6 +41,7 @@ set -euo pipefail
 
 readonly state_file="${FAKE_RELEASE_STATE_FILE:?}"
 readonly operation_log="${FAKE_RELEASE_OPERATION_LOG:?}"
+readonly expected_tag="${RELEASE_TAG:-v9.9.9}"
 
 python3_state() {
     python3 - "${state_file}" "$@" <<'PY'
@@ -92,6 +93,40 @@ else:
 PY
 }
 
+emit_release_listing() {
+    python3 - "${state_file}" "${expected_tag}" <<'PY'
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+state_path = Path(sys.argv[1])
+tag_name = sys.argv[2]
+
+if state_path.exists():
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+else:
+    state = {"exists": False, "id": 444, "draft": False, "make_latest": "false", "assets": {}}
+
+if not state["exists"]:
+    print("[]")
+    raise SystemExit(0)
+
+release = {
+    "id": state["id"],
+    "draft": state["draft"],
+    "make_latest": state["make_latest"],
+    "tag_name": tag_name,
+    "assets": [
+        {"name": name, "digest": digest}
+        for name, digest in sorted(state["assets"].items())
+    ],
+}
+print(json.dumps([release]))
+PY
+}
+
 compute_sha256() {
     python3 - "$1" <<'PY'
 from hashlib import sha256
@@ -116,32 +151,12 @@ case "${1:-}:${2:-}" in
         [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
         printf 'resoltico/FinGrind\n'
         ;;
+    api:--paginate)
+        [[ "${3:-}" == "/repos/resoltico/FinGrind/releases?per_page=100" ]] || exit 1
+        emit_release_listing
+        ;;
     api:/repos/resoltico/FinGrind/releases/tags/*)
-        if ! python3_state exists; then
-            exit 1
-        fi
-        if [[ "${3:-}" == "--jq" ]]; then
-            field_query="${4:-}"
-            case "${field_query}" in
-                .id)
-                    python3_state field id
-                    ;;
-                .draft)
-                    python3_state field draft
-                    ;;
-                *)
-                    if [[ "${field_query}" == *'.assets[]?'*'.digest // empty' ]]; then
-                        asset_name="${field_query#*select(.name == \"}"
-                        asset_name="${asset_name%%\"*}"
-                        python3_state asset-digest "${asset_name}"
-                    else
-                        exit 1
-                    fi
-                    ;;
-            esac
-        else
-            python3_state dump
-        fi
+        exit 1
         ;;
     api:--method)
         [[ "${3:-}" == "PATCH" ]] || exit 1
