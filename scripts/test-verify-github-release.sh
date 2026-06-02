@@ -43,6 +43,10 @@ grep -Fq 'attest-release-assets:' "${release_workflow}" || die \
     "release workflow no longer attests published release assets"
 grep -Fq 'verify-release:' "${release_workflow}" || die \
     "release workflow no longer verifies the published GitHub release"
+grep -Fq 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1' "${release_workflow}" || die \
+    "release workflow no longer pins publication-staging uploads to the current Node24-backed artifact action"
+grep -Fq 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1' "${release_workflow}" || die \
+    "release workflow no longer pins publication-staging downloads to the current Node24-backed artifact action"
 grep -Fq 'container:' "${release_workflow}" || die \
     "release workflow no longer publishes the public container from the same release workflow"
 grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
