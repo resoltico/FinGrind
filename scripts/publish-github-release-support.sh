@@ -31,18 +31,37 @@ publish_release_resolve_repository_slug() {
 }
 
 publish_release_view_json() {
-    gh api "/repos/${PUBLISH_RELEASE_REPO_FULL_NAME}/releases/tags/${PUBLISH_RELEASE_TAG_NAME}" \
-        2>/dev/null || return 1
+    gh api --paginate "/repos/${PUBLISH_RELEASE_REPO_FULL_NAME}/releases?per_page=100" 2>/dev/null |
+        jq -sc --arg tag "${PUBLISH_RELEASE_TAG_NAME}" '
+            [
+                .[]
+                | if type == "array" then .[] else . end
+                | select(.tag_name == $tag)
+            ] as $matches
+            | if ($matches | length) == 0 then
+                empty
+              elif ($matches | length) == 1 then
+                $matches[0]
+              else
+                error("multiple releases matched tag " + $tag)
+              end
+        ' || return 1
 }
 
 publish_release_exists() {
-    publish_release_view_json >/dev/null 2>&1
+    local release_json
+
+    release_json="$(publish_release_view_json)" || return 1
+    [[ -n "${release_json}" ]]
 }
 
 publish_release_api_field() {
     local jq_expression=$1
-    gh api "/repos/${PUBLISH_RELEASE_REPO_FULL_NAME}/releases/tags/${PUBLISH_RELEASE_TAG_NAME}" \
-        --jq "${jq_expression}"
+    local release_json
+
+    release_json="$(publish_release_view_json)" || return 1
+    [[ -n "${release_json}" ]] || return 1
+    printf '%s' "${release_json}" | jq -r "${jq_expression}"
 }
 
 publish_release_asset_digest() {

@@ -19,7 +19,8 @@ run_with_lock_retry() {
     local attempt_output=''
     local attempt_status=0
     local attempt=1
-    local max_attempts=20
+    local max_attempts=60
+    local retry_sleep_seconds=0.25
     local errexit_enabled=0
 
     case $- in
@@ -47,7 +48,7 @@ run_with_lock_retry() {
             printf -v "${output_var_name}" '%s' "${attempt_output}"
             return "${attempt_status}"
         fi
-        sleep 0.1
+        sleep "${retry_sleep_seconds}"
         attempt=$(( attempt + 1 ))
     done
 }
