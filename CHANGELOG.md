@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tag ownership through the authenticated release listing surface instead of the published-release
   tag endpoint, which allows `release.yml` to repair and finish immutable tagged releases from
   `main` without breaking on GitHub's draft-release lookup behavior.
+- Fixed the Jazzer replay-wrapper shell regression so hosted release-surface gates now tolerate
+  longer repo-lock cleanup windows before declaring a valid replay invocation broken. The replay
+  wrapper contract test now retries lock-contention exits long enough to match CI-scale cleanup
+  latency instead of treating short-lived verification-lock turnover as a hard failure.
 
 ## [0.50.0] - 2026-06-01
 
