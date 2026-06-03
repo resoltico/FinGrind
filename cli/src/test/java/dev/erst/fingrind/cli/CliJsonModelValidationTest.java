@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
@@ -27,6 +29,7 @@ import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerFactKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -63,7 +66,8 @@ class CliJsonModelValidationTest {
   void planAndRejectionPayloads_rejectEmptyRequiredLists() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new CliPlanJsonModels.GroupLedgerFactPayload("group", "facts", List.of()));
+        () ->
+            new CliPlanJsonModels.GroupLedgerFactPayload(LedgerFactKind.GROUP, "facts", List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () -> new CliPlanJsonModels.LedgerExecutionJournalPayload("start", "finish", List.of()));
@@ -83,9 +87,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.HelpOverviewPayload(
+            new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 null,
@@ -97,9 +101,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.HelpOverviewPayload(
+            new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -111,9 +115,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.CapabilitiesPayload(
+            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -124,9 +128,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.CapabilitiesPayload(
+            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -137,9 +141,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
+            new CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -149,9 +153,9 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
+            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.bookkeepingKernel().scope(),
@@ -159,7 +163,7 @@ class CliJsonModelValidationTest {
                 capabilitiesDescriptor.storage().bookBoundary(),
                 capabilitiesDescriptor.currencyModel().scope(),
                 capabilitiesDescriptor.currencyModel().multiCurrencyStatus(),
-                new CliDiscoveryJsonModels.RequestInputCompactPayload(
+                new CliDiscoveryCommonJsonModels.RequestInputCompactPayload(
                     "--book-file",
                     List.of(
                         "--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
@@ -170,21 +174,22 @@ class CliJsonModelValidationTest {
                 "Run fingrind capabilities --output json --detail compact.",
                 "Run fingrind capabilities --output json --detail full."));
 
-    CliEnvelopeJsonModels.PlanEnvelope<CliDiscoveryJsonModels.CapabilitiesPayload> envelope =
-        new CliEnvelopeJsonModels.PlanEnvelope<>(
-            ProtocolEnvelopeStatus.OK,
-            new CliDiscoveryJsonModels.CapabilitiesPayload(
-                "FinGrind",
-                "0.50.0",
-                DiscoveryDetail.FULL,
-                DiscoveryFocus.OVERVIEW,
-                capabilitiesDescriptor.storage(),
-                capabilitiesDescriptor.commands(),
-                capabilitiesDescriptor.requestInput(),
-                List.of("Prefer --output json for agents."),
-                capabilitiesDescriptor),
-            new ArrayList<>(
-                List.of(new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"))));
+    CliEnvelopeJsonModels.PlanEnvelope<CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload>
+        envelope =
+            new CliEnvelopeJsonModels.PlanEnvelope<>(
+                ProtocolEnvelopeStatus.OK,
+                new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
+                    "FinGrind",
+                    "0.51.0",
+                    DiscoveryDetail.FULL,
+                    DiscoveryFocus.OVERVIEW,
+                    capabilitiesDescriptor.storage(),
+                    capabilitiesDescriptor.commands(),
+                    capabilitiesDescriptor.requestInput(),
+                    List.of("Prefer --output json for agents."),
+                    capabilitiesDescriptor),
+                new ArrayList<>(
+                    List.of(new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"))));
     List<CliEnvelopeJsonModels.SuccessArtifact> artifacts = envelope.artifacts();
     assertNotNull(artifacts);
     assertEquals(1, artifacts.size());
@@ -202,7 +207,7 @@ class CliJsonModelValidationTest {
             "4100", "EXPENSE", "4000", "REVENUE");
     CliRejectionJsonModels.ParentAccountRoleConflictDetails parentAccountRoleConflictDetails =
         new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-            "4100", "ORDINARY", "4000", "CONTRA");
+            "4100", "ORDINARY", "4000", "POLARITY_INVERTED");
     CliRejectionJsonModels.ParentAccountNodeKindDetails parentAccountNodeKindDetails =
         new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE");
     CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails
@@ -220,7 +225,7 @@ class CliJsonModelValidationTest {
     assertEquals("EXPENSE", parentAccountTypeConflictDetails.requestedAccountType());
     assertEquals("REVENUE", parentAccountTypeConflictDetails.parentAccountType());
     assertEquals("ORDINARY", parentAccountRoleConflictDetails.requestedAccountRole());
-    assertEquals("CONTRA", parentAccountRoleConflictDetails.parentAccountRole());
+    assertEquals("POLARITY_INVERTED", parentAccountRoleConflictDetails.parentAccountRole());
     assertEquals("POSTABLE", parentAccountNodeKindDetails.parentAccountNodeKind());
     assertEquals(
         "4050",
@@ -243,7 +248,7 @@ class CliJsonModelValidationTest {
         IllegalArgumentException.class,
         () ->
             new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-                "4100", " ", "4000", "CONTRA"));
+                "4100", " ", "4000", "POLARITY_INVERTED"));
     assertThrows(
         IllegalArgumentException.class,
         () -> new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", " "));
@@ -635,7 +640,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.50.0",
+        "0.51.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

@@ -65,7 +65,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             Instant.parse("2026-05-05T09:15:30Z"));
     BookkeepingAdministrationRejection rejection =
         new BookkeepingAdministrationRejection.AccountRoleConflict(
-            account.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA);
+            account.accountCode(), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED);
 
     DeclareAccountResult declared =
         BookkeepingPublishedLanguageTranslator.toPublished(
@@ -79,7 +79,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
         assertInstanceOf(DeclareAccountResult.Declared.class, declared).account());
     assertEquals(
         new BookAdministrationRejection.AccountRoleConflict(
-            account.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA),
+            account.accountCode(), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED),
         assertInstanceOf(DeclareAccountResult.Rejected.class, rejected).rejection());
   }
 
@@ -281,13 +281,13 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new AccountCode("1010"),
             AccountRole.ORDINARY,
             new AccountCode("1100"),
-            AccountRole.CONTRA),
+            AccountRole.POLARITY_INVERTED),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingAdministrationRejection.ParentAccountRoleConflict(
                 new AccountCode("1010"),
                 AccountRole.ORDINARY,
                 new AccountCode("1100"),
-                AccountRole.CONTRA)));
+                AccountRole.POLARITY_INVERTED)));
     assertEquals(
         new BookAdministrationRejection.ParentAccountNotHeader(
             new AccountCode("1010"), new AccountCode("1000"), AccountNodeKind.POSTABLE),

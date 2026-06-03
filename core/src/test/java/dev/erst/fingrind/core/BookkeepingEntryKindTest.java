@@ -16,8 +16,7 @@ class BookkeepingEntryKindTest {
     assertEquals("EQUITY_CONTRIBUTION", BookkeepingEntryKind.EQUITY_CONTRIBUTION.wireValue());
     assertEquals("EQUITY_WITHDRAWAL", BookkeepingEntryKind.EQUITY_WITHDRAWAL.wireValue());
     assertEquals(
-        "OPENING_BALANCE_ADJUSTMENT", BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT.wireValue());
-    assertEquals("CORRECTION_ADJUSTMENT", BookkeepingEntryKind.CORRECTION_ADJUSTMENT.wireValue());
+        "OPEN_ACCOUNTING_POSITION", BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION.wireValue());
     assertEquals("REVERSAL_ADJUSTMENT", BookkeepingEntryKind.REVERSAL_ADJUSTMENT.wireValue());
     assertEquals(
         List.of(
@@ -25,8 +24,7 @@ class BookkeepingEntryKindTest {
             "CASH_EXPENSE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
-            "OPENING_BALANCE_ADJUSTMENT",
-            "CORRECTION_ADJUSTMENT",
+            "OPEN_ACCOUNTING_POSITION",
             "REVERSAL_ADJUSTMENT"),
         BookkeepingEntryKind.wireValues());
   }
@@ -44,11 +42,8 @@ class BookkeepingEntryKindTest {
         BookkeepingEntryKind.EQUITY_WITHDRAWAL,
         BookkeepingEntryKind.fromWireValue("EQUITY_WITHDRAWAL"));
     assertEquals(
-        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
-        BookkeepingEntryKind.fromWireValue("OPENING_BALANCE_ADJUSTMENT"));
-    assertEquals(
-        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
-        BookkeepingEntryKind.fromWireValue("CORRECTION_ADJUSTMENT"));
+        BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+        BookkeepingEntryKind.fromWireValue("OPEN_ACCOUNTING_POSITION"));
     assertEquals(
         BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
         BookkeepingEntryKind.fromWireValue("REVERSAL_ADJUSTMENT"));

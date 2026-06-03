@@ -73,10 +73,7 @@ public final class CliFuzzSyntheticAccountFixtures {
                   AccountType.ASSET,
                   AccountRole.ORDINARY,
                   syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
-      case BookkeepingEntry.OpeningBalanceAdjustment _ ->
-          distinctJournalLineAccountDeclarations(command);
-      case BookkeepingEntry.CorrectionAdjustment _ ->
-          distinctJournalLineAccountDeclarations(command);
+      case BookkeepingEntry.OpenAccountingPosition _ -> openingPositionAccountDeclarations(command);
       case BookkeepingEntry.ReversalAdjustment _ -> distinctJournalLineAccountDeclarations(command);
     };
   }
@@ -93,6 +90,33 @@ public final class CliFuzzSyntheticAccountFixtures {
         .map(line -> line.accountCode())
         .distinct()
         .map(CliFuzzSyntheticAccountFixtures::syntheticDeclareAccountCommand)
+        .toList();
+  }
+
+  private static List<DeclareAccountCommand> openingPositionAccountDeclarations(
+      PostEntryCommand command) {
+    return CliFuzzFixtures.journalEntry(command).lines().stream()
+        .collect(
+            java.util.stream.Collectors.toMap(
+                line -> line.accountCode(),
+                line ->
+                    line.side() == dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT
+                        ? syntheticDeclareAccountCommand(
+                            line.accountCode(),
+                            AccountType.ASSET,
+                            AccountRole.ORDINARY,
+                            syntheticAccountTaxonomy(
+                                FinancialPositionLineClassification.CURRENT_ASSET))
+                        : syntheticDeclareAccountCommand(
+                            line.accountCode(),
+                            AccountType.LIABILITY,
+                            AccountRole.ORDINARY,
+                            syntheticAccountTaxonomy(
+                                FinancialPositionLineClassification.CURRENT_LIABILITY)),
+                (first, ignored) -> first,
+                java.util.LinkedHashMap::new))
+        .values()
+        .stream()
         .toList();
   }
 
@@ -119,7 +143,7 @@ public final class CliFuzzSyntheticAccountFixtures {
   private static AccountRole syntheticAccountRole(AccountCode accountCode) {
     int bucket = Math.floorMod(accountCode.value().hashCode(), 4);
     if (bucket == 0) {
-      return AccountRole.CONTRA;
+      return AccountRole.POLARITY_INVERTED;
     }
     return AccountRole.ORDINARY;
   }

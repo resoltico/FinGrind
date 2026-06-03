@@ -4,6 +4,9 @@ import java.nio.file.Path
 
 /** Reads bundle-target and host-platform distribution contract facts. */
 object DistributionBundleTargetReader {
+    private const val DOCKER_TARGET_ARCHITECTURE_PROPERTY =
+        "fingrind.docker.target.architectureId"
+
     fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String =
         DistributionHostPlatform.operatingSystemId(osName)
 
@@ -25,6 +28,18 @@ object DistributionBundleTargetReader {
         osName: String = System.getProperty("os.name", ""),
         architecture: String = System.getProperty("os.arch", "unknown"),
     ): String = hostBundleTarget(projectRootDirectory, osName, architecture).classifier
+
+    fun dockerBundleTarget(
+        projectRootDirectory: Path,
+        architecture: String =
+            System.getProperty(DOCKER_TARGET_ARCHITECTURE_PROPERTY)
+                ?.takeIf(String::isNotBlank)
+                ?: System.getProperty("os.arch", "unknown"),
+    ): DistributionContractReader.BundleTargetContract =
+        bundleTarget(
+            projectRootDirectory,
+            "linux-" + architectureId(architecture),
+        )
 
     fun bundleTarget(
         projectRootDirectory: Path,

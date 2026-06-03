@@ -3,13 +3,16 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,10 +35,12 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals("Acme Studio", bookContext.bookIdentity().entityName());
     assertEquals(
-        "country-agnostic-bookkeeping-kernel",
+        "internal-management-cash-bookkeeping-kernel",
         bookContext.bookIdentity().accountingKernelProfile());
+    assertEquals("CASH_BASIS", bookContext.bookIdentity().accountingBasis());
     assertEquals(
-        List.of("translation-services"), bookContext.bookIdentity().businessActivityTags());
+        "NON_STATUTORY_INTERNAL_MANAGEMENT",
+        bookContext.bookIdentity().accountingFrameworkPosition());
 
     assertNull(unbounded.accountCodeFilter());
     assertNull(unbounded.effectiveDateFrom());
@@ -51,22 +56,21 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void bookIdentityPayload_mapsBusinessActivityTagsWhenPresent() {
-    BookIdentity taggedIdentity =
+  void bookIdentityPayload_mapsDoctrineFields() {
+    BookIdentity doctrinalIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Acme Studio"),
-                List.of(
-                    new BusinessActivityTag("translation-services"),
-                    new BusinessActivityTag("platform-sales"))),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
-    var payload = CliBookPayloadMapper.bookIdentityPayload(taggedIdentity);
+    var payload = CliBookPayloadMapper.bookIdentityPayload(doctrinalIdentity);
 
-    assertEquals("country-agnostic-bookkeeping-kernel", payload.accountingKernelProfile());
-    assertEquals(List.of("translation-services", "platform-sales"), payload.businessActivityTags());
+    assertEquals("internal-management-cash-bookkeeping-kernel", payload.accountingKernelProfile());
+    assertEquals("CASH_BASIS", payload.accountingBasis());
+    assertEquals("NON_STATUTORY_INTERNAL_MANAGEMENT", payload.accountingFrameworkPosition());
+    assertEquals("OWNER_MANAGED_SINGLE_ENTITY", payload.entityForm());
+    assertEquals("OWNER_MANAGED_SERVICE_CASH", payload.bookTemplateId());
   }
 
   @Test
@@ -90,5 +94,31 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals(List.of("document-idem-1"), payload.sourceDocumentIds());
     assertEquals(List.of("approval-idem-1"), payload.approvalIds());
+  }
+
+  @Test
+  void resultTransferReadinessPayload_mapsSelectedAndCandidateAccountFacts() {
+    CliAdministrationJsonModels.ResultTransferReadinessPayload readyPayload =
+        CliBookInspectionPayloadMapper.resultTransferReadinessPayload(
+            new BookInspection.ResultTransferReadiness(
+                true,
+                FinancialPositionLineClassification.RESULT_HOLDING,
+                new AccountCode("3200"),
+                null,
+                null,
+                List.of()));
+    CliAdministrationJsonModels.ResultTransferReadinessPayload ambiguousPayload =
+        CliBookInspectionPayloadMapper.resultTransferReadinessPayload(
+            new BookInspection.ResultTransferReadiness(
+                false,
+                FinancialPositionLineClassification.RESULT_HOLDING,
+                null,
+                "result-holding-account-candidate-ambiguous",
+                "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
+                List.of(new AccountCode("3200"), new AccountCode("3210"))));
+
+    assertEquals("3200", readyPayload.resultHoldingAccountCode());
+    assertNull(ambiguousPayload.resultHoldingAccountCode());
+    assertEquals(List.of("3200", "3210"), ambiguousPayload.candidateAccountCodes());
   }
 }

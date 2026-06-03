@@ -23,29 +23,19 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("placeholder-first sample document"));
     assertTrue(guide.contains("same book is rejected"));
     assertTrue(guide.contains("--entity-name"));
-    assertTrue(guide.contains("--business-activity-tag"));
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
-    assertTrue(guide.contains("--request-file ./declare-account-cash.json"));
-    assertTrue(guide.contains("--request-file ./declare-account-revenue.json"));
+    assertTrue(guide.contains("starter chart"));
+    assertTrue(guide.contains("\"cashAccountCode\": \"cash\""));
+    assertTrue(guide.contains("\"revenueAccountCode\": \"service-revenue\""));
     Path workspace = tempDirectory.resolve("quick-start");
     Path bookFile = workspace.resolve("acme.sqlite");
     Path bookKeyFile = workspace.resolve("acme.book-key");
-    Path declareCashFile =
-        writeNamedRequest(
-            "declare-account-cash.json",
-            extractFencedBlock(guide, "Create `./declare-account-cash.json` with:", "json"));
-    Path declareRevenueFile =
-        writeNamedRequest(
-            "declare-account-revenue.json",
-            extractFencedBlock(guide, "Create `./declare-account-revenue.json` with:", "json"));
     Path requestFile =
         writeNamedRequest(
             "quick-start-request.json",
             extractFencedBlock(
-                guide,
-                "Replace the contents of `./request.json` with one balanced entry, for example:",
-                "json"));
+                guide, "Replace the contents of `./request.json` with one balanced entry", "json"));
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());
@@ -58,6 +48,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         openBook.path("payload").path("bookIdentity").path("entityName").stringValue());
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals("2026-01-15", requestTemplate.path("effectiveDate").stringValue());
+    assertEquals("cash", requestTemplate.path("cashAccountCode").stringValue());
+    assertEquals("service-revenue", requestTemplate.path("revenueAccountCode").stringValue());
     assertEquals(
         "replace-with-cash-receipt-id",
         requestTemplate
@@ -87,22 +79,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals(
         "replace-with-idempotency-key",
         requestTemplate.path("provenance").path("idempotencyKey").stringValue());
-    runJsonCommand(
-        "declare-account",
-        "--book-file",
-        bookFile.toString(),
-        "--book-key-file",
-        bookKeyFile.toString(),
-        "--request-file",
-        declareCashFile.toString());
-    runJsonCommand(
-        "declare-account",
-        "--book-file",
-        bookFile.toString(),
-        "--book-key-file",
-        bookKeyFile.toString(),
-        "--request-file",
-        declareRevenueFile.toString());
     JsonNode preflight =
         runJsonCommand(
             "preflight-entry",
@@ -133,8 +109,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--output",
             "text");
     assertTrue(trialBalance.contains("Trial Balance"));
-    assertTrue(trialBalance.contains("1000"));
-    assertTrue(trialBalance.contains("2000"));
+    assertTrue(trialBalance.contains("cash"));
+    assertTrue(trialBalance.contains("service-revenue"));
   }
 
   @Test
@@ -150,19 +126,20 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(examplesGuide.contains("placeholder-first sample"));
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
-    assertTrue(examplesGuide.contains("--business-activity-tag"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
+    assertTrue(examplesGuide.contains("starter chart"));
     assertTrue(requestsGuide.contains("placeholder-first sample"));
     assertTrue(requestsGuide.contains("single-use per book"));
+    assertFalse(requestsGuide.contains("businessActivityTags"));
     assertFalse(
         requestsGuide.contains(
             "print-plan-template` emits the accepted `execute-plan` request shape directly"));
     Path workspace = tempDirectory.resolve("examples");
     Path bookFile = workspace.resolve("acme.sqlite");
     Path bookKeyFile = workspace.resolve("acme.book-key");
-    Path declareCashFile = copyExampleFixture("declare-account-cash.json");
-    Path declareRevenueFile = copyExampleFixture("declare-account-revenue.json");
+    Path declareCashFile = copyExampleFixture("declare-account-supplemental-cash-reserve.json");
+    Path declareRevenueFile = copyExampleFixture("declare-account-supplemental-misc-revenue.json");
     Path postingRequestFile = copyExampleFixture("basic-posting-request.json");
     Path unknownAccountRequestFile = copyExampleFixture("unknown-account-request.json");
     Path reversalRequestFile = copyExampleFixture("reversal-request.json");
@@ -236,7 +213,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "10");
     assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
-    JsonNode rawPlanPosting = rawPlanTemplate.path("steps").get(3).path("posting");
+    JsonNode rawPlanPosting = rawPlanTemplate.path("steps").get(1).path("posting");
     assertEquals(
         "replace-with-cash-receipt-id",
         rawPlanPosting
@@ -273,7 +250,16 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("ok", queryPlanResult.path("status").stringValue());
     assertEquals("succeeded", queryPlanResult.path("payload").path("status").stringValue());
     JsonNode queryData =
-        queryPlanResult.path("payload").path("journal").path("steps").get(4).path("data");
+        findStepData(queryPlanResult.path("payload").path("journal"), "page-accounts");
     assertEquals(1, queryData.path("count").asInt());
+  }
+
+  private static JsonNode findStepData(JsonNode journal, String stepId) {
+    for (JsonNode step : journal.path("steps")) {
+      if (stepId.equals(step.path("stepId").stringValue())) {
+        return step.path("data");
+      }
+    }
+    throw new AssertionError("Missing plan journal step: " + stepId);
   }
 }

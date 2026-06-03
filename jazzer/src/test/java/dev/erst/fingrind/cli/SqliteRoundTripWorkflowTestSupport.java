@@ -22,6 +22,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -69,8 +70,8 @@ final class SqliteRoundTripWorkflowTestSupport {
         postingId,
         CliFuzzFixtures.journalEntry(command),
         CliFuzzFixtures.postingLineage(command),
-        CliFuzzFixtures.postingKind(command),
-        PostingOriginKind.CORRECTION_ADJUSTMENT,
+        postingKind(command),
+        postingOriginKind(command),
         command.evidence(),
         new CommittedProvenance(
             command.requestProvenance(),
@@ -207,6 +208,36 @@ final class SqliteRoundTripWorkflowTestSupport {
 
   static void assertMessageContains(Throwable throwable, String expectedFragment) {
     assertTrue(Objects.requireNonNullElse(throwable.getMessage(), "").contains(expectedFragment));
+  }
+
+  private static PostingKind postingKind(PostEntryCommand command) {
+    return switch (Objects.requireNonNull(command, "command").entry()) {
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.OpenAccountingPosition _ ->
+          PostingKind.OPENING_BALANCE;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashRevenue _,
+          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashExpense _,
+          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityContribution _,
+          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityWithdrawal _,
+          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ReversalAdjustment _ ->
+          PostingKind.STANDARD;
+    };
+  }
+
+  private static PostingOriginKind postingOriginKind(PostEntryCommand command) {
+    return switch (Objects.requireNonNull(command, "command").entry()) {
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashRevenue _ ->
+          PostingOriginKind.CASH_REVENUE;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashExpense _ ->
+          PostingOriginKind.CASH_EXPENSE;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityContribution _ ->
+          PostingOriginKind.EQUITY_CONTRIBUTION;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityWithdrawal _ ->
+          PostingOriginKind.EQUITY_WITHDRAWAL;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.OpenAccountingPosition _ ->
+          PostingOriginKind.OPEN_ACCOUNTING_POSITION;
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ReversalAdjustment _ ->
+          PostingOriginKind.REVERSAL_ADJUSTMENT;
+    };
   }
 
   static final class StubSqliteReadSession implements SqliteReadSession {

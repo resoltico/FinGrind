@@ -28,7 +28,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         "--request-file",
         config.request_sale.argument,
     )
-    commit_adjustment_output = run_cli(
+    commit_expense_output = run_cli(
         config,
         operation_ids["postEntry"],
         "--book-file",
@@ -36,7 +36,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         "--book-key-file",
         config.book_key.argument,
         "--request-file",
-        config.request_adjustment.argument,
+        config.request_expense.argument,
     )
     require_match(
         preflight_output,
@@ -49,9 +49,9 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         f"{config.label} sale commit did not report ok status",
     )
     require_match(
-        commit_adjustment_output,
+        commit_expense_output,
         r'"status"[[:space:]]*:[[:space:]]*"ok"',
-        f"{config.label} adjustment commit did not report ok status",
+        f"{config.label} expense commit did not report ok status",
     )
 
 
@@ -110,7 +110,7 @@ def verify_operator_queries_and_reports(
         "--book-key-file",
         config.book_key.argument,
         "--account-code",
-        "1000",
+        config.starter_cash_account_code,
         "--output",
         "text",
     )
@@ -149,7 +149,7 @@ def verify_operator_queries_and_reports(
         "--book-key-file",
         config.book_key.argument,
         "--account-code",
-        "1000",
+        config.starter_cash_account_code,
         "--effective-date-from",
         "2026-04-07",
         "--effective-date-to",

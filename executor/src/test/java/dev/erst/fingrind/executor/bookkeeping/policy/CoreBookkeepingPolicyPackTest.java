@@ -9,8 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.AccountingFrameworkPosition;
 import dev.erst.fingrind.core.AccountingKernelProfileId;
+import dev.erst.fingrind.core.BookDoctrine;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BookTemplateId;
+import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +42,12 @@ class InternalManagementKernelAccountingRulesTest {
     BookIdentity unsupportedProfileBook =
         new BookIdentity(
             bookIdentity().entityProfile(),
-            new AccountingKernelProfileId("unsupported-kernel-profile"),
+            new BookDoctrine(
+                new AccountingKernelProfileId("unsupported-kernel-profile"),
+                AccountingBasis.CASH_BASIS,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_SERVICE_CASH),
             bookIdentity().functionalCurrency(),
             bookIdentity().fiscalYearStart());
 

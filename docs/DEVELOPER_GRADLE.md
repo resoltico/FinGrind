@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -86,6 +86,13 @@ gradle/
     ├── build.gradle.kts
     └── src/main/kotlin/dev/erst/fingrind/buildlogic/
         ├── FinGrindJavaConventionsPlugin.kt
+        ├── FinGrindJavaRuntimeConventions.kt
+        ├── FinGrindJavaQualityConventions.kt
+        ├── FinGrindJavaCoverageConventions.kt
+        ├── FinGrindRootFormattingConventions.kt
+        ├── FinGrindRootPythonSqlConventions.kt
+        ├── FinGrindRootCoverageConventions.kt
+        ├── FinGrindRootJazzerConventions.kt
         ├── FinGrindRootConventionsPlugin.kt
         ├── FinGrindJazzerConventionsPlugin.kt
         ├── ManagedSqliteProvisioningLogic.kt
@@ -143,17 +150,18 @@ prunes each processed-resource destination directory before real resource syncs 
 removed committed seeds cannot linger in `jazzer-build/resources/` and skew replay or packaged
 corpus behavior away from `src/fuzz/resources`.
 Its own Kotlin compiler is now pinned explicitly in
-`gradle/build-logic/build.gradle.kts` at `2.4.0-RC2` so the shared build logic can compile
+`gradle/build-logic/build.gradle.kts` at `2.4.0` so the shared build logic can compile
 against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
-That Kotlin pin is also intentionally temporary and prerelease-sensitive: move to the matching
-stable `2.4.x` line as soon as it is available and the included build still verifies cleanly on
-the live plugin/classpath surface.
 
 The consumer scripts are intentionally thin now:
 - root `build.gradle.kts` is a single root-conventions plugin application
-- Java module policy lives in `FinGrindJavaConventionsPlugin`
-- repository-wide formatting, aggregated coverage, managed-SQLite root wiring, and Python helper
-  linting live in `FinGrindRootConventionsPlugin`
+- Java module policy is composed from `FinGrindJavaConventionsPlugin`,
+  `FinGrindJavaRuntimeConventions`, `FinGrindJavaQualityConventions`, and
+  `FinGrindJavaCoverageConventions`
+- repository-wide formatting, Python/SQL verification, aggregated coverage, and root-owned Jazzer
+  verification are composed by `FinGrindRootConventionsPlugin` from
+  `FinGrindRootFormattingConventions`, `FinGrindRootPythonSqlConventions`,
+  `FinGrindRootCoverageConventions`, and `FinGrindRootJazzerConventions`
 
 Root verification now has one explicit Python-tooling contract:
 - the pinned CI interpreter version is `fingrindPythonVersion` from
@@ -187,11 +195,13 @@ nested Jazzer build imports that catalog instead of repeating overlapping coordi
 avoids silent version skew between the main product modules and Jazzer support code.
 
 The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
-the default repository and scopes the Sonatype Maven snapshots repository to `org.jacoco` only.
-FinGrind pins JaCoCo directly to the exact Java-26-ready snapshot artifact
-`0.8.15-20260519.201139-107` in the version catalog instead of resolving through the mutable
-`0.8.15-SNAPSHOT` alias. That keeps the catalog, the effective build, IDE resolution, and CI on one
-deterministic coordinate.
+the default repository. FinGrind now treats the JaCoCo snapshot as one pinned artifact-set
+contract owned by `gradle/fingrind-build.properties` instead of resolving a floating Maven alias
+at build time. The build metadata pins the snapshot base version `0.8.15-SNAPSHOT`, the published
+build label `0.8.15.202606030734`, and the resolved artifact version `0.8.15-20260603.073432-117`;
+the shared build logic stages that exact JaCoCo jar set under the wrapper-owned build root; and
+`./scripts/verify-jacoco-snapshot.sh` proves those exact published artifacts exist before any
+Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
@@ -207,15 +217,19 @@ That contract now has a few explicit rules:
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
 - managed/runtime compatibility also forbids the SQLite compile option `USE_URI`
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
-  private Java runtime image, managed native library, launcher, and checksum, then prints the
-  exact archive/checksum paths it produced under the active CLI build directory
+  private Java runtime image, managed native library, launcher, and checksum, then writes the
+  exact archive/checksum paths to `generated/bundle/bundle-archive-manifest.json` under the active
+  CLI build directory
 - `:cli:stageDockerBuildContext` is the Docker assembly entrypoint; it stages one canonical Docker
-  build context under the active CLI build root and mirrors it into `cli/build/docker-context/`
-  for checkout-local inspection/manual use
+  build context under the active CLI build root
+- that Docker staging path owns a Linux-target managed SQLite artifact distinct from the
+  host-native bundle artifact when the current workstation is not Linux; the same Gradle-managed
+  native build contract decides both paths, and non-Linux hosts materialize the Docker target
+  through a pinned Buildx builder image instead of relabeling host-native libraries
 - that staged context contains `Dockerfile`, `fingrind.jar`, `runtime-modules.txt`,
-  `docker-entrypoint.sh`, `managed-sqlite-contract.json`, `docker-build-context-manifest.json`,
-  and a `source-root/` snapshot of every checked source/build input the container assembly depends
-  on
+  `docker-entrypoint.sh`, `libsqlite3.so.0`, `libsqlite3.so.0.sha256`,
+  `toolchain-fingerprint.json`, `build-contract.json`, `docker-build-context-manifest.json`, and
+  a `source-root/` snapshot of every checked source/build input the container assembly depends on
 - that staged manifest also fingerprints the current CLI, contract, core, executor, report-PDF,
   SQLite, Gradle build logic, Dockerfile, helper scripts, vendored SQLite source, and legal files;
   Docker build verifies that fingerprint against the current repository copy so stale staged
@@ -226,6 +240,10 @@ That contract now has a few explicit rules:
   advanced contributor debugging; it does not build a native library on its own
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
   `build/managed-sqlite/`
+- `prepareDockerManagedSqlite` is the Docker-target companion step that appears only when the
+  current workstation cannot natively produce the Linux container artifact; local Docker acceptance
+  and Docker-context staging call it through `:cli:stageDockerBuildContext` rather than asking
+  contributors to invoke it directly
 - local developer direct-Java verification uses `./scripts/direct-java-cli.sh` or
   `.\scripts\direct-java-cli.ps1` and must therefore run both `:cli:shadowJar` and
   `prepareManagedSqlite`
@@ -253,6 +271,11 @@ Large `.gradle.kts` files are hard to test, hard to refactor, and easy to let dr
 configuration-plus-implementation blobs. FinGrind therefore keeps reusable typed logic in
 `gradle/build-logic` and keeps consumer scripts thin. `jazzer/build.gradle.kts` is intentionally a
 single plugin application for exactly that reason.
+
+That same rule now applies inside the included build itself. The root and Java convention plugins
+remain the orchestration seams, but repository formatting, Python/SQL verification, aggregated
+coverage, Java runtime wiring, Java quality gates, and Java coverage wiring each live in focused
+build-logic owners instead of re-growing broad plugin god files.
 
 ### Coverage gate protocol
 
@@ -290,8 +313,9 @@ Repository-specific note:
 - FinGrind's product modules currently use only the default Gradle `test` task
 - even so, FinGrind now collects all local `build/jacoco/*.exec` files in both the per-module
   and aggregated coverage surfaces so a future second `Test` task cannot bypass the quality gate
-- the nested Jazzer build remains intentionally separate from root product-module coverage; its own
-  `jazzer/bin/check` is the authoritative Jazzer coverage gate
+- the nested Jazzer build remains intentionally separate from root product-module coverage; the
+  root-owned `jazzerCheck` task is the authoritative deterministic Jazzer coverage gate, and
+  `jazzer/bin/check` delegates to that task for operator convenience
 
 ### Contract lint protocol
 
@@ -367,11 +391,12 @@ Use this routing table before changing the build:
 |:-----------------------|:------------------|
 | root project membership, plugin resolution | `settings.gradle.kts` |
 | root build wiring only | `build.gradle.kts` |
-| repository-wide quality gates, root Spotless, aggregated coverage | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
-| shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` |
-| managed-SQLite Gradle provisioning for root modules | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
+| repository-wide formatting, Python/SQL checks, aggregated coverage, and root Jazzer gate wiring | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` as the composition entrypoint, plus the focused `FinGrindRoot*Conventions.kt` owners |
+| shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` as the composition entrypoint, plus the focused `FinGrindJava*Conventions.kt` owners |
+| managed-SQLite root publication and consumer wiring | `gradle/build-logic/.../FinGrindManagedSqliteConsumerPlugin.kt`, `ManagedSqliteProvisioningRegistry.kt`, and `ManagedSqliteProvisioningLogic.kt` |
 | managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteProvisioningLogic.kt` and task classes nearby |
 | shared Jazzer build behavior, Jazzer task registration, cleanup tasks | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
+| root-owned deterministic Jazzer verification | `gradle/build-logic/.../FinGrindRootJazzerConventions.kt` |
 | shared pulse scheduling | `gradle/build-logic/.../ScheduledPulseTestListener.kt` and concrete listeners |
 | dependency versions shared across product and Jazzer | `gradle/libs.versions.toml` |
 | nested Jazzer plugin wiring or imported catalogs | `jazzer/settings.gradle.kts` |
@@ -428,7 +453,7 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 
 - Does `gradle/build-logic` still compile and emit JVM 26 bytecode after the current Kotlin plugin pin?
 - Is the Gradle wrapper still on the current verified stable `9.5.x` line?
-- Is the build-logic Kotlin pin still `2.4.0-RC2`, and can it move to the matching stable 2.4.x line yet?
+- Is the build-logic Kotlin pin `2.4.0`, and does the included build still verify cleanly on the live 2.4.x line?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
   `gradle/build-logic`, beyond the deliberate Jazzer source-set pruning that prevents orphaned
   cached classfiles?
@@ -465,7 +490,7 @@ For structural Gradle changes, the normal bar is:
 
 ```bash
 ./gradlew check
-jazzer/bin/check --console=plain
+./gradlew jazzerCheck --console=plain
 ./check.sh
 ```
 

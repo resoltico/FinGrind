@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -34,8 +33,8 @@ final class MachineContractTemplatesCatalog {
   private static final String DECLARE_ACCOUNT_CASH_JSON =
       """
       {
-        "accountCode": "1000",
-        "accountName": "Cash",
+        "accountCode": "cash-reserve",
+        "accountName": "Cash Reserve",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
@@ -46,12 +45,12 @@ final class MachineContractTemplatesCatalog {
   private static final String DECLARE_ACCOUNT_REVENUE_JSON =
       """
       {
-        "accountCode": "2000",
-        "accountName": "Revenue",
+        "accountCode": "misc-revenue",
+        "accountName": "Misc Revenue",
         "accountType": "REVENUE",
         "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
-        "profitAndLossLineClassification": "OPERATING_REVENUE"
+        "profitAndLossLineClassification": "OTHER_REVENUE"
       }
       """;
 
@@ -69,11 +68,12 @@ final class MachineContractTemplatesCatalog {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.CASH_REVENUE,
         SAMPLE_EFFECTIVE_DATE,
-        "1000",
-        "2000",
+        "cash",
+        "service-revenue",
         null,
         null,
         new MonetaryAmount("EUR", "1000"),
+        null,
         null,
         new ContractTemplates.AccountingEvidenceTemplateDescriptor(
             List.of(
@@ -97,8 +97,8 @@ final class MachineContractTemplatesCatalog {
 
   static ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate() {
     return new ContractTemplates.DeclareAccountTemplateDescriptor(
-        "1000",
-        "Cash",
+        "cash-reserve",
+        "Cash Reserve",
         AccountType.ASSET,
         AccountRole.ORDINARY,
         AccountNodeKind.POSTABLE,
@@ -114,44 +114,9 @@ final class MachineContractTemplatesCatalog {
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "initialize-book",
                 LedgerStepKind.OPEN_BOOK,
-                new ContractTemplates.OpenBookTemplateDescriptor(
-                    "Acme Studio", List.of("translation-services"), "EUR", "01-01"),
+                new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
                 null,
                 null,
-                null,
-                null,
-                null),
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-                "declare-cash",
-                LedgerStepKind.DECLARE_ACCOUNT,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000",
-                    "Cash",
-                    AccountType.ASSET,
-                    AccountRole.ORDINARY,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    FinancialPositionLineClassification.CURRENT_ASSET,
-                    null),
-                null,
-                null,
-                null),
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-                "declare-revenue",
-                LedgerStepKind.DECLARE_ACCOUNT,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "2000",
-                    "Revenue",
-                    AccountType.REVENUE,
-                    AccountRole.ORDINARY,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    null,
-                    ProfitAndLossLineClassification.OPERATING_REVENUE),
                 null,
                 null,
                 null),
@@ -173,7 +138,7 @@ final class MachineContractTemplatesCatalog {
                 null,
                 new ContractTemplates.LedgerAssertionTemplateDescriptor(
                     LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
-                    "1000",
+                    "cash",
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),

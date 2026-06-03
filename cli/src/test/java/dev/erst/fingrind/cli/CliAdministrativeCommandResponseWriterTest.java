@@ -426,13 +426,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertJsonContains(json, "\"status\":\"rejected\"");
     assertJsonContains(json, "\"code\":\"rollback-artifact-selection-required\"");
-    assertTrue(
-        readJson(outputStream)
-            .path("details")
-            .path("bookFile")
-            .asText()
-            .replace('\\', '/')
-            .endsWith("<redacted>/books/entity.sqlite"));
+    assertEquals(
+        publicHintValue(Path.of("books/entity.sqlite")),
+        readJson(outputStream).path("details").path("bookFile").asText().replace('\\', '/'));
     assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
   }
 
@@ -614,7 +610,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             new BookAdministrationRejection.AccountRoleConflict(
                 new AccountCode("1000"),
                 dev.erst.fingrind.core.AccountRole.ORDINARY,
-                dev.erst.fingrind.core.AccountRole.CONTRA)));
+                dev.erst.fingrind.core.AccountRole.POLARITY_INVERTED)));
     ByteArrayOutputStream listRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listRejectionOutput));
@@ -625,7 +621,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertJsonContains(declareConflictJson, "\"code\":\"account-role-conflict\"");
     assertJsonContains(declareConflictJson, "\"accountCode\":\"1000\"");
     assertJsonContains(declareConflictJson, "\"existingAccountRole\":\"ORDINARY\"");
-    assertJsonContains(declareConflictJson, "\"requestedAccountRole\":\"CONTRA\"");
+    assertJsonContains(declareConflictJson, "\"requestedAccountRole\":\"POLARITY_INVERTED\"");
     assertTrue(declareConflictJson.contains("already exists with account role"));
     assertJsonContains(listRejectionOutput, "\"code\":\"query-book-not-initialized\"");
   }

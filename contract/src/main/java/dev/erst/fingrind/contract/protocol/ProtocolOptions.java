@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Canonical public CLI option spellings used by the protocol catalog and parser. */
@@ -64,9 +63,6 @@ public final class ProtocolOptions {
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
 
-  /** Option selecting one business-activity tag used when initializing one new book. */
-  public static final String BUSINESS_ACTIVITY_TAG = "--business-activity-tag";
-
   /** Option selecting the functional currency code used when initializing one new book. */
   public static final String FUNCTIONAL_CURRENCY = "--functional-currency";
 
@@ -129,8 +125,8 @@ public final class ProtocolOptions {
     return "[%s <%d-%d>]"
         .formatted(
             ProtocolOptions.LIMIT,
-            InteractionLimits.PAGE_LIMIT_MIN,
-            InteractionLimits.PAGE_LIMIT_MAX);
+            ProtocolInteractionLimits.PAGE_LIMIT_MIN,
+            ProtocolInteractionLimits.PAGE_LIMIT_MAX);
   }
 
   /** Returns the rendered optional page-cursor syntax. */

@@ -8,7 +8,13 @@ print_usage() {
     printf '%s\n' \
         'Usage: ./scripts/docker-smoke.sh' \
         '' \
-        'Builds the local FinGrind Docker image and runs the mounted-workspace office-worker acceptance workflow.'
+        'Builds the local FinGrind Docker image and runs the mounted-workspace office-worker acceptance workflow.' \
+        '' \
+        'Environment:' \
+        '  FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID  Optional explicit Docker target architecture' \
+        '                                         (x86_64 or aarch64). When set, both Docker build-' \
+        '                                         context staging and the acceptance image build use' \
+        '                                         that target instead of inferring from the current host.'
 }
 
 for argument in "$@"; do
@@ -25,6 +31,7 @@ source "$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/release-smoke-sup
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly docker_smoke_target_support="${repo_root}/scripts/docker-smoke-target-support.sh"
 readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
@@ -40,11 +47,15 @@ case "$(uname -s)" in
     Darwin) is_darwin=true ;;
 esac
 
+[[ -f "${docker_smoke_target_support}" ]] || die \
+    "missing Docker target support helper at ${docker_smoke_target_support}"
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
 [[ -f "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"
 [[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
 [[ -f "${docker_context_verifier}" ]] || die \
     "missing Docker build-context verifier at ${docker_context_verifier}"
+# shellcheck source=/dev/null
+source "${docker_smoke_target_support}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
 # shellcheck source=/dev/null
@@ -53,10 +64,15 @@ source "${repo_lock_support}"
 source "${python_runtime_support}"
 
 readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_dir "${repo_root}" "${is_darwin}")}"
+readonly docker_target_architecture="$(
+    docker_smoke_resolve_target_architecture "${FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID:-}" "$(uname -m)"
+)"
+readonly docker_target_platform="$(
+    docker_smoke_platform_for_architecture "${docker_target_architecture}"
+)" || die "unsupported normalized Docker target architecture ${docker_target_architecture}"
 
 prepare_python_runtime_env
-readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
-readonly cli_docker_context_dir="${cli_build_dir}/docker-context"
+readonly cli_docker_context_dir="$(fg_gradle_docker_context_dir "${repo_root}" 'cli' "${is_darwin}")"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''
@@ -140,7 +156,11 @@ acquire_lock
 
 printf 'Docker acceptance: refreshing staged Docker build context\n'
 env GRADLE_USER_HOME="${gradle_user_home}" \
-    "${gradlew}" :cli:stageDockerBuildContext --console=plain --no-daemon
+    "${gradlew}" \
+    -Dfingrind.docker.target.architectureId="${docker_target_architecture}" \
+    :cli:stageDockerBuildContext \
+    --console=plain \
+    --no-daemon
 
 [[ -d "${cli_docker_context_dir}" ]] || die \
     "missing staged Docker build context at ${cli_docker_context_dir} after :cli:stageDockerBuildContext"
@@ -168,7 +188,11 @@ if ! docker_with_repo_config buildx version >/dev/null 2>&1; then
 fi
 
 printf 'Docker acceptance: building local image\n'
-docker_with_repo_config buildx build --load -t "${image_tag}" "${cli_docker_context_dir}" >/dev/null
+docker_with_repo_config buildx build \
+    --platform "${docker_target_platform}" \
+    --load \
+    -t "${image_tag}" \
+    "${cli_docker_context_dir}" >/dev/null
 
 runtime_modules_output="$(
     docker_with_repo_config run --rm \

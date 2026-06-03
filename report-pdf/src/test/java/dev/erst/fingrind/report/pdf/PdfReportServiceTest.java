@@ -1,105 +1,48 @@
 package dev.erst.fingrind.report.pdf;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.BOOK_IDENTITY;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.CASH_ACCOUNT;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.CLOCK;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.PDF_REPORT_SERVICE;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.REVENUE_ACCOUNT;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.assertPdfMetadata;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.balance;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.changesInEquityRow;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.extractedText;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.financialPositionRow;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.incomeStatementRow;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.trialBalanceReport;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
-import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
-import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
-import dev.erst.fingrind.contract.bookkeeping.PostingFact;
-import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
-import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.JournalLine.EntrySide;
-import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.core.ReversalReason;
-import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.core.SourceDocumentId;
-import dev.erst.fingrind.core.SourceDocumentReference;
-import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.StorageLocator;
 import java.io.IOException;
-import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDDocumentInformation;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link PdfReportService}. */
 class PdfReportServiceTest {
-  private static final String DOCUMENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-  private static final Clock CLOCK =
-      Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
-  private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.50.0", CLOCK);
-  private static final BookIdentity BOOK_IDENTITY =
-      new BookIdentity(
-          new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
-          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
-          CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
-  private static final DeclaredAccount CASH_ACCOUNT =
-      declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
-  private static final DeclaredAccount REVENUE_ACCOUNT =
-      declaredAccount(
-          "2000", "Subscription Revenue from Enterprise Customers", NormalBalance.CREDIT, true);
-
   @Test
   void renderAccountBalanceAndTrialBalanceIncludeMetadataAndExpectedText() throws IOException {
     byte[] accountBalancePdf =
@@ -138,7 +81,7 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Book context"));
+    assertTrue(trialBalanceText.contains("Accounting kernel"));
     assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
@@ -148,133 +91,6 @@ class PdfReportServiceTest {
     assertTrue(trialBalanceText.contains("Yes"));
     assertTrue(trialBalanceText.contains("Subscription Revenue from"));
     assertTrue(trialBalanceText.contains("Enterprise Customers"));
-  }
-
-  @Test
-  void renderAccountLedgerAndPeriodSummaryPaginateLongTables() throws IOException {
-    AccountLedgerReport accountLedgerReport =
-        new AccountLedgerReport(
-            BOOK_IDENTITY,
-            CASH_ACCOUNT,
-            new EffectiveDateRange.Bounded(
-                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            PostingCoverage.ALL_POSTING_KINDS,
-            List.of(balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO)),
-            ledgerEntries(72),
-            List.of(balance("EUR", "3600.00", "0.00", "3600.00", BalanceSide.DEBIT)));
-    PeriodSummaryReport periodSummaryReport =
-        new PeriodSummaryReport(
-            BOOK_IDENTITY,
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            PostingCoverage.ALL_POSTING_KINDS,
-            72,
-            144,
-            72,
-            List.of(
-                new PeriodCurrencySummary(
-                    balance("EUR", "3600.00", "3600.00", "0.00", BalanceSide.ZERO))),
-            accountActivityRows(72));
-    byte[] accountLedgerPdf = PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport);
-    byte[] periodSummaryPdf = PDF_REPORT_SERVICE.renderPeriodSummary(periodSummaryReport);
-    assertPdfPageCountAtLeast(accountLedgerPdf, 2);
-    assertPdfPageCountAtLeast(periodSummaryPdf, 2);
-    String accountLedgerText = extractedText(accountLedgerPdf);
-    String periodSummaryText = extractedText(periodSummaryPdf);
-    assertTrue(accountLedgerText.contains("Acme Studio"));
-    assertTrue(accountLedgerText.contains("All posting kinds"));
-    assertTrue(accountLedgerText.contains("Classification"));
-    assertTrue(accountLedgerText.contains("Role and polarity"));
-    assertTrue(accountLedgerText.contains("Effective date range"));
-    assertTrue(accountLedgerText.contains("Ledger Entries"));
-    assertFalse(accountLedgerText.contains("Opening Balances"));
-    assertTrue(accountLedgerText.contains("Closing Balances"));
-    assertTrue(accountLedgerText.contains("1 / "));
-    assertTrue(periodSummaryText.contains("Acme Studio"));
-    assertTrue(periodSummaryText.contains("All posting kinds"));
-    assertTrue(periodSummaryText.contains("Account Activity"));
-    assertTrue(periodSummaryText.contains("Accounts touched"));
-    assertTrue(periodSummaryText.contains("Yes"));
-    assertTrue(periodSummaryText.contains("1 / "));
-  }
-
-  @Test
-  void renderAccountLedgerIncludesMeaningfulOpeningBalancesAndReversalSemantics()
-      throws IOException {
-    PostingFact reversalPosting =
-        new PostingFact(
-            new PostingId("019e26ff-0000-7000-8000-000000000001"),
-            new JournalEntry(
-                LocalDate.parse("2026-04-02"),
-                List.of(
-                    new JournalLine(
-                        CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "100.00")),
-                    new JournalLine(
-                        REVENUE_ACCOUNT.accountCode(), EntrySide.DEBIT, money("EUR", "100.00")))),
-            PostingLineage.reversal(
-                new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000000")),
-                new ReversalReason("duplicate-charge")),
-            PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
-            evidence("idem-reversal"),
-            new CommittedProvenance(
-                new RequestProvenance(
-                    new ActorId("office-worker"),
-                    ActorType.PERSON,
-                    new CommandId("command-reversal"),
-                    new IdempotencyKey("idem-reversal"),
-                    new CausationId("cause-reversal"),
-                    Optional.of(new CorrelationId("corr-reversal"))),
-                Instant.parse("2026-04-19T10:15:45Z"),
-                SourceChannel.CLI));
-    AccountLedgerReport accountLedgerReport =
-        new AccountLedgerReport(
-            BOOK_IDENTITY,
-            CASH_ACCOUNT,
-            new EffectiveDateRange.Bounded(
-                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            PostingCoverage.ALL_POSTING_KINDS,
-            List.of(balance("EUR", "250.00", "0.00", "250.00", BalanceSide.DEBIT)),
-            List.of(
-                new AccountLedgerEntry(
-                    reversalPosting,
-                    balance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT),
-                    money("EUR", "150.00"),
-                    BalanceSide.DEBIT)),
-            List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
-
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
-
-    assertTrue(accountLedgerText.contains("Opening Balances"));
-    assertTrue(accountLedgerText.contains("250.00"));
-    assertTrue(accountLedgerText.contains("Entry"));
-    assertTrue(accountLedgerText.contains("Counterpart"));
-    assertTrue(accountLedgerText.contains("accounts"));
-    assertTrue(accountLedgerText.contains("019e26ff-0000-7000"));
-    assertTrue(accountLedgerText.contains("000000000001"));
-    assertTrue(accountLedgerText.contains("000000000000"));
-    assertFalse(accountLedgerText.contains("..."));
-  }
-
-  @Test
-  void renderAccountLedgerTreatsCreditOnlyOpeningBalancesAsMeaningful() throws IOException {
-    AccountLedgerReport accountLedgerReport =
-        new AccountLedgerReport(
-            BOOK_IDENTITY,
-            CASH_ACCOUNT,
-            new EffectiveDateRange.Bounded(
-                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            PostingCoverage.ALL_POSTING_KINDS,
-            List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)),
-            List.of(),
-            List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)));
-
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
-
-    assertTrue(accountLedgerText.contains("Opening Balances"));
-    assertTrue(accountLedgerText.contains("25.00"));
   }
 
   @Test
@@ -335,55 +151,6 @@ class PdfReportServiceTest {
     assertFalse(financialPositionText.contains("current-period-result"));
     assertTrue(changesInEquityText.contains("(derived)"));
     assertFalse(changesInEquityText.contains("current-period-result"));
-  }
-
-  @Test
-  void renderAccountLedgerPublishesSelfCounterpartWhenPostingTouchesOnlyTheSelectedAccount()
-      throws IOException {
-    PostingFact selfPosting =
-        new PostingFact(
-            new PostingId("019e26ff-0000-7000-8000-000000000009"),
-            new JournalEntry(
-                LocalDate.parse("2026-04-03"),
-                List.of(
-                    new JournalLine(
-                        CASH_ACCOUNT.accountCode(), EntrySide.DEBIT, money("EUR", "10.00")),
-                    new JournalLine(
-                        CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "10.00")))),
-            PostingLineage.direct(),
-            PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
-            evidence("idem-self"),
-            new CommittedProvenance(
-                new RequestProvenance(
-                    new ActorId("office-worker"),
-                    ActorType.PERSON,
-                    new CommandId("command-self"),
-                    new IdempotencyKey("idem-self"),
-                    new CausationId("cause-self"),
-                    Optional.empty()),
-                Instant.parse("2026-04-19T10:15:45Z"),
-                SourceChannel.CLI));
-    AccountLedgerReport accountLedgerReport =
-        new AccountLedgerReport(
-            BOOK_IDENTITY,
-            CASH_ACCOUNT,
-            new EffectiveDateRange.Bounded(
-                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            PostingCoverage.ALL_POSTING_KINDS,
-            List.of(),
-            List.of(
-                new AccountLedgerEntry(
-                    selfPosting,
-                    balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO),
-                    money("EUR", "0.00"),
-                    BalanceSide.ZERO)),
-            List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)));
-
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
-
-    assertTrue(accountLedgerText.contains("(self)"));
   }
 
   @Test
@@ -704,10 +471,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.50.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.51.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.50.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.51.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -716,285 +483,5 @@ class PdfReportServiceTest {
         NullPointerException.class, () -> PDF_REPORT_SERVICE.renderFinancialPosition(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderIncomeStatement(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderChangesInEquity(null));
-  }
-
-  private static void assertPdfMetadata(byte[] pdfBytes, String title, boolean portrait)
-      throws IOException {
-    try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-      PDDocumentInformation information = document.getDocumentInformation();
-      PDRectangle mediaBox = document.getPage(0).getMediaBox();
-      assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.50.0", information.getCreator());
-      assertEquals(title, information.getSubject());
-      assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
-    }
-  }
-
-  private static void assertPdfPageCountAtLeast(byte[] pdfBytes, int minimumPages)
-      throws IOException {
-    try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-      assertTrue(document.getNumberOfPages() >= minimumPages);
-    }
-  }
-
-  private static String extractedText(byte[] pdfBytes) throws IOException {
-    try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-      return new PDFTextStripper().getText(document);
-    }
-  }
-
-  private static List<AccountLedgerEntry> ledgerEntries(int count) {
-    List<AccountLedgerEntry> entries = new ArrayList<>();
-    for (int index = 0; index < count; index++) {
-      String amount = Integer.toString((index + 1) * 50);
-      entries.add(
-          new AccountLedgerEntry(
-              postingFact(index, amount),
-              balance("EUR", amount, "0.00", amount, BalanceSide.DEBIT),
-              money("EUR", Integer.toString((index + 1) * 50)),
-              BalanceSide.DEBIT));
-    }
-    return entries;
-  }
-
-  private static List<PeriodAccountActivityRow> accountActivityRows(int count) {
-    List<PeriodAccountActivityRow> rows = new ArrayList<>();
-    for (int index = 0; index < count; index++) {
-      rows.add(
-          new PeriodAccountActivityRow(
-              declaredAccount(
-                  "%04d".formatted(3000 + index),
-                  "Operating Expense Category " + index + " with a deliberately long display name",
-                  NormalBalance.DEBIT,
-                  true),
-              balance(
-                  "EUR",
-                  Integer.toString(index + 1),
-                  "0.00",
-                  Integer.toString(index + 1),
-                  BalanceSide.DEBIT)));
-    }
-    return rows;
-  }
-
-  private static PostingFact postingFact(int index, String amount) {
-    LocalDate effectiveDate = LocalDate.parse("2026-04-01").plusDays(index % 28);
-    PostingId postingId = new PostingId("posting-%03d".formatted(index));
-    return new PostingFact(
-        postingId,
-        new JournalEntry(
-            effectiveDate,
-            List.of(
-                new JournalLine(
-                    CASH_ACCOUNT.accountCode(), JournalLine.EntrySide.DEBIT, money("EUR", amount)),
-                new JournalLine(
-                    REVENUE_ACCOUNT.accountCode(),
-                    JournalLine.EntrySide.CREDIT,
-                    money("EUR", amount)))),
-        index % 5 == 0
-            ? PostingLineage.reversal(
-                new ReversalReference(new PostingId("prior-%03d".formatted(index))),
-                new ReversalReason("Automated reversal %03d".formatted(index)))
-            : PostingLineage.direct(),
-        PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
-        evidence("idem-%03d".formatted(index)),
-        new CommittedProvenance(
-            new RequestProvenance(
-                new ActorId("office-worker"),
-                ActorType.PERSON,
-                new CommandId("command-%03d".formatted(index)),
-                new IdempotencyKey("idem-%03d".formatted(index)),
-                new CausationId("cause-%03d".formatted(index)),
-                Optional.of(new CorrelationId("corr-%03d".formatted(index)))),
-            Instant.parse("2026-04-19T10:15:30Z").plusSeconds(index),
-            SourceChannel.CLI));
-  }
-
-  private static AccountingEvidence evidence(String token) {
-    return new AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token),
-                new SourceDocumentType("cash-receipt"),
-                LocalDate.parse("2026-04-19"),
-                Instant.parse("2026-04-19T10:15:30Z"),
-                new StorageLocator("evidence://documents/document-" + token + ".pdf"),
-                new ContentSha256(DOCUMENT_SHA256))),
-        List.of());
-  }
-
-  private static DeclaredAccount declaredAccount(
-      String code, String name, NormalBalance normalBalance, boolean active) {
-    AccountType accountType =
-        normalBalance == NormalBalance.DEBIT ? AccountType.ASSET : AccountType.REVENUE;
-    return new DeclaredAccount(
-        new AccountCode(code),
-        new AccountName(name),
-        accountType,
-        AccountRole.ORDINARY,
-        accountTaxonomy(accountType),
-        active,
-        Instant.parse("2026-04-01T08:00:00Z"));
-  }
-
-  private static FinancialPositionRow financialPositionRow(
-      String lineCode,
-      String lineName,
-      AccountType accountType,
-      AccountRole accountRole,
-      FinancialPositionLineClassification lineClassification,
-      CurrencyBalance balance) {
-    return new FinancialPositionRow(
-        lineCode,
-        lineName,
-        accountType,
-        Optional.of(accountRole),
-        Optional.of(lineClassification),
-        StatementLineKind.DECLARED_ACCOUNT,
-        balance);
-  }
-
-  private static IncomeStatementRow incomeStatementRow(
-      String lineCode,
-      String lineName,
-      AccountType accountType,
-      AccountRole accountRole,
-      ProfitAndLossLineClassification lineClassification,
-      CurrencyBalance movement) {
-    return new IncomeStatementRow(
-        lineCode,
-        lineName,
-        accountType,
-        Optional.of(accountRole),
-        lineClassification,
-        StatementLineKind.DECLARED_ACCOUNT,
-        movement);
-  }
-
-  private static ChangesInEquityRow changesInEquityRow(
-      String lineCode,
-      String lineName,
-      AccountRole accountRole,
-      FinancialPositionLineClassification lineClassification,
-      CurrencyBalance openingBalance,
-      CurrencyBalance movement,
-      CurrencyBalance closingBalance) {
-    return new ChangesInEquityRow(
-        lineCode,
-        lineName,
-        Optional.of(AccountType.EQUITY),
-        Optional.of(accountRole),
-        Optional.of(lineClassification),
-        StatementLineKind.DECLARED_ACCOUNT,
-        openingBalance,
-        movement,
-        closingBalance);
-  }
-
-  private static AccountTaxonomy accountTaxonomy(AccountType accountType) {
-    return switch (accountType) {
-      case ASSET ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
-      case LIABILITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
-              Optional.empty());
-      case EQUITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
-              Optional.empty());
-      case REVENUE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
-      case EXPENSE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
-    };
-  }
-
-  private static TrialBalanceReport trialBalanceReport(
-      BookIdentity bookIdentity,
-      Optional<LocalDate> effectiveDateTo,
-      EffectiveDateRange comparativeEffectiveDateRange,
-      PostingCoverage postingCoverage,
-      List<TrialBalanceRow> rows,
-      List<TrialBalanceRow> comparativeRows) {
-    List<CurrencyBalance> totals = trialBalanceTotals(rows);
-    List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
-    return new TrialBalanceReport(
-        bookIdentity,
-        effectiveDateTo,
-        comparativeEffectiveDateRange,
-        postingCoverage,
-        rows,
-        totals,
-        isBalanced(totals),
-        comparativeRows,
-        comparativeTotals,
-        isBalanced(comparativeTotals));
-  }
-
-  private static List<CurrencyBalance> trialBalanceTotals(List<TrialBalanceRow> rows) {
-    List<CurrencyBalance> totalsByCurrency = new ArrayList<>();
-    for (TrialBalanceRow row : rows) {
-      mergeCurrencyBalance(totalsByCurrency, row.balance());
-    }
-    return List.copyOf(totalsByCurrency);
-  }
-
-  private static CurrencyBalance sumCurrencyBalances(CurrencyBalance left, CurrencyBalance right) {
-    return CurrencyBalance.ofTotals(
-        left.debitTotal().plus(right.debitTotal()), left.creditTotal().plus(right.creditTotal()));
-  }
-
-  private static boolean isBalanced(List<CurrencyBalance> totals) {
-    return totals.stream().allMatch(balance -> balance.balanceSide() == BalanceSide.ZERO);
-  }
-
-  private static void mergeCurrencyBalance(
-      List<CurrencyBalance> totalsByCurrency, CurrencyBalance candidate) {
-    CurrencyUnit currencyUnit = candidate.debitTotal().currencyUnit();
-    for (int index = 0; index < totalsByCurrency.size(); index++) {
-      CurrencyBalance existing = totalsByCurrency.get(index);
-      if (existing.debitTotal().currencyUnit().equals(currencyUnit)) {
-        totalsByCurrency.set(index, sumCurrencyBalances(existing, candidate));
-        return;
-      }
-    }
-    totalsByCurrency.add(candidate);
-  }
-
-  private static CurrencyBalance balance(
-      String currencyCode,
-      String debitTotal,
-      String creditTotal,
-      String netAmount,
-      BalanceSide balanceSide) {
-    CurrencyBalance balance =
-        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
-    if (!balance.netAmount().equals(money(currencyCode, netAmount))
-        || balance.balanceSide() != balanceSide) {
-      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
-    }
-    return balance;
-  }
-
-  private static Money money(String currencyCode, String amount) {
-    return Money.parse(currencyCode, amount);
   }
 }

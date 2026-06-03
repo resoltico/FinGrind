@@ -56,10 +56,17 @@ final class MachineContractPostEntryFieldSpecs {
                 "Exact positive money object carried by one typed business event.", true)),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.LINES,
-            "Balanced non-empty array of journal lines used only by named administrative adjustment entries.",
+            "Balanced non-empty array of journal lines used only by reversal administrative entries.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of journal lines used only by named administrative adjustment entries.",
+                "Balanced non-empty array of journal lines used only by reversal administrative entries.",
                 MachineContractPostEntryVariantSchemas.lineSchema(),
+                2)),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
+            "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
+            MachineContractSchemaSupport.arraySchema(
+                "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
+                MachineContractPostEntryVariantSchemas.openingBalanceSchema(),
                 2)),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EVIDENCE,
@@ -72,10 +79,7 @@ final class MachineContractPostEntryFieldSpecs {
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVERSAL,
             "Required reversal target descriptor for REVERSAL_ADJUSTMENT and absent otherwise.",
-            MachineContractPostEntryVariantSchemas.reversalSchema()),
-        MachineContractFieldSpec.forbidden(
-            ProtocolPostEntryFields.TopLevel.CORRECTION,
-            "Legacy correction payloads are hard-broken and no longer accepted."));
+            MachineContractPostEntryVariantSchemas.reversalSchema()));
   }
 
   static List<MachineContractFieldSpec> lineFields() {
@@ -97,6 +101,25 @@ final class MachineContractPostEntryFieldSpecs {
             "Exact positive money object for this journal line. Every line in one entry must resolve to the same currency unit.",
             MachineContractScalarSchemas.moneyObjectSchema(
                 "Exact positive money object for this journal line.", true)));
+  }
+
+  static List<MachineContractFieldSpec> openingBalanceFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.OpeningBalance.ACCOUNT_CODE,
+            "Declared book-local account code for this opening balance.",
+            accountCodeSchema("Declared book-local account code for this opening balance.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.OpeningBalance.SIDE,
+            "Journal side that carries the opening balance amount.",
+            MachineContractScalarSchemas.enumStringSchema(
+                "Journal side that carries the opening balance amount.",
+                JournalLine.EntrySide.wireValues())),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.OpeningBalance.AMOUNT,
+            "Exact positive money object for this opening balance.",
+            MachineContractScalarSchemas.moneyObjectSchema(
+                "Exact positive money object for this opening balance.", true)));
   }
 
   static List<MachineContractFieldSpec> evidenceFields() {

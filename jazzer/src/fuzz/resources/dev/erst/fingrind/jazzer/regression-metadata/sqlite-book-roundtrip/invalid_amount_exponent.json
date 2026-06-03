@@ -1,7 +1,7 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_amount_exponent.json",
-  "coverageIntent": "exponent notation rejection with optional provenance correlation",
+  "coverageIntent": "exponent notation rejection on a typed cash-revenue round-trip request",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "minorUnits must contain ASCII decimal digits only.",

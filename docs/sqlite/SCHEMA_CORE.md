@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 22;
+pragma user_version = 23;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -90,6 +90,18 @@ create table if not exists book_identity (
         and accounting_kernel_profile not like '%-'
         and accounting_kernel_profile not like '%--%'
     ),
+    accounting_basis text not null check (
+        accounting_basis in ('CASH_BASIS')
+    ),
+    accounting_framework_position text not null check (
+        accounting_framework_position in ('NON_STATUTORY_INTERNAL_MANAGEMENT')
+    ),
+    entity_form text not null check (
+        entity_form in ('OWNER_MANAGED_SINGLE_ENTITY')
+    ),
+    book_template_id text not null check (
+        book_template_id in ('OWNER_MANAGED_SERVICE_CASH')
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -118,12 +130,6 @@ create table if not exists book_identity (
     )
 ) strict;
 
-create table if not exists entity_profile (
-    singleton_id integer primary key check (singleton_id = 1),
-    business_activity_tags text not null,
-    foreign key (singleton_id) references book_identity (singleton_id)
-) strict;
-
 create table if not exists account (
     account_code text primary key check (
         length(account_code) between 1 and 255
@@ -134,7 +140,7 @@ create table if not exists account (
     account_type text not null check (
         account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')
     ),
-    account_role text not null check (account_role in ('ORDINARY', 'CONTRA')),
+    account_role text not null check (account_role in ('ORDINARY', 'POLARITY_INVERTED')),
     account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
     financial_position_line_classification text check (
@@ -367,8 +373,7 @@ create table if not exists posting_fact (
             'CASH_EXPENSE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
-            'OPENING_BALANCE_ADJUSTMENT',
-            'CORRECTION_ADJUSTMENT',
+            'OPEN_ACCOUNTING_POSITION',
             'REVERSAL_ADJUSTMENT',
             'PERIOD_RESULT_TRANSFER'
         )
@@ -1110,18 +1115,6 @@ begin
     select raise(fail, 'book_identity rows are append-only.');
 end;
 
-create trigger if not exists entity_profile_reject_update
-before update on entity_profile
-begin
-    select raise(fail, 'entity_profile rows are append-only.');
-end;
-
-create trigger if not exists entity_profile_reject_delete
-before delete on entity_profile
-begin
-    select raise(fail, 'entity_profile rows are append-only.');
-end;
-
 create trigger if not exists audit_event_reject_update
 before update on audit_event
 begin
@@ -1188,6 +1181,10 @@ Columns:
 - `singleton_id`: `integer primary key check (singleton_id = 1)`
 - `entity_name`: `text not null check (length(trim(entity_name)) > 0)`
 - `accounting_kernel_profile`: `text not null check ( length(accounting_kernel_profile) between 1 and 120 and accounting_kernel_profile not glob '*[^a-z0-9-]*' and accounting_kernel_profile not like '-%' and accounting_kernel_profile not like '%-' and accounting_kernel_profile not like '%--%' )`
+- `accounting_basis`: `text not null check ( accounting_basis in ('CASH_BASIS') )`
+- `accounting_framework_position`: `text not null check ( accounting_framework_position in ('NON_STATUTORY_INTERNAL_MANAGEMENT') )`
+- `entity_form`: `text not null check ( entity_form in ('OWNER_MANAGED_SINGLE_ENTITY') )`
+- `book_template_id`: `text not null check ( book_template_id in ('OWNER_MANAGED_SERVICE_CASH') )`
 - `functional_currency_code`: `text not null check ( length(functional_currency_code) = 3 and functional_currency_code glob '[A-Z][A-Z][A-Z]' )`
 - `fiscal_year_start_month`: `integer not null check ( fiscal_year_start_month between 1 and 12 )`
 - `fiscal_year_start_day`: `integer not null check ( fiscal_year_start_day between 1 and 31 )`
@@ -1195,22 +1192,13 @@ Columns:
 Table-level constraints:
 - `check ( ( fiscal_year_start_month in (1, 3, 5, 7, 8, 10, 12) and fiscal_year_start_day between 1 and 31 ) or ( fiscal_year_start_month in (4, 6, 9, 11) and fiscal_year_start_day between 1 and 30 ) or ( fiscal_year_start_month = 2 and fiscal_year_start_day between 1 and 29 ) )`
 
-### `entity_profile`
-
-Columns:
-- `singleton_id`: `integer primary key check (singleton_id = 1)`
-- `business_activity_tags`: `text not null`
-
-Table-level constraints:
-- `foreign key (singleton_id) references book_identity (singleton_id)`
-
 ### `account`
 
 Columns:
 - `account_code`: `text primary key check ( length(account_code) between 1 and 255 and account_code glob '[A-Za-z0-9]*' and account_code not glob '*[^A-Za-z0-9._:/-]*' )`
 - `account_name`: `text not null check (length(trim(account_name)) > 0)`
 - `account_type`: `text not null check ( account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE') )`
-- `account_role`: `text not null check (account_role in ('ORDINARY', 'CONTRA'))`
+- `account_role`: `text not null check (account_role in ('ORDINARY', 'POLARITY_INVERTED'))`
 - `account_node_kind`: `text not null check (account_node_kind in ('HEADER', 'POSTABLE'))`
 - `parent_account_code`: `text references account (account_code)`
 - `financial_position_line_classification`: `text check ( financial_position_line_classification is null or financial_position_line_classification in ( 'CURRENT_ASSET', 'NONCURRENT_ASSET', 'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'RESULT_HOLDING', 'RESERVE', 'OTHER_EQUITY' ) )`
@@ -1228,7 +1216,7 @@ Columns:
 - `posting_order`: `integer primary key`
 - `posting_id`: `text not null unique`
 - `posting_kind`: `text not null check ( posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_RESULT_TRANSFER') )`
-- `posting_origin_kind`: `text not null check ( posting_origin_kind in ( 'CASH_REVENUE', 'CASH_EXPENSE', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'OPENING_BALANCE_ADJUSTMENT', 'CORRECTION_ADJUSTMENT', 'REVERSAL_ADJUSTMENT', 'PERIOD_RESULT_TRANSFER' ) )`
+- `posting_origin_kind`: `text not null check ( posting_origin_kind in ( 'CASH_REVENUE', 'CASH_EXPENSE', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'OPEN_ACCOUNTING_POSITION', 'REVERSAL_ADJUSTMENT', 'PERIOD_RESULT_TRANSFER' ) )`
 - `effective_date`: `text not null check ( effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' and substr(effective_date, 6, 2) between '01' and '12' and ( ( substr(effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12') and substr(effective_date, 9, 2) between '01' and '31' ) or ( substr(effective_date, 6, 2) in ('04', '06', '09', '11') and substr(effective_date, 9, 2) between '01' and '30' ) or ( substr(effective_date, 6, 2) = '02' and ( substr(effective_date, 9, 2) between '01' and '28' or ( substr(effective_date, 9, 2) = '29' and ( cast(substr(effective_date, 1, 4) as integer) % 400 = 0 or ( cast(substr(effective_date, 1, 4) as integer) % 4 = 0 and cast(substr(effective_date, 1, 4) as integer) % 100 <> 0 ) ) ) ) ) ) )`
 - `recorded_at`: `text not null check ( ( recorded_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z' or ( substr(recorded_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]' and substr(recorded_at, 20, 1) = '.' and substr(recorded_at, length(recorded_at), 1) = 'Z' and ( (length(recorded_at) = 24 and substr(recorded_at, 21, 3) not glob '*[^0-9]*') or (length(recorded_at) = 27 and substr(recorded_at, 21, 6) not glob '*[^0-9]*') or (length(recorded_at) = 30 and substr(recorded_at, 21, 9) not glob '*[^0-9]*') ) ) ) and substr(recorded_at, 6, 2) between '01' and '12' and ( ( substr(recorded_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12') and substr(recorded_at, 9, 2) between '01' and '31' ) or ( substr(recorded_at, 6, 2) in ('04', '06', '09', '11') and substr(recorded_at, 9, 2) between '01' and '30' ) or ( substr(recorded_at, 6, 2) = '02' and ( substr(recorded_at, 9, 2) between '01' and '28' or ( substr(recorded_at, 9, 2) = '29' and ( cast(substr(recorded_at, 1, 4) as integer) % 400 = 0 or ( cast(substr(recorded_at, 1, 4) as integer) % 4 = 0 and cast(substr(recorded_at, 1, 4) as integer) % 100 <> 0 ) ) ) ) ) ) and substr(recorded_at, 12, 2) between '00' and '23' and substr(recorded_at, 15, 2) between '00' and '59' and substr(recorded_at, 18, 2) between '00' and '59' )`
 - `actor_id`: `text not null check (length(trim(actor_id)) > 0)`
@@ -1366,8 +1354,8 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `22`
-- Canonical durable tables: `book_meta`, `book_identity`, `entity_profile`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_result_transfer`, `period_result_transfer_total`, `period_result_transfer_posting`, `audit_event`
+- `user_version`: `23`
+- Canonical durable tables: `book_meta`, `book_identity`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_result_transfer`, `period_result_transfer_total`, `period_result_transfer_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_result_transfer_by_effective_date_to`, `period_result_transfer_total_by_currency`, `period_result_transfer_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.

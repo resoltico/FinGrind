@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -91,7 +91,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, CONTRA.",
+        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, POLARITY_INVERTED.",
         exception.getMessage());
   }
 
@@ -262,7 +262,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
   @Test
   void readDeclareAccountCommand_rejectsOversizedFileAndStandardInput() throws IOException {
     String oversizedPayload =
-        "{\"padding\":\"" + "a".repeat(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) + "\"}";
+        "{\"padding\":\"" + "a".repeat(ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) + "\"}";
     Path oversizedRequest = writeNamedRequest("oversized-declare-account.json", oversizedPayload);
 
     CliRequestReader fileReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
@@ -272,7 +272,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             () -> fileReader.readDeclareAccountCommand(oversizedRequest));
     assertEquals(
         "Request file exceeded the supported "
-            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit: "
             + CliPublicPaths.redactedValue(oversizedRequest)
             + ".",
@@ -286,7 +286,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> stdinReader.readDeclareAccountCommand(Path.of("-")));
     assertEquals(
         "Request JSON from standard input exceeded the supported "
-            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit.",
         stdinException.getMessage());
   }

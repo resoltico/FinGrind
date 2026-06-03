@@ -82,7 +82,11 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+                  postingFactStore.openBook(
+                      Instant.parse("2026-04-07T10:15:30Z"),
+                      bookIdentity(),
+                      dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                          bookIdentity().bookDoctrine().bookTemplateId())));
       assertEquals(
           "This FinGrind SQLite session cannot initialize or create a book file.",
           exception.getMessage());
@@ -98,7 +102,6 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
             java.util.List.of(
                 SqliteBookContract.BOOK_META_TABLE,
                 SqliteBookContract.BOOK_IDENTITY_TABLE,
-                SqliteBookContract.ENTITY_PROFILE_TABLE,
                 SqliteBookContract.ACCOUNT_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
@@ -222,7 +225,7 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
   void activeNativeDatabase_returnsPublishedSessionHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("active-native-database.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(storeDatabase(postingFactStore), postingFactStore.activeNativeDatabase());
     }
   }
@@ -233,7 +236,7 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
     Path bookPath = tempDirectory.resolve("lifecycle-state-model.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       assertDoesNotThrow(postingFactStore.lifecycle::ensureOpenSession);
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       SqliteStoreLifecycle lifecycle = postingFactStore.lifecycle;
       SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
       assertDoesNotThrow(lifecycle::ensureOpenSession);

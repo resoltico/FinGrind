@@ -2,9 +2,10 @@ package dev.erst.fingrind.report.pdf;
 
 /** Shared visual constants for FinGrind PDF report rendering. */
 final class PdfReportTheme {
-  private static final Typography TYPOGRAPHY = new Typography(17f, 8f, 12f, 8.5f, 7.5f, 11f);
-  private static final Spacing SPACING = new Spacing(38f, 4.0f, 3.0f, 8f, 6f, 3f, 7f);
-  private static final Grayscale GRAYSCALE = new Grayscale(0, 238, 200);
+  private static final Typography TYPOGRAPHY =
+      new Typography(15.5f, 7.5f, 11f, 8.75f, 7.75f, 10.25f);
+  private static final Spacing SPACING = new Spacing(30f, 3.25f, 2.5f, 6f, 4.5f, 2.5f, 5f);
+  private static final Grayscale GRAYSCALE = new Grayscale(24, 245, 220);
 
   private PdfReportTheme() {}
 

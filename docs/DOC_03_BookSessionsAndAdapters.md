@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: ADAPTERS
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -376,9 +376,10 @@ public record PeriodSummaryView(...)
 
 - Purpose: keep pagination, balance criteria, report rows, and report views inside the local
   bookkeeping context
-- Shared kernel: these local types reuse `core.EffectiveDateRange`, `core.CurrencyBalance`, and
-  `core.InteractionLimits` where the concept is genuinely common to public and local bookkeeping
-  language
+- Shared kernel: these local types reuse `core.EffectiveDateRange` and
+  `core.CurrencyBalance` where the concept is genuinely common to public and local bookkeeping
+  language, while public interaction limits such as paging remain protocol-owned in
+  `contract.protocol.ProtocolInteractionLimits`
 - Boundary: `BookkeepingReadPagePublishedLanguageTranslator` and
   `BookkeepingReadReportPublishedLanguageTranslator` are the only owners that map these types to
   `AccountPage`, `PostingPage`, `AccountBalanceSnapshot`, `TrialBalanceReport`,
@@ -416,6 +417,21 @@ public final class SqliteBookPassphrase implements AutoCloseable
 - Purpose: hold normalized passphrase bytes only after the CLI has resolved a safe source
 - Lifecycle: copied into native memory for `sqlite3_key()` / `sqlite3_rekey()` and then
   best-effort overwritten on the buffers FinGrind owns
+
+## `SqliteBookPassphraseSourceBytes`, And `SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException`
+
+These public helpers own bounded byte loading for UTF-8 passphrase sources before normalization.
+
+```java
+public final class SqliteBookPassphraseSourceBytes
+public static final class SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException
+```
+
+- Purpose: keep stdin-backed and key-file-backed passphrase byte loading on one canonical
+  zeroizing path instead of duplicating bounded-buffer logic in multiple adapters
+- Contract: reads at most `ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1` bytes,
+  zeroizes the temporary read buffer on both accepted and rejected paths, and throws
+  `OversizedBookPassphraseSourceException` when the source exceeds the canonical byte ceiling
 
 ## `SqliteSessionSecret`
 

@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -46,8 +47,8 @@ abstract class AbstractInMemoryBookAdministrationSession
   protected Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
   protected BookIdentity bookIdentity =
       new BookIdentity(
-          new EntityProfile(new BookEntityName("FinGrind Test Entity"), List.of()),
-          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+          new EntityProfile(new BookEntityName("FinGrind Test Entity")),
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1));
 
@@ -69,7 +70,8 @@ abstract class AbstractInMemoryBookAdministrationSession
   }
 
   @Override
-  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+  public BookOpeningOutcome openBook(
+      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -80,6 +82,19 @@ abstract class AbstractInMemoryBookAdministrationSession
           initialized = true;
           this.initializedAt = initializedAt;
           this.bookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
+          Objects.requireNonNull(seededAccounts, "seededAccounts")
+              .forEach(
+                  declaration ->
+                      accountsByCode.put(
+                          declaration.accountCode(),
+                          new RegisteredAccount(
+                              declaration.accountCode(),
+                              declaration.accountName(),
+                              declaration.accountType(),
+                              declaration.accountRole(),
+                              declaration.accountTaxonomy(),
+                              true,
+                              initializedAt)));
           return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
         });
   }

@@ -14,7 +14,7 @@ class SqliteCommittedRowImmutabilityTest extends SqlitePostingFactStoreTestSuppo
   void postingFactJournalLineAndAuditEventRows_rejectDirectUpdateAndDelete() {
     Path bookPath = tempDirectory.resolve("committed-row-immutability.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
 

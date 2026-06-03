@@ -48,9 +48,7 @@ grep -Fq 'Verify release candidate tag handoff' "${release_workflow}" || die \
     "release workflow no longer declares the release-candidate handoff gate"
 grep -Fq 'verify-release-candidate-tag.sh' "${release_workflow}" || die \
     "release workflow no longer invokes the release-candidate verifier"
-grep -Fq 'workflow-helper-root' "${release_workflow}" || die \
-    "release workflow no longer resolves the workflow helper-root contract"
-grep -Fq 'container:' "${release_workflow}" || die \
+grep -Fq 'build-staging-container:' "${release_workflow}" || die \
     "release workflow no longer carries the container publication job after the release handoff"
 if [[ -e "${repo_root}/.github/workflows/container.yml" ]]; then
     die "retired standalone container workflow resurfaced after publication unification"

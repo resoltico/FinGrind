@@ -2,20 +2,24 @@ package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import java.util.List;
 import java.util.Optional;
 
 /** Shared invariant checks for SQLite round-trip replay. */
 final class SqliteRoundTripReplayVerifier {
   private SqliteRoundTripReplayVerifier() {}
 
-  static void verifyDeclaredAccountListing(int listedAccountCount, int declaredAccountCount) {
-    if (listedAccountCount != declaredAccountCount) {
-      throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+  static void verifyDeclaredAccountListing(
+      List<DeclaredAccount> listedAccounts, List<DeclaredAccount> declaredAccounts) {
+    if (!listedAccounts.containsAll(declaredAccounts)) {
+      throw new IllegalStateException(
+          "Declared-account listing drifted from the initialized registry.");
     }
   }
 

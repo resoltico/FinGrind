@@ -38,12 +38,13 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Operator Overview"));
     assertTrue(rendered.contains("Next Steps"));
-    assertTrue(rendered.contains("For Agents And Automation"));
     assertTrue(rendered.contains("Operator guide"));
     assertTrue(rendered.contains("Kernel scope"));
     assertTrue(rendered.contains("Built-in statements"));
-    assertTrue(rendered.contains("Command families"));
-    assertTrue(rendered.contains("Command contracts"));
+    assertTrue(rendered.contains("Discovery commands"));
+    assertTrue(rendered.contains("Administration commands"));
+    assertTrue(rendered.contains("Query and report commands"));
+    assertTrue(rendered.contains("Write commands"));
     assertTrue(rendered.contains("PDF-capable reports"));
     assertFalse(rendered.contains("First Successful Run"));
     assertFalse(rendered.contains("Targeted Retrieval"));
@@ -131,7 +132,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("Before You Run"));
     assertTrue(rendered.contains("--pdf-out <path>"));
     assertTrue(rendered.contains("Command"));
-    assertTrue(rendered.contains("Need JSON Contract"));
+    assertFalse(rendered.contains("Request File"));
+    assertFalse(rendered.contains("Starter file command"));
     assertFalse(rendered.contains("Artifact outputs"));
     assertFalse(rendered.contains("Selectable defaults"));
     assertFalse(rendered.contains("json interactive / json redirected"));
@@ -337,7 +339,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.50.0"));
+    assertTrue(rendered.contains("0.51.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor

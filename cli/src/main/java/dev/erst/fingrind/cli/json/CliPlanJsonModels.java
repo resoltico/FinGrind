@@ -5,7 +5,6 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
@@ -17,7 +16,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Ledger-plan JSON records emitted by the CLI transport layer. */
-public interface CliPlanJsonModels extends CliBookQueryJsonModels {
+public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedgerFactJsonModels {
 
   record LedgerPlanPayload(
       String planId,
@@ -309,59 +308,6 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels {
   record PlanBoundaryStepDataPayload(String phase) implements LedgerStepDataPayload {
     public PlanBoundaryStepDataPayload {
       phase = requireText(phase, "phase");
-    }
-  }
-
-  /** JSON shape for one typed ledger fact observation. */
-  sealed interface LedgerFactPayload
-      permits TextLedgerFactPayload,
-          FlagLedgerFactPayload,
-          CountLedgerFactPayload,
-          MoneyLedgerFactPayload,
-          GroupLedgerFactPayload {}
-
-  record TextLedgerFactPayload(String kind, String name, String value)
-      implements LedgerFactPayload {
-    public TextLedgerFactPayload {
-      kind = requireText(kind, "kind");
-      name = requireText(name, "name");
-      value = requireText(value, "value");
-    }
-  }
-
-  record FlagLedgerFactPayload(String kind, String name, boolean value)
-      implements LedgerFactPayload {
-    public FlagLedgerFactPayload {
-      kind = requireText(kind, "kind");
-      name = requireText(name, "name");
-    }
-  }
-
-  record CountLedgerFactPayload(String kind, String name, int value) implements LedgerFactPayload {
-    public CountLedgerFactPayload {
-      kind = requireText(kind, "kind");
-      name = requireText(name, "name");
-    }
-  }
-
-  record MoneyLedgerFactPayload(String kind, String name, MonetaryAmount value)
-      implements LedgerFactPayload {
-    public MoneyLedgerFactPayload {
-      kind = requireText(kind, "kind");
-      name = requireText(name, "name");
-      Objects.requireNonNull(value, "value");
-    }
-  }
-
-  record GroupLedgerFactPayload(String kind, String name, List<LedgerFactPayload> facts)
-      implements LedgerFactPayload {
-    public GroupLedgerFactPayload {
-      kind = requireText(kind, "kind");
-      name = requireText(name, "name");
-      facts = copyList(facts, "facts");
-      if (facts.isEmpty()) {
-        throw new IllegalArgumentException("facts must not be empty.");
-      }
     }
   }
 }

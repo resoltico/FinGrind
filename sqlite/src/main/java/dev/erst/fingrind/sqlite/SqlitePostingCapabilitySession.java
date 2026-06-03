@@ -7,6 +7,7 @@ import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -41,8 +42,9 @@ class SqlitePostingCapabilitySession extends SqliteReadCapabilitySession
   }
 
   @Override
-  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
-    return store.openBook(initializedAt, bookIdentity);
+  public BookOpeningOutcome openBook(
+      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return store.openBook(initializedAt, bookIdentity, seededAccounts);
   }
 
   @Override

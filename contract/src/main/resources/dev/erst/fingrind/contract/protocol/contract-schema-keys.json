@@ -59,9 +59,6 @@
     "sqliteLibraryFileName": "sqliteLibraryFileName"
   },
   "releasePublication": {
-    "workflowDispatchHelperRef": "workflowDispatchHelperRef",
-    "bundleOutputArchivePrefixes": "bundleOutputArchivePrefixes",
-    "bundleOutputChecksumPrefixes": "bundleOutputChecksumPrefixes",
     "publicBundleBuildTargets": "publicBundleBuildTargets",
     "runnerLabel": "runnerLabel",
     "expectedRunnerOs": "expectedRunnerOs",
@@ -72,6 +69,7 @@
     "requiredCiJobNames": "requiredCiJobNames",
     "containerRegistry": "containerRegistry",
     "containerImageName": "containerImageName",
+    "containerStagingImageName": "containerStagingImageName",
     "containerRunnerLabel": "containerRunnerLabel",
     "containerPlatforms": "containerPlatforms",
     "latestPublicationPolicy": "latestPublicationPolicy"

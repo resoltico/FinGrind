@@ -42,6 +42,25 @@ public record RegisteredAccount(
    * <p>The bookkeeping invariant is local to one account identity: a redeclaration may reactivate
    * an account and update the display name, but it may not change the normal balance.
    */
+  public static RegisteredAccount declareNew(AccountDeclaration declaration, Instant declaredAt) {
+    Objects.requireNonNull(declaration, "declaration");
+    Objects.requireNonNull(declaredAt, "declaredAt");
+    return new RegisteredAccount(
+        declaration.accountCode(),
+        declaration.accountName(),
+        declaration.accountType(),
+        declaration.accountRole(),
+        declaration.accountTaxonomy(),
+        true,
+        declaredAt);
+  }
+
+  /**
+   * Declares one account from the current registry state.
+   *
+   * <p>The bookkeeping invariant is local to one account identity: a redeclaration may reactivate
+   * an account and update the display name, but it may not change the normal balance.
+   */
   public static AccountDeclarationOutcome declare(
       @Nullable RegisteredAccount existingAccount,
       AccountDeclaration declaration,
@@ -49,15 +68,7 @@ public record RegisteredAccount(
     Objects.requireNonNull(declaration, "declaration");
     Objects.requireNonNull(declaredAt, "declaredAt");
     if (existingAccount == null) {
-      return new AccountDeclarationOutcome.Declared(
-          new RegisteredAccount(
-              declaration.accountCode(),
-              declaration.accountName(),
-              declaration.accountType(),
-              declaration.accountRole(),
-              declaration.accountTaxonomy(),
-              true,
-              declaredAt));
+      return new AccountDeclarationOutcome.Declared(declareNew(declaration, declaredAt));
     }
     if (existingAccount.accountType() != declaration.accountType()) {
       return new AccountDeclarationOutcome.Rejected(

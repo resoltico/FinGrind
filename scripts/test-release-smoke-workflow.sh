@@ -30,6 +30,7 @@ readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly common_support_sh="${repo_root}/scripts/release-smoke-common.sh"
 readonly workflow_support_sh="${repo_root}/scripts/release-smoke-workflow-support.sh"
 readonly bundle_support_sh="${repo_root}/scripts/release-smoke-support.sh"
+readonly docker_target_support_sh="${repo_root}/scripts/docker-smoke-target-support.sh"
 readonly bundle_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
 readonly bundle_command_bridge_ps1="${repo_root}/scripts/bundle-smoke-command-bridge.ps1"
 readonly bundle_smoke_sh="${repo_root}/scripts/bundle-smoke.sh"
@@ -43,6 +44,7 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 [[ -f "${common_support_sh}" ]] || die "missing Bash release smoke common helper at ${common_support_sh}"
 [[ -f "${workflow_support_sh}" ]] || die "missing Bash release smoke workflow support helper at ${workflow_support_sh}"
 [[ -f "${bundle_support_sh}" ]] || die "missing Bash release smoke support wrapper at ${bundle_support_sh}"
+[[ -f "${docker_target_support_sh}" ]] || die "missing Bash Docker target support helper at ${docker_target_support_sh}"
 [[ -f "${bundle_office_worker_ps1}" ]] || die "missing PowerShell office-worker wrapper at ${bundle_office_worker_ps1}"
 [[ -f "${bundle_command_bridge_ps1}" ]] || die "missing PowerShell command bridge at ${bundle_command_bridge_ps1}"
 [[ -f "${bundle_smoke_sh}" ]] || die "missing Bash bundle smoke entrypoint at ${bundle_smoke_sh}"
@@ -153,6 +155,11 @@ assert_source_only_guard \
     "${bundle_support_sh}" \
     "release-smoke-support.sh is a library and must be sourced by a release-smoke entrypoint."
 assert_source_only_guard \
+    "${docker_target_support_sh}" \
+    "docker-smoke-target-support.sh is a library and must be sourced by docker-smoke.sh."
+grep -Fq 'docker-smoke-target-support.sh' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer sources the Docker target support helper"
+assert_source_only_guard \
     "${workflow_support_sh}" \
     "release-smoke-workflow-support.sh is a library and must be sourced by release-smoke-support.sh."
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_sh}" || die \
@@ -171,6 +178,13 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${docker_smoke_sh}" || die
     "docker-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared scenario-id contract"
+grep -Fq 'FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer publishes the explicit Docker target architecture contract"
+grep -Fq -- '-Dfingrind.docker.target.architectureId="${docker_target_architecture}"' \
+    "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer stages the Docker context through the explicit target-architecture property"
+grep -Fq -- '--platform "${docker_target_platform}"' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer builds the acceptance image for the explicit Docker target platform"
 if grep -Fq 'FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG' "${bundle_smoke_sh}"; then
     die "bundle-smoke.sh still exports legacy per-path release-smoke arguments"
 fi

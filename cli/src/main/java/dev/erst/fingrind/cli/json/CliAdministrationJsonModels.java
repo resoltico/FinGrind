@@ -23,14 +23,20 @@ public interface CliAdministrationJsonModels {
   record BookIdentityPayload(
       String entityName,
       String accountingKernelProfile,
-      java.util.List<String> businessActivityTags,
+      String accountingBasis,
+      String accountingFrameworkPosition,
+      String entityForm,
+      String bookTemplateId,
       String functionalCurrency,
       String fiscalYearStart) {
     public BookIdentityPayload {
       entityName = requireText(entityName, "entityName");
       accountingKernelProfile = requireText(accountingKernelProfile, "accountingKernelProfile");
-      businessActivityTags =
-          CliJsonModelValidation.copyList(businessActivityTags, "businessActivityTags");
+      accountingBasis = requireText(accountingBasis, "accountingBasis");
+      accountingFrameworkPosition =
+          requireText(accountingFrameworkPosition, "accountingFrameworkPosition");
+      entityForm = requireText(entityForm, "entityForm");
+      bookTemplateId = requireText(bookTemplateId, "bookTemplateId");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
     }

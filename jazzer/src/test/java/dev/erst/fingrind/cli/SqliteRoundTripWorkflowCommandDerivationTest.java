@@ -87,7 +87,17 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
 
     PostEntryCommand approvalBearingCommand =
         new PostEntryCommand(
-            new BookkeepingEntry.CorrectionAdjustment(CliFuzzFixtures.journalEntry(command)),
+            new BookkeepingEntry.OpenAccountingPosition(
+                CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                List.of(
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("1000"),
+                        JournalLine.EntrySide.DEBIT,
+                        new MonetaryAmount("EUR", "1000")),
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("3000"),
+                        JournalLine.EntrySide.CREDIT,
+                        new MonetaryAmount("EUR", "1000")))),
             new AccountingEvidence(
                 List.of(
                     new SourceDocumentReference(
@@ -131,36 +141,35 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
   }
 
   @Test
-  void syntheticDirectCommand_preserves_opening_balance_shape_and_rewrites_non_opening_entries() {
+  void syntheticDirectCommand_preserves_opening_position_shape_and_rewrites_non_opening_entries() {
     PostEntryCommand baseCommand = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
-    PostEntryCommand derivedCorrectionCommand =
+    PostEntryCommand derivedDirectCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
-            baseCommand, "typed-to-correction");
-    assertTrue(derivedCorrectionCommand.entry() instanceof BookkeepingEntry.CorrectionAdjustment);
+            baseCommand, "typed-to-opening-position");
+    assertTrue(derivedDirectCommand.entry() instanceof BookkeepingEntry.OpenAccountingPosition);
 
-    PostEntryCommand openingBalanceCommand =
+    PostEntryCommand openingPositionCommand =
         new PostEntryCommand(
-            new BookkeepingEntry.OpeningBalanceAdjustment(
-                new JournalEntry(
-                    LocalDate.parse("2026-04-07"),
-                    List.of(
-                        new JournalLine(
-                            new AccountCode("1000"),
-                            JournalLine.EntrySide.DEBIT,
-                            Money.parse("EUR", "10.00")),
-                        new JournalLine(
-                            new AccountCode("3000"),
-                            JournalLine.EntrySide.CREDIT,
-                            Money.parse("EUR", "10.00"))))),
+            new BookkeepingEntry.OpenAccountingPosition(
+                LocalDate.parse("2026-04-07"),
+                List.of(
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("1000"),
+                        JournalLine.EntrySide.DEBIT,
+                        new MonetaryAmount("EUR", "1000")),
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("3000"),
+                        JournalLine.EntrySide.CREDIT,
+                        new MonetaryAmount("EUR", "1000")))),
             baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());
 
-    PostEntryCommand derivedOpeningBalanceCommand =
+    PostEntryCommand derivedOpeningPositionCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
-            openingBalanceCommand, "opening-balance-direct");
+            openingPositionCommand, "opening-position-direct");
     assertTrue(
-        derivedOpeningBalanceCommand.entry() instanceof BookkeepingEntry.OpeningBalanceAdjustment);
+        derivedOpeningPositionCommand.entry() instanceof BookkeepingEntry.OpenAccountingPosition);
 
     PostEntryCommand cashExpenseCommand =
         withEntry(
@@ -174,7 +183,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     cashExpenseCommand, "cash-expense-direct")
                 .entry()
-            instanceof BookkeepingEntry.CorrectionAdjustment);
+            instanceof BookkeepingEntry.OpenAccountingPosition);
 
     PostEntryCommand equityContributionCommand =
         withEntry(
@@ -188,7 +197,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     equityContributionCommand, "equity-contribution-direct")
                 .entry()
-            instanceof BookkeepingEntry.CorrectionAdjustment);
+            instanceof BookkeepingEntry.OpenAccountingPosition);
 
     PostEntryCommand equityWithdrawalCommand =
         withEntry(
@@ -202,7 +211,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     equityWithdrawalCommand, "equity-withdrawal-direct")
                 .entry()
-            instanceof BookkeepingEntry.CorrectionAdjustment);
+            instanceof BookkeepingEntry.OpenAccountingPosition);
 
     PostEntryCommand reversalCommand =
         withEntry(
@@ -228,7 +237,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     reversalCommand, "reversal-direct")
                 .entry()
-            instanceof BookkeepingEntry.CorrectionAdjustment);
+            instanceof BookkeepingEntry.OpenAccountingPosition);
   }
 
   private static PostEntryCommand withEntry(PostEntryCommand template, BookkeepingEntry entry) {

@@ -17,4 +17,4 @@ EOF
     fg_print_gradle_passthrough_help
     exit 0
 fi
-fg_run_verification_command "check" "$@"
+fg_run_verification_command "jazzerCheck" "$@"

@@ -185,11 +185,16 @@ verify_github_release_once() {
             "could not read draft state for release ${VERIFY_GITHUB_RELEASE_TAG_NAME}"
         return 1
     }
-    [[ "${is_draft}" == "false" ]] || {
+    [[ "${is_draft}" == "true" || "${is_draft}" == "false" ]] || {
+        verify_github_release_record_failure \
+            "release ${VERIFY_GITHUB_RELEASE_TAG_NAME} draft state must resolve to true or false"
+        return 1
+    }
+    if [[ "${VERIFY_GITHUB_RELEASE_ALLOW_DRAFT}" == "false" && "${is_draft}" != "false" ]]; then
         verify_github_release_record_failure \
             "release ${VERIFY_GITHUB_RELEASE_TAG_NAME} remains a draft"
         return 1
-    }
+    fi
 
     is_prerelease="$(
         gh release view "${VERIFY_GITHUB_RELEASE_TAG_NAME}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null
@@ -255,9 +260,12 @@ verify_github_release_parse_args() {
     readonly VERIFY_GITHUB_RELEASE_TAG_NAME="${tag_name}"
     readonly VERIFY_GITHUB_RELEASE_RETRY_COUNT="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-3}"
     readonly VERIFY_GITHUB_RELEASE_RETRY_DELAY_SECONDS="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-5}"
+    readonly VERIFY_GITHUB_RELEASE_ALLOW_DRAFT="${FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT:-false}"
     VERIFY_GITHUB_RELEASE_LAST_FAILURE_REASON=''
 
     [[ -n "${VERIFY_GITHUB_RELEASE_TAG_NAME}" ]] || verify_github_release_die "tag name is required"
+    [[ "${VERIFY_GITHUB_RELEASE_ALLOW_DRAFT}" == "true" || "${VERIFY_GITHUB_RELEASE_ALLOW_DRAFT}" == "false" ]] || \
+        verify_github_release_die "FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT must be true or false"
 }
 
 verify_github_release_init_contract() {

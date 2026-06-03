@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -118,10 +118,10 @@ The bookkeeping context uses `RegisteredAccount`, `PostingCommand`, `CommittedPo
 `BookLifecycleInspection`, `BookkeepingQueryRejection`, and `BookkeepingPostingRejection` as its
 local language.
 
-The shared kernel in `core/` also owns `CurrencyBalance`, `EffectiveDateRange`, and
-`InteractionLimits`. Those concepts are shared by the public bookkeeping protocol, the public
-workflow protocol, and the local bookkeeping/workflow contexts without making `contract` the owner
-of the internal read model.
+The shared kernel in `core/` owns `CurrencyBalance` and `EffectiveDateRange`. Public interaction
+limits such as paging, request-size, passphrase-byte, and ledger-plan step bounds now live in the
+protocol boundary as `ProtocolInteractionLimits`, which keeps transport policy out of the domain
+core while leaving shared accounting meaning in `core/`.
 
 Current account-registry policy:
 - `AccountType` is first-class and immutable after first declaration
@@ -141,7 +141,7 @@ The shared-kernel `CurrencyUnit` truth is a repository-owned currency registry s
 mutable host-JVM currency runtime data.
 
 Current accounting-standards scope:
-- FinGrind's current core is one country-agnostic bookkeeping kernel, not one full external IFRS
+- FinGrind's current core is one narrow built-in bookkeeping kernel, not one full external IFRS
   or local-GAAP compliance/reporting package
 - FinGrind does not yet claim IFRS for SMEs parity; the current kernel sits below one full
   small-entity reporting package

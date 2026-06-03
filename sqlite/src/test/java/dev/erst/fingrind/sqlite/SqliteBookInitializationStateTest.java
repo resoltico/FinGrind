@@ -151,11 +151,19 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())));
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
-          postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-08T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())));
     }
   }
 
@@ -166,7 +174,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
@@ -194,7 +206,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+                  postingFactStore.openBook(
+                      Instant.parse("2026-04-07T10:15:30Z"),
+                      bookIdentity(),
+                      dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                          bookIdentity().bookDoctrine().bookTemplateId())));
       assertTrue(
           NullTestSupport.messageOf(openException)
               .contains("incomplete or corrupted and cannot be opened safely"));
@@ -293,7 +309,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+                  postingFactStore.openBook(
+                      Instant.parse("2026-04-07T10:15:30Z"),
+                      bookIdentity(),
+                      dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                          bookIdentity().bookDoctrine().bookTemplateId())));
       assertTrue(
           NullTestSupport.messageOf(exception).contains("Failed to initialize SQLite book."));
       setStoreDatabase(postingFactStore, null);

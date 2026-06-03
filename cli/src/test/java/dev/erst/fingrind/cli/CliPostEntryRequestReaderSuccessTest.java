@@ -143,16 +143,16 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readPostEntryCommand_readsCorrectionAdjustmentWithoutReversal() {
+  void readPostEntryCommand_readsOpeningAccountingPosition() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 withEvidence(
                         """
                 {
-                  "entryKind": "CORRECTION_ADJUSTMENT",
+                  "entryKind": "OPEN_ACCOUNTING_POSITION",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
+                  "openingBalances": [
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
@@ -177,21 +177,21 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
-    BookkeepingEntry.CorrectionAdjustment entry =
-        assertInstanceOf(BookkeepingEntry.CorrectionAdjustment.class, command.entry());
+    BookkeepingEntry.OpenAccountingPosition entry =
+        assertInstanceOf(BookkeepingEntry.OpenAccountingPosition.class, command.entry());
 
-    assertEquals(2, entry.lines().size());
+    assertEquals(2, entry.balances().size());
   }
 
   @Test
-  void readPostEntryCommand_readsOpeningBalanceAdjustment() {
+  void readPostEntryCommand_readsReversalAdjustment() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 withEvidence(
                         """
                 {
-                  "entryKind": "OPENING_BALANCE_ADJUSTMENT",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {
@@ -205,6 +205,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                       "amount": %s
                     }
                   ],
+                  "reversal": {
+                    "priorPostingId": "posting-0",
+                    "reason": "operator reversal"
+                  },
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -218,8 +222,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
-    BookkeepingEntry.OpeningBalanceAdjustment entry =
-        assertInstanceOf(BookkeepingEntry.OpeningBalanceAdjustment.class, command.entry());
+    BookkeepingEntry.ReversalAdjustment entry =
+        assertInstanceOf(BookkeepingEntry.ReversalAdjustment.class, command.entry());
 
     assertEquals(2, entry.lines().size());
   }

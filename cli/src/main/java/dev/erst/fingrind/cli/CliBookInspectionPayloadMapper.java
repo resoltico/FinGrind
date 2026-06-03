@@ -63,10 +63,11 @@ final class CliBookInspectionPayloadMapper {
       BookIdentity bookIdentity) {
     return new CliAdministrationJsonModels.BookIdentityPayload(
         bookIdentity.entityName().value(),
-        bookIdentity.accountingKernelProfileId().value(),
-        bookIdentity.entityProfile().businessActivityTags().stream()
-            .map(value -> value.value())
-            .toList(),
+        bookIdentity.bookDoctrine().accountingKernelProfileId().value(),
+        bookIdentity.bookDoctrine().accountingBasis().wireValue(),
+        bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue(),
+        bookIdentity.bookDoctrine().entityForm().wireValue(),
+        bookIdentity.bookDoctrine().bookTemplateId().wireValue(),
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue());
   }

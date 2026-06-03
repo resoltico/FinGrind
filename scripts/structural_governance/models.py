@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 
@@ -23,6 +24,17 @@ class ReviewedSurface:
     reason: str
     split_trigger: str
     budget: FileBudget
+    approval: "ReviewedSurfaceApproval"
+
+
+@dataclass(frozen=True)
+class ReviewedSurfaceApproval:
+    approved_physical_lines: int
+    approved_logical_lines: int
+    approved_import_like_lines: int
+    approved_functions: int
+    approved_nested_types: int
+    expires_on: date
 
 
 @dataclass(frozen=True)

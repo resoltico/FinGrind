@@ -260,7 +260,7 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           BookAdministrationRejection.wireCode(
               new BookAdministrationRejection.AccountRoleConflict(
-                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA)),
+                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
           redeclareResult.journal().steps().getLast().requiredFailure().code());
     }
   }

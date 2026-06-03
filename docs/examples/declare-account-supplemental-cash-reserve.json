@@ -1,6 +1,6 @@
 {
-  "accountCode": "1000",
-  "accountName": "Cash",
+  "accountCode": "cash-reserve",
+  "accountName": "Cash Reserve",
   "accountType": "ASSET",
   "accountRole": "ORDINARY",
   "accountNodeKind": "POSTABLE",

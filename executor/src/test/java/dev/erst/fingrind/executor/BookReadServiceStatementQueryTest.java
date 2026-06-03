@@ -144,7 +144,7 @@ class BookReadServiceStatementQueryTest {
                   "1090",
                   "Accumulated Depreciation",
                   AccountType.ASSET,
-                  AccountRole.CONTRA,
+                  AccountRole.POLARITY_INVERTED,
                   currencyBalance("0.00", "5.00", "5.00", BalanceSide.CREDIT))),
           assetSection.rows());
       assertEquals(
@@ -410,7 +410,7 @@ class BookReadServiceStatementQueryTest {
                 posting(
                     "posting-unknown-profit",
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     PERIOD_DATE,
                     List.of(
                         moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -446,7 +446,7 @@ class BookReadServiceStatementQueryTest {
         CONTRA_ASSET_ACCOUNT_CODE,
         "Accumulated Depreciation",
         AccountType.ASSET,
-        AccountRole.CONTRA);
+        AccountRole.POLARITY_INVERTED);
     declareAccount(
         bookSession,
         CAPITAL_ACCOUNT_CODE,
@@ -605,7 +605,7 @@ class BookReadServiceStatementQueryTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(

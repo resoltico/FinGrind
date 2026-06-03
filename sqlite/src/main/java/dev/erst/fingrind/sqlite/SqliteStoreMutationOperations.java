@@ -1,18 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -48,6 +40,7 @@ final class SqliteStoreMutationOperations {
   private final SqliteCommitFaultHook commitFaultHook;
   private final SqliteRekeyService rekeyService;
   private final PostingAcceptancePolicy postingAcceptancePolicy;
+  private final SqliteStoreAdministrationMutationOperations administrationOperations;
 
   SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
     this(context, lifecycle, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel());
@@ -71,103 +64,26 @@ final class SqliteStoreMutationOperations {
     this.rekeyService = new SqliteRekeyService(context, lifecycle);
     this.postingAcceptancePolicy =
         Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
+    this.administrationOperations =
+        new SqliteStoreAdministrationMutationOperations(context, lifecycle);
   }
 
-  BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableInitialization();
-    SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
-            Optional<BookOpeningOutcome> preexistingOutcome =
-                snapshot.state().openBookResult(snapshot.userVersion());
-            if (preexistingOutcome.isPresent()) {
-              return preexistingOutcome.orElseThrow();
-            }
-
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
-            SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
-            SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
-            SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
-            SqliteMutationWriter.insertBookIdentity(activeDatabase, bookIdentity);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase, BookAuditEvent.bookOpened(initializedAt));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            lifecycle.cacheState(
-                new SqliteBookStateSnapshot(
-                    SqliteBookContract.APPLICATION_ID,
-                    SqliteBookContract.FORMAT_VERSION,
-                    SqliteBookState.INITIALIZED_FINGRIND));
-            return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to initialize SQLite book.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
-        });
+  dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
+    return administrationOperations.openBook(initializedAt, bookIdentity, seededAccounts);
   }
 
-  AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountRole accountRole,
-      AccountTaxonomy accountTaxonomy,
+  dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
+      dev.erst.fingrind.core.AccountCode accountCode,
+      dev.erst.fingrind.core.AccountName accountName,
+      dev.erst.fingrind.core.AccountType accountType,
+      dev.erst.fingrind.core.AccountRole accountRole,
+      dev.erst.fingrind.core.AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableMutation();
-    if (Files.notExists(context.bookPath())) {
-      return new AccountDeclarationOutcome.Rejected(
-          new BookkeepingAdministrationRejection.BookNotInitialized());
-    }
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new AccountDeclarationOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
-            Optional<RegisteredAccount> existingAccount =
-                SqliteStatementQueries.findOneAccount(activeDatabase, accountCode);
-            AccountDeclarationOutcome declarationOutcome =
-                RegisteredAccount.declare(
-                    existingAccount.orElse(null),
-                    new AccountDeclaration(
-                        accountCode, accountName, accountType, accountRole, accountTaxonomy),
-                    declaredAt);
-            if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return rejected;
-            }
-            RegisteredAccount declaredAccount =
-                ((AccountDeclarationOutcome.Declared) declarationOutcome).account();
-            SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase,
-                BookAuditEvent.accountDeclared(
-                    declaredAt,
-                    declaredAccount.accountCode(),
-                    existingAccount.isPresent() && !existingAccount.orElseThrow().active()));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new AccountDeclarationOutcome.Declared(declaredAccount);
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to declare SQLite book account.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
-        });
+    return administrationOperations.declareAccount(
+        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
   }
 
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {

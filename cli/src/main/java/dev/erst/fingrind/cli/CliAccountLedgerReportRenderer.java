@@ -18,7 +18,7 @@ final class CliAccountLedgerReportRenderer {
                     "Debit",
                     "Credit",
                     "Running",
-                    "Counterparts",
+                    "Counterpart account codes",
                     "Posting"),
                 report.entries().stream()
                     .map(

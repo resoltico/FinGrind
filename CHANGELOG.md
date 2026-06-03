@@ -5,21 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Fixed the draft-first GitHub release publisher so post-tag publication and workflow-dispatch
-  replay no longer lose sight of a newly created draft release. Release convergence now resolves
-  tag ownership through the authenticated release listing surface instead of the published-release
-  tag endpoint, which allows `release.yml` to repair and finish immutable tagged releases from
-  `main` without breaking on GitHub's draft-release lookup behavior.
-- Fixed the Jazzer replay-wrapper shell regression so hosted release-surface gates now tolerate
-  longer repo-lock cleanup windows before declaring a valid replay invocation broken. The replay
-  wrapper contract test now retries lock-contention exits long enough to match CI-scale cleanup
-  latency instead of treating short-lived verification-lock turnover as a hard failure.
-- Fixed the public-container release verifier so release replay now proves the live trial-balance
-  text contract instead of the retired compressed context block. The mounted verification path and
-  its fake-Docker regression now both require the current multi-line entity, accounting-profile,
-  business-activity, currency, fiscal-year, and posting-coverage context surface.
+## [0.51.0] - 2026-06-03
 
 ### Changed
 
@@ -28,6 +14,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `actions/download-artifact` `v8.0.1`, and the release-workflow contract test now locks those
   publication-staging pins so deprecated Node20 runtime drift cannot quietly re-enter the release
   path.
+- Bumped the repository-owned Python lint pin to Ruff `0.15.15`, the included-build Kotlin pin
+  to the stable `2.4.0` GA line, and the pinned JaCoCo snapshot artifact contract to build
+  `0.8.15.202606030734` resolving as `0.8.15-20260603.073432-117`.
+- Hard-broke book identity, doctrine, and initialization onto one explicit built-in bookkeeping
+  profile. Initialized books now persist and publish the accounting-kernel profile, accounting
+  basis, framework posture, entity form, and seeded book template together, while `open-book`
+  now initializes the owner-managed service starter chart as the canonical first-run book shape.
+- Hard-broke bookkeeping operation language toward one narrower cash-kernel write model. Public
+  write flows now treat the seeded owner-managed service chart as the canonical operating shape,
+  use one structured `OPEN_ACCOUNTING_POSITION` workflow for initial balances, and reserve the
+  remaining direct administrative path for explicit reversal adjustments instead of the broader
+  retired opening-balance and manual-adjustment vocabulary.
+- Hard-broke the public workflow and request boundary onto narrower contract owners. Public
+  interaction limits now live at the protocol boundary instead of in the accounting core,
+  ledger-plan parsing rejects recognized-but-illegal branch fields deterministically, CLI
+  workflow facts now use canonical wire-value owners instead of raw discriminator strings, and
+  the root verification surface now owns the Jazzer gate as a first-class repository check.
+- Hard-broke operator discovery and help toward one cleaner storefront. `help` now stays
+  operator-first, terminal JSON defaults to pretty-printed output, discovery focuses own distinct
+  detail ladders instead of coarse overfetch-only tiers, and request and report guidance now
+  branch from the shortest runnable path before deeper machine-contract material.
+- Hard-broke starter-chart guidance and checked-in public examples into one coherent progression.
+  The seeded owner-managed service chart remains the canonical first-run path, while extra
+  declaration fixtures are now named and documented as supplemental starter-chart extensions
+  rather than alternate zero-state starters.
+- The self-contained public CLI bundle is now the primary Gradle `assemble` outcome. `assemble`
+  now owns the bundle archive manifest that names the emitted archive and checksum paths, while
+  the raw shadow JAR remains an internal packaging input rather than the primary distributable.
+- Release publication now stages one Linux container image per supported public bundle target and
+  promotes the verified staging images onto the public version and `latest` tags only after the
+  staged release surface passes verification. Historical public GHCR package versions are no
+  longer culled by a timestamp cutoff during release publication.
+- Hard-broke structural governance farther across the repository control plane. PMD now fails
+  god-class, method-count, complexity, and coupling violations; source-shape budgets fail
+  oversized Java files; duplication checks reject large repeated translation-heavy blocks;
+  reviewed structural inventory now owns every near-ceiling production Java surface; and Python
+  support scripts and SQLite schema SQL now sit under the same structural governance surface.
+  Markdown docs and Gradle build scripts now live under executable structural budgets too, reviewed
+  waivers expire against frozen approved shape, CLI JSON fallback budgets are tighter, and managed
+  SQLite runtime consumers now opt in explicitly through the dedicated
+  `dev.erst.fingrind.managed-sqlite-consumer` plugin instead of path heuristics.
+- Hard-broke the build and publication control plane onto manifest-owned, immutable release
+  surfaces. GitHub release publication now stages and verifies draft assets before final
+  promotion, while bundle and container publication share one manifest-owned archive and staging
+  surface instead of log-scraped or checkout-mirrored handoff paths.
+- Hard-broke managed SQLite packaging and container assembly onto one shared provenance-owning
+  pipeline. The public bundle and the public container now derive their managed SQLite library,
+  checksum, toolchain fingerprint, and build contract from the same Gradle-owned native surface,
+  with Linux-target staging verified before Docker image assembly.
+- Hard-broke the included-build control plane into narrower capability owners. Root conventions
+  now delegate formatting, Python/SQL verification, coverage, and Jazzer wiring to focused
+  collaborators, while Java conventions now delegate runtime, quality, and coverage wiring
+  instead of carrying those concerns inline.
+
+### Fixed
+
+- Fixed GitHub Release publication so public tagged assets are immutable after promotion.
+  Publication now verifies staged bundles, checksums, attestations, and public container surfaces
+  before the release is finalized instead of deleting and replacing already public assets under
+  the same tag.
+- Fixed operator-surface discovery and reporting output so human help no longer interleaves
+  machine-reference blocks with first-run guidance, primary query examples no longer force early
+  artifact export, report and PDF identity context render one concept per row instead of
+  slash-packed summaries, and response-contract discovery now exposes a meaningfully smaller
+  compact slice rather than mirroring the full surface.
+- Fixed starter-workflow example cohesion so checked-in posting examples, plan examples, starter
+  chart language, and supplemental declaration examples now describe the same live seeded chart
+  instead of mixing starter and extension flows as if they were interchangeable.
+- Fixed book-administration validation so duplicate active result-holding declarations fail at
+  declaration time, with the public rejection surface naming the singular-account invariant
+  directly instead of surfacing that conflict only later during period close.
+- Fixed passphrase-source handling so prompt, stdin, and file-backed secret bytes now flow through
+  one zeroizing limit-owning path instead of separate partial readers with different cleanup
+  behavior.
+- Fixed SQLite runtime, bootstrap, and protected-book fixture truth so managed-runtime inspection,
+  source-checkout runtime verification, staged protected-book fixtures, and public compatibility
+  metadata all agree on the current format-owned contract.
+- Fixed SQLite verification task hygiene so ordinary `:sqlite:test` and `:sqlite:pmdTest` runs
+  no longer regenerate the committed protected-book fixture family inside source-controlled test
+  resources. Protected-book fixture refresh now remains an explicit maintenance task instead of a
+  release-gate side effect.
+- Fixed Docker publication staging so Linux hosts no longer short-circuit container assembly onto
+  the source-checkout managed SQLite runtime when the host and container classifiers match. The
+  staged Docker context now remains target-toolchain-owned, and container acceptance now carries
+  explicit target-architecture wiring for reproducible local and hosted verification.
+- Fixed pre-merge published bundle smoke so CI now reads bundle archive and checksum paths from
+  the Gradle-owned bundle manifest instead of scraping `bundleCliArchive` console output. The
+  release gate now verifies the same machine-owned bundle handoff contract before merge and
+  during public release publication.
+- Fixed the Jazzer replay and regression-corpus surface so replay wrappers tolerate real
+  verification-lock cleanup timing and the committed corpus follows the live request and
+  ledger-plan grammar, starter-chart accounts, and workflow semantics instead of retired fields.
 
 ## [0.50.0] - 2026-06-01
 
@@ -335,7 +413,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   protocol references publish only the executable bookkeeping kernel instead of a broader
   standards-baseline posture.
 - Replaced generic `MANUAL_ADJUSTMENT` bookkeeping-entry language with named administrative
-  adjustment entry kinds (`OPENING_BALANCE_ADJUSTMENT`, `CORRECTION_ADJUSTMENT`, and
+  adjustment entry kinds (`OPEN_ACCOUNTING_POSITION`, `REVERSAL_ADJUSTMENT`, and
   `REVERSAL_ADJUSTMENT`) across the public request contract, checked-in examples, release-smoke
   fixtures, and fuzz/replay inputs.
 - Neutralized equity and period-close vocabulary across the bookkeeping kernel. Legal-form
@@ -2608,7 +2686,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.50.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.51.0...HEAD
+[0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
 [0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0
 [0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0
 [0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0

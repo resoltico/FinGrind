@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
@@ -10,9 +9,7 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -28,24 +25,17 @@ final class SqliteMutationWriter {
   }
 
   static void insertBookIdentity(SqliteNativeDatabase activeDatabase, BookIdentity bookIdentity) {
-    String encodedBusinessActivityTags =
-        bookIdentity.entityProfile().businessActivityTags().stream()
-            .map(BusinessActivityTag::value)
-            .map(SqliteMutationWriter::encodeBookMetaValue)
-            .reduce((left, right) -> left + "," + right)
-            .orElse("");
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_IDENTITY)) {
       statement.bindText(1, bookIdentity.entityName().value());
-      statement.bindText(2, bookIdentity.accountingKernelProfileId().value());
-      statement.bindText(3, bookIdentity.functionalCurrency().code());
-      statement.bindInt(4, bookIdentity.fiscalYearStart().month());
-      statement.bindInt(5, bookIdentity.fiscalYearStart().day());
-      statement.step();
-    }
-    try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_ENTITY_PROFILE)) {
-      statement.bindText(1, encodedBusinessActivityTags);
+      statement.bindText(2, bookIdentity.bookDoctrine().accountingKernelProfileId().value());
+      statement.bindText(3, bookIdentity.bookDoctrine().accountingBasis().wireValue());
+      statement.bindText(4, bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue());
+      statement.bindText(5, bookIdentity.bookDoctrine().entityForm().wireValue());
+      statement.bindText(6, bookIdentity.bookDoctrine().bookTemplateId().wireValue());
+      statement.bindText(7, bookIdentity.functionalCurrency().code());
+      statement.bindInt(8, bookIdentity.fiscalYearStart().month());
+      statement.bindInt(9, bookIdentity.fiscalYearStart().day());
       statement.step();
     }
   }
@@ -268,11 +258,5 @@ final class SqliteMutationWriter {
   private static void bindOptionalText(
       SqliteNativeStatement statement, int parameterIndex, @Nullable String value) {
     statement.bindText(parameterIndex, value);
-  }
-
-  private static String encodeBookMetaValue(String value) {
-    return Base64.getUrlEncoder()
-        .withoutPadding()
-        .encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 }

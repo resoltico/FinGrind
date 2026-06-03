@@ -21,7 +21,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void close_failureMarksSessionClosedAndRequiresFreshHandleOwnerForCleanup() throws Exception {
     Path databasePath = tempDirectory.resolve("close-retry.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       MemorySegment activeHandle = requireStoreDatabase(postingFactStore).handle();
       setStoreDatabase(
           postingFactStore,

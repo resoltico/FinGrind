@@ -4,10 +4,10 @@ import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.List;
@@ -127,7 +127,8 @@ final class CliBookQueryArguments {
     }
     int resolvedLimit =
         CliArgumentValueParser.requirePageLimit(
-            limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit, ProtocolOptions.LIMIT);
+            limit == null ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT : limit,
+            ProtocolOptions.LIMIT);
     Optional<AccountPageCursor> resolvedCursor =
         Optional.ofNullable(cursor).map(CliOptionModes::accountPageCursor);
     return new ListAccounts(
@@ -147,7 +148,7 @@ final class CliBookQueryArguments {
     int resolvedLimit =
         CliArgumentValueParser.requirePageLimit(
             argumentValues.limit == null
-                ? InteractionLimits.DEFAULT_PAGE_LIMIT
+                ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT
                 : argumentValues.limit,
             ProtocolOptions.LIMIT);
     Optional<AccountCode> resolvedAccountCode =

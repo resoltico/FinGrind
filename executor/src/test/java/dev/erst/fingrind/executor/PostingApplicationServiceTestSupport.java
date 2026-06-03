@@ -48,6 +48,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,7 +61,7 @@ final class PostingApplicationServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity());
+    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
     return bookSession;
   }
 
@@ -126,12 +127,25 @@ final class PostingApplicationServiceTestSupport {
             ? new BookkeepingEntry.ReversalAdjustment(
                 journalEntry,
                 new PostingLineage.Reversal(reversalReference.orElseThrow(), reason.orElseThrow()))
-            : new BookkeepingEntry.CorrectionAdjustment(journalEntry);
+            : new BookkeepingEntry.OpenAccountingPosition(
+                journalEntry.effectiveDate(), openingBalances(journalEntry));
     return new PostEntryCommand(
         entry,
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
+  }
+
+  private static List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance>
+      openingBalances(JournalEntry journalEntry) {
+    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
+        new ArrayList<>(journalEntry.lines().size());
+    for (JournalLine line : journalEntry.lines()) {
+      balances.add(
+          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
+    }
+    return List.copyOf(balances);
   }
 
   static Optional<ReversalReference> reversalReference(String priorPostingId) {
@@ -144,7 +158,7 @@ final class PostingApplicationServiceTestSupport {
         journalEntry(),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }

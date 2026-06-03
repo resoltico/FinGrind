@@ -147,6 +147,32 @@ function Get-FinGrindSourceCheckoutArtifactManifestPath {
     return (Join-Path $buildDir "generated/source-checkout/source-checkout-artifact-manifest.tsv")
 }
 
+function Get-FinGrindBundleArchiveManifestPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectSegment
+    )
+
+    $buildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $RepositoryRoot -ProjectSegment $ProjectSegment
+    return (Join-Path $buildDir "generated/bundle/bundle-archive-manifest.json")
+}
+
+function Get-FinGrindDockerContextDir {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectSegment
+    )
+
+    $buildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $RepositoryRoot -ProjectSegment $ProjectSegment
+    return (Join-Path $buildDir "docker-context")
+}
+
 function Test-FinGrindSourceCheckoutArtifactNeedsRefresh {
     param(
         [Parameter(Mandatory = $true)]

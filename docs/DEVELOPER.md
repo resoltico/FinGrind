@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -71,11 +71,12 @@ surface, executor-owned services, and explicit adapter seams:
 core/         Accounting vocabulary and invariants:
               money, positive journal-line money, journal lines, journal entries, reversal linkage,
               request provenance, committed provenance, posting identity,
-              CurrencyBalance, EffectiveDateRange, and InteractionLimits.
+              CurrencyBalance and EffectiveDateRange.
 
 contract/     Public contract module hosting multiple public protocol subcontexts:
               bookkeeping protocol DTOs, workflow protocol DTOs,
               ProtocolCatalog, OperationId, ProtocolOperation, ProtocolOptions,
+              ProtocolInteractionLimits,
               ProtocolPostEntryFields, ProtocolDeclareAccountFields,
               MachineContract plus ContractDiscovery / ContractTemplates /
               ContractRequestShapes / ContractResponse descriptor namespaces,
@@ -235,21 +236,16 @@ Generated-state stance:
 | Java | 26 |
 | Python helper toolchain | Python 3.12 in CI, `uv` 0.11.15 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.5.1 |
-| Kotlin build logic | 2.4.0-RC2 in `gradle/build-logic`, emitting JVM 26 bytecode |
+| Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, generated source-checkout launchers, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
-| Jackson Databind | 3.1.3 |
+| Jackson Databind | 3.1.4 |
 | JUnit Jupiter | 6.1.0 |
 | Jazzer | 0.30.0 |
-| JaCoCo | pinned snapshot artifact 0.8.15-20260519.201139-107 |
+| JaCoCo | published snapshot build 0.8.15.202606030734, consumed from a repo-owned pinned artifact set, and verified against resolved artifact 0.8.15-20260603.073432-117 |
 | PMD | 7.24.0 |
 
-The build-logic Kotlin pin is intentionally prerelease:
-- Kotlin build logic: `2.4.0-RC2`
-
-Treat that as a temporary compatibility-sensitive choice rather than a steady-state baseline.
-Removal trigger: move to the matching stable `2.4.x` line as soon as that release is available
-and verified against this repository's wrapper, included-build, and plugin surface.
+The build-logic Kotlin pin is now the stable `2.4.0` line.
 
 ## Java 26 Feature Policy
 

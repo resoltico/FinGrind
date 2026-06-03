@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -53,7 +54,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.50.0",
+                "0.51.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -69,7 +70,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.50.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.51.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -170,7 +171,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.50.0");
+    return new PdfDocumentFactory("FinGrind", "0.51.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -200,8 +201,8 @@ class PdfReportCoverageTest {
 
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

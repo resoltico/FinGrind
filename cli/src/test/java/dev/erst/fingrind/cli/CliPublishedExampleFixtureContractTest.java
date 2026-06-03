@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Locks checked-in public example fixtures to live CLI workflows with deterministic normalization.
@@ -22,21 +21,12 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
     Map<String, String> recordedFixtures = new ConcurrentHashMap<>();
     Path bookFile = tempDirectory.resolve("books").resolve("acme.sqlite");
     Path bookKeyFile = tempDirectory.resolve("keys").resolve("acme.book-key");
-    Path declareCashFile = copyExampleFixture("declare-account-cash.json");
-    Path declareRevenueFile = copyExampleFixture("declare-account-revenue.json");
+    Path declareCashFile = copyExampleFixture("declare-account-supplemental-cash-reserve.json");
+    Path declareRevenueFile = copyExampleFixture("declare-account-supplemental-misc-revenue.json");
     Path postingRequestFile = copyExampleFixture("basic-posting-request.json");
     Path unknownAccountRequestFile = copyExampleFixture("unknown-account-request.json");
-    Path reversalRequestFile = copyExampleFixture("reversal-request.json");
-    Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
-    Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
-    Path assertionFailurePlanRequestFile =
-        tempDirectory.resolve("ledger-plan-assertion-failed.json");
     Path brokenBookFile = tempDirectory.resolve("books").resolve("broken.sqlite");
     Path brokenBookKeyFile = tempDirectory.resolve("keys").resolve("broken.book-key");
-    Path planBookFile = tempDirectory.resolve("books").resolve("acme-plan.sqlite");
-    Path queryPlanBookFile = tempDirectory.resolve("books").resolve("acme-plan-query.sqlite");
-    Path assertionFailurePlanBookFile =
-        tempDirectory.resolve("books").resolve("acme-plan-assertion.sqlite");
     Path booksDirectory = java.util.Objects.requireNonNull(bookFile.getParent(), "booksDirectory");
 
     Files.createDirectories(booksDirectory);
@@ -120,7 +110,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             bookKeyFile.toString(),
             "--account-code",
-            "1000",
+            "cash",
             "--limit",
             "25"));
     recordJsonFixture(
@@ -133,7 +123,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             bookKeyFile.toString(),
             "--account-code",
-            "1000"));
+            "cash"));
     recordJsonFixture(
         recordedFixtures,
         "trial-balance-response.json",
@@ -168,7 +158,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             bookKeyFile.toString(),
             "--account-code",
-            "1000",
+            "cash",
             "--effective-date-to",
             "2026-04-08"));
     recordTextFixture(
@@ -181,7 +171,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             bookKeyFile.toString(),
             "--account-code",
-            "1000",
+            "cash",
             "--effective-date-to",
             "2026-04-08",
             "--output",
@@ -260,72 +250,6 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-passphrase-prompt",
             "--output",
             "text"));
-
-    replaceReversalPriorPostingId(reversalRequestFile, postingId);
-    JsonNode reversal =
-        runJsonCommand(
-            "post-entry",
-            "--book-file",
-            bookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--request-file",
-            reversalRequestFile.toString());
-    String reversalPostingId = reversal.path("payload").path("postingId").stringValue();
-    assertFalse(reversalPostingId.isBlank());
-
-    recordJsonFixture(
-        recordedFixtures,
-        "execute-plan-committed-response.json",
-        runJsonCommand(
-            "execute-plan",
-            "--book-file",
-            planBookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--result-detail",
-            "full",
-            "--request-file",
-            planRequestFile.toString()));
-    recordJsonFixture(
-        recordedFixtures,
-        "execute-plan-query-response.json",
-        runJsonCommand(
-            "execute-plan",
-            "--book-file",
-            queryPlanBookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--result-detail",
-            "full",
-            "--request-file",
-            queryPlanRequestFile.toString()));
-
-    Files.copy(planRequestFile, assertionFailurePlanRequestFile);
-    ObjectNode failingPlan =
-        (ObjectNode)
-            OBJECT_MAPPER.readTree(
-                Files.readString(assertionFailurePlanRequestFile, StandardCharsets.UTF_8));
-    ((ObjectNode) failingPlan.path("steps").get(4).path("assertion").path("netAmount"))
-        .put("minorUnits", "11");
-    Files.writeString(
-        assertionFailurePlanRequestFile,
-        OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(failingPlan) + "\n",
-        StandardCharsets.UTF_8);
-    recordJsonFixture(
-        recordedFixtures,
-        "execute-plan-assertion-failed-response.json",
-        runJsonCommandExpectingExit(
-            3,
-            "execute-plan",
-            "--book-file",
-            assertionFailurePlanBookFile.toString(),
-            "--book-key-file",
-            bookKeyFile.toString(),
-            "--result-detail",
-            "full",
-            "--request-file",
-            assertionFailurePlanRequestFile.toString()));
     assertRecordedFixtures(recordedFixtures);
   }
 }

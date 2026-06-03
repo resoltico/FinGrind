@@ -810,7 +810,6 @@ class LedgerPlanFuzzAssertionsTest {
     return """
         {
           "entityName": "Acme Studio",
-          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01"
         }

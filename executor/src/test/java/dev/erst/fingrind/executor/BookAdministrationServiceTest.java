@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -139,20 +138,6 @@ class BookAdministrationServiceTest {
               accountTaxonomy(AccountType.ASSET)));
       service.declareAccount(
           new AccountDeclaration(
-              new AccountCode("3000"),
-              new AccountName("Capital"),
-              AccountType.EQUITY,
-              AccountRole.ORDINARY,
-              accountTaxonomy(AccountType.EQUITY)));
-      service.declareAccount(
-          new AccountDeclaration(
-              new AccountCode("3200"),
-              new AccountName("Retained Earnings"),
-              AccountType.EQUITY,
-              AccountRole.ORDINARY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)));
-      service.declareAccount(
-          new AccountDeclaration(
               new AccountCode("4000"),
               new AccountName("Revenue"),
               AccountType.REVENUE,
@@ -170,12 +155,12 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
                       new dev.erst.fingrind.core.JournalLine(
-                          new AccountCode("3000"),
+                          new AccountCode("owner-capital"),
                           dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
-              dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+              dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
@@ -203,7 +188,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "12.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
-              dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+              dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(

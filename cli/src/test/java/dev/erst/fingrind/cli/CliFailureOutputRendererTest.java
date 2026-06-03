@@ -77,10 +77,11 @@ class CliFailureOutputRendererTest {
         "Prior posting id",
         "posting-9");
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountRoleConflictDetails("3200", "ORDINARY", "CONTRA"),
+        new CliRejectionJsonModels.AccountRoleConflictDetails(
+            "3200", "ORDINARY", "POLARITY_INVERTED"),
         "Existing account role",
         "Requested account role",
-        "CONTRA");
+        "POLARITY_INVERTED");
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
         "Existing account type",
@@ -135,11 +136,11 @@ class CliFailureOutputRendererTest {
         "REVENUE");
     assertRenderedRejection(
         new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-            "4100", "ORDINARY", "4000", "CONTRA"),
+            "4100", "ORDINARY", "4000", "POLARITY_INVERTED"),
         "Requested account role",
         "ORDINARY",
         "Parent account role",
-        "CONTRA");
+        "POLARITY_INVERTED");
     assertRenderedRejection(
         new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE"),
         "Parent account code",

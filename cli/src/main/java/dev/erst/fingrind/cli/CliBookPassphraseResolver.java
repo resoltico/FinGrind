@@ -1,11 +1,13 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.SqliteBookPassphraseSourceBytes;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
 import java.io.IOError;
@@ -87,15 +89,15 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   private ContractDecision<byte[]> readStandardInputBytes() throws IOException {
-    byte[] buffer = inputStream.readNBytes(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1);
-    if (buffer.length <= SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES) {
-      return ContractDecision.accepted(buffer);
+    try {
+      return ContractDecision.accepted(SqliteBookPassphraseSourceBytes.read(inputStream));
+    } catch (SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException exception) {
+      return ContractDecision.rejected(
+          oversizedPassphraseSource(
+              "standard input",
+              "FinGrind book passphrase input from standard input exceeded the %d-byte limit."
+                  .formatted(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES)));
     }
-    return ContractDecision.rejected(
-        oversizedPassphraseSource(
-            "standard input",
-            "FinGrind book passphrase input from standard input exceeded the %d-byte limit."
-                .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES)));
   }
 
   private ContractDecision<SqliteBookPassphrase> readFromInteractivePrompt(
@@ -219,7 +221,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
         "Provide one non-empty single-line UTF-8 passphrase through "
             + sourceDescription
             + " within the "
-            + SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES
+            + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
             + "-byte limit, then rerun the command.",
         null);
   }

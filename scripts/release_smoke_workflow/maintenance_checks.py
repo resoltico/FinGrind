@@ -70,13 +70,13 @@ def verify_backup_restore_and_rollback_surfaces(
     )
     require_match(
         restored_accounts_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"1000"',
-        f"{config.label} restored book did not expose account 1000",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.starter_cash_account_code}"',
+        f"{config.label} restored book did not expose the seeded cash account",
     )
     require_match(
         restored_accounts_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"2000"',
-        f"{config.label} restored book did not expose account 2000",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.expense_supplement_account_code}"',
+        f"{config.label} restored book did not preserve the declared expense supplement",
     )
 
     rollback_payload = parse_json_output(

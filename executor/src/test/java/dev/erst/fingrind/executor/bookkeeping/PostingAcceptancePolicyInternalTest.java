@@ -73,7 +73,7 @@ class PostingAcceptancePolicyInternalTest {
         PostingAcceptancePolicy.isInternalSystemPosting(
             new PostingCommand(
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 new JournalEntry(
                     LocalDate.parse("2026-04-07"),
                     List.of(

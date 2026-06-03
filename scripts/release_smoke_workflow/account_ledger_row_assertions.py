@@ -11,15 +11,15 @@ RECORDED_AT_PATTERN = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
 def assert_summary_row(config: ReleaseSmokeConfig, row: dict[str, str]) -> None:
     require_match(
         row["accountCode"],
-        r"^1000$",
+        r"^" + config.starter_cash_account_code + r"$",
         f"{config.label} account-ledger CSV summary row did not stay anchored to the requested account",
     )
     require(
         row["exportFamily"] == "posting-relationships"
-        and row["rowId"] == "ledger-summary:1000:EUR"
+        and row["rowId"] == "ledger-summary:" + config.starter_cash_account_code + ":EUR"
         and row["parentRowId"] == ""
         and row["relationKind"] == "ledger-summary"
-        and row["accountName"] == "Cash"
+        and row["accountName"] == config.starter_cash_account_name
         and row["accountType"] == "ASSET"
         and row["accountRole"] == "ORDINARY"
         and row["normalBalance"] == "DEBIT"
@@ -61,8 +61,8 @@ def assert_entry_row(
         and row["rowId"] == "ledger-entry:" + row["postingId"]
         and row["parentRowId"] == ""
         and row["relationKind"] == "entry"
-        and row["accountCode"] == "1000"
-        and row["accountName"] == "Cash"
+        and row["accountCode"] == config.starter_cash_account_code
+        and row["accountName"] == config.starter_cash_account_name
         and row["accountType"] == "ASSET"
         and row["accountRole"] == "ORDINARY"
         and row["normalBalance"] == "DEBIT"
@@ -102,29 +102,35 @@ def assert_counterpart_rows(
     config: ReleaseSmokeConfig,
     counterpart_rows: list[dict[str, str]],
     opening_entry: dict[str, str],
-    adjustment_entry: dict[str, str],
+    expense_entry: dict[str, str],
 ) -> None:
     opening_counterpart = next(
         row for row in counterpart_rows if row["postingId"] == opening_entry["postingId"]
     )
-    adjustment_counterpart = next(
-        row for row in counterpart_rows if row["postingId"] == adjustment_entry["postingId"]
+    expense_counterpart = next(
+        row for row in counterpart_rows if row["postingId"] == expense_entry["postingId"]
     )
     require(
         opening_counterpart["exportFamily"] == "posting-relationships"
         and opening_counterpart["rowId"]
-        == "ledger-counterpart:" + opening_entry["postingId"] + ":2000"
+        == "ledger-counterpart:"
+        + opening_entry["postingId"]
+        + ":"
+        + config.starter_revenue_account_code
         and opening_counterpart["parentRowId"] == "ledger-entry:" + opening_entry["postingId"]
         and opening_counterpart["relationKind"] == "counterpart-account"
-        and opening_counterpart["counterpartAccountCode"] == "2000"
+        and opening_counterpart["counterpartAccountCode"] == config.starter_revenue_account_code
         and opening_counterpart["effectiveDate"] == "2026-04-07"
-        and adjustment_counterpart["exportFamily"] == "posting-relationships"
-        and adjustment_counterpart["rowId"]
-        == "ledger-counterpart:" + adjustment_entry["postingId"] + ":2000"
-        and adjustment_counterpart["parentRowId"] == "ledger-entry:" + adjustment_entry["postingId"]
-        and adjustment_counterpart["relationKind"] == "counterpart-account"
-        and adjustment_counterpart["counterpartAccountCode"] == "2000"
-        and adjustment_counterpart["effectiveDate"] == "2026-04-08",
+        and expense_counterpart["exportFamily"] == "posting-relationships"
+        and expense_counterpart["rowId"]
+        == "ledger-counterpart:"
+        + expense_entry["postingId"]
+        + ":"
+        + config.expense_supplement_account_code
+        and expense_counterpart["parentRowId"] == "ledger-entry:" + expense_entry["postingId"]
+        and expense_counterpart["relationKind"] == "counterpart-account"
+        and expense_counterpart["counterpartAccountCode"] == config.expense_supplement_account_code
+        and expense_counterpart["effectiveDate"] == "2026-04-08",
         f"{config.label} account-ledger CSV output did not render normalized counterpart-account rows",
     )
 
@@ -133,15 +139,15 @@ def assert_source_document_rows(
     config: ReleaseSmokeConfig,
     source_document_rows: list[dict[str, str]],
     opening_entry: dict[str, str],
-    adjustment_entry: dict[str, str],
+    expense_entry: dict[str, str],
 ) -> None:
     sale_document = expected_source_document(config.actor_prefix, "sale", "2026-04-07")
-    adjustment_document = expected_source_document(config.actor_prefix, "adjustment", "2026-04-08")
+    expense_document = expected_source_document(config.actor_prefix, "expense", "2026-04-08")
     opening_source_document = next(
         row for row in source_document_rows if row["postingId"] == opening_entry["postingId"]
     )
-    adjustment_source_document = next(
-        row for row in source_document_rows if row["postingId"] == adjustment_entry["postingId"]
+    expense_source_document = next(
+        row for row in source_document_rows if row["postingId"] == expense_entry["postingId"]
     )
     require(
         opening_source_document["exportFamily"] == "posting-relationships"
@@ -154,18 +160,15 @@ def assert_source_document_rows(
         and opening_source_document["relationKind"] == "source-document"
         and opening_source_document["sourceDocumentId"] == sale_document["sourceDocumentId"]
         and opening_source_document["sourceDocumentType"] == sale_document["sourceDocumentType"]
-        and adjustment_source_document["exportFamily"] == "posting-relationships"
-        and adjustment_source_document["rowId"]
+        and expense_source_document["exportFamily"] == "posting-relationships"
+        and expense_source_document["rowId"]
         == "ledger-source-document:"
-        + adjustment_entry["postingId"]
+        + expense_entry["postingId"]
         + ":"
-        + adjustment_document["sourceDocumentId"]
-        and adjustment_source_document["parentRowId"]
-        == "ledger-entry:" + adjustment_entry["postingId"]
-        and adjustment_source_document["relationKind"] == "source-document"
-        and adjustment_source_document["sourceDocumentId"]
-        == adjustment_document["sourceDocumentId"]
-        and adjustment_source_document["sourceDocumentType"]
-        == adjustment_document["sourceDocumentType"],
+        + expense_document["sourceDocumentId"]
+        and expense_source_document["parentRowId"] == "ledger-entry:" + expense_entry["postingId"]
+        and expense_source_document["relationKind"] == "source-document"
+        and expense_source_document["sourceDocumentId"] == expense_document["sourceDocumentId"]
+        and expense_source_document["sourceDocumentType"] == expense_document["sourceDocumentType"],
         f"{config.label} account-ledger CSV output did not render normalized source-document rows",
     )

@@ -2,9 +2,9 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -17,29 +17,24 @@ class CliBookIdentityDisplayTest {
   void summaryRows_useCompactIdentityShape() {
     BookIdentity bookIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Acme Studio"),
-                List.of(
-                    new BusinessActivityTag("translation-services"),
-                    new BusinessActivityTag("platform-sales"))),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
     assertEquals(
         List.of(
-            List.of(
-                "Book",
-                "Acme Studio | country-agnostic-bookkeeping-kernel | Currency EUR | FY 01-01")),
+            List.of("Entity", "Acme Studio"),
+            List.of("Accounting kernel", "internal-management-cash-bookkeeping-kernel"),
+            List.of("Accounting basis", "CASH_BASIS"),
+            List.of("Functional currency", "EUR"),
+            List.of("Fiscal year start", "01-01")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
     assertEquals(
-        List.of(
-            "Accounting profile",
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL
-                .value()),
+        List.of("Accounting kernel", "internal-management-cash-bookkeeping-kernel"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(1));
     assertEquals(
-        List.of("Business activity", "translation-services, platform-sales"),
+        List.of("Accounting basis", "CASH_BASIS"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(2));
   }
 }

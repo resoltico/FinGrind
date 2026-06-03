@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,7 +35,8 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       postingFactStore.beginLedgerPlanTransaction();
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), List.of()));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -89,7 +91,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       assertThrows(IllegalStateException.class, postingFactStore::commitLedgerPlanTransaction);
       postingFactStore.beginLedgerPlanTransaction();
       assertThrows(IllegalStateException.class, postingFactStore::beginLedgerPlanTransaction);
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -138,7 +140,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("ledger-plan-native-commit-failure.sqlite");
     AccountCode deferredAccount = new AccountCode("3000");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       postingFactStore.beginLedgerPlanTransaction();
       declareAccount(
           postingFactStore,
@@ -181,7 +183,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     }
     Path initializedPath = tempDirectory.resolve("find-accounts-initialized.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(initializedPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           Map.of(
               cash,
@@ -241,7 +243,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      postingFactStore.openBook(
+          Instant.parse("2026-04-07T10:15:30Z"),
+          bookIdentity(),
+          dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+              bookIdentity().bookDoctrine().bookTemplateId()));
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
       assertFalse(Files.exists(parentDirectory));
@@ -256,7 +262,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = parentDirectory.resolve("ledger-plan-close-cleanup.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      postingFactStore.openBook(
+          Instant.parse("2026-04-07T10:15:30Z"),
+          bookIdentity(),
+          dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+              bookIdentity().bookDoctrine().bookTemplateId()));
     }
     assertFalse(Files.exists(databasePath));
     assertFalse(Files.exists(parentDirectory));
@@ -326,7 +336,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      postingFactStore.openBook(
+          Instant.parse("2026-04-07T10:15:30Z"),
+          bookIdentity(),
+          dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+              bookIdentity().bookDoctrine().bookTemplateId()));
       Files.writeString(siblingFile, "preserve parent");
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
@@ -346,7 +360,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      postingFactStore.openBook(
+          Instant.parse("2026-04-07T10:15:30Z"),
+          bookIdentity(),
+          dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+              bookIdentity().bookDoctrine().bookTemplateId()));
       try (SqliteNativeDatabase openedDatabase = requireStoreDatabase(postingFactStore)) {
         assertNotNull(openedDatabase);
         setStoreDatabase(postingFactStore, new IllegalStateClosingSqliteNativeDatabase());

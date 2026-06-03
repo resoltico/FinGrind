@@ -55,7 +55,10 @@ def _assert_postings_text(
 def _assert_account_balance_text(config: ReleaseSmokeConfig, text_output: str) -> None:
     for pattern, message in (
         (r"^Account Balance$", "report title"),
-        (r"Account[[:space:]]+:[[:space:]]+1000", "selected account"),
+        (
+            rf"Account[[:space:]]+:[[:space:]]+{re.escape(config.starter_cash_account_code)}",
+            "selected account",
+        ),
         (r"6\.00", "expected net balance"),
     ):
         require_match(
@@ -69,7 +72,7 @@ def _assert_trial_balance_text(config: ReleaseSmokeConfig, text_output: str) -> 
     for pattern, message in (
         (r"^Trial Balance$", "report title"),
         (r"As of[[:space:]]+:[[:space:]]+2026-04-08", "as-of date"),
-        (r"1000", "account 1000"),
+        (re.escape(config.starter_cash_account_code), "seeded cash account"),
         (r"6\.00", "expected net amount"),
     ):
         require_match(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: CORE
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -81,16 +81,90 @@ public record BookEntityName(String value)
 - Purpose: keep book identity explicit instead of leaving initialized books anonymous
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-## `BusinessActivityTag`
+## `AccountingBasis`
 
-`BusinessActivityTag` is the normalized activity-domain label attached to one entity profile.
+`AccountingBasis` is the canonical accounting-basis posture carried by one protected book.
 
 ```java
-public record BusinessActivityTag(String value)
+public enum AccountingBasis implements WireValue
 ```
 
-- Purpose: keep declared business activity cues typed instead of burying them in free-form notes
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
+- Purpose: state whether the initialized book follows one cash-basis or other future basis policy
+  instead of leaving that premise implicit
+- Current contract: `CASH_BASIS`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `AccountingFrameworkPosition`
+
+`AccountingFrameworkPosition` is the canonical reporting-framework posture carried by one
+protected book.
+
+```java
+public enum AccountingFrameworkPosition implements WireValue
+```
+
+- Purpose: keep the current non-statutory management posture explicit instead of implying one
+  statutory or standards-compliance claim
+- Current contract: `NON_STATUTORY_INTERNAL_MANAGEMENT`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `EntityForm`
+
+`EntityForm` is the canonical legal-form posture carried by one protected book.
+
+```java
+public enum EntityForm implements WireValue
+```
+
+- Purpose: separate one book's entity-form assumption from chart taxonomy and reporting language
+- Current contract: `OWNER_MANAGED_SINGLE_ENTITY`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `BookTemplateId`
+
+`BookTemplateId` is the canonical guided setup template identifier carried by one protected book.
+
+```java
+public enum BookTemplateId implements WireValue
+```
+
+- Purpose: make the seeded starter-chart family explicit instead of hiding it in executor setup
+  code
+- Current contract: `OWNER_MANAGED_SERVICE_CASH`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `BookDoctrine`
+
+`BookDoctrine` is the canonical doctrine owner for one protected book's accounting posture.
+
+```java
+public record BookDoctrine(
+    AccountingKernelProfileId accountingKernelProfileId,
+    AccountingBasis accountingBasis,
+    AccountingFrameworkPosition accountingFrameworkPosition,
+    EntityForm entityForm,
+    BookTemplateId bookTemplateId)
+```
+
+- Purpose: keep kernel profile, accounting basis, framework posture, entity form, and starter
+  template under one persisted doctrine owner
+- Validation: rejects `null` doctrine components
+
+## `BookDoctrines`
+
+`BookDoctrines` publishes the built-in doctrine bundles FinGrind can persist today.
+
+```java
+public final class BookDoctrines
+```
+
+- Purpose: centralize the current built-in doctrine so open-book, discovery, SQLite, CLI, and
+  tests all speak one doctrine bundle
+- Current built-in doctrine: `INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE`
 
 ## `AccountingEvidence`
 
@@ -167,14 +241,12 @@ public record ApprovalReference(
 `EntityProfile` is the structured neutral entity descriptor embedded in one book identity.
 
 ```java
-public record EntityProfile(
-    BookEntityName displayName,
-    List<BusinessActivityTag> businessActivityTags)
+public record EntityProfile(BookEntityName displayName)
 ```
 
-- Purpose: make entity name and activity tags explicit inside the current single-entity
-  bookkeeping kernel
-- Validation: rejects `null` display name and activity-tag collections
+- Purpose: keep the accounting-entity display identity explicit without overloading book identity
+  with non-doctrinal descriptive metadata
+- Validation: rejects `null` display name
 
 ## `BookIdentity`
 
@@ -183,17 +255,17 @@ public record EntityProfile(
 ```java
 public record BookIdentity(
     EntityProfile entityProfile,
-    AccountingKernelProfileId accountingKernelProfileId,
+    BookDoctrine bookDoctrine,
     CurrencyUnit functionalCurrency,
     FiscalYearStart fiscalYearStart)
 ```
 
-- Purpose: couple entity profile, persisted accounting-kernel profile, functional currency, and
-  fiscal-year anchor as one typed bookkeeping fact for one initialized book
+- Purpose: couple entity profile, persisted doctrine, functional currency, and fiscal-year anchor
+  as one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
   full entity profile
-- Validation: rejects `null` entity profile, accounting-kernel profile, functional currency, and
-  fiscal-year start
+- Validation: rejects `null` entity profile, doctrine, functional currency, and fiscal-year
+  start
 
 ## `AccountingKernelProfileId`
 
@@ -219,7 +291,7 @@ public final class AccountingKernelProfiles
 
 - Purpose: keep built-in profile ids centralized so CLI, executor, SQLite, discovery, and tests
   all speak one canonical vocabulary
-- Current built-in profile: "country-agnostic-bookkeeping-kernel"
+- Current built-in profile: "internal-management-cash-bookkeeping-kernel"
 
 ## `AccountType`
 
@@ -248,7 +320,7 @@ contra account.
 ```java
 public enum AccountRole implements WireValue {
   ORDINARY,
-  CONTRA
+  POLARITY_INVERTED
 }
 ```
 
@@ -349,7 +421,7 @@ public final class AccountSemantics
   nominal-account close semantics out of CLI, SQLite, and reporting adapters
 - Surface: `validate(...)`, `normalBalance(...)`, `closesTemporaryProfitAndLossAccountType(...)`, and
   `profitAndLossContributionMinorUnits(...)`
-- Doctrine: ordinary balance polarity is derived from `AccountType`, `CONTRA` reverses that
+- Doctrine: ordinary balance polarity is derived from `AccountType`, `POLARITY_INVERTED` reverses that
   polarity deliberately, and built-in close destinations are selected through
   `FinancialPositionLineClassification.RESULT_HOLDING` inside `AccountTaxonomy`
 
@@ -517,20 +589,6 @@ public final class CanonicalTemporalText
   `formatUtcInstant(...)`, `isCanonicalLocalDate(...)`, and `isCanonicalUtcInstant(...)`
 - Contract: `LOCAL_DATE_PATTERN` and `UTC_INSTANT_PATTERN` are the exact grammar fragments reused
   by CLI parsing, machine-readable request schemas, and SQLite file-format constraints
-
-## `InteractionLimits`
-
-`InteractionLimits` is the shared-kernel owner for page-size defaults and workflow step limits that
-both the public contract and the local executor contexts enforce.
-
-```java
-public final class InteractionLimits
-```
-
-- Purpose: keep paging defaults, paging hard limits, and ledger-plan step limits in one shared
-  owner instead of duplicating them between public protocol helpers and local executor models
-- Current contract: `REQUEST_PAYLOAD_MAX_BYTES = 1048576`, `PAGE_LIMIT_MIN = 1`,
-  `DEFAULT_PAGE_LIMIT = 50`, `PAGE_LIMIT_MAX = 200`, `LEDGER_PLAN_STEP_MAX = 100`
 
 ## `IdempotencyKey`
 
@@ -704,8 +762,8 @@ public enum PostingOriginKind implements WireValue {
   CASH_EXPENSE,
   EQUITY_CONTRIBUTION,
   EQUITY_WITHDRAWAL,
-  OPENING_BALANCE_ADJUSTMENT,
-  CORRECTION_ADJUSTMENT,
+  OPEN_ACCOUNTING_POSITION,
+  REVERSAL_ADJUSTMENT,
   REVERSAL_ADJUSTMENT,
   PERIOD_RESULT_TRANSFER
 }
@@ -778,132 +836,6 @@ public record RequestProvenance(
 - Validation: rejects `null` required fields and `null` optionals
 - Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
 
-## `SourceDocumentId`
-
-`SourceDocumentId` is the stable identifier for one source document referenced by accounting
-evidence.
-
-```java
-public record SourceDocumentId(String value)
-```
-
-- Purpose: carry one durable source-document identity through request, storage, and query
-  surfaces
-- Validation: rejects `null`, blank text, and values outside the public source-document-id grammar
-
-## `SourceDocumentType`
-
-`SourceDocumentType` is the stable public classifier for one source document referenced by
-accounting evidence.
-
-```java
-public record SourceDocumentType(String value)
-```
-
-- Purpose: distinguish source-document kinds without promoting adapter-specific file semantics into
-  the core model
-- Validation: rejects `null`, blank text, and values outside the public source-document-type
-  grammar
-
-## `StorageLocator`
-
-`StorageLocator` is the stable retained locator for one evidence artifact payload.
-
-```java
-public record StorageLocator(String value)
-```
-
-- Purpose: keep evidence retention references explicit without forcing one storage backend into the
-  core model
-- Validation: rejects `null`, blank text, and values longer than the public maximum length
-
-## `ContentSha256`
-
-`ContentSha256` is the canonical lowercase SHA-256 hex digest retained for one evidence artifact.
-
-```java
-public record ContentSha256(String value)
-```
-
-- Purpose: let FinGrind retain verifiable content identity for source documents
-- Validation: rejects `null` and any value outside the 64-character lowercase hex grammar
-
-## `SourceDocumentReference`
-
-`SourceDocumentReference` is the typed evidence link to one source document.
-
-```java
-public record SourceDocumentReference(
-    SourceDocumentId sourceDocumentId,
-    SourceDocumentType sourceDocumentType,
-    LocalDate documentDate,
-    Instant capturedAt,
-    StorageLocator storageLocator,
-    ContentSha256 contentSha256)
-```
-
-- Purpose: keep source-document evidence structured and durable across request and
-  committed-posting surfaces
-- Validation: rejects `null` source-document id, source-document type, document date, capture
-  timestamp, storage locator, or content digest
-
-## `ReversalReason`
-
-`ReversalReason` is the plain-language reason recorded for a reversal posting.
-
-```java
-public record ReversalReason(String value)
-```
-
-- Purpose: preserve operator-supplied reversal narrative in typed form
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `ReversalReference`
-
-`ReversalReference` is the additive link from a new posting to an earlier committed posting.
-
-```java
-public record ReversalReference(PostingId priorPostingId)
-```
-
-- Purpose: model reversal lineage outside the journal grammar
-- Validation: rejects `null` prior posting id
-
-## `SourceChannel`
-
-`SourceChannel` is the canonical owner of committed-entry ingress provenance.
-
-```java
-public enum SourceChannel implements WireValue {
-  CLI,
-  SYSTEM
-}
-```
-
-- Purpose: record whether one committed posting came from the operator-facing CLI surface or an
-  internal system workflow such as period-result transfer
-- Current scope: `CLI` for operator-issued commands and `SYSTEM` for FinGrind-generated
-  administrative postings
-- Wire contract: `wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the
-  stable public vocabulary
-
-## `WireValue`
-
-`WireValue` is the explicit contract for stable machine-facing enum vocabulary owned by FinGrind.
-
-```java
-public interface WireValue {
-  String wireValue();
-  static <E extends Enum<E> & WireValue> List<String> wireValues(Class<E> enumType)
-  static <E extends Enum<E> & WireValue> E fromWireValue(
-      Class<E> enumType, String wireValue, String unsupportedValueLabel)
-}
-```
-
-- Purpose: make stable JSON and protocol tokens a compile-time contract instead of a reflective
-  convention
-- Scope: implemented by exported enums whose public wire form must remain decoupled from Java enum
-  constant names
-- Parsing: `wireValues(...)` exposes the declaration-order public vocabulary, and
-  `fromWireValue(...)` resolves one stable token through the shared cached enum-vocabulary owner
-  instead of forcing each enum to reimplement its own lookup logic
+Source-document evidence identifiers, reversal lineage primitives, committed source-channel
+vocabulary, and the shared `WireValue` contract continue in
+[DOC_01_Core_EvidenceAndWire.md](./DOC_01_Core_EvidenceAndWire.md).

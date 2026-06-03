@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -203,7 +204,7 @@ class PostEntryCommandTranslatorTest {
   }
 
   @Test
-  void toPostingCommand_translatesOpeningBalanceAdjustmentsWithDirectLineage() {
+  void toPostingCommand_translatesOpenAccountingPositionWithDirectLineage() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -218,7 +219,8 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.OpeningBalanceAdjustment(journalEntry),
+            new BookkeepingEntry.OpenAccountingPosition(
+                journalEntry.effectiveDate(), openingBalances(journalEntry)),
             accountingEvidence("opening-balance-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-opening-balance-adjustment"),
@@ -227,7 +229,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.OPENING_BALANCE,
-            dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
             journalEntry,
             PostingLineageModel.direct(),
             accountingEvidence("opening-balance-adjustment"),
@@ -238,7 +240,7 @@ class PostEntryCommandTranslatorTest {
   }
 
   @Test
-  void toPostingCommand_translatesCorrectionAdjustmentsWithDirectLineage() {
+  void toPostingCommand_translatesOpenAccountingPositionIntoOpeningBalancePosting() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -253,20 +255,33 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.CorrectionAdjustment(journalEntry),
+            new BookkeepingEntry.OpenAccountingPosition(
+                journalEntry.effectiveDate(), openingBalances(journalEntry)),
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
             SourceChannel.CLI);
 
     assertEquals(
         new PostingCommand(
-            PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            PostingKind.OPENING_BALANCE,
+            dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
             journalEntry,
             PostingLineageModel.direct(),
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
             SourceChannel.CLI),
         PostEntryCommandTranslator.toPostingCommand(command));
+  }
+
+  private static List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance>
+      openingBalances(JournalEntry journalEntry) {
+    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
+        new ArrayList<>(journalEntry.lines().size());
+    for (JournalLine line : journalEntry.lines()) {
+      balances.add(
+          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
+    }
+    return List.copyOf(balances);
   }
 }

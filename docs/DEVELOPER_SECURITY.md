@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -151,9 +151,9 @@ Current verification paths:
 - `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
   developer direct-Java wrapper both resolve the managed runtime without leaking native-access
   warnings
-- `scripts/render-managed-sqlite-compiler-flags.py` makes Docker compile the native library from
-  the same canonical compile-option contract used elsewhere, and
-  `scripts/test-render-managed-sqlite-compiler-flags.sh` guards that renderer
+- `./scripts/docker-smoke.sh` proves the staged Docker context carries the managed SQLite
+  library together with its checksum and provenance files from the same Gradle-owned native build
+  path used by the source-checkout and direct-Java runtimes
 - `./scripts/verify-security-policy-surface.sh` is the live GitHub verifier for the repository's
   private vulnerability reporting surface, and `./scripts/verify-github-release.sh` calls it
   during public release verification

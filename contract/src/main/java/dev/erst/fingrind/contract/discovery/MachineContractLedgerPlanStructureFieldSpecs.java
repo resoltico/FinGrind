@@ -1,8 +1,8 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
-import dev.erst.fingrind.core.InteractionLimits;
 
 /** Plan-level and step-identity field specifications for executable ledger plans. */
 final class MachineContractLedgerPlanStructureFieldSpecs {
@@ -25,7 +25,7 @@ final class MachineContractLedgerPlanStructureFieldSpecs {
             description,
             MachineContractLedgerPlanVariantSchemas.stepSchema(),
             1,
-            InteractionLimits.LEDGER_PLAN_STEP_MAX));
+            ProtocolInteractionLimits.LEDGER_PLAN_STEP_MAX));
   }
 
   static MachineContractFieldSpec stepIdField() {

@@ -2,8 +2,8 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Builds request-input descriptors for the machine-readable contract. */
@@ -50,17 +50,27 @@ final class MachineContractRequestInputDescriptors {
             "successful discovery, administration, write, query, and report commands honor the selected output mode when they advertise one, while deterministic failures remain canonical JSON error envelopes so repair logic stays machine-readable"),
         ProtocolOptions.STDIN_TOKEN,
         "single SQLite book file for one entity",
+        ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES,
         List.of(
-            "key-file route: one UTF-8 passphrase file up to 4096 bytes for the selected encrypted book; the file must be a regular non-symlink file protected by POSIX owner-only permissions (0400 or 0600) or a Windows owner-only ACL, and it must live beneath an owner-only parent directory",
-            "standard-input route: read one UTF-8 passphrase payload up to 4096 bytes from standard input; this cannot be combined with --request-file -, and "
+            "key-file route: one UTF-8 passphrase file up to "
+                + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
+                + " bytes for the selected encrypted book; the file must be a regular non-symlink file protected by POSIX owner-only permissions (0400 or 0600) or a Windows owner-only ACL, and it must live beneath an owner-only parent directory",
+            "standard-input route: read one UTF-8 passphrase payload up to "
+                + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
+                + " bytes from standard input; this cannot be combined with --request-file -, and "
                 + operation(OperationId.REKEY_BOOK)
                 + " cannot use standard input for both current and replacement secrets",
-            "interactive-prompt route: prompt for the passphrase on the controlling terminal without echo; replacement prompt entry requires confirmation, and prompt input must also fit within the 4096-byte UTF-8 limit",
-            "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, reject control characters, and reject UTF-8 payloads larger than 4096 bytes so one secret remains reproducible across file, stdin, and prompt usage"),
+            "interactive-prompt route: prompt for the passphrase on the controlling terminal without echo; replacement prompt entry requires confirmation, and prompt input must also fit within the "
+                + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
+                + "-byte UTF-8 limit",
+            "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, reject control characters, and reject UTF-8 payloads larger than "
+                + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
+                + " bytes so one secret remains reproducible across file, stdin, and prompt usage"),
+        ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES,
         List.of(
             "request JSON must be one object document",
             "request JSON must fit within the "
-                + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+                + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
                 + "-byte UTF-8 payload limit whether it comes from a file or standard input",
             "unknown request fields are rejected at every object level",
             "duplicate JSON object keys are rejected",

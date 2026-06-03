@@ -84,7 +84,9 @@ def assert_loaded_sqlite_runtime(
         )
         require(
             require_string(runtime, "status") == "ready",
-            f"{config.label} environment output did not report a ready SQLite runtime",
+            f"{config.label} environment output did not report a ready SQLite runtime"
+            f" (status={require_string(runtime, 'status')},"
+            f" issue={runtime.get('issue', '<none>')})",
         )
         require(
             require_string(runtime, "runtimeProvenance") == expected_runtime_provenance,

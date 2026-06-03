@@ -59,36 +59,12 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                         + OperationId.TRIAL_BALANCE.wireName()),
                 java.util.List.of("PDF-capable reports", pdfCapableReportSummary())),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String machineRetrieval =
-        CliTextFormat.renderKeyValueBlock(
-            java.util.List.of(
-                java.util.List.of(
-                    "Command families",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " --output json --category query"),
-                java.util.List.of(
-                    "Command contracts",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json --focus commands --category query"),
-                java.util.List.of(
-                    "Request-file contract",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json --focus request-input"),
-                java.util.List.of(
-                    "Book and storage contract",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json --focus storage"),
-                java.util.List.of(
-                    "Runtime evidence",
-                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json")),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         CliDiscoveryTextSupport.joinSections(
             header,
             CliDiscoveryTextSupport.section("Operator Overview", operatorOverview),
-            CliDiscoveryTextSupport.section("Next Steps", operatorNextSteps),
-            CliDiscoveryTextSupport.section("For Agents And Automation", machineRetrieval)));
+            CliDiscoveryTextSupport.section("Next Steps", operatorNextSteps)));
   }
 
   private static String displayKernelScope(String scope) {

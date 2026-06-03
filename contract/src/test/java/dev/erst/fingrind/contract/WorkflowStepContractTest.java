@@ -58,7 +58,7 @@ class WorkflowStepContractTest {
     WorkflowStepDescriptor command = WorkflowStepDescriptor.command("./bin/fingrind help");
     WorkflowStepDescriptor edit =
         WorkflowStepDescriptor.edit(
-            "./declare-account-cash.json",
+            "./declare-account-supplemental-cash-reserve.json",
             """
             {
               "accountCode": "1000"
@@ -70,7 +70,9 @@ class WorkflowStepContractTest {
     assertEquals(WorkflowStepKind.COMMAND, command.kind());
     assertEquals("./bin/fingrind help", ((WorkflowStepDescriptor.Command) command).text());
     assertEquals(WorkflowStepKind.EDIT, edit.kind());
-    assertEquals("./declare-account-cash.json", ((WorkflowStepDescriptor.Edit) edit).path());
+    assertEquals(
+        "./declare-account-supplemental-cash-reserve.json",
+        ((WorkflowStepDescriptor.Edit) edit).path());
     assertTrue(
         ((WorkflowStepDescriptor.Edit) edit).content().contains("\"accountCode\": \"1000\""));
     assertEquals(WorkflowStepKind.NOTE, note.kind());

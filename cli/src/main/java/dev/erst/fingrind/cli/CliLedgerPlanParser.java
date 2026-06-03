@@ -19,6 +19,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolBookRequestFieldSets;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
@@ -29,13 +30,11 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountingKernelProfiles;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.EntityProfile;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -208,9 +207,8 @@ final class CliLedgerPlanParser {
             new EntityProfile(
                 CliOptionValues.parseBookEntityNameOption(
                     requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
-                    "openBook." + ProtocolOpenBookFields.ENTITY_NAME),
-                requiredBusinessActivityTags(openBookNode)),
-            AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                    "openBook." + ProtocolOpenBookFields.ENTITY_NAME)),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CliOptionValues.parseCurrencyUnitOption(
                 requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
@@ -219,42 +217,15 @@ final class CliLedgerPlanParser {
                 "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
   }
 
-  private static List<BusinessActivityTag> requiredBusinessActivityTags(ObjectNode openBookNode) {
-    JsonNode rawNode = requiredArray(openBookNode, ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
-    List<BusinessActivityTag> tags = new ArrayList<>();
-    int index = 0;
-    for (JsonNode tagNode : rawNode) {
-      if (!tagNode.isString()) {
-        throw new IllegalArgumentException(
-            "Field must contain only strings: "
-                + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS
-                + "["
-                + index
-                + "]");
-      }
-      tags.add(
-          CliOptionValues.parseBusinessActivityTagOption(
-              tagNode.stringValue(),
-              ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS + "[" + index + "]"));
-      index++;
-    }
-    if (tags.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Field must contain at least one value: "
-              + ProtocolOpenBookFields.BUSINESS_ACTIVITY_TAGS);
-    }
-    return List.copyOf(tags);
-  }
-
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {
-    rejectUnexpectedFields(
-        assertionNode, "assertion", ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields());
     LedgerAssertionKind kind =
         parseWireValue(
             requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.KIND),
             "assertion." + ProtocolLedgerPlanFields.Assertion.KIND,
             LedgerAssertionKind.wireValues(),
             LedgerAssertionKind::fromWireValue);
+    rejectUnexpectedFields(
+        assertionNode, "assertion", ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(kind));
     return switch (kind) {
       case ACCOUNT_DECLARED ->
           new LedgerAssertion.AccountDeclared(
@@ -292,14 +263,14 @@ final class CliLedgerPlanParser {
 
   private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
-      return new ListAccountsQuery(InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
+      return new ListAccountsQuery(ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(
-        queryObject, "query", ProtocolLedgerPlanRequestFieldSets.ledgerQueryFields());
+        queryObject, "query", ProtocolLedgerPlanRequestFieldSets.listAccountsQueryFields());
     return new ListAccountsQuery(
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
-            .orElse(InteractionLimits.DEFAULT_PAGE_LIMIT),
+            .orElse(ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
             .map(AccountPageCursor::fromWireValue));
   }
@@ -307,11 +278,15 @@ final class CliLedgerPlanParser {
   private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
       return new ListPostingsQuery(
-          Optional.empty(), null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
+          Optional.empty(),
+          null,
+          null,
+          ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+          Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(
-        queryObject, "query", ProtocolLedgerPlanRequestFieldSets.ledgerQueryFields());
+        queryObject, "query", ProtocolLedgerPlanRequestFieldSets.listPostingsQueryFields());
     return new ListPostingsQuery(
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)
             .map(AccountCode::new),
@@ -324,13 +299,14 @@ final class CliLedgerPlanParser {
             ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO,
             "query." + ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO),
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
-            .orElse(InteractionLimits.DEFAULT_PAGE_LIMIT),
+            .orElse(ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
             .map(PostingPageCursor::fromWireValue));
   }
 
   private static AccountBalanceQuery readAccountBalanceQuery(ObjectNode query) {
-    rejectUnexpectedFields(query, "query", ProtocolLedgerPlanRequestFieldSets.ledgerQueryFields());
+    rejectUnexpectedFields(
+        query, "query", ProtocolLedgerPlanRequestFieldSets.accountBalanceQueryFields());
     return new AccountBalanceQuery(
         new AccountCode(requiredText(query, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)),
         optionalCanonicalLocalDate(
@@ -341,9 +317,7 @@ final class CliLedgerPlanParser {
             query,
             ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO,
             "query." + ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO),
-        optionalText(query, ProtocolLedgerPlanFields.Query.POSTING_COVERAGE)
-            .map(PostingCoverage::fromWireValue)
-            .orElse(PostingCoverage.ALL_POSTING_KINDS));
+        PostingCoverage.ALL_POSTING_KINDS);
   }
 
   private static @Nullable LocalDate optionalCanonicalLocalDate(

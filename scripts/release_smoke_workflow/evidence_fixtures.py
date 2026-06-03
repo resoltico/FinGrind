@@ -16,7 +16,7 @@ def retained_source_document(
 ) -> dict[str, str]:
     return {
         "sourceDocumentId": f"{actor_prefix}-{evidence_suffix}-document-1",
-        "sourceDocumentType": "cash-receipt",
+        "sourceDocumentType": source_document_type(evidence_suffix),
         "documentDate": document_date,
         "capturedAt": f"{document_date}T10:15:30Z",
         "storageLocator": f"vault://release-smoke/{actor_prefix}/{evidence_suffix}/document-1",
@@ -41,3 +41,10 @@ def posting_provenance(
 
 def evidence_digest(actor_prefix: str, evidence_suffix: str) -> str:
     return sha256(f"sha256-{actor_prefix}-{evidence_suffix}".encode("utf-8")).hexdigest()
+
+
+def source_document_type(evidence_suffix: str) -> str:
+    return {
+        "sale": "cash-receipt",
+        "expense": "expense-receipt",
+    }.get(evidence_suffix, "cash-receipt")

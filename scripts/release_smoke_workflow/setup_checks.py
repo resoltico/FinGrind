@@ -57,9 +57,28 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected entity name",
     )
     require(
-        payload_field(open_payload, "payload", "bookIdentity", "businessActivityTags")
-        == config.business_activity_tags,
-        f"{config.label} open-book did not echo the expected business activity tags",
+        payload_field(open_payload, "payload", "bookIdentity", "accountingKernelProfile")
+        == config.accounting_kernel_profile,
+        f"{config.label} open-book did not publish the expected accounting kernel profile",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "accountingBasis")
+        == config.accounting_basis,
+        f"{config.label} open-book did not publish the expected accounting basis",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "accountingFrameworkPosition")
+        == config.accounting_framework_position,
+        f"{config.label} open-book did not publish the expected framework posture",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "entityForm") == config.entity_form,
+        f"{config.label} open-book did not publish the expected entity form",
+    )
+    require(
+        payload_field(open_payload, "payload", "bookIdentity", "bookTemplateId")
+        == config.book_template_id,
+        f"{config.label} open-book did not publish the expected book template",
     )
     require(
         payload_field(open_payload, "payload", "bookIdentity", "functionalCurrency")
@@ -72,14 +91,14 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not echo the expected fiscal year start",
     )
     require(
-        "policyProfile" not in payload_field(open_payload, "payload", "bookIdentity"),
-        f"{config.label} open-book leaked retired policy-profile identity",
+        "businessActivityTags" not in payload_field(open_payload, "payload", "bookIdentity"),
+        f"{config.label} open-book leaked retired business-activity metadata",
     )
 
 
 def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> None:
     print(f"{config.label}: verifying account declaration and registry listing")
-    declare_cash_output = run_cli(
+    declare_asset_output = run_cli(
         config,
         operation_ids["declareAccount"],
         "--book-file",
@@ -87,7 +106,7 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         "--book-key-file",
         config.book_key.argument,
         "--request-file",
-        config.declare_cash.argument,
+        config.declare_asset_supplement.argument,
     )
     declare_revenue_output = run_cli(
         config,
@@ -97,7 +116,7 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         "--book-key-file",
         config.book_key.argument,
         "--request-file",
-        config.declare_revenue.argument,
+        config.declare_expense_supplement.argument,
     )
     list_output = run_cli(
         config,
@@ -108,22 +127,32 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book_key.argument,
     )
     require_match(
-        declare_cash_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"1000"',
-        f"{config.label} cash declaration did not echo account 1000",
+        declare_asset_output,
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.asset_supplement_account_code}"',
+        f"{config.label} asset-supplement declaration did not echo the requested account",
     )
     require_match(
         declare_revenue_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"2000"',
-        f"{config.label} revenue declaration did not echo account 2000",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.expense_supplement_account_code}"',
+        f"{config.label} expense-supplement declaration did not echo the requested account",
     )
     require_match(
         list_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"1000"',
-        f"{config.label} account listing did not include account 1000",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.starter_cash_account_code}"',
+        f"{config.label} account listing did not include the seeded cash account",
     )
     require_match(
         list_output,
-        r'"accountCode"[[:space:]]*:[[:space:]]*"2000"',
-        f"{config.label} account listing did not include account 2000",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.starter_revenue_account_code}"',
+        f"{config.label} account listing did not include the seeded revenue account",
+    )
+    require_match(
+        list_output,
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.asset_supplement_account_code}"',
+        f"{config.label} account listing did not include the declared asset supplement",
+    )
+    require_match(
+        list_output,
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.expense_supplement_account_code}"',
+        f"{config.label} account listing did not include the declared expense supplement",
     )

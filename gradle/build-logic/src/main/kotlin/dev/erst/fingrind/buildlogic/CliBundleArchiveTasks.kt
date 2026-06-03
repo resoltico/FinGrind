@@ -15,6 +15,7 @@ import org.gradle.kotlin.dsl.register
 internal data class CliBundleArchiveRegistration(
     val archiveTask: TaskProvider<out AbstractArchiveTask>,
     val checksumTask: TaskProvider<WriteSha256FileTask>,
+    val manifestTask: TaskProvider<WriteBundleArchiveManifestTask>,
 )
 
 internal fun Project.registerCliBundleArchiveTasks(
@@ -25,6 +26,7 @@ internal fun Project.registerCliBundleArchiveTasks(
     bundleRootDirectory: Provider<Directory>,
     bundleName: Provider<String>,
     bundleSha256File: Provider<RegularFile>,
+    bundleArchiveManifestFile: Provider<RegularFile>,
 ): CliBundleArchiveRegistration {
     val bundleArchiveTask: TaskProvider<out AbstractArchiveTask> =
         if (bundleOperatingSystemId == "windows") {
@@ -89,18 +91,21 @@ internal fun Project.registerCliBundleArchiveTasks(
             outputFile.set(bundleSha256File)
         }
 
-    tasks.register<ReportBundleArchiveOutputsTask>("bundleCliArchive") {
-        group = "distribution"
-        description =
-            "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
-        dependsOn(bundleArchiveTask)
-        dependsOn(bundleCliSha256)
-        archiveFile.set(bundleArchiveTask.flatMap { it.archiveFile })
-        checksumFile.set(bundleCliSha256.flatMap { it.outputFile })
-    }
+    val bundleCliArchive =
+        tasks.register<WriteBundleArchiveManifestTask>("bundleCliArchive") {
+            group = "distribution"
+            description =
+                "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
+            dependsOn(bundleArchiveTask)
+            dependsOn(bundleCliSha256)
+            archiveFile.set(bundleArchiveTask.flatMap { it.archiveFile })
+            checksumFile.set(bundleCliSha256.flatMap { it.outputFile })
+            outputFile.set(bundleArchiveManifestFile)
+        }
 
     return CliBundleArchiveRegistration(
         archiveTask = bundleArchiveTask,
         checksumTask = bundleCliSha256,
+        manifestTask = bundleCliArchive,
     )
 }

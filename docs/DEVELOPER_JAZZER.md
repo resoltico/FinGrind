@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -31,8 +31,9 @@ That separation is deliberate:
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
-- deterministic local and CI-safe verification through `jazzer/bin/test`,
-  `jazzer/bin/regression`, and `jazzer/bin/check`
+- deterministic local and CI-safe verification through the root-owned `jazzerCheck` Gradle task,
+  exposed to operators as `jazzer/bin/check` and complemented by `jazzer/bin/test` and
+  `jazzer/bin/regression`
 - active local fuzzing through the remaining `jazzer/bin/*` wrappers
 
 Active harness launching now goes through Jazzer's official command-line JUnit runner instead of a
@@ -46,13 +47,14 @@ Use these surfaces intentionally:
 - `jazzer/bin/test`
 - `jazzer/bin/regression`
 - `jazzer/bin/check`
+- `./gradlew jazzerCheck`
 - `jazzer/bin/clean-local-findings`
 - `jazzer/bin/clean-local-corpus`
 
-Those wrapper commands are the supported deterministic and local-hygiene Jazzer surface. They are
-the supported way to run Jazzer deterministic tests, committed-seed replay, and cleanup of
-disposable local artifacts. Only the deterministic verification commands belong in GitHub
-workflows.
+Those commands are the supported deterministic and local-hygiene Jazzer surface. The root-owned
+`jazzerCheck` task is the authoritative deterministic verification owner; `jazzer/bin/check`
+delegates to it, while the remaining wrappers keep their direct nested-build ownership for replay,
+regression, and cleanup. Only the deterministic verification commands belong in GitHub workflows.
 
 For active fuzzing, use only:
 
@@ -114,6 +116,7 @@ or tag-based launcher hints to fuzz classes.
 ## Main Commands
 
 ```bash
+./gradlew jazzerCheck --console=plain
 jazzer/bin/test --console=plain
 jazzer/bin/regression --console=plain
 jazzer/bin/check --console=plain

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -139,8 +139,10 @@ any owned lock as proof that another Git owner has the checkout open. If it repo
 `git gc` or equivalent cleanup.
 
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
-That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves
-through the normal Gradle verification path; there is no mutable alias-verifier sidecar anymore.
+That gate now also proves the repo-owned JaCoCo snapshot contract: the pinned snapshot base
+version, the published build label in `gradle/fingrind-build.properties`, and the resolved
+snapshot artifact must align through `./scripts/verify-jacoco-snapshot.sh` before the Gradle
+stages run.
 Because this baseline gate runs before `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD`,
 any bundle archive names, Docker smoke echoes, or distribution manifests produced in Step 1 will
 reflect the checkout's pre-sweep version string. That is expected. Treat Step 1 as a payload
@@ -424,20 +426,16 @@ merge that fix, and then use the `workflow_dispatch` rerun command above against
 `vX.Y.Z` tag so the rebuilt assets and container are produced from the same verified release
 commit.
 
-If the repair changes how `release.yml` parses `:cli:bundleCliArchive` output, verify that the
-rerun workflow accepts both the current `main` output contract and the immutable tag's output
-contract before dispatching it. `workflow_dispatch` executes the workflow file from `main` but
-checks out the tagged release source; those surfaces can legitimately differ after a post-tag
-publication repair.
+The rerun workflow now reads the canonical bundle-archive manifest instead of scraping
+`:cli:bundleCliArchive` console output, so post-tag publication repairs do not need compatibility
+shims for historical log dialects.
 
-If the repair changes container publication, verify that the `Release` workflow's `container` job
-builds from the staged Docker context at `cli/build/docker-context` instead of the repository root
-before dispatching the rerun. The local Docker acceptance gate already proves the staged context
-path; the public container publication path must reuse that same checked assembly boundary rather
-than reopening the checkout root under repository-root `.dockerignore` rules. The tagged rerun
-must also materialize workflow-owned helper scripts from `main` before it replays the immutable
-tag checkout; otherwise the rerun will keep the stale tag-owned verifier or release-asset helper
-and ignore the merged repair.
+If the repair changes container publication, verify that the `Release` workflow's staging-container
+build job builds from the staged Docker context under the active CLI build root instead of the
+repository root before dispatching the rerun. The local Docker acceptance gate
+already proves that staged context boundary; the public container publication path must reuse that
+same checked assembly input rather than reopening the checkout root under repository-root
+`.dockerignore` rules.
 
 Never create a second tag or move an existing release tag just to retry CI.
 
@@ -567,9 +565,10 @@ Requirements:
 - The release workflow must also attest the runner-built archive and checksum bytes on each
   target runner before publication so build-output provenance and public-byte provenance both
   exist and can be compared by digest.
-- Publication convergence is by asset name and digest, not by asset name alone. If a repaired
-  rerun rebuilds `fingrind-X.Y.Z-...` under an existing release asset name and the bytes differ,
-  the publication step must replace the stale release asset before attestation verification runs.
+- Publication convergence is by asset name and digest while the release is a draft. Once the
+  release is public, asset bytes are immutable: if a repaired rerun would need different bytes
+  under the same public asset name, fail the rerun and cut a new version instead of replacing
+  public assets in place.
 - Every published checksum file must target the matching archive name and its declared digest must
   match the downloadable archive bytes.
 - The generated GitHub source archives do not include repo-owned agent metadata such as
@@ -590,10 +589,10 @@ propagation because GitHub can publish those surfaces asynchronously after the b
 complete. The release workflow's verifier job timeout must exceed that retry budget with headroom;
 treat a shorter timeout as a release-system defect.
 
-The release workflow's `container` job is also expected to wait for this complete GitHub release
-asset set before it publishes the public image. If container publication succeeds while the
-release asset set is incomplete, treat that as a release-system defect and fix the repository
-before the next release.
+The release workflow's staged Linux container builds are also expected to wait for this complete
+GitHub release draft asset set before they promote the public image tags. If public container
+promotion succeeds while the release asset set is incomplete, treat that as a release-system
+defect and fix the repository before the next release.
 
 ### Step 9
 
@@ -645,9 +644,9 @@ request fields — or when the mounted-workspace user contract changes — updat
 `scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
 process where the operator-side verifier lags behind the published statement surface.
 
-The release workflow's `container` job runs this same verifier after image publication, so a
-green publication workflow and a green Step 9 operator run now speak to the same public contract
-rather than two different verification depths.
+The release workflow's staged-container and promotion jobs run this same verifier after image
+publication, so a green publication workflow and a green Step 9 operator run now speak to the
+same public contract rather than two different verification depths.
 
 If the public verifier fails, inspect the reported step, fix the published state or the verifier
 owner if the probe itself is wrong, and rerun the same anonymous verification command. Do not

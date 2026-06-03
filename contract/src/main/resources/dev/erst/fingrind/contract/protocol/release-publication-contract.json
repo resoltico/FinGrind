@@ -1,13 +1,4 @@
 {
-  "workflowDispatchHelperRef": "main",
-  "bundleOutputArchivePrefixes": [
-    "FINGRIND_BUNDLE_ARCHIVE=",
-    "FinGrind bundle archive: "
-  ],
-  "bundleOutputChecksumPrefixes": [
-    "FINGRIND_BUNDLE_CHECKSUM=",
-    "FinGrind bundle checksum: "
-  ],
   "publicBundleBuildTargets": {
     "linux-x86_64": {
       "runnerLabel": "ubuntu-24.04",
@@ -50,6 +41,7 @@
   ],
   "containerRegistry": "ghcr.io",
   "containerImageName": "fingrind",
+  "containerStagingImageName": "fingrind-publication-staging",
   "containerRunnerLabel": "ubuntu-24.04",
   "containerPlatforms": [
     "linux/amd64",

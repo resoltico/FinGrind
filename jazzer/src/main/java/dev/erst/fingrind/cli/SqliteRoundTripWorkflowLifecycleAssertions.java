@@ -110,9 +110,12 @@ final class SqliteRoundTripWorkflowLifecycleAssertions {
     return storedPosting.orElseThrow();
   }
 
-  static void verifyDeclaredAccountListing(int listedAccountCount, int declaredAccountCount) {
-    if (listedAccountCount != declaredAccountCount) {
-      throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+  static void verifyDeclaredAccountListing(
+      java.util.List<dev.erst.fingrind.contract.bookkeeping.DeclaredAccount> listedAccounts,
+      java.util.List<dev.erst.fingrind.contract.bookkeeping.DeclaredAccount> declaredAccounts) {
+    if (!listedAccounts.containsAll(declaredAccounts)) {
+      throw new IllegalStateException(
+          "Declared-account listing drifted from the initialized registry.");
     }
   }
 

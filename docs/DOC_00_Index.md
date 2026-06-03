@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: INDEX
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -31,7 +31,7 @@ route:
   factors.
 - Bookkeeping-kernel scope and intentional exclusions:
   use [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md) for the current
-  country-agnostic bookkeeping kernel, its public truth boundaries, and its intentional
+  narrow built-in bookkeeping kernel, its public truth boundaries, and its intentional
   exclusions.
 - Local bookkeeping context:
   use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md) for executor-owned
@@ -50,6 +50,7 @@ route:
 | File | Scope |
 |:-----|:------|
 | `DOC_01_Core.md` | exported accounting vocabulary and invariants from the `core` module |
+| `DOC_01_Core_EvidenceAndWire.md` | exported source-document evidence primitives, reversal lineage, source-channel provenance, and shared wire-vocabulary support from the `core` module |
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, discovery namespaces, request/response descriptors, deterministic contract errors, and workflow/discovery owners |
@@ -72,7 +73,9 @@ route:
 | `AccountSemantics` | `DOC_01_Core.md` | `AccountSemantics` |
 | `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
+| `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
 | `AccountingEvidence` | `DOC_01_Core.md` | `AccountingEvidence` |
+| `AccountingFrameworkPosition` | `DOC_01_Core.md` | `AccountingFrameworkPosition` |
 | `AccountingKernelProfileId` | `DOC_01_Core.md` | `AccountingKernelProfileId` |
 | `AccountingKernelProfiles` | `DOC_01_Core.md` | `AccountingKernelProfiles` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
@@ -83,23 +86,25 @@ route:
 | `ApprovalType` | `DOC_01_Core.md` | `ApprovalType` |
 | `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
+| `BookDoctrine` | `DOC_01_Core.md` | `BookDoctrine` |
+| `BookDoctrines` | `DOC_01_Core.md` | `BookDoctrines` |
 | `BookEntityName` | `DOC_01_Core.md` | `BookEntityName` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
-| `BusinessActivityTag` | `DOC_01_Core.md` | `BusinessActivityTag` |
+| `BookTemplateId` | `DOC_01_Core.md` | `BookTemplateId` |
 | `CanonicalTemporalText` | `DOC_01_Core.md` | `CanonicalTemporalText` |
 | `CausationId` | `DOC_01_Core.md` | `CausationId` |
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
 | `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
-| `ContentSha256` | `DOC_01_Core.md` | `ContentSha256` |
+| `ContentSha256` | `DOC_01_Core_EvidenceAndWire.md` | `ContentSha256` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
 | `CurrencyBalance` | `DOC_01_Core.md` | `CurrencyBalance` |
 | `CurrencyUnit` | `DOC_01_Core.md` | `CurrencyUnit` |
 | `EffectiveDateRange` | `DOC_01_Core.md` | `EffectiveDateRange` |
 | `EntityProfile` | `DOC_01_Core.md` | `EntityProfile` |
+| `EntityForm` | `DOC_01_Core.md` | `EntityForm` |
 | `FinancialPositionLineClassification` | `DOC_01_Core.md` | `FinancialPositionLineClassification` |
 | `FiscalYearStart` | `DOC_01_Core.md` | `FiscalYearStart` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
-| `InteractionLimits` | `DOC_01_Core.md` | `InteractionLimits` |
 | `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
 | `JournalEntryValidationException` | `DOC_01_Core.md` | `JournalEntryValidationException` |
 | `JournalLine` | `DOC_01_Core.md` | `JournalLine` |
@@ -114,15 +119,15 @@ route:
 | `ProfitAndLossLineClassification` | `DOC_01_Core.md` | `ProfitAndLossLineClassification` |
 | `ReportingPeriod` | `DOC_01_Core.md` | `ReportingPeriod` |
 | `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
-| `ReversalReason` | `DOC_01_Core.md` | `ReversalReason` |
-| `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
-| `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
-| `SourceDocumentId` | `DOC_01_Core.md` | `SourceDocumentId` |
-| `SourceDocumentReference` | `DOC_01_Core.md` | `SourceDocumentReference` |
-| `SourceDocumentType` | `DOC_01_Core.md` | `SourceDocumentType` |
+| `ReversalReason` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReason` |
+| `ReversalReference` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReference` |
+| `SourceChannel` | `DOC_01_Core_EvidenceAndWire.md` | `SourceChannel` |
+| `SourceDocumentId` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentId` |
+| `SourceDocumentReference` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentReference` |
+| `SourceDocumentType` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentType` |
 | `StatementLineKind` | `DOC_01_Core.md` | `StatementLineKind` |
-| `StorageLocator` | `DOC_01_Core.md` | `StorageLocator` |
-| `WireValue` | `DOC_01_Core.md` | `WireValue` |
+| `StorageLocator` | `DOC_01_Core_EvidenceAndWire.md` | `StorageLocator` |
+| `WireValue` | `DOC_01_Core_EvidenceAndWire.md` | `WireValue` |
 | `BookkeepingKernelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `ApplicationIdentity` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ArtifactOutputDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -183,11 +188,12 @@ route:
 | `ContractTemplates.LedgerPlanStepTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.LedgerPlanTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.OpenBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.OpeningBalanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ReversalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `DiscoveryDetail` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryDetail` |
@@ -216,6 +222,7 @@ route:
 | `ProtectedBookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `ProtectedBookFormatContract` |
 | `ProtocolArtifactOutput` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolArtifactOutput` |
 | `ProtocolCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolCatalog` |
+| `ProtocolInteractionLimits` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolInteractionLimits` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolDiagnosticCode` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessPayload`, `ProtocolEnvelopeStatus`, And `ProtocolDiagnosticCode` |
@@ -236,6 +243,7 @@ route:
 | `ProtocolPostEntryFields.Approval` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Evidence` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.JournalLine` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.OpeningBalance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Provenance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Reversal` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.SourceDocument` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -286,6 +294,7 @@ route:
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookInspection` | `DOC_02_AdministrationAndReports.md` | `BookInspection` |
+| `BookTemplateAccounts` | `DOC_02_AdministrationAndReports.md` | `BookTemplateAccounts` |
 | `BookMaintenanceArtifactRole` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
 | `BookMaintenanceRejection` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
 | `BookMaintenanceVerificationFailure` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
@@ -361,6 +370,7 @@ route:
 | `BookkeepingAdministrationRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator` |
 | `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
 | `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
+| `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
 | `BookkeepingPostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator` |
 | `BookkeepingPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator` |
 | `CommitEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
@@ -369,6 +379,7 @@ route:
 | `LedgerBoundaryPhase` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus` |
 | `LedgerExecutionJournal` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult` |
 | `LedgerFact` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerFact` |
+| `LedgerFactKind` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerFactKind` |
 | `LedgerJournalEntry` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult` |
 | `LedgerJournalKind` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus` |
 | `LedgerJournalStep` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult` |
@@ -464,6 +475,8 @@ route:
 | `SqliteBookKeyFile` | `DOC_03_BookSessionsAndAdapters.md` | `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator` |
 | `SqliteBookKeyFileGenerator` | `DOC_03_BookSessionsAndAdapters.md` | `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator` |
 | `SqliteBookPassphrase` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphrase` |
+| `SqliteBookPassphraseSourceBytes` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphraseSourceBytes`, And `SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException` |
+| `SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphraseSourceBytes`, And `SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException` |
 | `SqliteBookSessionMode` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqlitePeriodResultTransferSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqlitePeriodResultTransferSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqliteFailureClassifier` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteFailureClassifier` And `SqliteFailureClassifier.Category` |

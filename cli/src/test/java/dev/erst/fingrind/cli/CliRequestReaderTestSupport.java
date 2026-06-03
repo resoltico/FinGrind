@@ -85,7 +85,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
   static String validLegacyCorrectionRequestJson() {
     return """
         {
-          "entryKind": "CORRECTION_ADJUSTMENT",
+          "entryKind": "REVERSAL_ADJUSTMENT",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -158,7 +158,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "open-book",
               "openBook": {
                 "entityName": "Acme Studio",
-                "businessActivityTags": ["translation-services"],
                 "functionalCurrency": "EUR",
                 "fiscalYearStart": "01-01"
               }

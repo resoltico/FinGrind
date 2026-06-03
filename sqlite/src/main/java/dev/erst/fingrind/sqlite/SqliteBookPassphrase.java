@@ -11,8 +11,6 @@ import java.util.function.BiFunction;
 
 /** UTF-8 book passphrase bytes with one explicit owner and one best-effort zeroization boundary. */
 public final class SqliteBookPassphrase implements AutoCloseable {
-  public static final int MAX_UTF8_SOURCE_BYTES = 4096;
-
   private final String sourceDescription;
   private final byte[] utf8Bytes;
 

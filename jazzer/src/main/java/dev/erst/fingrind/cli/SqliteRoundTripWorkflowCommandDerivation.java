@@ -74,11 +74,22 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   }
 
   private static BookkeepingEntry directAdministrativeEntry(PostEntryCommand command) {
-    if (command.entry()
-        instanceof BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment) {
-      return new BookkeepingEntry.OpeningBalanceAdjustment(openingBalanceAdjustment.journalEntry());
+    if (command.entry() instanceof BookkeepingEntry.OpenAccountingPosition openingPosition) {
+      return new BookkeepingEntry.OpenAccountingPosition(
+          openingPosition.effectiveDate(), openingPosition.balances());
     }
-    return new BookkeepingEntry.CorrectionAdjustment(CliFuzzFixtures.journalEntry(command));
+    JournalEntry journalEntry = CliFuzzFixtures.journalEntry(command);
+    return new BookkeepingEntry.OpenAccountingPosition(
+        journalEntry.effectiveDate(),
+        journalEntry.lines().stream()
+            .map(
+                line ->
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        line.accountCode(),
+                        line.side(),
+                        dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
+                            line.amount().money())))
+            .toList());
   }
 
   static List<JournalLine> exactReversalLines(List<JournalLine> lines) {

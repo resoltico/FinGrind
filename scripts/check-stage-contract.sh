@@ -64,7 +64,9 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-sqlite-runtime-contract.sh
     scripts/test-verify-sqlite-runtime-powershell.sh
-    scripts/test-render-managed-sqlite-compiler-flags.sh
+    scripts/test-verify-jacoco-snapshot.sh
+    scripts/test-verify-build-logic-plugin-jar.sh
+    scripts/test-sqlite-test-fixture-refresh-wiring.sh
     scripts/test-verify-repo-hygiene.sh
     scripts/validate-devcontainer.sh
     scripts/verify-source-checkout-sqlite-runtime.sh

@@ -39,6 +39,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -83,7 +84,7 @@ final class LedgerPlanServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity());
+    bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
     return bookSession;
   }
 
@@ -249,8 +250,10 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public BookOpeningOutcome openBook(
-        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
-      return delegate.openBook(initializedAt, bookIdentity);
+        Instant initializedAt,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        List<AccountDeclaration> seededAccounts) {
+      return delegate.openBook(initializedAt, bookIdentity, seededAccounts);
     }
 
     @Override
@@ -408,7 +411,9 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public BookOpeningOutcome openBook(
-        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+        Instant initializedAt,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        List<AccountDeclaration> seededAccounts) {
       throw new IllegalStateException("boom");
     }
 
@@ -520,7 +525,9 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public BookOpeningOutcome openBook(
-        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+        Instant initializedAt,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        List<AccountDeclaration> seededAccounts) {
       throw new IllegalStateException("boom");
     }
 

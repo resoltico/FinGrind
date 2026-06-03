@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
@@ -27,6 +27,22 @@ public final class BookAdministrationService
 - Boundary: the service operates after the public `DeclareAccountCommand` has crossed the
   bookkeeping translator edge and become one local `BookIdentity`, `AccountDeclaration`, or
   `ReportingPeriod`
+
+## `BookTemplateAccounts`
+
+`BookTemplateAccounts` publishes the canonical starter-chart declarations for each built-in book
+template.
+
+```java
+public final class BookTemplateAccounts
+```
+
+- Purpose: keep seeded starter-chart ownership explicit instead of scattering those declarations
+  across CLI scaffolds, setup guides, or storage fixtures
+- Surface: `declarations(BookTemplateId)` returns the typed `AccountDeclaration` list for one
+  built-in template
+- Current template line: `OWNER_MANAGED_SERVICE_CASH` seeds `cash`, `owner-capital`,
+  `owner-draws`, `result-holding`, `service-revenue`, and `operating-expense`
 
 ## `BookReadService`
 

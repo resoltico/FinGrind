@@ -39,7 +39,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   void declareAccount_rollsBackRuntimeFailuresAfterTheTransactionBegins() {
     Path databasePath = tempDirectory.resolve("declare-runtime-rollback.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(FIXED_INSTANT, bookIdentity());
+      postingFactStore.openBook(FIXED_INSTANT, bookIdentity(), List.of());
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
       setStoreDatabase(
@@ -86,7 +86,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   void declareAccount_redeclaresActiveAccountsWithoutMarkingThemAsReactivated() {
     Path databasePath = tempDirectory.resolve("declare-active-redeclare.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -209,7 +209,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   void transferPeriodResult_rollsBackRejectedGeneratedPostingsBeforeAnyCloseFactIsStored() {
     Path databasePath = tempDirectory.resolve("transfer-period-result-generated-rejection.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
 
       IllegalStateException failure =
           assertThrows(
@@ -231,7 +231,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                                   dev.erst.fingrind.executor.bookkeeping.PostingLineageModel
                                       .direct(),
                                   PostingKind.STANDARD,
-                                  dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                                  dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                                   generatedEvidence(
                                       "generated-close-idem", "period-result-transfer-plan"),
                                   postingFact(
@@ -266,7 +266,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   void transferPeriodResult_wrapsNativeFailuresFromStaleDatabaseHandles() throws Exception {
     Path databasePath = tempDirectory.resolve("transfer-period-result-stale.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       try (StoreDatabaseSwap ignored =
           swapStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath))) {
         IllegalStateException failure =
@@ -287,7 +287,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
       throws Exception {
     Path databasePath = tempDirectory.resolve("transfer-period-result-high-level-stale.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       try (StoreDatabaseSwap ignored =
           swapStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath))) {
         PeriodResultTransferService service =
@@ -323,7 +323,7 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
   void transferPeriodResult_highLevelRollsBackRuntimeFailuresAfterTheTransactionBegins() {
     Path databasePath = tempDirectory.resolve("transfer-period-result-high-level-runtime.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
       setStoreDatabase(

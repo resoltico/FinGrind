@@ -1,24 +1,12 @@
 {
-  "entryKind": "CORRECTION_ADJUSTMENT",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-06-12",
-  "lines": [
-    {
-      "accountCode": "3110",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "JPY",
-        "minorUnits": "250"
-      }
-    },
-    {
-      "accountCode": "4110",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "JPY",
-        "minorUnits": "250"
-      }
-    }
-  ],
+  "cashAccountCode": "3110",
+  "revenueAccountCode": "4110",
+  "amount": {
+    "currencyCode": "JPY",
+    "minorUnits": "250"
+  },
   "evidence": {
     "sourceDocuments": [
       {

@@ -57,7 +57,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   void storeQuerySurface_reportsAccountsPostingRangeAndOpenCloseHorizon() {
     Path bookPath = tempDirectory.resolve("store-query-surface.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
       commitPosting(
@@ -90,7 +90,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   void transactionValidationBook_reportsSuccessfulQueriesAcrossTheFullValidationSurface() {
     Path bookPath = tempDirectory.resolve("validation-surface-success.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
       SqliteTransactionValidationBook validationBook =
@@ -117,7 +117,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   void transferPeriodResult_persistsTransferredPeriodResultAuditAndCloseHorizon() {
     Path bookPath = tempDirectory.resolve("transfer-period-result-direct.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
               new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
@@ -195,7 +195,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
         SqlitePeriodResultTransferSession periodResultTransferSession =
             SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(
           postingFactStore,
           postingFact(
@@ -239,7 +239,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
         SqlitePeriodResultTransferSession periodResultTransferSession =
             SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
               new RegisteredAccount(
@@ -304,7 +304,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   void accountTotals_surfaceHonorsDateRangesAndPostingCoverage() {
     Path bookPath = tempDirectory.resolve("account-totals-direct.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
               new RegisteredAccount(
@@ -409,7 +409,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
   void readModels_excludePeriodResultTransferPostingsWhenNonClosingCoverageIsRequested() {
     Path bookPath = tempDirectory.resolve("non-closing-read-coverage.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
               new RegisteredAccount(

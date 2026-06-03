@@ -41,7 +41,7 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.AccountRoleConflict(
-                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA))
+                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED))
             .contains("1000"));
     assertTrue(
         RejectionNarrative.message(
@@ -82,7 +82,7 @@ class RejectionNarrativeTest {
                     new AccountCode("1010"),
                     AccountRole.ORDINARY,
                     new AccountCode("1000"),
-                    AccountRole.CONTRA))
+                    AccountRole.POLARITY_INVERTED))
             .contains("Parent and child must share one account role"));
     assertTrue(
         RejectionNarrative.message(

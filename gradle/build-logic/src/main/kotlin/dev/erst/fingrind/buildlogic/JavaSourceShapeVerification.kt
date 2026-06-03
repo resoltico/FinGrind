@@ -58,7 +58,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val rows =
             mutableListOf(
-                "path\trole\treviewOwner\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
+                "path\trole\treviewOwner\treviewExpiry\tapprovedPhysical\tapprovedLogical\tapprovedImports\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
             )
         val violations = mutableListOf<String>()
         sourceFiles.files
@@ -76,11 +76,17 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                         exportedPackages = exportedPackages,
                     )
                 val metrics = JavaSourceShapeMetrics.measure(file)
+                val reviewedSurface = contract.reviewedSurface
+                val approval = reviewedSurface?.approval
                 rows +=
                     listOf(
                             relativePath,
                             contract.budget.roleName,
-                            contract.reviewedSurface?.owner.orEmpty(),
+                            reviewedSurface?.owner.orEmpty(),
+                            approval?.expiresOn?.toString().orEmpty(),
+                            approval?.approvedPhysicalLines?.toString().orEmpty(),
+                            approval?.approvedLogicalLines?.toString().orEmpty(),
+                            approval?.approvedImports?.toString().orEmpty(),
                             metrics.physicalLineCount.toString(),
                             metrics.logicalLineCount.toString(),
                             metrics.importCount.toString(),
@@ -101,6 +107,9 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                         "$relativePath: generic production class names like ${file.name} are forbidden; give the file one explicit domain or boundary role."
                 }
                 violations += javaShapeViolations(relativePath, metrics, contract.budget)
+                if (reviewedSurface != null) {
+                    violations += reviewedSurfaceViolations(relativePath, metrics, reviewedSurface)
+                }
             }
         val renderedReport = rows.joinToString(System.lineSeparator(), postfix = System.lineSeparator())
         val outputFile = reportFile.get().asFile

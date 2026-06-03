@@ -25,17 +25,18 @@ require_literal_block() {
 
 readonly image_name="${1:-}"
 readonly expected_version="${2:-}"
+readonly explicit_tag_ref="${3:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
 readonly retry_delay_seconds="${FINGRIND_PUBLICATION_VERIFY_DELAY_SECONDS:-10}"
 readonly verify_latest_ref="${FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST:-true}"
 readonly fixture_entity_name='Release Protocol Fixture'
-readonly fixture_business_activity_tag='consulting-services'
 readonly fixture_functional_currency='EUR'
 readonly fixture_fiscal_year_start='01-01'
 readonly docker_run_user="$(id -u):$(id -g)"
 docker_config_dir=''
 report_root=''
 readonly container_support_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+primary_tag_ref=''
 
 [[ -n "${image_name}" ]] || die "image name is required"
 [[ -n "${expected_version}" ]] || die "expected version is required"
@@ -99,18 +100,21 @@ TEXT
     account_table_block="$(cat <<'TEXT'
 Accounts
 --------
-Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
-2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
+service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 TEXT
 )"
     context_block="$(cat <<'TEXT'
 Context
 -------
 Entity              : Release Protocol Fixture
-Accounting profile  : country-agnostic-bookkeeping-kernel
-Business activity   : consulting-services
+Accounting kernel   : internal-management-cash-bookkeeping-kernel
+Accounting basis    : CASH_BASIS
+Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
+Entity form         : OWNER_MANAGED_SINGLE_ENTITY
+Book template       : OWNER_MANAGED_SERVICE_CASH
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
@@ -130,7 +134,7 @@ TEXT
 }
 
 verify_mounted_book_surface() {
-    local image_ref="${image_name}:${expected_version}"
+    local image_ref="${image_name}:${primary_tag_ref}"
     local text_output pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
 
     seed_public_fixture
@@ -142,7 +146,6 @@ verify_mounted_book_surface() {
         --book-file /work/book.sqlite \
         --book-key-file /work/book.key \
         --entity-name "${fixture_entity_name}" \
-        --business-activity-tag "${fixture_business_activity_tag}" \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
     mounted_container_run "${image_ref}" \
@@ -176,7 +179,7 @@ verify_mounted_book_surface() {
 }
 
 verify_native_provenance_surface() {
-    local image_ref="${image_name}:${expected_version}"
+    local image_ref="${image_name}:${primary_tag_ref}"
 
     require_nonempty_container_file \
         "${image_ref}" \
@@ -190,8 +193,13 @@ verify_native_provenance_surface() {
     printf 'Verified native provenance surface: %s\n' "${image_ref}"
 }
 
-verify_ref "${expected_version}"
-if [[ "${verify_latest_ref}" == "true" ]]; then
+if [[ -n "${explicit_tag_ref}" ]]; then
+    primary_tag_ref="${explicit_tag_ref}"
+else
+    primary_tag_ref="${expected_version}"
+fi
+verify_ref "${primary_tag_ref}"
+if [[ -z "${explicit_tag_ref}" && "${verify_latest_ref}" == "true" ]]; then
     verify_ref latest
 fi
 verify_native_provenance_surface

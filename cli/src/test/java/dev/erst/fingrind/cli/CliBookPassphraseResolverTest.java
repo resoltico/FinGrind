@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -79,27 +80,34 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
-  void resolve_rejectsOversizedStandardInputPassphrases() {
+  void resolve_rejectsOversizedStandardInputPassphrases() throws IOException {
     byte[] oversizedPassphrase =
-        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).getBytes(StandardCharsets.UTF_8);
-    CliBookPassphraseResolver resolver =
-        new CliBookPassphraseResolver(
-            new ByteArrayInputStream(oversizedPassphrase), prompt -> failPrompt(prompt));
+        "x"
+            .repeat(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1)
+            .getBytes(StandardCharsets.UTF_8);
+    try (RecordingPassphraseInputStream inputStream =
+        new RecordingPassphraseInputStream(oversizedPassphrase)) {
+      CliBookPassphraseResolver resolver =
+          new CliBookPassphraseResolver(inputStream, prompt -> failPrompt(prompt));
 
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                resolver
-                    .resolve(
-                        new BookAccess(
-                            Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
-                    .requireAccepted());
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  resolver
+                      .resolve(
+                          new BookAccess(
+                              Path.of("book.sqlite"),
+                              BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                      .requireAccepted());
 
-    assertEquals(
-        "FinGrind book passphrase input from standard input exceeded the 4096-byte limit.",
-        exception.getMessage());
+      assertEquals(
+          "FinGrind book passphrase input from standard input exceeded the 4096-byte limit.",
+          exception.getMessage());
+      assertArrayEquals(
+          new byte[ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1],
+          inputStream.lastReadBuffer());
+    }
   }
 
   @Test
@@ -125,7 +133,7 @@ class CliBookPassphraseResolverTest {
   @Test
   void resolve_rejectsOversizedPromptPassphrases() {
     char[] enteredPassword =
-        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).toCharArray();
+        "x".repeat(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1).toCharArray();
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(
             new ByteArrayInputStream(new byte[0]),
@@ -654,5 +662,42 @@ class CliBookPassphraseResolverTest {
             return password.toCharArray();
           }
         };
+  }
+
+  /** Captures the bounded read buffer so the test can prove oversized-input zeroization. */
+  private static final class RecordingPassphraseInputStream extends InputStream {
+    private final byte[] payload;
+    private int offset;
+    private Supplier<byte[]> lastReadBufferReader = RecordingPassphraseInputStream::missingBuffer;
+
+    private RecordingPassphraseInputStream(byte[] payload) {
+      this.payload = Objects.requireNonNull(payload, "payload");
+    }
+
+    @Override
+    public int read() throws IOException {
+      throw new UnsupportedOperationException("Byte-wise reads are not used in this test.");
+    }
+
+    @Override
+    public int read(byte[] buffer, int bufferOffset, int length) {
+      lastReadBufferReader = () -> buffer.clone();
+      if (offset >= payload.length) {
+        return -1;
+      }
+      int remaining = payload.length - offset;
+      int bytesToCopy = Math.min(length, remaining);
+      System.arraycopy(payload, offset, buffer, bufferOffset, bytesToCopy);
+      offset += bytesToCopy;
+      return bytesToCopy;
+    }
+
+    private byte[] lastReadBuffer() {
+      return lastReadBufferReader.get();
+    }
+
+    private static byte[] missingBuffer() {
+      throw new IllegalStateException("lastReadBuffer");
+    }
   }
 }

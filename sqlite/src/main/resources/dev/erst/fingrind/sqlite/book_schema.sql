@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 22;
+pragma user_version = 23;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -71,6 +71,18 @@ create table if not exists book_identity (
         and accounting_kernel_profile not like '%-'
         and accounting_kernel_profile not like '%--%'
     ),
+    accounting_basis text not null check (
+        accounting_basis in ('CASH_BASIS')
+    ),
+    accounting_framework_position text not null check (
+        accounting_framework_position in ('NON_STATUTORY_INTERNAL_MANAGEMENT')
+    ),
+    entity_form text not null check (
+        entity_form in ('OWNER_MANAGED_SINGLE_ENTITY')
+    ),
+    book_template_id text not null check (
+        book_template_id in ('OWNER_MANAGED_SERVICE_CASH')
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -99,12 +111,6 @@ create table if not exists book_identity (
     )
 ) strict;
 
-create table if not exists entity_profile (
-    singleton_id integer primary key check (singleton_id = 1),
-    business_activity_tags text not null,
-    foreign key (singleton_id) references book_identity (singleton_id)
-) strict;
-
 create table if not exists account (
     account_code text primary key check (
         length(account_code) between 1 and 255
@@ -115,7 +121,7 @@ create table if not exists account (
     account_type text not null check (
         account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')
     ),
-    account_role text not null check (account_role in ('ORDINARY', 'CONTRA')),
+    account_role text not null check (account_role in ('ORDINARY', 'POLARITY_INVERTED')),
     account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
     financial_position_line_classification text check (
@@ -348,8 +354,7 @@ create table if not exists posting_fact (
             'CASH_EXPENSE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
-            'OPENING_BALANCE_ADJUSTMENT',
-            'CORRECTION_ADJUSTMENT',
+            'OPEN_ACCOUNTING_POSITION',
             'REVERSAL_ADJUSTMENT',
             'PERIOD_RESULT_TRANSFER'
         )
@@ -1089,18 +1094,6 @@ create trigger if not exists book_identity_reject_delete
 before delete on book_identity
 begin
     select raise(fail, 'book_identity rows are append-only.');
-end;
-
-create trigger if not exists entity_profile_reject_update
-before update on entity_profile
-begin
-    select raise(fail, 'entity_profile rows are append-only.');
-end;
-
-create trigger if not exists entity_profile_reject_delete
-before delete on entity_profile
-begin
-    select raise(fail, 'entity_profile rows are append-only.');
 end;
 
 create trigger if not exists audit_event_reject_update

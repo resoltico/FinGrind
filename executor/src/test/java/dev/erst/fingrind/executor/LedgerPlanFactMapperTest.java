@@ -222,7 +222,7 @@ class LedgerPlanFactMapperTest {
             new ReversalReference(new PostingId("prior-posting")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         new AccountingEvidence(
             List.of(
                 new SourceDocumentReference(

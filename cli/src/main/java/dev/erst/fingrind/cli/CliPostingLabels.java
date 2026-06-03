@@ -32,8 +32,7 @@ final class CliPostingLabels {
       case CASH_EXPENSE -> "Cash expense";
       case EQUITY_CONTRIBUTION -> "Equity contribution";
       case EQUITY_WITHDRAWAL -> "Equity withdrawal";
-      case OPENING_BALANCE_ADJUSTMENT -> "Opening balance";
-      case CORRECTION_ADJUSTMENT -> "Correction";
+      case OPEN_ACCOUNTING_POSITION -> "Opening accounting position";
       case REVERSAL_ADJUSTMENT -> "Reversal adjustment";
       case PERIOD_RESULT_TRANSFER -> "Result transfer";
     };

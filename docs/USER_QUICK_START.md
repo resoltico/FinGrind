@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: USER_QUICK_START
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
-  keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
+  keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
 ---
 
@@ -69,42 +69,28 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
 ```
 
-## 4. Declare The Accounts You Need
+If you accidentally rerun `open-book` against the same initialized file, the command is rejected
+deterministically instead of mutating the existing book.
 
-Create `./declare-account-cash.json` with:
+## 4. Review The Starter Chart
 
-```json
-{
-  "accountCode": "1000",
-  "accountName": "Cash",
-  "accountType": "ASSET",
-  "accountRole": "ORDINARY",
-  "accountNodeKind": "POSTABLE",
-  "financialPositionLineClassification": "CURRENT_ASSET"
-}
-```
+`open-book` seeds the built-in starter chart for the current owner-managed service template. The
+first run includes these postable accounts:
 
-Create `./declare-account-revenue.json` with:
+- `cash`
+- `owner-capital`
+- `owner-draws`
+- `result-holding`
+- `service-revenue`
+- `operating-expense`
 
-```json
-{
-  "accountCode": "2000",
-  "accountName": "Revenue",
-  "accountType": "REVENUE",
-  "accountRole": "ORDINARY",
-  "accountNodeKind": "POSTABLE",
-  "profitAndLossLineClassification": "OPERATING_REVENUE"
-}
-```
-
-Then declare the accounts that your first entry will use:
+Inspect that chart directly:
 
 ```bash
-fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./declare-account-cash.json
-fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./declare-account-revenue.json
+fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --limit 10
 ```
 
 ## 5. Post Your First Entry
@@ -119,14 +105,15 @@ That scaffold is a placeholder-first sample document. It intentionally uses plac
 provenance values. Replace every `replace-with-...` token before real-world use. Reusing one
 committed `idempotencyKey` against the same book is rejected.
 
-Replace the contents of `./request.json` with one balanced entry, for example:
+Replace the contents of `./request.json` with one balanced entry that uses the seeded starter
+accounts, for example:
 
 ```json
 {
   "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
-  "cashAccountCode": "1000",
-  "revenueAccountCode": "2000",
+  "cashAccountCode": "cash",
+  "revenueAccountCode": "service-revenue",
   "amount": {
     "currencyCode": "EUR",
     "minorUnits": "1000"
@@ -177,7 +164,7 @@ fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets
 Or check one account directly:
 
 ```bash
-fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code 1000 --output text
+fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code cash --output text
 ```
 
 ## 7. Where To Go Next

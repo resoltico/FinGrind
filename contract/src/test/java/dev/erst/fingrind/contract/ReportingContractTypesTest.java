@@ -465,7 +465,7 @@ class ReportingContractTypesTest {
                     Money.parse("EUR", "15.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(

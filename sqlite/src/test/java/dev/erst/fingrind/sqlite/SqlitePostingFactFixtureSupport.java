@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
@@ -61,8 +62,8 @@ import java.util.Optional;
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -108,7 +109,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         journalEntry(reversalReference),
         postingLineage(reversalReference, reason),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
@@ -133,7 +134,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -206,7 +207,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     Objects.requireNonNull(normalBalance, "normalBalance");
     return AccountSemantics.normalBalance(accountType, AccountRole.ORDINARY) == normalBalance
         ? AccountRole.ORDINARY
-        : AccountRole.CONTRA;
+        : AccountRole.POLARITY_INVERTED;
   }
 
   static AccountTaxonomy accountTaxonomy(AccountType accountType) {
@@ -323,12 +324,24 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
   }
 
-  static void initializeBookWithDefaultAccounts(SqlitePostingFactStore postingFactStore) {
-    postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
-    declareDefaultAccounts(postingFactStore);
+  static void openBookWithNoDeclaredAccounts(SqlitePostingFactStore postingFactStore) {
+    postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), List.of());
   }
 
-  static void declareDefaultAccounts(SqlitePostingFactStore postingFactStore) {
+  static void openBookWithStarterTemplateAccounts(SqlitePostingFactStore postingFactStore) {
+    postingFactStore.openBook(
+        Instant.parse("2026-04-07T10:15:30Z"),
+        bookIdentity(),
+        dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+            bookIdentity().bookDoctrine().bookTemplateId()));
+  }
+
+  static void initializeBookWithMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
+    openBookWithNoDeclaredAccounts(postingFactStore);
+    declareMinimalNumericAccounts(postingFactStore);
+  }
+
+  static void declareMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
     assertEquals(
         new AccountDeclarationOutcome.Declared(
             registeredAccount(
@@ -394,7 +407,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static void insertPostingFactRow(
       SqliteNativeDatabase database, String postingId, String idempotencyKey) {
     String postingOriginKind =
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue();
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue();
     database.executeStatement(
         """
         insert into posting_fact (

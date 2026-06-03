@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -66,22 +65,6 @@ class CliArgumentValueParserTest {
         assertThrows(
                 CliArgumentsException.class,
                 () -> CliOptionValues.parseFiscalYearStartOption("13-40", "--fiscal-year-start"))
-            .argument());
-  }
-
-  @Test
-  void parseStructuredOpenBookValueOptions_acceptValidValuesAndRejectInvalidOnes() {
-    assertEquals(
-        new BusinessActivityTag("translation,localization"),
-        CliOptionValues.parseBusinessActivityTagOption(
-            "translation,localization", "--business-activity-tag"));
-
-    assertEquals(
-        "--business-activity-tag",
-        assertThrows(
-                CliArgumentsException.class,
-                () ->
-                    CliOptionValues.parseBusinessActivityTagOption(" ", "--business-activity-tag"))
             .argument());
   }
 

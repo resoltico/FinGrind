@@ -238,7 +238,7 @@ class ChartOfAccountsTest {
                     new AccountCode("1100"),
                     new AccountName("Contra Asset Header"),
                     AccountType.ASSET,
-                    AccountRole.CONTRA,
+                    AccountRole.POLARITY_INVERTED,
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.HEADER,
                         Optional.empty(),
@@ -264,7 +264,7 @@ class ChartOfAccountsTest {
         assertInstanceOf(
             BookkeepingAdministrationRejection.ParentAccountRoleConflict.class,
             rejection.orElseThrow());
-    assertEquals(AccountRole.CONTRA, conflict.parentAccountRole());
+    assertEquals(AccountRole.POLARITY_INVERTED, conflict.parentAccountRole());
     assertEquals(AccountRole.ORDINARY, conflict.requestedAccountRole());
   }
 
@@ -320,6 +320,54 @@ class ChartOfAccountsTest {
             .value());
   }
 
+  @Test
+  void validateAllowsResultHoldingDeclarationWhenNoActiveCandidateExists() {
+    ChartOfAccounts chart =
+        ChartOfAccounts.of(
+            List.of(
+                resultHoldingAccount("3200", false), assetAccount("1000", Optional.empty(), true)));
+
+    assertEquals(
+        Optional.empty(),
+        chart.validate(
+            new AccountDeclaration(
+                new AccountCode("3210"),
+                new AccountName("Replacement Result Holding"),
+                AccountType.EQUITY,
+                accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+                new AccountTaxonomy(
+                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+                    Optional.empty(),
+                    Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                    Optional.empty()))));
+  }
+
+  @Test
+  void validateRejectsAmbiguousActiveResultHoldingDeclarations() {
+    ChartOfAccounts chart = ChartOfAccounts.of(List.of(resultHoldingAccount("3200", true)));
+
+    BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejection =
+        assertInstanceOf(
+            BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous.class,
+            chart
+                .validate(
+                    new AccountDeclaration(
+                        new AccountCode("3210"),
+                        new AccountName("Replacement Result Holding"),
+                        AccountType.EQUITY,
+                        accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+                        new AccountTaxonomy(
+                            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+                            Optional.empty(),
+                            Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                            Optional.empty())))
+                .orElseThrow());
+
+    assertEquals(
+        List.of(new AccountCode("3200"), new AccountCode("3210")),
+        rejection.candidateAccountCodes());
+  }
+
   private static RegisteredAccount assetAccount(
       String accountCode, Optional<AccountCode> parentAccountCode, boolean active) {
     return registeredAccount(
@@ -348,6 +396,17 @@ class ChartOfAccountsTest {
             parentAccountCode,
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty()),
+        active,
+        DECLARED_AT);
+  }
+
+  private static RegisteredAccount resultHoldingAccount(String accountCode, boolean active) {
+    return registeredAccount(
+        new AccountCode(accountCode),
+        new AccountName("Result Holding " + accountCode),
+        AccountType.EQUITY,
+        accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
+        financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
         active,
         DECLARED_AT);
   }

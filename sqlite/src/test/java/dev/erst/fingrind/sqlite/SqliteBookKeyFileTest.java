@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
@@ -123,14 +124,15 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rejectsOversizedKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("oversized.key");
-    writeSecureString(keyFile, "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1));
+    writeSecureString(
+        keyFile, "x".repeat(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1));
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
     assertTrue(
         NullTestSupport.messageOf(exception)
             .contains(
                 "selected key file exceeded the %d-byte limit"
-                    .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES)));
+                    .formatted(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES)));
   }
 
   @Test

@@ -77,7 +77,12 @@ def verify_rekey_and_wrong_key_semantics(
     )
     require_match(
         replacement_key_trial_balance_output,
-        r"1000",
+        r"^Trial Balance$",
+        f"{config.label} rekeyed book did not render the trial-balance title",
+    )
+    require_match(
+        replacement_key_trial_balance_output,
+        r"6\.00",
         f"{config.label} trial-balance did not remain readable after rekey",
     )
 
@@ -107,8 +112,6 @@ def verify_deterministic_nonsense_workflows(
         config.prompt_failure_book.argument,
         "--entity-name",
         config.entity_name,
-        "--business-activity-tag",
-        *config.business_activity_tags,
         "--functional-currency",
         config.functional_currency,
         "--fiscal-year-start",
@@ -124,8 +127,6 @@ def verify_deterministic_nonsense_workflows(
         config.prompt_failure_book.argument,
         "--entity-name",
         config.entity_name,
-        "--business-activity-tag",
-        *config.business_activity_tags,
         "--functional-currency",
         config.functional_currency,
         "--fiscal-year-start",

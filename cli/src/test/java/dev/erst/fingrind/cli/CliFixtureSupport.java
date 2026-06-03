@@ -109,7 +109,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
@@ -135,7 +135,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     new AccountCode("1000"), JournalLine.EntrySide.CREDIT, money("EUR", "5.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(

@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.ChartOfAccounts;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
@@ -35,8 +36,11 @@ public final class BookAdministrationService {
 
   /** Explicitly initializes a new book. */
   public BookOpeningOutcome openBook(BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     return bookStore.openBook(
-        clock.instant(), Objects.requireNonNull(bookIdentity, "bookIdentity"));
+        clock.instant(),
+        bookIdentity,
+        BookTemplateAccounts.declarations(bookIdentity.bookDoctrine().bookTemplateId()));
   }
 
   /** Declares or reactivates one account in the selected book. */

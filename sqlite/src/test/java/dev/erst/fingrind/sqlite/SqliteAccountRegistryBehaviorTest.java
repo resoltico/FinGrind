@@ -46,7 +46,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   void declareAccount_listsAndReactivatesAccounts() {
     Path databasePath = tempDirectory.resolve("declare-accounts.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -97,7 +97,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   void findAccount_returnsDeclaredAccountFromInitializedBook() {
     Path databasePath = tempDirectory.resolve("find-account.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           Optional.of(
               registeredAccount(
@@ -115,7 +115,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   void declareAccount_rejectsAccountRoleConflict() {
     Path databasePath = tempDirectory.resolve("declare-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -126,7 +126,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
               new BookkeepingAdministrationRejection.AccountRoleConflict(
-                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA)),
+                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
           declareAccount(
               postingFactStore,
               new AccountCode("1000"),
@@ -141,7 +141,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   void declareAccount_rejectsAccountTypeConflict() {
     Path databasePath = tempDirectory.resolve("declare-account-type-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -167,7 +167,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   void listAccounts_paginatesDeclaredRegistry() {
     Path databasePath = tempDirectory.resolve("list-accounts-paginated.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),

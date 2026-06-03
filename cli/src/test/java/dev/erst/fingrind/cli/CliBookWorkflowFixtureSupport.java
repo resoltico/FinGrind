@@ -11,9 +11,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityProfile;
@@ -29,10 +29,8 @@ import java.util.Optional;
 class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   protected static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            List.of(new BusinessActivityTag("translation-services"))),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -50,8 +48,6 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       bookKeyFilePath.toString(),
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
-      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -67,8 +63,6 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_STDIN,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
-      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -86,8 +80,6 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       "text",
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BUSINESS_ACTIVITY_TAG,
-      "translation-services",
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,

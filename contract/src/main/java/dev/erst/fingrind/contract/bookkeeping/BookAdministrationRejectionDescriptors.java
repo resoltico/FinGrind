@@ -142,7 +142,7 @@ final class BookAdministrationRejectionDescriptors {
         "Period result transfer refused because policy could not find one active declared result-holding account for the selected book."),
     CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS(
         "result-holding-account-candidate-ambiguous",
-        "Period result transfer refused because policy found more than one active declared result-holding account for the selected book."),
+        "Book administration refused because more than one active declared result-holding account exists for the selected book."),
     PERIOD_RESULT_TRANSFER_MUST_START_AT(
         "period-result-transfer-must-start-at",
         "Period result transfer refused because the requested effectiveDateFrom does not match the live unclosed horizon."),

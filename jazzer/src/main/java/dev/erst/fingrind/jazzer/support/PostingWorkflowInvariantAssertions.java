@@ -19,11 +19,14 @@ import java.util.Optional;
 public final class PostingWorkflowInvariantAssertions {
   private PostingWorkflowInvariantAssertions() {}
 
-  /** Verifies that the declared-account listing reflects the exact number of setup declarations. */
+  /** Verifies that every setup declaration is present in the initialized account registry. */
   public static void verifyDeclaredAccountListing(
-      int listedAccountCount, int declaredAccountCount) {
-    if (listedAccountCount != declaredAccountCount) {
-      throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+      List<DeclaredAccount> listedAccounts, List<DeclaredAccount> declaredAccounts) {
+    Objects.requireNonNull(listedAccounts, "listedAccounts must not be null");
+    Objects.requireNonNull(declaredAccounts, "declaredAccounts must not be null");
+    if (!listedAccounts.containsAll(declaredAccounts)) {
+      throw new IllegalStateException(
+          "Declared-account listing drifted from the initialized registry.");
     }
   }
 

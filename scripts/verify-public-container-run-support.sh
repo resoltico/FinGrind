@@ -31,19 +31,19 @@ require_nonempty_container_file() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-cash.json" <<'JSON'
-{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
+{"accountCode":"cash-reserve","accountName":"Cash Reserve","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
-{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":null,"profitAndLossLineClassification":"OPERATING_REVENUE"}
+{"accountCode":"misc-revenue","accountName":"Misc Revenue","accountType":"REVENUE","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":null,"profitAndLossLineClassification":"OTHER_REVENUE"}
 JSON
 
 cat > "${report_root}/posting.json" <<'JSON'
 {
   "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
-  "cashAccountCode": "1000",
-  "revenueAccountCode": "2000",
+  "cashAccountCode": "cash",
+  "revenueAccountCode": "service-revenue",
   "amount": {
     "currencyCode": "EUR",
     "minorUnits": "1000"

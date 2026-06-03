@@ -122,8 +122,11 @@ final class CliDiscoveryArguments {
     }
     OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
     requireJsonDiscoverySelections(detail, category, focus, resolvedOutputMode);
-    DiscoveryFocus resolvedFocus = focus == null ? DiscoveryFocus.OVERVIEW : focus;
-    if (category != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
+    DiscoveryFocus resolvedFocus =
+        focus == null
+            ? (category == null ? DiscoveryFocus.OVERVIEW : DiscoveryFocus.COMMANDS)
+            : focus;
+    if (category != null && focus != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.CATEGORY,
           ProtocolOptions.CATEGORY

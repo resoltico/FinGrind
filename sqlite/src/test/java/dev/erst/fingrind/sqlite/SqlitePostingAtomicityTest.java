@@ -28,7 +28,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                 SqliteStoreAccessMode.READ_WRITE_CREATE,
                 SqliteNativeBootstrap::api,
                 faultHook)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
 
       IllegalStateException failure =
           assertThrows(
@@ -78,7 +78,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                 SqliteStoreAccessMode.READ_WRITE_CREATE,
                 SqliteNativeBootstrap::api,
                 faultHook)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),

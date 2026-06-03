@@ -32,14 +32,29 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             val unsupportedPublicCliBundleTargets =
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
             val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
+            val managedSqlitePackageId =
+                DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
+            val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
+            val dockerManagedSqlite =
+                ManagedSqliteProvisioningLogic.registerDockerContextTarget(
+                    project = rootProject,
+                    repositoryRootDirectory = repositoryRootDirectory,
+                    sqliteSourceDirectory =
+                        rootProject.layout.projectDirectory.dir(
+                            "third_party/sqlite/$managedSqlitePackageId",
+                        ),
+                    sqliteVersionValue =
+                        DistributionContractReader.requiredMinimumSqliteVersion(repositoryRootDirectory),
+                    sqlite3mcVersionValue =
+                        DistributionContractReader.requiredSqlite3mcVersion(repositoryRootDirectory),
+                    sourcePackageId = managedSqlitePackageId,
+                )
             val containerRuntimeDistribution =
                 DistributionContractReader.containerRuntimeDistribution(repositoryRootDirectory)
             val bundleRuntimeDistribution =
                 DistributionContractReader.bundleRuntimeDistribution(repositoryRootDirectory)
             val publicCliDistribution =
                 DistributionContractReader.publicCliDistribution(repositoryRootDirectory)
-            val managedSqliteSourcePackageId =
-                DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
             val storageDriver = DistributionContractReader.storageDriver(repositoryRootDirectory)
             val storageEngine = DistributionContractReader.storageEngine(repositoryRootDirectory)
             val bookProtectionMode =
@@ -77,36 +92,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 }
             val shadowJarTask = tasks.named<Jar>("shadowJar")
             val shadowJarArchiveFile = shadowJarTask.flatMap { it.archiveFile }
-            val managedSqliteLibraryPath =
-                rootProject.layout.buildDirectory.file(
-                    providers.provider {
-                        "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/${managedSqliteLibraryFileNameForHost(repositoryRootDirectory)}"
-                    },
-                )
-            val managedSqliteLibrarySha256Path =
-                rootProject.layout.buildDirectory.file(
-                    providers.provider {
-                        "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/${managedSqliteLibraryFileNameForHost(repositoryRootDirectory)}.sha256"
-                    },
-                )
-            val managedSqliteToolchainFingerprintPath =
-                rootProject.layout.buildDirectory.file(
-                    providers.provider {
-                        "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/toolchain-fingerprint.json"
-                    },
-                )
-            val managedSqliteBuildContractPath =
-                rootProject.layout.buildDirectory.file(
-                    providers.provider {
-                        "managed-sqlite/${managedSqliteHostClassifier(repositoryRootDirectory)}/build-contract.json"
-                    },
-                )
             val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
-            val repositoryDockerBuildContextDirectory =
-                layout.projectDirectory.dir("build/docker-context")
-            val mirrorRepositoryDockerBuildContext =
-                dockerBuildContextDirectory.get().asFile.toPath().normalize() !=
-                    repositoryDockerBuildContextDirectory.asFile.toPath().normalize()
             val dockerBuildContextManifestOutputFile =
                 layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
             val sourceCheckoutArtifactManifestOutputFile =
@@ -122,11 +108,11 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 CliDistributionSourceInventory.dockerBuildContextSourceFiles(
                     project,
                     repositoryRootDirectory,
-                    managedSqliteSourcePackageId,
                 )
             val cliContractBuildLogicInputs =
                 objects.fileCollection().from(
                     rootProject.layout.projectDirectory.file("gradle/build-logic/build.gradle.kts"),
+                    rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts"),
                     rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main"),
                 )
             val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
@@ -135,6 +121,8 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
             val bundleManifestOutputFile =
                 layout.buildDirectory.file("generated/bundle/root/bundle-manifest.json")
+            val bundleArchiveManifestOutputFile =
+                layout.buildDirectory.file("generated/bundle/bundle-archive-manifest.json")
             val distributionDirectory = layout.buildDirectory.dir("distributions")
             val dockerBuildContextFiles = CliDistributionSourceInventory.dockerBuildContextFiles()
             val dockerManagedSqliteContractSource =
@@ -241,10 +229,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 }
             }
 
-            tasks.named("assemble") {
-                dependsOn("shadowJar")
-            }
-
             tasks.named<CreateStartScripts>("startScripts") {
                 enabled = false
             }
@@ -282,12 +266,11 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     shadowJarTask = shadowJarTask,
                     writeRuntimeModuleList = writeRuntimeModuleList,
                     dockerBuildContextDirectory = dockerBuildContextDirectory,
-                    repositoryDockerBuildContextDirectory = repositoryDockerBuildContextDirectory,
-                    mirrorRepositoryDockerBuildContext = mirrorRepositoryDockerBuildContext,
                     dockerBuildContextManifestOutputFile = dockerBuildContextManifestOutputFile,
                     dockerBuildContextFiles = dockerBuildContextFiles,
                     dockerBuildContextSourceInputs = dockerBuildContextSourceInputs,
                     dockerManagedSqliteContractSource = dockerManagedSqliteContractSource,
+                    managedSqliteProvisioning = dockerManagedSqlite,
                     sqliteBundleHomeSystemProperty = sqliteBundleHomeSystemProperty,
                     containerRuntimeDistribution = containerRuntimeDistribution,
                 )
@@ -335,7 +318,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     description = "Stages the self-contained FinGrind CLI bundle directory."
                     dependsOn(cleanBundleOutputs)
                     dependsOn(shadowJarTask)
-                    dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
+                    dependsOn(hostManagedSqlite.prepareTask)
                     dependsOn(createRuntimeImage)
                     dependsOn(writeBundleManifest)
                     into(bundleRootDirectory)
@@ -367,16 +350,16 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(createRuntimeImage) {
                         into("runtime")
                     }
-                    from(managedSqliteLibraryPath) {
+                    from(hostManagedSqlite.libraryPath) {
                         into("lib/native")
                     }
-                    from(managedSqliteLibrarySha256Path) {
+                    from(hostManagedSqlite.checksumPath) {
                         into("lib/native")
                     }
-                    from(managedSqliteToolchainFingerprintPath) {
+                    from(hostManagedSqlite.toolchainFingerprintPath) {
                         into("lib/native")
                     }
-                    from(managedSqliteBuildContractPath) {
+                    from(hostManagedSqlite.buildContractPath) {
                         into("lib/native")
                     }
                     from(rootProject.file("LICENSE"))
@@ -387,15 +370,21 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(rootProject.file("PATENTS.md"))
                 }
 
-            registerCliBundleArchiveTasks(
-                bundleOperatingSystemId = bundleOperatingSystemId,
-                stageCliBundle = stageCliBundle,
-                distributionDirectory = distributionDirectory,
-                bundleArchiveFileName = bundleArchiveFileName,
-                bundleRootDirectory = bundleRootDirectory,
-                bundleName = bundleName,
-                bundleSha256File = bundleSha256File,
-            )
+            val bundleArchiveTasks =
+                registerCliBundleArchiveTasks(
+                    bundleOperatingSystemId = bundleOperatingSystemId,
+                    stageCliBundle = stageCliBundle,
+                    distributionDirectory = distributionDirectory,
+                    bundleArchiveFileName = bundleArchiveFileName,
+                    bundleRootDirectory = bundleRootDirectory,
+                    bundleName = bundleName,
+                    bundleSha256File = bundleSha256File,
+                    bundleArchiveManifestFile = bundleArchiveManifestOutputFile,
+                )
+
+            tasks.named("assemble") {
+                dependsOn(bundleArchiveTasks.manifestTask)
+            }
 
             tasks.named<Test>("test") {
                 inputs.file(rootProject.layout.projectDirectory.file("Dockerfile"))
@@ -419,11 +408,4 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             }
         }
     }
-
-    private fun managedSqliteHostClassifier(repositoryRootDirectory: java.nio.file.Path): String =
-        DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory).classifier
-
-    private fun managedSqliteLibraryFileNameForHost(
-        repositoryRootDirectory: java.nio.file.Path,
-    ): String = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory).sqliteLibraryFileName
 }

@@ -99,7 +99,13 @@ final class CliPostingOutputRenderer {
             ? ""
             : CliTextFormat.renderTable(
                 List.of(
-                    "Effective date", "Origin", "Role", "Debit", "Credit", "Accounts", "Posting"),
+                    "Effective date",
+                    "Origin",
+                    "Role",
+                    "Debit",
+                    "Credit",
+                    "Account codes",
+                    "Posting"),
                 page.postings().stream()
                     .map(CliPostingFactFormatter::postingRegisterTextRow)
                     .toList(),

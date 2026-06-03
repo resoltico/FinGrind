@@ -98,8 +98,9 @@ public final class SqliteRoundTripWorkflowAssertions {
 
       var declaredAccounts =
           CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
+      var listedAccounts = CliFuzzAccountFixtures.listAccounts(postingFactStore);
       SqliteRoundTripWorkflowLifecycleAssertions.verifyDeclaredAccountListing(
-          CliFuzzAccountFixtures.listAccounts(postingFactStore).size(), declaredAccounts.size());
+          listedAccounts, declaredAccounts);
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
@@ -116,7 +117,7 @@ class SqliteBookPassphraseTest {
   @Test
   void fromCharactersDecision_rejectsBoundarySizedUtf8InputAndZeroizesSourceCharacters() {
     char[] sourceCharacters =
-        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).toCharArray();
+        "x".repeat(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1).toCharArray();
 
     IllegalStateException exception =
         assertThrows(
@@ -133,7 +134,7 @@ class SqliteBookPassphraseTest {
 
   @Test
   void fromUtf8BytesDecision_rejectsOversizedSourceBytesAndZeroizesSourceBytes() {
-    byte[] sourceBytes = new byte[SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1];
+    byte[] sourceBytes = new byte[ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1];
     java.util.Arrays.fill(sourceBytes, (byte) 'x');
 
     IllegalStateException exception =

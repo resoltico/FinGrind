@@ -5,7 +5,6 @@ import dev.erst.fingrind.buildlogic.addReads
 import dev.erst.fingrind.buildlogic.patchModule
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
 import org.gradle.language.jvm.tasks.ProcessResources
 
@@ -13,6 +12,7 @@ plugins {
     `java-library`
     `java-test-fixtures`
     id("dev.erst.fingrind.java-conventions")
+    id("dev.erst.fingrind.managed-sqlite-consumer")
 }
 
 description = "SQLite-backed FinGrind persistence adapter"
@@ -73,25 +73,12 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
 }
 
-val stageRefreshedProtectedBookFixtureForTestRuntime =
-    tasks.register<Sync>("stageRefreshedProtectedBookFixtureForTestRuntime") {
-        dependsOn(tasks.named("processTestResources"))
-        mustRunAfter(tasks.named("refreshProtectedBookFixture"))
-        from(protectedBookFixturePath)
-        into(layout.buildDirectory.dir("resources/test/dev/erst/fingrind/sqlite/fixtures"))
-    }
-
-tasks.named("refreshProtectedBookFixture") {
-    finalizedBy(stageRefreshedProtectedBookFixtureForTestRuntime)
-}
-
 tasks.named<Test>("test") {
-    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
+    // Committed protected-book fixtures are compatibility artifacts. Standard test runs must not
+    // rewrite tracked resources as a side effect; refresh stays an explicit maintenance task.
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
 }
 
-tasks.named<Pmd>("pmdTest") {
-    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
-}
+tasks.named<Pmd>("pmdTest") {}

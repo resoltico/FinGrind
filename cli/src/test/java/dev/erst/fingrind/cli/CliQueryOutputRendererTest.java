@@ -37,7 +37,6 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -138,15 +137,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void renderBookInspectionText_joinsNonEmptyBusinessActivityTags() {
-    BookIdentity taggedIdentity =
+  void renderBookInspectionText_reportsDoctrineAndEntityFacts() {
+    BookIdentity doctrinalIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Acme Studio"),
-                List.of(
-                    new BusinessActivityTag("translation,localization"),
-                    new BusinessActivityTag("cafe services"))),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =
@@ -157,13 +152,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 1,
                 1,
                 Instant.parse("2026-04-07T10:15:30Z"),
-                taggedIdentity,
+                doctrinalIdentity,
                 resultTransferReadyInspection()));
 
-    assertTrue(inspection.contains("Business activity"));
-    assertTrue(inspection.contains("Accounting profile"));
-    assertTrue(inspection.contains("country-agnostic-bookkeeping-kernel"));
-    assertTrue(inspection.contains("translation,localization, cafe services"));
+    assertTrue(inspection.contains("Accounting kernel"));
+    assertTrue(inspection.contains("internal-management-cash-bookkeeping-kernel"));
+    assertTrue(inspection.contains("Accounting basis"));
+    assertTrue(inspection.contains("CASH_BASIS"));
     assertTrue(inspection.contains("Functional currency"));
   }
 
@@ -171,8 +166,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   void renderBookInspectionText_omitsRetiredPolicyProfileRows() {
     BookIdentity registeredIdentity =
         new BookIdentity(
-            new EntityProfile(new BookEntityName("Registered Studio"), List.of()),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Registered Studio")),
+            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =
@@ -294,7 +289,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     List<String> ledgerTextRow =
         CliQueryRowFormatAccess.accountLedgerTextRow(cashAccount, ledgerEntry);
     assertEquals("2026-04-07", ledgerTextRow.get(0));
-    assertEquals("Correction", ledgerTextRow.get(1));
+    assertEquals("Reversal adjustment", ledgerTextRow.get(1));
     assertEquals("10.00", ledgerTextRow.get(2));
     assertEquals("4.00", ledgerTextRow.get(3));
     assertEquals("6.00 Debit", ledgerTextRow.get(4));
@@ -621,7 +616,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
     assertEquals("(derived)", CliQueryLabelFormatAccess.displayLineRole(Optional.empty()));
     assertEquals(
-        "Contra", CliQueryLabelFormatAccess.displayLineRole(Optional.of(AccountRole.CONTRA)));
+        "Contra",
+        CliQueryLabelFormatAccess.displayLineRole(Optional.of(AccountRole.POLARITY_INVERTED)));
     assertEquals(
         "Header", CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
     assertEquals(
@@ -642,14 +638,20 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryRowFormatAccess.balanceCsvRow(balance));
     assertEquals(
         List.of(
-            "2026-04-07", "Correction", "Reversal", "10.00", "10.00", "1000, 2000", "posting-1"),
+            "2026-04-07",
+            "Reversal adjustment",
+            "Reversal",
+            "10.00",
+            "10.00",
+            "1000, 2000",
+            "posting-1"),
         CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(
             "2900",
             "Sales returns",
             "REVENUE",
-            "CONTRA",
+            "POLARITY_INVERTED",
             "DEBIT",
             "true",
             "EUR",
@@ -667,7 +669,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "2900",
             "Sales returns",
             "REVENUE",
-            "CONTRA",
+            "POLARITY_INVERTED",
             "DEBIT",
             "EUR",
             "10.00",
@@ -676,7 +678,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "DEBIT"),
         CliQueryRowFormatAccess.periodActivityCsvRow(
             new PeriodAccountActivityRow(contraRevenueAccount, balance)));
-    assertEquals("Contra", CliQueryLabelFormatAccess.displayAccountRoleLabel(AccountRole.CONTRA));
+    assertEquals(
+        "Contra", CliQueryLabelFormatAccess.displayAccountRoleLabel(AccountRole.POLARITY_INVERTED));
     assertEquals("Standard", CliQueryLabelFormatAccess.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
         "Period result transfer",
@@ -697,13 +700,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         "Equity withdrawal",
         CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EQUITY_WITHDRAWAL));
     assertEquals(
-        "Opening balance",
+        "Opening accounting position",
         CliQueryLabelFormatAccess.displayPostingOriginKind(
-            PostingOriginKind.OPENING_BALANCE_ADJUSTMENT));
-    assertEquals(
-        "Correction",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(
-            PostingOriginKind.CORRECTION_ADJUSTMENT));
+            PostingOriginKind.OPEN_ACCOUNTING_POSITION));
     assertEquals(
         "Reversal adjustment",
         CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.REVERSAL_ADJUSTMENT));

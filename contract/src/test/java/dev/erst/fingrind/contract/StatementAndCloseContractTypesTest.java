@@ -168,7 +168,7 @@ class StatementAndCloseContractTypesTest {
             "1090",
             "Accumulated Depreciation",
             AccountType.ASSET,
-            AccountRole.CONTRA,
+            AccountRole.POLARITY_INVERTED,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
 

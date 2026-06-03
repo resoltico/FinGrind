@@ -29,6 +29,8 @@ PYTHON_TYPE_RE = re.compile(r"^\s*class\s+[A-Z][A-Za-z0-9_]*\s*(?:\(|:)", re.MUL
 
 SQL_COMMENT_LINE_RE = re.compile(r"^\s*--")
 SQL_IMPORT_RE = re.compile(r"^\s*(?:create|alter|drop)\s+", re.MULTILINE)
+MARKDOWN_COMMENT_BLOCK_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+MARKDOWN_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+", re.MULTILINE)
 
 
 def measure_kotlin_file(path: Path) -> FileMetrics:
@@ -79,6 +81,20 @@ def measure_sql_file(path: Path) -> FileMetrics:
         physical_lines=len(text.splitlines()),
         logical_lines=len(normalized_lines),
         import_like_lines=len(SQL_IMPORT_RE.findall(text)),
+        functions=0,
+        nested_types=0,
+        normalized_nonempty_lines=normalized_lines,
+    )
+
+
+def measure_markdown_file(path: Path) -> FileMetrics:
+    text = path.read_text(encoding="utf-8")
+    sanitized = MARKDOWN_COMMENT_BLOCK_RE.sub("", text)
+    normalized_lines = normalized_nonempty_lines(sanitized.splitlines())
+    return FileMetrics(
+        physical_lines=len(text.splitlines()),
+        logical_lines=len(normalized_lines),
+        import_like_lines=len(MARKDOWN_HEADING_RE.findall(text)),
         functions=0,
         nested_types=0,
         normalized_nonempty_lines=normalized_lines,

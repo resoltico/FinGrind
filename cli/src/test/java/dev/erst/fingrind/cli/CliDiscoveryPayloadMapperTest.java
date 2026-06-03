@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
@@ -32,9 +34,9 @@ import org.junit.jupiter.api.Test;
 class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   @Test
   void helpPayload_mapsRootHelpToMinimalOverviewPayload() {
-    CliDiscoveryJsonModels.HelpOverviewMinimalPayload payload =
+    CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewMinimalPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload.class,
             minimalHelpPayload(MachineContract.help(identity(), environment())));
 
     assertEquals("FinGrind", payload.application());
@@ -46,9 +48,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void helpPayload_mapsRootHelpToOverviewPayload() {
-    CliDiscoveryJsonModels.HelpOverviewCompactPayload payload =
+    CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewCompactPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload.class,
             compactHelpPayload(MachineContract.help(identity(), environment())));
 
     assertEquals("FinGrind", payload.application());
@@ -60,9 +62,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void helpPayload_mapsRootHelpFullToOverviewPayloadWithFullContract() {
-    CliDiscoveryJsonModels.HelpOverviewPayload payload =
+    CliDiscoveryHelpJsonModels.HelpOverviewPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewPayload.class,
             fullHelpPayload(MachineContract.help(identity(), environment())));
 
     assertEquals(DiscoveryDetail.FULL, payload.detail());
@@ -75,19 +77,19 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   void capabilitiesPayloads_mapMinimalAndFullDiscoveryVariants() {
     CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
 
-    CliDiscoveryJsonModels.CapabilitiesMinimalPayload minimal =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload minimal =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesMinimalPayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
                 capabilitiesDescriptor, DiscoveryDetail.MINIMAL, overviewSelections()));
-    CliDiscoveryJsonModels.CapabilitiesCompactPayload compact =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload compact =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCompactPayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor, DiscoveryDetail.COMPACT, overviewSelections()));
-    CliDiscoveryJsonModels.CapabilitiesPayload full =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload full =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesPayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor, DiscoveryDetail.FULL, overviewSelections()));
 
@@ -110,23 +112,23 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   void capabilitiesPayload_mapsFocusedCommandSlicesAcrossDetailsAndCategories() {
     CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
 
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload minimal =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload minimal =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.MINIMAL,
                 new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.QUERY)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload compact =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload compact =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.COMPACT,
                 new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.QUERY)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload full =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload full =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.FULL,
@@ -134,9 +136,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
     assertEquals(DiscoveryFocus.COMMANDS, minimal.focus());
     assertEquals(OperationCategory.QUERY.wireValue(), minimal.category());
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload minimalCommands =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload minimalCommands =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, minimal.data());
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class, minimal.data());
     assertFalse(minimalCommands.commands().isEmpty());
     assertTrue(
         minimalCommands.commands().stream()
@@ -147,9 +149,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
     assertEquals(DiscoveryFocus.COMMANDS, compact.focus());
     assertEquals(OperationCategory.QUERY.wireValue(), compact.category());
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload compactCommands =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload compactCommands =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, compact.data());
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class, compact.data());
     assertFalse(Objects.requireNonNull(compactCommands.commandSurfaces()).isEmpty());
     assertNull(compactCommands.fullCommands());
     assertTrue(
@@ -161,39 +163,39 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
     assertEquals(DiscoveryFocus.COMMANDS, full.focus());
     assertNull(full.category());
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload fullCommands =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload fullCommands =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, full.data());
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class, full.data());
     assertEquals(
         capabilitiesDescriptor.commands().allCommands().size(), fullCommands.commands().size());
     assertNull(fullCommands.commandSurfaces());
     assertFalse(Objects.requireNonNull(fullCommands.fullCommands()).isEmpty());
 
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload minimalWithoutCategory =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload minimalWithoutCategory =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class,
             assertInstanceOf(
-                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
                     CliDiscoveryPayloadMapper.capabilitiesPayload(
                         capabilitiesDescriptor,
                         DiscoveryDetail.MINIMAL,
                         new CliDiscoverySelections(DiscoveryFocus.COMMANDS, null)))
                 .data());
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload compactWithoutCategory =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload compactWithoutCategory =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class,
             assertInstanceOf(
-                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
                     CliDiscoveryPayloadMapper.capabilitiesPayload(
                         capabilitiesDescriptor,
                         DiscoveryDetail.COMPACT,
                         new CliDiscoverySelections(DiscoveryFocus.COMMANDS, null)))
                 .data());
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload fullWithCategory =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload fullWithCategory =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class,
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class,
             assertInstanceOf(
-                    CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+                    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
                     CliDiscoveryPayloadMapper.capabilitiesPayload(
                         capabilitiesDescriptor,
                         DiscoveryDetail.FULL,
@@ -212,14 +214,14 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
             .toList();
     for (int index = 0; index < categories.size(); index++) {
       OperationCategory category = categories.get(index);
-      CliDiscoveryJsonModels.CapabilitiesSlicePayload filtered =
+      CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload filtered =
           assertInstanceOf(
-              CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+              CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
               CliDiscoveryPayloadMapper.capabilitiesPayload(
                   capabilitiesDescriptor, DiscoveryDetail.MINIMAL, selections.get(index)));
-      CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload filteredCommands =
+      CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload filteredCommands =
           assertInstanceOf(
-              CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, filtered.data());
+              CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class, filtered.data());
       assertTrue(
           filteredCommands.commands().stream()
               .allMatch(command -> category.wireValue().equals(command.category())));
@@ -230,73 +232,121 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   void capabilitiesPayload_mapsFocusedStorageRequestInputCurrencyKernelAndResponseSlices() {
     CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
 
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload storage =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload storage =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.MINIMAL,
                 new CliDiscoverySelections(DiscoveryFocus.STORAGE, null)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload requestInputCompact =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload requestInputCompact =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.COMPACT,
                 new CliDiscoverySelections(DiscoveryFocus.REQUEST_INPUT, null)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload requestInputFull =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload requestInputFull =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.FULL,
                 new CliDiscoverySelections(DiscoveryFocus.REQUEST_INPUT, null)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload currency =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload currency =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.MINIMAL,
                 new CliDiscoverySelections(DiscoveryFocus.CURRENCY_MODEL, null)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload kernel =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload kernel =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.MINIMAL,
                 new CliDiscoverySelections(DiscoveryFocus.BOOKKEEPING_KERNEL, null)));
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload response =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload response =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 capabilitiesDescriptor,
                 DiscoveryDetail.MINIMAL,
                 new CliDiscoverySelections(DiscoveryFocus.RESPONSE_CONTRACT, null)));
 
-    assertInstanceOf(CliDiscoveryJsonModels.CapabilitiesStorageSlicePayload.class, storage.data());
+    assertInstanceOf(
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesStorageSlicePayload.class, storage.data());
     assertTrue(storage.nextHints().getFirst().contains("environment --output json"));
 
-    CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload compactRequestInput =
+    CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload compactRequestInput =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload.class,
+            CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload.class,
             requestInputCompact.data());
     assertNull(compactRequestInput.fullRequestInput());
     assertTrue(requestInputCompact.nextHints().getFirst().contains("print-request-template"));
 
-    CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload fullRequestInput =
+    CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload fullRequestInput =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload.class,
+            CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload.class,
             requestInputFull.data());
     assertNotNull(fullRequestInput.fullRequestInput());
 
     assertInstanceOf(
-        CliDiscoveryJsonModels.CapabilitiesCurrencySlicePayload.class, currency.data());
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesCurrencySlicePayload.class, currency.data());
     assertTrue(currency.nextHints().getFirst().contains("--detail full"));
-    assertInstanceOf(CliDiscoveryJsonModels.CapabilitiesKernelSlicePayload.class, kernel.data());
+    assertInstanceOf(
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesKernelSlicePayload.class, kernel.data());
     assertTrue(kernel.nextHints().getFirst().contains("--detail full"));
     assertInstanceOf(
-        CliDiscoveryJsonModels.CapabilitiesResponseContractSlicePayload.class, response.data());
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        response.data());
     assertTrue(response.nextHints().getFirst().contains("--detail full"));
+  }
+
+  @Test
+  void capabilitiesPayload_mapsResponseContractSliceAcrossDiscoveryDetails() {
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload minimal =
+        assertInstanceOf(
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.MINIMAL,
+                new CliDiscoverySelections(DiscoveryFocus.RESPONSE_CONTRACT, null)));
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload compact =
+        assertInstanceOf(
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.COMPACT,
+                new CliDiscoverySelections(DiscoveryFocus.RESPONSE_CONTRACT, null)));
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload full =
+        assertInstanceOf(
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.FULL,
+                new CliDiscoverySelections(DiscoveryFocus.RESPONSE_CONTRACT, null)));
+
+    assertEquals(DiscoveryDetail.MINIMAL, minimal.detail());
+    assertInstanceOf(
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        minimal.data());
+    assertTrue(minimal.nextHints().getFirst().contains("--detail full"));
+
+    assertEquals(DiscoveryDetail.COMPACT, compact.detail());
+    assertInstanceOf(
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload.class,
+        compact.data());
+    assertTrue(compact.nextHints().getFirst().contains("--detail full"));
+
+    assertEquals(DiscoveryDetail.FULL, full.detail());
+    assertInstanceOf(
+        CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSlicePayload.class,
+        full.data());
+    assertTrue(full.nextHints().getFirst().contains("exhaustive descriptor surface"));
   }
 
   @Test
@@ -331,16 +381,16 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
             canonical.currencyModel(),
             canonical.bookkeepingKernel());
 
-    CliDiscoveryJsonModels.CapabilitiesSlicePayload payload =
+    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload.class,
             CliDiscoveryPayloadMapper.capabilitiesPayload(
                 customized,
                 DiscoveryDetail.COMPACT,
                 new CliDiscoverySelections(DiscoveryFocus.COMMANDS, OperationCategory.DISCOVERY)));
-    CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload commandSlice =
+    CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload commandSlice =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload.class, payload.data());
+            CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload.class, payload.data());
 
     assertEquals(
         "raw-json",
@@ -351,19 +401,19 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   void helpPayload_filtersTopLevelOverviewByCategoryAcrossDetails() {
     HelpDescriptor helpDescriptor = MachineContract.help(identity(), environment());
 
-    CliDiscoveryJsonModels.HelpOverviewMinimalPayload minimal =
+    CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload minimal =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewMinimalPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload.class,
             CliDiscoveryPayloadMapper.helpPayload(
                 helpDescriptor, DiscoveryDetail.MINIMAL, OperationCategory.QUERY));
-    CliDiscoveryJsonModels.HelpOverviewCompactPayload compact =
+    CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload compact =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewCompactPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload.class,
             CliDiscoveryPayloadMapper.helpPayload(
                 helpDescriptor, DiscoveryDetail.COMPACT, OperationCategory.QUERY));
-    CliDiscoveryJsonModels.HelpOverviewPayload full =
+    CliDiscoveryHelpJsonModels.HelpOverviewPayload full =
         assertInstanceOf(
-            CliDiscoveryJsonModels.HelpOverviewPayload.class,
+            CliDiscoveryHelpJsonModels.HelpOverviewPayload.class,
             CliDiscoveryPayloadMapper.helpPayload(
                 helpDescriptor, DiscoveryDetail.FULL, OperationCategory.QUERY));
 
@@ -392,9 +442,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     HelpDescriptor commandScoped =
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
 
-    CliDiscoveryJsonModels.CommandHelpPayload payload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             CliDiscoveryPayloadMapper.helpPayload(
                 commandScoped, DiscoveryDetail.COMPACT, OperationCategory.ADMINISTRATION));
 
@@ -403,9 +453,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void helpPayload_mapsCompactPostingRequestGuidanceWithoutFullArtifacts() {
-    CliDiscoveryJsonModels.CommandHelpPayload payload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.POST_ENTRY)));
 
@@ -445,14 +495,14 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 canonical.preflight(),
                 canonical.currencyModel()));
 
-    assertInstanceOf(CliDiscoveryJsonModels.HelpOverviewCompactPayload.class, payload);
+    assertInstanceOf(CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload.class, payload);
   }
 
   @Test
   void helpPayload_mapsNonRequestFileCommandWithoutRequestGuidance() {
-    CliDiscoveryJsonModels.CommandHelpPayload payload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.VERSION)));
 
@@ -467,24 +517,24 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void helpPayload_mapsDeclareAccountAndLedgerPlanRequestGuidance() {
-    CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             fullHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT)));
-    CliDiscoveryJsonModels.CommandHelpPayload compactDeclarePayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactDeclarePayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT)));
-    CliDiscoveryJsonModels.CommandHelpPayload planPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             fullHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN)));
-    CliDiscoveryJsonModels.CommandHelpPayload compactPlanPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactPlanPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN)));
 
@@ -530,9 +580,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     HelpDescriptor executePlan =
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
 
-    CliDiscoveryJsonModels.CommandHelpPayload postEntryPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload postEntryPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     postEntry.application(),
@@ -550,9 +600,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     declareAccount.application(),
@@ -570,9 +620,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload planPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     executePlan.application(),
@@ -601,9 +651,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     HelpDescriptor postEntry =
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
 
-    CliDiscoveryJsonModels.CommandHelpPayload payload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     postEntry.application(),
@@ -634,9 +684,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     HelpDescriptor executePlan =
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
 
-    CliDiscoveryJsonModels.CommandHelpPayload postEntryPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload postEntryPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     postEntry.application(),
@@ -654,9 +704,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     declareAccount.application(),
@@ -674,9 +724,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload planPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     executePlan.application(),
@@ -709,9 +759,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     HelpDescriptor executePlan =
         MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN);
 
-    CliDiscoveryJsonModels.CommandHelpPayload postEntryPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload postEntryPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     postEntry.application(),
@@ -734,9 +784,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     postEntry.exitCodes(),
                     postEntry.preflight(),
                     postEntry.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload declarePayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     declareAccount.application(),
@@ -759,9 +809,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                     declareAccount.exitCodes(),
                     declareAccount.preflight(),
                     declareAccount.currencyModel())));
-    CliDiscoveryJsonModels.CommandHelpPayload planPayload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             compactHelpPayload(
                 new HelpDescriptor(
                     executePlan.application(),
@@ -796,7 +846,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+                new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
                     "desc", DiscoveryDetail.COMPACT, null, null, null, null, null));
 
     assertTrue(
@@ -806,8 +856,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void requestFileGuidancePayload_allowsSingleTemplateArtifactWithoutRequestShapes() {
-    CliDiscoveryJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one posting JSON object through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             MachineContract.requestTemplate(),
@@ -827,8 +877,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
     dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor
         requestShapes = Objects.requireNonNull(postEntry.requestShapes());
-    CliDiscoveryJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one posting JSON object through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             null,
@@ -843,9 +893,9 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   }
 
   private static void assertPostingGuidance(OperationId operationId) {
-    CliDiscoveryJsonModels.CommandHelpPayload payload =
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
         assertInstanceOf(
-            CliDiscoveryJsonModels.CommandHelpPayload.class,
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             fullHelpPayload(MachineContract.help(identity(), environment(), operationId)));
 
     assertNotNull(payload.requestFile());
@@ -877,7 +927,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.50.0",
+        "0.51.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

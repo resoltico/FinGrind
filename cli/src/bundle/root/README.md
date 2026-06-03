@@ -28,13 +28,10 @@ Quick start:
 1. Run `${bundleLauncherCommand} help`
 2. Let FinGrind create `./secrets/` and `./books/` securely, or keep any existing `./secrets/` and `./books/` directories owner-only before you reuse them
 3. Run `${bundleLauncherCommand} generate-book-key-file --book-key-file ./secrets/entity.book-key`
-4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01`
-5. Create `./declare-cash.json` with `{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY","financialPositionLineClassification":"CURRENT_ASSET"}`
-6. Create `./declare-revenue.json` with `{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY","profitAndLossLineClassification":"OPERATING_REVENUE"}`
-7. Run `${bundleLauncherCommand} declare-account --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./declare-cash.json`
-8. Run `${bundleLauncherCommand} declare-account --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./declare-revenue.json`
-9. Run `${bundleLauncherCommand} print-request-template > ./request.json`
-10. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json` and `${bundleLauncherCommand} post-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
+4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01`
+5. Run `${bundleLauncherCommand} list-accounts --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --limit 10` to inspect the seeded starter chart
+6. Run `${bundleLauncherCommand} print-request-template > ./request.json`
+7. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json` and `${bundleLauncherCommand} post-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
 
 The best machine-readable contract after startup is:
 - `${bundleLauncherCommand} capabilities --output json`

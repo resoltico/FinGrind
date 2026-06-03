@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.core.InteractionLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -235,7 +234,8 @@ class ProtocolCatalogTest {
   void bookkeepingKernelFacts_publishCurrentExecutableKernelInventory() {
     BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
     assertEquals(
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.value(),
+        dev.erst.fingrind.core.AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL
+            .value(),
         kernel.scope());
     assertEquals(
         List.of("financial-position", "income-statement", "changes-in-equity"),
@@ -344,9 +344,9 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         ProtocolOptions.bookPassphraseOptions());
-    assertEquals(50, InteractionLimits.DEFAULT_PAGE_LIMIT);
-    assertEquals(200, InteractionLimits.PAGE_LIMIT_MAX);
-    assertEquals(100, InteractionLimits.LEDGER_PLAN_STEP_MAX);
+    assertEquals(50, ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT);
+    assertEquals(200, ProtocolInteractionLimits.PAGE_LIMIT_MAX);
+    assertEquals(100, ProtocolInteractionLimits.LEDGER_PLAN_STEP_MAX);
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
     assertEquals(
@@ -556,12 +556,15 @@ class ProtocolCatalogTest {
             "equityAccountCode",
             "amount",
             "lines",
+            "openingBalances",
             "evidence",
             "provenance",
             "reversal"),
         ProtocolPostEntryFields.topLevelFields());
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
+    assertEquals(
+        List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.openingBalanceFields());
     assertEquals(List.of("sourceDocuments", "approvals"), ProtocolPostEntryFields.evidenceFields());
     assertEquals(
         List.of(
@@ -640,7 +643,7 @@ class ProtocolCatalogTest {
             "profitAndLossLineClassification"),
         ProtocolBookRequestFieldSets.declareAccountFields());
     assertEquals(
-        Set.of("entityName", "businessActivityTags", "functionalCurrency", "fiscalYearStart"),
+        Set.of("entityName", "functionalCurrency", "fiscalYearStart"),
         ProtocolBookRequestFieldSets.openBookFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
@@ -686,11 +689,8 @@ class ProtocolCatalogTest {
             "provenance"),
         ProtocolPostingRequestFieldSets.equityWithdrawalFields());
     assertEquals(
-        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance"),
-        ProtocolPostingRequestFieldSets.openingBalanceAdjustmentFields());
-    assertEquals(
-        ProtocolPostingRequestFieldSets.openingBalanceAdjustmentFields(),
-        ProtocolPostingRequestFieldSets.correctionAdjustmentFields());
+        Set.of("entryKind", "effectiveDate", "openingBalances", "evidence", "provenance"),
+        ProtocolPostingRequestFieldSets.openAccountingPositionFields());
     assertEquals(
         Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance", "reversal"),
         ProtocolPostingRequestFieldSets.reversalAdjustmentFields());
@@ -710,6 +710,9 @@ class ProtocolCatalogTest {
         Set.copyOf(ProtocolPostEntryFields.journalLineFields()),
         ProtocolPostingRequestFieldSets.journalLineFields());
     assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.openingBalanceFields()),
+        ProtocolPostingRequestFieldSets.openingBalanceFields());
+    assertEquals(
         Set.copyOf(ProtocolPostEntryFields.reversalFields()),
         ProtocolPostingRequestFieldSets.reversalFields());
     assertEquals(
@@ -722,8 +725,52 @@ class ProtocolCatalogTest {
         Set.copyOf(ProtocolLedgerPlanFields.queryFields()),
         ProtocolLedgerPlanRequestFieldSets.ledgerQueryFields());
     assertEquals(
+        Set.of(ProtocolLedgerPlanFields.Query.LIMIT, ProtocolLedgerPlanFields.Query.CURSOR),
+        ProtocolLedgerPlanRequestFieldSets.listAccountsQueryFields());
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Query.ACCOUNT_CODE,
+            ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM,
+            ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO,
+            ProtocolLedgerPlanFields.Query.LIMIT,
+            ProtocolLedgerPlanFields.Query.CURSOR),
+        ProtocolLedgerPlanRequestFieldSets.listPostingsQueryFields());
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Query.ACCOUNT_CODE,
+            ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM,
+            ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO),
+        ProtocolLedgerPlanRequestFieldSets.accountBalanceQueryFields());
+    assertEquals(
         Set.copyOf(ProtocolLedgerPlanFields.assertionFields()),
         ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields());
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Assertion.KIND,
+            ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE),
+        ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
+            LedgerAssertionKind.ACCOUNT_DECLARED));
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Assertion.KIND,
+            ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE),
+        ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
+            LedgerAssertionKind.ACCOUNT_ACTIVE));
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Assertion.KIND, ProtocolLedgerPlanFields.Assertion.POSTING_ID),
+        ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
+            LedgerAssertionKind.POSTING_EXISTS));
+    assertEquals(
+        Set.of(
+            ProtocolLedgerPlanFields.Assertion.KIND,
+            ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE,
+            ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM,
+            ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO,
+            ProtocolLedgerPlanFields.Assertion.NET_AMOUNT,
+            ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE),
+        ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
+            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
   }
 
   @Test

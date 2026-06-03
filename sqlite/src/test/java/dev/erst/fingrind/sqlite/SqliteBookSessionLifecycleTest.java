@@ -134,7 +134,11 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = parentDirectory.resolve("book.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      postingFactStore.openBook(
+          Instant.parse("2026-04-07T10:15:30Z"),
+          bookIdentity(),
+          dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+              bookIdentity().bookDoctrine().bookTemplateId()));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       assertDoesNotThrow(
           () ->

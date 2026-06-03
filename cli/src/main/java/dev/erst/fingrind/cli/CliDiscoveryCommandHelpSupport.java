@@ -52,8 +52,7 @@ final class CliDiscoveryCommandHelpSupport {
             CliDiscoveryTextSupport.section("Try It", renderCommandExamples(operation)),
             renderRequestGuidance(helpDescriptor, command.name()),
             run,
-            renderedOptions,
-            renderMoreDetailSection(command.name())));
+            renderedOptions));
   }
 
   static String primaryCommandExample(OperationId operationId) {
@@ -194,22 +193,9 @@ final class CliDiscoveryCommandHelpSupport {
     return String.join(
         System.lineSeparator() + System.lineSeparator(),
         CliTextFormat.wrap(introduction, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH),
-        "Need a starter file?"
+        "Starter file command"
             + System.lineSeparator()
             + CliTextFormat.renderLiteralBlock(List.of(shortcutCommand), "$ "));
-  }
-
-  private static String renderMoreDetailSection(OperationId operationId) {
-    return CliDiscoveryTextSupport.section(
-        "Need JSON Contract",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "One command contract",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + ProtocolCatalog.operationName(operationId)
-                        + " --output json"))));
   }
 
   private static List<String> primaryOperatorExamples(
@@ -221,7 +207,9 @@ final class CliDiscoveryCommandHelpSupport {
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "
               + OperationId.DECLARE_ACCOUNT.wireName()
-              + " > declare-account-cash.json",
+              + " > "
+              + OperationId.DECLARE_ACCOUNT.wireName()
+              + ".json",
           primaryCommandExample);
     }
     if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {

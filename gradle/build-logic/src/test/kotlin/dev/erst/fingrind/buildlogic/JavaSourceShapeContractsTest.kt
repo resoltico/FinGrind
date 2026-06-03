@@ -1,5 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -19,7 +20,6 @@ class JavaSourceShapeContractsTest {
 
         assertEquals("exported-public-seam", contract.budget.roleName)
         assertNull(contract.reviewedSurface)
-        assertNull(contract.reviewThreshold)
     }
 
     @Test
@@ -35,7 +35,7 @@ class JavaSourceShapeContractsTest {
         val reviewedSurface = assertNotNull(contract.reviewedSurface)
         assertEquals("protocol-discovery", reviewedSurface.owner)
         assertEquals("contract-template-namespace", contract.budget.roleName)
-        assertNull(contract.reviewThreshold)
+        assertTrue(reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()))
     }
 
     @Test
@@ -50,5 +50,57 @@ class JavaSourceShapeContractsTest {
 
         assertEquals("production-main", contract.budget.roleName)
         assertNull(contract.reviewedSurface)
+    }
+
+    @Test
+    fun reviewedSurfaces_expireSoonAndFreezeApprovedShape() {
+        JavaSourceStructuralContracts.reviewedSurfaces().forEach { reviewedSurface ->
+            assertTrue(
+                reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()),
+                "reviewed surface waivers must expire in the future: ${reviewedSurface.relativePath}",
+            )
+            assertTrue(
+                reviewedSurface.approval.expiresOn <= LocalDate.now().plusDays(120),
+                "reviewed surface waivers must stay short-lived: ${reviewedSurface.relativePath}",
+            )
+            assertTrue(
+                reviewedSurface.approval.approvedPhysicalLines <= reviewedSurface.budget.maxPhysicalLines,
+            )
+            assertTrue(
+                reviewedSurface.approval.approvedLogicalLines <= reviewedSurface.budget.maxLogicalLines,
+            )
+            assertTrue(
+                reviewedSurface.approval.approvedImports <= reviewedSurface.budget.maxImports,
+            )
+        }
+    }
+
+    @Test
+    fun reviewedSurfaceViolations_failWhenFrozenShapeGrows() {
+        val reviewedSurface =
+            JavaSourceStructuralContracts.reviewedSurfaces()
+                .first { it.relativePath.endsWith("CliRejectionJsonModels.java") }
+
+        val violations =
+            reviewedSurfaceViolations(
+                relativePath = reviewedSurface.relativePath,
+                metrics =
+                    JavaSourceShapeMetrics(
+                        physicalLineCount = reviewedSurface.approval.approvedPhysicalLines + 1,
+                        logicalLineCount = reviewedSurface.approval.approvedLogicalLines + 1,
+                        importCount = reviewedSurface.approval.approvedImports + 1,
+                        nestedTypeCount = 1,
+                        maxMethodsPerTopLevelType = 1,
+                        maxFieldsPerTopLevelType = 1,
+                        maxSwitchArmsPerMethod = 1,
+                        maxMethodLineSpan = 1,
+                        maxMethodParameters = 1,
+                        maxMethodDecisionPoints = 1,
+                    ),
+                reviewedSurface = reviewedSurface,
+            )
+
+        assertEquals(3, violations.size)
+        assertTrue(violations.all { "CliRejectionJsonModels.java" in it })
     }
 }

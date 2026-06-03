@@ -39,7 +39,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertTrue(help.contains("Command Families"));
     assertTrue(help.contains("First Successful Run"));
     assertTrue(help.contains("Generate one key file"));
-    assertTrue(help.contains("Print the first account scaffold"));
+    assertTrue(help.contains("Review the seeded starter chart"));
     assertTrue(help.contains("Print the first entry scaffold"));
     assertTrue(
         containsCollapsedText(
@@ -50,10 +50,9 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
         containsCollapsedText(
             help,
             CliInvocationText.commandExample(
-                    dev.erst.fingrind.contract.protocol.OperationId.CAPABILITIES)
-                + " --output json"));
+                dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)));
     assertFalse(help.contains("Guidance"));
-    assertTrue(help.contains("declare-account-cash.json"));
+    assertFalse(help.contains("declare-account-supplemental-cash-reserve.json"));
     assertFalse(help.contains("provenance.idempotencyKey"));
   }
 
@@ -77,8 +76,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
             CliInvocationText.commandExample(
                     dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)
                 + " post-entry > request.json"));
-    assertTrue(help.contains("Need a starter file?"));
-    assertTrue(help.contains("Need JSON Contract"));
+    assertTrue(help.contains("Starter file command"));
     assertFalse(help.contains("Output Contract"));
   }
 
@@ -185,7 +183,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("Try It"));
-    assertTrue(help.contains("Need JSON Contract"));
+    assertTrue(help.contains("Request File"));
   }
 
   @Test

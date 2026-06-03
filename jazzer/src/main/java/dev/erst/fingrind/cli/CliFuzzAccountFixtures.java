@@ -83,7 +83,8 @@ public final class CliFuzzAccountFixtures {
   private static ListAccountsResult listAccountsPage(
       BookReadService readService, Optional<AccountPageCursor> cursor) {
     return readService.listAccounts(
-        new ListAccountsQuery(dev.erst.fingrind.core.InteractionLimits.PAGE_LIMIT_MAX, cursor));
+        new ListAccountsQuery(
+            dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits.PAGE_LIMIT_MAX, cursor));
   }
 
   private static DeclaredAccount requireDeclaredAccount(DeclareAccountResult result) {

@@ -20,7 +20,7 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
   void mutationPaths_appendExpectedAuditEvents() {
     Path bookPath = tempDirectory.resolve("audit-event-sequence.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity());
+      openBookWithNoDeclaredAccounts(postingFactStore);
       declareAccount(
           postingFactStore,
           new AccountCode("1000"),
@@ -78,7 +78,7 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
         SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "audit event replacement", "rotated-audit-key".toCharArray())) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
 
       assertEquals(
           new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rekeyed(

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Guard the GitHub release publisher against drifting away from the draft-first, digest-aware
+# Guard the GitHub release publisher against drifting away from the draft-staging, immutable-public
 # publication contract.
 
 set -euo pipefail
@@ -24,8 +24,10 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly publisher="${script_dir}/publish-github-release.sh"
+readonly finalizer="${script_dir}/finalize-github-release.sh"
 
 [[ -x "${publisher}" ]] || die "missing executable release publisher"
+[[ -x "${finalizer}" ]] || die "missing executable release finalizer"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-publish-github-release.XXXXXX")"
 cleanup() {
@@ -207,10 +209,21 @@ run_publish_fixture() {
     PATH="${fixture_root}/bin:${PATH}" \
         GH_TOKEN='test-token' \
         RELEASE_TAG='v9.9.9' \
-        FINGRIND_RELEASE_MARK_LATEST="${3}" \
         FAKE_RELEASE_STATE_FILE="${state_dir}/release-state.json" \
         FAKE_RELEASE_OPERATION_LOG="${state_dir}/operations.log" \
         bash "${publisher}" "${asset_path}" >/dev/null
+}
+
+run_finalize_fixture() {
+    local state_dir=$1
+    local mark_latest=$2
+    PATH="${fixture_root}/bin:${PATH}" \
+        GH_TOKEN='test-token' \
+        RELEASE_TAG='v9.9.9' \
+        FINGRIND_RELEASE_MARK_LATEST="${mark_latest}" \
+        FAKE_RELEASE_STATE_FILE="${state_dir}/release-state.json" \
+        FAKE_RELEASE_OPERATION_LOG="${state_dir}/operations.log" \
+        bash "${finalizer}" >/dev/null
 }
 
 matching_state_dir="${fixture_root}/matching"
@@ -228,12 +241,10 @@ write_state "${matching_state_dir}/release-state.json" "$(cat <<JSON
 JSON
 )"
 : > "${matching_state_dir}/operations.log"
-run_publish_fixture "${matching_state_dir}" "${matching_state_dir}/fingrind.tar.gz" true
-if grep -Eq '^(delete|upload) ' "${matching_state_dir}/operations.log"; then
+run_publish_fixture "${matching_state_dir}" "${matching_state_dir}/fingrind.tar.gz"
+if grep -Eq '^(delete|upload|patch|create) ' "${matching_state_dir}/operations.log"; then
     die "release publisher rewrote an already matching release asset"
 fi
-grep -Fq '"make_latest": "true"' "${matching_state_dir}/operations.log" || die \
-    "release publisher did not finalize the matching release with the resolved latest policy"
 
 replacement_state_dir="${fixture_root}/replacement"
 mkdir -p "${replacement_state_dir}"
@@ -241,17 +252,12 @@ create_asset "${replacement_state_dir}/fingrind.tar.gz" 'replacement-asset'
 write_state "${replacement_state_dir}/release-state.json" \
     '{"exists": true, "id": 444, "draft": false, "make_latest": "true", "assets": {"fingrind.tar.gz": "sha256:obsolete"}}'
 : > "${replacement_state_dir}/operations.log"
-run_publish_fixture "${replacement_state_dir}" "${replacement_state_dir}/fingrind.tar.gz" false
-grep -Fq '"draft": true' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not reopen the published release as a draft before asset replacement"
-grep -Fq 'delete fingrind.tar.gz' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not delete the stale draft asset before re-upload"
-grep -Fq 'upload fingrind.tar.gz ' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not upload the replacement release asset"
-grep -Fq '"draft": false' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not finalize the release after replacement"
-grep -Fq '"make_latest": "false"' "${replacement_state_dir}/operations.log" || die \
-    "release publisher did not finalize the replaced release with the resolved latest policy"
+if run_publish_fixture "${replacement_state_dir}" "${replacement_state_dir}/fingrind.tar.gz"; then
+    die "release publisher rewrote a published release instead of failing for immutable public assets"
+fi
+if grep -Eq '^(delete|upload|patch|create) ' "${replacement_state_dir}/operations.log"; then
+    die "release publisher mutated an immutable public release"
+fi
 
 created_state_dir="${fixture_root}/created"
 mkdir -p "${created_state_dir}"
@@ -259,12 +265,19 @@ create_asset "${created_state_dir}/fingrind.tar.gz" 'created-asset'
 write_state "${created_state_dir}/release-state.json" \
     '{"exists": false, "id": 444, "draft": false, "make_latest": "false", "assets": {}}'
 : > "${created_state_dir}/operations.log"
-run_publish_fixture "${created_state_dir}" "${created_state_dir}/fingrind.tar.gz" true
+run_publish_fixture "${created_state_dir}" "${created_state_dir}/fingrind.tar.gz"
 grep -Fq 'create' "${created_state_dir}/operations.log" || die \
     "release publisher did not create a draft release when none existed"
 grep -Fq 'upload fingrind.tar.gz ' "${created_state_dir}/operations.log" || die \
     "release publisher did not upload the initial release asset"
+if grep -Fq '"draft": false' "${created_state_dir}/operations.log"; then
+    die "release publisher finalized the release during draft staging"
+fi
+
+run_finalize_fixture "${created_state_dir}" true
 grep -Fq '"draft": false' "${created_state_dir}/operations.log" || die \
-    "release publisher did not finalize the newly created release"
+    "release finalizer did not publish the staged release"
+grep -Fq '"make_latest": "true"' "${created_state_dir}/operations.log" || die \
+    "release finalizer did not apply the resolved latest policy"
 
 printf 'GitHub release publisher regression: success\n'

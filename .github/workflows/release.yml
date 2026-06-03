@@ -28,11 +28,12 @@ jobs:
       tag: ${{ steps.target-tag.outputs.tag }}
       version: ${{ steps.target-tag.outputs.version }}
       bundle-matrix-json: ${{ steps.release-plan.outputs.bundle-matrix-json }}
+      container-matrix-json: ${{ steps.release-plan.outputs.container-matrix-json }}
       release-asset-names-json: ${{ steps.release-plan.outputs.release-asset-names-json }}
       release-attestation-subject-paths: ${{ steps.release-plan.outputs.release-attestation-subject-paths }}
       container-runner-label: ${{ steps.release-plan.outputs.container-runner-label }}
-      container-platforms-csv: ${{ steps.release-plan.outputs.container-platforms-csv }}
       container-image-ref: ${{ steps.release-plan.outputs.container-image-ref }}
+      container-staging-image-ref: ${{ steps.release-plan.outputs.container-staging-image-ref }}
       mark-latest: ${{ steps.latest-policy.outputs.mark-latest }}
 
     steps:
@@ -40,39 +41,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-
-      - name: Checkout workflow-owner helper surface
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-          ref: main
-          path: workflow-owner-surface
-
-      - name: Resolve workflow helper root
-        id: workflow-helper-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
-          else
-            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Verify workflow-owner helper surface contract
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          set -euo pipefail
-          helper_ref="$(
-            python3 "${{ steps.workflow-helper-root.outputs.path }}/scripts/read-release-publication-contract.py" |
-              jq -r '.workflowDispatchHelperRef'
-          )"
-          [ "${helper_ref}" = 'main' ] || {
-            echo "workflow-owner helper surface must bootstrap from main, got ${helper_ref}"
-            exit 1
-          }
 
       - name: Determine target release tag
         id: target-tag
@@ -106,7 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
-        run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh
+        run: ./scripts/verify-release-candidate-tag.sh
 
       - name: Render canonical release-publication plan
         id: release-plan
@@ -114,15 +82,16 @@ jobs:
         run: |
           set -euo pipefail
           plan_json="$(
-            python3 "${{ steps.workflow-helper-root.outputs.path }}/scripts/read-release-publication-plan.py" \
+            python3 ./scripts/read-release-publication-plan.py \
               --version "${{ steps.target-tag.outputs.version }}" \
               --repository-owner "${{ github.repository_owner }}"
           )"
           printf 'bundle-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.bundleBuildMatrix')" >> "$GITHUB_OUTPUT"
+          printf 'container-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.containerBuildMatrix')" >> "$GITHUB_OUTPUT"
           printf 'release-asset-names-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.releaseAssetNames')" >> "$GITHUB_OUTPUT"
           printf 'container-runner-label=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerRunnerLabel')" >> "$GITHUB_OUTPUT"
-          printf 'container-platforms-csv=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerPlatforms | join(",")')" >> "$GITHUB_OUTPUT"
           printf 'container-image-ref=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerImageRef')" >> "$GITHUB_OUTPUT"
+          printf 'container-staging-image-ref=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerStagingImageRef')" >> "$GITHUB_OUTPUT"
           {
             echo 'release-attestation-subject-paths<<EOF'
             printf '%s' "${plan_json}" | jq -r '.releaseAttestationSubjectPaths[]'
@@ -137,7 +106,7 @@ jobs:
         run: |
           set -euo pipefail
           policy_json="$(
-            python3 "${{ steps.workflow-helper-root.outputs.path }}/scripts/resolve-release-latest-policy.py" \
+            python3 ./scripts/resolve-release-latest-policy.py \
               --release-tag "${{ steps.target-tag.outputs.tag }}" \
               --repository "${{ github.repository }}"
           )"
@@ -166,25 +135,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
 
-      - name: Checkout workflow-owner helper surface
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-          ref: main
-          path: workflow-owner-surface
-
-      - name: Resolve workflow helper root
-        id: workflow-helper-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
-          else
-            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Resolve Java toolchain version
         id: build-metadata
         shell: bash
@@ -204,7 +154,7 @@ jobs:
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '& "${{ steps.workflow-helper-root.outputs.path }}/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'
+        run: '& "./scripts/setup-msvc-dev-cmd.ps1" -Arch x64'
 
       - name: Verify Unix runner identity matches bundle target
         if: runner.os != 'Windows'
@@ -240,31 +190,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          task_output="$(
-            ./gradlew :cli:bundleCliArchive \
+          source ./scripts/gradle-wrapper-support.sh
+          is_darwin=false
+          case "$(uname -s)" in
+            Darwin) is_darwin=true ;;
+          esac
+          manifest_path="$(fg_gradle_bundle_archive_manifest_path "$PWD" 'cli' "${is_darwin}")"
+          ./gradlew :cli:bundleCliArchive \
             -PfingrindBundleClassifier=${{ matrix.classifier }} \
             --no-daemon \
             --console=plain
+          archive_path="$(
+            python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["archivePath"])' \
+              "${manifest_path}"
           )"
-          resolve_bundle_path() {
-            local label="$1"
-            local machine_prefix="$2"
-            local legacy_prefix="$3"
-            local resolved_path
-            resolved_path="$(
-              printf '%s\n' "${task_output}" | sed -n \
-                -e "s/^${machine_prefix}=//p" \
-                -e "s/^${legacy_prefix}//p" | tail -n 1
-            )"
-            [ -n "${resolved_path}" ] || {
-              echo "::error::bundleCliArchive did not report ${label}"
-              exit 1
-            }
-            printf '%s' "${resolved_path}"
-          }
-          printf '%s\n' "${task_output}"
-          archive_path="$(resolve_bundle_path 'bundle archive path' 'FINGRIND_BUNDLE_ARCHIVE' 'FinGrind bundle archive: ')"
-          checksum_path="$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')"
+          checksum_path="$(
+            python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["checksumPath"])' \
+              "${manifest_path}"
+          )"
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
@@ -273,44 +216,24 @@ jobs:
         id: windows-bundle-build
         shell: pwsh
         run: |
-          function Resolve-BundlePath {
-            param(
-              [string[]]$TaskOutputLines,
-              [string]$MachinePrefix,
-              [string]$LegacyPrefix,
-              [string]$Label
-            )
-            $line = $TaskOutputLines | Where-Object {
-              $_.StartsWith($MachinePrefix) -or $_.StartsWith($LegacyPrefix)
-            } | Select-Object -Last 1
-            if (-not $line) {
-              throw "bundleCliArchive did not report $Label"
-            }
-            if ($line.StartsWith($MachinePrefix)) {
-              return $line.Substring($MachinePrefix.Length)
-            }
-            return $line.Substring($LegacyPrefix.Length)
-          }
-          $taskOutput = & .\gradlew.bat :cli:bundleCliArchive `
+          . .\scripts\gradle-wrapper-support.ps1
+          $manifestPath = Get-FinGrindBundleArchiveManifestPath `
+            -RepositoryRoot (Get-Location).Path `
+            -ProjectSegment 'cli'
+          & .\gradlew.bat :cli:bundleCliArchive `
             -PfingrindBundleClassifier=${{ matrix.classifier }} `
             --no-daemon `
             --console=plain
           $exitCode = $LASTEXITCODE
-          $taskOutputLines = @($taskOutput | ForEach-Object { $_.ToString() })
-          $taskOutputLines | ForEach-Object { Write-Output $_ }
           if ($exitCode -ne 0) {
             throw "bundleCliArchive failed with exit code $exitCode"
           }
-          $archivePath = Resolve-BundlePath `
-            -TaskOutputLines $taskOutputLines `
-            -MachinePrefix 'FINGRIND_BUNDLE_ARCHIVE=' `
-            -LegacyPrefix 'FinGrind bundle archive: ' `
-            -Label 'bundle archive path'
-          $checksumPath = Resolve-BundlePath `
-            -TaskOutputLines $taskOutputLines `
-            -MachinePrefix 'FINGRIND_BUNDLE_CHECKSUM=' `
-            -LegacyPrefix 'FinGrind bundle checksum: ' `
-            -Label 'bundle checksum path'
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          $archivePath = [string]$manifest.archivePath
+          $checksumPath = [string]$manifest.checksumPath
+          if ([string]::IsNullOrWhiteSpace($archivePath) -or [string]::IsNullOrWhiteSpace($checksumPath)) {
+            throw "bundleCliArchive manifest did not declare archive and checksum paths"
+          }
           Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 
@@ -318,14 +241,14 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          ${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.sh \
+          ./scripts/bundle-smoke.sh \
             "${{ steps.unix-bundle-build.outputs.archive-path }}"
 
       - name: Smoke test the Windows self-contained CLI bundle
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          & "${{ steps.workflow-helper-root.outputs.path }}/scripts/bundle-smoke.ps1" `
+          & "./scripts/bundle-smoke.ps1" `
             "${{ steps.windows-bundle-build.outputs.archive-path }}"
 
       - name: Attest Unix bundle build outputs
@@ -365,7 +288,7 @@ jobs:
             ${{ steps.windows-bundle-build.outputs.checksum-path }}
 
   publish-release:
-    name: Publish GitHub release assets
+    name: Stage GitHub release draft assets
     needs:
       - prepare-publication
       - build-bundles
@@ -381,25 +304,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
 
-      - name: Checkout workflow-owner helper surface
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-          ref: main
-          path: workflow-owner-surface
-
-      - name: Resolve workflow helper root
-        id: workflow-helper-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
-          else
-            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: release-assets-*
@@ -411,7 +315,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
-          FINGRIND_RELEASE_MARK_LATEST: ${{ needs.prepare-publication.outputs.mark-latest }}
           RELEASE_ASSET_NAMES_JSON: ${{ needs.prepare-publication.outputs.release-asset-names-json }}
         run: |
           set -euo pipefail
@@ -425,7 +328,7 @@ jobs:
             }
             asset_paths+=("${asset_path}")
           done
-          bash "${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh" "${asset_paths[@]}"
+          ./scripts/publish-github-release.sh "${asset_paths[@]}"
 
   attest-release-assets:
     name: Attest published release assets
@@ -497,39 +400,21 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
 
-      - name: Checkout workflow-owner helper surface
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-          ref: main
-          path: workflow-owner-surface
-
-      - name: Resolve workflow helper root
-        id: workflow-helper-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
-          else
-            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Verify GitHub release handoff
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
-        run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh
+          FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"
+        run: ./scripts/verify-github-release.sh
 
-  container:
-    name: Build and push container image
+  build-staging-container:
+    name: Build staging container (${{ matrix.classifier }})
     needs:
       - prepare-publication
       - verify-release
-    runs-on: ${{ needs.prepare-publication.outputs.container-runner-label }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
 
     permissions:
@@ -537,30 +422,16 @@ jobs:
       packages: write
       id-token: write
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-publication.outputs.container-matrix-json) }}
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-
-      - name: Checkout workflow-owner helper surface
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-          ref: main
-          path: workflow-owner-surface
-
-      - name: Resolve workflow helper root
-        id: workflow-helper-root
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            printf 'path=%s\n' './workflow-owner-surface' >> "$GITHUB_OUTPUT"
-          else
-            printf 'path=%s\n' '.' >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Resolve Java toolchain version
         id: build-metadata
@@ -578,18 +449,45 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
+      - name: Verify Linux runner identity matches container target
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_os="$(uname -s)"
+          actual_arch="$(uname -m)"
+          [ "${actual_os}" = "${{ matrix.expectedOs }}" ] || {
+            echo "Expected OS ${{ matrix.expectedOs }} but runner reported ${actual_os}"
+            exit 1
+          }
+          [ "${actual_arch}" = "${{ matrix.expectedArch }}" ] || {
+            echo "Expected arch ${{ matrix.expectedArch }} but runner reported ${actual_arch}"
+            exit 1
+          }
+
+      - name: Resolve staged Docker build-context path
+        id: docker-context
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ./scripts/gradle-wrapper-support.sh
+          printf 'path=%s\n' "$(fg_gradle_docker_context_dir "$PWD" 'cli' false)" >> "$GITHUB_OUTPUT"
+
       - name: Stage the Docker build context
-        run: ./gradlew :cli:stageDockerBuildContext --no-daemon
+        run: |
+          ./gradlew \
+            -Dfingrind.docker.target.architectureId=${{ matrix.architectureId }} \
+            :cli:stageDockerBuildContext \
+            --no-daemon
 
       - name: Verify managed SQLite CLI runtimes
         run: |
           ./scripts/verify-source-checkout-sqlite-runtime.sh
           ./scripts/verify-direct-java-sqlite-runtime.sh
 
-      - name: Smoke test the Docker image before publishing
+      - name: Smoke test the Docker image before publication staging
+        env:
+          FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID: ${{ matrix.architectureId }}
         run: ./scripts/docker-smoke.sh
-
-      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -599,144 +497,114 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Render container image tags
-        id: image-tags
+      - name: Render staging container tag
+        id: staging-tag
         shell: bash
         run: |
           set -euo pipefail
-          image_ref="${{ needs.prepare-publication.outputs.container-image-ref }}"
-          version_tag="${image_ref}:${{ needs.prepare-publication.outputs.version }}"
-          if [[ "${{ needs.prepare-publication.outputs.mark-latest }}" == 'true' ]]; then
-            printf 'tags=%s,%s\n' "${version_tag}" "${image_ref}:latest" >> "$GITHUB_OUTPUT"
-          else
-            printf 'tags=%s\n' "${version_tag}" >> "$GITHUB_OUTPUT"
-          fi
+          printf 'tag=%s:%s-%s\n' \
+            "${{ needs.prepare-publication.outputs.container-staging-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.version }}" \
+            "${{ matrix.classifier }}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        id: build
         with:
-          context: cli/build/docker-context
-          platforms: ${{ needs.prepare-publication.outputs.container-platforms-csv }}
+          context: ${{ steps.docker-context.outputs.path }}
+          platforms: ${{ matrix.dockerPlatform }}
           push: true
-          tags: ${{ steps.image-tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.staging-tag.outputs.tag }}
+          cache-from: type=gha,scope=release-${{ matrix.classifier }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.classifier }}
           provenance: mode=max
           sbom: true
+
+      - name: Verify published staging container surface
+        env:
+          FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST: "false"
+        run: |
+          ./scripts/verify-public-container-surface.sh \
+            "${{ needs.prepare-publication.outputs.container-staging-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.version }}" \
+            "${{ needs.prepare-publication.outputs.version }}-${{ matrix.classifier }}"
+
+  promote-container:
+    name: Promote public container image
+    needs:
+      - prepare-publication
+      - build-staging-container
+    runs-on: ${{ needs.prepare-publication.outputs.container-runner-label }}
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote staging images to the public tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          staging_ref="${{ needs.prepare-publication.outputs.container-staging-image-ref }}"
+          public_ref="${{ needs.prepare-publication.outputs.container-image-ref }}"
+          version="${{ needs.prepare-publication.outputs.version }}"
+          mapfile -t source_tags < <(
+            printf '%s' '${{ needs.prepare-publication.outputs.container-matrix-json }}' |
+              jq -r --arg staging_ref "${staging_ref}" --arg version "${version}" \
+                '.[] | "\($staging_ref):\($version)-\(.classifier)"'
+          )
+          image_args=(-t "${public_ref}:${version}")
+          if [[ "${{ needs.prepare-publication.outputs.mark-latest }}" == 'true' ]]; then
+            image_args+=(-t "${public_ref}:latest")
+          fi
+          docker buildx imagetools create "${image_args[@]}" "${source_tags[@]}"
 
       - name: Verify published public container surface
         env:
           FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST: ${{ needs.prepare-publication.outputs.mark-latest }}
-        run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh "${{ needs.prepare-publication.outputs.container-image-ref }}" "${{ needs.prepare-publication.outputs.version }}"
+        run: ./scripts/verify-public-container-surface.sh "${{ needs.prepare-publication.outputs.container-image-ref }}" "${{ needs.prepare-publication.outputs.version }}"
 
-  cleanup:
-    name: Prune old container versions
+  finalize-release:
+    name: Finalize public GitHub release
+    needs:
+      - prepare-publication
+      - promote-container
     runs-on: ubuntu-24.04
-    needs: container
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     permissions:
-      packages: write
+      contents: write
 
     steps:
-      - name: Prune package versions older than the five newest tagged releases
-        shell: bash
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - name: Finalize the staged GitHub release
         env:
-          API_VERSION: 2022-11-28
           GH_TOKEN: ${{ github.token }}
-          OWNER: ${{ github.repository_owner }}
-          PACKAGE_NAME: fingrind
-          PACKAGE_TYPE: container
-          RELEASES_TO_KEEP: "5"
-        run: |
-          set -euo pipefail
+          RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
+          FINGRIND_RELEASE_MARK_LATEST: ${{ needs.prepare-publication.outputs.mark-latest }}
+        run: ./scripts/finalize-github-release.sh
 
-          owner_type="$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: ${API_VERSION}" \
-            "/users/${OWNER}" \
-            --jq '.type')"
-
-          case "${owner_type}" in
-            Organization)
-              versions_endpoint="/orgs/${OWNER}/packages/${PACKAGE_TYPE}/${PACKAGE_NAME}/versions"
-              ;;
-            User)
-              versions_endpoint="/users/${OWNER}/packages/${PACKAGE_TYPE}/${PACKAGE_NAME}/versions"
-              ;;
-            *)
-              echo "Unsupported package owner type: ${owner_type}" >&2
-              exit 1
-              ;;
-          esac
-
-          versions_json="$(gh api \
-            --paginate \
-            --slurp \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: ${API_VERSION}" \
-            "${versions_endpoint}?per_page=100")"
-
-          release_anchors_json="$(printf '%s' "${versions_json}" | jq \
-            --argjson releasesToKeep "${RELEASES_TO_KEEP}" '
-              map(.[]) |
-              [
-                .[]
-                | {
-                    id,
-                    createdAt: .created_at,
-                    tags: (.metadata.container.tags // []),
-                    releaseTag: (
-                      (.metadata.container.tags // [])
-                      | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))
-                      | first
-                    )
-                  }
-                | select(.releaseTag != null)
-              ]
-              | sort_by(.createdAt)
-              | reverse
-              | .[:$releasesToKeep]
-            ')"
-
-          release_anchor_count="$(printf '%s' "${release_anchors_json}" | jq 'length')"
-          if [ "${release_anchor_count}" -lt "${RELEASES_TO_KEEP}" ]; then
-            printf 'No pruning needed: found only %s tagged releases in GHCR.\n' \
-              "${release_anchor_count}"
-            exit 0
-          fi
-
-          cutoff_created_at="$(printf '%s' "${release_anchors_json}" | jq -r '.[-1].createdAt')"
-          [ -n "${cutoff_created_at}" ] || {
-            echo "failed to resolve GHCR retention cutoff timestamp" >&2
-            exit 1
-          }
-
-          deletable_ids="$(
-            printf '%s' "${versions_json}" | jq -r \
-              --arg cutoff "${cutoff_created_at}" '
-                map(.[]) |
-                [
-                  .[]
-                  | select(.created_at < $cutoff)
-                  | .id
-                ]
-                | .[]
-              '
-          )"
-
-          if [ -z "${deletable_ids}" ]; then
-            printf 'No pruning needed: every GHCR package-version record is newer than the cutoff %s.\n' \
-              "${cutoff_created_at}"
-            exit 0
-          fi
-
-          while IFS= read -r version_id; do
-            [ -n "${version_id}" ] || continue
-            gh api \
-              --method DELETE \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: ${API_VERSION}" \
-              "${versions_endpoint}/${version_id}" >/dev/null
-            printf 'Deleted GHCR package-version id %s\n' "${version_id}"
-          done <<< "${deletable_ids}"
+      - name: Verify final GitHub release handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
+          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
+          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
+        run: ./scripts/verify-github-release.sh

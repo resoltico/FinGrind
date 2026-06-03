@@ -13,7 +13,6 @@ final class SqliteBookContract {
   static final String AUDIT_EVENT_TABLE = "audit_event";
   static final String BOOK_IDENTITY_TABLE = "book_identity";
   static final String BOOK_META_TABLE = "book_meta";
-  static final String ENTITY_PROFILE_TABLE = "entity_profile";
   static final String JOURNAL_LINE_TABLE = "journal_line";
   static final String PERIOD_RESULT_TRANSFER_POSTING_TABLE = "period_result_transfer_posting";
   static final String PERIOD_RESULT_TRANSFER_TABLE = "period_result_transfer";
@@ -27,7 +26,6 @@ final class SqliteBookContract {
           java.util.List.of(
               BOOK_META_TABLE,
               BOOK_IDENTITY_TABLE,
-              ENTITY_PROFILE_TABLE,
               ACCOUNT_TABLE,
               POSTING_FACT_TABLE,
               JOURNAL_LINE_TABLE,

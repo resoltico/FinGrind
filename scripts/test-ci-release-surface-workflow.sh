@@ -52,6 +52,14 @@ grep -Fq 'Smoke test the published Unix CLI bundle' "${workflow_file}" || die \
     "CI workflow no longer smoke-tests the non-Windows published bundle classifiers before release"
 grep -Fq './scripts/bundle-smoke.sh "${{ steps.bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
     "CI workflow no longer delegates non-Windows published bundle smoke to the canonical Bash owner"
+grep -Fq 'source ./scripts/gradle-wrapper-support.sh' "${workflow_file}" || die \
+    "CI workflow no longer sources the canonical Gradle wrapper helper before reading the bundle manifest"
+grep -Fq "manifest_path=\"\$(fg_gradle_bundle_archive_manifest_path \"\$PWD\" 'cli' \"\${is_darwin}\")\"" "${workflow_file}" || die \
+    "CI workflow no longer resolves the canonical bundle manifest path for published bundle smoke"
+grep -Fq 'python3 -c '\''import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["archivePath"])'\''' "${workflow_file}" || die \
+    "CI workflow no longer reads the bundle archive path from the generated manifest"
+grep -Fq 'python3 -c '\''import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["checksumPath"])'\''' "${workflow_file}" || die \
+    "CI workflow no longer reads the bundle checksum path from the generated manifest"
 grep -Fq 'uv.exe' "${workflow_file}" || die \
     "CI workflow no longer bootstraps the pinned uv launcher on Windows before Gradle-owned Python tool tasks"
 grep -Fq '.\scripts\setup-msvc-dev-cmd.ps1 -Arch x64' "${workflow_file}" || die \
@@ -63,6 +71,9 @@ if grep -Fq 'Add-MpPreference -ExclusionPath' "${workflow_file}"; then
 fi
 if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
     die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
+fi
+if grep -Fq 'resolve_bundle_path()' "${workflow_file}"; then
+    die "CI workflow still scrapes published bundle smoke artifact paths from Gradle console output instead of the canonical bundle manifest"
 fi
 grep -Fq '.\scripts\verify-direct-java-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows direct-Java runtime verification to the canonical PowerShell owner"

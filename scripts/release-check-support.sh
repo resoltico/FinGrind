@@ -51,10 +51,6 @@ print(json.dumps(value))
 PY
 }
 
-fingrind_workflow_dispatch_helper_ref() {
-    fingrind_release_publication_field workflowDispatchHelperRef
-}
-
 fingrind_required_ci_workflow_name() {
     fingrind_release_publication_field requiredCiWorkflowName
 }

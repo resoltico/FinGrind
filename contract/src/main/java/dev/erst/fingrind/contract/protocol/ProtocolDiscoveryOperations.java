@@ -53,8 +53,7 @@ final class ProtocolDiscoveryOperations {
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of(
                 ProtocolExampleStep.command("fingrind capabilities --output json"),
-                ProtocolExampleStep.command(
-                    "fingrind capabilities --output json --focus commands --category query"),
+                ProtocolExampleStep.command("fingrind capabilities --output json --category query"),
                 ProtocolExampleStep.command("fingrind capabilities --output json --detail full"))),
         ProtocolOperationDefinitions.operation(
             OperationId.ENVIRONMENT,

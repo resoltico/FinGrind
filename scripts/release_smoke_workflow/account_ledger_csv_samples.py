@@ -12,14 +12,14 @@ from .account_ledger_csv_contract import (
 
 def structured_account_ledger_csv(actor_prefix: str) -> str:
     opening_posting_id = "019e2ae5-5f56-7025-8449-984160a327f3"
-    adjustment_posting_id = "019e2ae5-6557-7410-8611-f55876f12ca5"
+    expense_posting_id = "019e2ae5-6557-7410-8611-f55876f12ca5"
     sale_document_id = f"{actor_prefix}-sale-document-1"
-    adjustment_document_id = f"{actor_prefix}-adjustment-document-1"
+    expense_document_id = f"{actor_prefix}-expense-document-1"
 
     summary = account_ledger_base_row(
         "summary",
         exportFamily="posting-relationships",
-        rowId="ledger-summary:1000:EUR",
+        rowId="ledger-summary:cash:EUR",
         relationKind="ledger-summary",
         currencyCode="EUR",
         openingDebitTotal="0.00",
@@ -40,11 +40,11 @@ def structured_account_ledger_csv(actor_prefix: str) -> str:
         credit="0.00",
         running_net="10.00",
     )
-    adjustment_entry = account_ledger_movement_row(
+    expense_entry = account_ledger_movement_row(
         "2026-04-08",
         "2026-04-08T10:00:00Z",
-        adjustment_posting_id,
-        "CORRECTION_ADJUSTMENT",
+        expense_posting_id,
+        "CASH_EXPENSE",
         debit="0.00",
         credit="4.00",
         running_net="6.00",
@@ -55,7 +55,7 @@ def structured_account_ledger_csv(actor_prefix: str) -> str:
         account_ledger_base_row(
             "counterpart-account",
             exportFamily="posting-relationships",
-            rowId=f"ledger-counterpart:{opening_posting_id}:2000",
+            rowId=f"ledger-counterpart:{opening_posting_id}:service-revenue",
             parentRowId=f"ledger-entry:{opening_posting_id}",
             relationKind="counterpart-account",
             effectiveDate="2026-04-07",
@@ -64,7 +64,7 @@ def structured_account_ledger_csv(actor_prefix: str) -> str:
             postingKind="STANDARD",
             postingOriginKind="CASH_REVENUE",
             reversalState="direct",
-            counterpartAccountCode="2000",
+            counterpartAccountCode="service-revenue",
         ),
         account_ledger_base_row(
             "source-document",
@@ -81,35 +81,35 @@ def structured_account_ledger_csv(actor_prefix: str) -> str:
             sourceDocumentId=sale_document_id,
             sourceDocumentType="cash-receipt",
         ),
-        adjustment_entry,
+        expense_entry,
         account_ledger_base_row(
             "counterpart-account",
             exportFamily="posting-relationships",
-            rowId=f"ledger-counterpart:{adjustment_posting_id}:2000",
-            parentRowId=f"ledger-entry:{adjustment_posting_id}",
+            rowId=f"ledger-counterpart:{expense_posting_id}:misc-expense",
+            parentRowId=f"ledger-entry:{expense_posting_id}",
             relationKind="counterpart-account",
             effectiveDate="2026-04-08",
             recordedAt="2026-04-08T10:00:00Z",
-            postingId=adjustment_posting_id,
+            postingId=expense_posting_id,
             postingKind="STANDARD",
-            postingOriginKind="CORRECTION_ADJUSTMENT",
+            postingOriginKind="CASH_EXPENSE",
             reversalState="direct",
-            counterpartAccountCode="2000",
+            counterpartAccountCode="misc-expense",
         ),
         account_ledger_base_row(
             "source-document",
             exportFamily="posting-relationships",
-            rowId=f"ledger-source-document:{adjustment_posting_id}:{adjustment_document_id}",
-            parentRowId=f"ledger-entry:{adjustment_posting_id}",
+            rowId=f"ledger-source-document:{expense_posting_id}:{expense_document_id}",
+            parentRowId=f"ledger-entry:{expense_posting_id}",
             relationKind="source-document",
             effectiveDate="2026-04-08",
             recordedAt="2026-04-08T10:00:00Z",
-            postingId=adjustment_posting_id,
+            postingId=expense_posting_id,
             postingKind="STANDARD",
-            postingOriginKind="CORRECTION_ADJUSTMENT",
+            postingOriginKind="CASH_EXPENSE",
             reversalState="direct",
-            sourceDocumentId=adjustment_document_id,
-            sourceDocumentType="cash-receipt",
+            sourceDocumentId=expense_document_id,
+            sourceDocumentType="expense-receipt",
         ),
     ]
     buffer = StringIO()

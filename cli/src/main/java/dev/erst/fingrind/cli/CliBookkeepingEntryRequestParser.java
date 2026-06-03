@@ -44,8 +44,7 @@ final class CliBookkeepingEntryRequestParser {
       case CASH_EXPENSE -> readCashExpenseEntry(rootNode);
       case EQUITY_CONTRIBUTION -> readEquityContributionEntry(rootNode);
       case EQUITY_WITHDRAWAL -> readEquityWithdrawalEntry(rootNode);
-      case OPENING_BALANCE_ADJUSTMENT -> readOpeningBalanceAdjustmentEntry(rootNode);
-      case CORRECTION_ADJUSTMENT -> readCorrectionAdjustmentEntry(rootNode);
+      case OPEN_ACCOUNTING_POSITION -> readOpenAccountingPositionEntry(rootNode);
       case REVERSAL_ADJUSTMENT -> readReversalAdjustmentEntry(rootNode);
     };
   }
@@ -93,18 +92,14 @@ final class CliBookkeepingEntryRequestParser {
         requiredPositiveAmount(rootNode));
   }
 
-  private static BookkeepingEntry.OpeningBalanceAdjustment readOpeningBalanceAdjustmentEntry(
+  private static BookkeepingEntry.OpenAccountingPosition readOpenAccountingPositionEntry(
       ObjectNode rootNode) {
     rejectUnexpectedFields(
-        rootNode, null, ProtocolPostingRequestFieldSets.openingBalanceAdjustmentFields());
-    return new BookkeepingEntry.OpeningBalanceAdjustment(readAdministrativeJournalEntry(rootNode));
-  }
-
-  private static BookkeepingEntry.CorrectionAdjustment readCorrectionAdjustmentEntry(
-      ObjectNode rootNode) {
-    rejectUnexpectedFields(
-        rootNode, null, ProtocolPostingRequestFieldSets.correctionAdjustmentFields());
-    return new BookkeepingEntry.CorrectionAdjustment(readAdministrativeJournalEntry(rootNode));
+        rootNode, null, ProtocolPostingRequestFieldSets.openAccountingPositionFields());
+    return new BookkeepingEntry.OpenAccountingPosition(
+        requiredEffectiveDate(rootNode),
+        readOpeningBalances(
+            requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)));
   }
 
   private static BookkeepingEntry.ReversalAdjustment readReversalAdjustmentEntry(
@@ -119,6 +114,37 @@ final class CliBookkeepingEntryRequestParser {
     return new JournalEntry(
         requiredEffectiveDate(rootNode),
         readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES)));
+  }
+
+  private static List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance>
+      readOpeningBalances(JsonNode openingBalancesNode) {
+    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> openingBalances =
+        new ArrayList<>();
+    int index = 0;
+    for (JsonNode openingBalanceNode : openingBalancesNode) {
+      ObjectNode openingBalanceObject =
+          requireObjectNode(openingBalanceNode, "openingBalances[%d]".formatted(index));
+      rejectUnexpectedFields(
+          openingBalanceObject,
+          "openingBalances[%d]".formatted(index),
+          ProtocolPostingRequestFieldSets.openingBalanceFields());
+      openingBalances.add(
+          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+              new AccountCode(
+                  requiredText(
+                      openingBalanceObject, ProtocolPostEntryFields.OpeningBalance.ACCOUNT_CODE)),
+              parseWireValue(
+                  requiredText(openingBalanceObject, ProtocolPostEntryFields.OpeningBalance.SIDE),
+                  ProtocolPostEntryFields.OpeningBalance.SIDE,
+                  JournalLine.EntrySide.wireValues(),
+                  JournalLine.EntrySide::fromWireValue),
+              MonetaryAmount.of(
+                  CliJsonMoneyParser.requiredPositiveMoney(
+                          openingBalanceObject, ProtocolPostEntryFields.OpeningBalance.AMOUNT)
+                      .money())));
+      index++;
+    }
+    return openingBalances;
   }
 
   private static List<JournalLine> readLines(JsonNode linesNode) {

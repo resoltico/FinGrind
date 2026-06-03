@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -14,11 +13,17 @@ final class CliBookIdentityDisplay {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Entity", bookIdentity.entityName().value()));
-    rows.add(List.of("Accounting profile", bookIdentity.accountingKernelProfileId().value()));
     rows.add(
         List.of(
-            "Business activity",
-            businessActivityTags(bookIdentity.entityProfile().businessActivityTags())));
+            "Accounting kernel", bookIdentity.bookDoctrine().accountingKernelProfileId().value()));
+    rows.add(
+        List.of("Accounting basis", bookIdentity.bookDoctrine().accountingBasis().wireValue()));
+    rows.add(
+        List.of(
+            "Framework posture",
+            bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue()));
+    rows.add(List.of("Entity form", bookIdentity.bookDoctrine().entityForm().wireValue()));
+    rows.add(List.of("Book template", bookIdentity.bookDoctrine().bookTemplateId().wireValue()));
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     return List.copyOf(rows);
@@ -30,24 +35,12 @@ final class CliBookIdentityDisplay {
 
   static List<List<String>> summaryRows(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return List.of(List.of("Book", summaryLine(bookIdentity)));
-  }
-
-  private static String businessActivityTags(List<BusinessActivityTag> businessActivityTags) {
-    return businessActivityTags.isEmpty()
-        ? "(none)"
-        : businessActivityTags.stream()
-            .map(BusinessActivityTag::value)
-            .collect(java.util.stream.Collectors.joining(", "));
-  }
-
-  private static String summaryLine(BookIdentity bookIdentity) {
-    return bookIdentity.entityName().value()
-        + " | "
-        + bookIdentity.accountingKernelProfileId().value()
-        + " | Currency "
-        + bookIdentity.functionalCurrency().code()
-        + " | FY "
-        + bookIdentity.fiscalYearStart().wireValue();
+    return List.of(
+        List.of("Entity", bookIdentity.entityName().value()),
+        List.of(
+            "Accounting kernel", bookIdentity.bookDoctrine().accountingKernelProfileId().value()),
+        List.of("Accounting basis", bookIdentity.bookDoctrine().accountingBasis().wireValue()),
+        List.of("Functional currency", bookIdentity.functionalCurrency().code()),
+        List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
   }
 }

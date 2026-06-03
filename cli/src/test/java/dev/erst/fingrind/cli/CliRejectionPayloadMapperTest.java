@@ -42,7 +42,7 @@ class CliRejectionPayloadMapperTest {
         CliRejectionJsonModels.AccountTypeConflictDetails.class);
     assertHint(
         new BookAdministrationRejection.AccountRoleConflict(
-            new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.CONTRA),
+            new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED),
         "existing account identity",
         CliRejectionJsonModels.AccountRoleConflictDetails.class);
     assertHint(
@@ -116,7 +116,7 @@ class CliRejectionPayloadMapperTest {
             new AccountCode("4100"),
             AccountRole.ORDINARY,
             new AccountCode("4000"),
-            AccountRole.CONTRA),
+            AccountRole.POLARITY_INVERTED),
         "same accountRole as the child account",
         CliRejectionJsonModels.ParentAccountRoleConflictDetails.class);
     assertHint(
@@ -156,7 +156,7 @@ class CliRejectionPayloadMapperTest {
     var roleConflictEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
             new BookAdministrationRejection.AccountRoleConflict(
-                new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.CONTRA));
+                new AccountCode("3200"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED));
     var taxonomyConflictEnvelope =
         CliRejectionPayloadMapper.administrationRejectedEnvelope(
             new BookAdministrationRejection.AccountTaxonomyConflict(
@@ -209,7 +209,7 @@ class CliRejectionPayloadMapperTest {
     assertEquals("LIABILITY", typeDetails.requestedAccountType());
     assertEquals("3200", roleDetails.accountCode());
     assertEquals("ORDINARY", roleDetails.existingAccountRole());
-    assertEquals("CONTRA", roleDetails.requestedAccountRole());
+    assertEquals("POLARITY_INVERTED", roleDetails.requestedAccountRole());
     assertEquals("3200", taxonomyDetails.accountCode());
     assertEquals(
         "OTHER_EQUITY",
